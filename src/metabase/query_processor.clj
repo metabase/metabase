@@ -10,7 +10,6 @@
   (:refer-clojure :exclude [select-keys])
   (:require
    [medley.core :as m]
-   [metabase.driver :as driver]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.debug :as qp.debug]
@@ -54,8 +53,7 @@
                                         :db/id      (:database query)}
     (let [preprocessed (tracing/with-span :qp "qp.preprocess" {}
                          (qp.preprocess/preprocess query))
-          compiled     (binding [driver/*compile-as-standalone-statement* true]
-                         (qp.compile/attach-compiled-query preprocessed))
+          compiled     (qp.compile/attach-compiled-query preprocessed)
           rff          (qp.postprocess/post-processing-rff preprocessed rff)]
       (tracing/with-span :qp "qp.execute" {}
         (qp.execute/execute compiled rff)))))

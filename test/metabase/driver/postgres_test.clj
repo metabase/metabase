@@ -589,21 +589,22 @@
                       {:database (meta/id)
                        :type     :query
                        :query    {:source-table "card__123"}})]
-          (is (= ["SELECT"
+          (is (= ["WITH \"__mb_stage_0\" AS ("
+                  "  SELECT"
+                  "    (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\","
+                  "    COUNT(*) AS \"count\""
+                  "  FROM"
+                  "    \"json_alias_test\""
+                  "  GROUP BY"
+                  "    \"json_alias_test\""
+                  "  ORDER BY"
+                  "    \"json_alias_test\" ASC"
+                  ")"
+                  "SELECT"
                   "  \"__mb_source\".\"json_alias_test\" AS \"json_alias_test\","
                   "  \"__mb_source\".\"count\" AS \"count\""
                   "FROM"
-                  "  ("
-                  "    SELECT"
-                  "      (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\","
-                  "      COUNT(*) AS \"count\""
-                  "    FROM"
-                  "      \"json_alias_test\""
-                  "    GROUP BY"
-                  "      \"json_alias_test\""
-                  "    ORDER BY"
-                  "      \"json_alias_test\" ASC"
-                  "  ) AS \"__mb_source\""]
+                  "  \"__mb_stage_0\" AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
 (deftest ^:parallel nested-field-pivot-compile-test
@@ -637,7 +638,15 @@
                         :show-column-totals true})]
         (qp.store/with-metadata-provider mp
           (let [sql (:query (qp.compile/compile (nest-for-pivot/wrap-nested-field-breakouts pivot-q)))]
-            (is (= ["SELECT"
+            (is (= ["WITH \"__mb_stage_0\" AS ("
+                    "  SELECT"
+                    "    (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
+                    "    \"json_table\".\"region\" AS \"region\","
+                    "    (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
+                    "  FROM"
+                    "    \"json_table\""
+                    ")"
+                    "SELECT"
                     "  \"__mb_source\".\"__mb_pivot_nfc\" AS \"__mb_pivot_nfc\","
                     "  \"__mb_source\".\"region\" AS \"region\","
                     "  GROUPING("
@@ -646,14 +655,7 @@
                     "  ) AS \"pivot-grouping\","
                     "  COUNT(*) AS \"count\""
                     "FROM"
-                    "  ("
-                    "    SELECT"
-                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
-                    "      \"json_table\".\"region\" AS \"region\","
-                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
-                    "    FROM"
-                    "      \"json_table\""
-                    "  ) AS \"__mb_source\""
+                    "  \"__mb_stage_0\" AS \"__mb_source\""
                     "GROUP BY"
                     "  GROUPING SETS ("
                     "    ("
@@ -1739,33 +1741,25 @@
 (deftest ^:parallel multi-stage-query-compiles-to-ctes-test
   (mt/test-driver :postgres
     (mt/dataset test-data
-      (let [query    (mt/mbql-query venues
-                       {:source-query {:source-query {:source-table $$venues
-                                                      :aggregation  [[:count]]
-                                                      :breakout     [$price]}
-                                       :filter [:> *count/Integer 1]}
-                        :aggregation  [[:sum *count/Integer]]})
-            stage-0  "SELECT venues.price AS price, COUNT(*) AS count FROM venues GROUP BY venues.price ORDER BY venues.price ASC"
-            compile-sql (fn [standalone?]
-                          (binding [driver/*compile-as-standalone-statement* standalone?]
-                            (some-> (qp.compile/compile query) :query pretty-sql)))]
-        (testing "a query that will be run as a standalone statement uses a CTE per non-final stage"
+      (let [query   (mt/mbql-query venues
+                      {:source-query {:source-query {:source-table $$venues
+                                                     :aggregation  [[:count]]
+                                                     :breakout     [$price]}
+                                      :filter [:> *count/Integer 1]}
+                       :aggregation  [[:sum *count/Integer]]})
+            stage-0 "SELECT venues.price AS price, COUNT(*) AS count FROM venues GROUP BY venues.price ORDER BY venues.price ASC"]
+        (testing "each non-final stage becomes a CTE, consumed as __mb_source by the next stage"
           (is (= (str "WITH __mb_stage_0 AS (" stage-0 "), "
                       "__mb_stage_1 AS (SELECT __mb_source.price AS price, __mb_source.count AS count "
                       "FROM __mb_stage_0 AS __mb_source WHERE __mb_source.count > 1) "
                       "SELECT SUM(__mb_source.count) AS sum FROM __mb_stage_1 AS __mb_source")
-                 (compile-sql true))))
-        (testing "a query that will be spliced into other SQL keeps using nested subselects"
-          (is (= (str "SELECT SUM(__mb_source.count) AS sum "
-                      "FROM (SELECT __mb_source.price AS price, __mb_source.count AS count "
-                      "FROM (" stage-0 ") AS __mb_source WHERE __mb_source.count > 1) AS __mb_source")
-                 (compile-sql false))))
+                 (some-> (qp.compile/compile query) :query pretty-sql))))
         (testing "the query actually runs"
           (is (= [[100]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
-(deftest ^:parallel multi-stage-join-source-does-not-use-ctes-test
-  (testing "join sources are always nested subselects, even for a standalone statement"
+(deftest ^:parallel multi-stage-join-source-compiles-to-ctes-test
+  (testing "a multi-stage join source compiles to a WITH nested inside the JOIN parens"
     (mt/test-driver :postgres
       (mt/dataset test-data
         (let [query (mt/mbql-query venues
@@ -1777,10 +1771,44 @@
                                 :condition    [:= $price &J.*price/Integer]
                                 :fields       :all}]
                        :limit 1})
-              sql   (binding [driver/*compile-as-standalone-statement* true]
-                      (some-> (qp.compile/compile query) :query pretty-sql))]
-          (is (not (str/includes? sql "WITH")))
-          (is (str/includes? sql "LEFT JOIN (SELECT __mb_source.price AS price, __mb_source.count AS count FROM (SELECT")))))))
+              sql   (some-> (qp.compile/compile query) :query pretty-sql)]
+          (is (str/includes? sql (str "LEFT JOIN (WITH __mb_stage_0 AS (SELECT venues.price AS price, COUNT(*) AS count "
+                                      "FROM venues GROUP BY venues.price ORDER BY venues.price ASC) "
+                                      "SELECT __mb_source.price AS price, __mb_source.count AS count "
+                                      "FROM __mb_stage_0 AS __mb_source WHERE __mb_source.count > 1) AS J")))
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 3 13]]
+                 (mt/formatted-rows [int str int 4.0 4.0 int int int] (qp/process-query query)))))))))
+
+(deftest ^:parallel native-source-stage-compiles-to-cte-test
+  (testing "a native first stage becomes a CTE whose body is the raw SQL, even if that SQL has its own WITH"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [query (mt/mbql-query nil
+                      {:source-query {:native "WITH v AS (SELECT price, count(*) AS cnt FROM venues GROUP BY price) SELECT * FROM v;"}
+                       :filter       [:> *cnt/Integer 1]
+                       :aggregation  [[:count]]})]
+          (is (= (str "WITH __mb_stage_0 AS (WITH v AS (SELECT price, count(*) AS cnt FROM venues GROUP BY price) SELECT * FROM v) "
+                      "SELECT COUNT(*) AS count FROM __mb_stage_0 AS __mb_source WHERE __mb_source.cnt > 1")
+                 (some-> (qp.compile/compile query) :query pretty-sql)))
+          (is (= [[4]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+(deftest ^:parallel multi-stage-card-referenced-from-native-query-test
+  (testing "a multi-stage card spliced into a native query via {{#id}} keeps its CTEs inside the subquery parens"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues
+                                                          {:source-query {:source-table $$venues
+                                                                          :aggregation  [[:count]]
+                                                                          :breakout     [$price]}
+                                                           :filter [:> *count/Integer 1]})}]
+          (let [tag   (format "#%d" (:id card))
+                query (mt/native-query {:query         (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag)
+                                        :template-tags {tag {:name tag, :display-name tag, :type :card, :card-id (:id card)}}})
+                sql   (some-> (qp.compile/compile query) :query pretty-sql)]
+            (is (str/starts-with? sql "SELECT SUM(c.count) FROM (WITH __mb_stage_0 AS ("))
+            (is (= [[100]]
+                   (mt/formatted-rows [int] (qp/process-query query))))))))))
 
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
