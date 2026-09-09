@@ -12,7 +12,7 @@ import type {
 
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
-  // Widened so the EE plugin can assign the dictionary path.
+  // The dictionary path is null in OSS and a string in EE.
   getDictionaryBasePath: null as string | null,
   setEndpointsForAuthEmbedding: () => {},
   setEndpointsForStaticEmbedding: (_encodedToken: EntityToken) => {},
