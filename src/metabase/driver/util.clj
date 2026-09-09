@@ -929,7 +929,10 @@
 (defn sensitive-fields
   "Returns all sensitive fields that should be redacted in API responses for a given database. Calls get-sensitive-fields
   using the given database's driver, if that driver is valid and registered. Refer to get-sensitive-fields docstring
-  for full details."
+  for full details.
+
+  Connection properties are flattened first, so a `:password` or `:secret` property nested inside a `:group` (the
+  shape every driver's SSL block uses) is redacted just like a top-level one."
   [driver]
   (if-some [conn-prop-fn (get-method driver/connection-properties driver)]
     (let [all-fields      (vals (collect-all-props-by-name (conn-prop-fn driver)))

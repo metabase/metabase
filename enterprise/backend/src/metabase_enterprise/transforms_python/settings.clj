@@ -20,7 +20,7 @@
   :type       :string
   :visibility :admin
   :sensitive? true
-  :audience {:python-runner-url :string}
+  :audience   {:python-runner-url :string}
   :default    (when (not config/is-prod?) "dev-token-12345")
   :feature    :transforms-python
   :doc        false
@@ -79,9 +79,9 @@
   :feature    :transforms-python
   :default    (when (not config/is-prod?) "test")
   :sensitive? true
-  :audience {:python-storage-s-3-endpoint :string
-             :python-storage-s-3-region   :string
-             :python-storage-s-3-bucket   :string}
+  :audience   {:python-storage-s-3-endpoint :string
+               :python-storage-s-3-region   :string
+               :python-storage-s-3-bucket   :string}
   :doc        false
   :export?    false
   :encryption :when-encryption-key-set
@@ -92,9 +92,9 @@
   :type       :string
   :visibility :admin
   :sensitive? true
-  :audience {:python-storage-s-3-endpoint :string
-             :python-storage-s-3-region   :string
-             :python-storage-s-3-bucket   :string}
+  :audience   {:python-storage-s-3-endpoint :string
+               :python-storage-s-3-region   :string
+               :python-storage-s-3-bucket   :string}
   :feature    :transforms-python
   :default    (when (not config/is-prod?) "test")
   :doc        false

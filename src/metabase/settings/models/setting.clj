@@ -1111,12 +1111,12 @@
   [proposed]
   (when (some? api/*current-user-id*)
     (let [proposed (into {} (map (fn [[k v]] [(keyword k) v])) proposed)]
-      (doseq [{:keys [audience name]} (vals @registered-settings)
+      (doseq [{:keys [audience], setting-name :name} (vals @registered-settings)
               :when (and audience
                          ;; nothing being written touches this audience
                          (seq (select-keys proposed (keys audience)))
                          ;; nothing stored to exfiltrate
-                         (some? (get name)))]
+                         (some? (get setting-name)))]
         (let [schema   (into [:map] (map (fn [[k schema]] [k {:optional true} schema])) audience)
               stored   (u.secret/canonical-audience schema (audience-fields audience {}))
               want     (u.secret/canonical-audience schema (audience-fields audience proposed))
@@ -1126,12 +1126,12 @@
               ;; new value later is itself guarded. Only a change that introduces or alters a value is a move.
               moved?   (boolean (some #(some? (core/get want %)) changed))]
           (when-not (or (not moved?)
-                        (fresh-secret-supplied? name proposed))
+                        (fresh-secret-supplied? setting-name proposed))
             (throw (ex-info (tru "{0} must be provided again when changing where it is sent."
-                                 (core/name name))
+                                 (name setting-name))
                             {:status-code 400
                              :error-code  :setting-audience-change-requires-secret
-                             :setting     name}))))))))
+                             :setting     setting-name}))))))))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this

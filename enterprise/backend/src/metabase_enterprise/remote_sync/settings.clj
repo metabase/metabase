@@ -211,7 +211,8 @@
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
   (guards/ensure-no-active-task!)
   ;; ahead of check-git-settings!, not just the write: that reaches the repository at whatever URL was supplied, so a
-  ;; moved audience would deliver the stored PAT there before anything is persisted
+  ;; moved audience would deliver the stored PAT there before anything is persisted. set-many! below runs the same
+  ;; check again on the persisted subset; that repeat is expected and cheap, not a reason to drop this one.
   (setting/assert-audience-writes-authorized! settings)
   (let [git-related-keys #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch}
         updating-git-settings? (some git-related-keys (keys settings))

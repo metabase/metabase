@@ -362,7 +362,7 @@
   column does not by itself yield a usable credential — the caller must name an audience to [[u.secret/expose]] it.
 
   `opts` are passed to [[u.secret/secret]], so a column whose leading characters are a non-sensitive lookup
-  identifier can pass `{:mask [:prefix n]}`. `:audience` is not set here: a Toucan transform sees a column value with
+  identifier can pass `{:prefix-length n}`. `:audience` is not set here: a Toucan transform sees a column value with
   no row context, and the audience a secret is bound to is derived from the record it lives in.
 
   The `:in` half deliberately *refuses* a `Secret` rather than stringifying it. Without that, a forgotten `expose`

@@ -105,8 +105,9 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :encryption :when-encryption-key-set
   :default    "changeit"
   :sensitive? true
-  ;; the password unlocks one specific keystore; another path is a different audience
-  :audience {:saml-keystore-path :string}
+  ;; unlocks a local keystore file and never leaves the process, so no destination setting can redirect it. Who may
+  ;; change `saml-keystore-path` is governed by that setting's own access level, not by this coupling.
+  :audience   {}
   :feature    :sso-saml
   :audit      :getter)
 
@@ -222,7 +223,8 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
                      " "
                      "A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended."))
   :sensitive? true
-  :audience {:jwt-identity-provider-uri :string}
+  ;; verifies IdP-signed tokens locally; never sent to the provider URI, so changing that URI cannot redirect it
+  :audience   {}
   :encryption :when-encryption-key-set
   :type       :string
   :feature    :sso-jwt

@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.api.common :as api]
    [metabase.session.core :as session]
+   [metabase.settings.core :as setting]
    [metabase.sso.settings :as sso.settings]
    [metabase.sso.test-helpers :as sso.test-helpers]
    [metabase.test :as mt]
@@ -342,3 +344,25 @@
                                          saml-enabled                       true]
         (is (false? (sso-settings/saml-configured)))
         (is (false? (sso-settings/saml-enabled)))))))
+
+(deftest keystore-path-change-does-not-require-the-password-again-test
+  (testing "the keystore password is not bound to the keystore path: it unlocks a local file rather than being sent to
+           a peer, and who may change the path is controlled by that setting's own access level"
+    (mt/with-premium-features #{:sso-saml}
+      (tu/with-temporary-setting-values [saml-keystore-path     "/etc/metabase/old.jks"
+                                         saml-keystore-password "keystore-secret"]
+        (binding [api/*current-user-id* (mt/user->id :crowberto)]
+          (setting/set-many! {:saml-keystore-path "/etc/metabase/new.jks"})
+          (is (= "/etc/metabase/new.jks" (sso-settings/saml-keystore-path)))
+          (is (= "keystore-secret" (sso-settings/saml-keystore-password))))))))
+
+(deftest jwt-idp-uri-change-does-not-require-the-shared-secret-again-test
+  (testing "the shared secret is not bound to the identity provider URI: Metabase only verifies IdP-signed tokens with
+           it locally and never sends it to that URI"
+    (mt/with-premium-features #{:sso-jwt}
+      (tu/with-temporary-setting-values [jwt-identity-provider-uri "https://old.example.com/sso"
+                                         jwt-shared-secret         "jwt-secret"]
+        (binding [api/*current-user-id* (mt/user->id :crowberto)]
+          (setting/set-many! {:jwt-identity-provider-uri "https://new.example.com/sso"})
+          (is (= "https://new.example.com/sso" (sso-settings/jwt-identity-provider-uri)))
+          (is (= "jwt-secret" (sso-settings/jwt-shared-secret))))))))

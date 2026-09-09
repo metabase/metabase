@@ -132,8 +132,10 @@
   Deliberately tiny. Anything whose *output* is non-sensitive by construction belongs on the type as a method
   ([[prefix]], [[mask]]) rather than here, and anything needing caller-supplied logic should use [[derive-with]], which
   confines the plaintext to one expression. What is left is the case no mechanism can verify: handing a credential to
-  a person."
-  #{:disclosure/to-creator})                                ; showing a just-created credential to its creator, once
+  a person.
+
+  * `to-creator` -- showing a just-created credential to its creator, once."
+  #{:disclosure/to-creator})
 
 (def ^:const mask-string
   "The fixed, value-independent portion of a mask. Constant width so it leaks neither the length nor any character of
@@ -149,9 +151,10 @@
 ;; `extend-protocol`-ed would work
 (p/definterface+ ISecret
   (expose [this audience]
-          "Expose the secret to `audience`, which is either a canonical audience map naming the network peer it is about to
-    be presented to, or a keyword from [[disclosure-reasons]]. Throws unless the secret is bound to a matching
-    audience. There is deliberately no arity that omits it.")
+          "Expose the secret to `audience`, which is either an audience map naming the network peer it is about to be
+    presented to (canonicalized here, so a raw details or settings map is fine), or a keyword from
+    [[disclosure-reasons]]. Throws unless the secret is bound to a matching audience. There is deliberately no arity
+    that omits it.")
   (derive-with [this f]
                "Apply `f` to the plaintext and return its result, without the plaintext ever becoming a binding in caller scope.
 
@@ -196,7 +199,7 @@
                          :requested  (canonical-audience audience-schema requested)})))
 
       :else
-      (throw (ex-info (tru "An audience must be a canonical audience map or a known disclosure reason.")
+      (throw (ex-info (tru "An audience must be an audience map or a known disclosure reason.")
                       {:error-code :secret-invalid-audience}))))
 
   (derive-with [_this f] (f (value-fn)))
@@ -227,9 +230,9 @@
 
   Options:
 
-  * `:audience-schema` -- how this kind of secret's audience fields are compared: a map of field key to a member of
-    [[field-types]]. Declare it once per integration. Required alongside `:audience`, and used again to normalize the
-    audience a caller later presents to [[expose]], so both sides are compared the same way.
+  * `:audience-schema` -- how this kind of secret's audience fields are compared: an ordinary Malli map schema, as
+    [[canonical-audience]] takes. Declare it once per integration. Required alongside `:audience`, and used again to
+    normalize the audience a caller later presents to [[expose]], so both sides are compared the same way.
   * `:audience` -- the record the secret lives in, from which the schema selects the audience fields. Nothing is
     persisted, so changing what counts as an audience never invalidates a stored secret.
   * `:prefix-length` -- how many leading characters this *kind* of secret may reveal, for kinds whose prefix is a
@@ -243,7 +246,7 @@
                      {:error-code :secret-missing-audience-schema})))
    (->Secret (constantly value)
              schema
-             (some-> aud (->> (canonical-audience schema)))
+             (when aud (canonical-audience schema aud))
              prefix-length)))
 
 (defn secret?

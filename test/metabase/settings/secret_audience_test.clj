@@ -20,10 +20,19 @@
   metabase-enterprise.core.init/keep-me
   metabase.test/keep-me)
 
+(defn- test-namespace?
+  "Whether `setting` was registered by a test namespace. Test files define throwaway `:sensitive?` settings to
+  exercise masking, and CI loads every test namespace into one JVM, so without this filter those fixtures would trip
+  the ratchets below."
+  [setting]
+  (str/ends-with? (str (:namespace setting)) "-test"))
+
 (defn- secret-settings
-  "Every setting marked as a credential. `:sensitive?` is the one marker -- see [[single-marker-test]]."
+  "Every production setting marked as a credential. `:sensitive?` is the one marker -- see [[single-marker-test]]."
   []
-  (into {} (filter (fn [[_ setting]] (:sensitive? setting))) @setting/registered-settings))
+  (into {}
+        (filter (fn [[_ setting]] (and (:sensitive? setting) (not (test-namespace? setting)))))
+        @setting/registered-settings))
 
 ;;; Credentials that predate the coupling and have not been given an audience yet. This list may only shrink: adding
 ;;; to it means shipping a credential that can be redirected. Remove an entry by declaring `:audience` on the setting
@@ -81,6 +90,9 @@
                (str/join "\n  " (sort masked-by-custom-getter)))))))
 
 ;;; --------------------------------------------------- ratchets -----------------------------------------------------
+
+;;; These ratchets read the source tree from disk rather than inspecting loaded vars, deliberately: they must see
+;;; every call site, including ones in namespaces this JVM never happened to load.
 
 (defn- source-files []
   (->> (concat (file-seq (io/file "src")) (file-seq (io/file "enterprise/backend/src")))

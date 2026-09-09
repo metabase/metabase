@@ -119,6 +119,11 @@
       (sso-settings/oidc-providers! (conj (vec providers) new-provider))
       (sanitize-response new-provider))))
 
+(def ^:private provider-audience-schema
+  "The fields of an OIDC provider that decide where its client secret is presented. Compared as an opaque `:string`
+  rather than decomposed as a URL, so any change to the issuer -- scheme included -- reads as a new audience."
+  [:map [:issuer-uri {:optional true} :string]])
+
 ;; PUT /api/ee/sso/oidc/:key
 (api.macros/defendpoint :put "/:key" :- oidc-provider-response-schema
   "Update an existing OIDC provider."
@@ -141,7 +146,7 @@
       ;; check-oidc-connection!, which is what would otherwise present the stored secret to the new one.
       (when (and (some? (:client-secret existing))
                  (not (contains? body :client-secret))
-                 (not (u.secret/same-audience? [:map [:issuer-uri :string]] existing updated)))
+                 (not (u.secret/same-audience? provider-audience-schema existing updated)))
         (throw (ex-info (tru "The client secret must be entered again when changing the issuer URI.")
                         {:status-code 400
                          :error-code  :oidc-issuer-change-requires-client-secret})))
