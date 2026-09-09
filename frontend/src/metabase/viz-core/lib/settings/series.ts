@@ -257,6 +257,8 @@ export function seriesSetting({
         title: t`Trend line color`,
         bordered: true,
         pillSize: "small" as const,
+        // the color dropdown must not escape the series settings popover
+        withinPortal: false,
       }),
       getHidden: (_single, seriesSettings, extra) =>
         isSeriesTrendLineCustomizationHidden(seriesSettings, extra),

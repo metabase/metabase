@@ -91,7 +91,9 @@ describe("scenarios > question > trendline", () => {
     H.leftSidebar().findByTestId("settings-avg").click();
     // #8A5EB0 is the default trend line color, the shade of the avg series
     H.popover().findByLabelText("#8A5EB0").click();
-    cy.findByLabelText("#509EE3").click();
+    cy.findByTestId("color-selector-popover")
+      .findByLabelText("#509EE3")
+      .click();
     H.trendLine()
       .filter("[stroke='#509EE3']")
       .should("have.length", 1)
