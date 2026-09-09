@@ -7,13 +7,13 @@ summary: "Set up database users and roles for Metabase: read-only access for que
 
 ## Recommended setup
 
-We recommend creating a dedicated `metabase` database user with the **read-only** access to your database with [minimum database privileges for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
+We recommend creating a dedicated `metabase` database user with **read-only** access to your database with [minimum database privileges for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
 
 Some Metabase functionality requires write access to the database. Depending on other Metabase features you're planning to use, you might want to create additional roles:
 
 - Optional [`metabase_transforms` for write access](#privileges-to-enable-transforms) to the schema used for Metabase transforms.
-- Optional [`metabase_uploads` for write access](#privileges-to-enable-uploads) to schema used for CSV uploads.
-- Optional [`metabase_actions` for write access](#privileges-to-enable-actions-and-editable-table-data) to tables used for editable tables or Metabase actions .
+- Optional [`metabase_uploads` for write access](#privileges-to-enable-uploads) to the schema used for CSV uploads.
+- Optional [`metabase_actions` for write access](#privileges-to-enable-actions-and-editable-table-data) to tables used for editable tables or Metabase actions.
 - Optional [`metabase_model_persistence` for write access](#privileges-to-enable-model-persistence) to the schema used for Metabase model persistence.
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:

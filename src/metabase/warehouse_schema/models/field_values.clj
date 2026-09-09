@@ -27,7 +27,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.app-db.core :as app-db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -478,10 +477,7 @@
       (nil? existing-fv)
       (do
         (log/debugf "Storing FieldValues for Field %s..." field-name)
-        (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                  (constantly {:has_more_values       has-more-values
-                                               :values                values
-                                               :human_readable_values nil}))
+        (warehouse-schema.db/find-or-insert-full-field-values! (u/the-id field) has-more-values values)
         ::fv-created)
 
       ;; if existing FieldValues won't change, skip it

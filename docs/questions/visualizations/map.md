@@ -48,13 +48,13 @@ Metabase can display individual data points on a map as markers or tiles (small 
 
 ![Pin types](../images/pin-type.png)
 
-Maps default to markers for results fewer then 1,000 rows, and to tiles for results with 1,000 rows or more.
+Maps default to markers for results fewer than 1,000 rows, and to tiles for results with 1,000 rows or more.
 
 To change the pin type:
 
 1. While viewing the map, click the **gear** icon in the bottom left.
 2. In the visualization settings, choose the pin type in the **Pin type** dropdown.
-   - **Markers**. Maps display up to 1,000 markers. If you choose the marker pin type for results with more than 1,000 rows, Metabase will still only display 1,000 markers. Maps default to markers for results fewer then 1,000 rows.
+   - **Markers**. Maps display up to 1,000 markers. If you choose the marker pin type for results with more than 1,000 rows, Metabase will still only display 1,000 markers. Maps default to markers for results fewer than 1,000 rows.
    - **Tiles**. Maps display up to 2,000 tiles. Maps default to tiles for results greater than 1,000 rows. Tooltips will not be displayed for tiles.
 
 By default, maps can't display more than 2,000 individual unaggregated data points, regardless of the pin type. This limit is the same for every chart displaying unaggregated data in Metabase. To increase the number of data points rendered on charts based on unaggregated queries, you can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting will affect data points on _all_ charts—not just the pin maps—so increasing the limit too much could significantly slow down your Metabase and your browser.
@@ -174,7 +174,7 @@ If you want to connect the region column in a custom region map to a dashboard f
 
 ### Set as default view
 
-On pin and grid maps, the map resets to the default view every time the page is refreshed. To control what is displayed when someone opens a map (e.g. center around a specific point, with a specific level of zoom), adjusted your map orientation. This will be the new default view that the map returns to after a page refresh.
+On pin and grid maps, the map resets to the default view every time the page is refreshed. To control what is displayed when someone opens a map (e.g. center around a specific point, with a specific level of zoom), adjust your map orientation. This will be the new default view that the map returns to after a page refresh.
 
 ### Draw box to filter
 
@@ -196,9 +196,9 @@ Currently, Metabase uses a single tile server per instance. You can't specify di
 
 - Currently, you can't customize the following visualization settings on maps:
 
-  - The color or pins on a pin map;
+  - The color of pins on a pin map;
   - The color of bins on the grid map;
-  - The number of size of bins for region maps.
+  - The number or size of bins for region maps.
 
 - You can't combine different types of maps. For example, you can't put pins on a region map.
 - You need to use category (not location) dashboard filter types when connecting custom region maps to dashboard filters.

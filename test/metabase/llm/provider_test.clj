@@ -277,6 +277,25 @@
          (llm.provider/validate-config! "google" {:service-account-key "{\"type\":\"service_account\"}"
                                                   :location            "US Central"})))))
 
+(deftest validate-config!-base-url-network-policy-test
+  (testing "every provider's base URL is checked against llm-allowed-networks"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (doseq [[type config] [["anthropic" {:api-key "sk-ant-valid"}]
+                             ["openai"    {:api-key "sk-valid"}]
+                             ["vllm"      {}]
+                             ["azure"     {:api-key "azure-key" :deployment-name "gpt-4.1-mini"}]]]
+        (testing type
+          (is (=? {:status-code 400 :field :base-url}
+                  (try (llm.provider/validate-config! type (assoc config :base-url "http://127.0.0.1:8000"))
+                       (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+          (is (nil? (llm.provider/validate-config! type (assoc config :base-url "https://8.8.8.8/v1"))))))))
+  (testing "under :allow-all a loopback base URL is fine, but it still has to be an http(s) URL"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (is (nil? (llm.provider/validate-config! "vllm" {:base-url "http://127.0.0.1:8000/v1"})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"must start with http"
+           (llm.provider/validate-config! "vllm" {:base-url "127.0.0.1:8000/v1"}))))))
+
 (deftest validate-config!-select-options-test
   (testing "a select field's value must be one of its options"
     (is (thrown-with-msg?
@@ -459,18 +478,20 @@
 
 (deftest connections-shadowed-by-the-environment-test
   (testing "the environment shadows a stored connection with the same key field by field, not wholesale"
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
-                                                                  {:api-key  "sk-ant-db"
-                                                                   :base-url "https://stored.example.com"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
-        (is (= [{:key        "anthropic"
-                 :type       "anthropic"
-                 :name       "anthropic"
-                 ;; the env key wins; the stored base URL survives, so a lone base-url var can equally reach a
-                 ;; stored connection instead of doing nothing
-                 :config     {:api-key "sk-ant-env" :base-url "https://stored.example.com"}
-                 :env-vars   #{"MB_LLM_ANTHROPIC_API_KEY"}
-                 :env-fields #{:api-key}
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                  {:service-account-key "{\"type\":\"db\"}"
+                                                                   :project-id          "stored-project"
+                                                                   :location            "us-central1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-google-service-account-key "{\"type\":\"env\"}"]
+        (is (= [{:key        "google"
+                 :type       "google"
+                 :name       "google"
+                 ;; the env credential wins; everything the environment does not supply stays as stored
+                 :config     {:service-account-key "{\"type\":\"env\"}"
+                              :project-id          "stored-project"
+                              :location            "us-central1"}
+                 :env-vars   #{"MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY"}
+                 :env-fields #{:service-account-key}
                  :source     :db}]
                (llm.provider/connections))))))
   (testing "a lone base-url variable reaches the stored connection's base URL"
@@ -478,6 +499,40 @@
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
         (is (= {:api-key "sk-ant-db" :base-url "https://env.example.com"}
                (llm.provider/credentials "anthropic")))))))
+
+(deftest connections-drop-a-stored-base-url-an-env-credential-would-reach-test
+  (testing (str "A base URL saved through the API is not where an environment-supplied credential gets sent: the "
+                "credential may have arrived after the URL, which is the one order the set-time check cannot see.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-db"
+                                                                   :base-url "https://planted.example.com"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+        (testing "the type's default base URL stands in, and the stored one is left editable rather than owned"
+          (is (= {:api-key "sk-ant-env"} (llm.provider/credentials "anthropic")))
+          (is (= #{:api-key} (:env-fields (llm.provider/connection "anthropic")))))
+        (testing "and the stored list still holds it, so removing the variable brings it back"
+          (is (= "https://planted.example.com"
+                 (get-in (first (llm.provider/stored-connections)) [:config :base-url])))))))
+  (testing "the environment's own base URL is used, since the operator supplied both halves"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:base-url "https://planted.example.com"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key      "sk-ant-env"
+                                    mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (is (= {:api-key "sk-ant-env" :base-url "https://env.example.com"}
+               (llm.provider/credentials "anthropic"))))))
+  (testing "a connection the llm-providers variable supplies is the operator's too, so its base URL stands"
+    (mt/with-temp-env-var-value! [mb-llm-providers (str "[{\"key\":\"anthropic\",\"type\":\"anthropic\","
+                                                        "\"name\":\"Anthropic\","
+                                                        "\"config\":{\"base-url\":\"https://operator.example.com\"}}]")
+                                  mb-llm-anthropic-api-key "sk-ant-env"]
+      (is (= {:api-key "sk-ant-env" :base-url "https://operator.example.com"}
+             (llm.provider/credentials "anthropic")))))
+  (testing "a type whose base URL has no default is left unusable rather than pointed anywhere"
+    (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
+                                                                  {:base-url "https://planted.example.com/v1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "vllm-env-key"]
+        (is (= {:api-key "vllm-env-key"} (llm.provider/credentials "vllm")))
+        (is (false? (llm.provider/connection-usable? "vllm")))))))
 
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
   (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "

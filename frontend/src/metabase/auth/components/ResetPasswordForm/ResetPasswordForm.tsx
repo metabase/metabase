@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import {
@@ -12,6 +11,7 @@ import {
 } from "metabase/forms";
 import { Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
+import { memoize } from "metabase/utils/memoize";
 import { passwordComplexityDescription } from "metabase/utils/password";
 
 import type { ResetPasswordData } from "../../types";
@@ -54,7 +54,7 @@ export const ResetPasswordForm = ({
   }, []);
 
   const validationContext = useMemo(
-    () => ({ onValidatePassword: _.memoize(onValidatePassword) }),
+    () => ({ onValidatePassword: memoize(onValidatePassword) }),
     [onValidatePassword],
   );
 

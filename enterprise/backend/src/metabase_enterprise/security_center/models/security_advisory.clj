@@ -24,6 +24,13 @@
   [advisory]
   (assoc advisory :fetched_at (mi/now)))
 
+(t2/define-before-update :model/SecurityAdvisory
+  [advisory]
+  (let [changes (t2/changes advisory)]
+    (cond-> advisory
+      (and (some? (:acknowledged_by changes)) (not (contains? changes :acknowledged_at)))
+      (assoc :acknowledged_at (mi/now)))))
+
 (methodical/defmethod t2/batched-hydrate [:model/SecurityAdvisory :acknowledged_by_user]
   "Hydrate `:acknowledged_by_user` from the `:acknowledged_by` FK to a User map with `:id`, `:common_name`, and `:email`."
   [_model k advisories]
@@ -43,18 +50,15 @@
   [advisory user-id]
   (when (:acknowledged_at advisory)
     (throw (ex-info "Advisory already acknowledged" {:status-code 409})))
-  (let [now (mi/now)]
-    (security-center.db/update-advisory! (:id advisory)
-                                         {:acknowledged_by user-id
-                                          :acknowledged_at now})
-    (events/publish-event! :event/security-advisory-acknowledge
-                           {:object  advisory
-                            :user-id user-id})
-    (analytics/track-event! :snowplow/simple_event
-                            {:event        "security_advisory_acknowledged"
-                             :event_detail (name (:severity advisory))})
-    (-> (security-center.db/advisory (:id advisory))
-        (t2/hydrate :acknowledged_by_user))))
+  (security-center.db/update-advisory! (:id advisory) {:acknowledged_by user-id})
+  (events/publish-event! :event/security-advisory-acknowledge
+                         {:object  advisory
+                          :user-id user-id})
+  (analytics/track-event! :snowplow/simple_event
+                          {:event        "security_advisory_acknowledged"
+                           :event_detail (name (:severity advisory))})
+  (-> (security-center.db/advisory (:id advisory))
+      (t2/hydrate :acknowledged_by_user)))
 
 (defn acknowledge-many!
   "Acknowledge multiple security advisories by their advisory_id strings. Skips already-acknowledged

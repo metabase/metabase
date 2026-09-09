@@ -24,6 +24,19 @@
 
 (set! *warn-on-reflection* true)
 
+(defonce ^{:private true
+           :doc "Hierarchy of declared key-value namespaces, all descending from `::registered-namespace`. Kept
+  separate from Clojure's global hierarchy so that a registration here cannot collide with other users of the global
+  hierarchy."}
+  hierarchy
+  (make-hierarchy))
+
+(defn- derive!
+  "Make `parent` an ancestor of `tag` in the namespace [[hierarchy]]."
+  [tag parent]
+  (alter-var-root #'hierarchy derive tag parent)
+  nil)
+
 (defn- file->namespace [^File f]
   (keyword "namespace" (-> f .getName (str/replace #"\.edn$" ""))))
 
@@ -47,12 +60,12 @@
   "Declare a new namespace with a schema for the value"
   [namespace :- ::namespace
    schema]
-  (derive namespace ::registered-namespace)
+  (derive! namespace ::registered-namespace)
   (mr/register! namespace schema))
 
 (defn- known-namespaces
   []
-  (descendants ::registered-namespace))
+  (descendants hierarchy ::registered-namespace))
 
 ;;; this is just a placeholder so LSP can register the place it lives for jump-to-definition functionality. Actual
 ;;; schema gets created below by [[user-key-value-schema]] and [[update-user-key-value-schema]]

@@ -253,52 +253,54 @@
       (try
         (mt/test-helpers-set-global-values!
           (search.tu/with-index-disabled
-            (mt/with-temporary-setting-values [llm.settings/llm-providers [(llm.tu/connection "openrouter" {:base-url llm-url})]
-                                               metabot.settings/llm-metabot-provider test-provider]
-              (let [real-llm-request self.core/request]
-                (with-redefs [scope/resolve-user-permissions               (constantly scope/all-yes-permissions)
-                              conversation-title/ensure-title!             (constantly {:status :missing})
-                              ;; The fake LLM server gzips whenever the caller accepts it, and clj-http
-                              ;; wraps the body in a GZIPInputStream. Closing mid-stream causes ZLIB errors.
-                              self.core/request                            (fn [auth req]
-                                                                             (real-llm-request auth (assoc req :decompress-body false)))
-                              metabot.context/create-context               (fn [ctx & _] ctx)
-                              metabot.persistence/finalize-assistant-turn! (fn [_pk parts & kwargs]
-                                                                             (reset! stored-parts parts)
-                                                                             (reset! stored-kwargs (apply hash-map kwargs)))
-                              sr/async-cancellation-poll-interval-ms       5]
-                  (testing "Closing stream body tears down the pipeline and persists the aborted turn"
-                    (reset! cnt total-chunks)
-                    (reset! stored-parts nil)
-                    (reset! stored-kwargs nil)
-                    (mt/with-model-cleanup [:model/MetabotMessage
-                                            [:model/MetabotConversation :created_at]]
-                      (let [conversation-id (str (random-uuid))
-                            response (mt/user-real-request-full-response
-                                      :rasta :post 202 "metabot/agent-streaming"
-                                      {:request-options {:as              :stream
-                                                         :decompress-body false}}
-                                      {:message         "Test closure"
-                                       :context         {}
-                                       :conversation_id conversation-id
-                                       :state           {}})]
-                        (.read ^java.io.InputStream (:body response)) ;; start the handler
-                        ;; Close the underlying client, not the body stream: closing the body would
-                        ;; make clj-http drain the (now chunked) response to completion, which looks
-                        ;; like a normal finish rather than a disconnect. Closing the client aborts
-                        ;; the connection, which is what the server's cancel loop detects.
-                        (.close ^java.io.Closeable (:http-client response))
-                        (u/poll {:thunk       #(deref stored-parts)
-                                 :done?       some?
-                                 :interval-ms 10
-                                 :timeout-ms  3000})
-                        (is (some? @stored-parts)
-                            "finalize-assistant-turn! was called even though the client disconnected")
-                        (is (false? (:finished? @stored-kwargs))
-                            "the finalized turn is marked :finished? false — the cancel was detected")
-                        (is (= 2 (count (t2/select :model/MetabotMessage
-                                                   :conversation_id conversation-id)))
-                            "start-turn! inserted exactly user + placeholder; no extra row from finalize")))))))))
+            ;; the fake LLM server is on localhost, which the network policy refuses on a hosted instance
+            (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+              (mt/with-temporary-setting-values [llm.settings/llm-providers [(llm.tu/connection "openrouter" {:base-url llm-url})]
+                                                 metabot.settings/llm-metabot-provider test-provider]
+                (let [real-llm-request self.core/request]
+                  (with-redefs [scope/resolve-user-permissions               (constantly scope/all-yes-permissions)
+                                conversation-title/ensure-title!             (constantly {:status :missing})
+                                ;; The fake LLM server gzips whenever the caller accepts it, and clj-http
+                                ;; wraps the body in a GZIPInputStream. Closing mid-stream causes ZLIB errors.
+                                self.core/request                            (fn [auth req]
+                                                                               (real-llm-request auth (assoc req :decompress-body false)))
+                                metabot.context/create-context               (fn [ctx & _] ctx)
+                                metabot.persistence/finalize-assistant-turn! (fn [_pk parts & kwargs]
+                                                                               (reset! stored-parts parts)
+                                                                               (reset! stored-kwargs (apply hash-map kwargs)))
+                                sr/async-cancellation-poll-interval-ms       5]
+                    (testing "Closing stream body tears down the pipeline and persists the aborted turn"
+                      (reset! cnt total-chunks)
+                      (reset! stored-parts nil)
+                      (reset! stored-kwargs nil)
+                      (mt/with-model-cleanup [:model/MetabotMessage
+                                              [:model/MetabotConversation :created_at]]
+                        (let [conversation-id (str (random-uuid))
+                              response (mt/user-real-request-full-response
+                                        :rasta :post 202 "metabot/agent-streaming"
+                                        {:request-options {:as              :stream
+                                                           :decompress-body false}}
+                                        {:message         "Test closure"
+                                         :context         {}
+                                         :conversation_id conversation-id
+                                         :state           {}})]
+                          (.read ^java.io.InputStream (:body response)) ;; start the handler
+                          ;; Close the underlying client, not the body stream: closing the body would
+                          ;; make clj-http drain the (now chunked) response to completion, which looks
+                          ;; like a normal finish rather than a disconnect. Closing the client aborts
+                          ;; the connection, which is what the server's cancel loop detects.
+                          (.close ^java.io.Closeable (:http-client response))
+                          (u/poll {:thunk       #(deref stored-parts)
+                                   :done?       some?
+                                   :interval-ms 10
+                                   :timeout-ms  3000})
+                          (is (some? @stored-parts)
+                              "finalize-assistant-turn! was called even though the client disconnected")
+                          (is (false? (:finished? @stored-kwargs))
+                              "the finalized turn is marked :finished? false — the cancel was detected")
+                          (is (= 2 (count (t2/select :model/MetabotMessage
+                                                     :conversation_id conversation-id)))
+                              "start-turn! inserted exactly user + placeholder; no extra row from finalize"))))))))))
         (finally
           (.stop llm-server))))))
 
