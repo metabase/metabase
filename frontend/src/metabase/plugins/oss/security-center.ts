@@ -17,6 +17,10 @@ type SecurityCenterPlugin = {
   SecurityCenterPromoCard: ComponentType;
   SecurityCenterNavItem: ComponentType<SecurityCenterNavItemProps>;
   SecurityCenterMobileNavItem: ComponentType<SecurityCenterNavItemProps>;
+  useHasActiveAdvisory: (isAdmin?: boolean) => {
+    hasActiveAdvisory?: boolean;
+    isLoading?: boolean;
+  };
 };
 
 const getDefaultPlugin = (): SecurityCenterPlugin => ({
@@ -26,6 +30,10 @@ const getDefaultPlugin = (): SecurityCenterPlugin => ({
   SecurityCenterPromoCard: PluginPlaceholder,
   SecurityCenterNavItem: PluginPlaceholder,
   SecurityCenterMobileNavItem: PluginPlaceholder,
+  useHasActiveAdvisory: () => ({
+    hasActiveAdvisory: undefined,
+    isLoading: undefined,
+  }),
 });
 
 export const PLUGIN_SECURITY_CENTER = getDefaultPlugin();
