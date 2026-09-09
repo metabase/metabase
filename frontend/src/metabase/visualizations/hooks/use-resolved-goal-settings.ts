@@ -10,8 +10,6 @@ import { useResolvedGoalValue } from "./use-resolved-goal-value";
 /**
  * Resolves `graph.goal_value` to a number so the chart model only ever sees
  * numbers. Returns the given settings untouched when there is nothing to resolve.
- * The settings are present in every status: the chart model is built while the
- * goal still resolves, with `graph.goal_value` null until it does.
  */
 export function useResolvedGoalSettings(
   card: Pick<Card, "display" | "dataset_query">,
