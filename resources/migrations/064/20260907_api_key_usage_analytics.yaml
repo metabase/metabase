@@ -106,6 +106,12 @@ databaseChangeLog:
                   remarks: Raw User-Agent header captured at request time, PII (gated by analytics-pii-retention-enabled).
                   constraints:
                     nullable: true
+              - column:
+                  name: client_name
+                  type: varchar(255)
+                  remarks: Caller classified from the raw User-Agent (metabase-cli, curl, postman, python-requests, r, node, or other). Non-PII, always recorded — distinct from the raw, PII-gated user_agent column.
+                  constraints:
+                    nullable: false
       rollback:
         - dropTable:
             tableName: api_key_usage_log
