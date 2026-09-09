@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit.impl]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -269,80 +270,83 @@
       (is (nil? (perms/grant-application-permissions! tenant-group-id :subscription))))))
 
 (deftest current-user-can-access-worktrees?-test
-  (testing "admins can always access worktrees"
-    (mt/with-current-user (mt/user->id :crowberto)
-      (is (true? (perms/current-user-can-access-worktrees?)))))
-  (testing "a plain user cannot"
-    (mt/with-current-user (mt/user->id :rasta)
-      (is (false? (perms/current-user-can-access-worktrees?)))))
-  (testing "a user whose group has the `:remote-sync` application permission"
-    (mt/with-user-in-groups [group {:name "Remote Sync Group"}
-                             user  [group]]
-      (perms/grant-application-permissions! group :remote-sync)
-      (testing "can access worktrees with the `advanced-permissions` feature"
-        (mt/with-premium-features #{:advanced-permissions}
-          (mt/with-current-user (:id user)
-            (is (true? (perms/current-user-can-access-worktrees?))))))
-      (testing "cannot without it"
-        (mt/with-premium-features #{}
-          (mt/with-current-user (:id user)
-            (is (false? (perms/current-user-can-access-worktrees?)))))))))
-
-(deftest remote-sync-holders-get-readwrite-on-worktree-collections-test
-  (testing "a holder of the `:remote-sync` application permission is granted read-write on every worktree collection"
-    (mt/with-temp [:model/Worktree   {worktree-id :id} {}
-                   :model/Collection {coll-id :id}     {:worktree_id worktree-id}]
+  (when config/ee-available?
+    (testing "admins can always access worktrees"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (true? (perms/current-user-can-access-worktrees?)))))
+    (testing "a plain user cannot"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (false? (perms/current-user-can-access-worktrees?)))))
+    (testing "a user whose group has the `:remote-sync` application permission"
       (mt/with-user-in-groups [group {:name "Remote Sync Group"}
                                user  [group]]
-        (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
-        (let [path      (perms.path/collection-readwrite-path coll-id)
-              perms-set #(perms.user/user-permissions-set (:id user))]
+        (perms/grant-application-permissions! group :remote-sync)
+        (testing "can access worktrees with the `advanced-permissions` feature"
           (mt/with-premium-features #{:advanced-permissions}
-            (testing "not before the grant"
-              (is (not (contains? (perms-set) path))))
-            (perms/grant-application-permissions! group :remote-sync)
-            (testing "after the grant"
-              (is (contains? (perms-set) path))
-              (mt/with-current-user (:id user)
-                (is (mi/can-read? :model/Collection coll-id))
-                (is (mi/can-write? (t2/select-one :model/Collection :id coll-id))))))
-          (testing "not without the `advanced-permissions` feature"
-            (mt/with-premium-features #{}
-              (is (not (contains? (perms-set) path))))))))))
+            (mt/with-current-user (:id user)
+              (is (true? (perms/current-user-can-access-worktrees?))))))
+        (testing "cannot without it"
+          (mt/with-premium-features #{}
+            (mt/with-current-user (:id user)
+              (is (false? (perms/current-user-can-access-worktrees?))))))))))
 
-(deftest remote-sync-holders-see-worktree-content-through-sql-visibility-test
-  (testing "the SQL collection-visibility paths honour the worktree grant, which has no permission rows behind it"
-    (mt/with-premium-features #{:advanced-permissions :remote-sync}
-      (mt/with-temp [:model/Worktree   {wt-id :id}   {}
-                     :model/Collection {coll-id :id} {:worktree_id wt-id}
-                     :model/Card       {card-id :id} {:collection_id coll-id :worktree_id wt-id}
-                     :model/Dashboard  {dash-id :id} {:collection_id coll-id :worktree_id wt-id}]
+(deftest remote-sync-holders-get-readwrite-on-worktree-collections-test
+  (when config/ee-available?
+    (testing "a holder of the `:remote-sync` application permission is granted read-write on every worktree collection"
+      (mt/with-temp [:model/Worktree   {worktree-id :id} {}
+                     :model/Collection {coll-id :id}     {:worktree_id worktree-id}]
         (mt/with-user-in-groups [group {:name "Remote Sync Group"}
                                  user  [group]]
           (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
-          (letfn [(items []
-                    (into #{} (map (juxt :model :id))
-                          (:data (mt/user-http-request user :get 200 (format "collection/%d/items" coll-id)))))
-                  (content-ids [table can-access-worktrees?]
-                    (into #{} (map :id)
-                          (t2/query {:select [:id]
-                                     :from   [table]
-                                     :where  [:in :id (collection/visible-collection-content-select
-                                                       table
-                                                       {:user-id               (:id user)
-                                                        :is-superuser?         false
-                                                        :can-access-worktrees? can-access-worktrees?}
-                                                       {:worktree-id wt-id})]})))]
-            (testing "without the permission the collection is out of reach, and the scope falls back to the main app"
-              (mt/user-http-request user :get 403 (format "collection/%d/items" coll-id))
-              (is (not (contains? (content-ids :report_card false) card-id)))
-              (is (not (contains? (content-ids :report_dashboard false) dash-id))))
-            (perms/grant-application-permissions! group :remote-sync)
-            (testing "the collection-children CTE path"
-              (is (= #{["card" card-id] ["dashboard" dash-id]} (items))))
-            (testing "the visible-filter-clause path used by lists, search and the dependency graph"
-              (is (= #{card-id} (content-ids :report_card true)))
-              (is (= #{dash-id} (content-ids :report_dashboard true))))))))))
+          (let [path      (perms.path/collection-readwrite-path coll-id)
+                perms-set #(perms.user/user-permissions-set (:id user))]
+            (mt/with-premium-features #{:advanced-permissions}
+              (testing "not before the grant"
+                (is (not (contains? (perms-set) path))))
+              (perms/grant-application-permissions! group :remote-sync)
+              (testing "after the grant"
+                (is (contains? (perms-set) path))
+                (mt/with-current-user (:id user)
+                  (is (mi/can-read? :model/Collection coll-id))
+                  (is (mi/can-write? (t2/select-one :model/Collection :id coll-id))))))
+            (testing "not without the `advanced-permissions` feature"
+              (mt/with-premium-features #{}
+                (is (not (contains? (perms-set) path)))))))))))
+
+(deftest remote-sync-holders-see-worktree-content-through-sql-visibility-test
+  (when config/ee-available?
+    (testing "the SQL collection-visibility paths honour the worktree grant, which has no permission rows behind it"
+      (mt/with-premium-features #{:advanced-permissions :remote-sync}
+        (mt/with-temp [:model/Worktree   {wt-id :id}   {}
+                       :model/Collection {coll-id :id} {:worktree_id wt-id}
+                       :model/Card       {card-id :id} {:collection_id coll-id :worktree_id wt-id}
+                       :model/Dashboard  {dash-id :id} {:collection_id coll-id :worktree_id wt-id}]
+          (mt/with-user-in-groups [group {:name "Remote Sync Group"}
+                                   user  [group]]
+            (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+            (letfn [(items []
+                      (into #{} (map (juxt :model :id))
+                            (:data (mt/user-http-request user :get 200 (format "collection/%d/items" coll-id)))))
+                    (content-ids [table can-access-worktrees?]
+                      (into #{} (map :id)
+                            (t2/query {:select [:id]
+                                       :from   [table]
+                                       :where  [:in :id (collection/visible-collection-content-select
+                                                         table
+                                                         {:user-id               (:id user)
+                                                          :is-superuser?         false
+                                                          :can-access-worktrees? can-access-worktrees?}
+                                                         {:worktree-id wt-id})]})))]
+              (testing "without the permission the collection is out of reach, and the scope falls back to the main app"
+                (mt/user-http-request user :get 403 (format "collection/%d/items" coll-id))
+                (is (not (contains? (content-ids :report_card false) card-id)))
+                (is (not (contains? (content-ids :report_dashboard false) dash-id))))
+              (perms/grant-application-permissions! group :remote-sync)
+              (testing "the collection-children CTE path"
+                (is (= #{["card" card-id] ["dashboard" dash-id]} (items))))
+              (testing "the visible-filter-clause path used by lists, search and the dependency graph"
+                (is (= #{card-id} (content-ids :report_card true)))
+                (is (= #{dash-id} (content-ids :report_dashboard true)))))))))))
 
 (deftest cannot-grant-collection-permissions-to-tenant-group
   ;; right now, with no tenant collections, you can't grant any permissions on any collection to a tenant group

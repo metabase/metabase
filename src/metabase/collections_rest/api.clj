@@ -881,20 +881,20 @@
            include-library collection-type
            show-dashboard-questions show-exploration-documents
            q include-available-models worktree-id]} :- [:map
-                                            [:models                      {:optional true} [:maybe Models]]
-                                            [:collection-type             {:optional true} children-query/CollectionType]
-                                            [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                            [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                            [:include-library             {:default false} [:maybe ms/BooleanValue]]
-                                            [:pinned-state                {:optional true} [:maybe (into [:enum] children-query/valid-pinned-state-values)]]
-                                            [:sort-column                 {:optional true} [:maybe (into [:enum] children-query/valid-sort-columns)]]
-                                            [:sort-direction              {:optional true} [:maybe (into [:enum] children-query/valid-sort-directions)]]
-                                            [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                            [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                            [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                            [:q                           {:optional true} [:maybe :string]]
-                                            [:include-available-models    {:default false} [:maybe ms/BooleanValue]]
-                                             [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
+                                                        [:models                      {:optional true} [:maybe Models]]
+                                                        [:collection-type             {:optional true} children-query/CollectionType]
+                                                        [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                                        [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                                        [:include-library             {:default false} [:maybe ms/BooleanValue]]
+                                                        [:pinned-state                {:optional true} [:maybe (into [:enum] children-query/valid-pinned-state-values)]]
+                                                        [:sort-column                 {:optional true} [:maybe (into [:enum] children-query/valid-sort-columns)]]
+                                                        [:sort-direction              {:optional true} [:maybe (into [:enum] children-query/valid-sort-directions)]]
+                                                        [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                        [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                        [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                        [:q                           {:optional true} [:maybe :string]]
+                                                        [:include-available-models    {:default false} [:maybe ms/BooleanValue]]
+                                                        [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
     (perms/check-can-access-worktrees))
   ;; Return collection contents, including Collections that have an effective location of being in the Root

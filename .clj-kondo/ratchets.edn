@@ -25,7 +25,7 @@
                   :metabase/disallow-hardcoded-driver-names-in-tests                   34
                   :metabase/discourage-millis-duration                                 1
                   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 13
-                  :metabase/modules                                                    23
+                  :metabase/modules                                                    24
                   :metabase/namespace-name                                             4
                   :metabase/prefer-with-dynamic-fn-redefs                              28
                   :metabase/test-helpers-use-non-thread-safe-functions                 18

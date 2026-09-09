@@ -1643,12 +1643,14 @@
       (settings/remote-sync-branch! name))))
 
 (defn stash!
-  "Creates a new remote branch from the current `remote-sync-branch` and starts an
-   async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
+  "Creates a new remote branch from the version the main app last synced (falling back to the `remote-sync-branch`
+  setting when nothing has synced yet) and starts an async export of the local changes to it, so the push is a
+  clean fast-forward even when the current branch has advanced on the remote. Returns the resulting
+  RemoteSyncTask. Does not publish events."
   [new-branch message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
-    (source.p/create-branch source new-branch (settings/remote-sync-branch))
+    (source.p/create-branch source new-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch)))
     (async-export! new-branch false message :on-success on-success)))
 
 (defn finish-remote-config!
