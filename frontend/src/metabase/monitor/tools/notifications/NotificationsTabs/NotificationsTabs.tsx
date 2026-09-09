@@ -11,8 +11,6 @@ import type {
 } from "../NotificationsAdminPage/types";
 import { trackAlertsManagementTabClicked } from "../analytics";
 
-import S from "./NotificationsTabs.module.css";
-
 type Props = {
   tab: NotificationsTab;
   allCount: TabCountState;
@@ -111,14 +109,7 @@ export const NotificationsTabs = ({
       variant="pills"
       value={tab}
       onChange={handleTabChange}
-      radius="xl"
       data-testid="notifications-admin-tabs"
-      classNames={{
-        list: S.list,
-        tab: S.tab,
-        tabLabel: S.tabLabel,
-        tabSection: S.tabSection,
-      }}
     >
       <Tabs.List>
         {tabs.map((config) => (
