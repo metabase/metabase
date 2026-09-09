@@ -259,13 +259,17 @@
                :collection_id   99
                :is_published    true
                :active          true
-               :field-names     ["id" "total"]}
+               :field-names     ["id" "total"]
+               :measures        [{:name "Revenue" :description "Net of refunds"}]
+               :segments        nil}
         basis (spec/entity-basis :osi-context table)]
     (testing "returns exactly the declared :basis keys — nothing outside them leaks into the stamp"
       (is (= {:name         "orders"
               :display_name "Orders"
               :description  "d"
-              :field-names  ["id" "total"]}
+              :field-names  ["id" "total"]
+              :measures     [{:name "Revenue" :description "Net of refunds"}]
+              :segments     nil}
              basis)))
     (testing "deterministic across calls"
       (is (= basis (spec/entity-basis :osi-context table))))
@@ -285,7 +289,9 @@
                      :name            "orders"
                      :display_name    "Orders"
                      :description     description
-                     :field-names     ["id"]}
+                     :field-names     ["id"]
+                     :measures        nil
+                     :segments        nil}
         prompt      (spec/project :osi-context table)
         basis       (spec/entity-basis :osi-context table)]
     (testing "the prompt and persisted basis use the same deterministic source-description cap"
@@ -343,12 +349,16 @@
   (testing "each model's llm-input is a map carrying its declared key set, hydrations included"
     (let [table-input (spec/project :osi-context {:entity_type "table" :entity_local_id 1
                                                   :name "orders" :display_name "Orders"
-                                                  :description "d" :field-names ["id"]})]
+                                                  :description "d" :field-names ["id"]
+                                                  :measures [{:name "Revenue" :description nil}]
+                                                  :segments [{:name "Big" :description "over 100"}]})]
       (is (= {:entity-type  "table"
               :name         "orders"
               :display-name "Orders"
               :description  "d"
-              :field-names  ["id"]}
+              :field-names  ["id"]
+              :measures     [{:name "Revenue" :description nil}]
+              :segments     [{:name "Big" :description "over 100"}]}
              table-input)))
     (is (= {:entity-type "metric", :name "M", :description nil}
            (spec/project :osi-context {:entity_type "metric" :entity_local_id 2 :type :metric :name "M"
@@ -359,7 +369,7 @@
     (is (= {:entity-type "segment", :name "Big", :description nil}
            (spec/project :osi-context {:entity_type "segment" :entity_local_id 4 :name "Big"
                                        :description nil}))))
-  (testing "projecting an unhydrated table throws (the :field-names hydration is declared)"
+  (testing "projecting an unhydrated table throws (:field-names, :measures and :segments are declared)"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"missing declared hydration keys"
                           (spec/project :osi-context {:entity_type "table" :entity_local_id 1
                                                       :name "orders"})))))
@@ -391,6 +401,43 @@
       (let [entity {:entity_type "table" :entity_local_id table-id :id table-id}]
         (is (= ["alpha" "payload.user.id" "zeta"]
                (:field-names (first (spec/hydrate :osi-context [entity])))))))))
+
+(deftest table-children-hydration-test
+  (testing "the table :measures/:segments hydrations carry authored names and descriptions, sorted by name
+           and dropping archived rows — they feed the prompt and the stored basis, so they have to be
+           deterministic and safe to hand out"
+    (mt/with-temp [:model/Database {db-id :id}       {}
+                   :model/Table    {table-id :id}    {:db_id db-id}
+                   :model/Table    {other-id :id}    {:db_id db-id}
+                   :model/Measure  _ {:table_id table-id :name "Revenue"  :description "Net of refunds"}
+                   :model/Measure  _ {:table_id table-id :name "Orders"   :description nil}
+                   :model/Measure  _ {:table_id table-id :name "Retired"  :archived true}
+                   :model/Measure  _ {:table_id other-id :name "Elsewhere"}
+                   :model/Segment  _ {:table_id table-id :name "Big"      :description "Total over 100"}
+                   :model/Segment  _ {:table_id table-id :name "Gone"     :archived true}]
+      (let [entity    {:entity_type "table" :entity_local_id table-id :id table-id}
+            hydrated  (first (spec/hydrate :osi-context [entity]))]
+        (is (= {:measures [{:name "Orders"  :description nil}
+                           {:name "Revenue" :description "Net of refunds"}]
+                :segments [{:name "Big"     :description "Total over 100"}]}
+               (select-keys hydrated [:measures :segments])))
+        (testing "the hydrated values survive the basis' JSON round-trip unchanged"
+          (let [basis (spec/entity-basis :osi-context (merge hydrated {:name "t" :display_name nil
+                                                                       :description nil :field-names []}))]
+            (is (= basis (json/decode+kw (json/encode basis))))))))))
+
+(deftest table-without-children-hydration-test
+  (testing "a table with no measures or segments hydrates to nil rather than failing the declared-key check"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}]
+      (let [hydrated (first (spec/hydrate :osi-context [{:entity_type "table" :entity_local_id table-id
+                                                         :id table-id}]))]
+        (is (= {:measures nil :segments nil}
+               (select-keys hydrated [:measures :segments])))
+        (is (= {:entity-type "table" :name "t" :display-name nil :description nil
+                :field-names nil :measures nil :segments nil}
+               (spec/project :osi-context (merge hydrated {:name "t" :display_name nil
+                                                           :description nil :field-names nil}))))))))
 
 (deftest via-parent-without-parent-projection-test
   (testing "a via-parent model whose parent declares no projection has no members: member-entity agrees
