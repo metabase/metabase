@@ -1,5 +1,6 @@
 (ns metabase.mcp.v2.write
-  "Write-path machinery shared by v2 `_write` tools."
+  "Write-path machinery shared by v2 `_write` tools. Landed with its first consumers: [[readback]] with
+   `bookmark_content`, `_write` method dispatch with `collection_write`."
   (:require
    [clojure.string :as str]
    [metabase.mcp.scope :as mcp.scope]
