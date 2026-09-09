@@ -2,6 +2,7 @@
   "Tests for the pure parts of `docs/util/nav_links.clj`, the standalone script shared with CI.
   Requiring `mage.nav-links` `load-file`s that script, which defines the `nav-links` namespace."
   (:require
+   [clj-yaml.core]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -14,6 +15,7 @@
 (def ^:private markdown        (resolve 'nav-links/markdown))
 (def ^:private suggestions     (resolve 'nav-links/suggestions))
 (def ^:private case-mismatches (resolve 'nav-links/case-mismatches))
+(def ^:private with-nav-lines  (resolve 'nav-links/with-nav-lines))
 
 (deftest entries-collects-relative-urls-with-trails
   (let [{:keys [links problems]} (entries [{:name  "Analytics"
@@ -42,6 +44,25 @@
             "Bad pages: `pages` must be a list"
             "(top level): entry is not a map: \"not a map\""]
            (map (fn [{:keys [trail message]}] (str trail ": " message)) problems)))))
+
+(deftest with-nav-lines-finds-each-entry-in-the-yaml
+  (let [text  (str/join "\n" ["categories:"
+                              "  - name: A"
+                              "    url: \"a/start\""
+                              "    pages:"
+                              "      - name: B"
+                              "        url: 'b'"
+                              "      - name: Dup"
+                              "        url: a/start"
+                              "      - {name: Inline, url: inline}"])
+        links [{:url "a/start"} {:url "b"} {:url "a/start"} {:url "inline"}]]
+    (testing "quoted, unquoted, and repeated urls map to their own line; unmatched urls get nil"
+      (is (= [3 6 8 nil] (map :nav-line (with-nav-lines links text)))))
+    (testing "the real nav.yml gives every link a line"
+      (let [nav-text (slurp (io/file u/project-root-directory "docs/util/data/nav.yml"))
+            links    (with-nav-lines (:links (entries (:categories (clj-yaml.core/parse-string nav-text)))) nav-text)]
+        (is (seq links))
+        (is (every? :nav-line links))))))
 
 (deftest markdown-writes-one-link-per-line
   (testing "line N is link N, and brackets in names are escaped"

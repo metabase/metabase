@@ -76,12 +76,33 @@
     {:links [] :problems []}
     nodes)))
 
+(defn with-nav-lines
+  "Adds `:nav-line`, the 1-based line of the entry's `url:` in the nav yaml `text`, to each link.
+  The YAML parser drops positions, so this scans the text for `url:` lines instead. Links and
+  `url:` lines are both in document order, so the Nth link with a given url is the Nth `url:` line
+  with that value."
+  [links text]
+  (let [url-lines (reduce (fn [m [i line]]
+                            (if-let [[_ url] (re-find #"^\s*(?:-\s+)?url:\s*[\"']?([^\"'\s]+)" line)]
+                              (update m url (fnil conj []) (inc i))
+                              m))
+                          {}
+                          (map-indexed vector (str/split-lines text)))]
+    (first (reduce (fn [[out seen] {:keys [url] :as link}]
+                     (let [n (get seen url 0)]
+                       [(conj out (assoc link :nav-line (get-in url-lines [url n])))
+                        (assoc seen url (inc n))]))
+                   [[] {}]
+                   links))))
+
 (defn read-nav
-  "Parses nav.yml and returns [[entries]] of its top-level `categories`."
+  "Parses nav.yml and returns [[entries]] of its top-level `categories`, with each link's
+  `:nav-line` (see [[with-nav-lines]])."
   []
-  (let [nav (yaml/parse-string (slurp nav-file))]
+  (let [text (slurp nav-file)
+        nav  (yaml/parse-string text)]
     (if (and (map? nav) (sequential? (:categories nav)))
-      (entries (:categories nav))
+      (update (entries (:categories nav)) :links with-nav-lines text)
       {:links [] :problems [(problem "(top level)" "expected a single document with a top-level `categories` list")]})))
 
 (defn markdown

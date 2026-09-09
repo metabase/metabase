@@ -48,10 +48,15 @@
           {:keys [url status span]} failures]
       {:line (:line span) :url url :text (:text status)})))
 
-(defn- print-failure [{:keys [trail url]} text index]
+(defn- location
+  "Where the entry lives, as `docs/util/data/nav.yml:LINE  Trail > Of > Names`."
+  [{:keys [trail nav-line]}]
+  (str "docs/util/data/nav.yml" (when nav-line (str ":" nav-line)) "  " trail))
+
+(defn- print-failure [{:keys [url] :as link} text index]
   (let [anchor? (str/includes? (str/lower-case (str text)) "fragment")]
     (println (c/red (if anchor? "ANCHOR   " "MISSING  ")) url)
-    (println "         at:" trail)
+    (println "         at:" (location link))
     (println "        " text)
     (when-not anchor?
       (let [replacements (suggestions index url)]
@@ -62,9 +67,9 @@
                    "so the page may have been deleted; remove the entry or point it elsewhere"))))
     (println)))
 
-(defn- print-case-mismatch [{:keys [trail url actual]}]
+(defn- print-case-mismatch [{:keys [url actual] :as link}]
   (println (c/red "CASE     ") url)
-  (println "         at:" trail)
+  (println "         at:" (location link))
   (println "         the page exists but with different capitalization; this passes on a case-insensitive"
            "filesystem and fails on the docs site")
   (println "         suggestion: url:" (c/green (pr-str actual)))
