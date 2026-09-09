@@ -9,7 +9,10 @@ import { renderWithProviders } from "__support__/ui";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import type { Query } from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { createMockModelResult } from "metabase-types/api/mocks";
+import {
+  createMockModelResult,
+  createMockSearchResult,
+} from "metabase-types/api/mocks";
 import {
   createOrdersTable,
   createPeopleTable,
@@ -22,6 +25,7 @@ import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 
 interface SetupOpts {
   hasModels?: boolean;
+  hasMetrics?: boolean;
   entityTypes?: EmbeddingEntityType[];
 }
 
@@ -31,17 +35,17 @@ const DEFAULT_OPTS: Partial<SetupOpts> = {
 
 export function setup({
   hasModels = DEFAULT_OPTS.hasModels,
+  hasMetrics = false,
   entityTypes,
 }: SetupOpts = {}) {
   const query = createEmptyQuery();
 
   setupEmbeddingDataPickerDecisionEndpoints("staged");
 
-  if (hasModels) {
-    setupSearchEndpoints(createSearchResults());
-  } else {
-    setupSearchEndpoints([]);
-  }
+  setupSearchEndpoints([
+    ...(hasModels ? createModelSearchResults() : []),
+    ...(hasMetrics ? createMetricSearchResults() : []),
+  ]);
   setupDatabasesEndpoints([createDatabase()]);
 
   renderWithProviders(
@@ -49,6 +53,7 @@ export function setup({
       query={query}
       stageIndex={0}
       canChangeDatabase={true}
+      hasMetrics={true}
       isDisabled={false}
       onChange={jest.fn()}
       title="Pick your starting data"
@@ -78,7 +83,7 @@ function createDatabase() {
   });
 }
 
-function createSearchResults() {
+function createModelSearchResults() {
   return [
     createMockModelResult({
       id: 1,
@@ -87,6 +92,16 @@ function createSearchResults() {
     createMockModelResult({
       id: 2,
       name: "People model",
+    }),
+  ];
+}
+
+function createMetricSearchResults() {
+  return [
+    createMockSearchResult({
+      id: 3,
+      name: "Revenue",
+      model: "metric",
     }),
   ];
 }

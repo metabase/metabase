@@ -127,6 +127,7 @@ export function NotebookDataPicker({
           title={title}
           placeholder={placeholder}
           canChangeDatabase={canChangeDatabase}
+          hasMetrics={hasMetrics}
           isDisabled={isDisabled}
           onChange={handleChange}
         />
