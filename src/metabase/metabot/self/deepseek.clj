@@ -15,15 +15,12 @@
 
   https://api-docs.deepseek.com/guides/anthropic_api"
   (:require
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
-   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,11 +30,29 @@
 
 (def ^:private messages-path "/anthropic/v1/messages")
 
+(def ^:private provider
+  "`metabase.metabot.api`'s `provider-client-error?` renders any 4xx `:api-error` under the admin API-key
+  field, so the request-rejected statuses (400, 422) need messages that do not send admins hunting a key
+  problem that does not exist. 402 is an exhausted account balance, which DeepSeek reports separately from
+  rate limiting."
+  (adapter/provider
+   {:slug         "deepseek"
+    :display-name "DeepSeek"
+    :errors       {400 #(tru "DeepSeek rejected the request — check the model and request parameters")
+                   401 #(tru "DeepSeek API key expired or invalid")
+                   402 #(tru "DeepSeek account balance is exhausted")
+                   403 #(tru "DeepSeek denied access — check the API key permissions")
+                   404 #(tru "DeepSeek API endpoint or model was not found — check the base URL and model")
+                   422 #(tru "DeepSeek rejected the request parameters")
+                   429 #(tru "DeepSeek has rate limited us")
+                   500 #(tru "DeepSeek returned an internal server error")
+                   503 #(tru "DeepSeek is overloaded and is asking us to wait")}}))
+
 (def supported-models
-  "DeepSeek models offered in the Metabot model picker, as a map of model id -> display name.
+  "DeepSeek models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
-  {"deepseek-v4-flash" "DeepSeek V4 Flash"
-   "deepseek-v4-pro"   "DeepSeek V4 Pro"})
+  {"deepseek-v4-flash" {:display-name "DeepSeek V4 Flash"}
+   "deepseek-v4-pro"   {:display-name "DeepSeek V4 Pro"}})
 
 (def ^:private thinking-enabled-payload
   "Sent whenever thinking is allowed. Explicit rather than omitted: DeepSeek ignores an
@@ -54,73 +69,17 @@
   [model]
   (contains? supported-models model))
 
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for DeepSeek")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
-
-(defn- deepseek-error-msg
-  "Canonical, status-specific DeepSeek error message.
-
-  `metabase.metabot.api`'s `provider-client-error?` renders any 4xx `:api-error` under the admin
-  API-key field, so the request-rejected statuses (400, 422) need messages that do not send admins
-  hunting a key problem that does not exist. 402 is an exhausted account balance, which DeepSeek
-  reports separately from rate limiting."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      400 (tru "DeepSeek rejected the request — check the model and request parameters")
-      401 (tru "DeepSeek API key expired or invalid")
-      402 (tru "DeepSeek account balance is exhausted")
-      403 (tru "DeepSeek denied access — check the API key permissions")
-      404 (tru "DeepSeek API endpoint or model was not found — check the base URL and model")
-      422 (tru "DeepSeek rejected the request parameters")
-      429 (tru "DeepSeek has rate limited us")
-      500 (tru "DeepSeek returned an internal server error")
-      503 (tru "DeepSeek is overloaded and is asking us to wait")
-      (tru "DeepSeek API error (HTTP {0})" status))))
-
-(defn- supported-model?
-  "Whether a `/models` catalog entry is one of the [[supported-models]]."
-  [{:keys [id]}]
-  (contains? supported-models id))
-
-(defn- list-all-models
-  "Fetch the full DeepSeek model catalog (`GET /models`).
-
-  The catalog is OpenAI-style even though the chat surface is not, so the fail-closed extraction in
-  [[chat-completions/models-catalog]] applies. It doubles as the credential round-trip behind the
-  admin Connect button — it 401s on a bad key.
-  `:ai-proxy?` is not supported for DeepSeek and throws when true."
-  [{:keys [credentials ai-proxy?]}]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (try
-    (let [auth (core/resolve-auth "deepseek" "DeepSeek"
-                                  (when-let [k (not-empty (:api-key credentials))]
-                                    {:url     (:base-url credentials)
-                                     :headers {"Authorization" (str "Bearer " k)}})
-                                  ai-proxy?)
-          res  (core/request auth {:method  :get
-                                   :url     "/models"
-                                   :as      :json
-                                   :headers {"Content-Type" "application/json"}})]
-      (chat-completions/models-catalog "DeepSeek" res))
-    (catch Exception e
-      (core/rethrow-api-error! "deepseek" deepseek-error-msg e))))
-
 (defn list-models
   "List the DeepSeek models supported by this adapter (see [[supported-models]]).
 
-  Display names come from [[supported-models]]: DeepSeek catalog entries carry no `:name`.
+  The `/models` catalog it intersects is OpenAI-style even though the chat surface is not, so the fail-closed
+  extraction in [[adapter/fetch-catalog]] applies. It doubles as the credential round-trip behind the admin
+  Connect button — it 401s on a bad key. Display names come from [[supported-models]]: DeepSeek catalog
+  entries carry no `:name`.
   `:ai-proxy?` is not supported for DeepSeek and throws when true."
   ([] (list-models {}))
   ([opts]
-   {:models (->> (list-all-models opts)
-                 (filter supported-model?)
-                 (sort-by :id)
-                 (mapv (fn [{:keys [id]}]
-                         {:id id :display_name (supported-models id)})))}))
+   (adapter/listing supported-models (adapter/fetch-catalog provider opts))))
 
 ;;; --------------------------------------------- The thinking contract ------------------------------------------
 ;;;
@@ -213,41 +172,14 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for DeepSeek and throws when true."
-  [{:keys [model tools credentials ai-proxy?] :as opts
+  [{:keys [model credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (let [req (deepseek-request-body (assoc opts :model model))]
-    (log/debug "DeepSeek request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
-    (with-span :info {:name       :metabot.deepseek/request
-                      :model      model
-                      :msg-count  (count (:messages req))
-                      :tool-count (count (or tools []))}
-      (try
-        (let [api-key  (not-empty (:api-key credentials))
-              auth     (core/resolve-auth "deepseek" "DeepSeek"
-                                          (when api-key
-                                            {:url     (:base-url credentials)
-                                             :headers {"Authorization" (str "Bearer " api-key)}})
-                                          ai-proxy?)
-              response (core/request auth
-                                     {:method  :post
-                                      :url     messages-path
-                                      :as      :stream
-                                      :headers {"anthropic-version" anthropic-version
-                                                "Content-Type"      "application/json"}
-                                      :body    (json/encode req)})]
-          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
-          ;; the reducible so mid-stream IO/timeout failures get the same
-          ;; provider-friendly translation as request-time errors.
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "deepseek"
-                                     :model    model
-                                     :url      messages-path
-                                     :request  req})
-              (core/reducible-with-api-errors "deepseek" deepseek-error-msg)))
-        (catch Exception e
-          (core/rethrow-api-error! "deepseek" deepseek-error-msg e))))))
+  (adapter/stream! provider {:model       model
+                             :path        messages-path
+                             :body        (deepseek-request-body (assoc opts :model model))
+                             :headers     {"anthropic-version" anthropic-version}
+                             :credentials credentials
+                             :ai-proxy?   ai-proxy?}))
 
 (defn deepseek->aisdk-chunks-xf
   "Translates DeepSeek Anthropic Messages streaming events into AI SDK v5 protocol chunks."

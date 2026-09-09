@@ -21,16 +21,15 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai :as openai]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.malli :as mu])
   (:import
    (java.net URI)
    (java.util.function Consumer)
@@ -166,10 +165,15 @@
             :error-code  :api-key-missing
             :status-code 403}))
 
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for AWS Bedrock")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
+(def ^:private provider
+  (adapter/provider
+   {:slug         "bedrock"
+    :display-name "AWS Bedrock"
+    :errors       {401 #(tru "AWS Bedrock rejected our credentials or request signature")
+                   403 #(tru "AWS Bedrock credentials lack permission for this model or action")
+                   404 #(tru "AWS Bedrock model or endpoint is unavailable in the configured region")
+                   429 #(tru "AWS Bedrock has rate limited us")
+                   500 #(tru "AWS Bedrock is not working but not saying why")}}))
 
 (defn- ensure-credentials
   "Validate the credentials of the connection serving this request.
@@ -193,26 +197,13 @@
         (u/assoc-dissoc :session-token token)
         (update :region #(validate-region (or (not-empty %) "us-east-1"))))))
 
-(defn- bedrock-error-msg
-  "Canonical, status-specific Bedrock error message."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      401 (tru "AWS Bedrock rejected our credentials or request signature")
-      403 (tru "AWS Bedrock credentials lack permission for this model or action")
-      404 (tru "AWS Bedrock model or endpoint is unavailable in the configured region")
-      429 (tru "AWS Bedrock has rate limited us")
-      500 (tru "AWS Bedrock is not working but not saying why")
-      (tru "AWS Bedrock API error (HTTP {0})" status))))
-
 (defn- bedrock-request
   "Perform a SigV4-signed HTTP request against the Bedrock mantle endpoint.
   `headers` are extra *unsigned* headers (e.g. `anthropic-version`). `credentials` is the AWS credentials map of
   the connection serving this request. `ai-proxy?` is accepted for parity with the other provider adapters but is
   not supported: throws when true."
   [{:keys [method path body as headers credentials ai-proxy?]}]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
+  (adapter/reject-ai-proxy! provider ai-proxy?)
   (let [{:keys [region] :as creds} (ensure-credentials credentials)
         base-url     (str "https://bedrock-mantle." region ".api.aws")
         content-type (when body "application/json")
@@ -243,7 +234,7 @@
                                 :ai-proxy?   ai-proxy?})]
       (get-in res [:body :data]))
     (catch Exception e
-      (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))
+      (adapter/rethrow! provider e))))
 
 (def supported-models
   "Bedrock models offered in the Metabot model picker, keyed by model id.
@@ -263,15 +254,9 @@
    "openai.gpt-5.5"             {:display-name "GPT-5.5"               :context-window 272000}
    "openai.gpt-5.5-2026-04-23"  {:display-name "GPT-5.5 (2026-04-23)"  :context-window 272000}})
 
-(defn context-window-tokens
+(def context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
-  [model]
-  (get-in supported-models [model :context-window]))
-
-(defn- supported-model?
-  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
-  [{:keys [id]}]
-  (contains? supported-models id))
+  (adapter/context-window-fn supported-models))
 
 (defn- available-model?
   "Whether a `/v1/models` catalog entry is available.
@@ -288,11 +273,7 @@
   credentials chain resolves; Metabase Cloud requires the pair."
   ([] (list-models {}))
   ([opts]
-   {:models (->> (list-all-models opts)
-                 (filter (every-pred supported-model? available-model?))
-                 (sort-by :id)
-                 (mapv (fn [{:keys [id]}]
-                         {:id id :display_name (get-in supported-models [id :display-name])})))}))
+   (adapter/listing supported-models (filter available-model? (list-all-models opts)))))
 
 ;;; --------------------------------------------- API family dispatch -------------------------------------------
 
@@ -348,7 +329,7 @@
   `:region`, and (for temporary credentials) `:session-token`. On a self-hosted Metabase with no access key pair,
   requests are signed with whatever the AWS default credentials chain resolves; Metabase Cloud requires the pair.
   `:ai-proxy?` is not supported for Bedrock and throws when true."
-  [{:keys [model input tools credentials ai-proxy?] :as opts
+  [{:keys [model credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (let [opts   (assoc opts :model model :fast? false)
         family (model->family model)
@@ -359,30 +340,17 @@
                       :req     (->mantle-anthropic-body (claude/claude-request-body opts))}
           :openai    {:path    "/openai/v1/responses"
                       :req     (openai/openai-request-body opts)})]
-    (with-span :info {:name       :metabot.bedrock/request
-                      :model      model
-                      :family     family
-                      :msg-count  (count input)
-                      :tool-count (count tools)}
-      (try
-        (let [response (bedrock-request {:method      :post
-                                         :path        path
-                                         :as          :stream
-                                         :headers     headers
-                                         :body        (json/encode req)
-                                         :credentials credentials
-                                         :ai-proxy?   ai-proxy?})]
-          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
-          ;; the reducible so mid-stream IO/timeout failures get the same
-          ;; provider-friendly translation as request-time errors.
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "bedrock"
-                                     :model    model
-                                     :url      path
-                                     :request  req})
-              (core/reducible-with-api-errors "bedrock" bedrock-error-msg)))
-        (catch Exception e
-          (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))))
+    (adapter/stream! provider {:model      model
+                               :path       path
+                               :body       req
+                               :span-attrs {:family family}
+                               :send!      #(bedrock-request {:method      :post
+                                                              :path        path
+                                                              :as          :stream
+                                                              :headers     headers
+                                                              :body        (json/encode req)
+                                                              :credentials credentials
+                                                              :ai-proxy?   ai-proxy?})})))
 
 (defn- model->aisdk-chunks-xf
   "The SSE->AISDK translating transducer for a Bedrock model id.

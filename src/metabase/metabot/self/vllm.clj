@@ -9,15 +9,13 @@
   (:require
    [clojure.string :as str]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.malli :as mu])
   (:import
    (java.io IOException)
    (java.net SocketTimeoutException)
@@ -29,10 +27,15 @@
   "Smallest `max_model_len` [[preflight!]] will accept. A product floor, not a measurement."
   16384)
 
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for vLLM")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
+(def ^:private provider
+  (adapter/provider
+   {:slug         "vllm"
+    :display-name "vLLM"
+    :errors       {400 #(tru "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar")
+                   401 #(tru "vLLM API key expired or invalid — check the key your server was started with via --api-key")
+                   404 #(tru "vLLM API endpoint was not found — the base URL should end in /v1")
+                   429 #(tru "The vLLM server''s request queue is full — reduce concurrent load, or restart it with a larger --max-num-seqs")
+                   500 #(tru "vLLM returned an internal server error")}}))
 
 (defn- missing-base-url-ex []
   (ex-info (tru "No vLLM base URL is set")
@@ -43,18 +46,6 @@
   (ex-info (tru "No vLLM model is set")
            {:api-error  true
             :error-code :model-missing}))
-
-(defn- vllm-error-msg
-  "Canonical, status-specific vLLM error message."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      400 (tru "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar")
-      401 (tru "vLLM API key expired or invalid — check the key your server was started with via --api-key")
-      404 (tru "vLLM API endpoint was not found — the base URL should end in /v1")
-      429 (tru "The vLLM server''s request queue is full — reduce concurrent load, or restart it with a larger --max-num-seqs")
-      500 (tru "vLLM returned an internal server error")
-      (tru "vLLM API error (HTTP {0})" status))))
 
 (def reasoning-config-key
   "The connection `:config` key [[preflight!]]'s reasoning observation is recorded under. It is not an
@@ -74,8 +65,7 @@
   `core/resolve-auth` cannot reach its `missing-api-key-ex` branch — a keyless server is a complete
   configuration."
   [credentials ai-proxy?]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
+  (adapter/reject-ai-proxy! provider ai-proxy?)
   (let [base-url (not-empty (:base-url credentials))
         api-key  (not-empty (:api-key credentials))]
     (when-not base-url
@@ -158,7 +148,7 @@
     (catch IOException e
       (throw (list-models-io-ex e (:url auth))))
     (catch Exception e
-      (core/rethrow-api-error! "vllm" vllm-error-msg e))))
+      (adapter/rethrow! provider e))))
 
 ;;; -------------------------------------------------- Preflight -------------------------------------------------
 
@@ -358,7 +348,7 @@
               (tru "The vLLM server did not answer the connection test within {0}ms. Check that it is not overloaded — a server this slow to answer a trivial prompt cannot drive Metabot."
                    (str (:socket-timeout (probe-timeouts)))))))
     (catch Exception e
-      (core/rethrow-api-error! "vllm" vllm-error-msg e))))
+      (adapter/rethrow! provider e))))
 
 (defn- preflight!
   "Exercise the contract the agent loop depends on, against the model that will actually be used, and
@@ -474,40 +464,23 @@
   Opts map takes `:credentials` (`{:base-url ... :api-key ...}`) from the connection serving this
   request, and throws without a base URL.
   `:ai-proxy?` is not supported for vLLM and throws when true."
-  [{:keys [model tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
+  [{:keys [model credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (when (str/blank? model)
     (throw (missing-model-ex)))
-  (let [req        (vllm-request-body opts)
-        timeout-ms (llm/llm-vllm-request-timeout-ms)]
-    (log/debug "vLLM request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
-    (with-span :info {:name       :metabot.vllm/request
-                      :model      model
-                      :msg-count  (count (:messages req))
-                      :tool-count (count (or tools []))}
-      (try
-        (let [auth     (vllm-auth credentials ai-proxy?)
-              response (core/request auth
-                                     (merge {:method  :post
-                                             :url     "/chat/completions"
-                                             :as      :stream
-                                             :headers {"Content-Type" "application/json"}
-                                             :body    (json/encode req)}
-                                            (inference-timeouts)))]
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "vllm"
-                                     :model    model
-                                     :url      "/chat/completions"
-                                     :request  req})
-              (io-guarded timeout-ms)
-              (core/reducible-with-api-errors "vllm" vllm-error-msg)))
-        ;; Ordered: clj-http raises an `IOException` only when there is no response at all, so this
-        ;; cannot swallow one `vllm-error-msg` would have translated.
-        (catch IOException e
-          (throw (request-io-ex e (:base-url credentials) timeout-ms)))
-        (catch Exception e
-          (core/rethrow-api-error! "vllm" vllm-error-msg e))))))
+  (let [timeout-ms (llm/llm-vllm-request-timeout-ms)]
+    (adapter/stream! provider
+                     {:model    model
+                      :path     "/chat/completions"
+                      :body     (vllm-request-body opts)
+                      :request  (inference-timeouts)
+                      :auth     (vllm-auth credentials ai-proxy?)
+                      :wrap     #(io-guarded % timeout-ms)
+                      ;; clj-http raises an `IOException` only when there is no response at all, so the
+                      ;; IO branch cannot swallow a failure the provider's own messages would have translated.
+                      :on-error (fn [e]
+                                  (if (instance? IOException e)
+                                    (throw (request-io-ex e (:base-url credentials) timeout-ms))
+                                    (adapter/rethrow! provider e)))})))
 
 (defn vllm->aisdk-chunks-xf
   "Translates vLLM Chat Completions streaming chunks into AI SDK v5 protocol chunks.

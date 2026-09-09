@@ -71,15 +71,14 @@
                     {:provider provider}))))
 
 (defn- normalize-known-model
-  "Coerce one adapter's `supported-models` value into `{:display-name ... :context-window ...}`. Most adapters store a
-  map already; DeepSeek stores the display name on its own. Anything else throws, so an adapter that invents a third
-  shape fails loudly instead of quietly documenting a model with no name."
+  "Check one adapter's `supported-models` value is the `{:display-name ... :context-window ...}` map every
+  adapter stores. Anything else throws, so an adapter that invents a second shape fails loudly instead of
+  quietly documenting a model with no name."
   [provider model-id value]
-  (cond
-    (map? value)    value
-    (string? value) {:display-name value}
-    :else           (throw (ex-info (str "Unrecognized supported-models entry for " provider)
-                                    {:provider provider :model model-id :value value}))))
+  (if (map? value)
+    value
+    (throw (ex-info (str "Unrecognized supported-models entry for " provider)
+                    {:provider provider :model model-id :value value}))))
 
 (defn known-models
   "The models `provider`'s adapter is willing to offer, as `{model-id {:display-name ... :context-window ...}}`.
