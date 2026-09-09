@@ -438,7 +438,7 @@ describe("ConversationDetailPage", () => {
     expect(screen.getByText("View a group's usage")).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /Analysts/ })).toHaveAttribute(
       "href",
-      `${Urls.monitorAiAuditingUsage()}?group=42`,
+      Urls.monitorAiAuditingUsage({ groupId: 42 }),
     );
   });
 });

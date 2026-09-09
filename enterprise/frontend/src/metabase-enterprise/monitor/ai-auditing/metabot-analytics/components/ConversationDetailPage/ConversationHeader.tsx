@@ -237,7 +237,7 @@ function UserGroupsMenu({
           <Menu.Item
             key={group.id}
             component={ForwardRefLink}
-            to={`${Urls.monitorAiAuditingUsage()}?group=${group.id}`}
+            to={Urls.monitorAiAuditingUsage({ groupId: group.id })}
             leftSection={<Icon name="group" size={14} />}
           >
             {group.name}
