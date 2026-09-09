@@ -20,8 +20,8 @@
   db-type)
 
 (defmulti batch-upsert!
-  "Insert or update multiple entries in the index table."
-  {:arglists '([table-name entries])}
+  "Insert or update multiple entries in the index table, on `conn`."
+  {:arglists '([conn table-name entries])}
   db-type)
 
 (defmulti extra-entry-fields

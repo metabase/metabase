@@ -120,6 +120,25 @@
     :h2       :h2
     :mysql    :mysql))
 
+(defn gated-data-source
+  "Wrap `data-source` so opening a connection takes the current application database's read lock.
+  Use this for auxiliary pools over the raw data source so snapshot restores block them too."
+  ^javax.sql.DataSource [^javax.sql.DataSource data-source]
+  (let [^ReentrantReadWriteLock lock (.lock *application-db*)]
+    (reify javax.sql.DataSource
+      (getConnection [_]
+        (try
+          (.. lock readLock lock)
+          (.getConnection data-source)
+          (finally
+            (.. lock readLock unlock))))
+      (getConnection [_ user password]
+        (try
+          (.. lock readLock lock)
+          (.getConnection data-source user password)
+          (finally
+            (.. lock readLock unlock)))))))
+
 ;; TODO -- you can just use [[*application-db*]] directly, we can probably get rid of this and use that directly instead
 (defn data-source
   "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data
@@ -518,6 +537,18 @@
       (when (and outermost? committed?)
         (run-after-commit-callbacks! callbacks))
       result)))
+
+(defn do-with-independent-connection-transaction
+  "Run `f` as a top-level transaction on `connection`, isolated from any ambient transaction.
+  App-db transaction nesting is thread-local; without this isolation, Toucan treats the new connection as a
+  nested savepoint and does not commit it independently."
+  [^java.sql.Connection connection f]
+  (binding [t2.conn/*current-connectable* nil
+            *transaction-depth*           0
+            *before-commit-callbacks*      nil
+            *after-commit-callbacks*       nil
+            *transaction-state*            nil]
+    (t2.conn/do-with-transaction connection {} f)))
 
 ;;;; Unshared connections
 ;;;;

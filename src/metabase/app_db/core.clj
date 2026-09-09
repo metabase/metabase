@@ -41,6 +41,8 @@
   db-type
   do-before-commit
   do-after-commit
+  do-with-independent-connection-transaction
+  gated-data-source
   in-transaction?
   quartz-data-source
   quoting-style
@@ -48,7 +50,9 @@
   transaction-state
   with-unshared-connection]
  [mdb.connection-pool-setup
-  recent-activity?]
+  c3p0-pool-monitor
+  recent-activity?
+  single-connection-pool-data-source]
  [mdb.data-source
   broken-out-details->DataSource]
  [mdb.env
