@@ -571,8 +571,8 @@
                             :api-key  {:setting :llm-vllm-api-key}}}
    "ollama"     {:type     "ollama"
                  ;; both are credentials, because either deployment can be configured on its own: a base
-                 ;; URL alone is a self-hosted server, which needs no key, and a key alone is Ollama
-                 ;; Cloud, whose address the adapter already knows
+                 ;; URL alone is a self-hosted server, which needs no key. Cloud additionally requires an
+                 ;; API key, but using Cloud also requires `:hosting` to be set to "cloud".
                  ;; `:hosting` is not a credential — on its own it configures nothing — but it has to be
                  ;; settable, or an env-configured Cloud connection could not say that is what it is.
                  :settings {:base-url {:setting :llm-ollama-api-base-url :credential? true}
