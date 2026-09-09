@@ -28,9 +28,13 @@ export function AreaNavButton({
       disabled={showLabel}
     >
       <Button
-        variant="light"
+        variant="filled"
         size="md"
         fullWidth
+        // Collapsed, this button sets the nav rail's width, so it takes the
+        // [[AreaTab]]s' 32px box rather than a button's taller, wider one.
+        h={showLabel ? undefined : "xxl"}
+        p={showLabel ? undefined : "sm"}
         leftSection={<FixedSizeIcon name={icon} display="block" />}
         onClick={onClick}
         aria-label={label}
