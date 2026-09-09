@@ -16,21 +16,6 @@
    ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
    [:template_tags [:ref ::lib.schema.template-tag/template-tag-map]]])
 
-(mr/def ::native-query-snippet
-  "A NativeQuerySnippet as selected from the app DB: every column of `:native_query_snippet`."
-  [:map {:closed true}
-   [:id            ::lib.schema.id/native-query-snippet]
-   [:name          :string]
-   [:description   [:maybe :string]]
-   [:content       :string]
-   [:creator_id    ::lib.schema.id/user]
-   [:archived      :boolean]
-   [:created_at    ms/TemporalInstant]
-   [:updated_at    ms/TemporalInstant]
-   [:collection_id [:maybe ::lib.schema.id/collection]]
-   [:entity_id     :string]
-   [:template_tags [:maybe ::lib.schema.template-tag/template-tag-map]]])
-
 (mr/def ::native-query-snippet.update
   "What an update (or insert) of a NativeQuerySnippet accepts: every column of `:native_query_snippet` except `id`, all optional."
   [:map {:closed true}

@@ -763,12 +763,7 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :tenant_id [:model/User :id :tenant_id] :id [:in user-ids]))
 
-(def ^:private EarliestUserJoinDate
-  "Rows returned by [[earliest-user-join-date]]."
-  (mut/merge ::users.schema/user
-             [:map [:min [:maybe ms/TemporalInstant]]]))
-
-(mu/defn earliest-user-join-date :- [:maybe EarliestUserJoinDate]
+(mu/defn earliest-user-join-date :- [:maybe ms/TemporalInstant]
   "The earliest `date_joined` of any User, or nil."
   []
   (:min (t2/select-one [:model/User [:%min.date_joined :min]])))

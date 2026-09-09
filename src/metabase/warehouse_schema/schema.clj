@@ -201,44 +201,6 @@
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::table
-  "A Table as selected from the app DB: every column of `:metabase_table`."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/table]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:name                    :string]
-   [:description             [:maybe :string]]
-   [:entity_type             [:maybe [:or :keyword :string]]]
-   [:active                  :boolean]
-   [:db_id                   ::lib.schema.id/database]
-   [:display_name            [:maybe :string]]
-   [:visibility_type         [:maybe [:or :keyword :string]]]
-   [:schema                  [:maybe :string]]
-   [:points_of_interest      [:maybe :string]]
-   [:caveats                 [:maybe :string]]
-   [:show_in_getting_started :boolean]
-   [:field_order             [:or :keyword :string]]
-   [:initial_sync_status     [:or :keyword :string]]
-   [:is_upload               :boolean]
-   [:database_require_filter [:maybe :boolean]]
-   [:estimated_row_count     [:maybe :int]]
-   [:view_count              :int]
-   [:is_defective_duplicate  {:optional true} :boolean]
-   [:unique_table_helper     {:optional true} [:maybe :string]]
-   [:deactivated_at          [:maybe ms/TemporalInstant]]
-   [:archived_at             [:maybe ms/TemporalInstant]]
-   [:is_writable             [:maybe :boolean]]
-   [:data_authority          [:or :keyword :string]]
-   [:data_source             [:maybe [:or :keyword :string]]]
-   [:data_layer              [:maybe [:or :keyword :string]]]
-   [:owner_email             [:maybe :string]]
-   [:owner_user_id           [:maybe ::lib.schema.id/user]]
-   [:collection_id           [:maybe ::lib.schema.id/collection]]
-   [:is_published            :boolean]
-   [:transform_id            [:maybe ::lib.schema.id/transform]]
-   [:transform_target        :boolean]])
-
 (mr/def ::table.update
   "What an update (or insert) of a Table accepts: every column of `:metabase_table` except `id`, all optional."
   [:map {:closed true}

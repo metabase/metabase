@@ -13,7 +13,7 @@
    [:active       :boolean]
    [:created_at   ms/TemporalInstant]
    [:updated_at   ms/TemporalInstant]
-   [:internal_id  [:maybe :string]]
+   [:internal_id  {:optional true} [:maybe :string]]
    [:payload_id   [:maybe ms/PositiveInt]]
    [:creator_id   [:maybe ::lib.schema.id/user]]])
 

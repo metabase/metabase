@@ -30,38 +30,6 @@
   "One entry of the `:parameters` column of a Dashboard, decoded."
   :map)
 
-(mr/def ::dashboard
-  "A Dashboard as selected from the app DB: every column of `:report_dashboard`."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/dashboard]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:name                    :string]
-   [:description             [:maybe :string]]
-   [:creator_id              ::lib.schema.id/user]
-   [:parameters              [:sequential :map]]
-   [:points_of_interest      [:maybe :string]]
-   [:caveats                 [:maybe :string]]
-   [:show_in_getting_started :boolean]
-   [:public_uuid             [:maybe :string]]
-   [:made_public_by_id       [:maybe ms/PositiveInt]]
-   [:enable_embedding        :boolean]
-   [:embedding_params        [:maybe ms/EmbeddingParams]]
-   [:archived                :boolean]
-   [:position                [:maybe :int]]
-   [:collection_id           [:maybe ::lib.schema.id/collection]]
-   [:collection_position     [:maybe :int]]
-   [:cache_ttl               [:maybe :int]]
-   [:entity_id               :string]
-   [:auto_apply_filters      :boolean]
-   [:width                   :string]
-   [:initially_published_at  [:maybe ms/TemporalInstant]]
-   [:view_count              :int]
-   [:archived_directly       :boolean]
-   [:last_viewed_at          ms/TemporalInstant]
-   [:embedding_type          [:maybe [:or :keyword :string]]]
-   [:public_uuid_prefix      [:maybe :string]]])
-
 (mr/def ::dashboard.update
   "What an update (or insert) of a Dashboard accepts: every column of `:report_dashboard` except `id`, all optional."
   [:map {:closed true}
