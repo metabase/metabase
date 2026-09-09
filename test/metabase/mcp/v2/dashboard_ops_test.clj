@@ -155,6 +155,19 @@
       (is (= "button" (get-in dc [:visualization_settings :actionDisplayType])))
       (is (= "Run" (get-in dc [:visualization_settings "button.label"]))))))
 
+(deftest add-action-virtual-card-test
+  (testing "GHY-4147: add_action writes a :virtual_card so the dashcard reads as an action"
+    ;; `isActionDashCard` (frontend/src/metabase/actions/utils.ts) keys off
+    ;; visualization_settings.virtual_card.display; without it the dashcard renders empty, not as a button.
+    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+                               empty-dash
+                               [{:op "add_action" :id -1 :action_id 3 :label "Run"}])
+          vs (:visualization_settings (first dashcards))]
+      (is (= {:name nil :display "action" :visualization_settings {} :archived false}
+             (:virtual_card vs)))
+      (is (= "button" (:actionDisplayType vs)))
+      (is (= "Run" (get vs "button.label"))))))
+
 (deftest duplicate-card-test
   (testing "GHY-4147: duplicate_card clones content but takes the new negative id and its own slot"
     (let [existing {:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :dashboard_tab_id nil

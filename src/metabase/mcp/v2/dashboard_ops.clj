@@ -267,9 +267,13 @@
                     :action_id          action_id
                     :dashboard_tab_id   (:tab op)
                     :parameter_mappings []
+                    ;; the frontend keys off `:virtual_card` to recognize an action dashcard, so an
+                    ;; action carries the same wrapper as the other card-less dashcards
                     :visualization_settings
-                    (cond-> {:actionDisplayType (or display "button")}
-                      label (assoc "button.label" label))}
+                    (dashboard-card/virtual-card-settings
+                     "action"
+                     (cond-> {:actionDisplayType (or display "button")}
+                       label (assoc "button.label" label)))}
                    :action))
 
 (defmethod apply-op "duplicate_card"
