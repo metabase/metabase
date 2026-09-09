@@ -106,7 +106,7 @@ function DimensionLabel({
   }
 
   return (
-    <Flex align="center" gap="xs" className={S.label}>
+    <Flex align="center" gap="xxs" className={S.label}>
       <SourceColorIndicator
         colors={colors}
         fallbackIcon={icon ?? "add"}

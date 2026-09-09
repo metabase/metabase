@@ -23,6 +23,7 @@ import {
   getUserIsAdmin,
 } from "metabase/current-user";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
+import { getMetadata } from "metabase/metadata-store";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
@@ -40,7 +41,6 @@ import {
   useParams,
 } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import { useForceUpdate } from "metabase/utils/use-force-update";
 import type { Series } from "metabase-types/api";
@@ -121,7 +121,7 @@ import {
   onOpenTimelines,
   setParameterValue,
 } from "../store/actions";
-import { getIsObjectDetail, getMode } from "../store/mode-selectors";
+import { getIsObjectDetail } from "../store/mode-selectors";
 import {
   getCard,
   getDataReferenceStack,
@@ -177,8 +177,6 @@ const mapStateToProps = (state: State) => {
     user: getUser(state),
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
-
-    mode: getMode(state),
 
     question: getQuestion(state),
     originalQuestion: getOriginalQuestion(state),

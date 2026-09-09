@@ -52,6 +52,9 @@
    [:models [:sequential [:map [:id :string] [:display_name :string]]]]
    ;; alternative credential groups: the connection is complete when one group is filled in full
    [:required_any [:sequential [:sequential :string]]]
+   ;; paired credential groups: each must be filled in full or left empty in full
+   ;; per-field dependencies: a field may be filled only when the fields it names are too
+   [:requires [:map-of :string [:sequential :string]]]
    [:fields [:sequential field-response-schema]]])
 
 (def ^:private connection-response-schema
@@ -107,7 +110,7 @@
     show-when   (assoc :show_when {:field (name (:field show-when)) :value (:value show-when)})))
 
 (defn- provider-type-response
-  [{:keys [type label managed? singleton? default-model required-any fields]}]
+  [{:keys [type label managed? singleton? default-model required-any requires fields]}]
   {:type          type
    :label         (str label)
    :managed       (boolean managed?)
@@ -116,6 +119,7 @@
    :default_model default-model
    :models        (mapv #(select-keys % [:id :display_name]) (llm.provider/fixed-models type))
    :required_any  (mapv #(mapv name %) required-any)
+   :requires      (into {} (map (fn [[k deps]] [(name k) (mapv name deps)])) requires)
    :fields        (mapv field-response fields)})
 
 (defn- connection-response
@@ -247,6 +251,18 @@
     (throw (ex-info (tru "LLM provider connections are set by the {0} environment variable and cannot be changed via the API."
                          (setting/env-var-name :llm-providers))
                     {:status-code 400}))))
+
+(defn- refresh-settings!
+  "Pull in the setting changes another instance has committed, before reading the connection list.
+
+  The whole list lives in one setting, and settings are cached in process, so an instance only learns about
+  another's edit when its cache next polls — once a minute. Until then it answers a page load with a list that
+  predates the edit, and it decides whether an edit is allowed against that same list: a connection another
+  instance has just deleted still looks present, and the type it belonged to still reports itself as connected.
+
+  Costs the one query that reads `settings-last-updated`, unless something has actually changed."
+  []
+  (setting/restore-cache-if-needed! :force-check? true))
 
 (defn- without-blank-values
   "Drop `config` entries whose value is blank. The form clears a field it hid by sending an empty string — switching
@@ -380,6 +396,7 @@
   "List the configured provider connections, with their secrets masked."
   []
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (mapv connection-response (llm.provider/connections)))
 
 (api.macros/defendpoint :post "/providers"
@@ -394,6 +411,7 @@
                                             [:config {:optional true} [:maybe config-schema]]
                                             [:model {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (check-connections-not-env-managed!)
   (let [provider-type (llm.provider/provider-type type)]
     (api/check-400 provider-type (tru "Unknown provider type {0}." (pr-str type)))
@@ -443,6 +461,7 @@
                                    [:config {:optional true} [:maybe config-schema]]
                                    [:model {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (check-connections-not-env-managed!)
   (let [stored     (llm.provider/stored-connections)
         idx        (first (keep-indexed (fn [i c] (when (= (:key c) conn-key) i)) stored))
@@ -462,6 +481,11 @@
                      (not-empty name)   (assoc :name name))
         ;; what the connection will actually run on: the stored config with the environment layered back over it
         effective  (merge (:config merged) env-config)]
+    ;; Before validation probes the new URL with the effective credentials, require proof that the caller holds every
+    ;; secret that would travel there. Omitted and masked secrets were merged from storage; env-owned ones cannot be
+    ;; re-supplied through this API at all.
+    (llm.provider/assert-base-url-change-authorized! (:type merged) (:config live) effective config
+                                                     (:env-fields live))
     (llm.provider/validate-config! (:type merged) effective)
     (let [{:keys [learned-config] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))
@@ -476,6 +500,7 @@
   "Delete a provider connection."
   [{conn-key :key} :- [:map [:key connection-key-schema]]]
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (check-connections-not-env-managed!)
   (let [conn (llm.provider/connection conn-key)]
     (api/check-404 conn)
@@ -501,6 +526,7 @@
   connection does not blank out the others."
   []
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (into []
         (pmap connection-models-response (llm.provider/connections))))
 

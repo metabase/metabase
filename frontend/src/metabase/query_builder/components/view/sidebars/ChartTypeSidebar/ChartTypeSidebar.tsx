@@ -124,7 +124,7 @@ export const ChartTypeSidebar = ({
         onOpenSettings={onOpenVizSettings}
         gap={0}
         w="100%"
-        p="lg"
+        p="xl"
       />
     </SidebarContent>
   );

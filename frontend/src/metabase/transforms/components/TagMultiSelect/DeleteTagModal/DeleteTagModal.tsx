@@ -25,7 +25,7 @@ export function DeleteTagModal({
     <Modal
       title={t`Delete the ${tag.name} tag?`}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
@@ -51,7 +51,7 @@ function DeleteTagForm({ tag, onDelete, onClose }: DeleteTagFormProps) {
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
-        <Stack gap="lg">
+        <Stack gap="xl">
           <Text>{t`The tag will be deleted from transforms and jobs that use it.`}</Text>
           <Group>
             <Box flex={1}>

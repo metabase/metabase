@@ -6,8 +6,8 @@ import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Loader, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { ForeignKey } from "metabase-types/api";

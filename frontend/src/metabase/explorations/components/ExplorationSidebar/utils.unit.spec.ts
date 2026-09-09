@@ -593,42 +593,41 @@ describe("getExplorationSidebarTree sorting", () => {
 });
 
 describe("getExplorationSidebarTree passes BE-computed names through", () => {
-  const DIM_BLOCK_ID = 30;
+  const BLOCK_ID = 30;
 
   it("uses the block's name for the heading and each page's name for sub-items", () => {
-    const signups = createQuery({
+    const country = createQuery({
       id: 1,
-      name: "Signups",
+      name: "Country",
       status: "done",
       interestingness_score: 0.9,
     });
-    const revenue = createQuery({
+    const plan = createQuery({
       id: 2,
-      name: "Revenue",
+      name: "Plan",
       status: "done",
       interestingness_score: 0.8,
     });
 
     const tree = getAllTabExplorationSidebarTree({
-      queries: [signups, revenue],
+      queries: [country, plan],
       blocks: [
         createBlock({
-          id: DIM_BLOCK_ID,
-          type: "dimension",
-          name: "By Country",
+          id: BLOCK_ID,
+          name: "Revenue",
           position: 0,
           pages: [
             createPage({
               id: 10,
-              name: "Signups",
+              name: "Country",
               position: 0,
-              query_ids: [signups.id],
+              query_ids: [country.id],
             }),
             createPage({
               id: 11,
-              name: "Revenue",
+              name: "Plan",
               position: 1,
-              query_ids: [revenue.id],
+              query_ids: [plan.id],
             }),
           ],
         }),
@@ -636,10 +635,10 @@ describe("getExplorationSidebarTree passes BE-computed names through", () => {
     });
 
     const heading = getMetricHeadings(tree)[0];
-    expect(heading?.name).toBe("By Country");
+    expect(heading?.name).toBe("Revenue");
     expect((heading?.children ?? []).map((child) => child.name)).toEqual([
-      "Signups",
-      "Revenue",
+      "Country",
+      "Plan",
     ]);
   });
 });

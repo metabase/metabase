@@ -2,14 +2,17 @@
   (:require
    [clj-http.client :as http]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [medley.core :as m]
    [metabase.llm.api.provider :as llm.api.provider]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -27,6 +30,30 @@
   [message]
   (fn [& _]
     (throw (ex-info message {:api-error true :status-code 401}))))
+
+(defn- do-with-another-instances-write!
+  [conns thunk]
+  (let [stale-conns   (get (setting.cache/cache) "llm-providers")
+        stale-updated (setting/cache-last-updated-at)]
+    (assert (some? stale-updated) "the cached settings-last-updated is what the rewind below makes stale")
+    (llm.provider/set-connections! (vec conns))
+    ;; close the once-a-minute window first, so nothing but an explicit forced check can reload the cache and the
+    ;; test is measuring the endpoint rather than a poll that happened to come due
+    (setting/restore-cache-if-needed! :force-check? true)
+    (setting.cache/update-cache! "llm-providers" stale-conns)
+    (setting.cache/update-cache! "settings-last-updated" stale-updated)
+    ;; the cache is process-wide, so a body that leaves it stale hands the staleness to whatever test runs next
+    (try
+      (thunk)
+      (finally
+        (setting.cache/restore-cache!)))))
+
+(defmacro ^:private with-another-instances-write!
+  "Run `body` with `conns` committed to the app DB while this instance's settings cache still holds what it held
+  before — where every instance but the writer sits until its cache next polls, up to a minute later."
+  {:style/indent 1}
+  [conns & body]
+  `(do-with-another-instances-write! ~conns (fn [] ~@body)))
 
 (deftest provider-types-test
   (testing "every provider type is listed with the credential fields a connection needs"
@@ -85,7 +112,12 @@
                     (filter #(= "bedrock" (:type %)))
                     first
                     :fields
-                    (into {} (map (juxt :key :advanced))))))))))
+                    (into {} (map (juxt :key :advanced)))))))
+      (testing "each Bedrock key travels as requiring the other, which the form uses to gate half a pair"
+        (is (= {:access-key-id     ["secret-access-key"]
+                :secret-access-key ["access-key-id"]
+                :session-token     ["access-key-id" "secret-access-key"]}
+               (:requires (m/find-first #(= "bedrock" (:type %)) types))))))))
 
 (deftest provider-types-google-fields-test
   (testing "Google's credentials hang off the authentication method it is asked for, and its models are a fixed list"
@@ -123,6 +155,16 @@
       (testing "the alternative credential groups ride along so the form knows when the config is complete"
         (is (= [["service-account-key"] ["oauth-access-token" "project-id"]]
                (:required_any google)))))))
+
+(deftest provider-types-hosted-bedrock-test
+  (testing "the listed Bedrock entry carries hosted policy, so the form asks for the keys the backend will demand"
+    (mt/with-premium-features #{:hosting}
+      (let [bedrock (m/find-first #(= "bedrock" (:type %))
+                                  (mt/user-http-request :crowberto :get 200 "llm/provider-types"))]
+        (is (= {"access-key-id" true "secret-access-key" true "region" false "session-token" false}
+               (->> bedrock :fields (into {} (map (juxt :key :required))))))
+        (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+               (:help (m/find-first #(= "access-key-id" (:key %)) (:fields bedrock)))))))))
 
 (deftest provider-types-managed-availability-test
   (letfn [(managed [types] (->> types (filter #(= "metabase" (:type %))) first))]
@@ -454,6 +496,32 @@
                                      {:type "evilai" :config {:api-key "whatever"}}))))
       (is (= [] (llm.provider/connections))))))
 
+(deftest create-rejects-a-base-url-on-a-blocked-network-before-calling-the-provider-test
+  (testing (str "verifying credentials fetches the provider's model catalog from the base URL, so a base URL "
+                "on a network the policy forbids is refused before that request is made")
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                    (fn [& _] (is false "should reject before verifying credentials"))]
+          (let [create #(mt/user-http-request :crowberto :post 400 "llm/providers"
+                                              {:type   "anthropic"
+                                               :config {:api-key  "sk-ant-valid"
+                                                        :base-url "http://127.0.0.1:9"}})]
+            (testing "self-hosted, the message names the setting to change"
+              (mt/with-premium-features #{}
+                (is (=? {:message (str "The base URL host 127.0.0.1 is on a network Metabase is not allowed to "
+                                       "connect to. Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on "
+                                       "your private network, or allow-all for one on this machine.")
+                         :field   "base-url"}
+                        (create)))))
+            (testing "on Cloud there is no setting to change, and the message says so"
+              (mt/with-premium-features #{:hosting}
+                (is (=? {:message (str "The base URL host 127.0.0.1 is not permitted by Metabase Cloud's LLM network policy. "
+                                       "Use an LLM provider on the public internet.")
+                         :field   "base-url"}
+                        (create))))))
+          (is (= [] (llm.provider/connections))))))))
+
 (deftest create-suffixes-a-colliding-key-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-first"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
@@ -580,7 +648,7 @@
                                                                  :base-url "https://api.anthropic.com"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                 (fn [_provider {:keys [credentials]}]
-                                  (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} credentials)
+                                  (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"} credentials)
                                       "the stored secret is what gets verified, not the mask")
                                   {:models []})]
       (is (= {:key        "anthropic"
@@ -590,13 +658,118 @@
               :usable     true
               :env_vars   []
               :env_fields []
-              :config     {:api-key "**********ed" :base-url "https://new.example.com"}}
+              :config     {:api-key "**********ed" :base-url "https://api.anthropic.com"}}
              (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                    {:name   "Anthropic (prod)"
-                                    :config {:api-key  "**********ed"
-                                             :base-url "https://new.example.com"}})))
-      (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} (stored-config "anthropic"))))))
+                                    :config {:api-key "**********ed"}})))
+      (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"} (stored-config "anthropic"))))))
 
+(deftest update-requires-fresh-secrets-to-change-base-url-test
+  (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-stored"
+                                                                   :base-url "https://api.anthropic.com"})]]
+      (let [probes (atom [])]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                    (fn [_provider {:keys [credentials]}]
+                                      (swap! probes conj credentials)
+                                      {:models []})]
+          (doseq [config [{:base-url "https://new.example.com"}
+                          {:api-key "**********ed" :base-url "https://new.example.com"}]]
+            (is (=? {:message "Enter this connection's credentials again to point it at a different base URL."}
+                    (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic" {:config config}))))
+          (is (empty? @probes) "the old key was rejected before credential verification made a request")
+          (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"}
+                 (stored-config "anthropic")))
+          (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                                {:config {:api-key  "sk-ant-fresh"
+                                          :base-url "https://new.example.com"}})
+          (is (= [{:api-key "sk-ant-fresh" :base-url "https://new.example.com"}] @probes))
+          (is (= {:api-key "sk-ant-fresh" :base-url "https://new.example.com"}
+                 (stored-config "anthropic"))))))))
+
+(deftest update-requires-every-kind-of-sensitive-field-to-change-base-url-test
+  (testing "the rule comes from the registry rather than being special-cased to API keys"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                  {:auth-method         "service-account-key"
+                                                                   :service-account-key "{\"private_key\":\"stored\"}"
+                                                                   :project-id          "my-project"
+                                                                   :base-url            "https://discoveryengine.googleapis.com"})]]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                             (is false "the stored service-account key must not leave")
+                                                             {:models []})]
+        (is (=? {:message "Enter this connection's credentials again to point it at a different base URL."}
+                (mt/user-http-request :crowberto :put 400 "llm/providers/google"
+                                      {:config {:base-url "https://new.example.com"}})))))))
+
+(deftest update-refuses-to-move-an-environment-owned-secret-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                {:api-key  "sk-ant-stored"
+                                                                 :base-url "https://api.anthropic.com"})]]
+    (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                             (is false "the environment key must not leave")
+                                                             {:models []})]
+        (is (=? {:message "This connection's credentials come from environment variables. Change its base URL there too."}
+                (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
+                                      {:config {:api-key  "sk-ant-attempted-override"
+                                                :base-url "https://new.example.com"}})))))))
+
+(deftest generic-setting-api-cannot-write-provider-connections-test
+  (let [planted [(connection "anthropic" "anthropic" {:base-url "https://attacker.example.com"})]]
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+        (doseq [[endpoint body] [["setting/llm-providers" {:value planted}]
+                                 ["setting"               {:llm-providers planted}]]]
+          (is (=? {:message "Manage LLM provider connections through the provider connection settings."}
+                  (mt/user-http-request :crowberto :put 400 endpoint body))))
+        (is (= [] (llm.provider/stored-connections))
+            "neither generic settings endpoint may plant a URL that later receives the environment key")))))
+
+(deftest legacy-base-url-setting-refuses-to-move-a-stored-secret-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                {:api-key  "sk-ant-stored"
+                                                                 :base-url "https://api.anthropic.com"})]]
+    (is (=? {:message "Use the provider connection settings to change the base URL and enter the credentials again."}
+            (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                  {:value "https://new.example.com"})))
+    (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"}
+           (stored-config "anthropic")))
+    (testing "and explains when the credential must be moved through deployment configuration"
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+        (is (=? {:message "This connection's credentials come from environment variables. Change its base URL there too."}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                      {:value "https://new.example.com"}))))))
+  (testing "and never plants a dormant value underneath an environment-owned base URL"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-stored"
+                                                                   :base-url "https://api.anthropic.com"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (is (=? {:message "This connection's base URL comes from an environment variable. Change it there."}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                      {:value "https://attacker.example.com"}))))
+      (is (= "https://api.anthropic.com" (:base-url (stored-config "anthropic")))
+          "removing the environment overlay leaves the original stored URL, not the rejected one"))))
+
+(deftest legacy-credential-setting-refuses-a-connection-on-its-own-base-url-test
+  (testing (str "The per-provider settings write one field at a time, so a credential entered through them arrives "
+                "with no sight of the base URL it would be sent to. A connection on its own URL takes its "
+                "credentials through the connection settings, which submit both together.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:base-url "https://proxy.example.com"})]]
+      (is (=? {:message "This connection has its own base URL. Use the provider connection settings to enter its credentials."}
+              (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-key"
+                                    {:value "sk-ant-fresh"})))
+      (is (nil? (:api-key (stored-config "anthropic"))))))
+  (testing "a connection still on the type's default URL is the ordinary first-time setup, and is allowed"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
+      (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic"))))))
+  (testing "so is a base URL the environment supplies, which the operator chose"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
+        (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic"))))))))
 (deftest update-preserves-a-masked-service-account-key-test
   (testing (str "re-saving a Google connection without touching the key file echoes back the mask of a JSON key "
                 "that ends in a newline — the stored key has to survive it rather than be replaced by the mask")
@@ -1175,3 +1348,63 @@
                    :type   "metabase"
                    :models [{:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]}]
                  (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
+
+;;; ------------------------------------- Reading another instance's changes ----------------------------------------
+
+(deftest list-providers-sees-another-instances-connection-test
+  (testing "the list an admin is shown is not the one this instance happened to cache a minute ago"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant"})]]
+      (with-another-instances-write! [(connection "anthropic" "anthropic" {:api-key "sk-ant"})
+                                      (connection "openai" "openai" {:api-key "sk-openai"})]
+        (is (= ["anthropic" "openai"]
+               (map :key (mt/user-http-request :crowberto :get 200 "llm/providers"))))))))
+
+(deftest create-is-not-rejected-by-a-connection-another-instance-deleted-test
+  (testing "a create is allowed or refused on the list in the app DB, not on a stale one that still holds a
+            connection another instance has removed"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temporary-setting-values [llm-providers      [(connection "metabase" "metabase")]
+                                         llm-proxy-base-url "https://proxy.example.com"]
+        (with-another-instances-write! []
+          (is (=? {:key "metabase" :type "metabase"}
+                  (mt/user-http-request :crowberto :post 200 "llm/providers" {:type "metabase"}))
+              "the singleton check must not fire on a connection that is already gone"))))))
+
+(deftest update-is-not-rejected-by-a-connection-another-instance-added-test
+  (testing "a connection this instance has not cached yet is still editable"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (with-another-instances-write! [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                                {:config {:api-key "sk-ant-rotated"}}))
+        (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))))))
+
+(deftest provisioning-connections-validates-changed-fields-test
+  (testing "trusted provisioning still validates changed fields after direct settings API writes are forbidden"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (let [conn #(connection "vllm" "vllm" {:base-url %})]
+          (is (=? {:status-code 400, :field :base-url}
+                  (try
+                    (setting/set! :llm-providers [(conn "http://127.0.0.1:8000/v1")])
+                    (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+          (is (= [] (vec (llm.provider/stored-connections))))
+          (testing "a base URL the policy permits still saves"
+            (setting/set! :llm-providers [(conn "https://8.8.8.8/v1")])
+            (is (= [(conn "https://8.8.8.8/v1")] (vec (llm.provider/stored-connections)))))
+          (testing "a base URL stored before the check does not make its connection unwritable"
+            (let [grandfathered (assoc-in (conn "http://127.0.0.1:8000/v1") [:config :api-key] "sk-old")]
+              (mt/with-temporary-raw-setting-values [llm-providers (json/encode [grandfathered])]
+                (testing "another connection can still be added"
+                  (setting/set! :llm-providers [grandfathered
+                                                (connection "anthropic" "anthropic" {:api-key "sk-ant-valid"})])
+                  (is (= ["vllm" "anthropic"] (map :key (llm.provider/stored-connections)))))
+                (testing "and its own API key can still be rotated"
+                  (setting/set! :llm-providers [(assoc-in grandfathered [:config :api-key] "sk-new")])
+                  (is (= "sk-new" (get-in (first (llm.provider/stored-connections)) [:config :api-key]))))
+                (testing "but changing the base URL itself is still checked"
+                  (is (=? {:status-code 400, :field :base-url}
+                          (try
+                            (setting/set! :llm-providers
+                                          [(assoc-in grandfathered [:config :base-url] "http://10.0.0.1/v1")])
+                            (catch clojure.lang.ExceptionInfo e (ex-data e))))))))))))))

@@ -181,7 +181,7 @@ export const LoginAttributeMappingEditor = ({
         onClick={() => {
           handleChange(addEntry(entries));
         }}
-        mt="md"
+        mt="lg"
         disabled={_.some(
           entries,
           (entry) => entry.value === "" || entry.key === "",

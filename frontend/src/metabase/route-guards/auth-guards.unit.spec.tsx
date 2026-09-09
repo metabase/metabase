@@ -1,12 +1,12 @@
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { AdminPath } from "metabase/redux/store";
 import {
   createMockAdminAppState,
   createMockAdminState,
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { AdminPath } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import { setBasename } from "metabase/utils/basename";
 import { replaceLocation } from "metabase/utils/dom";

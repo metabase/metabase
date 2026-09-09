@@ -25,7 +25,7 @@ export function AddMetricsModal({
   onClose,
   selection,
 }: AddMetricsModalProps) {
-  const { addMetric, metricBlockIds } = selection;
+  const { addMetric } = selection;
 
   const libraryEnabled = PLUGIN_LIBRARY.isEnabled;
   const [tab, setTab] = useState<MetricsTab | null>(null);
@@ -52,6 +52,10 @@ export function AddMetricsModal({
     () => indexDimensionsById(response?.dimension_groups ?? []),
     [response],
   );
+
+  const metricBlockIds = useMemo(() => {
+    return new Set(selection.blocks.map((b) => b.metric.id));
+  }, [selection.blocks]);
 
   const metrics = useMemo(
     () => (response?.metrics ?? []).filter((m) => !metricBlockIds.has(m.id)),
@@ -112,10 +116,10 @@ export function AddMetricsModal({
       <Tabs.List>
         <Tabs.Tab
           value="library"
-          px="md"
+          px="lg"
           leftSection={<Icon name="repository" size={14} />}
         >{t`Library`}</Tabs.Tab>
-        <Tabs.Tab value="all" px="md">{t`All`}</Tabs.Tab>
+        <Tabs.Tab value="all" px="lg">{t`All`}</Tabs.Tab>
       </Tabs.List>
     </Tabs>
   ) : undefined;

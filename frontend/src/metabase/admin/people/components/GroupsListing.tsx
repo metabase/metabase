@@ -144,7 +144,7 @@ function ActionsPopover({
 
   return (
     <>
-      <Menu shadow="md" width={200} position="bottom-end">
+      <Menu shadow="sm" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
             <Icon c="text-disabled" name="ellipsis" />
@@ -265,7 +265,7 @@ function GroupRow({
           align="center"
           to={membersLink}
           className={CS.link}
-          gap="md"
+          gap="lg"
         >
           <UserAvatar
             user={{ name: getGroupNameLocalized(group) }}

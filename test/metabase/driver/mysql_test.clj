@@ -58,6 +58,34 @@
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (mt/with-test-user :rasta (thunk)))))
 
+(deftest ^:parallel inline-value-string-test
+  (testing "inlined strings use a representation that is independent of the session's backslash-escaping mode"
+    (let [expected (fn [^String s]
+                     (format "_utf8mb4 X'%s'" (codecs/bytes->hex (.getBytes s "UTF-8"))))]
+      (are [s] (= (expected s) (sql.qp/inline-value :mysql s))
+        "Tito's Tacos"
+        "back\\slash"
+        "a\\' OR 1 = 1 --"
+        ""
+        "\u00e9\ud83c\udf63")))
+  (testing "compiling a query with inline parameters"
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM `venues` WHERE `venues`.`name` = _utf8mb4 X'615c27204f522031203d2031202d2d'"]
+             (sql.qp/format-honeysql :mysql {:select [:*]
+                                             :from   [[:venues]]
+                                             :where  [:= :venues/name "a\\' OR 1 = 1 --"]}))))))
+
+(deftest ^:parallel like-pattern-escape-char-not-driver-inlined-test
+  (testing "LIKE's ESCAPE character compiles to a plain `'!'` even with a driver bound — a `_utf8mb4 X'21'` hex
+            literal carries utf8mb4's default collation and makes MySQL app DBs on another collation fail with
+            `Illegal mix of collations` (#81161 follow-up)"
+    (binding [driver/*driver* :mysql]
+      (is (= ["SELECT * FROM `t` WHERE LOWER(`name`) LIKE ? ESCAPE '!'" "%a!%b%"]
+             (sql/format {:select [:*]
+                          :from   [:t]
+                          :where  [:like [:lower :name] (h2x/like-substring "a%b")]}
+                         {:dialect :mysql}))))))
+
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
     (testing (str "MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL "

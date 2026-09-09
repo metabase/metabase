@@ -4,13 +4,15 @@ import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { datasetApi } from "metabase/api/dataset";
+import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import { getMetadata } from "metabase/metadata-store";
+import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -59,9 +61,10 @@ const getErrorMessage = (
   queryError: unknown,
 ): string => {
   if (failedDataset?.error) {
-    return typeof failedDataset.error === "string"
-      ? failedDataset.error
-      : failedDataset.error?.data || t`Query execution failed`;
+    return getResponseErrorMessage(
+      failedDataset.error,
+      t`Query execution failed`,
+    );
   }
   if (typeof queryError === "object" && queryError && "message" in queryError) {
     return String(queryError.message);
@@ -313,7 +316,7 @@ export const NativeQueryModal = ({
       onClose={onClose}
       size="95%"
       title={t`Edit SQL Query`}
-      padding="lg"
+      padding="xl"
       classNames={{
         content: S.modalContent,
         body: S.modalBody,
@@ -416,6 +419,7 @@ export const NativeQueryModal = ({
                   <Visualization
                     rawSeries={rawSeries}
                     metadata={metadata}
+                    mode={defaultClickActionMode}
                     onChangeCardAndRun={() => {}}
                     getExtraDataForClick={() => ({})}
                     isEditing={false}

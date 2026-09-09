@@ -7,8 +7,12 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
+import {
+  type MetadataProviderFactory,
+  getShallowFields as getFields,
+  selectMetadataProviderFactory,
+} from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import { updateSegment } from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
@@ -16,11 +20,7 @@ import { Formula } from "metabase/reference/components/Formula";
 import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import {
-  getShallowFields as getFields,
-  getMetadata,
-} from "metabase/selectors/metadata";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { updateSegment } from "metabase/reference/update-actions";
 import type { User } from "metabase-types/api";
 
 import S from "../components/Detail.module.css";
@@ -47,28 +47,26 @@ interface SegmentDetailFormFields extends BaseDetailFormFields {
 const interestingQuestions = (
   table: StubbedTable,
   segment: StubbedSegment,
-  metadata: Metadata,
+  getMetadataProvider: MetadataProviderFactory,
 ) => {
   return [
     {
       text: t`Number of ${segment.name}`,
       icon: "number" as const,
       link: getQuestionUrl({
-        dbId: table.db_id!,
         tableId: table.id,
         segmentId: segment.id,
         getCount: true,
-        metadata,
+        metadataProvider: getMetadataProvider(table.db_id ?? null),
       }),
     },
     {
       text: t`See all ${segment.name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: table.db_id!,
         tableId: table.id,
         segmentId: segment.id,
-        metadata,
+        metadataProvider: getMetadataProvider(table.db_id ?? null),
       }),
     },
   ];
@@ -85,7 +83,7 @@ const mapStateToProps = (
     entity,
     table: getTable(state, props),
     metadataFields: fields,
-    metadata: getMetadata(state),
+    getMetadataProvider: selectMetadataProviderFactory(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -116,7 +114,7 @@ interface SegmentDetailProps {
   isFormulaExpanded?: boolean;
   loading?: boolean;
   loadingError?: unknown;
-  metadata: Metadata;
+  getMetadataProvider: MetadataProviderFactory;
 
   onSubmit: (fields: SegmentDetailFormFields, props: any) => Promise<void>;
 }
@@ -126,7 +124,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
     style,
     entity,
     table,
-    metadata,
+    getMetadataProvider,
     loadingError,
     loading,
     user,
@@ -185,10 +183,9 @@ const SegmentDetail = (props: SegmentDetailProps) => {
           type="segment"
           headerIcon={modelIconMap.segment}
           headerLink={getQuestionUrl({
-            dbId: table.db_id!,
             tableId: entity.table_id!,
             segmentId: entity.id,
-            metadata,
+            metadataProvider: getMetadataProvider(table.db_id ?? null),
           })}
           name={t`Details`}
           user={user}
@@ -276,7 +273,11 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                 {!isEditing && table && (
                   <li className={CS.relative}>
                     <UsefulQuestions
-                      questions={interestingQuestions(table, entity, metadata)}
+                      questions={interestingQuestions(
+                        table,
+                        entity,
+                        getMetadataProvider,
+                      )}
                     />
                   </li>
                 )}

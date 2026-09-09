@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
@@ -601,6 +602,30 @@
         (testing "no x-metabase-client header: result email has links"
           (is (true? (has-link? nil))))))))
 
+(deftest send-unsaved-notification-ignores-body-ids-test
+  (testing "POST /api/notification/send leaves a saved notification named by the body's id/payload_id untouched"
+    (notification.tu/with-card-notification
+      [{existing-id :id}
+       {:subscriptions [{:type          :notification-subscription/cron
+                         :cron_schedule "0 0 0 * * ?"}]}]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+        (let [existing-payload-id (t2/select-one-fn :payload_id :model/Notification :id existing-id)]
+          (notification.tu/with-channel-fixtures [:channel/email]
+            (notification.tu/with-captured-channel-send!
+              (mt/user-http-request :rasta :post 204 "notification/send"
+                                    {:id           existing-id
+                                     :payload_id   (+ existing-payload-id 999999)
+                                     :payload_type :notification/card
+                                     :payload      {:card_id        card-id
+                                                    :send_condition :has_result
+                                                    :send_once      false}
+                                     :handlers     [{:channel_type :channel/email
+                                                     :recipients   [{:type    :notification-recipient/user
+                                                                     :user_id (mt/user->id :rasta)}]}]}))
+            (is (t2/exists? :model/Notification :id existing-id))
+            (is (t2/exists? :model/NotificationCard :id existing-payload-id))
+            (is (= 1 (t2/count :model/NotificationSubscription :notification_id existing-id)))))))))
+
 (deftest get-notification-permissions-test
   (mt/with-temp
     [:model/User {third-user-id :id} {:is_superuser false}]
@@ -648,8 +673,7 @@
         (mt/with-user-in-groups [group {:name "test notification perm"}
                                  user  [group]]
           (mt/with-temp
-            [:model/Collection {collection-id :id} {:personal_owner_id (:id user)}
-             :model/Card       {card-id :id}       {:collection_id collection-id}]
+            [:model/Card {card-id :id} {:collection_id (personal-collection-id user)}]
             (let [create-notification! (fn [user-or-id expected-status]
                                          (mt/user-http-request user-or-id :post expected-status "notification"
                                                                {:payload_type "notification/card"
@@ -745,8 +769,7 @@
           (mt/with-user-in-groups [_group {:name "template-perms create"}
                                    user   [_group]]
             (mt/with-temp
-              [:model/Collection      {collection-id :id}      {:personal_owner_id (:id user)}
-               :model/Card            {card-id :id}            {:collection_id collection-id}
+              [:model/Card            {card-id :id}            {:collection_id (personal-collection-id user)}
                :model/ChannelTemplate {system-template-id :id} notification.tu/channel-template-email-with-handlebars-body]
               (let [inline-template (-> notification.tu/channel-template-email-with-handlebars-body
                                         (update :channel_type u/qualified-name)
@@ -834,8 +857,7 @@
       (mt/with-user-in-groups [group {:name "test notification perm"}
                                user  [group]]
         (mt/with-temp
-          [:model/Collection {collection-id :id} {:personal_owner_id (:id user)}
-           :model/Card {card-id :id} {:collection_id collection-id}]
+          [:model/Card {card-id :id} {:collection_id (personal-collection-id user)}]
           (let [create-notification! (fn [user-or-id expected-status]
                                        (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
                                          (mt/user-http-request user-or-id :post expected-status "notification/send"

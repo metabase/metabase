@@ -48,7 +48,7 @@ export const ChangeOwnerModal = ({
 
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="md">
-      <Flex direction="column" gap="md">
+      <Flex direction="column" gap="lg">
         <UserPicker value={selectedCreator} onChange={setSelectedCreator} />
 
         <Flex justify="flex-end" gap="sm">

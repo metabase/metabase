@@ -7,9 +7,10 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.collections-rest.api :as api.collection]
+   [metabase.collections-rest.children-query :as children-query]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
-   [metabase.collections.test-utils :refer [with-library-not-synced without-library]]
+   [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -47,11 +48,10 @@
 (defn- do-with-french-user-and-personal-collection! [f]
   (binding [collection/*allow-deleting-personal-collections* true]
     (mt/with-mock-i18n-bundles! {"fr" {:messages {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}}
-      (mt/with-temp [:model/User       user       {:locale     "fr"
-                                                   :first_name "Taco"
-                                                   :last_name  "Bell"}
-                     :model/Collection collection {:personal_owner_id (:id user)}]
-        (f user collection)))))
+      (mt/with-temp [:model/User user {:locale     "fr"
+                                       :first_name "Taco"
+                                       :last_name  "Bell"}]
+        (f user (personal-collection user))))))
 
 (defmacro ^:private with-french-user-and-personal-collection!
   "Create a user with locale's fr and a collection associated with it"
@@ -1766,7 +1766,7 @@
               [:type :asc :nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
-             (api.collection/children-sort-clause {:official-collections-first? true} app-db))))))
+             (children-query/children-sort-clause {:official-collections-first? true} app-db))))))
 
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
@@ -1776,7 +1776,7 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :last-edited-at
+           (children-query/children-sort-clause {:sort-column :last-edited-at
                                                  :sort-direction :asc
                                                  :official-collections-first? true} :mysql)))))
 
@@ -1788,7 +1788,7 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :last-edited-at
+           (children-query/children-sort-clause {:sort-column :last-edited-at
                                                  :sort-direction :asc
                                                  :official-collections-first? true} :postgres)))))
 
@@ -1802,7 +1802,7 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :last-edited-by
+           (children-query/children-sort-clause {:sort-column :last-edited-by
                                                  :sort-direction :asc
                                                  :official-collections-first? true} :postgres)))))
 
@@ -1816,7 +1816,7 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :last-edited-by
+           (children-query/children-sort-clause {:sort-column :last-edited-by
                                                  :sort-direction :asc
                                                  :official-collections-first? true} :mysql)))))
 
@@ -1827,7 +1827,7 @@
             [:model_ranking :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :model
+           (children-query/children-sort-clause {:sort-column :model
                                                  :sort-direction :asc
                                                  :official-collections-first? true} :postgres)))))
 
@@ -1838,7 +1838,7 @@
             [:model_ranking :desc]
             [:%lower.name :asc]
             [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :model
+           (children-query/children-sort-clause {:sort-column :model
                                                  :sort-direction :desc
                                                  :official-collections-first? true} :mysql)))))
 
@@ -1850,7 +1850,7 @@
               [:%lower.description :asc :nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (api.collection/children-sort-clause {:sort-column :description
+             (children-query/children-sort-clause {:sort-column :description
                                                    :sort-direction :asc
                                                    :official-collections-first? true} :postgres))))
     (testing "descending"
@@ -1859,7 +1859,7 @@
               [:%lower.description :desc :nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (api.collection/children-sort-clause {:sort-column :description
+             (children-query/children-sort-clause {:sort-column :description
                                                    :sort-direction :desc
                                                    :official-collections-first? true} :postgres))))))
 

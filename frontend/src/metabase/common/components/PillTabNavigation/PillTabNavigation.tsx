@@ -31,7 +31,7 @@ export function PillTabNavigation({ tabs }: PillTabNavigationProps) {
   const { pathname } = useLocation();
 
   return (
-    <Flex component="nav" gap="xs" wrap="wrap">
+    <Flex component="nav" gap="xxs" wrap="wrap">
       {tabs.map((tab) => {
         const selected = isTabSelected(tab, pathname);
         return (
@@ -40,7 +40,7 @@ export function PillTabNavigation({ tabs }: PillTabNavigationProps) {
             component={ForwardRefLink}
             to={tab.to}
             align="center"
-            gap="xs"
+            gap="xxs"
             className={cx(S.tab, { [S.selected]: selected })}
             aria-label={tab.label}
             aria-current={selected ? "page" : undefined}

@@ -13,7 +13,6 @@ import type { BrushClickObject } from "metabase-lib/query/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  Card,
   Dashboard,
   DashboardCard,
   DatasetColumn,
@@ -23,25 +22,20 @@ import type {
   RowValue,
   RowValues,
   Series,
+  SeriesCard,
   TimelineEvent,
   TimelineEventId,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type {
-  ClickActionModeGetter,
-  ClickActionsMode,
-  ClickObject,
-  QueryClickActionsMode,
-} from "./click-actions";
+import type { ClickActionsMode, ClickObject } from "./click-actions";
 
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
 export type CardSlownessStatus = "usually-fast" | "usually-slow" | boolean;
 
 export type OnChangeCardAndRunOpts = {
-  previousCard?: Card;
-  nextCard: Card;
+  nextCard: SeriesCard;
   seriesIndex?: number;
   objectId?: number;
   drillName?: string;
@@ -58,7 +52,7 @@ export interface VisualizationProps {
   series: Series;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
-  card: Card;
+  card: SeriesCard;
   getHref?: () => string | undefined;
   data: DatasetData;
   metadata?: Metadata;
@@ -145,6 +139,7 @@ export type VisualizationPassThroughProps = {
   canToggleSeriesVisibility?: boolean;
   isObjectDetail?: boolean;
   isQueryBuilder?: boolean;
+  isStandaloneQuestion?: boolean;
   queryBuilderMode?: QueryBuilderMode;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
@@ -165,7 +160,12 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
+  mode?: ClickActionsMode;
+  /**
+   * Lets users drag column headers to reorder the columns.
+   * Without it the table shows the outline header, the style used for read-only previews.
+   */
+  hasColumnReordering?: boolean;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx

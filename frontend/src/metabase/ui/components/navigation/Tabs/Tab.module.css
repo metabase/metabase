@@ -34,6 +34,7 @@
   color: var(--mb-color-text-primary);
   max-width: 100%;
   justify-content: start;
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-lg);
 
   &:hover {
     border-color: var(--mb-color-background_surface-hover);

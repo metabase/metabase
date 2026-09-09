@@ -3,11 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.self.claude :as claude]
-   [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.catalog :as catalog]
    [metabase.metabot.self.google :as google]
-   [metabase.metabot.self.openai :as openai]
-   [metabase.metabot.self.vllm :as vllm]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -63,7 +60,8 @@
   :visibility :admin
   :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting metabot-nlq-system-prompt
   (deferred-tru "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience.")
@@ -72,7 +70,8 @@
   :visibility :admin
   :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting metabot-sql-system-prompt
   (deferred-tru "Custom instructions appended to Metabot''s system prompt for the SQL generation experience.")
@@ -81,7 +80,8 @@
   :visibility :admin
   :encryption :when-encryption-key-set
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
@@ -239,30 +239,32 @@
                 (llm.provider/model-ref->connection-key (llm-metabot-provider)))
   :doc        false)
 
-(defn- llm-provider-streams-reasoning?
-  "Whether a model reference names a model that streams its reasoning back to us.
-
-  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body. vLLM answers
-  from what its connect-time probe observed and recorded on the connection — the flag depends on the operator's
-  `--reasoning-parser` as well as on the model, so the name cannot settle it."
-  [model-ref]
-  (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
-    (case type
-      "anthropic" (claude/reasoning-model? model)
-      "deepseek"  (deepseek/reasoning-model? model)
-      "openai"    (openai/reasoning-model? model)
-      "google"    (google/reasoning-model? model)
-      "vllm"      (vllm/reasoning-connection? credentials)
-      false)))
-
 (defsetting llm-metabot-supports-reasoning?
   "Whether the selected Metabot model streams its reasoning."
   :type       :boolean
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(llm-provider-streams-reasoning? (llm-metabot-provider))
+  :getter     #(catalog/streams-reasoning? (llm-metabot-provider))
   :doc        false)
+
+(defsetting llm-metabot-supports-fast-mode?
+  "Whether the selected Metabot model can run in fast mode. Settings-manager rather than public:
+  only the admin page reads it, and a public value would tell unauthenticated callers which
+  provider and model tier serves Metabot."
+  :type       :boolean
+  :visibility :settings-manager
+  :setter     :none
+  :export?    false
+  :getter     #(catalog/supports-fast-mode? (llm-metabot-provider))
+  :doc        false)
+
+(defsetting llm-fast-mode
+  (deferred-tru "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment.")
+  :type       :boolean
+  :default    false
+  :visibility :settings-manager
+  :export?    false)
 
 (def ^:private metabot-llm-setting-keys
   #{:metabot-enabled? :embedded-metabot-enabled? :llm-metabot-provider})

@@ -3,6 +3,8 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
+   [metabase.agent-api.db :as agent-api.db]
+   [metabase.agent-api.query-guards :as query-guards]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.ai-tracing.core :as ait]
@@ -71,9 +73,7 @@
   [collection-id]
   (if-not collection-id
     (:name (collection/root-collection-with-ui-details nil))
-    (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
-                                    :namespace :archived_directly]
-                                   collection-id)
+    (let [coll      (agent-api.db/collection-breadcrumb-columns collection-id)
           ;; `:effective_ancestors` is the app breadcrumb: it leads with the "Our analytics" root and
           ;; drops ancestors the caller can't read. A personal subtree leads with the personal
           ;; collection instead, so drop that root crumb for them.
@@ -485,55 +485,6 @@
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
-(defn- reject-native-query!
-  "Throw a 400 if `query-map` is a native query anywhere — top-level, nested, or in a join, in either the
-  legacy or the MBQL 5 form. Normalizes the payload to MBQL 5 (best-effort) and checks for a native stage
-  with [[lib/any-native-stage?]], so the check reads keyword `:lib/type`s regardless of how the JSON was
-  decoded; a payload too malformed to normalize is left for the shape and validation checks that follow.
-
-  `/v2/query` and `/v1/execute` are gated by the MBQL-execution scopes (`agent:query` /
-  `agent:query:execute`), not `agent:sql:execute`. The opaque base64 payloads they accept (a
-  query_handle, a continuation token) could carry a native query; allowing it would let a token
-  without the SQL-execution scope run raw SQL, defeating the scope split and bypassing the
-  execute-sql kill switch. Force native execution onto `/v1/execute-sql`, which is correctly scoped."
-  [query-map]
-  (when (some-> (u/ignore-exceptions (lib-be/normalize-query query-map))
-                not-empty
-                lib/any-native-stage?)
-    (throw (ex-info "Native queries are not supported here; use execute_sql instead."
-                    {:status-code 400}))))
-
-(defn- validate-serialized-query!
-  "Sanity-check a decoded MBQL query map from a client-reachable base64 payload (query_handle or token).
-   Require `:stages` to be a non-empty sequence of maps, and the last-stage `:limit` (if present) an
-   integer; otherwise `serialized-query-limit`, `clamp-total-limit`, and `apply-page-to-query` would
-   throw on the malformed shape and surface a 500 instead of a clean 400.
-   Deep MBQL validation still happens in the QP at execution."
-  [query-map]
-  (let [stages (:stages query-map)]
-    (when-not (and (sequential? stages) (seq stages) (every? map? stages))
-      (throw (ex-info "Invalid query: expected a serialized MBQL query with a non-empty :stages of maps."
-                      {:status-code 400 :query-map query-map})))
-    ;; `contains?` (not `when-let`) so an explicit `false`/`nil` limit is caught, not skipped.
-    (when (contains? (last stages) :limit)
-      (let [limit (:limit (last stages))]
-        (when-not (and (int? limit) (pos? limit))
-          (throw (ex-info "Invalid query: last-stage :limit must be a positive integer."
-                          {:status-code 400 :query-map query-map})))))))
-
-(defn- check-token-query-permissions!
-  "Re-validate query permissions on the continuation-token path.
-
-  The token body is client-supplied and could in principle name a different source table than
-  the one the fresh `/v2/query` call was authorized against (a user's data perms can also
-  change between pages). The QP middleware would catch this at execution time, but running
-  the explicit `api/query-check` first gives a cleaner 403 and avoids spinning up the
-  streaming response just to abort."
-  [query-map]
-  (when-let [table-id (get-in query-map [:stages 0 :source-table])]
-    (when (int? table-id)
-      (api/query-check :model/Table table-id))))
-
 (defn- initial-page-state
   "Normalize the three /v2/query entry points into a single {:query :total-limit :page} shape.
 
@@ -549,16 +500,16 @@
   (cond
     (:continuation_token body)
     (let [{:keys [query pagination]} (decode-continuation-token (:continuation_token body))]
-      (reject-native-query! query)
-      (validate-serialized-query! query)
+      (query-guards/reject-native-query! query)
+      (query-guards/validate-serialized-query! query)
       (let [query (normalize-and-validate-query query)]
-        (check-token-query-permissions! query)
+        (query-guards/check-token-query-permissions! query)
         {:query query :total-limit (:limit pagination) :page (:page pagination)}))
 
     (string? (:query body))
     (let [query (decode-base64-json-map (:query body))]
-      (reject-native-query! query)
-      (validate-serialized-query! query)
+      (query-guards/reject-native-query! query)
+      (query-guards/validate-serialized-query! query)
       (let [query (normalize-and-validate-query query)]
         {:query       query
          :total-limit (clamp-total-limit (serialized-query-limit query))
@@ -670,7 +621,7 @@
    _query-params
    {encoded-query :query} :- ::execute-query-request]
   (let [decoded (-> encoded-query u/decode-base64 json/decode)]
-    (reject-native-query! decoded)
+    (query-guards/reject-native-query! decoded)
     (let [query (normalize-and-validate-query decoded)]
       (qp.streaming/streaming-response [rff :api]
         (qp/process-query (prepare-combined-query query) rff)))))
@@ -920,7 +871,7 @@
                            :card-updates          card-updates
                            :actor                 @api/*current-user*
                            :delete-old-dashcards? false})
-    (update-card-response (t2/select-one :model/Card :id id))))
+    (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request
   [:map
@@ -1218,8 +1169,7 @@
   "The dashboard's tabs as `{:id :name}` in display order, [] when it has none."
   [dashboard-id]
   (mapv #(select-keys % [:id :name])
-        (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
-                   {:order-by [[:position :asc] [:id :asc]]})))
+        (agent-api.db/dashboard-tab-names dashboard-id)))
 
 (mr/def ::create-dashboard-response
   [:map
@@ -1266,19 +1216,17 @@
     (let [cards (when (seq question_ids)
                   (mapv #(api/read-check :model/Card %) question_ids))
           dash  (t2/with-transaction [_conn]
-                  (let [dash (first (t2/insert-returning-instances!
-                                     :model/Dashboard
-                                     {:name          dashboard-name
-                                      :description   description
-                                      :parameters    []
-                                      :creator_id    api/*current-user-id*
-                                      :collection_id collection_id}))]
+                  (let [dash (agent-api.db/insert-dashboard!
+                              {:name          dashboard-name
+                               :description   description
+                               :parameters    []
+                               :creator_id    api/*current-user-id*
+                               :collection_id collection_id})]
                     (when (seq cards)
                       (reduce (fn [placed card]
                                 (let [display  (or (:display card) :table)
                                       position (autoplaced-position placed display nil)]
-                                  (t2/insert-returning-instance!
-                                   :model/DashboardCard
+                                  (agent-api.db/insert-dashcard!
                                    (merge position {:dashboard_id (:id dash)
                                                     :card_id      (:id card)}))
                                   (conj placed position)))
@@ -1293,8 +1241,7 @@
        :collection_path (collection-path (:collection_id dash))
        :description     (:description dash)
        ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard :dashboard_id (:id dash)
-                                              {:order-by [[:row :asc] [:col :asc]]})
+       :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order (:id dash))
                             [])
        :tabs            (dashboard-tabs (:id dash))})))
 
@@ -1393,10 +1340,9 @@
   Placement is per-tab: adds go on the mutation's `tab_id` (default: the first tab) and only
   collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
-  (let [current        (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+  (let [current        (agent-api.db/dashcards dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
-        tab-ids        (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id
-                                          {:order-by [[:position :asc] [:id :asc]]})
+        tab-ids        (agent-api.db/dashboard-tab-ids dashboard-id)
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
         ;; frontend renders there; nil when the dashboard has no tabs
         default-tab-id (first tab-ids)
@@ -1453,8 +1399,7 @@
 
           "update_text"
           (let [existing (api/check-404
-                          (t2/select-one :model/DashboardCard
-                                         :id dashcard_id :dashboard_id dashboard-id))
+                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
                 vs       (:visualization_settings existing)
                 display  (some-> (get-in vs [:virtual_card :display]) name)]
             (api/check (or (contains? #{"heading" "text"} display)
@@ -1465,13 +1410,11 @@
                                 (string? (:text vs))))
                        [400 "Only heading and text cards support update_text."])
             ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
-            (t2/update! :model/DashboardCard dashcard_id
-                        {:visualization_settings (assoc vs :text text)}))
+            (agent-api.db/update-dashcard! dashcard_id {:visualization_settings (assoc vs :text text)}))
 
           "remove"
           (let [existing (api/check-404
-                          (t2/select-one :model/DashboardCard
-                                         :id dashcard_id :dashboard_id dashboard-id))]
+                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
             ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
             (dashboard-card/delete-dashboard-cards! [dashcard_id])
             (swap! state #(-> %
@@ -1480,8 +1423,7 @@
 
           "move"
           (let [existing  (api/check-404
-                           (t2/select-one :model/DashboardCard
-                                          :id dashcard_id :dashboard_id dashboard-id))
+                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
                 ;; A move only makes sense relative to the moved card's own tab: collision checks
                 ;; and the move-to-top reflow must not touch cards on other tabs. Compared via
                 ;; `effective-tab` so nil-tab dashcards group with the first tab they render on.
@@ -1504,9 +1446,8 @@
             (when (= position "top")
               (let [shift (:size_y existing)]
                 (doseq [{:keys [id row]} tab-placed]
-                  (t2/update! :model/DashboardCard id {:row (+ row shift)}))))
-            (t2/update! :model/DashboardCard dashcard_id
-                        (select-keys new-pos [:row :col]))
+                  (agent-api.db/update-dashcard! id {:row (+ row shift)}))))
+            (agent-api.db/update-dashcard! dashcard_id (select-keys new-pos [:row :col]))
             (swap! state #(-> %
                               (assoc :placed
                                      (conj (mapv (fn [c]
@@ -1528,7 +1469,7 @@
     ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
     (when (or (seq (:added @state)) (seq (:removed @state)))
       (dashboard/archive-or-unarchive-internal-dashboard-questions!
-       dashboard-id (t2/select :model/DashboardCard :dashboard_id dashboard-id)))
+       dashboard-id (agent-api.db/dashcards dashboard-id)))
     (select-keys @state [:added :removed :moved])))
 
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
@@ -1596,7 +1537,7 @@
         result       (t2/with-transaction [_conn]
                        (when (seq updates)
                          (dashboard/cascade-card-state-from-dashboard-update! current-dash updates)
-                         (t2/update! :model/Dashboard id updates)
+                         (agent-api.db/update-dashboard! id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest
                          ;; PUT-dashboard endpoint passes the dashboard id here instead, which
@@ -1620,7 +1561,7 @@
                              {:object current-dash
                               :user-id api/*current-user-id*
                               :dashcards (:removed result)}))
-    (let [updated (t2/select-one :model/Dashboard :id id)]
+    (let [updated (agent-api.db/dashboard id)]
       (events/publish-event! :event/dashboard-update
                              {:object updated :user-id api/*current-user-id*})
       {:id              (:id updated)
@@ -1630,8 +1571,7 @@
        :description     (:description updated)
        :archived        (boolean (:archived updated))
        ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard :dashboard_id id
-                                              {:order-by [[:row :asc] [:col :asc]]})
+       :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order id)
                             [])
        :tabs            (dashboard-tabs id)})))
 
@@ -1728,7 +1668,7 @@
       ;; JWT is valid - look up user from the email extracted by the JWT provider
       ;; The provider uses jwt-attribute-email setting to extract the email from claims
       (if-let [user (when-let [email (get-in result [:user-data :email])]
-                      (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))]
+                      (agent-api.db/active-user-by-email email))]
         (let [scope-entry (-> result :jwt-data (find :scope))]
           (cond-> {:user user}
             scope-entry

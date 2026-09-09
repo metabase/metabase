@@ -11,6 +11,7 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -63,6 +64,9 @@
                         it is the `thinking` block, sent verbatim. When set it wins over both
                         the derived config and the suppression rules, and :reasoning parts
                         survive into the replayed input.
+    :fast?            - When true, request the provider's fast mode where the model
+                        supports it (Anthropic Opus fast mode); adapters without one
+                        ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map
@@ -78,6 +82,7 @@
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
    [:reasoning-config {:optional true} [:maybe :map]]
+   [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 
 (defn mkid
@@ -950,6 +955,13 @@
   body preview into the message the caller sees."
   #{401 403})
 
+(defn decode-error-body
+  "The response map on a provider HTTP exception's ex-data, with its body decoded for
+  inspection. Consumes and closes a streamed body, so a caller that swallows the
+  exception (e.g. to retry) does not leak the connection."
+  [e]
+  (decode-bounded-body (ex-data e)))
+
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
   `res->message` receives the decoded response map and returns the provider-specific message.
@@ -1028,12 +1040,19 @@
 (defn resolve-auth
   "Pick the right auth map for an LLM request.
 
-  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured).
-   - Otherwise uses the provider's BYOK `auth`."
+  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured). When the environment supplies
+    the proxy URL it carries a `:network-policy-floor` of `:allow-private`, so private cluster addresses remain
+    reachable under the default policy; see [[metabase.llm.settings/network-policy]].
+  - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
-                     {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
-                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})]
+                     (cond-> {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
+                              :headers {"x-metabase-instance-token"
+                                        (premium-features/premium-embedding-token)}}
+                       ;; only an environment-supplied URL is deployment-controlled: a superuser can write the
+                       ;; stored setting through the generic settings API, which must not widen the policy
+                       (setting/env-var-value :llm-proxy-base-url)
+                       (assoc :network-policy-floor :allow-private)))]
     (if ai-proxy?
       (or proxy-auth
           (throw (ex-info (tru "AI proxy is not configured")
@@ -1046,14 +1065,27 @@
   "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
   Forces a connection + socket timeout on every request so a hung upstream can
   never block the caller forever. The timeouts default to the operator-tunable
-  `llm/llm-connection-timeout-ms` and `llm/llm-request-timeout-ms` settings (read
+  [[metabase.llm.settings/llm-connection-timeout-ms]] and
+  [[metabase.llm.settings/llm-request-timeout-ms]] settings (read
   at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
   override either timeout per request by passing `:connection-timeout` /
-  `:socket-timeout` in `req`."
-  [{:keys [url headers]} req]
+  `:socket-timeout` in `req`.
+
+  The connection resolves DNS through a resolver that enforces
+  [[metabase.llm.settings/llm-allowed-networks]] on the addresses it actually
+  opens; see [[metabase.llm.settings/llm-request-opts]]. Auth returned by
+  [[resolve-auth]] may supply `:network-policy-floor` for a
+  deployment-controlled service."
+  [{:keys [url headers network-policy-floor]} req]
   (llm/assert-llm-host-allowed! url)
-  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
-                     :socket-timeout     (llm/llm-request-timeout-ms)}
-                    (merge req)
-                    (update :url #(str url %))
-                    (update :headers merge headers))))
+  (let [policy-opts (llm/llm-request-opts network-policy-floor url)]
+    (try
+      (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                         :socket-timeout     (llm/llm-request-timeout-ms)}
+                        (merge req)
+                        (update :url #(str url %))
+                        (update :headers merge headers)
+                        (merge policy-opts)))
+      (catch Exception e
+        (llm/rethrow-if-llm-network-policy-error! e url)
+        (throw e)))))

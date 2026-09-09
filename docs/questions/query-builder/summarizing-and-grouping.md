@@ -46,7 +46,7 @@ If you summarize and add a grouping you can then summarize _again_. You can also
 
 ![Multiple summarize steps](../images/multiple-summarize-steps.png)
 
-You can also add metrics and groupings on the results page in a sidebar: the top of the sidebar where you pick the number ("metric") you want to see, and the part below is where you pick how to group that number (or how to "break it out").
+You can also add metrics and groupings on the results page in a sidebar: the top of the sidebar is where you pick the number ("metric") you want to see, and the part below is where you pick how to group that number (or how to "break it out").
 
 If your admins have created any named [metrics](../../data-modeling/metrics.md) or [measures](../../data-studio/measures.md) that are specific to your company or organization, they will be in this dropdown under the **Metrics** or **Measures** section. These might be things like your company’s official way of calculating revenue.
 
@@ -67,6 +67,8 @@ Some grouping columns will give you the option of choosing how big or small to m
 - For datetime columns, you can click on the words `by month` to change the grouping to day, week, hour, quarter, year, etc. You'll also be able to add multiple breakouts by the same datetime column with different time granularities (for example, group by week and day of the week). For information on grouping by week of year, see [Week of year](./expressions/week.md).
 - For numeric columns like age, Metabase will automatically "bin" the results, so you'll see your metric grouped in age brackets, like 0–10, 11–20, 21–30, etc. Just like with dates, you can click on the current binning option to change it to a specific number of bins. Currently, you can't choose your own ranges for bins.
 
-  ![Multiple groupings](../images/histogram-bins.png)
+  ![Binning options](../images/histogram-bins.png)
 
   If you select a fixed number of bins, Metabase will break the range of the data into that number of equal size intervals. Some intervals might end up having no data, and Metabase will not display them.
+
+- For latitude and longitude columns, Metabase bins the results automatically. Click the binning option to bin by a set number of degrees, or to turn binning off.

@@ -39,9 +39,16 @@ describe("documents supporting text", () => {
       .should("not.exist");
     H.documentContent().find('[data-type="flexContainer"]').should("not.exist");
 
-    // Open the card menu and click "Add supporting text"
+    // Open the card menu and click "Add supporting text". The menu item is
+    // rendered disabled while the node view can't resolve its position, and a
+    // click on the label of a disabled button is dropped without an error, so
+    // click the button itself and wait for it to be enabled.
     H.openDocumentCardMenu(ORDERS_BY_YEAR_CARD_TITLE);
-    H.popover().findByText("Add supporting text").click();
+    H.popover()
+      .findByText("Add supporting text")
+      .closest("button")
+      .should("be.enabled")
+      .click();
 
     // Verify a flexContainer was created
     H.documentContent().find('[data-type="flexContainer"]').should("exist");
@@ -56,13 +63,17 @@ describe("documents supporting text", () => {
       .findByTestId("document-card-supporting-text")
       .should("contain.text", "Write whatever you'd like to");
 
-    // Verify the flexContainer contains both supporting text and the card
+    // Verify the flexContainer contains both supporting text and the card.
+    // Kept as two re-queried chains: `.within()` freezes its subject, and the
+    // card's node view is recreated when it moves into the new flexContainer.
     H.documentContent()
       .find('[data-type="flexContainer"]')
-      .within(() => {
-        cy.findByTestId("document-card-supporting-text").should("exist");
-        cy.findByTestId("document-card-embed").should("exist");
-      });
+      .findByTestId("document-card-supporting-text")
+      .should("exist");
+    H.documentContent()
+      .find('[data-type="flexContainer"]')
+      .findByTestId("document-card-embed")
+      .should("exist");
 
     // Verify the card is still there
     H.getDocumentCard(ORDERS_BY_YEAR_CARD_TITLE).should("exist");

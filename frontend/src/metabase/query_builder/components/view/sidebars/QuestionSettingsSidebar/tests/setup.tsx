@@ -6,11 +6,11 @@ import {
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { getMetadata } from "metabase/metadata-store";
 import { Route } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings } from "metabase-types/api";
 import {

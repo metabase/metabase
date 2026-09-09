@@ -4,7 +4,6 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -70,17 +69,6 @@
                      count)))]
        maps-schema]
       (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))))
-
-#_{:clj-kondo/ignore [:unused-private-var]}
-(def ^{:arglists '([map-schema])
-       :private  true}
-  ->kebab-keys-map
-  "Transform all keys of a map schema to kebab keys."
-  (memoize
-   (fn [map-schema]
-     (mut/transform-entries map-schema
-                            (partial map (fn [[k opts s]]
-                                           [(u/->kebab-case-en k) opts s]))))))
 
 (defn enum-keywords-and-strings
   "Returns an enum schema that accept both keywords and strings.
@@ -303,6 +291,14 @@
 (def FieldValuesList
   "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
   [:sequential [:or RemappedFieldValue NonRemappedFieldValue]])
+
+(def FieldValue
+  "One stored value of a Field, as kept in the `field_values.values` and `human_readable_values` columns."
+  [:maybe [:or :string number? :boolean]])
+
+(def FieldValues
+  "The stored values of a Field: the decoded `field_values.values` or `human_readable_values` column."
+  [:sequential FieldValue])
 
 (def FieldValuesResult
   "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."

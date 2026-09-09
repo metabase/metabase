@@ -1,9 +1,9 @@
 .contentContainer {
   padding: var(
     --alert-modal-content-padding,
-    var(--mantine-spacing-lg) var(--mantine-spacing-xl)
+    var(--mantine-spacing-xl) var(--mantine-spacing-xxl)
   );
   background-color: var(--mb-color-background_page-secondary);
   overflow: hidden;
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
 }

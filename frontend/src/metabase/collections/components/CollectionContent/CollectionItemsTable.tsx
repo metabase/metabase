@@ -51,7 +51,6 @@ import type {
   SortingOptions,
 } from "metabase-types/api";
 
-import S from "./CollectionContent.module.css";
 import { CollectionItemsToolbar } from "./CollectionItemsToolbar";
 
 const shouldDebounceSearchText = (
@@ -392,7 +391,7 @@ const CollectionItemsTableContent = ({
       )}
       {showNoResults && <CollectionNoResults hasSearchText={hasSearchText} />}
       {showTable && (
-        <Box className={S.table} data-testid="collection-table">
+        <Box data-testid="collection-table">
           <ItemsTable
             databases={databases}
             bookmarks={bookmarks}

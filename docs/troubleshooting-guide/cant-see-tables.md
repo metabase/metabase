@@ -57,7 +57,7 @@ For less common errors, try searching or asking the [Metabase community](https:/
 
 **Explanation**
 
-Something might have changed on database side: your table could've been renamed or dropped, or the permissions revoked.
+Something might have changed on the database side: your table could've been renamed or dropped, or the permissions revoked.
 
 ## Metabase permissions
 
