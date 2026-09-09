@@ -135,10 +135,22 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Field, :table_id [:in table-ids], :semantic_type (mdb/isa :type/PK)))
 
-(mu/defn databases-reducible
-  "A reducible of the Databases matching the Honey SQL `where` clause."
-  [where :- [:maybe vector?]]
-  (t2/reducible-select :model/Database {:where where}))
+(mu/defn databases-for-serdes-reducible
+  "A reducible of the Databases to export via serdes: routing destinations and the sample database are always
+  excluded, H2 databases unless `include-h2?`, and the export is restricted to the rows whose `filter-column` is one
+  of `filter-ids` when `filter-column` is given."
+  [filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   include-h2?   :- :boolean]
+  (t2/reducible-select :model/Database
+                       {:where [:and
+                                (when filter-column
+                                  [:in filter-column filter-ids])
+                                [:= :router_database_id nil]
+                                ;; never export the sample database, regardless of its driver
+                                [:not= :is_sample true]
+                                (when-not include-h2?
+                                  [:not= :engine "h2"])]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
