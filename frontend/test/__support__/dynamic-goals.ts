@@ -3,8 +3,7 @@ import * as dynamicGoalSettings from "metabase/viz-core/lib/dynamic-goal-setting
 
 /**
  * Makes every display resolve `keys` for the tests of the enclosing `describe`.
- * No display resolves `graph.goal_value` yet, so its resolution paths can only
- * be exercised this way.
+ * Temporary, until all cartesian charts support dynamic goals.
  */
 export function mockDynamicGoalSettingKeys(keys: GoalSettingKey[]) {
   let spy: jest.SpyInstance;
