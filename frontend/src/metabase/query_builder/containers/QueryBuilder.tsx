@@ -121,7 +121,7 @@ import {
   onOpenTimelines,
   setParameterValue,
 } from "../store/actions";
-import { getIsObjectDetail, getMode } from "../store/mode-selectors";
+import { getIsObjectDetail } from "../store/mode-selectors";
 import {
   getCard,
   getDataReferenceStack,
@@ -177,8 +177,6 @@ const mapStateToProps = (state: State) => {
     user: getUser(state),
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
-
-    mode: getMode(state),
 
     question: getQuestion(state),
     originalQuestion: getOriginalQuestion(state),

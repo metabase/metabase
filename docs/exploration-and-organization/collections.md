@@ -58,7 +58,7 @@ See [Library organization](../data-studio/library.md#library-organization).
 
 ## Your personal collection
 
-You'll find your **Your personal collection** in the left side navbar under collections. Only you (and your admins) can view and edit this collection.
+You'll find **Your personal collection** in the left side navbar under collections. Only you (and your admins) can view and edit this collection.
 
 You can use your personal collection as a scratch space to put experiments and explorations that you don't think would be particularly interesting to the rest of your team, or as a work-in-progress space where you can work on things and then move them to a shared place once they're ready.
 

@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useMemo } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { getNextId } from "__support__/utils";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
@@ -14,10 +15,6 @@ import {
 } from "metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestionView";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import {
   createMockCard,
   createMockDataset,

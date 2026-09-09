@@ -1,13 +1,14 @@
 (ns metabase.search.appdb.core
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [environ.core :as env]
-   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.query :as appdb.query]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
    [metabase.search.config :as search.config]
@@ -17,7 +18,6 @@
    [metabase.search.hierarchy :as search.hierarchy]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
@@ -72,65 +72,18 @@
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
 
-(defn add-table-where-clauses
-  "Add a `WHERE` clause to the query to only return tables the current user has access to.
-   Also adds any CTEs required for permission filtering."
-  [search-ctx qry]
-  (let [model-id-col [:cast :search_index.model_id (case (mdb/db-type)
-                                                     :mysql :signed
-                                                     :integer)]
-        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx model-id-col)]
-    (cond-> qry
-      (seq with) (update :with (fnil into []) with)
-      true       (sql.helpers/where
-                  [:or
-                   [:= :search_index.model nil]
-                   [:!= :search_index.model "table"]
-                   [:and
-                    [:= :search_index.model "table"]
-                    clause]]))))
+(defn- view-count-percentiles*
+  [p-value]
+  (into {} (for [{:keys [model vcp]} (search.db/view-count-percentile-rows (search.index/active-table) p-value)]
+             [(keyword model) vcp])))
 
-(defn add-collection-join-and-where-clauses
-  "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
-  so we can return its `:name`."
-  [search-ctx qry]
-  (let [collection-id-col :search_index.collection_id
-        permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
-        personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
-        ;; Tables have their own dedicated permission filter (add-table-where-clauses) that checks both data
-        ;; permissions and published-via-collection access, so we exclude them from collection filtering here.
-        excluded-models   (conj (vec (search.filter/models-without-collection)) "table")
-        or-null           #(vector :or
-                                   [:in :search_index.model excluded-models]
-                                   %)]
-    (cond-> qry
-      true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
-      true (sql.helpers/where (or-null permitted-clause))
-      personal-clause (sql.helpers/where (or-null personal-clause)))))
-
-(defn- filter-layers
-  "Ordered `[label add-clauses-fn]` pairs that layer the structural + permission `WHERE` clauses onto an index
-  query. Defined once so [[results]] and the debug [[diagnose]] probe share the exact same chain, and so the
-  diagnostic can attribute exclusion to the first layer (per-permission, then per-filter) that drops a row."
-  [search-ctx]
-  (concat
-   [[:collection-permissions (partial add-collection-join-and-where-clauses search-ctx)]
-    [:table-permissions      (partial add-table-where-clauses search-ctx)]
-    [:transform-source-type  #(sql.helpers/where % (search.filter/transform-source-type-where-clause
-                                                    search-ctx
-                                                    :search_index.model
-                                                    :search_index.source_type))]]
-   (for [[filter-key clause] (search.filter/filter-clauses search-ctx)]
-     [filter-key #(sql.helpers/where % clause)])))
-
-(defn- base-filtered-query
-  "The structural + permission filtered index query (no scoring), parameterized by `search-string`. Passing a
-  blank/nil `search-string` drops the fulltext predicate while keeping every other filter (see
-  `specialization/base-query`)."
-  [search-ctx search-string select-items]
-  (reduce (fn [qry [_ f]] (f qry))
-          (search.index/search-query search-string search-ctx select-items)
-          (filter-layers search-ctx)))
+(def ^{:private true
+       :arglists '([p-value])}
+  view-count-percentiles
+  (if config/is-prod?
+    (memoize/ttl view-count-percentiles*
+                 :ttl/threshold (u/hours->ms 1))
+    view-count-percentiles*))
 
 (defn- results
   [{:keys [search-engine search-string] :as search-ctx}]
@@ -169,12 +122,11 @@
                              :timeout-ms  2000
                              :interval-ms 100})
             (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
-      (let [weights (search.config/weights search-ctx)
-            scorers (search.scoring/scorers search-ctx)
-            query   (->> (base-filtered-query search-ctx search-string [:legacy_input])
-                         (search.scoring/with-scores search-ctx scorers))]
-        (->> (search.db/scored-search-rows query)
-             (map (partial rehydrate weights (keys scorers)))))
+      (let [weights     (search.config/weights search-ctx)
+            percentiles (view-count-percentiles search.config/view-count-scaling-percentile)
+            scorer-keys (keys (search.scoring/scorers search-ctx percentiles))]
+        (->> (search.db/scored-search-rows (search.index/active-table) search-ctx search-string percentiles)
+             (map (partial rehydrate weights scorer-keys))))
       (catch Exception e
         ;; Rule out the error coming from stale index metadata.
         (#'search.index/sync-tracking-atoms!)
@@ -189,42 +141,25 @@
   ;; We ignore any current models filter
   (let [unfiltered-context (assoc search-ctx :models search.config/all-models)
         applicable-models  (search.filter/search-context->applicable-models unfiltered-context)
-        search-ctx         (assoc search-ctx :models applicable-models)]
-    (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
-         (add-collection-join-and-where-clauses search-ctx)
-         (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
-                                 search-ctx
-                                 :search_index.model
-                                 :search_index.source_type)))
-         (search.filter/with-filters search-ctx)
-         search.db/distinct-model-rows
-         (into #{} (map :model)))))
+        search-ctx         (assoc search-ctx :models (set applicable-models))]
+    (if-let [index-table (search.index/active-table)]
+      (into #{} (map :model) (search.db/distinct-model-rows index-table search-ctx))
+      #{})))
 
-(defn- restrict-to-row [model id qry]
-  (sql.helpers/where qry [:and
-                          [:= :search_index.model model]
-                          [:= :search_index.model_id (str id)]]))
-
-(defn- row-present? [qry]
-  (-> qry
-      (assoc :select [[[:inline 1] :one]] :limit 1)
-      (dissoc :order-by)
-      search.db/search-index-probe-rows
-      seq
-      boolean))
+(defn- row-present?
+  [index-table search-ctx search-string model id layer-count]
+  (some? (search.db/search-index-probe-row index-table search-ctx search-string model id layer-count)))
 
 (defn- first-excluding-layer
-  "Apply the structural + permission [[filter-layers]] cumulatively to the row-restricted, text-free query.
-  Returns the label of the first layer after which the row disappears, or nil if it survives all layers."
-  [search-ctx model id]
-  (loop [qry    (->> (search.index/search-query nil search-ctx [:model_id])
-                     (restrict-to-row model id))
-         layers (filter-layers search-ctx)]
-    (when-let [[[label f] & more] (seq layers)]
-      (let [qry' (f qry)]
-        (if-not (row-present? qry')
-          label
-          (recur qry' more))))))
+  "Apply the structural + permission `metabase.search.appdb.query/filter-layers` cumulatively to the row-restricted,
+  text-free query. Returns the label of the first layer after which the row disappears, or nil if it survives all
+  layers."
+  [index-table search-ctx model id]
+  (->> (appdb.query/filter-layer-labels search-ctx)
+       (map-indexed (fn [i label] [(inc i) label]))
+       (some (fn [[layer-count label]]
+               (when-not (row-present? index-table search-ctx nil model id layer-count)
+                 label)))))
 
 (defn- appdb-diagnose
   [search-ctx model id]
@@ -245,12 +180,11 @@
           :else
           (if-not (search.impl/check-result-permissions search-ctx (rehydrate {} [] index-row))
             {:type :filtered :details {:excluded-by :permissions}}
-            (if-let [layer (first-excluding-layer search-ctx model id)]
+            (if-let [layer (first-excluding-layer active search-ctx model id)]
               {:type :filtered :details {:excluded-by layer}}
               (let [search-string (:search-string search-ctx)]
                 (if (and (not (str/blank? search-string))
-                         (not (row-present? (->> (base-filtered-query search-ctx search-string [:model_id])
-                                                 (restrict-to-row model id)))))
+                         (not (row-present? active search-ctx search-string model id nil)))
                   {:type    :not-matching
                    :details {:search-string search-string :search-native-query (boolean (:search-native-query search-ctx))}}
                   {:type :candidate :details {:search-string search-string}})))))))))
@@ -280,6 +214,7 @@
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
   (try
+    (search.index/delete-obsolete-tables!)
     (search.index/ensure-ready!)
     (if in-place?
       (when-let [table (search.index/active-table)]
