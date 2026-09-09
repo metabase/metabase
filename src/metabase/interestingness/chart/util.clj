@@ -8,7 +8,7 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn nan->nil :- [:maybe number?]
-  "Convert NaN and infinities to nil, pass through other values: they are as unrepresentable in JSON."
+  "Convert JSON-unrepresentable NaN and the infinities to nil. Pass every other value through."
   [x :- number?]
   (when (Double/isFinite (double x))
     x))

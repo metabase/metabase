@@ -18,7 +18,14 @@
    :note         :no-rows-materialized
    :transcript   {:outcome :ok
                   :plan    [{:block_id 1 :metric_id 2 :dimension_id "d1" :variant "top-n-other"}]
-                  :planner {:strategy "mechanical" :n-items 1 :n-blocks 1}}})
+                  :planner-notes {:strategy "mechanical" :n-items 1 :n-blocks 1}}})
+
+(def ^:private transcript-with-full-plan-item
+  "A plan item carrying every field `::transcript/plan-item` names, including the optional `:params`
+  and `:rationale` an LLM planner adds."
+  (assoc-in transcript [:transcript :plan]
+            [{:block_id 1 :metric_id 2 :dimension_id "d1" :variant "top-n-other"
+              :params {:k 5} :rationale "the tail is long"}]))
 
 (defn- thread-with-transcript!
   [transcript]
@@ -46,7 +53,7 @@
               "transcript"   {"outcome" "ok"
                               "plan"    [{"block_id" 1 "metric_id" 2
                                           "dimension_id" "d1" "variant" "top-n-other"}]
-                              "planner" {"strategy" "mechanical" "n-items" 1 "n-blocks" 1}}}
+                              "planner-notes" {"strategy" "mechanical" "n-items" 1 "n-blocks" 1}}}
              (json/decode (raw-transcript id)))))))
 
 (deftest transcript-round-trip-test
@@ -65,3 +72,9 @@
                  :set    {:query_plan_transcript "{not json ]["}
                  :where  [:= :id id]})
       (is (nil? (t2/select-one-fn :query_plan_transcript :model/ExplorationThread :id id))))))
+
+(deftest transcript-plan-items-round-trip-test
+  (testing "a plan item's optional `:params` and `:rationale` survive the round trip"
+    (let [id (thread-with-transcript! transcript-with-full-plan-item)]
+      (is (= transcript-with-full-plan-item
+             (t2/select-one-fn :query_plan_transcript :model/ExplorationThread :id id))))))

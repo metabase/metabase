@@ -5,15 +5,23 @@
 
 (set! *warn-on-reflection* true)
 
+(mr/def ::plan-item
+  "One item a planner emits — chart this metric against this dimension, in this variant."
+  [:map
+   [:block_id     :int]
+   [:metric_id    :int]
+   [:dimension_id :string]
+   [:variant      :string]
+   [:params       {:optional true} [:maybe :map]]
+   [:rationale    {:optional true} [:maybe :string]]])
+
 (mr/def ::planner-transcript
-  "A planner's own account of its run, nested under the orchestrator's `:transcript`. Free-form apart
-  from the outcome it reported — `metabase.explorations.query-plan.planner/plan!` defines it."
+  "A planner's own account of its run, nested under the orchestrator's `:transcript`."
   [:map
    [:outcome      {:optional true} [:maybe :keyword]]
-   [:rationale    {:optional true} :any]
-   [:plan         {:optional true} :any]
-   [:final-errors {:optional true} :any]
-   [:planner      {:optional true} :any]])
+   [:rationale    {:optional true} [:maybe :string]]
+   [:plan         {:optional true} [:maybe [:sequential ::plan-item]]]
+   [:planner-notes {:optional true} [:maybe :map]]])
 
 (mr/def ::transcript
   "One planning run, as persisted. Open: `:rows-count`, `:error` and anything else an outcome carries

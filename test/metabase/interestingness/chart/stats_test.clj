@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.interestingness.chart.stats :as stats.core]
+   [metabase.interestingness.chart.types :as stats.types]
    [metabase.models.interface :as mi]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
@@ -175,3 +176,17 @@
             so one such row cannot break a `t2/select`"
     (is (= {:chart-type "sankey" :series-count 1}
            ((:out codec) (json/encode {:chart-type "sankey" :series-count 1}))))))
+
+(deftest series-stats-declare-column-labels-test
+  (testing "every chart type's series carries the `:x-name`/`:y-name`
+           [[metabase.interestingness.chart.util/compute-series-with-labels]] attaches, and the
+           schema names them"
+    (let [series (:series (stats.core/compute-chart-stats (make-chart-config 2 30) {:deep? false}))]
+      (is (seq series))
+      (is (every? #(= "Date" (:x-name %)) series))
+      (is (every? #(= "Value" (:y-name %)) series))))
+  (testing "they are optional, though — stats built without that helper are still a valid series,
+           which is why the hand-built fixtures in repr-test render fine"
+    (let [real (first (:series (stats.core/compute-chart-stats (make-chart-config 1 30) {:deep? false})))]
+      (is (mr/validate ::stats.types/time-series-series-stats real))
+      (is (mr/validate ::stats.types/time-series-series-stats (dissoc real :x-name :y-name))))))

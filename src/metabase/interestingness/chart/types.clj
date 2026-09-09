@@ -161,6 +161,8 @@
   "Statistics for a single time series."
   [:map
    [:name :string]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]
    [:summary ::series-summary]
    [:time-range ::time-range]
    [:data-points :int]
@@ -194,6 +196,8 @@
   "Statistics for a single categorical series."
   [:map
    [:name :string]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]
    [:summary [:maybe ::series-summary]]
    [:data-points :int]
    [:category-count :int]
@@ -220,6 +224,8 @@
   "Statistics for a single scatter series."
   [:map
    [:name :string]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]
    [:x-summary [:maybe ::series-summary]]
    [:y-summary [:maybe ::series-summary]]
    [:data-points :int]
@@ -281,6 +287,8 @@
   "Statistics for a single histogram series."
   [:map
    [:name :string]
+   [:x-name {:optional true} [:maybe :string]]
+   [:y-name {:optional true} [:maybe :string]]
    [:estimated-summary ::histogram-summary]
    [:total-count :int]
    [:data-points :int]

@@ -172,8 +172,5 @@
 ;;; --------------------------------------------- Serialization ------------------------------------------------------
 
 (def chart-stats-schema
-  "Registry key for a [[compute-chart-stats]] result. Exported so a storage codec can drive the JSON round
-  trip from the schema (see [[metabase.models.interface/transform-json-with-schema]]) -- the stats carry
-  keywords in `:chart-type`, a trend's `:direction`, a volatility `:level`, a pattern's `:type` and a
-  correlation's `:strength`/`:direction`, and JSON cannot carry those on its own."
+  "Registry key for a [[compute-chart-stats]] result."
   ::stats.types/chart-stats)
