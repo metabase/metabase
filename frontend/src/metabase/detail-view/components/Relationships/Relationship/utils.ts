@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { selectMetadataProviderFactory } from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import { parseNumber } from "metabase/utils/number";
@@ -50,16 +50,16 @@ function getForeignKeyFilterClause(field: Lib.ColumnMetadata, rowId: RowValue) {
 
 export const getForeignKeyQuery = createSelector(
   [
-    selectMetadataProviderFactory,
+    (state: State, fk: ForeignKey) =>
+      selectMetadataProvider(state, fk.origin?.table?.db_id ?? null),
     (_state: State, fk: ForeignKey) => fk,
     (_state: State, _fk: ForeignKey, rowId: RowValue) => rowId,
   ],
-  (getMetadataProvider, fk, rowId) => {
+  (metadataProvider, fk, rowId) => {
     if (fk.origin == null || fk.origin.table == null) {
       return;
     }
 
-    const metadataProvider = getMetadataProvider(fk.origin.table.db_id);
     const table = Lib.tableOrCardMetadata(metadataProvider, fk.origin.table_id);
     const field = Lib.fieldMetadata(metadataProvider, fk.origin_id);
     if (table == null || field == null) {

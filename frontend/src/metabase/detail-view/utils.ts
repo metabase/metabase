@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import { selectMetadataProviderFactory } from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
 import { formatValue } from "metabase/value-formatting";
 import {
@@ -199,15 +199,15 @@ export const getEntityIcon = (entityType?: Table["entity_type"]) => {
 
 export const getTableQuery = createSelector(
   [
-    selectMetadataProviderFactory,
+    (state: State, table: Table | undefined) =>
+      selectMetadataProvider(state, table?.db_id ?? null),
     (_state: State, table: Table | undefined) => table,
   ],
-  (getMetadataProvider, table): Lib.Query | undefined => {
+  (metadataProvider, table): Lib.Query | undefined => {
     if (!table) {
       return undefined;
     }
 
-    const metadataProvider = getMetadataProvider(table.db_id);
     const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
     if (tableMetadata == null) {
       return undefined;
