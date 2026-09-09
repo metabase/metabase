@@ -11,7 +11,10 @@ import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getIsWebApp } from "metabase/embedding/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
-import { getMetadata } from "metabase/metadata-store";
+import {
+  getMetadata,
+  selectQuestionFromCardBuilder,
+} from "metabase/metadata-store";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,
@@ -220,8 +223,13 @@ export const getCurrentDashcards = createSelector(
 );
 
 export const getDashcardHref = createSelector(
-  [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
-  (metadata, dashboard, parameterValues, dashcard) => {
+  [
+    selectQuestionFromCardBuilder,
+    getDashboardComplete,
+    getParameterValues,
+    getDashCardById,
+  ],
+  (buildQuestion, dashboard, parameterValues, dashcard) => {
     if (
       !dashboard ||
       !dashcard ||
@@ -237,7 +245,7 @@ export const getDashcardHref = createSelector(
     );
 
     return getNewCardUrl({
-      metadata,
+      buildQuestion,
       dashboard,
       parameterValues,
       dashcard,
