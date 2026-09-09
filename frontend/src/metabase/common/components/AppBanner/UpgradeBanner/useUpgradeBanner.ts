@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { getUserIsAdmin } from "metabase/current-user";
-import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useGetVersionInfoQuery, useSetting } from "metabase/settings";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -17,9 +16,6 @@ export function useUpgradeBanner(): UpgradeBannerProps | null {
   const { data } = useGetVersionInfoQuery(undefined, {
     skip: !isAdmin,
   });
-
-  const { hasActiveAdvisory, isLoading: isLoadingHasActiveAdvisory } =
-    PLUGIN_SECURITY_CENTER.useHasActiveAdvisory(isAdmin);
 
   // TODO delete me
   const versionInfo = data && {
@@ -39,11 +35,7 @@ export function useUpgradeBanner(): UpgradeBannerProps | null {
     isWithinIframe() ||
     isHosted ||
     !version.tag ||
-    !versionInfo ||
-    // Security Center does a more robust check to see if the instance is affected
-    // so if hasActiveAdvisory is false, don't show the banner
-    isLoadingHasActiveAdvisory ||
-    hasActiveAdvisory === false
+    !versionInfo
   ) {
     return null;
   }

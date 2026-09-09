@@ -5,7 +5,6 @@ import { SecurityCenterBanner } from "./components/SecurityCenterBanner/Security
 import { SecurityCenterMobileNavItem } from "./components/SecurityCenterNavItem/SecurityCenterMobileNavItem";
 import { SecurityCenterNavItem } from "./components/SecurityCenterNavItem/SecurityCenterNavItem";
 import { SecurityCenterPromoCard } from "./components/SecurityCenterPromoCard/SecurityCenterPromoCard";
-import { useHasActiveAdvisory } from "./hooks/use-has-active-advisory";
 
 const securityCenterPage = () =>
   import(
@@ -21,6 +20,5 @@ export function initializePlugin() {
     PLUGIN_SECURITY_CENTER.SecurityCenterNavItem = SecurityCenterNavItem;
     PLUGIN_SECURITY_CENTER.SecurityCenterMobileNavItem =
       SecurityCenterMobileNavItem;
-    PLUGIN_SECURITY_CENTER.useHasActiveAdvisory = useHasActiveAdvisory;
   }
 }
