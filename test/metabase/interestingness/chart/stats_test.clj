@@ -1,7 +1,10 @@
 (ns metabase.interestingness.chart.stats-test
   (:require
    [clojure.test :refer :all]
-   [metabase.interestingness.chart.stats :as stats.core]))
+   [metabase.interestingness.chart.stats :as stats.core]
+   [metabase.models.interface :as mi]
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -112,3 +115,63 @@
       (let [max-k @#'stats.core/max-series-for-correlations
             max-pairs (/ (* max-k (dec max-k)) 2)]
         (is (<= (count (:correlations stats)) max-pairs))))))
+
+;;; ---------------------------------------- chart-stats-schema codec ----------------------------------------------
+
+(def ^:private codec
+  (mi/transform-json-with-schema "exploration_query_result.chart_stats" stats.core/chart-stats-schema))
+
+(defn- round-trip [stats]
+  ((:out codec) ((:in codec) stats)))
+
+(deftest chart-stats-schema-dispatches-on-chart-type-test
+  (testing "every chart type round-trips through the JSON codec with its keywords intact"
+    (are [stats] (= stats (round-trip stats))
+      {:chart-type   :time-series
+       :series-count 1
+       :series       [{:name        "s"
+                       :summary     {:min 1.0 :max 9.0 :mean 5.0 :median 5.0 :std-dev 2.5 :range 8.0}
+                       :time-range  {:start "2020-01-01" :end "2020-02-01" :duration-days 31}
+                       :data-points 2
+                       :trend       {:direction :strongly-increasing :overall-change-pct 12.5}
+                       :volatility  {:level :moderate :coefficient-of-variation 0.3}
+                       :patterns    [{:type :spike :description "a spike"}]}]}
+
+      {:chart-type   :categorical
+       :series-count 1
+       :series       [{:name "s" :summary nil :data-points 1 :category-count 1
+                       :top-categories [{:name "ACME" :value 41}]}]}
+
+      {:chart-type   :scatter
+       :series-count 1
+       :series       [{:name "s" :x-summary nil :y-summary nil :data-points 1}]}
+
+      {:chart-type   :histogram
+       :series-count 1
+       :series       [{:name              "s"
+                       :estimated-summary {:weighted-mean 1.0 :weighted-std-dev 2.0 :data-range 3.0}
+                       :total-count       5
+                       :data-points       1
+                       :bin-data          [[1.0 2.0]]
+                       :distribution      {:estimated-percentiles {:p25 1.0 :p50 2.0 :p75 3.0
+                                                                   :p90 4.0 :p95 5.0 :p99 6.0}
+                                           :estimated-quartiles   {:q1 1.0 :median 2.0 :q3 3.0 :iqr 2.0}}
+                       :structure         {:mode-bin [1.0 2.0] :peak-count 1 :concentration-top3 1.0
+                                           :gap-count 0 :empty-bin-ratio 0.0 :bin-count 1}}]}
+
+      {:chart-type :unknown :series-count 0 :message "not implemented"})))
+
+(deftest chart-stats-schema-is-closed-test
+  (testing "`:unknown` is the only door for a chart type without dedicated analysis, so a typo cannot
+            ride through the `compute-chart-stats` return schema"
+    (is (mr/validate stats.core/chart-stats-schema
+                     {:chart-type :unknown :series-count 0 :message "not implemented"}))
+    (is (not (mr/validate stats.core/chart-stats-schema
+                          {:chart-type :histogrm :series-count 1 :series [{:garbage true}]})))))
+
+(deftest chart-stats-schema-unrecognized-chart-type-reads-undecoded-test
+  (testing "dropping the default branch tightens validation without hardening the read: a blob with a
+            `:chart-type` this version has no branch for still rides through the decoder untouched,
+            so one such row cannot break a `t2/select`"
+    (is (= {:chart-type "sankey" :series-count 1}
+           ((:out codec) (json/encode {:chart-type "sankey" :series-count 1}))))))

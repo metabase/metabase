@@ -350,9 +350,8 @@
    :out (decrypt-error-context source cached-encrypted-json-out)})
 
 (def ^:private json-schema-transformer
-  "Carries a schema's keywords -- and anything else JSON cannot represent -- across the JSON boundary.
-  Deliberately the same [[malli.transform/json-transformer]] that [[metabase.api.macros]] decodes request
-  bodies with, so a value has one JSON shape rather than one for the wire and another for the app DB."
+  "The same [[malli.transform/json-transformer]] [[metabase.api.macros]] decodes request bodies with, so a
+  value has one JSON shape rather than one for the wire and another for the app DB."
   (mtx/json-transformer))
 
 (defn- json-schema-encoder [schema]
@@ -362,22 +361,16 @@
   (mr/cached ::json-schema-decoder schema #(mc/decoder schema json-schema-transformer)))
 
 (defn transform-json-with-schema
-  "Like [[transform-json]], but drives the round trip with `schema`, so a column can hold the keywords (and
-  anything else JSON cannot carry on its own) the data model uses, instead of the storage format getting to
-  decide that model. `source` is a \"table.column\" string, named in the log message when a blob cannot be
-  read.
+  "Like [[transform-json]], but runs the value through `schema`'s malli JSON encoder and decoder, so a column
+  can hold keywords and anything else JSON cannot carry on its own. `source` is a \"table.column\" string,
+  named in the log message when a blob cannot be read.
 
-  The two halves do not pull equal weight. `:in` is nearly what the JSON encoder does unaided -- it already
-  writes keywords and integer map keys as strings -- and exists to make the boundary explicit and to cover a
-  `:set`, `inst?` or `uuid` field. `:out` is the half doing the work: malli's json-transformer is what puts
-  keywords back, decodes `:map-of` keys, and infers coders for `:enum` / `:=` children.
+  Values always go through `schema`; there is no string passthrough, since an already-encoded string would
+  skip the decode this transform exists to do.
 
-  A value is passed to `schema` unconditionally, with no string passthrough: an already-encoded string would
-  skip the schema, which is exactly the shape mismatch this transform exists to prevent.
-
-  An unreadable blob reads as `nil` rather than throwing -- one bad row must not break the whole `t2/select`.
-  It is logged at `:log-level` (`:warn` by default); nothing legitimately writes an unreadable value, so
-  callers whose column carries a security consequence pass `:error`."
+  An unreadable blob reads as `nil` rather than throwing, so one bad row cannot break a whole `t2/select`. It
+  is logged at `:log-level` (`:warn` by default); pass `:error` when a failure carries a security
+  consequence."
   ([source schema]
    (transform-json-with-schema source schema nil))
 
@@ -396,13 +389,11 @@
                  nil))))}))
 
 (defn transform-encrypted-json-with-schema
-  "[[transform-json-with-schema]] for a column that is also encrypted at rest. Wrapped in
-  [[decrypt-error-context]] so a decrypt failure names the column rather than surfacing as a bare
-  \"Expected an encrypted value\" with no way back to the row.
+  "[[transform-json-with-schema]] for a column that is also encrypted at rest. [[decrypt-error-context]] names
+  the column when a decrypt fails, instead of a bare \"Expected an encrypted value\".
 
-  Unlike [[transform-encrypted-json]], the decrypt is not memoized: that cache holds both the ciphertext and
-  the decoded value for an hour, which is the right trade for a small column and the wrong one for the
-  unbounded blobs a schema-driven column tends to hold."
+  Unlike [[transform-encrypted-json]], the decrypt is not memoized: that cache holds both ciphertext and
+  decoded value for an hour, which is the wrong trade for the unbounded blobs these columns tend to hold."
   ([source schema]
    (transform-encrypted-json-with-schema source schema nil))
 

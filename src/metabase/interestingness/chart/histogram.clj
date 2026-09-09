@@ -70,9 +70,7 @@
             (recur (inc i))))))))
 
 (def ^:private estimated-percentiles
-  "The percentiles [[compute-estimated-percentiles]] estimates, and the field each lands under. A
-  fixed set under named fields rather than a map keyed by the integer percentile: the set never
-  varies, and integer map keys have no JSON representation (these stats are persisted as JSON)."
+  "The percentiles [[compute-estimated-percentiles]] estimates, and the field each lands under."
   [[:p25 25] [:p50 50] [:p75 75] [:p90 90] [:p95 95] [:p99 99]])
 
 (defn- compute-estimated-percentiles
@@ -132,7 +130,7 @@
         :total-count       0
         :data-points       n
         :bin-data          []
-        :distribution      {:estimated-percentiles {}
+        :distribution      {:estimated-percentiles nil
                             :estimated-quartiles   {:q1 0 :median 0 :q3 0 :iqr 0}}
         :structure         {:mode-bin           nil
                             :peak-count         0

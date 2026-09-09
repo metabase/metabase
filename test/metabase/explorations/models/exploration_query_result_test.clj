@@ -53,7 +53,7 @@
    :series-count 1
    :series       [{:name         "Total"
                    :total-count  120
-                   :distribution {:estimated-percentiles {:p25 1.5 :p50 2.5 :p90 9.0}
+                   :distribution {:estimated-percentiles {:p25 1.5 :p50 2.5 :p75 5.0 :p90 9.0 :p95 9.5 :p99 9.9}
                                   :estimated-quartiles   {:q1 1.5 :median 2.5 :q3 9.0 :iqr 7.5}}}]})
 
 (def ^:private single-point-stats

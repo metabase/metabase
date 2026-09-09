@@ -12,7 +12,7 @@
   (testing "empty values returns zero counts"
     (is (=? {:data-points   0
              :total-count   0
-             :distribution  {:estimated-percentiles empty?
+             :distribution  {:estimated-percentiles nil?
                              :estimated-quartiles   {:q1 0 :median 0 :q3 0 :iqr 0}}
              :structure     {:mode-bin nil :peak-count 0 :bin-count 0}}
             (#'histogram/compute-series-stats [])))))
@@ -21,7 +21,7 @@
   (testing "all-nil values returns zero data_points"
     (is (=? {:data-points   0
              :total-count   0
-             :distribution  {:estimated-percentiles empty?
+             :distribution  {:estimated-percentiles nil?
                              :estimated-quartiles   {:q1 0 :median 0 :q3 0 :iqr 0}}}
             (#'histogram/compute-series-stats [nil nil nil])))))
 

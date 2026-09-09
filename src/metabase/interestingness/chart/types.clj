@@ -246,21 +246,19 @@
    [:data-range number?]])
 
 (mr/def ::estimated-percentiles
-  "The fixed percentile set [[metabase.interestingness.chart.histogram]] estimates. Named fields
-  rather than a map keyed by the integer percentile: the set never varies, and integer map keys have
-  no JSON representation. Empty when the histogram has no data to interpolate from."
-  [:map
-   [:p25 {:optional true} number?]
-   [:p50 {:optional true} number?]
-   [:p75 {:optional true} number?]
-   [:p90 {:optional true} number?]
-   [:p95 {:optional true} number?]
-   [:p99 {:optional true} number?]])
+  "The fixed percentile set [[metabase.interestingness.chart.histogram]] estimates."
+  [:map {:closed true}
+   [:p25 number?]
+   [:p50 number?]
+   [:p75 number?]
+   [:p90 number?]
+   [:p95 number?]
+   [:p99 number?]])
 
 (mr/def ::estimated-distribution-stats
   "Distribution statistics estimated from binned histogram data using weighted approximations."
   [:map
-   [:estimated-percentiles ::estimated-percentiles]
+   [:estimated-percentiles [:maybe ::estimated-percentiles]]
    [:estimated-quartiles [:map
                           [:q1 number?]
                           [:median number?]
@@ -306,12 +304,12 @@
 
 (mr/def ::chart-stats
   "Union of all chart statistics types."
-  [:or
-   ::time-series-stats
-   ::categorical-stats
-   ::scatter-stats
-   ::histogram-stats
-   ::unknown-stats])
+  [:multi {:dispatch (comp keyword :chart-type)}
+   [:time-series ::time-series-stats]
+   [:categorical ::categorical-stats]
+   [:scatter     ::scatter-stats]
+   [:histogram   ::histogram-stats]
+   [:unknown     ::unknown-stats]])
 
 ;;; ------------------------------------------ Representation Schema ------------------------------------------------
 
