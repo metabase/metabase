@@ -190,7 +190,7 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 
 {% include plans-blockquote.html feature="Transform permissions" is_plural=true %}
 
-Transform permissions control who can manage and run [transforms](../semantic-layer/transforms/transforms-overview.md) on a database. Transform permissions can only be set on a database level, not on a table level.
+Transform permissions control who can manage and run [transforms](../data-studio/transforms/transforms-overview.md) on a database. Transform permissions can only be set on a database level, not on a table level.
 
 A group can only have transform permissions for a database if they also have "View data" and "Query builder and native" permissions for _all_ the tables in a database.
 

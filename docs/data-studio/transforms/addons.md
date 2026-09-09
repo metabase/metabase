@@ -1,8 +1,6 @@
 ---
 title: Transform add-ons
 summary: Metabase transforms come in two flavors - basic transforms for basic query-based functionality, and advanced transforms for Python workflows, transform inspector, and other functionality.
-redirect_from:
-  - /docs/latest/data-studio/transforms/addons
 ---
 
 # Transform add-ons
@@ -11,17 +9,17 @@ At a glance:
 
 [**Basic transforms**](#basic-transforms):
 
-- Run [query-based transforms](query.md)
+- Run [query-based transforms](query-transforms.md)
 - Schedule transform [jobs](jobs-and-runs.md).
 - (Pro/Enterprise only) Configure [permissions for transforms](transforms-overview.md#permissions-for-transforms).
 
 [**Advanced transforms**](#advanced-transforms):
 
-- Run [query-based](query.md) and [Python transforms](python.md);
+- Run [query-based](query-transforms.md) and [Python transforms](python-transforms.md);
 - Schedule transform [jobs](jobs-and-runs.md).
 - (Pro/Enterprise only) Configure [permissions for transforms](transforms-overview.md#permissions-for-transforms).
 - [Writable connection](../../databases/writable-connection.md): separate database connection used for write operations.
-- [Transform inspector](inspector.md).
+- [Transform inspector](transform-inspector.md).
 
 Availability and pricing depends on your plan and hosting method.
 
@@ -29,7 +27,7 @@ Availability and pricing depends on your plan and hosting method.
 
 With basic transforms, you can:
 
-- Write and run [query-based transforms](query.md) (but not Python transforms).
+- Write and run [query-based transforms](query-transforms.md) (but not Python transforms).
 - [Schedule and run jobs](jobs-and-runs.md).
 - (Pro/Enterprise only) Configure [permissions for transforms](transforms-overview.md#permissions-for-transforms).
 
@@ -50,9 +48,9 @@ Once basic transforms are enabled on your Metabase Cloud instance, they can't be
 Advanced transforms include:
 
 - Everything in [basic transforms](#basic-transforms).
-- [Python transforms](python.md) for more flexible data processing.
+- [Python transforms](python-transforms.md) for more flexible data processing.
 - [Writable connection](../../databases/writable-connection.md): separate database connection used for write operations.
-- [Transform inspector](inspector.md).
+- [Transform inspector](transform-inspector.md).
 
 You can buy the Advanced transforms add-on for:
 

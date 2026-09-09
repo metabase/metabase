@@ -7,7 +7,7 @@ redirect_from:
 
 # Writable connection
 
-> Writable connection requires the [Advanced transforms add-on](../semantic-layer/transforms/addons.md)
+> Writable connection requires the [Advanced transforms add-on](../data-studio/transforms/addons.md)
 
 _Admin > Databases > Writable connection_
 
@@ -47,7 +47,7 @@ Once writable connection is removed, Metabase will revert to using the main conn
 
 When configured, writable connection will be used for:
 
-- [Transforms](../semantic-layer/transforms/transforms-overview.md)
+- [Transforms](../data-studio/transforms/transforms-overview.md)
 - [CSV uploads](../databases/uploads.md)
 - [Editable tables](../data-modeling/editable-tables.md)
 - [Actions](../actions/introduction.md)

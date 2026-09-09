@@ -2,7 +2,6 @@
 title: Dependency graph
 summary: Visualize how your content connects and what depends on what in Metabase.
 redirect_from:
-  - /docs/latest/data-studio/dependencies/graph
   - /docs/latest/data-studio/dependency-graph
 ---
 

@@ -1,8 +1,6 @@
 ---
 title: Schema viewer
 summary: Visualize relationships between tables in your database using an entity-relationship diagram (ERD)
-redirect_from:
-  - /docs/latest/data-studio/schema-viewer
 ---
 
 # Schema viewer

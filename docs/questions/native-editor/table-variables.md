@@ -110,7 +110,7 @@ In each question, open the Variables sidebar and map `{% raw %}{{table}}{% endra
 - **Not available as dashboard filter parameters.** You can't connect a table variable to a dashboard filter widget. Table variables must be set directly on each question.
 - **SQL queries only.** Table variables are available in native SQL queries, not in the query builder.
 - **No input widget.** There's no input widget for people to plug in a table. You must select the table to insert into the variable from the variables sidebar.
-- **Not supported in transforms.** Table variables aren't available in [transforms](../../semantic-layer/transforms/transforms-overview.md) yet.
+- **Not supported in transforms.** Table variables aren't available in [transforms](../../data-studio/transforms/transforms-overview.md) yet.
 
 ## Further reading
 

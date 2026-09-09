@@ -1,8 +1,6 @@
 ---
 title: Segments
 summary: Create saved filters on tables so people can use consistent definitions when building queries.
-redirect_from:
-  - /docs/latest/data-studio/segments
 ---
 
 # Segments
@@ -21,7 +19,7 @@ To see all segments on a table, select the table in [Managing tables](./managing
 
 > If your instance is in read-only [remote sync](../installation-and-operation/remote-sync.md) mode, and you enabled sync of the [Library](./library.md), you will not be able to create segments on tables published in the Library while in read-only mode.
 
-Segments are created in [Data Studio](../semantic-layer/overview.md).
+Segments are created in [Data Studio](../data-studio/overview.md).
 
 1. Go to **Data Studio** by clicking the **grid icon** in top right of the screen and selecting **Data Studio**.
 2. In Data Studio, go to **Tables** in the left sidebar, and select the table to define a segment on.

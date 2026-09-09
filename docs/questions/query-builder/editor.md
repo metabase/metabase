@@ -35,7 +35,7 @@ To start building a question with the query builder, you need to select the data
 
 ![data picker](../images/data-picker.png)
 
-If your Metabase has the [Library collection](../../semantic-layer/library.md), then by default you'll only see the Data (tables) and Metrics from the library. To query other data sources, select "Browse all".
+If your Metabase has the [Library collection](../../data-studio/library.md), then by default you'll only see the Data (tables) and Metrics from the library. To query other data sources, select "Browse all".
 
 ![library data picker](../images/library-data-picker.png)
 

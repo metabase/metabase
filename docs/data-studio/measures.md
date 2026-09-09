@@ -1,8 +1,6 @@
 ---
 title: Measures
 summary: Create saved aggregations on tables so people can use consistent calculations when building queries.
-redirect_from:
-  - /docs/latest/data-studio/measures
 ---
 
 # Measures
@@ -17,7 +15,7 @@ People will see measures as options in the Summarize block of the [query builder
 
 > If your instance is in read-only [remote sync](../installation-and-operation/remote-sync.md) mode, and you enabled sync of the [Library](./library.md), you will not be able to create measures on tables published in the Library while in read-only mode.
 
-Measures are created in [Data Studio](../semantic-layer/overview.md).
+Measures are created in [Data Studio](../data-studio/overview.md).
 
 1. Go to **Data Studio** by clicking the **grid icon** in top right of the screen and selecting **Data Studio**.
 2. In Data Studio, go to **Tables** in the left sidebar, and select the table to define a measure on.

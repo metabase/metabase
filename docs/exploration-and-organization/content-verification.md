@@ -52,4 +52,4 @@ Dashboard verification status has no effect on its questions. Questions must be 
 ## Further reading
 
 - [Official collections](./collections.md#official-collections)
-- [Library](../semantic-layer/library.md)
+- [Library](../data-studio/library.md)

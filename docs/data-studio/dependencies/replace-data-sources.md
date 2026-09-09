@@ -1,8 +1,6 @@
 ---
 title: Replace data sources
 summary: Admins can swap out a table, model, or question and replace it with a different one across your entire Metabase.
-redirect_from:
-  - /docs/latest/data-studio/dependencies/replace-data-sources
 ---
 
 # Replace data sources

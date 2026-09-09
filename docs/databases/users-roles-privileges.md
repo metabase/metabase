@@ -144,7 +144,7 @@ GRANT metabase_model_persistence TO metabase;
 
 ## Privileges to enable transforms
 
-[Transforms](../semantic-layer/transforms/transforms-overview.md) let Metabase write query results back to your database. We suggest that you create a dedicated schema for your transforms. Metabase's database user will need to be able to create and drop transform tables. We recommend using a [writable connection](./writable-connection.md) and only granting write access to the user used for the writable connection.
+[Transforms](../data-studio/transforms/transforms-overview.md) let Metabase write query results back to your database. We suggest that you create a dedicated schema for your transforms. Metabase's database user will need to be able to create and drop transform tables. We recommend using a [writable connection](./writable-connection.md) and only granting write access to the user used for the writable connection.
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 
