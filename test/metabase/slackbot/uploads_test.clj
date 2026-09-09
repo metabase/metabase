@@ -23,10 +23,10 @@
 
 (defn- with-upload-mocks!
   "Run `body-fn` with configurable upload mocks and atoms that track upload and download calls."
-  [{:keys [uploads-enabled? can-create-upload? upload-result download-content db-id]
+  [{:keys [uploads-enabled? can-create-upload? upload-result upload-error download-content db-id]
     :or   {uploads-enabled?   false
            can-create-upload? true
-           upload-result      {:id 123 :name "uploaded_data"}
+           upload-result      {:id 123, :name "uploaded_data"}
            download-content   (.getBytes "col1,col2\nval1,val2")
            db-id              1}}
    body-fn]
@@ -40,7 +40,9 @@
        upload.impl/can-create-upload? (constantly can-create-upload?)
        upload.impl/create-csv-upload! (fn [params]
                                         (swap! upload-calls conj params)
-                                        upload-result)
+                                        (if upload-error
+                                          (throw upload-error)
+                                          upload-result))
        slackbot.client/download-file-stream (fn [_client url]
                                               (swap! download-calls conj url)
                                               (io/input-stream download-content))]
@@ -133,6 +135,30 @@
                            :timeout-ms 5000})
                   (is (empty? @ai-request-calls))
                   (is (= "I uploaded data.csv as the Metabase model Data (ID 456). I can help you query it."
+                         (:text (first @post-calls)))))))))))))
+
+(deftest ^:synchronized csv-upload-no-text-failure-test
+  (testing "POST /events with a failed CSV upload and no text responds directly without exposing the backend error"
+    (tu/with-slackbot-setup
+      (let [event-body (-> tu/base-dm-event
+                           (update :event merge {:subtype "file_share", :files [tu/slack-csv-file]})
+                           (update :event dissoc :text))]
+        (with-upload-mocks!
+          {:uploads-enabled? true
+           :upload-error     (ex-info "sensitive database details" {})}
+          (fn [_]
+            (tu/with-slackbot-mocks
+              {}
+              (fn [{:keys [post-calls ai-request-calls]}]
+                (let [response (mt/client :post 200 "metabot/slack/events"
+                                          (tu/slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk #(= 1 (count @post-calls))
+                           :done? true?
+                           :timeout-ms 5000})
+                  (is (empty? @ai-request-calls))
+                  (is (= "I couldn't upload data.csv because something went wrong. Please try again."
                          (:text (first @post-calls)))))))))))))
 
 (deftest ^:synchronized unsupported-file-skipped-test
