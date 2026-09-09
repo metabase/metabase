@@ -4,11 +4,9 @@ import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
 } from "metabase/metabot/state";
-import {
-  type DraftQuestionBuilder,
-  useQuestionFromOpts,
-} from "metabase/metadata-store";
-import { useDispatch, useSelector } from "metabase/redux";
+import { selectQuestionFromOpts } from "metabase/metadata-store";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import type {
   DraftTransformSource,
@@ -39,8 +37,8 @@ type UseSourceStateResult = {
  * Necessary for model references in a SQL transform to work correctly.
  */
 function normalizeSource(
+  state: State,
   source: DraftTransformSource,
-  buildQuestion: DraftQuestionBuilder,
 ): DraftTransformSource {
   if (source.type !== "query") {
     return source;
@@ -52,7 +50,9 @@ function normalizeSource(
     return source;
   }
 
-  const question = buildQuestion({ dataset_query: source.query });
+  const question = selectQuestionFromOpts(state, {
+    dataset_query: source.query,
+  });
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -73,7 +73,9 @@ export function useSourceState({
   initialSource,
 }: UseSourceStateProps): UseSourceStateResult {
   const dispatch = useDispatch();
-  const buildQuestion = useQuestionFromOpts();
+  // Read at call time: this normalizes on mount and in callbacks, never as a
+  // subscribed value.
+  const store = useStore();
 
   const suggestedTransform = useSelector((state) =>
     getMetabotSuggestedTransform(state, transformId),
@@ -84,7 +86,7 @@ export function useSourceState({
       transformId != null
         ? initialSource
         : (suggestedTransform?.source ?? initialSource);
-    return normalizeSource(rawSource, buildQuestion);
+    return normalizeSource(store.getState(), rawSource);
   });
 
   const proposedSource = useMemo(() => {
@@ -92,10 +94,10 @@ export function useSourceState({
       suggestedTransform != null &&
       !isSameSource(suggestedTransform.source, source)
     ) {
-      return normalizeSource(suggestedTransform.source, buildQuestion);
+      return normalizeSource(store.getState(), suggestedTransform.source);
     }
     return undefined;
-  }, [source, suggestedTransform, buildQuestion]);
+  }, [source, suggestedTransform, store]);
 
   const isDirty = useMemo(() => {
     return (
@@ -114,7 +116,7 @@ export function useSourceState({
 
   const acceptProposed = () => {
     if (suggestedTransform != null) {
-      setSource(normalizeSource(suggestedTransform.source, buildQuestion));
+      setSource(normalizeSource(store.getState(), suggestedTransform.source));
       dispatch(deactivateSuggestedTransform(suggestedTransform.id));
     }
   };
