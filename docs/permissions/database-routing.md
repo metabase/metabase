@@ -86,7 +86,7 @@ To see if database routing is working:
 1. Log in as an admin.
 2. Create a question that queries the router database.
 3. Create a user account and add the user attribute you associated with your router database. Set the value as the slug of one of your destination databases.
-4. In a private/incognito tab, log in as the user and view the question you created. You should see data from the destination database associated with person's user attribute, not the data in the router database.
+4. In a private/incognito tab, log in as the user and view the question you created. You should see data from the destination database associated with the person's user attribute, not the data in the router database.
 
 ## Adding destination databases with the API
 

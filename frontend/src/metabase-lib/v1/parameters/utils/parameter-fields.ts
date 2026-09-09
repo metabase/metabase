@@ -1,6 +1,6 @@
-import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   FieldFilterUiParameter,
+  ParameterField,
   UiParameter,
 } from "metabase-lib/v1/parameters/types";
 
@@ -14,7 +14,7 @@ export const hasFields = (parameter: UiParameter) => {
   return isFieldFilterUiParameter(parameter) && parameter.fields.length > 0;
 };
 
-export const getFields = (parameter: UiParameter): Field[] => {
+export const getFields = (parameter: UiParameter): ParameterField[] => {
   if (isFieldFilterUiParameter(parameter) && hasFields(parameter)) {
     return parameter.fields;
   } else {
@@ -23,5 +23,5 @@ export const getFields = (parameter: UiParameter): Field[] => {
 };
 
 export const getNonVirtualFields = (parameter: UiParameter) => {
-  return getFields(parameter).filter((field) => !field.isVirtual());
+  return getFields(parameter).filter((field) => typeof field.id === "number");
 };

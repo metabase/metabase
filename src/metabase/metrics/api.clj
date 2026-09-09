@@ -11,7 +11,6 @@
    [metabase.metrics.db :as metrics.db]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
-   [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -52,10 +51,10 @@
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
 (defn- count-metrics []
-  (metrics.db/metric-card-count (queries/visible-metric-cards-where-clause)))
+  (metrics.db/visible-metric-card-count))
 
 (defn- select-metrics [limit offset]
-  (-> (metrics.db/metric-cards-page (queries/visible-metric-cards-where-clause) limit offset)
+  (-> (metrics.db/visible-metric-cards-page limit offset)
       (t2/hydrate :collection)))
 
 (api.macros/defendpoint :get "/"

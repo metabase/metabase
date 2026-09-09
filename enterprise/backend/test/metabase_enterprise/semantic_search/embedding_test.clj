@@ -17,9 +17,12 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embeddings.provider :as embeddings.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -378,6 +381,205 @@
               (is (= "Bearer embedding-api-key" (get-in @captured [:headers "Authorization"])))
               (is (nil? (get-in @captured [:headers "x-metabase-instance-token"]))))))))))
 
+(deftest embedding-endpoints-honor-llm-allowed-networks-test
+  ;; IP literals throughout: the resolver goes through real DNS. `capture` stands in for clj-http far enough to
+  ;; run the request's `:dns-resolver` on its host, which is where the policy is enforced.
+  (let [mock-response {:data  [{:object    "embedding"
+                                :embedding (encode-floats-to-base64 [1.0 2.0 3.0 4.0])
+                                :index     0}]
+                       :model "test-model"
+                       :usage {:prompt_tokens 1 :total_tokens 1}}
+        model         {:model-name "test-model" :vector-dimensions 4}
+        captured      (atom nil)
+        capture       (fn [url opts]
+                        (some-> ^org.apache.http.conn.DnsResolver (:dns-resolver opts)
+                                (.resolve (u.http/->hostname url)))
+                        (reset! captured (assoc opts :url url))
+                        {:status  200
+                         :headers {"Content-Type" "application/json"}
+                         :body    (json/encode mock-response)})
+        embed         (fn [provider]
+                        (embedding/get-embedding (assoc model :provider provider) "text" {:record-tokens? false}))
+        rejected      (fn [provider]
+                        (try (embed provider)
+                             nil
+                             (catch clojure.lang.ExceptionInfo e (ex-data e))))
+        loopback      (constantly "http://127.0.0.1:9")]
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (testing "the OpenAI base URL is admin input and is refused on an internal network"
+        (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
+                                    llm.settings/llm-openai-api-base-url loopback
+                                    http/post                            capture]
+          (is (=? {:status-code 400 :status 400 :error-code :llm-host-not-allowed :llm-host "127.0.0.1"}
+                  (rejected "openai")))))
+      (testing "so is the embedding service URL"
+        (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url loopback
+                                    semantic.settings/ee-embedding-service-api-key  (constantly "key")
+                                    http/post                                       capture]
+          (is (=? {:status-code 400 :error-code :llm-host-not-allowed} (rejected "ai-service")))))
+      (testing "a permitted OpenAI base URL goes out with the policy-enforcing DNS resolver on the connection"
+        (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
+                                    llm.settings/llm-openai-api-base-url (constantly "https://8.8.8.8")
+                                    http/post                            capture]
+          (embed "openai")
+          (is (= "https://8.8.8.8/v1/embeddings" (:url @captured)))
+          (is (= :none (:redirect-strategy @captured)))
+          (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))
+      (testing "a connection-time DNS policy rejection has the same 400 shape as the upfront check"
+        (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
+                                    llm.settings/llm-openai-api-base-url (constantly "https://8.8.8.8")
+                                    http/post                            (fn [& _]
+                                                                           (throw (ex-info "blocked"
+                                                                                           {:ssrf true})))]
+          (is (=? {:status-code 400 :api-error true :error-code :llm-host-not-allowed}
+                  (rejected "openai")))))
+      (testing "a stored AI service URL gets the default policy: private is refused"
+        (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                    llm.settings/ai-service-base-url                (constantly "http://10.0.0.1:9")
+                                    premium-features/premium-embedding-token        (constantly "mock-token")
+                                    http/post                                       capture]
+          (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
+                  (rejected "ai-service")))))
+      (testing "an AI service URL the environment names is deployment configuration: its floor admits private"
+        (mt/with-premium-features #{:metabot-v3}
+          (mt/with-temp-env-var-value! [mb-ai-service-base-url "http://10.0.0.1:9"]
+            (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                        premium-features/premium-embedding-token        (constantly "mock-token")
+                                        http/post                                       capture]
+              (embed "ai-service")
+              (is (= "http://10.0.0.1:9/v1/embeddings" (:url @captured)))
+              (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured)))))))
+      (testing "the environment-supplied floor still refuses loopback"
+        (mt/with-premium-features #{:metabot-v3}
+          (mt/with-temp-env-var-value! [mb-ai-service-base-url "http://127.0.0.1:9"]
+            (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                        premium-features/premium-embedding-token        (constantly "mock-token")
+                                        http/post                                       capture]
+              (is (=? {:status-code 400 :error-code :llm-host-not-allowed}
+                      (rejected "ai-service")))))))
+      (testing "an embedding service URL the environment names is deployment configuration: private is fine"
+        (mt/with-temp-env-var-value! [mb-ee-embedding-service-base-url "http://10.0.0.1:9"]
+          (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-api-key (constantly "key")
+                                      http/post                                      capture]
+            (embed "ai-service")
+            (is (= "http://10.0.0.1:9/v1/embeddings" (:url @captured)))
+            (is (instance? org.apache.http.conn.DnsResolver (:dns-resolver @captured))))))
+      (testing "the embedding service URL is checked on write as well"
+        (mt/with-premium-features #{}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"not allowed to connect"
+               (semantic.settings/ee-embedding-service-base-url! "http://127.0.0.1:9"))))))
+    (testing "under :allow-all an internal OpenAI base URL goes out on clj-http's default resolver"
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (mt/with-dynamic-fn-redefs [llm.settings/llm-openai-api-key      (constantly "sk-test")
+                                    llm.settings/llm-openai-api-base-url loopback
+                                    http/post                            capture]
+          (embed "openai")
+          (is (= "http://127.0.0.1:9/v1/embeddings" (:url @captured)))
+          (is (not (contains? @captured :dns-resolver))))))))
+
+(deftest embedding-service-base-url-normalizes-whitespace-test
+  (mt/with-temporary-setting-values [ee-embedding-service-base-url nil]
+    (testing "new writes"
+      (semantic.settings/ee-embedding-service-base-url! "  \t ")
+      (is (nil? (semantic.settings/ee-embedding-service-base-url))
+          "whitespace clears the setting instead of leaving it looking configured")
+      (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+        (semantic.settings/ee-embedding-service-base-url! "  https://embed.example.com/v1  ")
+        (is (= "https://embed.example.com/v1" (semantic.settings/ee-embedding-service-base-url)))))
+    (testing "a whitespace-only row written by an older version"
+      (setting/set-value-of-type! :string :ee-embedding-service-base-url "  \t ")
+      (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url (constantly "https://ai.example.com")]
+        (is (= "https://ai.example.com/v1/embeddings"
+               (embedding/embedder-circuit-endpoint {:provider "ai-service"})))))
+    (testing "a whitespace-only environment value"
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-base-url "  \t "]
+        (mt/with-dynamic-fn-redefs [llm.settings/ai-service-base-url (constantly "https://ai.example.com")]
+          (is (= "https://ai.example.com/v1/embeddings"
+                 (embedding/embedder-circuit-endpoint {:provider "ai-service"}))))))))
+
+(deftest embedding-service-instance-token-only-goes-to-a-deployment-endpoint-test
+  (testing (str "The instance token is deployment credential rather than a setting anyone can enter, so it only "
+                "travels to an endpoint the deployment named.")
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"
+                                       ee-embedding-service-api-key  nil]
+      (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "mock-token")]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"set in the application database and has no API key"
+             (embedding/embedder-circuit-endpoint {:provider "ai-service"})))))
+    (testing "the same URL from the environment is the deployment's own, and still authenticates with the token"
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-base-url "https://embed.example.com"]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-api-key (constantly nil)
+                                      premium-features/premium-embedding-token       (constantly "mock-token")
+                                      http/post (fn [url opts]
+                                                  (reset! captured {:url url :headers (:headers opts)})
+                                                  {:status 200
+                                                   :body   (json/encode
+                                                            {:data  [{:object    "embedding"
+                                                                      :embedding (encode-floats-to-base64 [1.0 2.0 3.0])
+                                                                      :index     0}]
+                                                             :usage {:prompt_tokens 1 :total_tokens 1}})})]
+            (embedding/get-embedding {:provider "ai-service" :model-name "m" :vector-dimensions 3}
+                                     "text" {:record-tokens? false})
+            (is (= "mock-token" (get-in @captured [:headers "x-metabase-instance-token"])))))))))
+
+(deftest embedding-service-base-url-refuses-to-move-an-environment-key-test
+  (testing "a key the environment holds cannot be re-supplied through this API, so its URL is not moved here either"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"]
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "embed-env-key"]
+        (is (=? {:message "The embedding service API key comes from an environment variable. Set its base URL there too."}
+                (mt/user-http-request :crowberto :put 400 "setting/ee-embedding-service-base-url"
+                                      {:value "https://elsewhere.example.com"})))
+        (is (= "https://embed.example.com" (semantic.settings/ee-embedding-service-base-url))))))
+  (testing "and startup configuration, which has no request, is left alone"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"]
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "embed-env-key"]
+        (semantic.settings/ee-embedding-service-base-url! "https://elsewhere.example.com")
+        (is (= "https://elsewhere.example.com" (semantic.settings/ee-embedding-service-base-url)))))))
+
+(deftest embedding-service-base-url-allows-unchanged-bulk-setting-test
+  (testing "resubmitting the same destination with an environment key does not roll back other settings"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"
+                                       ee-embedding-model-dimensions 1024]
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "embed-env-key"]
+        (is (nil? (mt/user-http-request :crowberto :put 204 "setting"
+                                        {:ee-embedding-service-base-url "  https://embed.example.com  "
+                                         :ee-embedding-model-dimensions 768})))
+        (is (= "https://embed.example.com" (semantic.settings/ee-embedding-service-base-url)))
+        (is (= 768 (semantic.settings/ee-embedding-model-dimensions)))))))
+
+(deftest embedding-service-base-url-refuses-to-move-a-stored-key-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://8.8.8.8"
+                                       ee-embedding-service-api-key  "stored-key"
+                                       ee-embedding-model-dimensions 1024]
+      (mt/with-user-in-groups [group {:name "Embedding settings managers"}
+                               user [group]]
+        (perms/grant-application-permissions! group :setting)
+        (testing "a Settings Manager cannot redirect an existing key, or clear its destination"
+          (doseq [url ["https://1.1.1.1" nil]]
+            (is (=? {:message "Clear the embedding service API key before changing its base URL, then set a replacement key."}
+                    (mt/user-http-request :crowberto :put 400 "setting/ee-embedding-service-base-url" {:value url})))
+            ;; The generic settings API masks validation errors for non-admins.
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request user :put 403 "setting/ee-embedding-service-base-url" {:value url}))))
+          (is (= "https://8.8.8.8" (semantic.settings/ee-embedding-service-base-url)))
+          (is (= "stored-key" (semantic.settings/ee-embedding-service-api-key))))
+        (testing "an unchanged URL in a bulk write still permits unrelated changes"
+          (is (nil? (mt/user-http-request user :put 204 "setting"
+                                          {:ee-embedding-service-base-url "  https://8.8.8.8  "
+                                           :ee-embedding-model-dimensions 768})))
+          (is (= 768 (semantic.settings/ee-embedding-model-dimensions))))
+        (testing "a replacement connection can be configured after explicitly clearing the old key"
+          (is (nil? (mt/user-http-request user :put 204 "setting/ee-embedding-service-api-key" {:value nil})))
+          (is (nil? (mt/user-http-request user :put 204 "setting/ee-embedding-service-base-url"
+                                          {:value "https://1.1.1.1"})))
+          (is (nil? (mt/user-http-request user :put 204 "setting/ee-embedding-service-api-key"
+                                          {:value "replacement-key"})))
+          (is (= "https://1.1.1.1" (semantic.settings/ee-embedding-service-base-url)))
+          (is (= "replacement-key" (semantic.settings/ee-embedding-service-api-key))))))))
+
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
@@ -443,7 +645,7 @@
             (with-redefs [semantic.settings/ee-embedding-provider           (constantly provider)
                           semantic.settings/ee-embedding-model              (constantly "mock-model")
                           semantic.settings/openai-api-key                  (constantly "xyz")
-                          semantic.settings/openai-api-base-url             (constantly "xyz")
+                          semantic.settings/openai-api-base-url             (constantly "https://mock-openai")
                           semantic.settings/ee-embedding-service-base-url   (constantly "http://mock-embedding-service")
                           semantic.settings/ee-embedding-service-api-key    (constantly "mock-key")
                           http/post (fn post-mock [_url {:keys [body]}]

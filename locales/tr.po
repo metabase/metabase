@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-08-26 19:37+0000\n"
+"POT-Creation-Date: 2026-09-01 05:46+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Turkish\n"
 "Language: tr_TR\n"
-"PO-Revision-Date: 2026-09-01 05:39\n"
+"PO-Revision-Date: 2026-09-08 05:41\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -248,12 +248,14 @@ msgstr "Bağlantıyı düzenle"
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.tsx
 #: frontend/src/metabase/comments/components/Comments/Comments.tsx
 #: frontend/src/metabase/common/components/ErrorPages/ErrorDiagnosticModal.tsx
+#: frontend/src/metabase/common/components/SidebarHeader/SidebarHeader.tsx
 #: frontend/src/metabase/common/components/Sidesheet/Sidesheet.tsx
 #: frontend/src/metabase/common/components/Toaster/Toaster.tsx
 #: frontend/src/metabase/common/components/upsells/components/UpgradeModal/UpgradeModalError.tsx
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/PulsesListSidebar.tsx
 #: frontend/src/metabase/detail-view/components/DetailViewSidesheet/Sidesheet/Sidesheet.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ExplorationComments.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/TimelineEventsSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobTriggersSidebar.tsx
@@ -433,6 +435,7 @@ msgstr "İptal"
 #: frontend/src/metabase/data-studio/segments/pages/SegmentDetailPage/SegmentDetailPage.tsx
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/ProviderConnectionForm.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/CustomMappingModal/CustomMappingModal.tsx
@@ -1780,11 +1783,11 @@ msgstr "Varsayılan politikayı düzenle (şu anda: {0})"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Reset all to default?"
-msgstr ""
+msgstr "Tümünü varsayılana sıfırlamak ister misiniz?"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "This will reset all database caching policies to their default values."
-msgstr ""
+msgstr "Bu işlem tüm veritabanı önbellekleme politikalarını varsayılan değerlerine sıfırlar."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Reset all to default"
@@ -1792,7 +1795,7 @@ msgstr "Tümünü varsayılana sıfırla"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Could not reset the caching policies."
-msgstr ""
+msgstr "Önbellekleme politikaları sıfırlanamadı."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 #: frontend/src/metabase/admin/performance/components/StrategyEditorForDatabases.tsx
@@ -1807,11 +1810,11 @@ msgstr "Veri önbellekleme ayarları"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Speed up queries by caching results with a global policy or database-specific policies."
-msgstr ""
+msgstr "Global bir politika veya veritabanına özel politikalarla sonuçları önbelleğe alarak sorguları hızlandırın."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Search by name or policy…"
-msgstr ""
+msgstr "Ada veya politikaya göre ara…"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Untitled database"
@@ -1876,11 +1879,11 @@ msgstr "Önbellekleme"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicySidePanel/PolicySidePanel.tsx
 msgid "Previous item"
-msgstr ""
+msgstr "Önceki öğe"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicySidePanel/PolicySidePanel.tsx
 msgid "Next item"
-msgstr ""
+msgstr "Sonraki öğe"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicyTable/PolicyTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CleanupCollectionModal/CleanupCollectionTable.tsx
@@ -1946,7 +1949,7 @@ msgstr "Politika"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicyTable/PolicyTable.tsx
 msgid "Caching policies"
-msgstr ""
+msgstr "Önbellekleme politikaları"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx
 msgid "Refresh cache automatically"
@@ -1977,7 +1980,7 @@ msgstr "Yeni sonuçlar ne zaman alınsın"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
 msgid "Caching policy"
-msgstr ""
+msgstr "Önbellekleme politikası"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/IllustrationWidget/IllustrationWidget.tsx
@@ -2000,11 +2003,11 @@ msgstr "Tür"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: frontend/src/embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/LinkOptions.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/constants.ts
 #: frontend/src/metabase/monitor/tools/utils.ts
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: metabase/revisions/models/revision/diff.clj
 msgid "Dashboard"
 msgstr "Pano"
@@ -2016,11 +2019,11 @@ msgstr "Pano"
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/context/SdkQuestionProvider.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/DetailsSection.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationsTable/NotificationsTable.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
 msgid "Question"
 msgstr "Soru"
@@ -2032,11 +2035,11 @@ msgstr "Pano ve Soru önbellekleme"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "These dashboards and questions have custom caching policies that override default or database-level policies."
-msgstr ""
+msgstr "Bu panolar ve sorular, varsayılan veya veritabanı düzeyi politikaları geçersiz kılan özel önbellekleme politikalarına sahip."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "Search by name or collection…"
-msgstr ""
+msgstr "Ada veya koleksiyona göre ara…"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "No dashboards or questions have their own caching policies yet."
@@ -2044,7 +2047,7 @@ msgstr "Henüz hiçbir Pano veya Soru kendi önbellekleme politikasına sahip de
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "Untitled dashboard"
-msgstr ""
+msgstr "Başlıksız pano"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/utils.tsx
@@ -2865,14 +2868,14 @@ msgstr "Veriler düzgün şekilde alınamadı: {0}"
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
 #: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
 #: metabase/collections/models/collection.clj
 msgid "Data"
 msgstr "Veri"
@@ -2885,7 +2888,6 @@ msgstr "Veri"
 #: frontend/src/metabase/browse/metrics/BrowseMetrics.tsx
 #: frontend/src/metabase/common/components/Pickers/MiniPicker/components/MiniPickerItemList.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-#: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 #: frontend/src/metabase/home/components/Onboarding/items/DataStudioItem.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
@@ -3310,7 +3312,7 @@ msgstr "Alanlar"
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.tsx
 #: frontend/src/metabase/reference/segments/SegmentList/SegmentList.tsx
 #: frontend/src/metabase/reference/segments/SegmentSidebar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Segments"
 msgstr "Segmentler"
 
@@ -3698,10 +3700,9 @@ msgstr "Replike edilecek şemaları seçin"
 
 #: enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
 #: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/driver/redshift.clj metabase/driver/util.clj
 msgid "All"
 msgstr "Tümü"
@@ -4178,6 +4179,7 @@ msgstr "Filtre"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/displayGroups.ts
 #: enterprise/frontend/src/metabase-enterprise/replacement/pages/MigrateModelsPage/PageHeader/PageHeader.tsx
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/pages/PythonLibraryEditorPage/PythonLibraryEditorHeader.tsx
+#: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/utils.ts
 #: frontend/src/metabase/common/components/TransformCollectionName.tsx
 #: frontend/src/metabase/data-studio/app/pages/TransformsSectionLayout/TransformsSectionLayout.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
@@ -4186,7 +4188,6 @@ msgstr "Filtre"
 #: frontend/src/metabase/transforms/components/TransformsHeader/TransformsHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunSidebar.tsx
 #: frontend/src/metabase/transforms/pages/TransformGraphRunListPage/TransformGraphRunSidebar/TransformGraphRunSidebar.tsx
-#: frontend/src/metabase/transforms/utils.ts
 #: metabase/collections/models/collection/root.clj
 msgid "Transforms"
 msgstr "Dönüşümler"
@@ -4521,14 +4522,16 @@ msgid "Transform"
 msgstr "Dönüşüm"
 
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: metabase/revisions/models/revision/diff.clj
 msgid "Document"
 msgstr "Doküman"
 
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/explorations/constants.ts
+#: metabase/explorations/composite.clj
 #: metabase/revisions/models/revision/diff.clj
 msgid "Segment"
 msgstr "Segment"
@@ -5367,14 +5370,13 @@ msgstr "CLI analitikleri"
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/ConversationsByDayChart.tsx
 #: frontend/src/metabase/common/utils/fields.ts
 #: frontend/src/metabase/embedding/mcp/McpFeedbackArea.tsx
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 #: frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/echarts/pie/constants.ts
-#: frontend/src/metabase/visualizations/echarts/tooltip/utils.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/pie/constants.ts
+#: frontend/src/metabase/viz-core/echarts/tooltip/utils.ts
 msgid "Other"
 msgstr "Diğer"
 
@@ -5628,7 +5630,7 @@ msgid "Submitted by {0}"
 msgstr "Gönderen: {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "SQL query"
 msgstr "SQL sorgusu"
@@ -5770,7 +5772,7 @@ msgstr "Son 30 gün"
 #: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateShortcutPicker/constants.ts
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Previous month"
 msgstr "Önceki ay"
@@ -6075,8 +6077,8 @@ msgstr "Konuşma bulunamadı"
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationsPage/ConversationsTable.tsx
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
 #: frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
 msgid "Title"
 msgstr "Başlık"
 
@@ -6097,7 +6099,6 @@ msgstr "Profil"
 #: frontend/src/metabase/actions/constants.ts
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePickerBody/SingleDatePickerBody.tsx
 #: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
@@ -6222,7 +6223,7 @@ msgstr "Bilgi"
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
 msgid "Description"
 msgstr "Açıklama"
 
@@ -7628,6 +7629,9 @@ msgstr "Bu seçeneğin çalışması için kullanıcılarınızın bazı özelli
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Summary"
 msgstr "Özet"
@@ -8894,9 +8898,7 @@ msgstr "ve"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] ""
-msgstr[1] ""
+msgstr "tablo"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9037,10 +9039,10 @@ msgstr "Sekmeyi kapat"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/settings.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 #: metabase/driver/common.clj metabase/driver/redshift.clj
 msgid "Columns"
 msgstr "Sütunlar"
@@ -10104,10 +10106,10 @@ msgstr "Sıfırla"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ChartColorSettings/ChartColorSettings.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/MetabotLayoutSetting.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Auto"
 msgstr "Otomatik"
 
@@ -10634,7 +10636,7 @@ msgstr "Bir kırılım boyunca bir sütunun kümülatif toplamı."
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithSource.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/utils.ts
-#: frontend/src/metabase/visualizations/lib/errors.ts
+#: frontend/src/metabase/viz-core/lib/errors.ts
 msgid "column"
 msgstr "sütun"
 
@@ -10666,16 +10668,16 @@ msgstr "Farklı bir satırdan alınacak değer."
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/static-viz/components/TreemapChart/legend.ts
 #: frontend/src/metabase/visualizations/components/ChartTooltip/TooltipRow/TooltipRow.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/waterfall/model/axis.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/waterfall/model/dataset.ts
-#: frontend/src/metabase/visualizations/echarts/graph/sankey/option/tooltip.tsx
-#: frontend/src/metabase/visualizations/echarts/graph/treemap/model/tooltip.ts
-#: frontend/src/metabase/visualizations/echarts/pie/constants.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/CartesianChart/events.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/TreemapBreadcrumb.tsx
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/waterfall/model/axis.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/waterfall/model/dataset.ts
+#: frontend/src/metabase/viz-core/echarts/graph/sankey/option/tooltip.tsx
+#: frontend/src/metabase/viz-core/echarts/graph/treemap/model/tooltip.ts
+#: frontend/src/metabase/viz-core/echarts/pie/constants.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Total"
 msgstr "Toplam"
 
@@ -11630,7 +11632,6 @@ msgstr "Kontrol edilecek sütun veya değer."
 
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/querying/drills/utils/pivot-drill.tsx
@@ -12801,7 +12802,7 @@ msgid "An audit log of MCP and Agent API client registrations and the authorizat
 msgstr "MCP ve Agent API istemci kayıtlarının ve kullanıcıların onayladığı veya reddettiği yetkilendirme kararlarının denetim günlüğü."
 
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
 msgid "All events"
 msgstr "Tüm etkinlikler"
 
@@ -13999,7 +14000,7 @@ msgstr "Kaydedildi"
 
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 msgid "Cache invalidation policy"
-msgstr ""
+msgstr "Önbellek geçersiz kılma politikası"
 
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 msgid "This determines how long cached results will be stored."
@@ -14192,6 +14193,7 @@ msgstr "Grup, koleksiyondaki öğeleri görüntüleyebilir, kaydedebilir, düzen
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsHelp/CollectionPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/constants/collections-permissions.ts
 #: frontend/src/metabase/archive/hooks/use-restore.ts
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 #: frontend/src/metabase/explorations/pages/ExplorationPage.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionListItem.tsx
@@ -15217,7 +15219,7 @@ msgstr "Muhtemelen bu ayarı {0} olarak değiştirmelisiniz."
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
 #: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "None"
 msgstr "Yok"
 
@@ -15965,17 +15967,17 @@ msgid "Dates and times"
 msgstr "Tarihler ve saatler"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Date style"
 msgstr "Tarih stili"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Abbreviate days and months"
 msgstr "Günleri ve ayları kısalt"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Time style"
 msgstr "Saat stili"
 
@@ -15984,23 +15986,23 @@ msgid "Numbers"
 msgstr "Sayılar"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Separator style"
 msgstr "Ayırıcı stili"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Currency"
 msgstr "Para birimi"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Unit of currency"
 msgstr "Para birimi"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Currency label style"
 msgstr "Para birimi etiket stili"
 
@@ -17240,9 +17242,10 @@ msgid "Edit permissions"
 msgstr "İzinleri düzenle"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionTimeline.tsx
+#: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/CardEmbedMenuDropdown.tsx
 #: frontend/src/metabase/query_builder/components/view/QuestionTimelineWidget/QuestionTimelineWidget.tsx
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
 #: frontend/src/metabase/timelines/collections/components/TimelineListModal/TimelineListModal.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
 msgid "Events"
 msgstr "Olaylar"
 
@@ -18242,7 +18245,7 @@ msgstr "Benzersiz değerler alınıyor..."
 
 #: frontend/src/metabase/common/components/MetadataInfo/QueryColumnFingerprintInfo/NumberFingerprint.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Average"
 msgstr "Ortalama"
@@ -18254,9 +18257,9 @@ msgstr "Ortalama"
 #: frontend/src/metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberFilterPicker.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Min"
 msgstr "Dakika"
@@ -18268,9 +18271,9 @@ msgstr "Dakika"
 #: frontend/src/metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberFilterPicker.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Max"
 msgstr "Maks"
@@ -18332,13 +18335,6 @@ msgstr "Değişiklikleri önizle"
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsModal.tsx
 msgid "The questions were successfully moved into their dashboards"
 msgstr "Sorular başarıyla panolarına taşındı"
-
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
-#: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
-#: metabase/lib/stage.cljc metabase/xrays/automagic_dashboards/core.clj
-#: resources/automagic_dashboards/table/example.yaml
-msgid "Native query"
-msgstr "Yerel sorgu"
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 #, javascript-format
@@ -18880,7 +18876,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "Dakika"
 msgstr[1] "{0} Dakika"
 
@@ -19143,6 +19139,14 @@ msgstr "Bunun ve diğer Pro özelliklerin 14 günlük ücretsiz denemesini alın
 msgid "You have unsaved changes."
 msgstr "Kaydedilmemiş değişiklikleriniz var."
 
+#: frontend/src/metabase/common/hooks/use-metadata-toasts.ts
+msgid "Couldn't undo"
+msgstr "Geri alınamadı"
+
+#: frontend/src/metabase/common/hooks/use-metadata-toasts.ts
+msgid "Change undone"
+msgstr "Değişiklik geri alındı"
+
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/dashboard/actions/trash.ts
 #: frontend/src/metabase/timelines/common/hooks/use-set-timeline.ts
@@ -19362,7 +19366,6 @@ msgid "Income"
 msgstr "Gelir"
 
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 msgid "Numeric"
 msgstr "Sayısal"
 
@@ -19797,10 +19800,6 @@ msgstr "Bu model için eylem yok"
 #: frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/nested.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
@@ -19810,6 +19809,10 @@ msgstr "Bu model için eylem yok"
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/nested.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Display"
 msgstr "Görünüm"
 
@@ -19828,10 +19831,10 @@ msgstr "Düğme"
 #: frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/AnotherColumnForm.tsx
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/StaticNumberForm.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Label"
 msgstr "Etiket"
 
@@ -21002,9 +21005,9 @@ msgstr "Yenilenmesine kalan süre"
 
 #: frontend/src/metabase/dashboard/components/RefreshWidget/options.ts
 #: frontend/src/metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Off"
 msgstr "Kapalı"
 
@@ -21273,10 +21276,10 @@ msgid "Horizontal Alignment"
 msgstr "Yatay Hizalama"
 
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Left"
 msgstr "Sol"
 
@@ -21285,10 +21288,10 @@ msgid "Center"
 msgstr "Ortala"
 
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Right"
 msgstr "Sağ"
 
@@ -21383,6 +21386,7 @@ msgid "View your database connections"
 msgstr "Veritabanı bağlantılarınızı görüntüleyin"
 
 #: frontend/src/metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: frontend/src/metabase/reference/segments/SegmentSidebar.tsx
 msgid "Revision history"
 msgstr "Revizyon geçmişi"
@@ -22119,8 +22123,8 @@ msgstr "Üzgünüm, bu veri kaynağını bulamadık. Bunun yerine verilerinizi C
 #: frontend/src/metabase/databases/components/DatabaseFormError/DatabaseFormError.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Hide"
 msgstr "Gizle"
 
@@ -22525,23 +22529,6 @@ msgid "Remove public link"
 msgstr "Herkese açık bağlantıyı kaldır"
 
 #: frontend/src/metabase/documents/components/DocumentPage.tsx
-#, javascript-format
-msgid "Untitled document - {0}"
-msgstr "Başlıksız doküman - {0}"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Document created"
-msgstr "Doküman oluşturuldu"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Document saved"
-msgstr "Doküman kaydedildi"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Error saving document"
-msgstr "Doküman kaydedilirken hata oluştu"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
 msgid "Where should we save this document?"
 msgstr "Bu dokümanı nereye kaydedelim?"
 
@@ -22572,6 +22559,14 @@ msgstr "Soru yüklenemedi"
 #: frontend/src/metabase/documents/components/EmbedQuestionSettingsSidebar.tsx
 msgid "Visualize as"
 msgstr "Şu şekilde görselleştir"
+
+#: frontend/src/metabase/documents/components/EmbedTimelineSidebar.tsx
+msgid "Loading timeline events..."
+msgstr "Zaman çizelgesi etkinlikleri yükleniyor..."
+
+#: frontend/src/metabase/documents/components/EmbedTimelineSidebar.tsx
+msgid "Failed to load timeline events"
+msgstr "Zaman çizelgesi etkinlikleri yüklenemedi"
 
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/CardEmbedMenuDropdown.tsx
 msgid "Add supporting text"
@@ -22644,6 +22639,23 @@ msgstr "Yeni soru"
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/modals/NativeQueryModal.tsx
 msgid "Edit SQL Query"
 msgstr "SQL Sorgusunu Düzenle"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+#, javascript-format
+msgid "Untitled document - {0}"
+msgstr "Başlıksız doküman - {0}"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Document created"
+msgstr "Doküman oluşturuldu"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Document saved"
+msgstr "Doküman kaydedildi"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Error saving document"
+msgstr "Doküman kaydedilirken hata oluştu"
 
 #: frontend/src/metabase/embedding/components/ArchiveButton.tsx
 msgctxt "button that opens an actions dropdown e.g. Move this item to trash"
@@ -23680,7 +23692,9 @@ msgid "Embed an entire dashboard with multiple charts and filters"
 msgstr "Birden fazla grafik ve filtre içeren tam bir panoyu gömün"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/constants.ts
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/utils.ts
 #: frontend/src/metabase/rich_text_editing/tiptap/extensions/Command/utils.ts
+#: metabase/explorations/models/exploration_query_result.clj
 msgid "Chart"
 msgstr "Grafik"
 
@@ -23875,8 +23889,8 @@ msgstr "Grup eylemleri"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Show"
 msgstr "Göster"
 
@@ -23984,6 +23998,10 @@ msgstr "Tartışmalar"
 msgid "No discussions yet."
 msgstr "Henüz tartışma yok."
 
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
+msgid "Document your research findings here. You can add interesting charts to this summary by clicking \"Add to Summary\" from the chart's page..."
+msgstr "Araştırma bulgularınızı burada dokümante edin. Grafik sayfasından \"Özete ekle\"ye tıklayarak bu özete ilginç grafikler ekleyebilirsiniz..."
+
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 msgid "Failed to update star"
 msgstr "Yıldız güncellenemedi"
@@ -23996,6 +24014,16 @@ msgstr "Görünürlük güncellenemedi"
 #, javascript-format
 msgid "\"{0}\" hidden"
 msgstr "\"{0}\" gizlendi"
+
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+msgid "Failed to add to Summary"
+msgstr "Özete eklenemedi"
+
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#, javascript-format
+msgctxt "{0} is the document name"
+msgid "Added to {0}"
+msgstr "{0} öğesine eklendi"
 
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts
@@ -24027,6 +24055,10 @@ msgstr "Yıldızı kaldır"
 msgid "Add comment"
 msgstr "Yorum ekle"
 
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+msgid "Add to Summary"
+msgstr "Özete ekle"
+
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ExplorationGroupVisualization.tsx
 msgid "No charts in this group."
 msgstr "Bu grupta grafik yok."
@@ -24053,7 +24085,7 @@ msgid "Hide comments"
 msgstr "Yorumları gizle"
 
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/TimelineEventCard.tsx
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
 msgid "Timeline event card"
 msgstr "Zaman çizelgesi etkinlik kartı"
 
@@ -24066,10 +24098,6 @@ msgid "{0} event"
 msgid_plural "{0} events"
 msgstr[0] "{0} etkinlik"
 msgstr[1] "{0} etkinlik"
-
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/utils.ts
-msgid "(All)"
-msgstr "(Tümü)"
 
 #: frontend/src/metabase/explorations/components/NewExplorationChat/NewExplorationChat.tsx
 msgid "Failed to add research groups"
@@ -24119,20 +24147,6 @@ msgstr "Alanı kaldır"
 msgid "Modify which dimensions to see this metric by"
 msgstr "Bu Metriği hangi Boyutlara göre göreceğinizi değiştirin"
 
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-#: metabase/lib_metric/display_info.cljc
-msgid "Dimension"
-msgstr "Boyut"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-msgid "Modify which metrics to look at for this dimension"
-msgstr "Bu boyut için bakılacak metrikleri değiştirin"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-msgid "No related metrics."
-msgstr "İlgili metrik yok."
-
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 msgid "Failed to start research"
 msgstr "Araştırma başlatılamadı"
@@ -24142,15 +24156,8 @@ msgid "Research plan"
 msgstr "Araştırma planı"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
-msgid "+ Data"
-msgstr "+ Veri"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
-#: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
-#: frontend/src/metabase/metrics/components/MetricHeader/MetricTabs/MetricTabs.tsx
-#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/VerticalWell/PieVerticalWell.tsx
-msgid "Dimensions"
-msgstr "Boyutlar"
+msgid "+ Metrics"
+msgstr "+ Metrikler"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 msgid "Add events"
@@ -24185,14 +24192,6 @@ msgstr "Neyi araştırmak istiyorsunuz?"
 msgid "Research mode helps automate running and inspecting combinations of metrics, dimensions, and timelines so you can use your brain for analysis, not busy work."
 msgstr "Araştırma modu, metrik, boyut ve zaman çizelgelerinin kombinasyonlarını çalıştırmayı ve incelemeyi otomatikleştirir; böylece angarya yerine analiz için beyninizi kullanabilirsiniz."
 
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
-msgid "Add dimensions of interest to your research plan"
-msgstr "Araştırma planınıza ilginizi çeken boyutları ekleyin"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
-msgid "Search for a dimension"
-msgstr "Bir boyut ara"
-
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
 msgid "Add metrics to your research plan"
 msgstr "Araştırma planınıza metrik ekleyin"
@@ -24208,10 +24207,6 @@ msgstr "Araştırma planınıza etkinlik ekleyin"
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddTimelinesModal.tsx
 msgid "Search for a timeline"
 msgstr "Bir zaman çizelgesi ara"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
-msgid "Geo"
-msgstr "Coğrafi"
 
 #: frontend/src/metabase/explorations/components/NewExplorationEntry/NewExplorationEntry.tsx
 msgid "Manual setup"
@@ -24243,6 +24238,11 @@ msgstr "Tüm projeler"
 #, javascript-format
 msgid "New research - {0}"
 msgstr "Yeni araştırma - {0}"
+
+#: frontend/src/metabase/explorations/constants.ts
+#: metabase/explorations/composite.clj
+msgid "(All)"
+msgstr "(Tümü)"
 
 #: frontend/src/metabase/explorations/hooks/useCopyLink.ts
 msgid "Couldn't copy link"
@@ -24731,6 +24731,13 @@ msgstr "+ Yeni"
 #: frontend/src/metabase/metabot/components/NewMenuItemAIExploration.tsx
 msgid "AI exploration"
 msgstr "YZ keşfi"
+
+#: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
+#: metabase/lib/stage.cljc metabase/xrays/automagic_dashboards/core.clj
+#: resources/automagic_dashboards/table/example.yaml
+msgid "Native query"
+msgstr "Yerel sorgu"
 
 #: frontend/src/metabase/home/components/Onboarding/use-checklist-items.ts
 msgid "Set things up"
@@ -26041,14 +26048,6 @@ msgstr "JSON'un açılıp açılmayacağını seçin"
 msgid "Pick someone, or type an email"
 msgstr "Birini seçin veya bir e-posta yazın"
 
-#: frontend/src/metabase/metadata/hooks/useMetadataToasts.ts
-msgid "Couldn't undo"
-msgstr "Geri alınamadı"
-
-#: frontend/src/metabase/metadata/hooks/useMetadataToasts.ts
-msgid "Change undone"
-msgstr "Değişiklik geri alındı"
-
 #: frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/components/Search.tsx
 msgid "No results."
 msgstr "Sonuç yok."
@@ -26070,6 +26069,12 @@ msgstr "Aralıklara ayırma"
 #: frontend/src/metabase/metrics-viewer/components/FilterPopover/FilterPopoverContent.tsx
 msgid "No dimensions found"
 msgstr "Boyut bulunamadı"
+
+#: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
+#: frontend/src/metabase/metrics/components/MetricHeader/MetricTabs/MetricTabs.tsx
+#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/VerticalWell/PieVerticalWell.tsx
+msgid "Dimensions"
+msgstr "Boyutlar"
 
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 msgid "No shared dimensions found"
@@ -26151,9 +26156,9 @@ msgid "X-axis controls"
 msgstr "X ekseni kontrolleri"
 
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/CenterControls/CenterControls.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "X-axis"
 msgstr "X-ekseni"
 
@@ -26346,7 +26351,6 @@ msgid "true"
 msgstr "doğru"
 
 #: frontend/src/metabase/metrics/components/MetricDimensionGrid/MetricDimensionGrid.tsx
-#: metabase/explorations/blocks.clj
 #, javascript-format
 msgid "By {0}"
 msgstr "{0} tarafından"
@@ -27002,7 +27006,7 @@ msgstr "Kullanılabilir nesne yok"
 #: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateShortcutPicker/constants.ts
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Previous week"
 msgstr "Önceki hafta"
@@ -28195,7 +28199,7 @@ msgid "We don’t have any cached values for the connected fields. Try one of th
 msgstr "Bağlı alanlar için önbelleğe alınmış değerlerimiz yok. Diğer seçeneklerden birini deneyin veya bu widget'i bir arama kutusuna değiştirin."
 
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Values"
 msgstr "Değerler"
 
@@ -28474,8 +28478,8 @@ msgstr "Yalnızca detay görünümleri"
 #: frontend/src/metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/LinkEditor.tsx
 #: frontend/src/metabase/rich_text_editing/tiptap/extensions/Command/utils.ts
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
 #: frontend/src/metabase/visualizations/visualizations/Scalar/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Formatting"
 msgstr "Biçimlendirme"
 
@@ -28586,67 +28590,6 @@ msgstr "Bu, grselletirmenin gelitirme s fcr fcm fc"
 #: frontend/src/metabase/query_builder/components/chart-type-selector/ChartTypeOption/ChartTypeOption.tsx
 msgid "Dev"
 msgstr "Geliştirici"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-msgid "Event menu"
-msgstr "Etkinlik menüsü"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/common/components/EditEventModal/EditEventModal.tsx
-msgid "Edit event"
-msgstr "Etkinliği düzenle"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-msgid "Move event"
-msgstr "Olayı taşı"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
-msgid "Archive event"
-msgstr "Etkinliği arşivle"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineCard/TimelineCard.tsx
-msgid "Timeline card header"
-msgstr "Zaman çizelgesi kart başlığı"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Collection event illustration"
-msgstr "Koleksiyon etkinliği illüstrasyonu"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Add context to your time series charts"
-msgstr "Zaman serisi grafiklerinize bağlam ekleyin"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#, javascript-format
-msgid "Add events to {0} to show important milestones, launches, or anything else, right alongside your data."
-msgstr "Verilerinizin yanında önemli kilometre taşlarını, lansmanları veya başka herhangi bir şeyi göstermek için {0} içine etkinlikler ekleyin."
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#, javascript-format
-msgid "Events in {0} let you see important milestones, launches, or anything else, right alongside your data."
-msgstr "{0} içindeki etkinlikler, verilerinizin yanında önemli kilometre taşlarını, lansmanları veya başka herhangi bir şeyi görmenizi sağlar."
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelinePanel/TimelinePanel.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Create event"
-msgstr "Etkinlik oluştur"
-
-#: frontend/src/metabase/query_builder/components/timelines/containers/EditEventModal/EditEventModal.tsx
-msgid "Updated event"
-msgstr "Güncellenmiş etkinlik"
-
-#: frontend/src/metabase/query_builder/components/timelines/containers/NewEventModal/NewEventModal.tsx
-msgid "Created event"
-msgstr "Oluşturulan etkinlik"
 
 #: frontend/src/metabase/query_builder/components/view/ExecutionTime/ExecutionTime.tsx
 msgid "How long this query took"
@@ -28964,7 +28907,7 @@ msgid "Most"
 msgstr "Çoğu"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Some"
 msgstr "Bazıları"
 
@@ -29104,21 +29047,6 @@ msgstr "Şuna göre grupla"
 msgid "Summarize by"
 msgstr "Şuna göre özetle"
 
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events between {0} and {1}"
-msgstr "{0} ve {1} arasında olaylar"
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events in {0}"
-msgstr "{0} içindeki Etkinlikler"
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events on {0}"
-msgstr "{0} tarihindeki Etkinlikler"
-
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
 msgid "All Set! Your question is ready."
 msgstr "Hepsi tamam! Sorunuz hazır."
@@ -29168,8 +29096,8 @@ msgstr "Geçerli"
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/constants.ts
 #: frontend/src/metabase/querying/drills/utils/quick-filter-drill.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "On"
 msgstr "Açık"
 
@@ -30018,7 +29946,7 @@ msgid "Avg"
 msgstr "Ort"
 
 #: frontend/src/metabase/querying/drills/utils/summarize-column-drill.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 #: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/DateTime.yaml
@@ -31404,6 +31332,28 @@ msgid "Export in progress. Are you sure you want to leave?"
 msgstr "Dışa aktarma devam ediyor. Ayrılmak istediğinizden emin misiniz?"
 
 #: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Event menu"
+msgstr "Etkinlik menüsü"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/common/components/EditEventModal/EditEventModal.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Edit event"
+msgstr "Etkinliği düzenle"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Move event"
+msgstr "Olayı taşı"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Archive event"
+msgstr "Etkinliği arşivle"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
 msgid "Unarchive event"
 msgstr "Olayı arşivden çıkar"
 
@@ -31449,6 +31399,13 @@ msgid "Search for an event"
 msgstr "Etkinlik ara"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelinePanel/TimelinePanel.tsx
+msgid "Create event"
+msgstr "Etkinlik oluştur"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
 #: frontend/src/metabase/timelines/collections/components/TimelineListModal/TimelineListModal.tsx
 msgid "New timeline"
 msgstr "Yeni zaman çizelgesi"
@@ -31473,6 +31430,16 @@ msgstr "Arşivlenmiş zaman çizelgelerini görüntüle"
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
 msgid "Launch of v2.0"
 msgstr "V2.0'nin Başlatılması"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+msgid "Collection event illustration"
+msgstr "Koleksiyon etkinliği illüstrasyonu"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+msgid "Add context to your time series charts"
+msgstr "Zaman serisi grafiklerinize bağlam ekleyin"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
 #, javascript-format
@@ -31554,6 +31521,43 @@ msgstr "Varsayılan simge"
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 msgid "Archive timeline and all events"
 msgstr "Zaman çizelgesini ve tüm etkinlikleri arşivle"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineCard/TimelineCard.tsx
+msgid "Timeline card header"
+msgstr "Zaman çizelgesi kart başlığı"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#, javascript-format
+msgid "Add events to {0} to show important milestones, launches, or anything else, right alongside your data."
+msgstr "Verilerinizin yanında önemli kilometre taşlarını, lansmanları veya başka herhangi bir şeyi göstermek için {0} içine etkinlikler ekleyin."
+
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#, javascript-format
+msgid "Events in {0} let you see important milestones, launches, or anything else, right alongside your data."
+msgstr "{0} içindeki etkinlikler, verilerinizin yanında önemli kilometre taşlarını, lansmanları veya başka herhangi bir şeyi görmenizi sağlar."
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events between {0} and {1}"
+msgstr "{0} ve {1} arasında olaylar"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events in {0}"
+msgstr "{0} içindeki Etkinlikler"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events on {0}"
+msgstr "{0} tarihindeki Etkinlikler"
+
+#: frontend/src/metabase/timelines/questions/containers/EditEventModal/EditEventModal.tsx
+msgid "Updated event"
+msgstr "Güncellenmiş etkinlik"
+
+#: frontend/src/metabase/timelines/questions/containers/NewEventModal/NewEventModal.tsx
+msgid "Created event"
+msgstr "Oluşturulan etkinlik"
 
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 msgid "Failed to create collection"
@@ -33223,8 +33227,8 @@ msgid "{0} this question to drill-through."
 msgstr "Detaya inmek için bu soruyu {0}."
 
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Axes"
 msgstr "Eksenler"
 
@@ -33573,14 +33577,14 @@ msgid "Aggregation method for Other group"
 msgstr "Other grubu için toplulaştırma yöntemi"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Median"
 msgstr "Medyan"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 msgid "Standard deviation"
 msgstr "Standart sapma"
 
@@ -33602,7 +33606,7 @@ msgid "Add a range"
 msgstr "Bir aralık ekle"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Add another series"
 msgstr "Başka bir seri ekle"
 
@@ -33796,95 +33800,10 @@ msgstr "doğrudur"
 msgid "is false"
 msgstr "yanlıştır"
 
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Upper whisker"
-msgstr "Üst bıyık"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Q3 (75th percentile)"
-msgstr "Q3 (75. persentil)"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Mean"
-msgstr "Ortalama"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Q1 (25th percentile)"
-msgstr "Q1 (25. persentil)"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Lower whisker"
-msgstr "Alt bıyık"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "outlier"
-msgstr "aykırı değer"
-
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
-msgid "There is no data to display. Check the query to ensure there are non-null x-axis values."
-msgstr "Gösterilecek veri yok. Sorguyu kontrol ederek x ekseni değerlerinin null olmadığından emin olun."
-
-#: frontend/src/metabase/visualizations/echarts/graph/sankey/model/index.ts
-msgid "Columns selection is invalid"
-msgstr "Sütun seçimi geçersiz"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-#, javascript-format
-msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
-msgstr "Tüh! Sorgunuzdan gelen veri seçilen görüntüleme seçeneğine uymuyor. Bu görselleştirme en az {0} {1} veri gerektirir."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-#, javascript-format
-msgid "No dice. We have {0} data {1} to show and that's not enough for this visualization."
-msgstr "Olmadı. Gösterilecek {0} veri {1} var ve bu görselleştirme için yeterli değil."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "point"
-msgid_plural "points"
-msgstr[0] "nokta"
-msgstr[1] "nokta"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Bummer. We can't actually do a pin map for this data because we require both a latitude and longitude column."
-msgstr "Tüh. Bu veri için bir İğne haritası yapamıyoruz çünkü hem enlem hem de boylam sütunu gerekiyor."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Please configure this chart in the chart settings"
-msgstr "Lütfen bu grafiği grafik ayarlarından yapılandırın"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Edit Settings"
-msgstr "Ayarları Düzenle"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "There was a problem displaying this chart."
-msgstr "Bu grafik görüntülenirken bir sorun oluştu."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Sorry, you don't have permission to see this card."
-msgstr "Üzgünüz, bu Kartı görme izniniz yok."
-
 #: frontend/src/metabase/visualizations/lib/exports-branding-utils.tsx
 #: metabase/channel/render/pdf.clj
 msgid "Made with"
 msgstr "Şununla yapıldı"
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization is null"
-msgstr "Visualization null"
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization must define an 'identifier' static variable: "
-msgstr "Visualization bir 'identifier' static variable tanımlamalı: "
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization with that identifier is already registered: "
-msgstr "Bu identifier'a sahip Visualization zaten kayıtlı: "
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-#, javascript-format
-msgid "No visualization for {0}"
-msgstr "{0} için Visualization yok"
 
 #: frontend/src/metabase/visualizations/lib/save-dashboard-pdf.ts
 msgid "Export tab as PDF"
@@ -33893,458 +33812,6 @@ msgstr "Sekmeyi PDF olarak dışa aktar"
 #: frontend/src/metabase/visualizations/lib/save-dashboard-pdf.ts
 msgid "Export as PDF"
 msgstr "PDF olarak dışa aktar"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM"
-msgstr "HH:MM"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM:SS"
-msgstr "HH:MM:SS"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM:SS.MS"
-msgstr "SS:DD:SS.MSS"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Date separators"
-msgstr "Tarih ayırıcıları"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Show the time"
-msgstr "Saati göster"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-#: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
-#: metabase/driver/redshift.clj
-msgid "Style"
-msgstr "Stil"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Normal"
-msgstr "Normal"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Percent"
-msgstr "Yüzde"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Scientific"
-msgstr "Bilimsel"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Where to display the unit of currency"
-msgstr "Para biriminin nerede gösterileceği"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "In the column heading"
-msgstr "Sütun başlığında"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "In every table cell"
-msgstr "Her tablo hücresinde"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-msgid "Number of decimal places"
-msgstr "Ondalık basamak sayısı"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Multiply by a number"
-msgstr "Bir sayıyla çarp"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Add a prefix"
-msgstr "Önek ekle"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Add a suffix"
-msgstr "Sonek ekle"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "dollars"
-msgstr "dolar"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal line"
-msgstr "Hedef çizgisi"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal value"
-msgstr "Hedef değeri"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal label"
-msgstr "Hedef etiketi"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Add series breakout"
-msgstr "Seri kırılımını ekle"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Y-axis"
-msgstr "Y-ekseni"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/ScatterFloatingWell/ScatterFloatingWell.tsx
-msgid "Bubble size"
-msgstr "Kabarcık boyutu"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stacking"
-msgstr "Yığma"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Don't stack"
-msgstr "Yığma"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stack"
-msgstr "Yığ"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stack - 100%"
-msgstr "Yığ - %100"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack series"
-msgstr "Serileri yığınla"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Additional tooltip columns"
-msgstr "Ek tooltip sütunları"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Enter column names"
-msgstr "Sütun adlarını girin"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Trend line"
-msgstr "Trend çizgisi"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Show values on data points"
-msgstr "Veri noktalarında değerleri göster"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Values to show"
-msgstr "Gösterilecek değerler"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack values to show"
-msgstr "Yığın değerlerinde göster"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-msgid "Both"
-msgstr "Her ikisi"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack value format"
-msgstr "Yığın değer biçimi"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Percentages"
-msgstr "Yüzdeler"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Auto formatting"
-msgstr "Otomatik biçimlendirme"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Compact"
-msgstr "Kompakt"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Full"
-msgstr "Tam"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Scale"
-msgstr "Ölçek"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Linear"
-msgstr "Doğrusal"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Power"
-msgstr "Üstel"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Log"
-msgstr "Log"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show lines and tick marks"
-msgstr "Çizgileri ve tik işaretlerini göster"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Rotate 45°"
-msgstr "45° döndür"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Rotate 90°"
-msgstr "90° döndür"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Unpin from zero"
-msgstr "Sıfıra sabitlemeyi kaldır"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Auto y-axis range"
-msgstr "Otomatik y ekseni aralığı"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Split y-axis when necessary"
-msgstr "Gerekli olduğunda y eksenini böl"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Show label"
-msgstr "Etiketi göster"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Number of tick marks"
-msgstr "Tik işareti sayısı"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Hide overlapping labels"
-msgstr "Çakışan etiketleri gizle"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Whiskers extend to"
-msgstr "Bıyıklar şuraya kadar uzansın"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "1.5 × interquartile range"
-msgstr "1.5 × çeyrekler arası aralık"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Min/Max"
-msgstr "Min/Maks"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show points"
-msgstr "Noktaları göster"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Outliers only"
-msgstr "Yalnızca aykırı değerler"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "All points"
-msgstr "Tüm noktalar"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show mean"
-msgstr "Ortalamayı göster"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Values to display"
-msgstr "Gösterilecek değerler"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Median only"
-msgstr "Yalnızca medyan"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Display type"
-msgstr "Ekran türü"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line shape"
-msgstr "Çizgi şekli"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line style"
-msgstr "Çizgi stili"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line size"
-msgstr "Çizgi boyutu"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show dots on lines"
-msgstr "Çizgilerde noktaları göster"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Replace missing values with"
-msgstr "Eksik değerleri şununla değiştir"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Zero"
-msgstr "Sıfır"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Nothing"
-msgstr "Hiçbiri"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Linear Interpolated"
-msgstr "Doğrusal enterpolasyonlu"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Y-axis position"
-msgstr "Y-ekseni konumu"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show trend line for this series"
-msgstr "Bu seri için trend çizgisini göster"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show values for this series"
-msgstr "Bu seri için değerleri göster"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "Which fields do you want to use for the X and Y axes?"
-msgstr "X ve Y eksenleri için hangi alanları kullanmak istiyorsunuz?"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-#: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
-msgid "Choose fields"
-msgstr "Alanları seç"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "No breakouts are enabled"
-msgstr "Kırılımlar etkinleştirilmedi"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "It is not possible to use the Log scale for a stacked percentage chart"
-msgstr "Yığılmış yüzde grafiği için Log skalası kullanılamaz"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-#, javascript-format
-msgid "This chart type doesn't support more than {0} series of data."
-msgstr "Bu grafik türü {0}'den fazla veri serisini desteklemez."
-
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
-msgid "Hide this card if there are no results"
-msgstr "Sonuç yoksa bu kartı gizle"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#, javascript-format
-msgid "compared to {0}"
-msgstr "{0} ile karşılaştırıldığında"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-msgid "compared to previous value"
-msgstr "önceki değerle karşılaştırıldığında"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous minute"
-msgstr "Önceki dakika"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous hour"
-msgstr "Önceki saat"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-msgid "Previous day"
-msgstr "Önceki gün"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous quarter"
-msgstr "Önceki çeyrek"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous year"
-msgstr "Önceki yıl"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Data includes missing dimension values."
-msgstr "Veri, eksik Boyut değerleri içeriyor."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "We encountered an invalid date: \"{0}\""
-msgstr "Geçersiz bir tarihle karşılaştık: \"{0}\""
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the {1}-axis, the values will be summed."
-msgstr "\"{0}\" bir birleştirilmemiş alandır: {1}-eksenindeki bir noktada birden fazla değeri varsa, değerler toplanacaktır."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "\"{0}\" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed."
-msgstr "\"{0}\" agregasyonsuz bir alandır: aynı değere sahip birden fazla satır varsa, bunların ölçü değerleri toplanır."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "{0} are unaggregated fields: if there is more than one row with the same values, their measure values will be summed."
-msgstr "{0} toplulaştırılmamış alanlardır: aynı değerlere sahip birden fazla satır varsa, ölçü değerleri toplanır."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "The query for this chart was run in {0} rather than {1} due to database or driver constraints."
-msgstr "Bu grafik için sorgu, veritabanı veya sürücü kısıtları nedeniyle {1} yerine {0} içinde çalıştırıldı."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "This chart contains queries run in multiple timezones: {0}"
-msgstr "Bu grafik birden fazla saat diliminde çalıştırılan sorgular içeriyor: {0}"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Negative values in measure column have been omitted from pie chart."
-msgstr "Ölçü sütunundaki negatif değerler pasta grafikten çıkarıldı."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Negative values in measure column have been omitted from treemap chart."
-msgstr "Ölçü sütunundaki negatif değerler treemap grafiğinden çıkarıldı."
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Ordinal"
-msgstr "Ordinal"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-msgid "Timeseries"
-msgstr "Zaman serisi"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-msgid "Histogram"
-msgstr "Histogram"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
-msgid "Goal"
-msgstr "Hedef"
-
-#: frontend/src/metabase/visualizations/shared/utils/data.ts
-#, javascript-format
-msgid "All values ({0})"
-msgstr "Tüm değerler ({0})"
-
-#: frontend/src/metabase/visualizations/shared/utils/data.ts
-#, javascript-format
-msgid "Other ({0})"
-msgstr "Diğer ({0})"
 
 #: frontend/src/metabase/visualizations/visualizations/AreaChart/definition.ts
 msgid "Area"
@@ -34393,6 +33860,11 @@ msgstr "Huni"
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 msgid "Which fields do you want to use?"
 msgstr "Hangi alanları kullanmak istiyorsunuz?"
+
+#: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "Choose fields"
+msgstr "Alanları seç"
 
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 msgid "Column with steps"
@@ -34604,6 +34076,19 @@ msgid "Which columns do you want to use?"
 msgstr "Hangi sütunları kullanmak istiyorsunuz?"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: metabase/lib_metric/display_info.cljc
+msgid "Dimension"
+msgstr "Boyut"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+#: metabase/driver/redshift.clj
+msgid "Style"
+msgstr "Stil"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "Show legend"
 msgstr "Lejantı göster"
 
@@ -34627,6 +34112,16 @@ msgstr "Lejantta"
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "On the chart"
 msgstr "Grafikte"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Both"
+msgstr "Her ikisi"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Number of decimal places"
+msgstr "Ondalık basamak sayısı"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "Minimum slice percentage"
@@ -34698,6 +34193,11 @@ msgstr "İlerleme"
 msgid "Progress visualization requires at least one numeric column."
 msgstr "İlerleme görselleştirmesi en az bir sayısal sütun gerektirir."
 
+#: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Goal"
+msgstr "Hedef"
+
 #: frontend/src/metabase/visualizations/visualizations/Progress/utils.ts
 #: frontend/src/metabase/visualizations/visualizations/Progress/utils.unit.spec.ts
 msgid "No data available"
@@ -34731,6 +34231,60 @@ msgstr "Satır"
 msgid "row chart"
 msgstr "satır grafiği"
 
+#: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Y-axis"
+msgstr "Y-ekseni"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stacking"
+msgstr "Yığma"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Don't stack"
+msgstr "Yığma"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack"
+msgstr "Yığ"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack - 100%"
+msgstr "Yığ - %100"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Scale"
+msgstr "Ölçek"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Ordinal"
+msgstr "Ordinal"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Linear"
+msgstr "Doğrusal"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Power"
+msgstr "Üstel"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Log"
+msgstr "Log"
+
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 msgid "Show lines and marks"
 msgstr "Çizgileri ve işaretleri göster"
@@ -34740,8 +34294,30 @@ msgid "Auto x-axis range"
 msgstr "Otomatik x ekseni aralığı"
 
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show label"
+msgstr "Etiketi göster"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show values on data points"
+msgstr "Veri noktalarında değerleri göster"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 msgid "Value labels formatting"
 msgstr "Değer etiketleri biçimlendirme"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Compact"
+msgstr "Kompakt"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Full"
+msgstr "Tam"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Justify"
@@ -34750,6 +34326,11 @@ msgstr "İki yana yasla"
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Show edge labels"
 msgstr "Kenar etiketlerini göster"
+
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Auto formatting"
+msgstr "Otomatik biçimlendirme"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Edge color"
@@ -34883,7 +34464,7 @@ msgstr "Bunun zaman içinde nasıl değiştiğini görmek için yalnızca bir za
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Add a metric to see how it's changed over time"
-msgstr ""
+msgstr "Zaman içinde nasıl değiştiğini görmek için bir metrik ekleyin"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/utils.ts
 msgid "Value from another column…"
@@ -35089,6 +34670,11 @@ msgstr "Görselleştirme burada görünecek"
 msgid "View as table"
 msgstr "Tablo olarak görüntüle"
 
+#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/ScatterFloatingWell/ScatterFloatingWell.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Bubble size"
+msgstr "Kabarcık boyutu"
+
 #: frontend/src/metabase/visualizer/components/VisualizerModal/VisualizerModal.tsx
 msgid "Are you sure you want to leave?"
 msgstr "Ayrılmak istediğinizden emin misiniz?"
@@ -35096,6 +34682,429 @@ msgstr "Ayrılmak istediğinizden emin misiniz?"
 #: frontend/src/metabase/visualizer/components/VisualizerModal/VisualizerModal.tsx
 msgid "Any unsaved changes will be lost."
 msgstr "Kaydedilmemiş tüm değişiklikler kaybolacak."
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Upper whisker"
+msgstr "Üst bıyık"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Q3 (75th percentile)"
+msgstr "Q3 (75. persentil)"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Mean"
+msgstr "Ortalama"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Q1 (25th percentile)"
+msgstr "Q1 (25. persentil)"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Lower whisker"
+msgstr "Alt bıyık"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "outlier"
+msgstr "aykırı değer"
+
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/dataset.ts
+msgid "There is no data to display. Check the query to ensure there are non-null x-axis values."
+msgstr "Gösterilecek veri yok. Sorguyu kontrol ederek x ekseni değerlerinin null olmadığından emin olun."
+
+#: frontend/src/metabase/viz-core/echarts/graph/sankey/model/index.ts
+msgid "Columns selection is invalid"
+msgstr "Sütun seçimi geçersiz"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+#, javascript-format
+msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
+msgstr "Tüh! Sorgunuzdan gelen veri seçilen görüntüleme seçeneğine uymuyor. Bu görselleştirme en az {0} {1} veri gerektirir."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+#, javascript-format
+msgid "No dice. We have {0} data {1} to show and that's not enough for this visualization."
+msgstr "Olmadı. Gösterilecek {0} veri {1} var ve bu görselleştirme için yeterli değil."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "point"
+msgid_plural "points"
+msgstr[0] "nokta"
+msgstr[1] "nokta"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Bummer. We can't actually do a pin map for this data because we require both a latitude and longitude column."
+msgstr "Tüh. Bu veri için bir İğne haritası yapamıyoruz çünkü hem enlem hem de boylam sütunu gerekiyor."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Please configure this chart in the chart settings"
+msgstr "Lütfen bu grafiği grafik ayarlarından yapılandırın"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Edit Settings"
+msgstr "Ayarları Düzenle"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "There was a problem displaying this chart."
+msgstr "Bu grafik görüntülenirken bir sorun oluştu."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Sorry, you don't have permission to see this card."
+msgstr "Üzgünüz, bu Kartı görme izniniz yok."
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization is null"
+msgstr "Visualization null"
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization must define an 'identifier' static variable: "
+msgstr "Visualization bir 'identifier' static variable tanımlamalı: "
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization with that identifier is already registered: "
+msgstr "Bu identifier'a sahip Visualization zaten kayıtlı: "
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+#, javascript-format
+msgid "No visualization for {0}"
+msgstr "{0} için Visualization yok"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM"
+msgstr "HH:MM"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM:SS"
+msgstr "HH:MM:SS"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM:SS.MS"
+msgstr "SS:DD:SS.MSS"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Date separators"
+msgstr "Tarih ayırıcıları"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Show the time"
+msgstr "Saati göster"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Normal"
+msgstr "Normal"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Percent"
+msgstr "Yüzde"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Scientific"
+msgstr "Bilimsel"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Where to display the unit of currency"
+msgstr "Para biriminin nerede gösterileceği"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "In the column heading"
+msgstr "Sütun başlığında"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "In every table cell"
+msgstr "Her tablo hücresinde"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Multiply by a number"
+msgstr "Bir sayıyla çarp"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Add a prefix"
+msgstr "Önek ekle"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Add a suffix"
+msgstr "Sonek ekle"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "dollars"
+msgstr "dolar"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal line"
+msgstr "Hedef çizgisi"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal value"
+msgstr "Hedef değeri"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal label"
+msgstr "Hedef etiketi"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Add series breakout"
+msgstr "Seri kırılımını ekle"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack series"
+msgstr "Serileri yığınla"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Additional tooltip columns"
+msgstr "Ek tooltip sütunları"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Enter column names"
+msgstr "Sütun adlarını girin"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Trend line"
+msgstr "Trend çizgisi"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Values to show"
+msgstr "Gösterilecek değerler"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack values to show"
+msgstr "Yığın değerlerinde göster"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack value format"
+msgstr "Yığın değer biçimi"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Percentages"
+msgstr "Yüzdeler"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show lines and tick marks"
+msgstr "Çizgileri ve tik işaretlerini göster"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Rotate 45°"
+msgstr "45° döndür"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Rotate 90°"
+msgstr "90° döndür"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Unpin from zero"
+msgstr "Sıfıra sabitlemeyi kaldır"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Auto y-axis range"
+msgstr "Otomatik y ekseni aralığı"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Split y-axis when necessary"
+msgstr "Gerekli olduğunda y eksenini böl"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Number of tick marks"
+msgstr "Tik işareti sayısı"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Hide overlapping labels"
+msgstr "Çakışan etiketleri gizle"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Whiskers extend to"
+msgstr "Bıyıklar şuraya kadar uzansın"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "1.5 × interquartile range"
+msgstr "1.5 × çeyrekler arası aralık"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Min/Max"
+msgstr "Min/Maks"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show points"
+msgstr "Noktaları göster"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Outliers only"
+msgstr "Yalnızca aykırı değerler"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "All points"
+msgstr "Tüm noktalar"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show mean"
+msgstr "Ortalamayı göster"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Values to display"
+msgstr "Gösterilecek değerler"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Median only"
+msgstr "Yalnızca medyan"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Display type"
+msgstr "Ekran türü"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line shape"
+msgstr "Çizgi şekli"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line style"
+msgstr "Çizgi stili"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line size"
+msgstr "Çizgi boyutu"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show dots on lines"
+msgstr "Çizgilerde noktaları göster"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Replace missing values with"
+msgstr "Eksik değerleri şununla değiştir"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Zero"
+msgstr "Sıfır"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Nothing"
+msgstr "Hiçbiri"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Linear Interpolated"
+msgstr "Doğrusal enterpolasyonlu"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Y-axis position"
+msgstr "Y-ekseni konumu"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show trend line for this series"
+msgstr "Bu seri için trend çizgisini göster"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show values for this series"
+msgstr "Bu seri için değerleri göster"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "Which fields do you want to use for the X and Y axes?"
+msgstr "X ve Y eksenleri için hangi alanları kullanmak istiyorsunuz?"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "No breakouts are enabled"
+msgstr "Kırılımlar etkinleştirilmedi"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "It is not possible to use the Log scale for a stacked percentage chart"
+msgstr "Yığılmış yüzde grafiği için Log skalası kullanılamaz"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+#, javascript-format
+msgid "This chart type doesn't support more than {0} series of data."
+msgstr "Bu grafik türü {0}'den fazla veri serisini desteklemez."
+
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
+msgid "Hide this card if there are no results"
+msgstr "Sonuç yoksa bu kartı gizle"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#, javascript-format
+msgid "compared to {0}"
+msgstr "{0} ile karşılaştırıldığında"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+msgid "compared to previous value"
+msgstr "önceki değerle karşılaştırıldığında"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous minute"
+msgstr "Önceki dakika"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous hour"
+msgstr "Önceki saat"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+msgid "Previous day"
+msgstr "Önceki gün"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous quarter"
+msgstr "Önceki çeyrek"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous year"
+msgstr "Önceki yıl"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Data includes missing dimension values."
+msgstr "Veri, eksik Boyut değerleri içeriyor."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "We encountered an invalid date: \"{0}\""
+msgstr "Geçersiz bir tarihle karşılaştık: \"{0}\""
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the {1}-axis, the values will be summed."
+msgstr "\"{0}\" bir birleştirilmemiş alandır: {1}-eksenindeki bir noktada birden fazla değeri varsa, değerler toplanacaktır."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "\"{0}\" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed."
+msgstr "\"{0}\" agregasyonsuz bir alandır: aynı değere sahip birden fazla satır varsa, bunların ölçü değerleri toplanır."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "{0} are unaggregated fields: if there is more than one row with the same values, their measure values will be summed."
+msgstr "{0} toplulaştırılmamış alanlardır: aynı değerlere sahip birden fazla satır varsa, ölçü değerleri toplanır."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "The query for this chart was run in {0} rather than {1} due to database or driver constraints."
+msgstr "Bu grafik için sorgu, veritabanı veya sürücü kısıtları nedeniyle {1} yerine {0} içinde çalıştırıldı."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "This chart contains queries run in multiple timezones: {0}"
+msgstr "Bu grafik birden fazla saat diliminde çalıştırılan sorgular içeriyor: {0}"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Negative values in measure column have been omitted from pie chart."
+msgstr "Ölçü sütunundaki negatif değerler pasta grafikten çıkarıldı."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Negative values in measure column have been omitted from treemap chart."
+msgstr "Ölçü sütunundaki negatif değerler treemap grafiğinden çıkarıldı."
+
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Timeseries"
+msgstr "Zaman serisi"
+
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Histogram"
+msgstr "Histogram"
+
+#: frontend/src/metabase/viz-core/shared/utils/data.ts
+#, javascript-format
+msgid "All values ({0})"
+msgstr "Tüm değerler ({0})"
+
+#: frontend/src/metabase/viz-core/shared/utils/data.ts
+#, javascript-format
+msgid "Other ({0})"
+msgstr "Diğer ({0})"
 
 #: metabase/actions/actions.clj
 msgid "Unknown Action {0}. Valid Actions are: {1}"
@@ -35741,7 +35750,7 @@ msgstr "Slack entegrasyonunun çalışması için bir site-url yapılandırmalı
 
 #: metabase/channel/api/slack.clj
 msgid "Bug reporting is not enabled."
-msgstr ""
+msgstr "Hata raporlama etkin değil."
 
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
@@ -36198,6 +36207,10 @@ msgstr "''{0}'' e-posta adresine sahip kullanıcı bulunamadı. "
 #: metabase/cmd/reset_password.clj
 msgid "Please check the spelling and try again."
 msgstr "Lütfen yazımı kontrol edip tekrar deneyin."
+
+#: metabase/cmd/reset_password.clj
+msgid "Cannot reset the password for the deactivated user ''{0}''. Please reactivate the account and try again."
+msgstr "Devre dışı bırakılmış kullanıcı ''{0}'' için parola sıfırlanamaz. Lütfen hesabı yeniden etkinleştirip tekrar deneyin."
 
 #: metabase/cmd/reset_password.clj
 msgid "Resetting password for {0}..."
@@ -36848,6 +36861,26 @@ msgstr "Bu veritabanından veri silme izniniz yok."
 msgid "Killed MySQL process id {0} due to timeout."
 msgstr "Zaman aşımı nedeniyle MySQL süreç kimliği {0} öldürüldü."
 
+#: metabase/driver/oracle.clj
+msgid "host"
+msgstr "ana bilgisayar"
+
+#: metabase/driver/oracle.clj
+msgid "port"
+msgstr "port"
+
+#: metabase/driver/oracle.clj
+msgid "Oracle system ID (SID)"
+msgstr "Oracle sistem kimliği (SID)"
+
+#: metabase/driver/oracle.clj
+msgid "Oracle service name"
+msgstr "Oracle servis adı"
+
+#: metabase/driver/oracle.clj
+msgid "Invalid {0}: it must be a plain value, not a URL or an Oracle connect descriptor."
+msgstr "Geçersiz {0}: URL veya Oracle bağlantı tanımlayıcısı değil, düz bir değer olmalıdır."
+
 #: metabase/driver/postgres.clj
 msgid "SSL Mode"
 msgstr "SSL Modu"
@@ -37106,7 +37139,7 @@ msgstr "Satırları güncellerken hata(lar) oluştu."
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled."
-msgstr ""
+msgstr "Analytics dev modu etkin değilse analytics-dev veritabanı için bağlantı açılamaz."
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Not a valid Database/Database ID/JDBC spec"
@@ -37114,7 +37147,7 @@ msgstr "Geçerli bir Database/Database ID/JDBC spec değil"
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Cannot connect to an analytics-dev database unless analytics dev mode is enabled."
-msgstr ""
+msgstr "Analytics dev modu etkin değilse analytics-dev veritabanına bağlanılamaz."
 
 #: metabase/driver/sql_jdbc/execute.clj
 msgid "Too many queries are running. Please try again in a moment."
@@ -37465,6 +37498,18 @@ msgstr "{1} {2} bazında {0}"
 #: metabase/xrays/automagic_dashboards/names.clj
 msgid "{0} by {1}"
 msgstr "{1} bazında {0}"
+
+#: metabase/explorations/composite.clj
+msgid "Series"
+msgstr "Seri"
+
+#: metabase/explorations/models/exploration_query_result.clj
+msgid "Cannot combine these results: a source result has no recorded data-access context."
+msgstr "Bu sonuçlar birleştirilemiyor: bir kaynak sonuçta kayıtlı veri erişimi bağlamı yok."
+
+#: metabase/explorations/models/exploration_query_result.clj
+msgid "Cannot combine these results: they were computed under different data-access contexts."
+msgstr "Bu sonuçlar birleştirilemiyor: farklı veri erişimi bağlamları altında hesaplanmışlar."
 
 #: metabase/explorations/query_plan/variants.clj
 #: metabase_enterprise/transforms_inspector/lens/column_comparison.clj
@@ -39805,6 +39850,10 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "Geçersiz Google modeli {0} — \"google/gemini-3.5-flash\" gibi yayıncı-nitelemeli bir ID bekleniyordu"
 
 #: metabase/metabot/self/google.clj
+msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
+msgstr "Desteklenmeyen Google modeli {0}. Yalnızca google/* ve anthropic/* modelleri desteklenir."
+
+#: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
 msgstr "Geçersiz Google modeli {0} — yayıncı ve model ID’si yalnızca harfler, rakamlar ve \".\", \"_\", \"-\" ve \"@\" karakterlerini içerebilir"
 
@@ -40161,6 +40210,10 @@ msgid "Invalid Azure model {0}. Expected format: <connection>/<family>/<deployme
 msgstr "Geçersiz Azure model {0}. Beklenen format: <connection>/<family>/<deployment-name>; burada <family> şunlardan biri olmalıdır: {1}"
 
 #: metabase/metabot/settings.clj
+msgid "Invalid Google model {0}. Expected format: <connection>/<publisher>/<model> where <publisher> is one of: {1}"
+msgstr "Geçersiz Google modeli {0}. Beklenen format: <connection>/<publisher>/<model>; burada <publisher> şunlardan biri olmalıdır: {1}"
+
+#: metabase/metabot/settings.clj
 msgid "Unsupported model {0} for Metabase managed AI. Supported models: {1}"
 msgstr "Metabase yönetimli YZ için desteklenmeyen model {0}. Desteklenen modeller: {1}"
 
@@ -40278,12 +40331,20 @@ msgid "A `document_id` is required when saving to a document."
 msgstr "Bir Dokümana kaydederken `document_id` gereklidir."
 
 #: metabase/metabot/tools/sql/common.clj
+msgid "You do not have permission to write SQL queries against this database. Native query permissions are required."
+msgstr "Bu veritabanına karşı SQL sorguları yazma izniniz yok. Yerel sorgular için izin gereklidir."
+
+#: metabase/metabot/tools/sql/common.clj
 msgid "Unsupported query format"
 msgstr "Desteklenmeyen sorgu formatı"
 
 #: metabase/metabot/tools/sql/create.clj
 msgid "Database {0} not found"
 msgstr "Veritabanı {0} bulunamadı"
+
+#: metabase/metabot/tools/sql/create.clj
+msgid "You do not have access to this database."
+msgstr "Bu veritabanına erişiminiz yok."
 
 #: metabase/metabot/tools/sql/edit.clj
 msgid "Each edit must include old_string and new_string"
@@ -40685,6 +40746,10 @@ msgstr "Bu isimde bir grup zaten var."
 msgid "You cannot edit or delete the ''{0}'' permissions group!"
 msgstr "''{0}'' izin grubunu düzenleyemez veya silemezsiniz!"
 
+#: metabase/permissions/models/permissions_group.clj
+msgid "Tenant groups are not editable while the Tenants feature is disabled."
+msgstr "Kiracı grupları, Kiracılar özelliği devre dışıyken düzenlenemez."
+
 #: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "''Admin'' grubunun son üyesini kaldıramazsınız!"
@@ -40738,6 +40803,10 @@ msgstr "{0} izin işlevselliği, yalnızca ileri düzey izinler özelliğine sah
 #: metabase/permissions_rest/api.clj metabase_enterprise/sandbox/api/routes.clj
 msgid "Sandboxes"
 msgstr "Sandboxes"
+
+#: metabase/permissions_rest/api.clj
+msgid "Tenant groups cannot be created while the Tenants feature is disabled."
+msgstr "Kiracı grupları, Kiracılar özelliği devre dışıyken oluşturulamaz."
 
 #: metabase/permissions_rest/api.clj
 msgid "Admin cannot be a group manager."
@@ -41047,6 +41116,10 @@ msgstr "geçersiz parameterized_object_type"
 #: metabase/queries/models/query_execution.clj
 msgid "Invalid query execution context: {0}"
 msgstr "Geçersiz sorgu yürütme bağlamı: {0}"
+
+#: metabase/queries/models/stored_result_use.clj
+msgid "This card has no cached results."
+msgstr "Bu kartın önbelleğe alınmış sonucu yok."
 
 #: metabase/queries_rest/api/card.clj
 msgid "value must be a sequence of positive integers"
@@ -42068,6 +42141,10 @@ msgstr "Sunucu portu, genellikle 389; SSL kullanılıyorsa 636."
 #: metabase/sso/settings.clj
 msgid "Use SSL, TLS or plain text."
 msgstr "SSL, TLS veya düz metin kullanın."
+
+#: metabase/sso/settings.clj
+msgid "Path to a JKS trust store of CA certificates used to validate the LDAP server''s TLS certificate. Leave blank to use the JVM default trust store."
+msgstr "LDAP sunucusunun TLS sertifikasını doğrulamak için kullanılan CA sertifikalarının bulunduğu bir JKS trust store yolu. JVM varsayılan trust store'u kullanmak için boş bırakın."
 
 #: metabase/sso/settings.clj
 msgid "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."
@@ -43395,7 +43472,7 @@ msgstr "Python Dönüşümleri"
 
 #: metabase_enterprise/audit_app/analytics_dev.clj
 msgid "Analytics dev mode is not enabled."
-msgstr ""
+msgstr "Analytics dev modu etkin değil."
 
 #: metabase_enterprise/audit_app/interface.clj
 msgid "Unable to run internal query function: cannot resolve {0}"
@@ -44294,6 +44371,10 @@ msgstr "Birisi LDAP ile giriş yaptığında kullanıcı özniteliklerini senkro
 #: metabase_enterprise/sso/settings.clj
 msgid "Comma-separated list of user attributes to skip syncing for LDAP users."
 msgstr "LDAP kullanıcıları için senkronizasyonu atlanacak kullanıcı özniteliklerinin virgülle ayrılmış listesi."
+
+#: metabase_enterprise/sso/settings.clj
+msgid "Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none."
+msgstr "LDAP kullanıcıları için senkronize edilecek kullanıcı özniteliklerinin virgülle ayrılmış listesi. Yalnızca bu öznitelikler senkronize edilir; hiçbirini senkronize etmemek için boş bırakın."
 
 #: metabase_enterprise/sso/settings.clj
 msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively."

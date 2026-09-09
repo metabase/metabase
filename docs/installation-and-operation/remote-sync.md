@@ -219,7 +219,7 @@ To version your data transformation logic, you can sync your [Transforms](../dat
 
 ## Local file repositories
 
-Remote Sync can point at a bare git repo on the same filesystem as your Metabase process, via a `file://` URL. Local repos come in handy for local development, especially alongside the [file-based agent workflow](../ai/file-based-development.md).
+Remote Sync can point at a bare git repo on the same filesystem as your Metabase process, via a `file://` URL. Local repos come in handy for local development, especially alongside the [agent-driven development workflow](../ai/agent-driven-development.md).
 
 Create a bare git repo on the same filesystem as your Metabase process:
 

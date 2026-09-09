@@ -49,7 +49,7 @@ export function NewSegmentPage({
     }
   }, [table, metadata]);
 
-  const { query, filters } = useSegmentQuery(definition, metadata);
+  const { query, filters } = useSegmentQuery(definition);
 
   const isDirty =
     !savedSegment &&

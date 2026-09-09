@@ -5,7 +5,6 @@
    [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.notification :as notification]
-   [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase-enterprise.security-center.settings :as settings]
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.api.common :as api]
@@ -13,6 +12,7 @@
    [metabase.api.routes.common :as routes.common :refer [+auth]]
    [metabase.notification.models :as models.notification]
    [metabase.premium-features.core :as premium-features]
+   [metabase.security-center.schema :as security-center.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])

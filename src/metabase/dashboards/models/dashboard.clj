@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
@@ -164,10 +163,8 @@
   (when (seq dashboards)
     (let [coll-id->level (into {}
                                (map (juxt :id :authority_level))
-                               (app-db/query {:select    [:dashboard.id :collection.authority_level]
-                                              :from      [[:report_dashboard :dashboard]]
-                                              :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
-                                              :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
+                               (dashboards.db/dashboard-collection-authority-levels
+                                (into #{} (map u/the-id) dashboards)))]
       (for [dashboard dashboards]
         (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
 
