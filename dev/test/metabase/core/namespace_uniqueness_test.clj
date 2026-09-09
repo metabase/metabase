@@ -32,7 +32,11 @@
   (for [dir  (remove #(str/starts-with? (relative-path %) "local/")
                      (classpath/classpath-directories))
         file (ns.find/find-sources-in-dir dir platform)
-        :let [decl (ns.file/read-file-ns-decl file (:read-opts platform))]
+        ;; The classpath includes source directories we do not control.
+        :let [decl (try
+                     (ns.file/read-file-ns-decl file (:read-opts platform))
+                     (catch Exception _ nil))]
+        ;; Some classpath .clj files have no ns form, e.g. resources/data_readers.clj.
         :when decl]
     [(ns.parse/name-from-ns-decl decl) (relative-path file)]))
 
