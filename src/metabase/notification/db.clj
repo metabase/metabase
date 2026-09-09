@@ -671,8 +671,8 @@
 ;;; ------------------------------------------- Other models -------------------------------------------
 
 (mu/defn instance
-  "The instance of `model` with `id`, or nil."
-  [model :- :keyword
+  "The instance of `model` (a model keyword, or a `[model & columns]` vector) with `id`, or nil."
+  [model :- [:or :keyword [:sequential :keyword]]
    id    :- ms/PositiveInt]
   (t2/select-one model id))
 

@@ -109,7 +109,7 @@
   [table  :- :keyword
    column :- :keyword
    id     :- ms/PositiveInt
-   value  :- [:maybe :string]]
+   value  :- [:maybe [:or :string bytes?]]]
   (t2/query {:update table, :set {column value}, :where [:= :id id]}))
 
 (mu/defn delete-query-cache!

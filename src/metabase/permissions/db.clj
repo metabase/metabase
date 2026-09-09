@@ -125,7 +125,7 @@
   [group-ids   :- [:set ms/PositiveInt]
    perm-type   :- [:or :keyword :string]
    database-id :- ::lib.schema.id/database
-   table-id    :- ms/IntGreaterThanOrEqualToZero]
+   table-id    :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select-fn-set :value :model/DataPermissions
                     {:select [[:p.perm_value :value]]
                      :from   [[:data_permissions :p]]
