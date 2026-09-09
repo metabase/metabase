@@ -351,7 +351,6 @@ type ReferencedEntityColumns =
   | { type: "card"; id: CardId; columns: Set<string> }
   | { type: "measure"; id: MeasureId; columns: Set<string> };
 
-// The entities a query for `card` must also answer, with the columns their goals read.
 export function getReferencedEntities(card: GoalCard): ReferencedEntity[] {
   const columnsByEntity = getGoalForeignColumnRefs(card).reduce((map, ref) => {
     const refKey = `${ref.type}:${ref.id}`;
