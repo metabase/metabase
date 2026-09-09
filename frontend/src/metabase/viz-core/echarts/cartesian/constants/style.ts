@@ -34,8 +34,8 @@ export const CHART_STYLE = {
     barWidth: 0.8,
     histogramBarWidth: 0.995,
   },
-  axisTicksMarginX: 5,
-  axisTicksMarginY: 10,
+  axisTicksMarginX: 8,
+  axisTicksMarginY: 12,
   axisTicks: {
     weight: 400,
   },

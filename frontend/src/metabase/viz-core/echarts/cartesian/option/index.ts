@@ -33,6 +33,7 @@ import { getTimelineEventsSelectionSeries } from "../timeline-events/option";
 import type { TimelineEventsModel } from "../timeline-events/types";
 
 import { buildAxes, buildDimensionAxis, buildMetricAxis } from "./axis";
+import { applyDashboardYAxisTicks } from "./dashboard-axis";
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { buildEChartsSeries } from "./series";
 import { getTrendLinesOption } from "./trend-line";
@@ -304,7 +305,7 @@ export const getCartesianChartOption = (
     ...splitPanelOverrides,
     grid,
     xAxis,
-    yAxis,
+    yAxis: applyDashboardYAxisTicks(yAxis, chartModel, chartLayout, settings),
     dataset: buildEChartsDataset(chartModel),
     series: seriesOption,
   };

@@ -1,13 +1,148 @@
-import type { SingleSeries } from "metabase-types/api";
+import type { DatasetColumn, SingleSeries } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import type { ComputedVisualizationSettings } from "../../../types";
+import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+  VisualizationGridSize,
+} from "../../../types";
+import { getScatterPlotModel } from "../scatter/model";
+import { getWaterfallChartModel } from "../waterfall/model";
 
-import { getCardsReferencedColumns } from "./index";
+import { getCardsReferencedColumns, getCartesianChartModel } from "./index";
+
+describe.each([
+  { display: "bar", getModel: getCartesianChartModel },
+  { display: "scatter", getModel: getScatterPlotModel },
+  { display: "waterfall", getModel: getWaterfallChartModel },
+] as const)("$display chart label formatting", ({ display, getModel }) => {
+  const renderingContext: RenderingContext = {
+    getColor: (name) => name,
+    measureText: () => 10,
+    measureTextHeight: () => 10,
+    fontFamily: "",
+    theme: DEFAULT_VISUALIZATION_THEME,
+  };
+
+  const buildModel = (
+    formatting: "auto" | "compact" | "full" | undefined,
+    gridSize?: VisualizationGridSize,
+    showValues = false,
+    extraSettings: Partial<ComputedVisualizationSettings> = {},
+  ) => {
+    const dimensionColumn = createMockColumn({
+      name: "bucket",
+      base_type: "type/Integer",
+    });
+    const metricColumn = createMockColumn({
+      name: "count",
+      base_type: "type/Integer",
+      semantic_type: "type/Quantity",
+    });
+
+    return getModel(
+      [
+        {
+          card: createMockCard({ id: 1, display }),
+          data: createMockDatasetData({
+            cols: [dimensionColumn, metricColumn],
+            rows: [
+              [1, 1000],
+              [2, 2000],
+            ],
+          }),
+        },
+      ],
+      createMockVisualizationSettings({
+        "graph.dimensions": [dimensionColumn.name],
+        "graph.metrics": [metricColumn.name],
+        "graph.x_axis.scale": "ordinal",
+        "graph.y_axis.scale": "linear",
+        "graph.label_value_formatting": formatting,
+        "graph.show_values": showValues,
+        column: (column: DatasetColumn) => ({ column }),
+        series: () => ({ display, show_series_values: true }),
+        ...extraSettings,
+      }),
+      [],
+      renderingContext,
+      undefined,
+      gridSize,
+    );
+  };
+
+  it.each(["auto", "compact", undefined] as const)(
+    "uses compact dashboard axis labels with %s formatting",
+    (formatting) => {
+      const model = buildModel(formatting, { width: 8, height: 6 });
+
+      expect(model.leftAxisModel?.formatter(1000)).toBe("1.0k");
+      expect(model.leftAxisModel?.formatGoal(1000)).toBe("1,000");
+    },
+  );
+
+  it("preserves explicit full formatting on dashboards", () => {
+    const model = buildModel("full", { width: 8, height: 6 }, true);
+
+    expect(model.leftAxisModel?.formatter(1000)).toBe("1,000");
+  });
+
+  it.each([false, true])(
+    "preserves automatic formatting outside dashboards with show values set to %s",
+    (showValues) => {
+      const model = buildModel("auto", undefined, showValues);
+
+      expect(model.leftAxisModel?.formatter(1000)).toBe("1,000");
+    },
+  );
+
+  it("preserves explicit compact formatting outside dashboards", () => {
+    const model = buildModel("compact");
+
+    expect(model.leftAxisModel?.formatter(1000)).toBe("1.0k");
+  });
+
+  if (display !== "scatter") {
+    it.each([
+      { formatting: "auto", expected: "1.0k" },
+      { formatting: "compact", expected: "1.0k" },
+      { formatting: "full", expected: "1,000" },
+    ] as const)(
+      "uses $formatting formatting for dashboard data labels",
+      ({ formatting, expected }) => {
+        const model = buildModel(formatting, { width: 8, height: 6 }, true);
+        const formatter =
+          "waterfallLabelFormatter" in model
+            ? model.waterfallLabelFormatter
+            : model.seriesLabelsFormatters[model.seriesModels[0].dataKey];
+
+        expect(formatter?.(1000)).toBe(expected);
+      },
+    );
+  }
+
+  if (display === "bar") {
+    it("uses compact dashboard stack totals with automatic formatting", () => {
+      const model = buildModel("auto", { width: 8, height: 6 }, true, {
+        "stackable.stack_type": "stacked",
+        "graph.show_stack_values": "total",
+      });
+
+      const formatter =
+        "stackedLabelsFormatters" in model
+          ? model.stackedLabelsFormatters.bar
+          : undefined;
+
+      expect(formatter?.(1000)).toBe("1.0k");
+    });
+  }
+});
 
 describe("getCardsReferencedColumns", () => {
   const dimensionA = createMockColumn({

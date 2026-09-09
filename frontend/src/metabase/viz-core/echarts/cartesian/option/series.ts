@@ -60,6 +60,7 @@ import { getBarSeriesDataLabelKey } from "../model/util";
 import { getPadding } from "./ticks";
 import type { EChartsSeriesOption } from "./types";
 import { getSeriesYAxisIndex } from "./utils";
+import { getContinuousAxisPadding } from "./x-axis-padding";
 
 const MIN_LABEL_SPACING_PX = 40;
 const STACK_PERCENTAGE_DECIMALS = 2;
@@ -325,6 +326,7 @@ export const computeContinuousScaleBarWidth = (
   barSeriesCount: number,
   stackedOrSingleSeries: boolean,
   xAxisScale?: XAxisScale,
+  chartLayout?: ChartLayout,
 ) => {
   const isBarWidthSensibleToXAxisScale =
     xAxisScale !== "log" && xAxisScale !== "pow";
@@ -332,9 +334,16 @@ export const computeContinuousScaleBarWidth = (
     return 1;
   }
 
-  const padding = isTimeSeriesAxis(xAxisModel)
+  const intervalPadding = isTimeSeriesAxis(xAxisModel)
     ? getPadding(xAxisModel.intervalsCount)
     : 0.5;
+  const padding = chartLayout
+    ? getContinuousAxisPadding(
+        intervalPadding,
+        xAxisModel.intervalsCount,
+        chartLayout,
+      )
+    : intervalPadding;
 
   let barWidth =
     (boundaryWidth / (xAxisModel.intervalsCount + 1 + 2 * padding)) *
@@ -353,6 +362,7 @@ export const computeBarWidth = (
   barSeriesCount: number,
   isStacked: boolean,
   xAxisScale?: XAxisScale,
+  chartLayout?: ChartLayout,
 ) => {
   const stackedOrSingleSeries = isStacked || barSeriesCount === 1;
   const isNumericOrTimeSeries =
@@ -365,6 +375,7 @@ export const computeBarWidth = (
       barSeriesCount,
       stackedOrSingleSeries,
       xAxisScale,
+      chartLayout,
     );
   }
 
@@ -611,6 +622,7 @@ const buildEChartsBarSeries = (
       barSeriesCount,
       isStacked,
       settings["graph.x_axis.scale"],
+      chartLayout,
     ),
     encode: {
       y: seriesModel.dataKey,

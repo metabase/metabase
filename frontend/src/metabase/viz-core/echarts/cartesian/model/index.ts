@@ -38,6 +38,7 @@ import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
 import type { CartesianChartModel } from "./types";
+import { getLabelValueFormatting } from "./util";
 
 // HACK: when multiple cards (datasets) are combined on a single dashboard card
 // the settings prop of the visualization contains only one set of metrics and dimensions
@@ -182,7 +183,13 @@ export const getCartesianChartModel = (
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     isCompactFormatting,
-  } = getFormatters(seriesModels, stackModels, scaledDataset, settings);
+  } = getFormatters(seriesModels, stackModels, scaledDataset, {
+    ...settings,
+    "graph.label_value_formatting": getLabelValueFormatting(
+      settings["graph.label_value_formatting"],
+      gridSize != null,
+    ),
+  });
 
   const dataDensity = getComboChartDataDensity(
     seriesModels,

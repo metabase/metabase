@@ -13,6 +13,8 @@ import {
   getTimeSeriesIntervalDuration,
 } from "../utils/timeseries";
 
+import { getContinuousAxisPadding } from "./x-axis-padding";
+
 // HACK: ECharts in some cases do not render two ticks on line charts with 1 interval (2 values) when minInterval is defined.
 // For example, when a dataset has two days and minInterval is 1 day in milliseconds datasets like ["2022-01-01", "2022-01-02"]
 // will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would correctly render two ticks as needed.
@@ -45,13 +47,16 @@ export const getTicksOptions = (
   }) as ContinuousDomain;
 
   const isSingleItem = xDomain[0] === xDomain[1];
-  const padding = getPadding(intervalsCount);
-  const xDomainPadded = [
-    xDomain[0] - getTimeSeriesIntervalDuration(interval) * padding,
-    xDomain[1] + getTimeSeriesIntervalDuration(interval) * padding,
-  ];
-  const paddedMin = dayjs(xDomainPadded[0]);
-  const paddedMax = dayjs(xDomainPadded[1]);
+  const intervalPadding =
+    getTimeSeriesIntervalDuration(interval) * getPadding(intervalsCount);
+  const padding = getContinuousAxisPadding(
+    intervalPadding,
+    xDomain[1] - xDomain[0],
+    chartLayout,
+  );
+  const xDomainPadded = [xDomain[0] - padding, xDomain[1] + padding];
+  const paddedMin = dayjs(xDomain[0] - intervalPadding);
+  const paddedMax = dayjs(xDomain[1] + intervalPadding);
 
   // Compute ticks interval based on the X-axis range, original interval, and the chart width.
   const computedInterval = computeTimeseriesTicksInterval(
