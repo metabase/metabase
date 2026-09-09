@@ -266,13 +266,17 @@ export const apiCreateQuestion = (
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
     if (isModel || isMetric) {
-      // composeQuestionAdhoc() returns a question with a 'table' display by default
-      const composedQuestion =
-        isModel && question.display() === "list"
-          ? createdQuestionWithMetadata.composeQuestionAdhoc({
-              display: "list",
-            })
-          : createdQuestionWithMetadata.composeQuestionAdhoc();
+      // composeQuestionAdhoc() returns a question with the default "table"
+      // display and empty visualization settings. Once its query completes,
+      // both are copied onto the card being viewed, so carry over the ones
+      // that were just saved, otherwise a new model loses e.g. its list
+      // layout right after being created (metabase#76998)
+      const composedQuestion = createdQuestionWithMetadata.composeQuestionAdhoc(
+        {
+          display: createdQuestionWithMetadata.display(),
+          visualization_settings: createdQuestionWithMetadata.settings(),
+        },
+      );
       dispatch(runQuestionQuery({ overrideWithQuestion: composedQuestion }));
     }
 
