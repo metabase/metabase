@@ -6,6 +6,8 @@ import {
 import { version as reactVersion } from "react";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import { isEmbedPreview } from "metabase/embedding/config";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import type { SimpleEventSchema } from "metabase-types/analytics/event";
 
@@ -108,6 +110,19 @@ export function getHostReactVersion(): string {
   // `undefined` would get removed by the serialization,
   // explicit `unknown` to differentiate old data from real unknown
   return reactVersion ?? "unknown";
+}
+
+type SdkClientHeader =
+  (typeof EMBEDDING_SDK_CONFIG)["metabaseClientRequestHeader"];
+
+export type SdkClient = SdkClientHeader | `${SdkClientHeader}-preview`;
+
+// Same value the backend records as embedding_client for SDK requests,
+// including the -preview suffix added when the preview header is sent
+// (not all clients have a `-preview` variant, but the type allows for it).
+export function getSdkClient(): SdkClient {
+  const client = EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader;
+  return isEmbedPreview() ? `${client}-preview` : client;
 }
 
 // Attaches the instance context to every SDK event. Omits userId — unlike the

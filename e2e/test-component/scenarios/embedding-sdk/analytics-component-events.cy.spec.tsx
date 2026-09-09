@@ -121,6 +121,10 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
         detail.global.react_version,
         "react_version in event_detail",
       ).to.eq(hostReactVersion);
+
+      expect(detail.global.client, "client in event_detail").to.eq(
+        "embedding-sdk-react",
+      );
     });
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
@@ -134,6 +138,10 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
         beaconDetail.global.react_version,
         "react_version in the init beacon",
       ).to.eq(hostReactVersion);
+
+      expect(beaconDetail.global.client, "client in the init beacon").to.eq(
+        "embedding-sdk-react",
+      );
     });
   });
 
