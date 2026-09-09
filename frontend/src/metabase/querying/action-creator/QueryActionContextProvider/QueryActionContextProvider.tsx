@@ -9,8 +9,15 @@ import type {
 import { ActionContext } from "metabase/actions/containers/ActionCreator/ActionContext";
 import type { CreateQueryActionParams } from "metabase/actions/types";
 import { getDefaultFormSettings } from "metabase/actions/utils";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type {
+  CardQuestionBuilder,
+  DraftQuestionBuilder,
+} from "metabase/metadata-store";
+import {
+  useQuestionFromCard,
+  useQuestionFromOpts,
+} from "metabase/metadata-store";
+import type Question from "metabase-lib/v1/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
@@ -30,26 +37,20 @@ import {
 } from "./utils";
 
 export interface QueryActionContextProviderProps extends ActionContextProviderProps<WritebackQueryAction> {
-  metadata: Metadata;
   databaseId?: DatabaseId;
 }
 
 // ActionCreator uses the NativeQueryEditor, which expects a Question object
 // This utilities help us to work with the WritebackQueryAction as with a Question
 
-function newQuestion(metadata: Metadata, databaseId?: DatabaseId) {
-  return new Question(
-    {
-      dataset_query: {
-        type: "native",
-        database: databaseId ?? null,
-        native: {
-          query: "",
-        },
-      },
-    },
-    metadata,
-  );
+function newQuestion(
+  buildDraftQuestion: DraftQuestionBuilder,
+  databaseId?: DatabaseId,
+) {
+  return buildDraftQuestion({
+    DEPRECATED_RAW_MBQL_type: "native",
+    DEPRECATED_RAW_MBQL_databaseId: databaseId,
+  });
 }
 
 function convertActionToQuestionCard(
@@ -91,9 +92,9 @@ function convertActionToQuestionCard(
 
 function convertActionToQuestion(
   action: WritebackQueryAction,
-  metadata: Metadata,
+  buildQuestionFromCard: CardQuestionBuilder,
 ) {
-  const question = new Question(convertActionToQuestionCard(action), metadata);
+  const question = buildQuestionFromCard(convertActionToQuestionCard(action));
   return question.setParameters(action.parameters);
 }
 
@@ -125,23 +126,39 @@ function convertQuestionToAction(
   };
 }
 
+interface ResolveQuestionOpts {
+  buildQuestionFromCard: CardQuestionBuilder;
+  buildDraftQuestion: DraftQuestionBuilder;
+  databaseId?: DatabaseId;
+}
+
 function resolveQuestion(
   action: WritebackQueryAction | undefined,
-  { metadata, databaseId }: { metadata: Metadata; databaseId?: DatabaseId },
+  {
+    buildQuestionFromCard,
+    buildDraftQuestion,
+    databaseId,
+  }: ResolveQuestionOpts,
 ) {
   return action
-    ? convertActionToQuestion(action, metadata)
-    : newQuestion(metadata, databaseId);
+    ? convertActionToQuestion(action, buildQuestionFromCard)
+    : newQuestion(buildDraftQuestion, databaseId);
 }
 
 export function QueryActionContextProvider({
   initialAction,
-  metadata,
   databaseId,
   children,
 }: QueryActionContextProviderProps) {
+  const buildQuestionFromCard = useQuestionFromCard();
+  const buildDraftQuestion = useQuestionFromOpts();
+
   const [initialQuestion, setInitialQuestion] = useState(
-    resolveQuestion(initialAction, { metadata, databaseId }),
+    resolveQuestion(initialAction, {
+      buildQuestionFromCard,
+      buildDraftQuestion,
+      databaseId,
+    }),
   );
   const initialFormSettings = useMemo(
     () => getDefaultFormSettings(initialAction?.visualization_settings),
@@ -172,7 +189,8 @@ export function QueryActionContextProvider({
 
   useEffect(() => {
     const newQuestion = resolveQuestion(initialAction, {
-      metadata,
+      buildQuestionFromCard,
+      buildDraftQuestion,
       databaseId,
     });
     setInitialQuestion(newQuestion);
