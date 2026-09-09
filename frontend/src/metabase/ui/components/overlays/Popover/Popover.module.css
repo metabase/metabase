@@ -2,9 +2,15 @@
   padding: 0;
   overflow: auto;
   background: var(--mb-color-background_surface-primary);
-  border-width: 0.5px;
-  border-color: var(--mb-color-border-neutral-strong);
+  /*
+   * Same 0.5px border box in both themes. In light the hairline comes from the `sm_outline`
+   */
+  border: 0.5px solid transparent;
   color: var(--mb-color-text-primary);
+}
+
+[data-mantine-color-scheme="dark"] .dropdown {
+  border-color: var(--mb-color-border-neutral-strong);
 }
 
 .dropdown[data-menu-dropdown="true"] {
