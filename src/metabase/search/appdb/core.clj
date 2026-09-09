@@ -57,11 +57,16 @@
 (defn- with-appdb-lease
   "Run `thunk` if the appdb reindex lease can be acquired immediately."
   [operation thunk]
-  (let [{:keys [acquired? result]}
-        (search.lease/do-with-lease (search.lease/coordinates :search.engine/appdb) thunk {:wait? false})]
-    (if acquired?
-      result
-      (log/infof "Skipping appdb search %s; another node holds its lease" operation))))
+  ;; A busy lease means the index is already being built. Forced-synchronous runs skip the lease for
+  ;; the same reason [[metabase.search.core]]'s engine wrapper does: they are single-process test
+  ;; scenarios, and leases refuse to be acquired inside a transaction.
+  (if search.ingestion/*force-sync*
+    (thunk)
+    (let [{:keys [acquired? result]}
+          (search.lease/do-with-lease (search.lease/coordinates :search.engine/appdb) thunk {:wait? false})]
+      (if acquired?
+        result
+        (log/infof "Skipping appdb search %s; another node holds its lease" operation)))))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
