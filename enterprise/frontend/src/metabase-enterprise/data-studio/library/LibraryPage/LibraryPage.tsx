@@ -119,7 +119,7 @@ function LibraryPageContent() {
       <SectionLayout>
         <PaneHeader
           breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Library`}</DataStudioBreadcrumbs>
+            <DataStudioBreadcrumbs>{t`Semantic layer`}</DataStudioBreadcrumbs>
           }
           px="3.5rem"
           py={0}
