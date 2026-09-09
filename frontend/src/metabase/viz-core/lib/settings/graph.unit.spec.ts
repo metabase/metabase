@@ -362,16 +362,13 @@ describe("GRAPH_TREND_SETTINGS", () => {
       ).toBe(true);
     });
 
-    it("should be hidden when there are multiple trend lines", () => {
+    it("should be hidden with multiple series, which are customized per series", () => {
       const series = [
         createMockSingleSeries(
           {},
           {
             data: createMockDatasetData({
-              insights: [
-                createMockInsight({ col: "FOO" }),
-                createMockInsight({ col: "BAR" }),
-              ],
+              insights: [createMockInsight({ col: "FOO" })],
             }),
           },
         ),
@@ -381,6 +378,7 @@ describe("GRAPH_TREND_SETTINGS", () => {
         getHidden(series, {
           "graph.show_trendline": true,
           "graph.dimensions": ["FOO"],
+          "series_settings.colors": { count: "#509EE3", avg: "#88BF4D" },
         }),
       ).toBe(true);
     });
@@ -422,6 +420,27 @@ describe("GRAPH_TREND_SETTINGS", () => {
           "graph.dimensions": ["FOO"],
         }),
       ).toBe(false);
+    });
+
+    it("should be hidden with multiple series, which are customized per series", () => {
+      const series = [
+        createMockSingleSeries(
+          {},
+          {
+            data: createMockDatasetData({
+              insights: [createMockInsight({ col: "FOO" })],
+            }),
+          },
+        ),
+      ];
+
+      expect(
+        getHidden(series, {
+          "graph.show_trendline": true,
+          "graph.dimensions": ["FOO"],
+          "series_settings.colors": { count: "#509EE3", avg: "#88BF4D" },
+        }),
+      ).toBe(true);
     });
   });
 });

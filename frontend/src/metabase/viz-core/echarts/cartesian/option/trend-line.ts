@@ -1,6 +1,5 @@
 import type { LineSeriesOption } from "echarts/charts";
 
-import type { ComputedVisualizationSettings } from "../../../types";
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { Z_INDEXES } from "../constants/style";
 import type { BaseCartesianChartModel } from "../model/types";
@@ -11,7 +10,6 @@ export const TREND_LINE_WIDTH = 1.15;
 
 export function getTrendLinesOption(
   chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
 ): LineSeriesOption[] {
   return (
     chartModel.trendLinesModel?.seriesModels.map((trendSeries) => ({
@@ -27,7 +25,7 @@ export function getTrendLinesOption(
       showSymbol: false,
       lineStyle: {
         color: trendSeries.color,
-        type: settings["graph.trendline_style"] ?? "solid",
+        type: trendSeries.style,
         width: TREND_LINE_WIDTH,
       },
       z: Z_INDEXES.trendLine,

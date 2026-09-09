@@ -359,6 +359,11 @@ export type VisualizationSettingsDefinitions = {
   "treemap.show_parent_values"?: SeriesSettingDefinition<Value, Props>;
   "treemap.sub_grouping"?: SeriesSettingDefinition<Value, Props>;
   "treemap.value"?: SeriesSettingDefinition<Value, Props>;
+  "trendline.color"?: SingleSeriesSettingDefinition<Value, Props>;
+  "trendline.style"?: SingleSeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
   view_as?: SeriesSettingDefinition<Value, Props>;
   "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
   "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;
