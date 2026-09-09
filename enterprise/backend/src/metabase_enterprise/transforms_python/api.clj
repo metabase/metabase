@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms-python.api
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -12,8 +13,7 @@
    [metabase.permissions.core :as perms]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
@@ -69,7 +69,7 @@
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
   (let [table-ids (map :table_id source_tables)
-        db-ids    (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids])]
+        db-ids    (transforms-python.db/table-database-ids table-ids)]
     (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
     (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids)))
     (doseq [table-id table-ids]

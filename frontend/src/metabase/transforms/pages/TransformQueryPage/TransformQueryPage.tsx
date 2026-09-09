@@ -16,11 +16,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { getMetadata } from "metabase/metadata-store";
+import { loadQueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import {
-  getInitialUiState,
-  loadQueryEditor,
-} from "metabase/querying/editor/components/QueryEditor";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
@@ -252,7 +250,7 @@ function TransformQueryPageBody({
         <Box
           w="100%"
           bg="background_page-primary"
-          bdrs="md"
+          bdrs="sm"
           bd="1px solid var(--mb-color-border-neutral)"
           flex={1}
           style={{
@@ -395,7 +393,7 @@ const useQueryEditorChunk = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    loadQueryEditor().then(() => {
+    loadQueryEditorWithParameters().then(() => {
       if (!cancelled) {
         setIsLoaded(true);
       }

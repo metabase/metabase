@@ -103,7 +103,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
   return (
     <Box
       ref={ref}
-      mt="xs"
+      mt="xxs"
       ml="-sm"
       pos="absolute"
       style={hoverPosition}
@@ -113,9 +113,9 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
       <Card
         shadow="0 2px 8px var(--mb-color-shadow-default)"
         bd="1px solid var(--mb-color-border-neutral)"
-        bdrs="sm"
+        bdrs="xs"
         px="sm"
-        py="xs"
+        py="xxs"
         maw={MAX_W}
       >
         <Flex align="center">

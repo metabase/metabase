@@ -8,11 +8,11 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,12 +42,11 @@
   [body]
   (let [[_ collection-id :as specified-collection-id?] (find body :collection_id)
         ;; unlike collection_id, `dashboard_id=null` isn't different than not specifying it at all.
-        dashboard-id (:dashboard_id body)
-        dashboard-id->collection-id #(t2/select-one-fn :collection_id [:model/Dashboard :collection_id] %)]
+        dashboard-id (:dashboard_id body)]
     (cond
       ;; you specified both - they must match
       (and specified-collection-id? dashboard-id)
-      (let [dashboard-collection-id (dashboard-id->collection-id dashboard-id)]
+      (let [dashboard-collection-id (queries.db/dashboard-collection-id dashboard-id)]
         (api/check-400 (= collection-id dashboard-collection-id)
                        (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
                             dashboard-collection-id
@@ -56,13 +55,12 @@
 
       specified-collection-id? collection-id
 
-      dashboard-id (dashboard-id->collection-id dashboard-id)
+      dashboard-id (queries.db/dashboard-collection-id dashboard-id)
 
       :else nil)))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
-  (let [dashboards (or (:in_dashboards card)
-                       (:in_dashboards (t2/hydrate card :in_dashboards)))]
+  (let [dashboards (queries.db/card-dashboards card)]
     (doseq [dashboard dashboards]
       (api/write-check dashboard))))
 

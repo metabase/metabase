@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.audit-app.core :as audit]
+   [metabase.permissions-rest.db :as permissions-rest.db]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
@@ -18,7 +19,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -130,10 +130,7 @@
   For every db in the incoming graph, adds on admin permissions."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [admin-group-id (u/the-id (perms/admin-group))
-        db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
-                                                            {:where [:and
-                                                                     (when-not audit? [:not= :id audit/audit-db-id])
-                                                                     [:= :router_database_id nil]]}))]
+        db-ids         (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? audit/audit-db-id)))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
     (if (or (= group-id admin-group-id)
             (contains? (set group-ids) admin-group-id)
@@ -151,10 +148,7 @@
   This is not stored in the data-permissions table, so we add it to the graph for the API."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
-        db-ids                (if db-id [db-id] (t2/select-pks-vec :model/Database
-                                                                   {:where [:and
-                                                                            (when-not audit? [:not= :id audit/audit-db-id])
-                                                                            [:= :router_database_id nil]]}))]
+        db-ids                (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? audit/audit-db-id)))]
     ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
     (if (or (= group-id data-analyst-group-id)
             (contains? (set group-ids) data-analyst-group-id)
@@ -219,26 +213,12 @@
           (-> (t2.realize/realize row)
               (update :type keyword)
               (update :value keyword))))
-   (t2/reducible-query
-    {:select   [[:perm_type :type]
-                [:group_id :group-id]
-                [:perm_value :value]
-                [:db_id :db-id]
-                [:schema_name :schema]
-                [:table_id :table-id]]
-     :from     [(t2/table-name :model/DataPermissions)]
-     :where    [:and
-                (when perm-type [:= :perm_type (u/qualified-name perm-type)])
-                (when db-id [:= :db_id db-id])
-                (when group-id [:= :group_id group-id])
-                (when group-ids [:in :group_id group-ids])
-                (when-not audit? [:not= :db_id audit/audit-db-id])
-                [:not [:exists ^:allow-subquery {:select [1]
-                                                 :from   [[(t2/table-name :model/Database) :router_db]]
-                                                 :where  [:and
-                                                          [:not= :router_db.router_database_id nil]
-                                                          [:= :router_db.id :db_id]]}]]]
-     :order-by [:group_id :db_id]})))
+   (permissions-rest.db/data-permissions-reducible
+    {:perm-type             perm-type
+     :db-id                 db-id
+     :group-id              group-id
+     :group-ids             group-ids
+     :excluded-database-id  (when-not audit? audit/audit-db-id)})))
 
 (defn- add-perm
   "Reducing step that accumulates one `data_permissions` row's value into its (group, db) `perm-map`, at either a
@@ -626,8 +606,7 @@
    (let [affected-group-ids  (keys graph)
          affected-db-ids     (into #{} (mapcat keys) (vals graph))
          all-tables          (when (seq affected-db-ids)
-                               (t2/select [:model/Table :id :db_id :schema]
-                                          :db_id [:in affected-db-ids]))
+                               (permissions-rest.db/tables-for-databases affected-db-ids))
          tables-by-db-schema (group-by (juxt :db_id :schema) all-tables)
          tables-by-db        (group-by :db_id all-tables)
          current-perms       (or (perms/index-database-permissions affected-group-ids affected-db-ids) {})

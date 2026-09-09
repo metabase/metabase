@@ -97,7 +97,6 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
   };
 
   return {
-    id: "__CUSTOM_VIZ_NAME__",
     getName: () => "__CUSTOM_VIZ_DISPLAY_NAME__",
     minSize: { width: 2, height: 2 },
     defaultSize: { width: 6, height: 4 },
@@ -123,17 +122,16 @@ export default createVisualization;
 
 ### Visualization definition properties
 
-| Property                 | Type                                | Description                                                                                                                 |
-| ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `id`                     | `string`                            | Unique identifier. Must match `name` in `metabase-plugin.json`.                                                             |
-| `getName()`              | `() => string`                      | Display name shown in the chart type picker.                                                                                |
-| `minSize`                | `{ width, height }`                 | Minimum dashboard grid size.                                                                                                |
-| `defaultSize`            | `{ width, height }`                 | Default dashboard grid size.                                                                                                |
-| `noHeader`               | `boolean`                           | When `true`, hides the default card title/description header.                                                               |
-| `canSavePng`             | `boolean`                           | Set to `false` to disable PNG export for this visualization.                                                                |
-| `checkRenderable`        | `(series, settings) => void`        | Throw here to signal the viz cannot render with the current data or settings. Metabase shows the error message to the user. |
-| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created by `defineSetting()`.                                                                    |
-| `VisualizationComponent` | `React.ComponentType`               | The interactive React component for dashboard/question rendering.                                                           |
+| Property                 | Type                                | Description                                                                                                                                                     |
+| ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getName()`              | `() => string`                      | Optional. Display name shown in the chart type picker. Defaults to `name` from `metabase-plugin.json`.                                                          |
+| `minSize`                | `{ width, height }`                 | Minimum dashboard grid size.                                                                                                                                    |
+| `defaultSize`            | `{ width, height }`                 | Default dashboard grid size.                                                                                                                                    |
+| `noHeader`               | `boolean`                           | When `true`, hides the default card title/description header.                                                                                                   |
+| `canSavePng`             | `boolean`                           | Set to `false` to disable PNG export for this visualization.                                                                                                    |
+| `checkRenderable`        | `(series, settings) => void`        | Optional. Throw here to signal the viz cannot render with the current data or settings; Metabase shows the error message to the user. Omit it to always render. |
+| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created by `defineSetting()`.                                                                                                        |
+| `VisualizationComponent` | `React.ComponentType`               | The interactive React component for dashboard/question rendering.                                                                                               |
 
 ### VisualizationComponent props
 
