@@ -1422,6 +1422,10 @@
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
+  ;; Tagged for the same reason as the `/:id/schema/:schema` sibling, and it is this route the SDK
+  ;; usually reaches: `GET /:id/schemas` reports a nil schema as "", and the sibling's `NonBlankString`
+  ;; route regex cannot match an empty segment, so every schemaless warehouse lands here.
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [schema include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map {:closed true}

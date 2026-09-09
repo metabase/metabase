@@ -2557,6 +2557,7 @@
    :api  #{metabase.timeline.api metabase.timeline.core}
    :uses #{analytics
            api
+           api-scope
            collections
            events
            lib
