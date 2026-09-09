@@ -31,6 +31,11 @@ Phases 1, 2, 5 and 6 are shared. The middle two differ in **order**: update mode
    - **The component's intended API** — variants, sizes, and states the design system supports for this component. This defines the axes of your showcase (Phase 3).
 3. Decide the mode (see **Two modes** above): search for an existing component — in `metabase/ui` or as a legacy component elsewhere. Found → **update**; nothing equivalent anywhere → **create**. Confirm with the user when unsure.
 4. **Verify a Figma desktop MCP is connected before doing the work** — this skill depends on it for exact tokens in Phase 4 (and styling can't proceed accurately without it). Do a quick read against the issue's node (e.g. `get_metadata`/`get_variable_defs`); if it errors with "nothing selected" or the server isn't connected, prompt the user to enable it (Switch to Dev Mode → MCP section in the right sidebar) and select the relevant layer before continuing.
+5. **Figma Desktop MCP environments only:** open the issue's exact page with [`figma-open`](./figma-open) before MCP reads. Do not run this helper when Desktop MCP is unavailable.
+   ```bash
+   .claude/skills/metabase-ui-component-from-figma/figma-open "<figma-url-with-node-id>"
+   ```
+   A URL with `node-id` needs no token. Bare page-name and `--list` lookups require an already-configured `FIGMA_TOKEN`.
 
 ## Phase 2 — Understand the component
 
@@ -240,5 +245,6 @@ Only after sign-off:
 - [ ] Storybook showcase matrix built from the component's full state space (theme excluded — global toggle drives light/dark), single panel, hover/pressed forced via `storybook-addon-pseudo-states`, controls scoped per story; lint + type-check pass. (Update mode: built before styling, **component styles untouched**. Create mode: built after the component is implemented in Phase 4.)
 - [ ] Figma desktop MCP available; exact tokens extracted and mapped to semantic `--mb-color-*` (NO `color-mix`, NO primitives) and to existing scale vars for radius/spacing/elevation/type — any color *or* dimensional value with no matching token/scale step flagged to the user, not baked in as a literal.
 - [ ] Component styled; stylelint + eslint(+CSS modules) + type-check pass.
+- [ ] Loki coverage registered: `storiesFilter` matches exact story display names; targeted `loki update` generated references; reference PNGs and Playwright screenshots visually inspected; targeted `loki test` passes; `.loki/reference/*.png` included in the commit.
 - [ ] Iterated with the user until satisfied.
 - [ ] Committed (when asked); call sites migrated/verified (update) or export wired (create); findings doc handed back.

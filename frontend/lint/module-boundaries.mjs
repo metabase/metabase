@@ -402,6 +402,7 @@ const elements = [
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
     "frontend/src/metabase/static-viz/index.tsx",
+    "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>
     createElement({
       type: "app",

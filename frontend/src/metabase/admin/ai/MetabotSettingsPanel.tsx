@@ -105,7 +105,6 @@ function MetabotEnabledToggle({
           onChange={(e) => handleToggle(e.target.checked)}
           disabled={isLoading}
           w="auto"
-          size="sm"
         />
         <Text c={value ? "text-primary" : "text-secondary"} fw="500">
           {isEmbedMetabot

@@ -115,6 +115,14 @@
           (is (contains? identifiers "active-viz"))
           (is (not (contains? identifiers "disabled-viz")))
           (is (not (contains? identifiers "error-viz"))))))
+    (testing "/list skips a legacy plugin whose identifier contains \":\""
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "colon:viz"
+                                               :display_name "Colon Viz"
+                                               :status       :active
+                                               :enabled      true
+                                               :bundle_hash  "colon-hash"}]
+        (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))]
+          (is (not (contains? identifiers "colon:viz"))))))
     (testing "/list does not expose the raw bundle blob"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "bundle-viz"
                                                :display_name "Bundle Viz"
@@ -133,6 +141,31 @@
         (let [result (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
               entry  (first (filter #(= "cachebust-viz" (:identifier %)) result))]
           (is (re-find #"\?v=deadbeefcafe$" (:bundle_url entry))))))))
+
+(deftest admin-listing-flags-invalid-identifier-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "GET / flags a legacy plugin whose identifier contains \":\" with an invalid-identifier warning"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "colon:viz"
+                                               :display_name "Colon Viz"
+                                               :status       :active
+                                               :enabled      true
+                                               :bundle_hash  "colon-hash"}
+                     :model/CustomVizPlugin _ {:identifier     "colon:dev-viz"
+                                               :display_name   "Colon Dev Viz"
+                                               :status         :active
+                                               :enabled        true
+                                               :dev_bundle_url "http://localhost:5174"}]
+        (let [plugins    (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
+              warn-types (fn [identifier]
+                           (->> plugins
+                                (filter #(= identifier (:identifier %)))
+                                first
+                                :warnings
+                                (map :type)
+                                set))]
+          (is (contains? (warn-types "colon:viz") "invalid-identifier"))
+          (is (contains? (warn-types "colon:dev-viz") "invalid-identifier")
+              "dev-only plugins are exempt from version warnings but not from this one"))))))
 
 ;;; ------------------------------------------------ Bundle bytes not exposed ------------------------------------------------
 
@@ -389,7 +422,12 @@
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (str/includes? resp "name")
-                  "error should mention the missing name field"))))))))
+                  "error should mention the missing name field"))))
+        (testing "dev plugin registration rejects an identifier containing `:`"
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "a:b"})]
+            (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
+                                             {:dev_bundle_url "http://localhost:5174"})]
+              (is (str/includes? resp "must not contain \":\"")))))))))
 
 ;;; ------------------------------------------------ Bundle Replace ------------------------------------------------
 
@@ -427,6 +465,19 @@
                                       (str "ee/custom-viz-plugin/" id "/bundle") zip
                                       :method :put)]
           (is (re-find #"does not match" (or (:message resp) (str resp)))))))))
+
+(deftest replace-bundle-legacy-colon-identifier-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "PUT /:id/bundle refuses a legacy colon-identifier plugin with a delete-and-recreate hint"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "colon:replace-viz"
+                                                      :display_name "Colon Replace Viz"
+                                                      :status       :active
+                                                      :bundle_hash  "abc"}]
+        (let [zip  (cvp.tu/valid-bundle-bytes "colon:replace-viz")
+              resp (multipart-upload! :crowberto 400
+                                      (str "ee/custom-viz-plugin/" id "/bundle") zip
+                                      :method :put)]
+          (is (re-find #"contains \":\", which is no longer allowed" (or (:message resp) (str resp)))))))))
 
 ;;; ------------------------------------------------ Update / Refresh ------------------------------------------------
 

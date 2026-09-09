@@ -47,7 +47,6 @@ export function AdminAuthCard() {
         label={enabled ? t`Enabled` : t`Disabled`}
         disabled={!enabled && !hasFeature}
         w="auto"
-        size="sm"
       />
       {enabled && overview && !overview.encryption_key_set && (
         <Alert size="compact" color="warning">

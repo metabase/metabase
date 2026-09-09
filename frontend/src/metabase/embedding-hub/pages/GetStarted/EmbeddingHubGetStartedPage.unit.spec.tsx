@@ -13,9 +13,9 @@ import {
   setupTokenStatusEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { SetupGuideChecklist } from "metabase/embedding/setup-guide/api/setup-guide";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import {
   createMockSettings,

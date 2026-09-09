@@ -1,9 +1,6 @@
+import { createMockSettingsState, createMockState } from "__support__/state";
 import type { MetadataSelectorOpts } from "metabase/metadata-store";
 import { getMetadata } from "metabase/metadata-store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Settings } from "metabase-types/api";
 
 import type { EntitiesStateOpts } from "./store";

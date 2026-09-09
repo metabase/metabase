@@ -861,7 +861,7 @@
           type-schema            (resolve-schema (get body-properties "type"))
           result-metadata-schema (resolve-schema (get body-properties "result_metadata"))]
       (testing 'type
-        (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.queries.schema.card-type"} {:type :null}]}
+        (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.queries.schema..card.type"} {:type :null}]}
                 type-schema)))
       (testing 'result_metadata
         (is (=? {:oneOf [{:$ref "#/components/schemas/metabase.lib.schema.metadata..card.result-metadata"} {:type :null}]}

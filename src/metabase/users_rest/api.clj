@@ -200,19 +200,19 @@
                             (= tenancy :all)               :all
                             (= tenancy :external)           :external
                             :else                           nil)
-            clauses (user/filter-clauses {:status                  status
-                                          :query                   query
-                                          :group-ids               (when group_id [group_id])
-                                          :include-deactivated     include_deactivated
-                                          :is-data-analyst?        is_data_analyst
-                                          :can-access-data-studio? can_access_data_studio
-                                          :tenant-filter           tenant-filter
-                                          :sort                    :first-name
-                                          :limit                   (request/limit)
-                                          :offset                  (request/offset)})]
+            filters {:status                  status
+                     :query                   query
+                     :group-ids               (when group_id [group_id])
+                     :include-deactivated     include_deactivated
+                     :is-data-analyst?        is_data_analyst
+                     :can-access-data-studio? can_access_data_studio
+                     :tenant-filter           tenant-filter
+                     :sort                    :first-name
+                     :limit                   (request/limit)
+                     :offset                  (request/offset)}]
         {:data   (cond-> (users-rest.db/users-with-columns
                           (user-visible-columns)
-                          clauses)
+                          filters)
                    ;; For admins also include the IDs of Users' Personal Collections
                    api/*is-superuser?*
                    (t2/hydrate :personal_collection_id :tenant_collection_id)
@@ -224,7 +224,7 @@
                    ;; multiple groups
                    group_id
                    distinct)
-         :total  (-> (users-rest.db/distinct-user-count (users/filter-clauses-without-paging clauses))
+         :total  (-> (users-rest.db/distinct-user-count filters)
                      first
                      :count)
          :limit  (request/limit)
@@ -246,18 +246,18 @@
                                         (not api/*is-superuser?*) (:tenant_id @api/*current-user*)
                                         (not (perms/use-tenants)) nil
                                         :else                     :all))
-          (all [] (let [clauses (user/filter-clauses {:tenant-filter (recipient-tenant-filter)
-                                                      :sort          :last-name})]
-                    {:data   (users-rest.db/users-with-columns (user-visible-columns) clauses)
-                     :total  (users-rest.db/user-count (users/filter-clauses-without-paging clauses))
+          (all [] (let [filters {:tenant-filter (recipient-tenant-filter)
+                                 :sort          :last-name}]
+                    {:data   (users-rest.db/users-with-columns (user-visible-columns) filters)
+                     :total  (users-rest.db/user-count filters)
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (user/same-groups-user-ids api/*current-user-id*)
-                                 clauses  (user/filter-clauses {:tenant-filter (recipient-tenant-filter)
-                                                                :user-ids      user-ids
-                                                                :sort          :last-name})]
-                             {:data   (users-rest.db/users-with-columns (user-visible-columns) clauses)
-                              :total  (users-rest.db/user-count (users/filter-clauses-without-paging clauses))
+                                 filters  {:tenant-filter (recipient-tenant-filter)
+                                           :user-ids      user-ids
+                                           :sort          :last-name}]
+                             {:data   (users-rest.db/users-with-columns (user-visible-columns) filters)
+                              :total  (users-rest.db/user-count filters)
                               :limit  (request/limit)
                               :offset (request/offset)}))]
     (cond

@@ -4,14 +4,14 @@ import {
   findRequests,
   setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
+import { createMockSettingsState } from "__support__/state/settings";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
-import { createMockState } from "metabase/redux/store/mocks";
-import { createMockSettingsState } from "metabase/redux/store/mocks/settings";
 import {
   createMockTokenFeatures,
   createMockUser,

@@ -149,7 +149,6 @@ export function DomainsSettingsPage() {
                           label={
                             values["csp-img-enabled"] ? t`Enabled` : t`Disabled`
                           }
-                          size="sm"
                           disabled={Boolean(customVizEnabled)}
                         />
                       )}

@@ -24,6 +24,10 @@ export type ChartSettingWidgetProps<TValue> = {
   onChangeSettings: (settings: Partial<VisualizationSettings>) => void;
 };
 
+export type CustomVizSettingWidgetProps = ChartSettingWidgetProps<unknown> & {
+  id: string;
+} & Record<string, unknown>;
+
 export type ChartSettingEnumToggleProps<T extends string> = {
   value: T | undefined;
   onChange: (value: T) => void;
@@ -89,7 +93,11 @@ export type ChartSettingSeriesOrderProps = {
   ) => void;
   series: Series;
   hasEditSettings: boolean;
-  onChangeSeriesColor: (seriesKey: string, color: string) => void;
+  onChangeSeriesColor: (
+    seriesKey: string,
+    hexValue: string,
+    colorName?: string,
+  ) => void;
   onSortEnd: (newItems: ChartSettingSeriesOrderItem[]) => void;
   isSortable?: boolean;
   accentColorOptions?: AccentColorOptions;

@@ -332,6 +332,8 @@ const configs = [
       "metabase/no-literal-metabase-strings": "error",
       "metabase/no-oss-reinitialize-import": "error",
       "metabase/no-analytics-import-outside-analytics-files": "error",
+      "metabase/no-module-level-memoize": "error",
+      "metabase/no-direct-memoize-import": "error",
 
       "depend/ban-dependencies": [
         "error",
@@ -1255,11 +1257,6 @@ const configs = [
     files: [
       "frontend/src/**/*.{ts,tsx,js,jsx}",
       "enterprise/frontend/src/**/*.{ts,tsx,js,jsx}",
-    ],
-    ignores: [
-      // TODO(no-base-api-access): createMockState composes the whole store, so redux/store/mocks belongs in test support.
-      // It moves there when the store roots are composed explicitly, and this ignore goes with it.
-      "frontend/src/metabase/redux/store/mocks/api.ts",
     ],
     rules: {
       "metabase/no-base-api-access": [
