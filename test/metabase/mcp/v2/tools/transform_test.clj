@@ -8,6 +8,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the :transform projection the write echo projects through.
    [metabase.mcp.v2.tools.content :as tools.content]
@@ -295,6 +297,248 @@
               (finally
                 (t2/delete! :model/Transform :id (:id result)))))))))
 
+;;; ----------------------------------------------- Query handles --------------------------------------------------
+
+(defn- mint-handle!
+  "Mint a query_handle for `serialized-query` straight into the handle store, the way an execute
+   tool does — reproducing the pMBQL → JSON → string-valued map round-trip the save path has to
+   survive. Deferred-tests ledger: when the `execute_sql`/`execute_query` tools land, the
+   `#_`-disabled tests in this namespace cover the same ground through the whole tool path; these
+   stay as the store-level pin, so the handle branch is never left uncovered."
+  [session-id serialized-query]
+  (v2.queries/mint-query-handle! session-id (mt/user->id :crowberto)
+                                 (v2.queries/encode-serialized-query serialized-query)))
+
+(defn- venues-handle-query
+  "The serialized MBQL 5 an execute_query handle carries — `:database` included, which the execute
+   pipeline guarantees and `resolve-target` reads to derive the target database."
+  []
+  {:lib/type "mbql/query"
+   :database (mt/id)
+   :stages   [{:lib/type "mbql.stage/mbql" :source-table (mt/id :venues)}]})
+
+(defn- native-handle-query
+  "The serialized native query an `execute_sql` handle carries."
+  []
+  (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) "SELECT 1 AS n")))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest transform-write-create-from-query-handle-test
+  (testing "GHY-4240: a query_handle is the other query source — the agent runs a query, then saves
+            exactly what ran, without restating the query"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-model-cleanup [:model/Transform :model/McpQueryHandle]
+          (let [session-id (str (random-uuid))
+                handle     (mint-handle! session-id (venues-handle-query))
+                result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
+                                                    {:method       "create"
+                                                     :name         "From a handle"
+                                                     :query_handle handle
+                                                     :target       {:name "mcp_from_handle" :schema (venues-schema)}}
+                                                    session-id))
+                stored     (t2/select-one :model/Transform :id (:id result))]
+            (is (= "mbql" (:source_type result)))
+            (testing "the handle's query is what got stored, normalized to what a transform holds"
+              (is (= (mt/id :venues) (-> stored :source :query :stages first :source-table))))
+            (testing "and the target follows the handle's database"
+              (is (= {:type "table" :schema (venues-schema) :name "mcp_from_handle" :database (mt/id)}
+                     (:target result))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest transform-write-native-query-handle-test
+  (testing "GHY-4240: a native handle — the shape execute_sql mints — saves as a native transform, and
+            deliberately does NOT re-demand the agent:sql:run scope: minting the handle already passed
+            that gate and the kill switch, so re-checking here would make execute_sql's own handles
+            unsaveable. Contrast transform-write-native-definition-gates-test, where an inline native
+            `definition` has passed no gate yet and so must pass both."
+    (with-transforms
+      (with-target-db-support
+        (mt/with-model-cleanup [:model/Transform :model/McpQueryHandle]
+          (let [session-id (str (random-uuid))
+                handle     (mint-handle! session-id (native-handle-query))
+                result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
+                                                    {:method       "create"
+                                                     :name         "From a SQL handle"
+                                                     :query_handle handle
+                                                     :target       {:name "mcp_from_sql_handle" :schema (venues-schema)}}
+                                                    session-id))]
+            (is (= "native" (:source_type result)))
+            (is (= :native (t2/select-one-fn :source_type :model/Transform :id (:id result))))
+            (testing "and the SQL that ran is the SQL that got stored"
+              (is (= "SELECT 1 AS n"
+                     (-> (t2/select-one-fn :source :model/Transform :id (:id result))
+                         :query :stages first :native))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest transform-write-update-from-query-handle-test
+  (testing "GHY-4240: a query_handle works on update too, so an agent can re-run a query and save the
+            corrected version over an existing transform — which here also retypes it mbql -> native"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-model-cleanup [:model/McpQueryHandle]
+          (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_handle_swap")]
+            (let [session-id (str (random-uuid))
+                  handle     (mint-handle! session-id (native-handle-query))
+                  result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
+                                                      {:method "update" :id id :query_handle handle}
+                                                      session-id))]
+              (is (= "native" (:source_type result)))
+              (is (= :native (t2/select-one-fn :source_type :model/Transform :id id)))
+              (testing "and the fields the call didn't name are untouched"
+                (is (= "mcp_handle_swap" (-> result :target :name)))
+                (is (= (venues-schema) (-> result :target :schema)))))))))))
+
+(deftest transform-write-unknown-query-handle-test
+  (testing "GHY-4240: a handle the caller doesn't own (or that has expired) is a teaching error naming
+            the recovery, not the sanitized internal error a raw lookup miss would produce"
+    (with-transforms
+      (with-target-db-support
+        (let [error (tool-error (write! {:method       "create"
+                                         :name         "no such handle"
+                                         :query_handle (str (random-uuid))
+                                         :target       {:name "mcp_no_handle" :schema (venues-schema)}}))]
+          (is (re-find #"Query handle not found" error))
+          (is (re-find #"run the query again" error))
+          (is (zero? (t2/count :model/Transform :name "no such handle"))))))))
+
+;;; ------------------------------------------- Collections and tags -----------------------------------------------
+
+(deftest transform-write-collection-id-test
+  (testing "GHY-4240: `collection_id` files the transform in a transform folder, on create and on update.
+            Transform folders are collections in the :transforms namespace, so an ordinary collection is
+            refused — pinned here because the refusal comes from a layer below this tool."
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/Collection {folder :id}  {:name "Transforms folder" :namespace :transforms}
+                       :model/Collection {folder2 :id} {:name "Other folder" :namespace :transforms}
+                       :model/Collection {ordinary :id} {:name "Ordinary folder"}]
+          (testing "create files it where it's told"
+            (let [result (tool-result (write! {:method        "create"
+                                               :name          "Filed transform"
+                                               :definition    (query-definition)
+                                               :target        {:name "mcp_filed" :schema (venues-schema)}
+                                               :collection_id folder}))]
+              (try
+                (is (= folder (:collection_id result)))
+                (is (= folder (t2/select-one-fn :collection_id :model/Transform :id (:id result))))
+                (testing "and update moves it"
+                  (let [moved (tool-result (write! {:method "update" :id (:id result) :collection_id folder2}))]
+                    (is (= folder2 (:collection_id moved)))))
+                (testing "while \"root\" puts it at the top of the transforms tree"
+                  (let [rooted (tool-result (write! {:method "update" :id (:id result) :collection_id "root"}))]
+                    (is (nil? (:collection_id rooted)))
+                    (is (nil? (t2/select-one-fn :collection_id :model/Transform :id (:id result))))))
+                (finally
+                  (t2/delete! :model/Transform :id (:id result))))))
+          (testing "a collection that isn't a transform folder is refused, and nothing is written"
+            (let [error (tool-error (write! {:method        "create"
+                                             :name          "Misfiled transform"
+                                             :definition    (query-definition)
+                                             :target        {:name "mcp_misfiled" :schema (venues-schema)}
+                                             :collection_id ordinary}))]
+              (is (re-find #"(?i)namespace" error))
+              (is (zero? (t2/count :model/Transform :name "Misfiled transform")))))
+          (testing "and a collection id that resolves to nothing is the shared not-found error"
+            (is (re-find #"not found"
+                         (tool-error (write! {:method        "create"
+                                              :name          "Nowhere transform"
+                                              :definition    (query-definition)
+                                              :target        {:name "mcp_nowhere" :schema (venues-schema)}
+                                              :collection_id 999999999}))))))))))
+
+(deftest transform-write-tag-ids-test
+  (testing "GHY-4240: `tag_ids` replaces the whole list — jobs select transforms by tag, so a tag that
+            silently fails to attach is a transform a schedule never runs"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/TransformTag {tag1 :id} {:name "mcp-tag-1"}
+                       :model/TransformTag {tag2 :id} {:name "mcp-tag-2"}]
+          (let [result (tool-result (write! {:method     "create"
+                                             :name       "Tagged transform"
+                                             :definition (query-definition)
+                                             :target     {:name "mcp_tagged" :schema (venues-schema)}
+                                             :tag_ids    [tag1]}))
+                id     (:id result)]
+            (try
+              (testing "create attaches them"
+                (is (= [tag1] (:tag_ids result))))
+              (testing "update replaces the list rather than adding to it"
+                (is (= [tag2] (:tag_ids (tool-result (write! {:method "update" :id id :tag_ids [tag2]}))))))
+              (testing "and [] clears it"
+                (is (= [] (:tag_ids (tool-result (write! {:method "update" :id id :tag_ids []}))))))
+              (finally
+                (t2/delete! :model/Transform :id id)))))))))
+
+(deftest transform-write-unknown-tag-ids-test
+  (testing "GHY-4240: a tag id that names no tag is refused rather than dropped on the floor. The shared
+            write filters unknown ids out silently, so \"replaces the current list\" would quietly mean
+            \"replaces it with a shorter one\" — and the tag a job selects on is exactly the one whose
+            absence goes unnoticed until the schedule doesn't fire."
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/TransformTag {tag1 :id} {:name "mcp-tag-live"}]
+          (testing "on create, naming the id that doesn't exist"
+            (let [error (tool-error (write! {:method     "create"
+                                             :name       "Badly tagged"
+                                             :definition (query-definition)
+                                             :target     {:name "mcp_bad_tag" :schema (venues-schema)}
+                                             :tag_ids    [tag1 999999999]}))]
+              (is (re-find #"999999999" error))
+              (is (zero? (t2/count :model/Transform :name "Badly tagged"))
+                  "and nothing is written")))
+          (testing "and on update, where the stored tags are left alone"
+            ;; `:tag_ids` is a hydration key over the join table, not a column, so the association is
+            ;; made directly rather than passed to the insert.
+            (mt/with-temp [:model/Transform             {id :id} (temp-transform-defaults "mcp_bad_tag_update")
+                           :model/TransformTransformTag _        {:transform_id id :tag_id tag1 :position 0}]
+              (let [error (tool-error (write! {:method "update" :id id :tag_ids [999999999]}))]
+                (is (re-find #"999999999" error))
+                (is (= [tag1] (:tag_ids (t2/hydrate (t2/select-one :model/Transform :id id)
+                                                    :transform_tag_ids))))))))))))
+
+(defn- venues-fk
+  "The portable FK path the external dialect names the venues table by."
+  []
+  [(t2/select-one-fn :name :model/Database :id (mt/id)) (venues-schema) "VENUES"])
+
+(deftest transform-write-portable-definition-test
+  (testing "GHY-4240: a `definition` in the older name-based dialect resolves on input, as the
+            accepted-shapes sentence every source error ends with promises. Only the numeric-id
+            dialect had a test, so nothing held that sentence to the code."
+    (with-transforms
+      (with-target-db-support
+        (let [result (tool-result (write! {:method     "create"
+                                           :name       "Portable source"
+                                           :definition {:type  "query"
+                                                        :query {:lib/type "mbql/query"
+                                                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                            :source-table (venues-fk)}]}}
+                                           :target     {:name "mcp_portable" :schema (venues-schema)}}))]
+          (try
+            (testing "the FK path resolved to the numeric id the transform stores"
+              (is (= (mt/id :venues)
+                     (-> (t2/select-one-fn :source :model/Transform :id (:id result))
+                         :query :stages first :source-table))))
+            (testing "and the target database follows the resolved query"
+              (is (= (mt/id) (-> result :target :database))))
+            (finally
+              (t2/delete! :model/Transform :id (:id result)))))))))
+
+(deftest transform-write-accepted-shapes-names-both-dialects-test
+  (testing "GHY-4240: the sentence every source-shape error ends with is what teaches the agent how to
+            retry, so it has to name both dialects the tool actually resolves — it once said
+            \"either\" and then listed one"
+    (with-transforms
+      (let [error (tool-error (write! {:method     "create"
+                                       :name       "x"
+                                       :definition {:query (venues-query)}
+                                       :target     {:name "y" :schema (venues-schema)}}))]
+        (is (re-find #"numeric-id dialect" error))
+        (is (re-find #"name-based dialect" error))
+        (is (not (re-find #"either the same numeric-id dialect execute_query takes\." error))
+            "the truncated form, with `either` promising an alternative it never gives")))))
+
 ;;; -------------------------------------------------- Update ------------------------------------------------------
 
 (deftest transform-write-update-swaps-source-test
@@ -325,6 +569,42 @@
               (testing "so the echoed target round-trips"
                 (let [again (tool-result (write! {:method "update" :id id :target (:target result)}))]
                   (is (= (mt/id) (-> again :target :database))))))))))))
+
+(deftest transform-write-update-source-database-swap-retargets-test
+  (testing "GHY-4240: swapping the source to a query on a different database moves the target's database
+            with it, even though the call names no `target`. The target database is derived from the
+            query rather than authored, so a target left pointing at the old database names one the
+            transform does not write — and the echo carrying it is then refused on the way back in by
+            the target/query database check, dead-ending the read-modify-write this tool is built on."
+    (with-transforms
+      (with-target-db-support
+        (let [orig-db     (mt/id)
+              orig-venues (mt/id :venues)
+              orig-schema (venues-schema)]
+          (mt/with-temp-copy-of-db
+            (let [other-db (mt/id)]
+              (is (not= orig-db other-db) "the copy really is a second database")
+              (mt/with-temp [:model/Transform {id :id}
+                             {:name   "db swap"
+                              :source {:type  :query
+                                       :query {:database orig-db :type "query"
+                                               :query {:source-table orig-venues}}}
+                              :target {:type :table :schema orig-schema :name "mcp_db_swap"}}]
+                (let [result (tool-result (write! {:method     "update" :id id
+                                                   :definition {:type  "query"
+                                                                :query {:database other-db :type "query"
+                                                                        :query {:source-table (mt/id :venues)}}}}))
+                      stored (t2/select-one :model/Transform :id id)]
+                  (testing "the echoed target names the database the transform now writes"
+                    (is (= other-db (-> result :target :database))))
+                  (testing "and so does the stored one — the echo is not a prettier view of a stale row"
+                    (is (= other-db (-> stored :target :database))))
+                  (testing "so the echoed target can be passed straight back, as read-modify-write does"
+                    (let [again (tool-result (write! {:method "update" :id id :target (:target result)}))]
+                      (is (= other-db (-> again :target :database)))))
+                  (testing "while the parts of the target the call never named are left alone"
+                    (is (= "mcp_db_swap" (-> result :target :name)))
+                    (is (= orig-schema (-> result :target :schema)))))))))))))
 
 ;; TODO(query-track/execute_sql): restore when the execute_sql tool lands — this test mints a
 ;; query handle via `call-tool! ... "execute_sql"`, which isn't registered yet. (a query_handle on update)

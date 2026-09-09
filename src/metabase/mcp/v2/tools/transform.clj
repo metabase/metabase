@@ -10,6 +10,7 @@
    a `target` patched rather than replaced so a rename keeps its schema, and refusing the two shapes
    it cannot author — python sources and incremental targets — instead of silently rewriting them."
   (:require
+   [clojure.string :as str]
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
@@ -24,7 +25,8 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.transforms.core :as transforms]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,7 +34,8 @@
   "The sentence every source-shape teaching error ends with, naming what `definition` accepts."
   (str "`definition` is a transform source: {\"type\": \"query\", \"query\": …} — exactly what "
        "get_content's \"definition\" include returns for a transform. The query inside is either "
-       "the same numeric-id dialect execute_query takes. "
+       "the same numeric-id dialect execute_query takes, or the older name-based dialect, still "
+       "resolved on input. "
        "Alternatively pass a query_handle from execute_query or execute_sql instead of "
        "`definition`."))
 
@@ -196,6 +199,26 @@
       (when (not= (where transform) (where updates))
         (check-target-free! (merge transform updates))))))
 
+;;; ---------------------------------------------------- Tags ------------------------------------------------------
+
+(defn- check-tags-exist!
+  "Refuse `tag-ids` that name no transform tag. The shared write silently filters unknown ids out,
+   so without this the tool's own \"replaces the current list\" would quietly mean \"replaces it
+   with a shorter one\" — and jobs select the transforms they run by tag, so the dropped one is
+   noticed only when a schedule doesn't fire."
+  [tag-ids]
+  (when (seq tag-ids)
+    ;; `into`, not the select's own return: it hands back nil rather than an empty set when no id
+    ;; matches, which is exactly the all-unknown case this exists to catch.
+    (let [known   (into #{} (t2/select-fn-set :id :model/TransformTag :id [:in (distinct tag-ids)]))
+          unknown (sort (remove known (distinct tag-ids)))]
+      (when (seq unknown)
+        (common/throw-teaching-error
+         (format (str "No transform tag has id %s. Tags are created in Metabase and listed on a "
+                      "transform's read — pass only ids that exist, or omit `tag_ids` to leave "
+                      "the current ones alone.")
+                 (str/join ", " unknown)))))))
+
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
 (defn- write-result
@@ -236,6 +259,8 @@
                  :tag_ids       tag_ids})]
     (transforms/check-feature-enabled! body)
     (api/create-check :model/Transform body)
+    ;; Before the target check, which opens a warehouse connection — a bad argument shouldn't pay for that.
+    (check-tags-exist! tag_ids)
     (transforms/check-database-feature body)
     (check-target-free! body)
     (write-result (transforms/create-transform! body))))
@@ -279,17 +304,30 @@
         ;; The target follows the query being stored — the new one when the source is changing in
         ;; this same call, otherwise the one already there.
         source-db  (-> (or new-source (:source transform)) :query :database)
+        ;; A source swap onto another database has to carry the target's database with it even when
+        ;; the call names no `target`: the target records the database it writes, that database
+        ;; follows the query, and one left behind names a database the transform does not write —
+        ;; which `resolve-target` then refuses when the agent passes the echo back, dead-ending the
+        ;; read-modify-write. Patched in place rather than rebuilt through `resolve-target`, so a
+        ;; target this tool can't author still gets its database corrected instead of becoming
+        ;; uneditable. Ordered before the caller's own `target` in the `cond->`, which wins.
+        retarget   (when-let [target (and new-source (:target transform))]
+                     (when (not= source-db (:database target))
+                       (assoc target :database source-db)))
         updates    (cond-> {}
                      (contains? args :name)          (assoc :name name)
                      (contains? args :description)   (assoc :description description)
                      (contains? args :collection_id) (assoc :collection_id (v2.resolve/resolve-collection-id (:collection_id args)))
                      (contains? args :tag_ids)       (assoc :tag_ids (vec tag_ids))
+                     retarget                        (assoc :target retarget)
                      (contains? args :target)        (assoc :target (resolve-target (:target transform) (:target args) source-db))
                      new-source                      (assoc :source new-source))]
     (when (empty? updates)
       (common/throw-teaching-error
        (str "Nothing to update — pass at least one of name, description, definition, query_handle, target, "
             "collection_id, or tag_ids.")))
+    (when (contains? args :tag_ids)
+      (check-tags-exist! tag_ids))
     ;; The new state's gates before the target check, which opens a warehouse connection — the same
     ;; ordering the create path states. `write-check` above covers the transform as stored; a
     ;; `definition` naming another database is resolved with no permission check of its own, so
