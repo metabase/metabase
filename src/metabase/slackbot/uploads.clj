@@ -16,8 +16,6 @@
   "Maximum file size for CSV uploads (200MB)"
   (* 200 1024 1024))
 
-;; Deliberately stricter than the upload module's own `allowed-extensions`, which also accepts `txt` and
-;; files with no extension at all.
 (def ^:private allowed-csv-filetypes
   "File types that are allowed for CSV uploads"
   #{"csv" "tsv"})
@@ -60,8 +58,8 @@
               (recur total))))))))
 
 (defn- upload-target
-  "The database uploads go to, along with the schema and table prefix to create tables under. Returns nil if
-  no database has uploads enabled."
+  "The database uploads go to, with the schema and table prefix to create tables under, or nil if no
+  database has uploads enabled."
   []
   (when-let [db (upload/current-database)]
     {:db           db
@@ -77,8 +75,8 @@
       (log/warnf "[slackbot] File exceeds size limit: error=%s" size-error)
       {:error size-error :filename name})
     (try
-      ;; `create-csv-upload!` opens the file several times over -- MIME sniffing, charset detection,
-      ;; separator inference, then the row pass -- so the download has to land on disk first.
+      ;; [[upload/create-csv-upload!]] reads the file more than once, so the download has to land on
+      ;; disk first.
       (let [temp-file (File/createTempFile "slack-upload-" (str "-" name))]
         (try
           (with-open [^InputStream stream (slackbot.client/download-file-stream client url_private)]
@@ -133,7 +131,7 @@
   "You don't have permission to upload files. Contact your Metabase administrator.")
 
 (defn- build-upload-system-messages
-  "Messages telling the AI request what became of the files attached to the message."
+  "Messages describing what became of each attached file."
   [{:keys [results skipped remote]}]
   (let [successes (filter :model-id results)
         failures  (filter :error results)]
@@ -165,8 +163,8 @@
                      (str/join ", " remote)))))))
 
 (defn handle-file-uploads
-  "Upload the CSV files attached to a Slack message, downloading each with `client`. Returns nil if there are no
-  files, otherwise a map of:
+  "Upload the CSV files attached to a Slack message, downloading each with `client`.
+  Returns nil if there are no files, otherwise a map of:
    :upload-result   - per-file results and the names of skipped files, absent if nothing was attempted
    :system-messages - messages to inject into the AI request describing the outcome"
   [client files]

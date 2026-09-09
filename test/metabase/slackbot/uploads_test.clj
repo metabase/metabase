@@ -25,7 +25,7 @@
    - :uploads-enabled? - Whether uploads are enabled (default false)
    - :can-create-upload? - Whether user can create uploads (default true)
    - :upload-result - Result from create-csv-upload! (default success with id 123)
-   - :download-content - Content returned by download-slack-file (default valid CSV)
+   - :download-content - Content returned by `download-file-stream` (default valid CSV)
 
    Calls body-fn with a map containing tracking atoms:
    {:upload-calls, :download-calls}"
@@ -344,6 +344,7 @@
     (is (true? (#'slackbot.uploads/csv-file? {:filetype "tsv"})))
     (is (false? (#'slackbot.uploads/csv-file? {:filetype "pdf"})))
     (is (false? (#'slackbot.uploads/csv-file? {:filetype "xlsx"})))
+    (is (false? (#'slackbot.uploads/csv-file? {:filetype "txt"})))
     (is (false? (#'slackbot.uploads/csv-file? {:filetype nil})))
     (is (false? (#'slackbot.uploads/csv-file? {}))))
   (testing "a file stored outside Slack is refused whatever filetype it claims, ordinary upload modes are kept"
