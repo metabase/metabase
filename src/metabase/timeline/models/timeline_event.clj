@@ -11,6 +11,7 @@
 (doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -122,9 +123,12 @@
 
 ;;;; serialization
 
-;; nested in Timeline
+(defmethod serdes/generate-path "TimelineEvent" [_ event]
+  [(serdes/infer-self-path "Timeline" (t2/select-one :model/Timeline :id (:timeline_id event)))
+   (serdes/infer-self-path "TimelineEvent" event)])
+
 (defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
-  {:copy      [:archived :description :icon :name :time_matters :timezone]
+  {:copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
    :skip      []
    :transform {:created_at  (serdes/date)
                :creator_id  (serdes/fk :model/User)

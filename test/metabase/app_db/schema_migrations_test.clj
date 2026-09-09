@@ -3313,3 +3313,35 @@
             "conversations without a blob are untouched")
         (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
             "metabot_conversation.state is gone")))))
+
+(deftest timeline-event-entity-ids-test
+  (testing "v64.2026-09-09: existing timeline events receive distinct portable IDs without changing their data"
+    (impl/test-migrations ["v64.2026-09-09T00:00:00" "v64.2026-09-09T00:00:02"] [migrate!]
+      (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-birds@example.com"
+                                                             :password    "password"
+                                                             :date_joined :%now
+                                                             :entity_id   (u/generate-nano-id)})
+            timeline-id (t2/insert-returning-pk! :timeline {:name       "Migration seasons"
+                                                            :icon       "star"
+                                                            :creator_id user-id
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :entity_id  (u/generate-nano-id)})
+            event       {:name         "Swallows return"
+                         :archived     false
+                         :icon         "star"
+                         :timeline_id  timeline-id
+                         :creator_id   user-id
+                         :created_at   :%now
+                         :updated_at   :%now
+                         :timestamp    #t "2027-04-20T00:00:00Z"
+                         :time_matters false
+                         :timezone     "UTC"}
+            _           (t2/insert! :timeline_event [event (assoc event :archived true)])
+            before      (t2/select :timeline_event {:order-by [:id]})]
+        (migrate!)
+        (let [after      (t2/select :timeline_event {:order-by [:id]})
+              entity-ids (map :entity_id after)]
+          (is (= before (mapv #(dissoc % :entity_id) after)))
+          (is (= 2 (count (set entity-ids))))
+          (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids)))))))

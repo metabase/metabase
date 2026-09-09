@@ -218,12 +218,13 @@
                            :dimension ["dimension" [:field 54 {:source-field 53}]]}}}}}}})))))
 
 (deftest ^:parallel import-old-timeline-events-settings-test
-  (testing "older exports lose their saved event choices without changing other settings"
+  (testing "source-instance numeric IDs cannot select unrelated destination timelines or hide their events"
     (let [settings {:graph.show_values                    true
                     :timeline.selected_timeline_ids       [7]
                     :timeline.excluded_timeline_event_ids [42]}]
-      (is (= {:graph.show_values              true
-              :timeline.selected_timeline_ids []}
+      (is (= {:graph.show_values                    true
+              :timeline.selected_timeline_ids       []
+              :timeline.excluded_timeline_event_ids []}
              (select-keys (serdes/import-visualization-settings settings) (keys settings)))))))
 
 (deftest ^:parallel import-viz-settings-test

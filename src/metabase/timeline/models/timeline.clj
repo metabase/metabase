@@ -49,7 +49,8 @@
 ;;;; serialization
 
 (defmethod serdes/deserialization-dependencies "Timeline" [{:keys [collection_id]}]
-  [[{:model "Collection" :id collection_id}]])
+  (when collection_id
+    [[{:model "Collection" :id collection_id}]]))
 
 (defmethod serdes/serialization-dependencies "Timeline" [_model-name {:keys [collection_id]}]
   ;; A Timeline only references its containing Collection, which a selective export may legitimately omit.

@@ -1525,6 +1525,8 @@
                     :model/NativeQuerySnippet
                     :model/Segment
                     :model/Table
+                    :model/Timeline
+                    :model/TimelineEvent
                     :model/User}}
 
   mq
@@ -2503,7 +2505,7 @@
            events
            models
            util}
-   :model-exports #{:model/Timeline}
+   :model-exports #{:model/Timeline :model/TimelineEvent}
    :model-imports #{:model/Collection :model/User}}
 
   tracing

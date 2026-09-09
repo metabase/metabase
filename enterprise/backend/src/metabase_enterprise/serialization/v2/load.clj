@@ -57,8 +57,7 @@
 
 (defn- load-deps!
   "Given a list of `deps` (hierarchies), [[load-one]] them all.
-  If [[load-one]] throws because it can't find that entity in the filesystem, check if it's already loaded in
-  our database."
+  Timeline references may be absent from the archive; other missing dependencies must already exist locally."
   [ctx deps]
   (if (empty? deps)
     ctx
@@ -67,9 +66,12 @@
                 (load-one! ctx dep)
                 (catch Exception e
                   (cond
-                    ;; It was missing, but we found it locally, so just return the context.
+                    ;; A missing dependency of an included entity must still fail, even if the entity exists locally.
                     (and (= (:error (ex-data e)) ::not-found)
-                         (serdes/load-find-local dep))
+                         (= (select-keys (last dep) [:model :id])
+                            (select-keys (ex-data e) [:model :id]))
+                         (or (= "Timeline" (:model (last dep)))
+                             (serdes/load-find-local dep)))
                     ctx
 
                     :else

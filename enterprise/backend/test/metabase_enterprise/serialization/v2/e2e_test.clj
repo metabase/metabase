@@ -987,34 +987,127 @@
                           (str "Expected query to compile but got error: "
                                (when (map? result) (:error result)))))))))))))))
 
-(deftest card-timeline-events-reset-roundtrip-test
-  (testing "a card's saved timeline event choices reset while other visualization settings survive"
+(deftest card-timeline-events-preserved-roundtrip-test
+  (testing "questions preserve selected timelines, hidden events, and unrecorded or empty choices after import"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-random-dump-dir [timeline-dir "serdesv2-timeline-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (mt/with-temp [:model/Collection {collection-id :id} {:name "Bird sightings"}
+                           :model/Timeline {timeline-id :id timeline-eid :entity_id}
+                           {:name "Migration seasons" :collection_id collection-id}
+                           :model/TimelineEvent {event-id :id}
+                           {:name "Swallows return" :timeline_id timeline-id :timestamp #t "2027-04-20T00:00:00Z"}
+                           :model/TimelineEvent _
+                           {:name "Swifts return" :timeline_id timeline-id :timestamp #t "2027-05-01T00:00:00Z"}
+                           :model/Card {card-eid :entity_id}
+                           {:name "Sightings over time" :collection_id collection-id
+                            :visualization_settings {:graph.show_values                    true
+                                                     :timeline.selected_timeline_ids       [timeline-id]
+                                                     :timeline.excluded_timeline_event_ids [event-id]}}
+                           :model/Card {empty-card-eid :entity_id}
+                           {:name "Sightings without events" :collection_id collection-id
+                            :visualization_settings {:graph.show_values                    true
+                                                     :timeline.selected_timeline_ids       []
+                                                     :timeline.excluded_timeline_event_ids []}}
+                           :model/Card {unrecorded-card-eid :entity_id}
+                           {:name "Sightings with default events" :collection_id collection-id
+                            :visualization_settings {:graph.show_values true}}]
+              (-> (serdes/with-cache (into [] (extract/extract {:targets [["Collection" collection-id]]})))
+                  (storage/store! (storage.files/file-writer dump-dir)))
+              (-> (serdes/with-cache (into [] (extract/extract {:targets [["Timeline" timeline-eid]]})))
+                  (storage/store! (storage.files/file-writer timeline-dir)))
+              (ts/with-db dest-db
+                (mt/with-temp [:model/Timeline {decoy-timeline-id :id} {:name "Nesting seasons"}
+                               :model/TimelineEvent {decoy-event-id :id}
+                               {:name "Sparrows nest" :timeline_id decoy-timeline-id
+                                :timestamp #t "2027-04-20T00:00:00Z"}]
+                  (is (= timeline-id decoy-timeline-id))
+                  (is (= event-id decoy-event-id))
+                  (let [archive (ingest/ingest-yaml dump-dir)]
+                    (is (serdes/with-cache (serdes.load/load-metabase! archive)))
+                    (let [imported-timeline-id (t2/select-one-pk :model/Timeline :entity_id timeline-eid)
+                          imported-event-id    (t2/select-one-pk :model/TimelineEvent :timeline_id imported-timeline-id
+                                                                 :name "Swallows return")
+                          expected             {:graph.show_values                    true
+                                                :timeline.selected_timeline_ids       [imported-timeline-id]
+                                                :timeline.excluded_timeline_event_ids [imported-event-id]}]
+                      (is (some? imported-timeline-id))
+                      (is (some? imported-event-id))
+                      (is (not= timeline-id imported-timeline-id))
+                      (is (not= event-id imported-event-id))
+                      (is (= expected
+                             (t2/select-one-fn :visualization_settings :model/Card :entity_id card-eid)))
+                      (testing "importing only the timeline again preserves the existing question's hidden event"
+                        (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml timeline-dir))))
+                        (is (= imported-event-id
+                               (t2/select-one-pk :model/TimelineEvent :timeline_id imported-timeline-id
+                                                 :name "Swallows return")))
+                        (is (= expected
+                               (t2/select-one-fn :visualization_settings :model/Card :entity_id card-eid))))
+                      (testing "an empty selection stays empty and an unrecorded selection stays unrecorded"
+                        (is (= {:graph.show_values                    true
+                                :timeline.selected_timeline_ids       []
+                                :timeline.excluded_timeline_event_ids []}
+                               (t2/select-one-fn :visualization_settings :model/Card :entity_id empty-card-eid)))
+                        (is (= {:graph.show_values true}
+                               (t2/select-one-fn :visualization_settings :model/Card
+                                                 :entity_id unrecorded-card-eid)))))))))))))))
+
+(deftest card-timeline-events-missing-timeline-roundtrip-test
+  (testing "a question imports with an empty event selection when its timeline is absent"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
-          (mt/with-temp [:model/Timeline      {timeline-id :id}         {:name "Migration seasons"}
-                         :model/TimelineEvent {event-id :id}            {:name        "Swallows return"
-                                                                         :timeline_id timeline-id
-                                                                         :timestamp   #t "2027-04-20T00:00:00Z"}
+          (mt/with-temp [:model/Timeline {timeline-id :id} {:name "Migration seasons"}
+                         :model/TimelineEvent {event-id :id}
+                         {:name "Swallows return" :timeline_id timeline-id :timestamp #t "2027-04-20T00:00:00Z"}
                          :model/Card {card-eid :entity_id}
-                         {:name          "Sightings over time"
-                          :visualization_settings
-                          {:graph.show_values                    true
-                           :timeline.selected_timeline_ids       [timeline-id]
-                           :timeline.excluded_timeline_event_ids [event-id]}}]
+                         {:name "Sightings over time"
+                          :visualization_settings {:graph.show_values                    true
+                                                   :timeline.selected_timeline_ids       [timeline-id]
+                                                   :timeline.excluded_timeline_event_ids [event-id]}}]
             (-> (serdes/with-cache (into [] (extract/extract {:targets [["Card" card-eid]]})))
                 (storage/store! (storage.files/file-writer dump-dir)))
-            (let [archive  (ingest/ingest-yaml dump-dir)
-                  exported (ingest/ingest-one archive [{:model "Card" :id card-eid}])
-                  expected {:graph.show_values              true
-                            :timeline.selected_timeline_ids []}]
-              (is (= expected (select-keys (:visualization_settings exported)
-                                           [:graph.show_values :timeline.selected_timeline_ids
-                                            :timeline.excluded_timeline_event_ids])))
+            (ts/with-db dest-db
+              (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+              (is (= {:graph.show_values                    true
+                      :timeline.selected_timeline_ids       []
+                      :timeline.excluded_timeline_event_ids []}
+                     (t2/select-one-fn :visualization_settings :model/Card :entity_id card-eid))))))))))
+
+(deftest card-timeline-events-existing-timeline-roundtrip-test
+  (testing "a question-only archive preserves available timeline choices and ignores a deleted hidden event"
+    (ts/with-random-dump-dir [timeline-dir "serdesv2-timeline-"]
+      (ts/with-random-dump-dir [question-dir "serdesv2-question-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (mt/with-temp [:model/Timeline {timeline-id :id timeline-eid :entity_id} {:name "Migration seasons"}
+                           :model/TimelineEvent {event-id :id}
+                           {:name "Swallows return" :timeline_id timeline-id :timestamp #t "2027-04-20T00:00:00Z"}
+                           :model/TimelineEvent {deleted-event-id :id}
+                           {:name "Swifts return" :timeline_id timeline-id :timestamp #t "2027-05-01T00:00:00Z"}
+                           :model/Card {card-eid :entity_id}
+                           {:name "Sightings over time"
+                            :visualization_settings {:graph.show_values                    true
+                                                     :timeline.selected_timeline_ids       [timeline-id]
+                                                     :timeline.excluded_timeline_event_ids [event-id deleted-event-id]}}]
+              (-> (serdes/with-cache (into [] (extract/extract {:targets [["Timeline" timeline-eid]]})))
+                  (storage/store! (storage.files/file-writer timeline-dir)))
+              (-> (serdes/with-cache (into [] (extract/extract {:targets [["Card" card-eid]]})))
+                  (storage/store! (storage.files/file-writer question-dir)))
               (ts/with-db dest-db
-                (is (serdes/with-cache (serdes.load/load-metabase! archive)))
-                (is (= expected
-                       (t2/select-one-fn :visualization_settings :model/Card :entity_id card-eid)))))))))))
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml timeline-dir))))
+                (let [imported-timeline-id (t2/select-one-pk :model/Timeline :entity_id timeline-eid)
+                      imported-event-id    (t2/select-one-pk :model/TimelineEvent :timeline_id imported-timeline-id
+                                                             :name "Swallows return")]
+                  (is (some? imported-event-id))
+                  (t2/delete! :model/TimelineEvent :timeline_id imported-timeline-id :name "Swifts return")
+                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml question-dir))))
+                  (is (= {:graph.show_values                    true
+                          :timeline.selected_timeline_ids       [imported-timeline-id]
+                          :timeline.excluded_timeline_event_ids [imported-event-id]}
+                         (t2/select-one-fn :visualization_settings :model/Card :entity_id card-eid))))))))))))
 
 (deftest schema-coercion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

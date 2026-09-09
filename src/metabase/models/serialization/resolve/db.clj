@@ -71,7 +71,8 @@
       (if entity
         (get entity (first (t2/primary-keys model)))
         (throw (ex-info "Could not find foreign key target - bad serdes dependencies or other serialization error"
-                        {:entity_id eid :model (name model)}))))))
+                        {:entity_id eid :model (name model)
+                         :metabase.models.serialization/type :target-not-found}))))))
 
 (defn import-fk-keyed
   "Given a portable identifying field value, return the numeric :id."
