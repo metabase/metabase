@@ -166,7 +166,7 @@ export const selectQuestionFromOpts = (
  * the `Metadata` object instead, which keeps it stable in a dependency array
  * and leaves the caller's own `useMemo` unchanged.
  */
-type CardQuestionBuilder = (
+export type CardQuestionBuilder = (
   card: UnsavedCard,
   parameterValues?: ParameterValuesMap,
 ) => Question;
@@ -198,7 +198,7 @@ export const selectQuestionFromCardBuilder = (
 export const useQuestionFromCard = (): CardQuestionBuilder =>
   useSelector(selectQuestionFromCardBuilder);
 
-type DraftQuestionBuilder = (
+export type DraftQuestionBuilder = (
   opts: Omit<QuestionCreatorOpts, "metadata">,
 ) => Question;
 
