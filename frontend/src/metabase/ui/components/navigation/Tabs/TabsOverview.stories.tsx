@@ -17,9 +17,18 @@ import type { IconName } from "metabase-types/api";
 const LABEL = "Value";
 const TAB_ICON: IconName = "model";
 
-const VARIANTS = ["default", "pills"] as const;
+// The `variant × size` combinations the design system supports; `sm` exists
+// only for pills.
+const COLUMNS = [
+  { tabsProps: { variant: "default", size: "md" }, width: "22rem" },
+  { tabsProps: { variant: "pills", size: "md" }, width: "22rem" },
+  { tabsProps: { variant: "pills", size: "sm" }, width: "22rem" },
+] as const satisfies readonly {
+  tabsProps: Pick<TabsProps, "variant" | "size">;
+  width: string;
+}[];
 
-type TabsVariant = (typeof VARIANTS)[number];
+type TabsColumn = (typeof COLUMNS)[number];
 
 type TabState = {
   id: string;
@@ -36,7 +45,6 @@ const STATES: TabState[] = [
   { id: "hover-selected", label: "Selected + hover", selected: true },
   { id: "disabled", label: "Disabled", disabled: true },
 ];
-
 
 const PSEUDO_STATE_PARAMETERS = {
   pseudo: {
@@ -77,14 +85,15 @@ type ExampleTab = {
   stateRow?: string;
 };
 
-type ExampleTabsProps = Pick<TabsProps, "variant" | "orientation"> & {
+type ExampleTabsProps = Pick<TabsProps, "orientation"> & {
+  column: TabsColumn;
   tabs: ExampleTab[];
   selected: string | null;
   listBorder?: boolean;
 };
 
 function ExampleTabs({
-  variant,
+  column,
   orientation,
   tabs,
   selected,
@@ -92,7 +101,7 @@ function ExampleTabs({
 }: ExampleTabsProps) {
   return (
     <Tabs
-      variant={variant}
+      {...column.tabsProps}
       orientation={orientation}
       value={selected}
       onChange={action("onChange")}
@@ -100,7 +109,8 @@ function ExampleTabs({
     >
       <Tabs.List>
         {tabs.map((tab) => {
-          const leftSection = tab.content !== "text" ? <Icon name={TAB_ICON} /> : undefined;
+          const leftSection =
+            tab.content !== "text" ? <Icon name={TAB_ICON} /> : undefined;
 
           return (
             <Tabs.Tab
@@ -121,17 +131,17 @@ function ExampleTabs({
 }
 
 function SingleTab({
-  variant,
+  column,
   state,
   content = "text",
 }: {
-  variant: TabsVariant;
+  column: TabsColumn;
   state: TabState;
   content?: ContentKind;
 }) {
   return (
     <ExampleTabs
-      variant={variant}
+      column={column}
       listBorder={false}
       selected={state.selected ? "tab" : null}
       tabs={[
@@ -146,7 +156,7 @@ function VariantGrid({ children }: { children: ReactNode }) {
     <Box
       style={{
         display: "grid",
-        gridTemplateColumns: `9rem repeat(${VARIANTS.length}, 22rem)`,
+        gridTemplateColumns: `9rem ${COLUMNS.map(({ width }) => width).join(" ")}`,
         columnGap: "2rem",
         rowGap: "0.5rem",
         alignItems: "center",
@@ -162,15 +172,17 @@ function VariantRow({
   render,
 }: {
   label?: ReactNode;
-  render: (variant: TabsVariant) => ReactNode;
+  render: (column: TabsColumn) => ReactNode;
 }) {
   return (
     <>
       <Text size="sm" c="text-secondary">
         {label}
       </Text>
-      {VARIANTS.map((variant) => (
-        <Fragment key={variant}>{render(variant)}</Fragment>
+      {COLUMNS.map((column) => (
+        <Fragment key={`${column.tabsProps.variant}-${column.tabsProps.size}`}>
+          {render(column)}
+        </Fragment>
       ))}
     </>
   );
@@ -193,7 +205,7 @@ function OverviewTemplate() {
             <VariantRow
               key={state.id}
               label={state.label}
-              render={(variant) => <SingleTab variant={variant} state={state} />}
+              render={(column) => <SingleTab column={column} state={state} />}
             />
           ))}
         </VariantGrid>
@@ -205,9 +217,9 @@ function OverviewTemplate() {
             <VariantRow
               key={kind}
               label={label}
-              render={(variant) => (
+              render={(column) => (
                 <ExampleTabs
-                  variant={variant}
+                  column={column}
                   selected="two"
                   tabs={getListOfTabs({ content: kind })}
                 />
@@ -223,9 +235,9 @@ function OverviewTemplate() {
             <VariantRow
               key={id}
               label={label}
-              render={(variant) => (
+              render={(column) => (
                 <ExampleTabs
-                  variant={variant}
+                  column={column}
                   selected="two"
                   tabs={getListOfTabs({ content: "text", rightSection })}
                 />
@@ -238,9 +250,9 @@ function OverviewTemplate() {
       <StorySection title="Vertical orientation">
         <VariantGrid>
           <VariantRow
-            render={(variant) => (
+            render={(column) => (
               <ExampleTabs
-                variant={variant}
+                column={column}
                 orientation="vertical"
                 selected="two"
                 tabs={getListOfTabs({ content: "icon-text" })}
@@ -250,8 +262,8 @@ function OverviewTemplate() {
         </VariantGrid>
       </StorySection>
     </StoryShowcase>
-  )
-};
+  );
+}
 
 export default {
   title: "Components/Navigation/Tabs/Overview",
