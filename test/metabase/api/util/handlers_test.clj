@@ -6,6 +6,7 @@
   The endpoints below exist only to echo that `:route-template` back so tests can assert on it."
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
    [metabase.initialization-status.core :as init-status]
@@ -40,6 +41,11 @@
   "Several segments, two of them params."
   [_route-params _query-params _body request]
   (echo-route-template request))
+
+(api.macros/defendpoint :get "/:id/boom"
+  "An endpoint that throws rather than responding, the way most Metabase error responses are produced."
+  [_route-params _query-params _body _request]
+  (api/check-404 nil))
 
 (def ^:private endpoints-handler
   (delay (api.macros/ns-handler 'metabase.api.util.handlers-test)))
@@ -79,6 +85,24 @@
      (route-template (server.routes/make-routes (handlers/route-map-handler route-map))
                      uri
                      extra-request-keys))))
+
+(defn- carried-route-template
+  "`GET` `uri` through the real `/api` routing stack with a route-template carrier installed on the request the way
+  `metabase.server.middleware.log` installs one, and return what routing recorded into it. Tolerates a request that
+  ends in `raise` — that is the case this mechanism exists for."
+  [route-map uri]
+  (let [carrier (volatile! nil)
+        result  (promise)]
+    (dynamic-redefs/with-dynamic-fn-redefs [init-status/complete? (constantly true)]
+      ((server.routes/make-routes (handlers/route-map-handler route-map))
+       {:request-method                       :get
+        :uri                                  uri
+        :headers                              {}
+        api.macros/route-template-carrier-key carrier}
+       #(deliver result %)
+       #(deliver result %)))
+    (deref result 10000 ::timeout)
+    @carrier))
 
 (def ^:private api-route-map
   (delay {"/handlers-test" @endpoints-handler}))
@@ -143,6 +167,34 @@
            (route-template @endpoints-handler "/123")))
     (is (= "/"
            (route-template @endpoints-handler "/")))))
+
+(deftest ^:parallel route-template-carrier-test
+  (testing "routing reports the matched template back to middleware above it through the carrier"
+    ;; routing hands the matched endpoint a *new* request map, so middleware sitting above the routing tree — which
+    ;; closed over the pre-routing request — can never see `:route-template` on it.
+    (is (= "/api/handlers-test/:id"
+           (carried-route-template @api-route-map "/api/handlers-test/123")))
+    (is (= "/api/handlers-test"
+           (carried-route-template @api-route-map "/api/handlers-test")))))
+
+(deftest ^:parallel route-template-carrier-covers-endpoints-that-throw-test
+  (testing "an endpoint that throws still reports its template — the carrier is written before the handler runs"
+    ;; this is why the template is not simply attached to the response: an exception's response is built by
+    ;; `metabase.server.middleware.exceptions/catch-api-exceptions`, not by the endpoint.
+    (is (= "/api/handlers-test/:id/boom"
+           (carried-route-template @api-route-map "/api/handlers-test/123/boom")))))
+
+(deftest ^:parallel route-template-carrier-stays-empty-when-nothing-matches-test
+  (testing "nothing is recorded when no endpoint matches"
+    ;; as in [[route-template-unmatched-route-test]], deliberately not routed through the real `/api` routes: an
+    ;; unmatched `/api/...` request falls through to the SPA catch-all, which needs a running app.
+    (let [carrier (volatile! nil)]
+      (handle (handlers/route-map-handler @api-route-map)
+              {:request-method                       :get
+               :uri                                  "/handlers-test/uuid/not-a-uuid"
+               :headers                              {}
+               api.macros/route-template-carrier-key carrier})
+      (is (nil? @carrier)))))
 
 (deftest ^:parallel route-prefix-is-accumulated-not-overwritten-test
   (testing "each level appends to `:route-prefix` rather than replacing it"
