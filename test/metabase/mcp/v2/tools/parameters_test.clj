@@ -578,7 +578,7 @@
                 "filter values come back despite the caller having no table query permission")))))))
 
 (deftest scope-gate-test
-  (testing "GHY-4141: the tool requires agent:resource:read"
+  (testing "GHY-4141: the tool requires agent:content:read"
     (with-fixtures [{:keys [dashboard]}]
       (mt/with-test-user :rasta
         (is (re-find #"Insufficient scope"
