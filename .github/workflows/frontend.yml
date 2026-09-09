@@ -12,6 +12,13 @@ on:
       skip-custom-viz:
         type: boolean
         default: false
+      # JSON array of unit spec files to run, '' to run the full suite.
+      unit-specs:
+        type: string
+        default: ""
+      skip-ci-scripts:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       skip:
@@ -112,7 +119,14 @@ jobs:
         uses: ./.github/actions/resolve-job-id
       - name: Run frontend unit tests
         id: fe-tests
-        run: bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
+        env:
+          JEST_TEST_PATHS_FILE: ${{ inputs.unit-specs && 'unit-specs.json' || '' }}
+        # Jest exits non-zero on a shard with no files unless --passWithNoTests is set.
+        run: |
+          cat > unit-specs.json <<'EOF'
+          ${{ inputs.unit-specs }}
+          EOF
+          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} ${{ inputs.unit-specs && '--passWithNoTests' || '' }}
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
       - name: Report failed tests to ci-conductor
@@ -144,6 +158,18 @@ jobs:
       - name: Run frontend timezones tests
         run: bun run test-timezones
 
+  # No CLJS compile: the CI-script specs don't import app code.
+  fe-tests-ci-scripts:
+    if: ${{ !inputs.skip-ci-scripts }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Run CI script tests
+        run: bun run test-ci-scripts
+
   # The custom-viz package is an isolated Bun workspace under
   # enterprise/frontend/src/custom-viz
   fe-custom-viz:
@@ -174,6 +200,7 @@ jobs:
       - fe-type-check
       - fe-tests-unit
       - fe-tests-timezones
+      - fe-tests-ci-scripts
       - fe-custom-viz
     if: always() && !cancelled()
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}

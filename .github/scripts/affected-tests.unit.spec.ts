@@ -26,7 +26,7 @@ const E2E_FILES = ["e2e/test/scenarios/a.cy.spec.ts"];
 const baseInput = {
   elements: ELEMENTS,
   rules: RULES,
-  fileDependencies: null,
+  loadFileDependencies: () => null,
   testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
   e2eSpecFiles: null,
   unitInfraTouched: false,
@@ -60,7 +60,7 @@ describe("createTestPlan", () => {
       ...baseInput,
       changedFiles: ["src/utils/colors.ts"],
       // Only feature/foo actually imports lib/utils.
-      fileDependencies: [
+      loadFileDependencies: () => [
         { source: "src/foo/foo.tsx", dependencies: ["src/utils/colors.ts"] },
       ],
     });
@@ -229,21 +229,53 @@ describe("createTestPlan", () => {
     expect(plan.stats.fe_files_changed).toBe(5);
     expect(plan.stats.be_files_changed).toBe(3);
   });
+
+  it("does not build the usage graph when every suite runs in full", () => {
+    const loadFileDependencies = jest.fn(() => null);
+    createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/foo/x.ts"],
+      sharedSourcesTouched: true,
+      loadFileDependencies,
+    });
+
+    expect(loadFileDependencies).not.toHaveBeenCalled();
+  });
+
+  it("builds the usage graph when any suite can be narrowed", () => {
+    const loadFileDependencies = jest.fn(() => null);
+    createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/foo/x.ts"],
+      unitInfraTouched: true, // loki can still be narrowed
+      loadFileDependencies,
+    });
+
+    expect(loadFileDependencies).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("filterAffectedTests", () => {
-  it("keeps only tests inside affected modules", () => {
+  it("keeps tests inside affected modules, drops tests in unaffected ones", () => {
     const nodes = buildNodes(ELEMENTS);
     const affected = new Set(["feature/foo", "lib/utils"]);
     const tests = [
       "src/foo/foo.unit.spec.ts",
       "src/utils/colors.unit.spec.ts",
       "src/bar/bar.unit.spec.ts",
-      "docs/unrelated.unit.spec.ts",
     ];
     expect(filterAffectedTests(nodes, affected, tests)).toEqual([
       "src/foo/foo.unit.spec.ts",
       "src/utils/colors.unit.spec.ts",
+    ]);
+  });
+
+  it("keeps a test that maps to no module (unknown scope)", () => {
+    const nodes = buildNodes(ELEMENTS);
+    const affected = new Set(["feature/foo"]);
+    const tests = ["docs/unrelated.unit.spec.ts", "src/bar/bar.unit.spec.ts"];
+    expect(filterAffectedTests(nodes, affected, tests)).toEqual([
+      "docs/unrelated.unit.spec.ts",
     ]);
   });
 });
