@@ -76,7 +76,7 @@ const createRefusal = (
   errors: { required },
 });
 
-// The first save is refused with `body`; later ones succeed unless `refuseRetry`, so the second PUT
+// The first save is refused with `body`; later ones succeed, so the second PUT
 // shows what the modal staged.
 const setupRefusedSave = async ({
   body = createRefusal(SYNCABLE_REQUIRED),
@@ -205,7 +205,7 @@ describe("RemoteSyncDependencyModal", () => {
       /can.t be synced where it currently lives/,
     ],
   ])(
-    "explains a %s blocker and lists it beside the collection that can be switched on",
+    "explains a %s blocker and lists it alone, not what could otherwise be switched on",
     async (_label, requiredEntry, unsyncableName, message) => {
       await setupRefusedSave({
         body: createRefusal(SYNCABLE_REQUIRED, requiredEntry),
@@ -213,14 +213,14 @@ describe("RemoteSyncDependencyModal", () => {
 
       const modal = await screen.findByRole("dialog");
       expect(within(modal).getByText(message)).toBeInTheDocument();
-      expect(
-        within(modal).getByLabelText(`Sync ${REQUIRED_COLLECTION.name}`),
-      ).toBeInTheDocument();
       expect(within(modal).getByText(unsyncableName)).toBeInTheDocument();
       expect(
         within(modal).queryByLabelText(`Sync ${unsyncableName}`),
       ).not.toBeInTheDocument();
       expect(within(modal).getByText("Can't be synced")).toBeInTheDocument();
+      expect(
+        within(modal).queryByText(REQUIRED_COLLECTION.name),
+      ).not.toBeInTheDocument();
     },
   );
 
@@ -287,9 +287,9 @@ describe("RemoteSyncDependencyModal", () => {
     ).toBeInTheDocument();
   });
 
-  it("lists what can't be synced above what can", async () => {
+  it("renders one row per blocker, and none for what can be switched on", async () => {
     await setupRefusedSave({
-      body: createRefusal(SYNCABLE_REQUIRED, ROOT_REQUIRED),
+      body: createRefusal(SYNCABLE_REQUIRED, ROOT_REQUIRED, PERSONAL_REQUIRED),
     });
 
     const modal = await screen.findByRole("dialog");
@@ -297,8 +297,9 @@ describe("RemoteSyncDependencyModal", () => {
       .getAllByRole("button", { expanded: false })
       .map((row) => row.textContent);
 
+    expect(rows).toHaveLength(2);
     expect(rows[0]).toMatch(/Our analytics/);
-    expect(rows[1]).toMatch(new RegExp(REQUIRED_COLLECTION.name));
+    expect(rows[1]).toMatch(/Nick's stuff/);
   });
 
   it.each([
@@ -324,13 +325,25 @@ describe("RemoteSyncDependencyModal", () => {
     },
   );
 
-  it("explains a Library blocker with nothing to switch on, when there is no Library yet", async () => {
-    await setupRefusedSave({ body: createRefusal(LIBRARY_MISSING_REQUIRED) });
+  it.each([
+    ["nothing else is required", [LIBRARY_MISSING_REQUIRED]],
+    [
+      "a syncable collection waits behind it",
+      [SYNCABLE_REQUIRED, LIBRARY_MISSING_REQUIRED],
+    ],
+  ])(
+    "explains a Library blocker with nothing to switch on when %s",
+    async (_label, entries) => {
+      await setupRefusedSave({ body: createRefusal(...entries) });
 
-    const modal = await screen.findByRole("dialog");
-    expect(
-      within(modal).getByText(/Create the Library in Data Studio/),
-    ).toBeInTheDocument();
-    expect(within(modal).queryAllByRole("switch")).toHaveLength(0);
-  });
+      const modal = await screen.findByRole("dialog");
+      expect(
+        within(modal).getByText(/Create the Library in Data Studio/),
+      ).toBeInTheDocument();
+      expect(within(modal).queryAllByRole("switch")).toHaveLength(0);
+      expect(
+        within(modal).queryAllByRole("button", { expanded: false }),
+      ).toHaveLength(0);
+    },
+  );
 });

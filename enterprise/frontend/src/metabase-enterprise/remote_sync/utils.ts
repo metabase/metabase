@@ -232,10 +232,13 @@ export const getRequiredSyncRow = ({
 
 export const getListedRequiredSyncs = (
   required: RemoteSyncRequiredSync[],
-): RemoteSyncRequiredSync[] =>
-  required
-    .filter(({ remedy }) => remedy.type !== "library")
-    .sort((a, b) => Number(a.syncable) - Number(b.syncable));
+): RemoteSyncRequiredSync[] => {
+  const blocking = required.filter(({ syncable }) => !syncable);
+  const listed = blocking.length > 0 ? blocking : required;
+
+  // Remedy type library means that no library is created to sync, so it blocks
+  return listed.filter(({ remedy }) => remedy.type !== "library");
+};
 
 export type BlockedReason =
   | "personal-content"

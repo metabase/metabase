@@ -1,6 +1,9 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import type {
   Collection,
   RemoteSyncDependencyErrorResponse,
@@ -20,8 +23,12 @@ const SOURCE_COLLECTION_NAME = "Dependency Source";
 const SOURCE_QUESTION_NAME = "Dependency Source Question";
 const DEPENDENT_QUESTION_NAME = "Dependent Question";
 const SECOND_DEPENDENT_QUESTION_NAME = "Second Dependent Question";
+const OTHER_SOURCE_QUESTION_NAME = "Other Source Question";
+const WEEKLY_DEPENDENT_NAME = "Weekly Summary";
+const MONTHLY_DEPENDENT_NAME = "Monthly Summary";
 const SNIPPET_NAME = "active_users";
 const SNIPPET_QUESTION_NAME = "Snippet Dependent Question";
+const PERSONAL_QUESTION_NAME = "Personal Source Question";
 
 const setup = (snapshot = "default") => {
   H.restore(snapshot);
@@ -635,35 +642,42 @@ describe("Remote Sync", () => {
           });
 
           cy.log("Both collections are refused in a single pass");
-          saveAndExpectRefusal().then((interception) => {
-            const body: RemoteSyncDependencyErrorResponse =
-              interception.response?.body;
-
-            expect(body.errors.required).to.have.length(1);
-            expect(
-              body.errors.required[0].blocks.map(
-                (collection) => collection.name,
-              ),
-            ).to.have.members([
-              BLOCKED_COLLECTION_NAME,
-              SECOND_BLOCKED_COLLECTION_NAME,
-            ]);
-          });
+          saveAndExpectRefusal();
 
           H.modal().within(() => {
             cy.findByText("Couldn’t sync selected collection").should(
               "be.visible",
             );
             cy.findAllByText(SOURCE_COLLECTION_NAME).should("have.length", 1);
+
+            cy.log(
+              "Expanding the row lists every blocking item and what uses it",
+            );
+            cy.findByText(SOURCE_COLLECTION_NAME).click();
+            cy.findByText("Item").should("be.visible");
+            cy.findByText("Used By").should("be.visible");
+
+            cy.log("One row per dependency, both under the same remedy");
+            cy.findByText(SOURCE_QUESTION_NAME).should("be.visible");
+            cy.findByText(OTHER_SOURCE_QUESTION_NAME).should("be.visible");
+
+            cy.findByText(
+              new RegExp(
+                `^(${DEPENDENT_QUESTION_NAME}|${SECOND_DEPENDENT_QUESTION_NAME})$`,
+              ),
+            ).should("be.visible");
+
+            cy.findByText(
+              new RegExp(
+                `^(${WEEKLY_DEPENDENT_NAME}, ${MONTHLY_DEPENDENT_NAME}|${MONTHLY_DEPENDENT_NAME}, ${WEEKLY_DEPENDENT_NAME})$`,
+              ),
+            ).should("be.visible");
+
             cy.findByLabelText(`Sync ${SOURCE_COLLECTION_NAME}`)
               .should("be.enabled")
               .click({ force: true });
-            cy.button("Back").click();
+            cy.button("Save changes").click();
           });
-
-          cy.findByTestId("remote-sync-submit-button")
-            .should("be.enabled")
-            .click();
 
           cy.wait("@saveSettings").then(({ request, response }) => {
             expect(response?.statusCode).to.eq(200);
@@ -728,6 +742,37 @@ describe("Remote Sync", () => {
             );
             cy.findByText(/sync with the Library/).should("be.visible");
             cy.findByRole("switch").should("not.exist");
+
+            cy.button("Back").click();
+          });
+
+          H.modal().should("not.exist");
+        });
+      });
+
+      it("lists only the personal collection when a syncable one is blocked behind it", () => {
+        createPersonalDependencyFixture().then(({ personal }) => {
+          cy.visit("/admin/settings/remote-sync");
+
+          cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+
+          saveAndExpectRefusal();
+
+          H.modal().within(() => {
+            cy.findByText(/saved in a personal collection/).should(
+              "be.visible",
+            );
+            cy.findByText(personal.name).should("be.visible");
+            cy.findByText("Can't be synced").should("be.visible");
+            // The person icon is how the row shows this is someone's personal collection.
+            cy.findByRole("img", { name: "person icon" }).should("be.visible");
+
+            cy.log("The syncable collection is hidden — no save can succeed");
+            cy.findByText(SOURCE_COLLECTION_NAME).should("not.exist");
+            cy.findByRole("switch").should("not.exist");
+            cy.button("Save changes").should("not.exist");
 
             cy.button("Back").click();
           });
@@ -1241,7 +1286,45 @@ const createSnippetDependencyFixture = () =>
       ),
   );
 
+const createPersonalDependencyFixture = () =>
+  createCollection(SOURCE_COLLECTION_NAME).then((source) =>
+    createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
+      H.createQuestion({
+        name: SOURCE_QUESTION_NAME,
+        query: { "source-table": PRODUCTS_ID },
+        collection_id: source.id,
+      }).then(({ body: sourceQuestion }) =>
+        H.createQuestion({
+          name: PERSONAL_QUESTION_NAME,
+          query: { "source-table": PRODUCTS_ID },
+          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+        }).then(({ body: personalQuestion }) =>
+          createDependentQuestion(
+            DEPENDENT_QUESTION_NAME,
+            sourceQuestion.id,
+            blocked.id,
+          ).then(() =>
+            createDependentQuestion(
+              SECOND_DEPENDENT_QUESTION_NAME,
+              personalQuestion.id,
+              blocked.id,
+            ).then(() =>
+              cy
+                .request<Collection>(
+                  "GET",
+                  `/api/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
+                )
+                .then(({ body: personal }) => ({ source, blocked, personal })),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
 // Two collections that each depend on a question in a third, so syncing either alone is refused.
+// A second source question, used twice from the same blocked collection, gives the modal a second
+// dependency row and a Used By cell that names more than one thing.
 const createDependencyFixture = () =>
   createCollection(SOURCE_COLLECTION_NAME).then((source) =>
     createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
@@ -1261,6 +1344,25 @@ const createDependencyFixture = () =>
                 SECOND_DEPENDENT_QUESTION_NAME,
                 sourceQuestion.id,
                 alsoBlocked.id,
+              ),
+            ),
+          )
+          .then(() =>
+            H.createQuestion({
+              name: OTHER_SOURCE_QUESTION_NAME,
+              query: { "source-table": PRODUCTS_ID },
+              collection_id: source.id,
+            }).then(({ body: otherSource }) =>
+              createDependentQuestion(
+                WEEKLY_DEPENDENT_NAME,
+                otherSource.id,
+                blocked.id,
+              ).then(() =>
+                createDependentQuestion(
+                  MONTHLY_DEPENDENT_NAME,
+                  otherSource.id,
+                  blocked.id,
+                ),
               ),
             ),
           )

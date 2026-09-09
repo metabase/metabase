@@ -159,7 +159,6 @@ const RequiredSyncItem = ({
         ) : (
           <Group gap="sm" wrap="nowrap">
             <Switch
-              size="sm"
               checked={isSynced}
               onChange={(event) =>
                 onToggle(syncableId, event.currentTarget.checked)

@@ -311,14 +311,14 @@ describe("remote_sync utils", () => {
     });
 
     describe("getListedRequiredSyncs", () => {
-      it("lists every entry that names a collection", () => {
-        expect(getListedRequiredSyncs([SYNCABLE, PERSONAL])).toEqual([
-          PERSONAL,
+      it("lists every entry, in the backend's order, when they can all be synced", () => {
+        expect(getListedRequiredSyncs([LIBRARY_COLLECTION, SYNCABLE])).toEqual([
+          LIBRARY_COLLECTION,
           SYNCABLE,
         ]);
       });
 
-      it("brings what can't be synced to the top", () => {
+      it("lists only the blockers when one of them can't be synced", () => {
         expect(
           getListedRequiredSyncs([
             SYNCABLE,
@@ -326,20 +326,11 @@ describe("remote_sync utils", () => {
             LIBRARY_COLLECTION,
             PERSONAL,
           ]),
-        ).toEqual([ROOT, PERSONAL, SYNCABLE, LIBRARY_COLLECTION]);
+        ).toEqual([ROOT, PERSONAL]);
       });
 
-      it("keeps the backend's order within each group", () => {
-        expect(getListedRequiredSyncs([LIBRARY_COLLECTION, SYNCABLE])).toEqual([
-          LIBRARY_COLLECTION,
-          SYNCABLE,
-        ]);
-      });
-
-      it("drops an entry for a Library that doesn't exist", () => {
-        expect(getListedRequiredSyncs([SYNCABLE, LIBRARY_MISSING])).toEqual([
-          SYNCABLE,
-        ]);
+      it("has nothing to list when a Library that doesn't exist is the blocker", () => {
+        expect(getListedRequiredSyncs([SYNCABLE, LIBRARY_MISSING])).toEqual([]);
       });
     });
 
