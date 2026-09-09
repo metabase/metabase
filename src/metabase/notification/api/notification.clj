@@ -287,13 +287,13 @@
   (cond-> (assoc body :id id)
     (and (:payload body) payload_id) (assoc-in [:payload :id] payload_id)))
 
-(defn update-notification!
+(mu/defn update-notification!
   "Update notification `id` from `body` with the permission and handler-template checks and
   post-update side effects, and return the updated hydrated notification. `body` is a whole
   notification, not a patch: the update spec deletes the subscription and handler rows it doesn't
-  find there. Schema validation stays with the callers — the PUT endpoint's
-  `::NotificationApiUpdateInput` schema runs before this."
-  [id body]
+  find there."
+  [id   :- ms/PositiveInt
+   body :- ::NotificationApiUpdateInput]
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (check-handler-templates! (:handlers body) (:handlers existing-notification))
