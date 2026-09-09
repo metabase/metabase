@@ -152,9 +152,13 @@
 
 ;; `add_parameter` and `update_parameter` write REST parameter properties straight through, so the
 ;; camelCase names (`isMultiSelect`, `filteringParameters`, `sectionId`) are preserved verbatim.
+(def ^:private parameter-name-schema
+  [:string {:min 1 :description "Label shown on the dashboard."}])
+
+;; `:name` is required on `add_parameter` and optional on `update_parameter`, so it is not in
+;; `parameter-fields` — each op supplies its own entry.
 (def ^:private parameter-fields
-  [[:name {:optional true} [:maybe [:string {:min 1 :description "Label shown on the dashboard."}]]]
-   [:type {:optional true}
+  [[:type {:optional true}
     [:maybe [:string {:description (str "Parameter type, e.g. \"string/=\", \"string/contains\", "
                                         "\"number/=\", \"number/between\", \"date/all-options\", "
                                         "\"date/relative\", \"id\", \"temporal-unit\".")}]]]
@@ -295,12 +299,15 @@
    (op-map "add_parameter"
            (str "Add a filter or parameter widget to the dashboard. It does nothing until "
                 "`wire_parameter` connects it to at least one card.")
-           (into [[:parameter_id parameter-id-schema]] parameter-fields))
+           (into [[:parameter_id parameter-id-schema]
+                  [:name parameter-name-schema]]
+                 parameter-fields))
    (op-map "update_parameter"
            (str "Change properties of an existing parameter. Only the properties you pass change; "
                 "the rest are left alone. Passing null does not clear a property — it is treated as "
                 "omitted — so to remove one, name it in `clear`.")
            (into [[:parameter_id parameter-id-schema]
+                  [:name {:optional true} [:maybe parameter-name-schema]]
                   [:clear {:optional true}
                    [:maybe [:sequential
                             [:enum {:description (str "Property names to remove from this parameter "
