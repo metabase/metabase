@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Checks the links in the docs: every link in the markdown under docs/, and every relative `url` in
-# docs/util/data/nav.yml (that each page exists under docs/ and that any `#anchor` exists in it).
+# Checks the docs links: every link in the markdown under docs/, and every relative `url` in
+# docs/util/data/nav.yml (the page has to exist under docs/, and so does any #anchor).
 #
 #   docs/util/check-links.sh        # both
 #   docs/util/check-links.sh docs   # only the markdown under docs/
@@ -26,16 +26,16 @@ check_docs() {
   lychee docs --config ./.lychee/config.toml --offline
 }
 
-# The nav is a YAML tree, not markdown, so lychee cannot read it directly. Render it as a markdown
-# file with one line per nav.yml line: a link on each `url:` line, blank elsewhere. Lychee's line
-# numbers are then nav.yml line numbers. Assumes one `url:` per line, quoted or not. Scheme urls
-# (https://...) and site-absolute paths (/learn/...) live outside docs/ and are skipped.
+# lychee can't read YAML, so render the nav as markdown with one line per nav.yml line: a link on
+# each `url:` line, blank everywhere else. That way lychee's line numbers are nav.yml line numbers.
+# Urls with a scheme (https://...) or a leading slash (/learn/...) live outside docs/, so skip them.
 check_nav() {
   echo "Checking urls in $nav"
-  local tmpdir rendered report failures total count line text url
+  local root tmpdir rendered report failures total count line url text
+  root=$PWD/docs
   tmpdir=$(mktemp -d)
   trap 'rm -rf "$tmpdir"' RETURN
-  # lychee only extracts markdown links from files with a markdown extension.
+  # The .md extension matters: lychee only looks for markdown links in markdown files.
   rendered=$tmpdir/nav-links.md
 
   awk '
@@ -47,23 +47,22 @@ check_nav() {
     { print "" }
   ' "$nav" > "$rendered"
 
-  # lychee exits 2 when links fail and still prints the JSON report. It also exits 2 on a bad flag
-  # and prints nothing, so check for the report itself rather than the exit code: `jq -e` fails when
-  # there is no result. (Errexit is suspended inside this function because it is called with `||`.)
-  report=$(lychee --offline --root-dir ./docs --fallback-extensions md,html --include-fragments \
+  # lychee exits 2 when links fail but still prints the report. It also exits 2 on a bad flag and
+  # prints nothing, so trust the report, not the exit code.
+  report=$(lychee --offline --root-dir "$root" --fallback-extensions md,html --include-fragments \
                   --no-progress --format json "$rendered" || true)
   total=$(jq -e -r '.total' <<<"$report") || {
     echo "lychee produced no report (see errors above)" >&2
     return 1
   }
 
-  failures=$(jq -r '.error_map | to_entries[] | .value[] | "\(.span.line)\t\(.status.text)"' <<<"$report")
+  failures=$(jq -r '.error_map[][] | "\(.span.line)\t\(.url)\t\(.status.text)"' <<<"$report")
 
   count=0
-  while IFS=$'\t' read -r line text; do
+  while IFS=$'\t' read -r line url text; do
     [ -n "$line" ] || continue
     count=$((count + 1))
-    url=$(sed -n "${line}p" "$rendered" | sed -E 's/^- \[nav\]\(\/(.*)\)$/\1/')
+    url=${url#file://$root/}
     echo "$nav:$line: $url: $text"
     if [ -n "${GITHUB_ACTIONS:-}" ]; then
       echo "::error file=$nav,line=$line::$url: $text"
