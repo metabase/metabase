@@ -39,7 +39,7 @@
    [:name                    :string]
    [:description             [:maybe :string]]
    [:creator_id              ::lib.schema.id/user]
-   [:parameters              [:sequential ::dashboard.parameter]]
+   [:parameters              [:sequential :map]]
    [:points_of_interest      [:maybe :string]]
    [:caveats                 [:maybe :string]]
    [:show_in_getting_started :boolean]
@@ -70,7 +70,7 @@
    [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
-   [:parameters              {:optional true} [:maybe [:sequential ::dashboard.parameter]]]
+   [:parameters              {:optional true} [:maybe [:sequential :map]]]
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
@@ -101,10 +101,6 @@
   "The `:visualization_settings` column of a DashboardCard, decoded."
   :map)
 
-(mr/def ::dashboard-card.inline-parameters
-  "The `:inline_parameters` column of a DashboardCard, decoded."
-  [:sequential :string])
-
 (mr/def ::dashboard-card
   "A DashboardCard as selected from the app DB: every column of `:report_dashboardcard`."
   [:map {:closed true}
@@ -117,12 +113,12 @@
    [:col                    :int]
    [:card_id                [:maybe ::lib.schema.id/card]]
    [:dashboard_id           ::lib.schema.id/dashboard]
-   [:parameter_mappings     [:sequential ::dashboard-card.parameter-mapping]]
+   [:parameter_mappings     [:sequential :map]]
    [:visualization_settings ::dashboard-card.visualization-settings]
    [:entity_id              :string]
    [:action_id              [:maybe ::lib.schema.id/action]]
    [:dashboard_tab_id       [:maybe ms/PositiveInt]]
-   [:inline_parameters      [:maybe ::dashboard-card.inline-parameters]]])
+   [:inline_parameters      [:maybe [:sequential :string]]]])
 
 (mr/def ::dashboard-card.update
   "What an update (or insert) of a DashboardCard accepts: every column of `:report_dashboardcard` except `id`, all optional."
@@ -135,12 +131,12 @@
    [:col                    {:optional true} [:maybe :int]]
    [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard_id           {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:parameter_mappings     {:optional true} [:maybe [:sequential ::dashboard-card.parameter-mapping]]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential :map]]]
    [:visualization_settings {:optional true} [:maybe ::dashboard-card.visualization-settings]]
    [:entity_id              {:optional true} [:maybe :string]]
    [:action_id              {:optional true} [:maybe ::lib.schema.id/action]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:inline_parameters      {:optional true} [:maybe ::dashboard-card.inline-parameters]]])
+   [:inline_parameters      {:optional true} [:maybe [:sequential :string]]]])
 
 (mr/def ::dashboard-card-series
   "A DashboardCardSeries as selected from the app DB: every column of `:dashboardcard_series`."

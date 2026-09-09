@@ -47,8 +47,8 @@
   [:map {:closed true}
    [:id                    ms/PositiveInt]
    [:exploration_thread_id ms/PositiveInt]
-   [:metrics               [:maybe [:sequential ::exploration-block.metric]]]
-   [:dimensions            [:maybe [:sequential ::exploration-block.dimension]]]
+   [:metrics               [:maybe [:sequential :map]]]
+   [:dimensions            [:maybe [:sequential :map]]]
    [:position              :int]
    [:created_at            ms/TemporalInstant]
    [:updated_at            ms/TemporalInstant]])
@@ -57,8 +57,8 @@
   "What an update (or insert) of a ExplorationBlock accepts: every column of `:exploration_block` except `id`, all optional."
   [:map {:closed true}
    [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
-   [:metrics               {:optional true} [:maybe [:sequential ::exploration-block.metric]]]
-   [:dimensions            {:optional true} [:maybe [:sequential ::exploration-block.dimension]]]
+   [:metrics               {:optional true} [:maybe [:sequential :map]]]
+   [:dimensions            {:optional true} [:maybe [:sequential :map]]]
    [:position              {:optional true} [:maybe :int]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
@@ -212,7 +212,7 @@
    [:completed_at          [:maybe ms/TemporalInstant]]
    [:analysis_started_at   [:maybe ms/TemporalInstant]]
    [:query_plan_started_at [:maybe ms/TemporalInstant]]
-   [:query_plan_transcript [:maybe [:sequential ::exploration-thread.query-plan-transcript-entry]]]
+   [:query_plan_transcript [:maybe [:sequential :map]]]
    [:canceled_at           [:maybe ms/TemporalInstant]]
    [:data_access_token     [:maybe ::exploration-thread.data-access-token]]])
 
@@ -231,7 +231,7 @@
    [:completed_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:analysis_started_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:query_plan_started_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:query_plan_transcript {:optional true} [:maybe [:sequential ::exploration-thread.query-plan-transcript-entry]]]
+   [:query_plan_transcript {:optional true} [:maybe [:sequential :map]]]
    [:canceled_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]])
 

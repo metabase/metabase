@@ -25,7 +25,7 @@
    [:task_details [:maybe ::task-history.task-details]]
    [:status       [:or :keyword :string]]
    [:run_id       [:maybe ms/PositiveInt]]
-   [:logs         [:maybe [:sequential ::task-history.log]]]])
+   [:logs         [:maybe [:sequential :map]]]])
 
 (mr/def ::task-history.update
   "What an update (or insert) of a TaskHistory accepts: every column of `:task_history` except `id`, all optional."
@@ -38,7 +38,7 @@
    [:task_details {:optional true} [:maybe ::task-history.task-details]]
    [:status       {:optional true} [:maybe [:or :keyword :string]]]
    [:run_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:logs         {:optional true} [:maybe [:sequential ::task-history.log]]]])
+   [:logs         {:optional true} [:maybe [:sequential :map]]]])
 
 (mr/def ::task-run
   "A TaskRun as selected from the app DB: every column of `:task_run`."

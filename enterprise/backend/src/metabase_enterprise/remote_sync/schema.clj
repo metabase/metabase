@@ -200,10 +200,6 @@
    [:file_path           {:optional true} [:maybe :string]]
    [:content_hash        {:optional true} [:maybe :string]]])
 
-(mr/def ::remote-sync-task.conflicts
-  "The `:conflicts` column of a RemoteSyncTask, decoded."
-  [:sequential :string])
-
 (mr/def ::remote-sync-task.outcome
   "The `:outcome` column of a RemoteSyncTask, decoded."
   :map)
@@ -221,7 +217,7 @@
    [:initiated_by            [:maybe ::lib.schema.id/user]]
    [:error_message           [:maybe :string]]
    [:version                 [:maybe :string]]
-   [:conflicts               [:maybe ::remote-sync-task.conflicts]]
+   [:conflicts               [:maybe [:sequential :string]]]
    [:outcome                 [:maybe ::remote-sync-task.outcome]]])
 
 (mr/def ::remote-sync-task.update
@@ -236,5 +232,5 @@
    [:initiated_by            {:optional true} [:maybe ::lib.schema.id/user]]
    [:error_message           {:optional true} [:maybe :string]]
    [:version                 {:optional true} [:maybe :string]]
-   [:conflicts               {:optional true} [:maybe ::remote-sync-task.conflicts]]
+   [:conflicts               {:optional true} [:maybe [:sequential :string]]]
    [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]])

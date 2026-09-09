@@ -41,10 +41,6 @@
   "The `:settings` column of a Field, decoded."
   :map)
 
-(mr/def ::field.nfc-path
-  "The `:nfc_path` column of a Field, decoded."
-  [:sequential :string])
-
 (mr/def ::field
   "A Field as selected from the app DB: every column of `:metabase_field`."
   [:map {:closed true}
@@ -75,7 +71,7 @@
    [:custom_position            :int]
    [:effective_type             [:maybe [:or :keyword :string]]]
    [:coercion_strategy          [:maybe [:or :keyword :string]]]
-   [:nfc_path                   [:maybe ::field.nfc-path]]
+   [:nfc_path                   [:maybe [:sequential :string]]]
    [:database_required          :boolean]
    [:json_unfolding             :boolean]
    [:database_is_auto_increment :boolean]
@@ -119,7 +115,7 @@
    [:custom_position            {:optional true} [:maybe :int]]
    [:effective_type             {:optional true} [:maybe [:or :keyword :string]]]
    [:coercion_strategy          {:optional true} [:maybe [:or :keyword :string]]]
-   [:nfc_path                   {:optional true} [:maybe ::field.nfc-path]]
+   [:nfc_path                   {:optional true} [:maybe [:sequential :string]]]
    [:database_required          {:optional true} [:maybe :boolean]]
    [:json_unfolding             {:optional true} [:maybe :boolean]]
    [:database_is_auto_increment {:optional true} [:maybe :boolean]]
@@ -131,10 +127,6 @@
    [:database_default           {:optional true} [:maybe :string]]
    [:dimension_interestingness  {:optional true} [:maybe number?]]
    [:data_sensitivity           {:optional true} [:maybe [:or :keyword :string]]]])
-
-(mr/def ::field-user-settings.nfc-path
-  "The `:nfc_path` column of a FieldUserSettings, decoded."
-  [:sequential :string])
 
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
@@ -156,7 +148,7 @@
    [:coercion_strategy  [:maybe [:or :keyword :string]]]
    [:caveats            [:maybe :string]]
    [:points_of_interest [:maybe :string]]
-   [:nfc_path           [:maybe ::field-user-settings.nfc-path]]
+   [:nfc_path           [:maybe [:sequential :string]]]
    [:json_unfolding     [:maybe :boolean]]
    [:settings           [:maybe ::field-user-settings.settings]]
    [:data_sensitivity   [:maybe [:or :keyword :string]]]])
@@ -177,7 +169,7 @@
    [:coercion_strategy  {:optional true} [:maybe [:or :keyword :string]]]
    [:caveats            {:optional true} [:maybe :string]]
    [:points_of_interest {:optional true} [:maybe :string]]
-   [:nfc_path           {:optional true} [:maybe ::field-user-settings.nfc-path]]
+   [:nfc_path           {:optional true} [:maybe [:sequential :string]]]
    [:json_unfolding     {:optional true} [:maybe :boolean]]
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
    [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]])

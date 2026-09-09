@@ -5,14 +5,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::oauth-access-token.scope
-  "The `:scope` column of a OAuthAccessToken, decoded."
-  [:sequential :string])
-
-(mr/def ::oauth-access-token.resource
-  "The `:resource` column of a OAuthAccessToken, decoded."
-  [:or :string [:sequential :string]])
-
 (mr/def ::oauth-access-token
   "A OAuthAccessToken as selected from the app DB: every column of `:oauth_access_token`."
   [:map {:closed true}
@@ -20,9 +12,9 @@
    [:token      :string]
    [:user_id    [:maybe ::lib.schema.id/user]]
    [:client_id  :string]
-   [:scope      ::oauth-access-token.scope]
+   [:scope      [:sequential :string]]
    [:expiry     :int]
-   [:resource   [:maybe ::oauth-access-token.resource]]
+   [:resource   [:maybe [:or :string [:sequential :string]]]]
    [:revoked_at [:maybe ms/TemporalInstant]]
    [:created_at ms/TemporalInstant]])
 
@@ -32,19 +24,11 @@
    [:token      {:optional true} [:maybe :string]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:client_id  {:optional true} [:maybe :string]]
-   [:scope      {:optional true} [:maybe ::oauth-access-token.scope]]
+   [:scope      {:optional true} [:maybe [:sequential :string]]]
    [:expiry     {:optional true} [:maybe :int]]
-   [:resource   {:optional true} [:maybe ::oauth-access-token.resource]]
+   [:resource   {:optional true} [:maybe [:or :string [:sequential :string]]]]
    [:revoked_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
-
-(mr/def ::oauth-authorization-code.scope
-  "The `:scope` column of a OAuthAuthorizationCode, decoded."
-  [:sequential :string])
-
-(mr/def ::oauth-authorization-code.resource
-  "The `:resource` column of a OAuthAuthorizationCode, decoded."
-  [:or :string [:sequential :string]])
 
 (mr/def ::oauth-authorization-code
   "A OAuthAuthorizationCode as selected from the app DB: every column of `:oauth_authorization_code`."
@@ -54,12 +38,12 @@
    [:user_id               ::lib.schema.id/user]
    [:client_id             :string]
    [:redirect_uri          :string]
-   [:scope                 ::oauth-authorization-code.scope]
+   [:scope                 [:sequential :string]]
    [:nonce                 [:maybe :string]]
    [:expiry                :int]
    [:code_challenge        [:maybe :string]]
    [:code_challenge_method [:maybe [:or :keyword :string]]]
-   [:resource              [:maybe ::oauth-authorization-code.resource]]
+   [:resource              [:maybe [:or :string [:sequential :string]]]]
    [:created_at            ms/TemporalInstant]])
 
 (mr/def ::oauth-authorization-code.update
@@ -69,33 +53,13 @@
    [:user_id               {:optional true} [:maybe ::lib.schema.id/user]]
    [:client_id             {:optional true} [:maybe :string]]
    [:redirect_uri          {:optional true} [:maybe :string]]
-   [:scope                 {:optional true} [:maybe ::oauth-authorization-code.scope]]
+   [:scope                 {:optional true} [:maybe [:sequential :string]]]
    [:nonce                 {:optional true} [:maybe :string]]
    [:expiry                {:optional true} [:maybe :int]]
    [:code_challenge        {:optional true} [:maybe :string]]
    [:code_challenge_method {:optional true} [:maybe [:or :keyword :string]]]
-   [:resource              {:optional true} [:maybe ::oauth-authorization-code.resource]]
+   [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]])
-
-(mr/def ::oauth-client.redirect-uris
-  "The `:redirect_uris` column of a OAuthClient, decoded."
-  [:sequential :string])
-
-(mr/def ::oauth-client.grant-types
-  "The `:grant_types` column of a OAuthClient, decoded."
-  [:sequential :string])
-
-(mr/def ::oauth-client.response-types
-  "The `:response_types` column of a OAuthClient, decoded."
-  [:sequential :string])
-
-(mr/def ::oauth-client.scopes
-  "The `:scopes` column of a OAuthClient, decoded."
-  [:sequential :string])
-
-(mr/def ::oauth-client.contacts
-  "The `:contacts` column of a OAuthClient, decoded."
-  [:sequential :string])
 
 (mr/def ::oauth-client
   "A OAuthClient as selected from the app DB: every column of `:oauth_client`."
@@ -103,15 +67,15 @@
    [:id                             ms/PositiveInt]
    [:client_id                      :string]
    [:client_secret_hash             [:maybe :string]]
-   [:redirect_uris                  ::oauth-client.redirect-uris]
-   [:grant_types                    ::oauth-client.grant-types]
-   [:response_types                 ::oauth-client.response-types]
-   [:scopes                         ::oauth-client.scopes]
+   [:redirect_uris                  [:sequential :string]]
+   [:grant_types                    [:sequential :string]]
+   [:response_types                 [:sequential :string]]
+   [:scopes                         [:sequential :string]]
    [:token_endpoint_auth_method     [:maybe [:or :keyword :string]]]
    [:client_name                    [:maybe :string]]
    [:client_uri                     [:maybe :string]]
    [:logo_uri                       [:maybe :string]]
-   [:contacts                       [:maybe ::oauth-client.contacts]]
+   [:contacts                       [:maybe [:sequential :string]]]
    [:registration_type              [:or :keyword :string]]
    [:client_type                    [:or :keyword :string]]
    [:application_type               [:maybe [:or :keyword :string]]]
@@ -124,15 +88,15 @@
   [:map {:closed true}
    [:client_id                      {:optional true} [:maybe :string]]
    [:client_secret_hash             {:optional true} [:maybe :string]]
-   [:redirect_uris                  {:optional true} [:maybe ::oauth-client.redirect-uris]]
-   [:grant_types                    {:optional true} [:maybe ::oauth-client.grant-types]]
-   [:response_types                 {:optional true} [:maybe ::oauth-client.response-types]]
-   [:scopes                         {:optional true} [:maybe ::oauth-client.scopes]]
+   [:redirect_uris                  {:optional true} [:maybe [:sequential :string]]]
+   [:grant_types                    {:optional true} [:maybe [:sequential :string]]]
+   [:response_types                 {:optional true} [:maybe [:sequential :string]]]
+   [:scopes                         {:optional true} [:maybe [:sequential :string]]]
    [:token_endpoint_auth_method     {:optional true} [:maybe [:or :keyword :string]]]
    [:client_name                    {:optional true} [:maybe :string]]
    [:client_uri                     {:optional true} [:maybe :string]]
    [:logo_uri                       {:optional true} [:maybe :string]]
-   [:contacts                       {:optional true} [:maybe ::oauth-client.contacts]]
+   [:contacts                       {:optional true} [:maybe [:sequential :string]]]
    [:registration_type              {:optional true} [:maybe [:or :keyword :string]]]
    [:client_type                    {:optional true} [:maybe [:or :keyword :string]]]
    [:application_type               {:optional true} [:maybe [:or :keyword :string]]]
@@ -157,14 +121,6 @@
    [:event_type      {:optional true} [:maybe [:or :keyword :string]]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::oauth-refresh-token.scope
-  "The `:scope` column of a OAuthRefreshToken, decoded."
-  [:sequential :string])
-
-(mr/def ::oauth-refresh-token.resource
-  "The `:resource` column of a OAuthRefreshToken, decoded."
-  [:or :string [:sequential :string]])
-
 (mr/def ::oauth-refresh-token
   "A OAuthRefreshToken as selected from the app DB: every column of `:oauth_refresh_token`."
   [:map {:closed true}
@@ -172,8 +128,8 @@
    [:token      :string]
    [:user_id    [:maybe ::lib.schema.id/user]]
    [:client_id  :string]
-   [:scope      ::oauth-refresh-token.scope]
-   [:resource   [:maybe ::oauth-refresh-token.resource]]
+   [:scope      [:sequential :string]]
+   [:resource   [:maybe [:or :string [:sequential :string]]]]
    [:expiry     [:maybe :int]]
    [:revoked_at [:maybe ms/TemporalInstant]]
    [:created_at ms/TemporalInstant]])
@@ -184,8 +140,8 @@
    [:token      {:optional true} [:maybe :string]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:client_id  {:optional true} [:maybe :string]]
-   [:scope      {:optional true} [:maybe ::oauth-refresh-token.scope]]
-   [:resource   {:optional true} [:maybe ::oauth-refresh-token.resource]]
+   [:scope      {:optional true} [:maybe [:sequential :string]]]
+   [:resource   {:optional true} [:maybe [:or :string [:sequential :string]]]]
    [:expiry     {:optional true} [:maybe :int]]
    [:revoked_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
