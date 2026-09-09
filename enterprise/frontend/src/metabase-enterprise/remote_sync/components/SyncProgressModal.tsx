@@ -118,6 +118,11 @@ export function SyncProgressModal({
       size="md"
       title={title}
       withCloseButton={false}
+      // Dismissing a task that is still running stops the status polling, so the task would stay
+      // "running" until a page reload — leaving push/pull disabled. The modal deliberately offers
+      // no close button, so don't let Escape or a click outside act as one either.
+      closeOnEscape={false}
+      closeOnClickOutside={false}
     >
       <Stack mt="lg" gap="lg">
         {isStalled ? (

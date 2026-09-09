@@ -52,10 +52,25 @@ export const useSyncStatus = ({
     ? dayjs().diff(dayjs(lastProgressReportAt), "minute")
     : null;
 
-  const shouldPoll = isRunning && showModal && !hasPendingMutation;
+  // The main app's instance is mounted app-wide, while a worktree's is mounted only by that
+  // worktree's own UI. So the app-wide instance polls whichever scope the tracked task belongs to:
+  // a worktree task still reaches a terminal state (closing out the modal and invalidating the
+  // stale caches) when the UI that started it is no longer on screen. It still *renders* only its
+  // own scope's modal, so the two instances never show the task twice, and both subscribe to the
+  // same query cache entry, so this costs no extra requests.
+  const tracksEveryScope = worktreeId == null;
+  const trackedTask = tracksEveryScope ? currentTask : task;
+  const isTrackedTaskRunning =
+    trackedTask !== null && trackedTask.ended_at === null;
+  const pollWorktreeId = tracksEveryScope
+    ? (trackedTask?.worktree_id ?? null)
+    : worktreeId;
+
+  const shouldPoll =
+    isTrackedTaskRunning && isModalShown && !hasPendingMutation;
 
   useGetRemoteSyncCurrentTaskQuery(
-    worktreeId != null ? { "worktree-id": worktreeId } : undefined,
+    pollWorktreeId != null ? { "worktree-id": pollWorktreeId } : undefined,
     {
       pollingInterval: shouldPoll ? SYNC_STATUS_POLL_INTERVAL : undefined,
       skipPollingIfUnfocused: true,
