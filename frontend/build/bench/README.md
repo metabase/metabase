@@ -20,7 +20,7 @@ Three states are reported, because a layout can help one and hurt another:
 - **steady**, the visits after that, once V8 has cached the compiled code.
 
 DOMContentLoaded is not the whole story, so the harness also reads the rest of
-the load. Each is a median over the runs.
+the load.
 
 | Reading                  | Where it comes from        | What it says                                  |
 | ------------------------ | -------------------------- | --------------------------------------------- |
@@ -46,6 +46,23 @@ reported" rather than "instant".
 Reading DOMContentLoaded alone understates a route in its own chunk, which is
 requested only after the reading is taken. `pageReady` is the one that covers
 it.
+
+### One load per state
+
+Each state reports the readings of a single load. It does not take a separate
+median for each reading.
+
+For cold and steady, the harness runs the page several times and then picks the
+run whose DOMContentLoaded is the median of that series. Every reading in the
+state comes from that one run. The second visit happens once per browser
+profile, so that state is the run itself.
+
+A separate median per reading describes a load that never happened. It can also
+put the readings out of order, and print a page-ready that precedes the TTFB
+beside it.
+
+`Cold spread %` still comes from all the cold runs, because a spread is a
+property of the series rather than of one load.
 
 ## Running it against a real Metabase
 

@@ -228,9 +228,34 @@ async function loadOnce() {
   return metrics;
 }
 
-function median(values) {
-  const sorted = [...values].sort((a, b) => a - b);
+/**
+ * The run that stands for a series: the one whose DOMContentLoaded is the
+ * median.
+ *
+ * A whole run, not a median of each reading on its own. Medianing the readings
+ * separately describes a load that never happened, and lets one reading land
+ * before a reading that must precede it, such as a page-ready earlier than the
+ * TTFB printed beside it.
+ */
+function representative(results, from = 0) {
+  const sorted = [...results.slice(from)].sort(
+    (a, b) => a.domContentLoaded - b.domContentLoaded,
+  );
   return sorted[Math.floor(sorted.length / 2)];
+}
+
+/** The readings one load produced, in the order a user meets them. */
+function timings(run) {
+  const ms = (value) => Number(value.toFixed(1));
+  return {
+    ttfbMs: ms(run.ttfb),
+    firstContentfulPaintMs: ms(run.firstContentfulPaint),
+    domContentLoadedMs: ms(run.domContentLoaded),
+    appMountedMs: ms(run.appMounted),
+    largestContentfulPaintMs: ms(run.largestContentfulPaint),
+    pageReadyMs: ms(run.pageReady),
+    loadMs: ms(run.load),
+  };
 }
 
 (async () => {
@@ -251,9 +276,6 @@ function median(values) {
     process.exit(1);
   }
 
-  const at = (key, from = 0) =>
-    Number(median(results.slice(from).map((result) => result[key])).toFixed(1));
-
   // Written with a callback rather than console.log so the process cannot exit
   // with the JSON still buffered in a pipe.
   process.stdout.write(
@@ -266,21 +288,15 @@ function median(values) {
         cache: keepCache ? "kept between runs" : "disabled",
         scripts: results[0].scriptCount,
         scriptKb: Number((results[0].scriptBytes / 1024).toFixed(1)),
-        firstLoadMs: Number(results[0].domContentLoaded.toFixed(1)),
-        secondLoadMs:
-          results.length > 1
-            ? Number(results[1].domContentLoaded.toFixed(1))
-            : null,
-        medianDomContentLoadedMs: at("domContentLoaded"),
-        steadyStateMs: results.length > 2 ? at("domContentLoaded", 2) : null,
-        // The rest of the load, in the order a user meets it. A zero means the
-        // browser or the route never reported that one.
-        ttfbMs: at("ttfb"),
-        firstContentfulPaintMs: at("firstContentfulPaint"),
-        appMountedMs: at("appMounted"),
-        largestContentfulPaintMs: at("largestContentfulPaint"),
-        pageReadyMs: at("pageReady"),
-        loadMs: at("load"),
+        // Each of the three is one load. A zero in a reading means the browser
+        // or the route never reported that one.
+        median: timings(representative(results)),
+        // The second visit happens once per browser profile, so it is the one
+        // run itself rather than a run chosen out of several.
+        secondLoad: results.length > 1 ? timings(results[1]) : null,
+        // The first load of a cache-kept series still fills an empty cache, so
+        // the steady state starts at the third.
+        steady: results.length > 2 ? timings(representative(results, 2)) : null,
         everyRunMs: results.map((result) =>
           Math.round(result.domContentLoaded),
         ),

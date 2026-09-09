@@ -30,6 +30,13 @@ if (!url) {
   process.exit(1);
 }
 
+// The cache-kept series spends its first run filling an empty cache, its second
+// on the second visit, and the rest on the steady state.
+if (runs < 3) {
+  console.error("matrix.js needs at least 3 runs per condition");
+  process.exit(1);
+}
+
 /** Throughput in Mbps and added latency in ms. */
 const NETWORKS = {
   fast: { mbps: 40, latency: 20 },
@@ -107,25 +114,29 @@ function spreadPercent(values) {
         offset: offset++,
       });
 
+      // Every cold reading in the row comes from `cold.median`, and every warm
+      // reading from `warm.secondLoad`. Each is one load, so the readings in a
+      // row stay in order with each other. A row assembled from a separate
+      // median per reading describes a load that never happened.
       rows.push({
         network,
         networkMbps: mbps,
         latencyMs: latency,
         cpu,
         cpuThrottle: throttle,
-        coldMs: cold.medianDomContentLoadedMs,
-        warmMs: warm.secondLoadMs,
-        steadyMs: warm.steadyStateMs,
+        coldMs: cold.median.domContentLoadedMs,
+        warmMs: warm.secondLoad.domContentLoadedMs,
+        steadyMs: warm.steady.domContentLoadedMs,
         coldSpreadPercent: spreadPercent(cold.everyRunMs),
         // The cold load broken up, in the order a user meets it: bytes start
         // arriving, something is drawn, the shell commits, the page has its
-        // data. The warm equivalents come from the same series as `warmMs`.
-        coldTtfbMs: cold.ttfbMs,
-        coldFirstPaintMs: cold.firstContentfulPaintMs,
-        coldAppMountedMs: cold.appMountedMs,
-        coldLargestPaintMs: cold.largestContentfulPaintMs,
-        coldPageReadyMs: cold.pageReadyMs,
-        warmPageReadyMs: warm.pageReadyMs,
+        // data.
+        coldTtfbMs: cold.median.ttfbMs,
+        coldFirstPaintMs: cold.median.firstContentfulPaintMs,
+        coldAppMountedMs: cold.median.appMountedMs,
+        coldLargestPaintMs: cold.median.largestContentfulPaintMs,
+        coldPageReadyMs: cold.median.pageReadyMs,
+        warmPageReadyMs: warm.secondLoad.pageReadyMs,
         scripts: cold.scripts,
         scriptKb: cold.scriptKb,
         runs: cold.runs,
