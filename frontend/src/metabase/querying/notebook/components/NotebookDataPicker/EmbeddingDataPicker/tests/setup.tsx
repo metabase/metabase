@@ -7,7 +7,7 @@ import { createMockState } from "__support__/state";
 import { createMockEmbeddingDataPickerState } from "__support__/state/embedding-data-picker";
 import { renderWithProviders } from "__support__/ui";
 import type {
-  EmbeddingDataPicker,
+  EmbeddingDataPicker as EmbeddingDataPickerVariant,
   EmbeddingEntityType,
 } from "metabase/redux/store/embedding-data-picker";
 import type { Query } from "metabase-lib";
@@ -29,7 +29,7 @@ import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 interface SetupOpts {
   hasModels?: boolean;
   hasMetrics?: boolean;
-  dataPicker?: EmbeddingDataPicker;
+  dataPicker?: EmbeddingDataPickerVariant;
   entityTypes?: EmbeddingEntityType[];
 }
 
