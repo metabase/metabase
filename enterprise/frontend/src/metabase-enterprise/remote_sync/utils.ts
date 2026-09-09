@@ -242,6 +242,7 @@ export const getListedRequiredSyncs = (
 
 export type BlockedReason =
   | "personal-content"
+  | "analytics-content"
   | "unsyncable-content"
   | "library-missing"
   | "linked-collections";
@@ -252,6 +253,9 @@ export const getBlockedReason = (
 ): BlockedReason => {
   if (isBlockedByPersonalContent(required)) {
     return "personal-content";
+  }
+  if (isBlockedByAnalyticsContent(required)) {
+    return "analytics-content";
   }
   if (requiresContentMove(required)) {
     return "unsyncable-content";
@@ -269,6 +273,15 @@ const isBlockedByPersonalContent = (
     ({ remedy }) => remedy.type === "collection" && remedy.collection.personal,
   );
 
+const isBlockedByAnalyticsContent = (
+  required: RemoteSyncRequiredSync[],
+): boolean =>
+  required.some(
+    ({ remedy }) =>
+      remedy.type === "collection" &&
+      remedy.collection.type === "instance-analytics",
+  );
+
 const isBlockedByMissingLibrary = (
   required: RemoteSyncRequiredSync[],
 ): boolean => required.some(({ remedy }) => remedy.type === "library");
@@ -282,6 +295,8 @@ export const getBlockedMessage = (
   switch (getBlockedReason(required)) {
     case "personal-content":
       return t`Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue.`;
+    case "analytics-content":
+      return t`Dashboards or questions in this collection rely on content in usage analytics, which can’t be synced. Update them to use content you can sync to continue.`;
     case "unsyncable-content":
       return t`Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue.`;
     case "library-missing":

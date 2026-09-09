@@ -49,6 +49,16 @@ const PERSONAL_REQUIRED = requiredSync({
   collection: { id: 5, name: "Nick's stuff", type: null, personal: true },
 });
 
+const ANALYTICS_REQUIRED = requiredSync({
+  type: "collection",
+  collection: {
+    id: 3,
+    name: "Usage analytics",
+    type: "instance-analytics",
+    personal: false,
+  },
+});
+
 // `collection: null` is the root collection
 const ROOT_REQUIRED = requiredSync({ type: "none", collection: null });
 
@@ -203,6 +213,12 @@ describe("RemoteSyncDependencyModal", () => {
       ROOT_REQUIRED,
       "Our analytics",
       /can.t be synced where it currently lives/,
+    ],
+    [
+      "usage analytics",
+      ANALYTICS_REQUIRED,
+      "Usage analytics",
+      /rely on content in usage analytics/,
     ],
   ])(
     "explains a %s blocker and lists it alone, not what could otherwise be switched on",

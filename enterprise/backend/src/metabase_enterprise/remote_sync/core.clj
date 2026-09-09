@@ -366,10 +366,13 @@
     remedy))
 
 (defn- remedy-syncable?
-  "Whether an admin can switch this remedy on from the settings list. A personal collection is named so
-  the refusal makes sense, but it can never be synced."
+  "Whether an admin can switch this remedy on from the settings list. Personal and instance-analytics
+  collections are named so the refusal makes sense, but that list never offers either, so neither is
+  something an admin can act on here."
   [{:keys [type collection]}]
-  (boolean (and (= :collection type) (not (:personal collection)))))
+  (boolean (and (= :collection type)
+                (not (:personal collection))
+                (not= collections/instance-analytics-collection-type (:type collection)))))
 
 (defn- describe-required-syncs
   "The refusal as clients render it: one entry per collection an admin would act on, carrying the

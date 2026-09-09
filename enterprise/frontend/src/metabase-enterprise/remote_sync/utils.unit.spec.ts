@@ -271,6 +271,15 @@ describe("remote_sync utils", () => {
       },
       true,
     );
+    const ANALYTICS = requiredSync({
+      type: "collection",
+      collection: {
+        id: 3,
+        name: "Usage analytics",
+        type: "instance-analytics",
+        personal: false,
+      },
+    });
     // No Library exists at all, so the remedy names nothing.
     const LIBRARY_MISSING = requiredSync({ type: "library" });
     const ROOT = requiredSync({ type: "none", collection: null });
@@ -303,6 +312,16 @@ describe("remote_sync utils", () => {
         );
       });
 
+      it("is analytics-content when a dependency lives in usage analytics", () => {
+        expect(getBlockedReason([SYNCABLE, ANALYTICS])).toBe(
+          "analytics-content",
+        );
+      });
+
+      it("ranks usage analytics above root content, which at least names a move", () => {
+        expect(getBlockedReason([ROOT, ANALYTICS])).toBe("analytics-content");
+      });
+
       it("ranks personal content above every other reason", () => {
         expect(getBlockedReason([LIBRARY_MISSING, ROOT, PERSONAL])).toBe(
           "personal-content",
@@ -332,6 +351,12 @@ describe("remote_sync utils", () => {
       it("has nothing to list when a Library that doesn't exist is the blocker", () => {
         expect(getListedRequiredSyncs([SYNCABLE, LIBRARY_MISSING])).toEqual([]);
       });
+
+      it("treats usage analytics as a blocker, hiding what could be switched on", () => {
+        expect(getListedRequiredSyncs([SYNCABLE, ANALYTICS])).toEqual([
+          ANALYTICS,
+        ]);
+      });
     });
 
     describe("getRequiredSyncRow", () => {
@@ -343,6 +368,17 @@ describe("remote_sync utils", () => {
           personal: false,
           syncableId: 2,
           collectionId: 2,
+        });
+      });
+
+      it("names usage analytics but offers nothing to switch on", () => {
+        expect(getRequiredSyncRow(ANALYTICS)).toEqual({
+          key: "collection:3",
+          name: "Usage analytics",
+          type: "instance-analytics",
+          personal: false,
+          syncableId: null,
+          collectionId: 3,
         });
       });
 

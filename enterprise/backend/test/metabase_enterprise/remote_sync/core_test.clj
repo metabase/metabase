@@ -273,6 +273,34 @@
                                           :dependencies [{:id source-card-id}]}]}}
                     (ex-data ex)))))))))
 
+(deftest bulk-set-remote-sync-analytics-dependency-is-not-syncable-test
+  (testing "usage analytics is named so the refusal makes sense, but never offered as something to sync"
+    ;; The settings list filters instance-analytics out, so a remedy pointing at it can't be acted on.
+    (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                   :model/Collection {analytics-id :id} {:name "Usage analytics"
+                                                         :location "/"
+                                                         :type "instance-analytics"
+                                                         :is_remote_synced false}
+                   :model/Card {source-card-id :id} {:name "Audit Card"
+                                                     :collection_id analytics-id
+                                                     :database_id (mt/id)
+                                                     :dataset_query (mt/mbql-query venues)}
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id synced-id
+                                  :database_id (mt/id)
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+      (let [ex         (is (thrown? clojure.lang.ExceptionInfo
+                                    (core/bulk-set-remote-sync {synced-id true})))
+            [required] (get-in (ex-data ex) [:errors :required])]
+        (is (=? {:remedy       {:type       :collection
+                                :collection {:id       analytics-id
+                                             :name     "Usage analytics"
+                                             :type     "instance-analytics"
+                                             :personal false}}
+                 :syncable     false
+                 :dependencies [{:id source-card-id}]}
+                required))))))
+
 (defn- link-to-dashboard-dashcard
   "A dashcard on `dashboard-id` that holds no card of its own and links to `target-id` via click behaviour."
   [dashboard-id target-id]

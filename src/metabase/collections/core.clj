@@ -22,6 +22,7 @@
   create-library-collection!
   descendant-ids
   ineligible-dependencies
+  instance-analytics-collection-type
   library-collection
   library-collection-type
   library-data-collection-type
