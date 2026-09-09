@@ -5,7 +5,7 @@ description: Template tags for native SQL questions written through question_wri
 
 # Native SQL parameters (template tags)
 
-**Prefer MBQL** (`execute_query` + `question_write`'s `query` — validated server-side); use `native` only when MBQL can't express it (engine-specific functions, CTEs, hand-tuned SQL) or the user asks for SQL.
+Prefer MBQL (`execute_query` + `question_write` `query`, validated server-side). Use `native` only for what MBQL can't express (engine-specific functions, CTEs, window functions) or when the user asks for SQL: a raw-SQL card can't take a dashboard filter until that filter is a template tag, while an MBQL card wires as-is.
 
 ```
 question_write {"method": "create", "name": "Orders by status",
@@ -16,19 +16,25 @@ question_write {"method": "create", "name": "Orders by status",
                              "min_total": {"type": "number", "display_name": "Minimum total", "default": 0}}}}
 ```
 
-Every `{{name}}` in the SQL is a template tag. The server extracts them from the SQL; `template_tags` entries **configure** the extracted tags, keyed by the exact `{{name}}` (case-sensitive). Naming a tag absent from the SQL is an error. The server mints tag ids — never supply one. Unconfigured tags default to plain text variables.
+Every `{{name}}` in the SQL is a tag. The server extracts them; `template_tags` configures them, keyed by the exact case-sensitive name — naming a tag absent from the SQL is an error. Never supply tag ids (the server mints them). Unconfigured tags are plain text variables.
 
-## The decision that matters: field filter vs raw variable
+## Field filter vs raw variable
 
 Default to a **field filter** (`"type": "dimension"`) whenever the tag filters a real table column.
 
-- A **field filter** binds a column (`field_id`) and gets a smart widget (`widget_type`): value dropdown, date picker. Write it **bare** — `WHERE {{category}}` — and Metabase expands the right SQL (`category IN (...)`, `BETWEEN` for dates). `WHERE category = {{category}}` around a field filter **breaks the expansion** — the most common native-SQL bug.
-- A **raw variable** (`"type": "text" | "number" | "date" | "boolean"`) is a literal splice; you write the operator: `WHERE total > {{min_total}}`, `LIMIT {{n}}`. Plain input box.
-- Field filters bind only a **real, connected database column** — not an expression, aggregate, or subquery/CTE column; anything else must be a raw variable.
-- **Empty values degrade differently.** A field filter with no value compiles to `1 = 1`, so the query still runs. A raw variable with no value does not — outside `[[ ]]` it fails the run with "missing required parameters" even when the tag isn't marked `required`. Give every main-clause raw variable a `default`, or wrap its clause in `[[ ]]`. Caveat: a boolean tag's `false` default is treated as unset — for a main-clause boolean, pass the value explicitly on every run, or keep its clause in `[[ ]]`.
-- A **temporal-unit** tag (`"type": "temporal-unit", "field_id": …`) gives the viewer a time-bucket picker (day/week/month) for a datetime column.
+- **Field filter** — binds a column (`field_id`), gets a smart widget (`widget_type`: dropdown, date picker). Write it **bare**, `WHERE {{category}}`; Metabase expands it (`category IN (...)`, `BETWEEN` for dates). `WHERE category = {{category}}` breaks the expansion — the most common native bug.
+- **Raw variable** (`text` | `number` | `date` | `boolean`) — literal splice, you write the operator: `WHERE total > {{min_total}}`, `LIMIT {{n}}`. Plain input box.
+- A field filter needs a real, connected column — not an expression, aggregate, or subquery/CTE column (use a raw variable) — and **the real table name: never alias the filtered table**. The expansion emits `orders.status`; under `FROM orders o` that name is out of scope and the card errors at run time, on dashboards too. Keep `FROM orders`, or qualify `FROM public.orders`.
 
-## The tag shape
+```sql
+SELECT count(*) FROM orders WHERE {{status}}     -- works
+SELECT count(*) FROM orders o WHERE {{status}}   -- fails: orders.status is hidden by the alias
+```
+
+- **Empty values** — a field filter with no value compiles to `1 = 1`; a raw variable with no value outside `[[ ]]` fails with "missing required parameters" even without `required`. Give every main-clause raw variable a `default` or wrap its clause in `[[ ]]`. A boolean's `default: false` reads as no default: pass it on every run, or use `[[ ]]`.
+- **`temporal-unit`** tag (`field_id` of a datetime column) — the viewer picks the bucket (day/week/month).
+
+## Tag shape
 
 ```
 "tag_name": {"type": "dimension" | "temporal-unit" | "text" | "number" | "date" | "boolean",
@@ -39,7 +45,7 @@ Default to a **field filter** (`"type": "dimension"`) whenever the tag filters a
              "default": "Gadget"}                              // optional
 ```
 
-Field ids: `browse_data {"action": "get_fields", "table_ids": [<table id>]}`. `widget_type` must suit the column's type:
+Field ids: `browse_data {"action": "get_fields", "table_ids": [<table id>]}`. `widget_type` by column type:
 
 | Column type | widget_type |
 |---|---|
@@ -50,31 +56,31 @@ Field ids: `browse_data {"action": "get_fields", "table_ids": [<table id>]}`. `w
 | PK/FK | `id` |
 | Location semantic type | `location/city` `location/state` `location/zip_code` `location/country` |
 
-**Round-trip:** `get_content` returns a question's `template_tags` in the stored shape (`display-name`, `widget-type`, a `dimension` ref) — `question_write` accepts it back verbatim; copy, edit, resend.
+Round-trip: `get_content` returns `template_tags` in the stored shape (`display-name`, `widget-type`, a `dimension` ref); `question_write` accepts it back verbatim. Don't author that shape or hand-mint ids — `field_id` is the write dialect.
 
-## Optional blocks: `[[ ... ]]`
+## Optional blocks `[[ ... ]]`
 
-Wrap any clause that should drop when its value is empty, keyword included: `WHERE true [[AND {{category}}]] [[AND total > {{min_total}}]]`. One nesting level; several optional `AND` blocks need a real `WHERE` first. A `required: true` tag or one with a `default` always has a value, so its clause never drops.
+Wrap any clause that should drop when its value is empty, keyword included: `WHERE true [[AND {{category}}]] [[AND total > {{min_total}}]]`. One nesting level; several optional `AND` blocks need a real `WHERE` first. A `required` tag or one with a `default` always has a value, so its clause never drops. `[[ ]]` doesn't fix a case/type mismatch: `WHERE plan = {{p}}` returns zero rows on a case-sensitive engine when the value's case is off.
 
 ## Snippet and card references
 
-- `{{#42}}` (or `{{#42-slug}}`) inlines saved card 42 as a subquery: `SELECT * FROM {{#42}}`, `WITH x AS {{#42}} …`. It runs with its own saved defaults — its parameters can't be set from the parent.
-- The subquery's columns are the card's **result** columns. MBQL aggregations get machine names — `count`, `avg`, then `avg_2` for the second average — which collide with SQL keywords, so quote them: `SELECT cs."avg", cs."count" FROM {{#42}} cs`. Run the card once (execute_query or run_saved_question) to see the exact names.
-- `{{snippet: Name}}` splices a shared SQL snippet by name — it must already exist (find via `search` or `get_content` type `snippet`).
-- Neither takes a value or wires to a dashboard parameter — only field filters and raw variables are user-fillable. Nothing to configure in `template_tags`; entries for them (as `get_content` returns) are accepted on round-trip and ignored.
+- `{{#42}}` (or `{{#42-slug}}`) inlines card 42 as a subquery: `SELECT * FROM {{#42}}`, `WITH x AS {{#42}} …`. It runs with its own saved defaults; its parameters can't be set from the parent.
+- Its columns are the card's result columns. MBQL aggregations get machine names (`count`, `avg`, then `avg_2`) that collide with SQL keywords — quote them: `SELECT cs."avg", cs."count" FROM {{#42}} cs`. Run the card once to see the exact names.
+- `{{snippet: Name}}` splices an existing shared snippet (find via `search` or `get_content` type `snippet`).
+- Neither takes a value or wires to a dashboard parameter; nothing to configure in `template_tags` (entries `get_content` returns for them round-trip and are ignored).
 
 ## Running and wiring
 
-**Run with values** — `run_saved_question` takes `{id, value}` pairs; `id` is the parameter's id **or slug** from `get_content`'s `parameters`. An equality field filter takes an array even for one value:
+**Run** — `run_saved_question` takes `{id | slug, value}` pairs (from `get_content`'s `parameters`); an equality field filter takes an array even for one value:
 
 ```
 run_saved_question {"id": 522, "parameters": [{"slug": "category", "value": ["Gadget"]},
                                               {"slug": "min_total", "value": 100}]}
 ```
 
-Date parameters (a `date` variable or a date field filter) take Metabase's date-string grammar, never a SQL fragment: `"2026-01-05"` (day), `"2026-01-01~2026-03-31"` (range), `"2026-01"` (month), `"past30days"`, `"thisyear"`.
+Date values use Metabase's date grammar, never a SQL fragment: `"2026-01-05"`, `"2026-01-01~2026-03-31"`, `"2026-01"`, `"past30days"`, `"thisyear"`.
 
-**Wire to a dashboard filter** — `dashboard_write`'s `wire_parameter` names the tag; the server derives the mapping from the tag's type, so field filters and variables wire identically:
+**Wire** — `wire_parameter` with `target_tag`; the server derives the mapping from the tag type, so field filters and variables wire identically. The parameter `type` must fit the tag's widget_type (same vocabulary). Dashboard side: `learn("dashboard-filters")`.
 
 ```
 dashboard_write {"method": "update", "id": 40,
@@ -82,16 +88,10 @@ dashboard_write {"method": "update", "id": 40,
                          {"op": "wire_parameter", "parameter_id": "category", "dashcard_id": 7, "target_tag": "category"}]}
 ```
 
-The dashboard parameter's `type` must be compatible with the tag's widget_type (same vocabulary). Dashboard-side detail: `learn("dashboard-filters")`.
-
-**Ad-hoc SQL** (no saved card): `execute_sql` binds `{{tag}}` values via `template_tag_values` as prepared-statement parameters — plain variables only; field filters exist only on saved questions.
+**Ad hoc** — `execute_sql` binds `{{tag}}` values via `template_tag_values` as prepared-statement parameters: plain variables only; field filters exist only on saved questions. Single read statement — no DDL or `;`-chains.
 
 ## Don't
 
-- Don't wrap a field filter in an operator (`WHERE col = {{ff}}`) — write it bare (`WHERE {{ff}}`).
-- Don't pass `dimension`, `id`, or hand-minted UUIDs when authoring — `field_id` is the write dialect; the server builds the ref and mints ids. (Read-shape keys are accepted on round-trip, not required.)
-- Don't omit `widget_type` on a dimension tag, or `field_id` on a dimension/temporal-unit tag — required.
-- Don't use native SQL for DDL or `;`-chained statements — single read statement only.
-- Don't expect `[[ ]]` to fix a case/type mismatch — `WHERE plan = {{p}}` returns zero rows on a case-sensitive engine when the value's case is off.
-- Don't name a tag in `template_tags` with no `{{tag}}` in the SQL — an error, not a no-op.
-- Don't rely on `default: false` on a boolean tag — a false default reads as no default, and a run that omits the value fails with "missing required parameters". Pass the boolean on every run, or wrap its clause in `[[ ]]`.
+- Don't wrap a field filter in an operator, alias its table, or bind it to a non-column.
+- Don't omit `widget_type` on a dimension tag or `field_id` on a dimension/temporal-unit tag.
+- Don't leave a main-clause raw variable without a `default` or `[[ ]]`; don't trust `default: false`.

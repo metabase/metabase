@@ -38,9 +38,9 @@ const TimelinePanel = ({
   const canCreateEvent = canWrite && onNewEvent != null;
 
   return (
-    <Box mx="lg">
+    <Box mx="xl">
       {!isEmpty && canCreateEvent && (
-        <Box mb="md">
+        <Box mb="lg">
           <Button onClick={onNewEvent}>{t`Create event`}</Button>
         </Box>
       )}

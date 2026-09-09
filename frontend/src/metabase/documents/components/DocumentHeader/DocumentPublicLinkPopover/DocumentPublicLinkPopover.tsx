@@ -78,7 +78,7 @@ export const DocumentPublicLinkPopover = ({
       </Popover.Target>
       <Popover.Dropdown>
         <Box
-          p="lg"
+          p="xl"
           w="32rem"
           data-testid="public-link-popover-content"
           mih="10rem"
@@ -86,7 +86,7 @@ export const DocumentPublicLinkPopover = ({
           <Title
             c="text-secondary"
             order={4}
-            mb="md"
+            mb="lg"
           >{t`Public sharing`}</Title>
           <DocumentPublicLinkPopoverContent
             url={url}

@@ -35,7 +35,7 @@ export const ColorSettings = ({
   );
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Box>
         <SettingHeader
           id="user-interface-colors"
@@ -61,7 +61,7 @@ export const ColorSettings = ({
               <Tabs.Tab value="palette-preview">{t`Preview`}</Tabs.Tab>
             </Tabs.List>
 
-            <Box mt="lg" bdrs={0}>
+            <Box mt="xl" bdrs={0}>
               <Tabs.Panel value="chart-colors">
                 <ChartColorSettings
                   colors={colors}

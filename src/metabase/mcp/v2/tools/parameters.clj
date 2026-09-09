@@ -23,6 +23,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
@@ -33,6 +34,7 @@
    [metabase.parameters.params :as params]
    [metabase.queries.core :as queries]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -72,12 +74,29 @@
 
 ;;; --------------------------------------------------- Fetching ---------------------------------------------------
 
+(defn- temporal-field?
+  "Whether `add-filter` would treat `field-id` as temporal — it tests the Lib column's effective type,
+   which `lib-be/instance->metadata` carries over from the Field's `effective_type` (`base_type` when
+   unset)."
+  [field-id]
+  (let [{:keys [base_type effective_type]} (mcp.db/field-types field-id)]
+    (isa? (or effective_type base_type) :type/Temporal)))
+
+(defn- parses-as-date?
+  "Whether `value` yields a date filter for `field-id`. Runs the same call `add-filter` makes, so this
+   can't disagree with it about what parses."
+  [value field-id]
+  (try
+    (some? (params.dates/date-string->filter value field-id))
+    (catch Throwable _ false)))
+
 (defn- check-constraints!
   "Reject a constraints key that chain filtering would silently drop rather than apply — so the
-   caller never gets unnarrowed values believing they were filtered. Three drop paths:
+   caller never gets unnarrowed values believing they were filtered. Four drop paths:
    the key names no dashboard parameter; it resolves to no queryable field (unmapped, or mapped
-   only via field-refs or a SQL text variable); or its field has no FK join path to the target
-   parameter's field within chain filtering's traversal limit.
+   only via field-refs or a SQL text variable); its field has no FK join path to the target
+   parameter's field within chain filtering's traversal limit; or its value is a string on a
+   temporal field that won't parse as a date.
 
    The join-path check must match what fetching actually does. `parameters.dashboard/param-values`
    runs a SEPARATE `chain-filter` per target field-id and UNIONS the resulting values, passing the
@@ -123,8 +142,23 @@
       (when (empty? (set/intersection (params/dashboard-param->field-ids (get resolved-params param-key))
                                       (or reachable-everywhere #{})))
         (common/throw-teaching-error
-         (format "Constraint %s can't narrow this filter — its field has no join path to this parameter's table (or reaches only some of the fields it maps to), so chain filtering would silently ignore it. Drop it from constraints."
-                 (pr-str param-key)))))))
+         (if (empty? target-field-ids)
+           ;; No target fields at all: chain filtering falls back to `filter-values-from-field-refs`,
+           ;; which ignores constraints outright. Blaming the join path would misdiagnose it.
+           (format "This parameter's values come from a card's own column rather than a queryable field, so constraints can't narrow it — chain filtering would silently ignore %s. Fetch without constraints."
+                   (pr-str param-key))
+           (format "Constraint %s can't narrow this filter — its field has no join path to this parameter's table (or reaches only some of the fields it maps to), so chain filtering would silently ignore it. Drop it from constraints."
+                   (pr-str param-key)))))))
+  ;; The last drop path is in the value rather than the field: `add-filter` routes a string value on a
+  ;; temporal field through `date-string->filter` and catches a parse failure into a dropped filter.
+  (doseq [[param-key value] constraints
+          :when             (string? value)
+          field-id          (params/dashboard-param->field-ids (get resolved-params param-key))
+          :when             (temporal-field? field-id)]
+    (when-not (parses-as-date? value field-id)
+      (common/throw-teaching-error
+       (format "Constraint %s is a date filter, and %s isn't a date it can parse — chain filtering would silently ignore it. Pass a day (\"2024-01-31\"), a range (\"2024-01-01~2024-03-31\"), or a relative window (\"past30days\", \"thismonth\")."
+               (pr-str param-key) (pr-str value))))))
 
 (def ^:private no-values
   {:values [] :has_more_values false})
@@ -203,9 +237,15 @@
 
 (defn- steering-line
   "The sentence appended when the page isn't the whole story. `total` is what the backend
-   returned; `more?` marks it as a floor — the source held more than the backend's 1000-row cap."
-  [{:keys [returned total more? offset limit]}]
+   returned; `more?` marks it as a floor — the source held more than the backend's 1000-row cap.
+   `query` is the caller's search, when there was one: an empty result means something different
+   with a search in hand, and the recovery it points at is different too."
+  [{:keys [returned total more? offset limit query]}]
   (cond
+    (and (zero? total) query)
+    (format "No values match %s — try a shorter or less specific search, or omit `query` to list every value."
+            (pr-str query))
+
     (zero? total)
     "No values available for this parameter — its source may be empty, filtered to nothing for you, or a free-text filter with no value list."
 
@@ -216,8 +256,8 @@
       (format "No values at offset %d — %d available." offset total))
 
     :else
-    (or (common/truncation-line {:param :query :offset offset :limit limit
-                                 :total total :total-floor? more? :returned returned})
+    (or (common/truncation-line {:param :query :offset offset :limit limit :returned returned
+                                 :total total :total-floor? more?})
         (when more?
           (format "Returned %d — the source holds more values than it will return; narrow with `query` to reach the rest."
                   returned)))))
@@ -226,7 +266,7 @@
   "Slice `limit`/`offset` out of the backend's value list and render the response. `has_more_values`
    stays true when the slice dropped values, not only when the backend hit its own cap — a page is
    never reported as the whole set."
-  [{:keys [values has_more_values]} limit offset]
+  [{:keys [values has_more_values]} limit offset query]
   (let [values   (vec values)
         total    (count values)
         page     (if (< offset total)
@@ -236,7 +276,7 @@
                   :returned        (count page)
                   :has_more_values (boolean (or has_more_values (< (+ offset (count page)) total)))}
         line     (steering-line {:returned (count page) :total total :more? (boolean has_more_values)
-                                 :offset offset :limit limit})]
+                                 :offset offset :limit limit :query query})]
     (common/success-content (cond-> (json/encode payload)
                               line (str "\n" line)))))
 
@@ -281,4 +321,5 @@
     ;; has no field to fall back to; an empty value list is the honest answer there too.
     (values-content (or result no-values)
                     (or limit default-limit)
-                    (or offset 0))))
+                    (or offset 0)
+                    query)))

@@ -74,55 +74,68 @@
    "\n"
    "For more information, see https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html"))
 
+(defn- opts->secret-key
+  "The 64-byte key `opts` name, or the hashed MB_ENCRYPTION_SECRET_KEY when they name none."
+  ^bytes [{:keys [^bytes secret-key]}]
+  (or secret-key default-secret-key))
+
+(defn- cipher-opts
+  "Buddy's options for the AEAD scheme, with the `:aad` from `opts`, if any. Additional authenticated data is covered
+  by the ciphertext's MAC without being encrypted: a value encrypted under some AAD only decrypts under the same AAD,
+  so binding a value to the row it belongs to is a matter of naming the row here."
+  [{:keys [^bytes aad]}]
+  (cond-> {:algorithm :aes256-cbc-hmac-sha512}
+    aad (assoc :aad aad)))
+
+;;; Every function below takes an optional trailing `opts` map, with `:secret-key` (a 64-byte hashed key, as
+;;; [[secret-key->hash]] makes one; by default the hashed MB_ENCRYPTION_SECRET_KEY) and, for the string and byte-array
+;;; functions, `:aad` (bytes the ciphertext is bound to -- see [[cipher-opts]]). `:secret-key` is what lets tests pass
+;;; a key directly instead of using `with-redefs`, and what key rotation uses to write under the key it rotates to.
+
 (defn encrypt-bytes
-  "Encrypt bytes `b` using a `secret-key` (a 64-byte byte array), by default is the hashed value of
-  `MB_ENCRYPTION_SECRET_KEY`."
+  "Encrypt bytes `b`."
   {:added "0.41.0"}
-  (^String [^bytes b]
-   (encrypt-bytes default-secret-key b))
-  (^String [^String secret-key, ^bytes b]
+  (^bytes [^bytes b]
+   (encrypt-bytes b nil))
+  (^bytes [^bytes b opts]
    (let [initialization-vector (nonce/random-bytes 16)]
-     (->> (crypto/encrypt b
-                          secret-key
-                          initialization-vector
-                          {:algorithm :aes256-cbc-hmac-sha512})
+     (->> (crypto/encrypt b (opts->secret-key opts) initialization-vector (cipher-opts opts))
           (concat initialization-vector)
           byte-array))))
 
 (defn encrypt
-  "Encrypt string `s` as hex bytes using a `secret-key` (a 64-byte byte array), which by default is the hashed value of
-  `MB_ENCRYPTION_SECRET_KEY`."
+  "Encrypt string `s`, returning the ciphertext as base64."
   (^String [^String s]
-   (encrypt default-secret-key s))
-  (^String [^String secret-key, ^String s]
-   (->> (codecs/to-bytes s)
-        (encrypt-bytes secret-key)
-        codec/base64-encode)))
+   (encrypt s nil))
+  (^String [^String s opts]
+   (-> (codecs/to-bytes s)
+       (encrypt-bytes opts)
+       codec/base64-encode)))
 
 (defn decrypt-bytes
-  "Decrypt bytes `b` using a `secret-key` (a 64-byte byte array), which by default is the hashed value of
-  `MB_ENCRYPTION_SECRET_KEY`."
+  "Decrypt bytes `b`."
   {:added "0.41.0"}
-  (^String [^bytes b]
-   (decrypt-bytes default-secret-key b))
-  (^String [secret-key, ^bytes b]
+  (^bytes [^bytes b]
+   (decrypt-bytes b nil))
+  (^bytes [^bytes b opts]
    (let [[initialization-vector message] (split-at 16 b)]
      (crypto/decrypt (byte-array message)
-                     secret-key
+                     (opts->secret-key opts)
                      (byte-array initialization-vector)
-                     {:algorithm :aes256-cbc-hmac-sha512}))))
+                     (cipher-opts opts)))))
 
 (defn encrypt-stream
   "Wraps a plaintext input stream into an input stream that encrypts it using AES256 CBC.
-  The encryption format is slightly different for streams vs. fixed length data"
+  The encryption format is slightly different for streams vs. fixed length data, and carries no AAD."
   {:added "0.53.0"}
   (^InputStream [^InputStream input-stream]
-   (encrypt-stream default-secret-key input-stream))
-  (^InputStream [secret-key ^InputStream input-stream]
-   (let [spec aes-streaming-spec
+   (encrypt-stream input-stream nil))
+  (^InputStream [^InputStream input-stream opts]
+   (let [secret-key  (opts->secret-key opts)
+         spec        aes-streaming-spec
          spec-header (codecs/to-bytes (format "%-32s" spec))
-         cipher (Cipher/getInstance spec)
-         iv (nonce/random-bytes 16)]
+         cipher      (Cipher/getInstance spec)
+         iv          (nonce/random-bytes 16)]
      (.init cipher Cipher/ENCRYPT_MODE (SecretKeySpec. (bytes/slice secret-key 32 64) "AES") (IvParameterSpec. iv))
      (SequenceInputStream. (ByteArrayInputStream. (bytes/concat spec-header iv)) (CipherInputStream. input-stream cipher)))))
 
@@ -130,28 +143,29 @@
   "Encrypts a byte-array in a way that can be used to read it with decrypt-stream instead of decrypt."
   {:added "0.53.0"}
   (^bytes [^bytes input]
-   (encrypt-for-stream default-secret-key input))
-  (^bytes [secret-key ^bytes input]
-   (with-open [encrypted (encrypt-stream secret-key (ByteArrayInputStream. input))]
+   (encrypt-for-stream input nil))
+  (^bytes [^bytes input opts]
+   (with-open [encrypted (encrypt-stream (ByteArrayInputStream. input) opts)]
      (.readAllBytes encrypted))))
 
 (defn maybe-decrypt-stream
   "Wraps a possibly-encrypted input stream into a new input stream that decrypts it if necessary."
   {:added "0.53.0"}
   (^InputStream [^InputStream input-stream]
-   (maybe-decrypt-stream default-secret-key input-stream))
-  (^InputStream [secret-key ^InputStream input-stream]
-   (let [spec-array (byte-array 32)
+   (maybe-decrypt-stream input-stream nil))
+  (^InputStream [^InputStream input-stream opts]
+   (let [secret-key        (opts->secret-key opts)
+         spec-array        (byte-array 32)
          spec-array-length (.read input-stream spec-array)
-         spec (str/trim (codecs/bytes->str spec-array))]
+         spec              (str/trim (codecs/bytes->str spec-array))]
      (cond
        (= spec-array-length -1)
        input-stream
 
        (and (= spec-array-length 32) (= spec aes-streaming-spec))
        (let [cipher (Cipher/getInstance spec)
-             iv (byte-array 16)
-             _ (.read input-stream iv)]
+             iv     (byte-array 16)
+             _      (.read input-stream iv)]
          (.init cipher Cipher/DECRYPT_MODE (SecretKeySpec. (bytes/slice secret-key 32 64) "AES") (IvParameterSpec. iv))
          (CipherInputStream. input-stream cipher))
 
@@ -161,42 +175,42 @@
         input-stream)))))
 
 (defn decrypt
-  "Decrypt string `s` using a `secret-key` (a 64-byte byte array), by default the hashed value of
-  `MB_ENCRYPTION_SECRET_KEY`."
+  "Decrypt base64 ciphertext `s` back to the string it was made from."
   (^String [^String s]
-   (decrypt default-secret-key s))
-  (^String [secret-key, ^String s]
-   (codecs/bytes->str (decrypt-bytes secret-key (codec/base64-decode s)))))
+   (decrypt s nil))
+  (^String [^String s opts]
+   (codecs/bytes->str (decrypt-bytes (codec/base64-decode s) opts))))
 
 (defn maybe-encrypt
-  "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of `s`; otherwise return `s` as-is."
+  "If there is a key (MB_ENCRYPTION_SECRET_KEY, or `:secret-key` in `opts`), return an encrypted version of `s`;
+  otherwise return `s` as-is."
   (^String [^String s]
-   (maybe-encrypt default-secret-key s))
-  (^String [secret-key, ^String s]
-   (if secret-key
+   (maybe-encrypt s nil))
+  (^String [^String s opts]
+   (if (opts->secret-key opts)
      (when (seq s)
-       (encrypt secret-key s))
+       (encrypt s opts))
      s)))
 
 (defn maybe-encrypt-bytes
-  "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of the given bytes `b`; otherwise return `b`
-  as-is."
+  "If there is a key, return an encrypted version of the given bytes `b`; otherwise return `b` as-is."
   {:added "0.41.0"}
   (^bytes [^bytes b]
-   (maybe-encrypt-bytes default-secret-key b))
-  (^bytes [secret-key, ^bytes b]
-   (if secret-key
+   (maybe-encrypt-bytes b nil))
+  (^bytes [^bytes b opts]
+   (if (opts->secret-key opts)
      (when (seq b)
-       (encrypt-bytes secret-key b))
+       (encrypt-bytes b opts))
      b)))
 
 (defn maybe-encrypt-for-stream
-  "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of `s` that can be used to stream the data; otherwise return `s` as-is."
+  "If there is a key, return an encrypted version of `s` that can be used to stream the data; otherwise return `s`
+  as-is."
   (^bytes [^bytes s]
-   (maybe-encrypt-for-stream default-secret-key s))
-  (^bytes [secret-key, ^bytes s]
-   (if secret-key
-     (encrypt-for-stream secret-key s)
+   (maybe-encrypt-for-stream s nil))
+  (^bytes [^bytes s opts]
+   (if (opts->secret-key opts)
+     (encrypt-for-stream s opts)
      s)))
 
 (def ^:private ^:const aes256-tag-length 32)
@@ -238,81 +252,76 @@
        (possibly-encrypted-bytes? b)))))
 
 (defn decryptable-bytes?
-  "Whether `b` is encrypted with `secret-key`: it has the shape of ciphertext *and* decrypts. The ciphertext is
-  authenticated, so a wrong key, corruption, and plaintext that merely looks like ciphertext all yield false. Always
-  false when no key is set. Use this, not [[possibly-encrypted-bytes?]], wherever the answer decides whether a value is
-  encrypted, decrypted, or left alone."
-  ([^bytes b] (decryptable-bytes? default-secret-key b))
-  ([secret-key ^bytes b]
-   (boolean (and secret-key
+  "Whether `b` is encrypted with the key (and under the `:aad`, if any): it has the shape of ciphertext *and* decrypts.
+  The ciphertext is authenticated, so a wrong key, a wrong AAD, corruption, and plaintext that merely looks like
+  ciphertext all yield false. Always false when there is no key. Use this, not [[possibly-encrypted-bytes?]], wherever
+  the answer decides whether a value is encrypted, decrypted, or left alone."
+  ([^bytes b] (decryptable-bytes? b nil))
+  ([^bytes b opts]
+   (boolean (and (opts->secret-key opts)
                  (possibly-encrypted-bytes? b)
-                 (u/ignore-exceptions (decrypt-bytes secret-key b) true)))))
+                 (u/ignore-exceptions (decrypt-bytes b opts) true)))))
 
 (defn decryptable-string?
-  "Whether `s` is encrypted with `secret-key`: it has the shape of ciphertext *and* decrypts. See [[decryptable-bytes?]]."
-  ([^String s] (decryptable-string? default-secret-key s))
-  ([secret-key ^String s]
-   (boolean (and secret-key
+  "Whether `s` is encrypted with the key (and under the `:aad`, if any): it has the shape of ciphertext *and* decrypts.
+  See [[decryptable-bytes?]]."
+  ([^String s] (decryptable-string? s nil))
+  ([^String s opts]
+   (boolean (and (opts->secret-key opts)
                  (possibly-encrypted-string? s)
-                 (u/ignore-exceptions (decrypt secret-key s) true)))))
+                 (u/ignore-exceptions (decrypt s opts) true)))))
 
 (defn maybe-decrypt-accepting-plaintext
-  "Plaintext-tolerant decrypt of a String `s`. If `MB_ENCRYPTION_SECRET_KEY` is set and `s` is encrypted, decrypt it;
-  a value that is stored as plaintext is returned as-is. A value that *looks* encrypted but cannot be decrypted with
-  the current key (wrong key, tampering, corruption) throws — it must not be silently returned, or a re-encrypting
-  caller would double-encrypt it into something permanently unrecoverable. This differs from the strict
-  [[maybe-decrypt]] only in tolerating genuine plaintext; use it for values that may legitimately be plaintext at rest
-  (rows written before encryption was enabled, key rotation, settings, and migration reads).
-
-  `secret-key` is accepted as an argument so tests can pass it directly instead of using `with-redefs` to run in
-  parallel."
-  (^String [^String s] (maybe-decrypt-accepting-plaintext default-secret-key s))
-  (^String [secret-key ^String s]
+  "Plaintext-tolerant decrypt of a String `s`. If there is a key and `s` is encrypted, decrypt it; a value that is
+  stored as plaintext is returned as-is. A value that *looks* encrypted but cannot be decrypted with the key (wrong
+  key, wrong AAD, tampering, corruption) throws -- it must not be silently returned, or a re-encrypting caller would
+  double-encrypt it into something permanently unrecoverable. This differs from the strict [[maybe-decrypt]] only in
+  tolerating genuine plaintext; use it for values that may legitimately be plaintext at rest (rows written before
+  encryption was enabled, key rotation, settings, and migration reads)."
+  (^String [^String s] (maybe-decrypt-accepting-plaintext s nil))
+  (^String [^String s opts]
    (cond
-     (nil? secret-key)              s
-     (possibly-encrypted-string? s) (decrypt secret-key s)
+     (nil? (opts->secret-key opts)) s
+     (possibly-encrypted-string? s) (decrypt s opts)
      :else                          s)))
 
 (defn maybe-decrypt-bytes-accepting-plaintext
   "Plaintext-tolerant counterpart to [[maybe-decrypt-accepting-plaintext]] for a byte array `b` (e.g. secret values):
   an encrypted value is decrypted, a plaintext value is returned as-is, and a value that looks encrypted but cannot be
-  decrypted with the current key throws rather than being returned (returning it would let a re-encrypting caller
+  decrypted with the key throws rather than being returned (returning it would let a re-encrypting caller
   double-encrypt it into something permanently unrecoverable)."
-  (^bytes [^bytes b] (maybe-decrypt-bytes-accepting-plaintext default-secret-key b))
-  (^bytes [secret-key ^bytes b]
+  (^bytes [^bytes b] (maybe-decrypt-bytes-accepting-plaintext b nil))
+  (^bytes [^bytes b opts]
    (cond
-     (nil? secret-key)             b
-     (possibly-encrypted-bytes? b) (decrypt-bytes secret-key b)
-     :else                         b)))
+     (nil? (opts->secret-key opts)) b
+     (possibly-encrypted-bytes? b)  (decrypt-bytes b opts)
+     :else                          b)))
 
 (defn maybe-decrypt
-  "Strict decrypt of a String `s`. When `MB_ENCRYPTION_SECRET_KEY` is set, `s` must be an encrypted value that decrypts
-  with the current key: a value that is not encrypted throws (it was written outside the encrypting path — a plaintext
-  value cannot stand in for an encrypted one), and a value that is encrypted but cannot be decrypted with the current
-  key (wrong key, tampering, or corruption) also throws rather than being trusted. When no key is set, `s` is returned
-  as-is (there is no key to decrypt with). For values that may legitimately be plaintext at rest, use
-  [[maybe-decrypt-accepting-plaintext]].
-
-  `secret-key` is accepted as an argument so tests can pass it directly instead of using `with-redefs` to run in
-  parallel."
-  (^String [^String s] (maybe-decrypt default-secret-key s))
-  (^String [secret-key ^String s]
+  "Strict decrypt of a String `s`. When there is a key, `s` must be an encrypted value that decrypts with it (and
+  under the `:aad`, if any): a value that is not encrypted throws (it was written outside the encrypting path -- a
+  plaintext value cannot stand in for an encrypted one), and a value that is encrypted but cannot be decrypted with
+  the key (wrong key, wrong AAD, tampering, or corruption) also throws rather than being trusted. When there is no
+  key, `s` is returned as-is (there is no key to decrypt with). For values that may legitimately be plaintext at rest,
+  use [[maybe-decrypt-accepting-plaintext]]."
+  (^String [^String s] (maybe-decrypt s nil))
+  (^String [^String s opts]
    (cond
-     (nil? secret-key)              s
+     (nil? (opts->secret-key opts)) s
      (nil? s)                       s
-     (possibly-encrypted-string? s) (decrypt secret-key s)
+     (possibly-encrypted-string? s) (decrypt s opts)
      :else                          (throw (ex-info "Expected an encrypted value but the stored value is not encrypted."
                                                     {:type ::not-encrypted})))))
 
 (defn maybe-decrypt-bytes
   "Strict counterpart to [[maybe-decrypt-bytes-accepting-plaintext]] for a byte array `b`: a value that is not encrypted,
-  or that cannot be decrypted with the current key, throws rather than being trusted. When no key is set, `b` is returned
+  or that cannot be decrypted with the key, throws rather than being trusted. When there is no key, `b` is returned
   as-is."
-  (^bytes [^bytes b] (maybe-decrypt-bytes default-secret-key b))
-  (^bytes [secret-key ^bytes b]
+  (^bytes [^bytes b] (maybe-decrypt-bytes b nil))
+  (^bytes [^bytes b opts]
    (cond
-     (nil? secret-key)             b
-     (nil? b)                      b
-     (possibly-encrypted-bytes? b) (decrypt-bytes secret-key b)
-     :else                         (throw (ex-info "Expected an encrypted value but the stored value is not encrypted."
-                                                   {:type ::not-encrypted})))))
+     (nil? (opts->secret-key opts)) b
+     (nil? b)                       b
+     (possibly-encrypted-bytes? b)  (decrypt-bytes b opts)
+     :else                          (throw (ex-info "Expected an encrypted value but the stored value is not encrypted."
+                                                    {:type ::not-encrypted})))))

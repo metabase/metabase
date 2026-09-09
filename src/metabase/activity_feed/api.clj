@@ -1,43 +1,21 @@
 (ns metabase.activity-feed.api
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
+   [metabase.activity-feed.db :as activity-feed.db]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- models-query
   [model ids]
-  (t2/select
-   (case model
-     "card"      [:model/Card
-                  :id :name :collection_id :description :display
-                  :dataset_query :type :archived :card_schema
-                  :collection.authority_level [:collection.name :collection_name]
-                  [:dashboard.name :dashboard_name] :dashboard_id]
-     "dashboard" [:model/Dashboard
-                  :id :name :collection_id :description
-                  :archived
-                  :collection.authority_level [:collection.name :collection_name]]
-     "table"     [:model/Table
-                  :id :name :db_id :active
-                  :display_name [:metabase_database.initial_sync_status :initial-sync-status]
-                  [:visibility_type :visibility_type]
-                  [:metabase_database.name :database-name]])
-   (let [model-symb (symbol (str/capitalize model))
-         self-qualify #(app-db/qualify model-symb %)]
-     {:where [:in (self-qualify :id) ids]
-      :left-join (case model
-                   "table" [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
-                   "card" [:collection [:= :collection.id (self-qualify :collection_id)]
-                           [:report_dashboard :dashboard] [:= :dashboard.id (self-qualify :dashboard_id)]]
-                   "dashboard" [:collection [:= :collection.id (self-qualify :collection_id)]])})))
+  (case model
+    "card"      (activity-feed.db/recent-cards ids)
+    "dashboard" (activity-feed.db/recent-dashboards ids)
+    "table"     (activity-feed.db/recent-tables ids)))
 
 (defn- models-for-views
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
@@ -69,38 +47,8 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit]
-  (let [dashboard-and-table-views (t2/select [:model/RecentViews
-                                              [[:min :recent_views.user_id] :user_id]
-                                              :model
-                                              :model_id
-                                              [[:max [:coalesce :d.view_count :t.view_count]] :cnt]
-                                              [:%max.timestamp :max_ts]]
-                                             {:group-by  [:model :model_id]
-                                              :where     [:and
-                                                          [:= :context "view"]
-                                                          [:in :model #{"dashboard" "table"}]
-                                                          [:or [:= :active true] [:= :active nil]]
-                                                          [:or [:= :archived false] [:= :archived nil]]]
-                                              :order-by  [[:max_ts :desc] [:model :desc]]
-                                              :limit     views-limit
-                                              :left-join [[:report_dashboard :d]
-                                                          [:and
-                                                           [:= :model "dashboard"]
-                                                           [:= :d.id :model_id]]
-                                                          [:metabase_table :t]
-                                                          [:and
-                                                           [:= :model "table"]
-                                                           [:= :t.id :model_id]]]})
-        card-runs                 (->> (t2/select [:model/QueryExecution
-                                                   [:%min.executor_id :user_id]
-                                                   [(app-db/qualify :model/QueryExecution :card_id) :model_id]
-                                                   [:%count.* :cnt]
-                                                   [:%max.started_at :max_ts]]
-                                                  {:group-by [(app-db/qualify :model/QueryExecution :card_id) :context]
-                                                   :where    [:and
-                                                              [:= :context (h2x/literal :question)]]
-                                                   :order-by [[:max_ts :desc]]
-                                                   :limit    card-runs-limit})
+  (let [dashboard-and-table-views (activity-feed.db/recent-dashboard-and-table-views views-limit)
+        card-runs                 (->> (activity-feed.db/recent-card-runs card-runs-limit)
                                        (mapv #(-> %
                                                   (dissoc :row_count)
                                                   (assoc :model "card"))))]
@@ -154,11 +102,23 @@
                                         [:model    (into [:enum] recent-views/rv-models)]
                                         [:model_id ms/PositiveInt]
                                         [:context  [:enum :selection]]]]
-  (let [model-id model_id
-        model-type (recent-views/rv-model->model model)]
-    (when-not (t2/exists? model-type :id model-id)
+  (let [model-id     model_id
+        model-type   (recent-views/rv-model->model model)
+        exists?      (case model-type
+                       :model/Card       (activity-feed.db/card-exists? model-id)
+                       :model/Dashboard  (activity-feed.db/dashboard-exists? model-id)
+                       :model/Table      (activity-feed.db/table-exists? model-id)
+                       :model/Collection (activity-feed.db/collection-exists? model-id)
+                       :model/Document   (activity-feed.db/document-exists? model-id))
+        entity       (fn [] (case model-type
+                              :model/Card       (activity-feed.db/card model-id)
+                              :model/Dashboard  (activity-feed.db/dashboard model-id)
+                              :model/Table      (activity-feed.db/table model-id)
+                              :model/Collection (activity-feed.db/collection model-id)
+                              :model/Document   (activity-feed.db/document model-id)))]
+    (when-not exists?
       (throw (ex-info "Model not found" {:model model :model_id model-id})))
-    (api/read-check (t2/select-one model-type :id model-id))
+    (api/read-check (entity))
     (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -173,7 +133,7 @@
    in the last 24 hours."
   []
   (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id *current-user-id*)]
-    (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
+    (let [dashboard (-> (activity-feed.db/dashboard dashboard-id)
                         api/check-404
                         (t2/hydrate [:collection :is_personal]))]
       (if (mi/can-read? dashboard)

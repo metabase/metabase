@@ -70,7 +70,7 @@ export const ResetPasswordForm = ({
         validationContext={validationContext}
         onSubmit={onSubmit}
       >
-        <Form as={Stack} gap="md">
+        <Form as={Stack} gap="lg">
           <FormTextInput
             name="password"
             type="password"
