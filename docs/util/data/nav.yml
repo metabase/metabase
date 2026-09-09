@@ -2,9 +2,9 @@ categories:
   - name: "Analytics"
     pages:
       - name: "Getting started"
-        url: "/learn/metabase-basics/getting-started"
+        url: "https://www.metabase.com/learn/metabase-basics/getting-started"
       - name: "Metabase concepts"
-        url: "/learn/metabase-basics/overview/concepts"
+        url: "https://www.metabase.com/learn/metabase-basics/overview/concepts"
       - name: Queries and charts
         url: "questions/start"
         pages:
@@ -552,7 +552,7 @@ categories:
   - name: Other resources
     pages:
       - name: "API"
-        url: "api"
+        url: "https://www.metabase.com/docs/latest/api"
       - name: "Metabase Cloud"
         url: "cloud/start"
         pages:
@@ -584,7 +584,7 @@ categories:
       - name: "Developer guide"
         url: "developers-guide/start"
       - name: "Pro and Enterprise features"
-        url: "/paid-features"
+        url: "https://www.metabase.com/paid-features"
       - name: "Accessibility"
         url: "installation-and-operation/accessibility"
       - name: "Supported browsers"
