@@ -340,34 +340,6 @@ describe("Scalar", () => {
 describe("Scalar conditional colors", () => {
   const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
 
-  function createScalarSeries(data: Partial<DatasetData> = {}): Series {
-    return [
-      createMockSingleSeries(createMockCard({ display: "scalar" }), {
-        data: createMockDatasetData({
-          cols: [createMockColumn({ name: "count" })],
-          rows: [[12345]],
-          ...data,
-        }),
-      }),
-    ];
-  }
-
-  function answeredGoal(goal: number): Partial<DatasetData> {
-    return {
-      referenced_entities: {
-        card: {
-          [GOAL_REF.id]: {
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: GOAL_REF.column })],
-              rows: [[goal]],
-            },
-          },
-        },
-      },
-    };
-  }
-
   function setup(series: Series, segments: ScalarSegment[]) {
     renderWithProviders(
       <Scalar
@@ -380,12 +352,6 @@ describe("Scalar conditional colors", () => {
         width={230}
       />,
     );
-  }
-
-  function getValueColor() {
-    return screen
-      .getByTestId("scalar-value")
-      .style.getPropertyValue("--scalar-value-color");
   }
 
   it("colors the value by the open-ended static range containing it", async () => {
@@ -403,7 +369,7 @@ describe("Scalar conditional colors", () => {
   });
 
   it("colors the value by a range bound the dataset already answers", async () => {
-    setup(createScalarSeries(answeredGoal(10000)), [
+    setup(createScalarSeries(createReferencedEntitiesAnswer(10000)), [
       { min: GOAL_REF, max: null, color: "green", label: "above goal" },
     ]);
 
@@ -415,7 +381,7 @@ describe("Scalar conditional colors", () => {
   });
 
   it("keeps the default color when the value misses the resolved range", () => {
-    setup(createScalarSeries(answeredGoal(20000)), [
+    setup(createScalarSeries(createReferencedEntitiesAnswer(20000)), [
       { min: GOAL_REF, max: null, color: "green", label: "above goal" },
     ]);
 
@@ -424,7 +390,9 @@ describe("Scalar conditional colors", () => {
 
   it("shows a loader until an unanswered reference is fetched, then colors the value", async () => {
     setupCardDataset({
-      dataset: { data: createMockDatasetData(answeredGoal(10000)) },
+      dataset: {
+        data: createMockDatasetData(createReferencedEntitiesAnswer(10000)),
+      },
     });
 
     setup(createScalarSeries(), [
@@ -455,6 +423,40 @@ describe("Scalar conditional colors", () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
   });
+
+  function createScalarSeries(data: Partial<DatasetData> = {}): Series {
+    return [
+      createMockSingleSeries(createMockCard({ display: "scalar" }), {
+        data: createMockDatasetData({
+          cols: [createMockColumn({ name: "count" })],
+          rows: [[12345]],
+          ...data,
+        }),
+      }),
+    ];
+  }
+
+  function createReferencedEntitiesAnswer(goal: number): Partial<DatasetData> {
+    return {
+      referenced_entities: {
+        card: {
+          [GOAL_REF.id]: {
+            status: "completed",
+            data: {
+              cols: [createMockColumn({ name: GOAL_REF.column })],
+              rows: [[goal]],
+            },
+          },
+        },
+      },
+    };
+  }
+
+  function getValueColor() {
+    return screen
+      .getByTestId("scalar-value")
+      .style.getPropertyValue("--scalar-value-color");
+  }
 });
 
 describe("scalar viz settings", () => {
