@@ -24,7 +24,7 @@ import {
 import type { GoalSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
-import { ICON_BUTTON_SIZE } from "../GoalValueInput/constants";
+import { ICON_BUTTON_SIZE } from "../constants";
 
 import { SegmentBoundInput } from "./SegmentBoundInput";
 
