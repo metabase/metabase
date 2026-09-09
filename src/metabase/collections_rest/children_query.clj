@@ -36,17 +36,17 @@
     "measure"})
 
 (def valid-pinned-state-values
-  "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
+  "Valid values for the `?pinned-state` param accepted by endpoints in this namespace."
   #{"all" "is_pinned" "is_not_pinned"})
 
 (def valid-sort-columns
-  "Valid values for the `?sort_column` param accepted by endpoints in this module."
+  "Valid values for the `?sort-column` param accepted by endpoints in this module."
   #{"name" "last_edited_at" "last_edited_by" "model" "description"})
 (def valid-sort-directions
-  "Valid values for the `?sort_direction` param accepted by endpoints in this module."
+  "Valid values for the `?sort-direction` param accepted by endpoints in this module."
   #{"asc" "desc"})
 (defn normalize-sort-choice
-  "The keyword for a `?sort_column`/`?sort_direction` param value, e.g. `\"last_edited_at\"` -> `:last-edited-at`."
+  "The keyword for a `?sort-column`/`?sort-direction` param value, e.g. `\"last_edited_at\"` -> `:last-edited-at`."
   [w]
   (when w (keyword (str/replace w #"_" "-"))))
 

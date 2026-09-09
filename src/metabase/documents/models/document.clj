@@ -355,16 +355,11 @@
               :archived_directly false}})
 
 (defmethod serdes/extract-query "Document"
-  [model-name opts]
-  ;; An exploration document is not first-class content: it is reachable only through its owning
-  ;; exploration, its body embeds values computed under its creator's data-access lens, and
-  ;; `:exploration_id` is in this spec's `:skip` list — so an exported document would import as an
-  ;; ordinary, ungated document detached from any exploration.
-  ((get-method serdes/extract-query :default)
-   model-name
-   (update opts :where (fn [where]
-                         (let [clause [:= :exploration_id nil]]
-                           (if where [:and where clause] clause))))))
+  [model-name {:keys [collection-set filter-column filter-ids] :as opts}]
+  (documents.db/documents-for-serdes-reducible collection-set
+                                               filter-column
+                                               filter-ids
+                                               (serdes/extract-order-columns model-name opts)))
 
 (defn- document-deps
   [{:keys [content_type] :as document}]

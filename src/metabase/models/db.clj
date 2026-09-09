@@ -52,33 +52,51 @@
    row-map :- [:map-of :keyword [:maybe :some]]]
   (t2/select-one model (t2.identity-query/identity-query [row-map])))
 
+(def ^:private WorktreeScope
+  "The remote-sync worktree an extraction is scoped to: `{:worktree-id id}` (nil is the main app), or nil for a model
+  whose table has no `worktree_id` column."
+  [:maybe [:map [:worktree-id [:maybe ::lib.schema.id/worktree]]]])
+
+(defn- worktree-scope-clause
+  [worktree-scope]
+  (when worktree-scope
+    [:= :worktree_id (:worktree-id worktree-scope)]))
+
 (mu/defn entities-reducible
-  "A reducible of the `model` rows additionally matching the Honey SQL `extra-where` when given — the serdes
-  extract-query nested-fetch hook passes a dynamic foreign-key-column + id-list condition here that varies per
-  model/transform and can't be expressed as fixed data — ordered by `order-by` (or unordered when nil)."
-  [model       :- [:or :keyword symbol?]
-   extra-where :- [:maybe vector?]
-   order-by    :- [:maybe vector?]]
-  (t2/reducible-select model (cond-> {}
-                               extra-where (assoc :where extra-where)
-                               order-by    (assoc :order-by order-by))))
+  "A reducible of the `model` rows whose `filter-column` is one of `filter-ids` (every row when `filter-column` is
+  nil), in the remote-sync `worktree-scope` (unrestricted when nil), ordered ascending by `order-columns` (unordered
+  when empty)."
+  [model          :- [:or :keyword symbol?]
+   filter-column  :- [:maybe :keyword]
+   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns  :- [:maybe [:sequential :keyword]]
+   worktree-scope :- WorktreeScope]
+  (t2/reducible-select model (cond-> {:where [:and
+                                              (when filter-column
+                                                [:in filter-column filter-ids])
+                                              (worktree-scope-clause worktree-scope)]}
+                               (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn entities-in-collections-reducible
   "A reducible of the `model` rows whose `:collection_id` is in `collection-set` (nil in the set counts as the root
-  collection), additionally matching the Honey SQL `extra-where` when given (see [[entities-reducible]] for why this
-  stays a raw clause), ordered by `order-by` (or unordered when nil)."
+  collection) and whose `filter-column` is one of `filter-ids` (unrestricted when `filter-column` is nil), ordered
+  ascending by `order-columns` (unordered when empty), in the remote-sync `worktree-scope` (unrestricted when nil)."
   [model          :- [:or :keyword symbol?]
    collection-set :- [:or [:set [:maybe ms/PositiveInt]] [:sequential [:maybe ms/PositiveInt]]]
-   extra-where    :- [:maybe vector?]
-   order-by       :- [:maybe vector?]]
+   filter-column  :- [:maybe :keyword]
+   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns  :- [:maybe [:sequential :keyword]]
+   worktree-scope :- WorktreeScope]
   (t2/reducible-select model
                        (cond-> {:where [:and
                                         [:or
                                          [:in :collection_id collection-set]
                                          (when (some nil? collection-set)
                                            [:= :collection_id nil])]
-                                        extra-where]}
-                         order-by (assoc :order-by order-by))))
+                                        (when filter-column
+                                          [:in filter-column filter-ids])
+                                        (worktree-scope-clause worktree-scope)]}
+                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn table-names-reducible
   "A reducible of the id, name, and display name of every Table."

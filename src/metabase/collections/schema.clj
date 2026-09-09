@@ -4,6 +4,10 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(def ^:constant trash-collection-type
+  "The value of the `:type` field for the Trash collection that holds archived items."
+  "trash")
+
 (mr/def ::CollectionContentModel [:enum "card" "dataset" "metric"])
 
 (mr/def ::CollectionType [:enum

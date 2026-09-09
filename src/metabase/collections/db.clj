@@ -140,23 +140,25 @@
   `children-location-prefix` (see `metabase.collections.models.collection/children-location`), excluding other
   users' Personal Collections (Personal Collections owned by `current-user-id` are still included). When
   `archived?` is given (true or false, not nil), further restricted to that archived status.
-  `additional-where-clauses` are ANDed in as-is (nil, from a caller with none to add, is treated as empty); used
-  by callers that need a permission-filter builder like `visible-collection-filter-clause`, which lives in
-  `metabase.collections.models.collection` and so can't be called from here without a require cycle (that
-  namespace already requires this one)."
+
+  `visibility-clause` is the one Honey SQL argument left in this namespace, and is always a
+  `metabase.collections.models.collection/visible-collection-filter-clause`. That builder needs this namespace (it
+  looks up the Trash, the user's personal Collection subtree, and their root-Collection permission), so this
+  namespace cannot call it back without a require cycle — building the clause here means first moving the whole
+  Collection-visibility machinery below this namespace."
   [children-location-prefix :- :string
    current-user-id          :- [:maybe ::lib.schema.id/user]
    archived?                :- [:maybe :boolean]
-   additional-where-clauses :- [:maybe [:sequential vector?]]]
+   visibility-clause        :- [:maybe vector?]]
   (t2/select [:model/Collection :name :id :location :description]
-             {:where (into [:and
-                            [:like :location (str children-location-prefix "%")]
-                            [:or
-                             [:= :personal_owner_id nil]
-                             [:= :personal_owner_id current-user-id]]
-                            (when (some? archived?)
-                              [:= :archived archived?])]
-                           additional-where-clauses)}))
+             {:where [:and
+                      [:like :location (str children-location-prefix "%")]
+                      [:or
+                       [:= :personal_owner_id nil]
+                       [:= :personal_owner_id current-user-id]]
+                      (when (some? archived?)
+                        [:= :archived archived?])
+                      visibility-clause]}))
 
 (mu/defn descendant-summaries-with-type
   "The name, ID, location, description, and type of the Collections directly under any of `location-prefixes`
@@ -183,15 +185,43 @@
                       [:= :mc.worktree_id nil]
                       [:in :wt.id collection-ids]]}))
 
-(mu/defn effective-children-where
-  "The ID, name, description, and type of the Collections matching the Honey SQL `where`."
-  [where :- [:maybe vector?]]
-  (t2/select [:model/Collection :id :name :description :type] {:where where}))
+(mu/defn effective-children
+  "The ID, name, description, and type of the Collections matching `effective-children-clause`, a
+  `metabase.collections.models.collection/effective-children-where-clause`.
+
+  Like [[descendant-summaries]]'s `visibility-clause`, that builder needs this namespace and so cannot be called
+  from here."
+  [effective-children-clause :- [:maybe vector?]]
+  (t2/select [:model/Collection :id :name :description :type] {:where effective-children-clause}))
 
 (mu/defn collections-for-serdes-reducible
-  "Reducible Collections matching the Honey SQL `where` in stable storage order."
-  [where :- [:maybe vector?]]
-  (t2/reducible-select :model/Collection {:where where, :order-by serdes/stable-storage-order}))
+  "A reducible of the Collections to export via serdes, in stable storage order (which keeps filename de-dup suffixes
+  stable across exports, see GHY-3754). The Trash is never exported, nor are archived Collections when
+  `skip-archived?`. When `collection-set` is non-empty only those Collections are exported (nil in the set counts as
+  the root collection); otherwise every non-personal Collection is. `filter-column` and `filter-ids`, when given,
+  further restrict the export to the rows whose `filter-column` is one of `filter-ids`. Only the Collections in the
+  remote-sync worktree `worktree-id` are exported (nil for the main app)."
+  [collection-set :- [:maybe [:or [:set [:maybe ::lib.schema.id/collection]] [:sequential [:maybe ::lib.schema.id/collection]]]]
+   skip-archived? :- [:maybe :boolean]
+   filter-column  :- [:maybe :keyword]
+   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   worktree-id    :- [:maybe ::lib.schema.id/worktree]]
+  (t2/reducible-select :model/Collection
+                       {:where    [:and
+                                   (when skip-archived? [:not :archived])
+                                   (if (seq collection-set)
+                                     [:or
+                                      [:in :id collection-set]
+                                      (when (some nil? collection-set)
+                                        [:= :id nil])]
+                                     [:= :personal_owner_id nil])
+                                   [:or
+                                    [:= :type nil]
+                                    [:not= :type collections.schema/trash-collection-type]]
+                                   (when filter-column
+                                     [:in filter-column filter-ids])
+                                   [:= :worktree_id worktree-id]]
+                        :order-by serdes/stable-storage-order}))
 
 (mu/defn collection-count-by-ids
   "The number of Collections among `collection-ids`."

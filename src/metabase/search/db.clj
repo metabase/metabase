@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.search.appdb.index-schema :as index-schema]
    [metabase.search.appdb.query :as appdb.query]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -18,8 +19,13 @@
 
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
-  matching `where-clause`: the search-spec generated `:where` fragment of `metabase.search.spec/search-models-to-update`,
-  or nil for every row."
+  matching `where-clause`, or every row when it is nil.
+
+  `where-clause` is the one Honey SQL argument left in this namespace. It is the search-spec generated `:where`
+  fragment of `metabase.search.spec/search-models-to-update`, which is the payload of the ingestion queue itself:
+  `metabase.search.util/impossible-condition?` drops entries by inspecting it, `metabase.search.ingestion` ORs the
+  distinct clauses of a batch together and parses `[model id]` pairs back out of them to decide what to purge.
+  Turning it into plain data means redesigning that queue, not restructuring a caller."
   [search-model :- :string
    where-clause :- [:maybe vector?]]
   (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause)))
@@ -107,17 +113,15 @@
   (t2/query (sql.helpers/drop-table table-name)))
 
 (mu/defn create-search-index-table!
-  "Create the search index table named `table-name` with `columns` (the Honey SQL column definitions built by the
-  active search engine specialization)."
-  [table-name :- [:or :keyword :string]
-   columns    :- [:sequential vector?]]
+  "Create the search index table named `table-name`: the columns of `metabase.search.appdb.index-schema/base-schema`
+  as shaped by the active search engine specialization, then that specialization's post-creation statements (index
+  creation and the like)."
+  [table-name :- [:or :keyword :string]]
   (t2/query (-> (sql.helpers/create-table table-name)
-                (sql.helpers/with-columns columns))))
-
-(mu/defn run-search-index-statement!
-  "Run a single post-creation SQL statement (e.g. an index creation) for a search index table."
-  [statement :- [:or :string vector? :map]]
-  (t2/query statement))
+                (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema))))
+  (let [table-name (name table-name)]
+    (doseq [statement (specialization/post-create-statements table-name table-name)]
+      (t2/query statement))))
 
 (mu/defn analyze-search-index-table!
   "Run `ANALYZE` on the search index table `table-name` (Postgres only)."

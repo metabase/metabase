@@ -36,6 +36,32 @@
                                        [:= :worktree_id worktree-id]
                                        [:= :exploration_id nil]]})))
 
+(mu/defn documents-for-serdes-reducible
+  "A reducible of the Documents to export via serdes: those whose `:collection_id` is in `collection-set` (nil in the
+  set counts as the root collection; an empty or nil set means every collection), further restricted to the rows
+  whose `filter-column` is one of `filter-ids` when `filter-column` is given, and ordered ascending by
+  `order-columns` (unordered when empty).
+
+  Exploration documents are always excluded: such a document is not first-class content, it is reachable only through
+  its owning exploration, its body embeds values computed under its creator's data-access lens, and
+  `:exploration_id` is in the serdes spec's `:skip` list — so an exported document would import as an ordinary,
+  ungated document detached from any exploration."
+  [collection-set :- [:maybe [:or [:set [:maybe ::lib.schema.id/collection]] [:sequential [:maybe ::lib.schema.id/collection]]]]
+   filter-column  :- [:maybe :keyword]
+   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns  :- [:maybe [:sequential :keyword]]]
+  (t2/reducible-select :model/Document
+                       (cond-> {:where [:and
+                                        (when (seq collection-set)
+                                          [:or
+                                           [:in :collection_id collection-set]
+                                           (when (some nil? collection-set)
+                                             [:= :collection_id nil])])
+                                        (when filter-column
+                                          [:in filter-column filter-ids])
+                                        [:= :exploration_id nil]]}
+                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
+
 (mu/defn insert-document!
   "Insert the Document `row` and return its id."
   [row :- ::documents.schema/document.update]

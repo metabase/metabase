@@ -284,7 +284,9 @@
           (mapcat (fn [[model-type model-rows]]
                     (let [spec      (spec/spec-for-model-type model-type)
                           model-key (:model-key spec)
-                          opts      {:where [:in :id (mapv :model_id model-rows)] :skip-archived true}
+                          opts      {:filter-column :id
+                                     :filter-ids    (mapv :model_id model-rows)
+                                     :skip-archived true}
                           ;; entity-id models: map local id -> entity_id so we can look up the repo path
                           id->eid   (when (and model-key (= :entity-id (:identity spec)))
                                       (remote-sync.db/entity-ids-by-id model-key (mapv :model_id model-rows)))]
@@ -851,7 +853,9 @@
   [{:keys [model_type rows]}]
   (let [pk-col  (spec/pk-col model_type)
         id->row (u/index-by :model_id rows)
-        opts    {:where [:in pk-col (mapv :model_id rows)] :skip-archived true}]
+        opts    {:filter-column pk-col
+                 :filter-ids    (mapv :model_id rows)
+                 :skip-archived true}]
     ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
     (into [] (keep (fn [instance]
                      (when-let [row (id->row (get instance pk-col))]

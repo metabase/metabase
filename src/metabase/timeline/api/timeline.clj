@@ -55,11 +55,7 @@
    (list-timelines archived nil))
   ([archived    :- ms/BooleanValue
     worktree-id :- [:maybe ms/PositiveInt]]
-   (timeline.db/timelines-in-collections archived
-                                         (collection/visible-collection-filter-clause
-                                          :collection_id
-                                          {:worktree-id worktree-id})
-                                         worktree-id)))
+   (timeline.db/timelines-in-visible-collections archived worktree-id)))
 
 (mu/defn get-timeline :- [:maybe (ms/InstanceOf :model/Timeline)]
   "Fetch a single timeline by ID. Checks read permissions but does not hydrate."

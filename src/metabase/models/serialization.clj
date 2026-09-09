@@ -119,13 +119,14 @@
   [model]
   (contains? worktree-scoped-models (if (string? model) model (name model))))
 
-(defn worktree-scope-clause
-  "HoneySQL predicate restricting a worktree-scoped `model`'s rows to [[*worktree-id*]], the worktree being
-  exported; `nil` for models that aren't worktree-scoped. Every extraction query for such a model needs it, so an
-  export only ever contains one worktree's content -- the main app's, for the plain serdes API."
+(defn worktree-scope
+  "The worktree scope of a worktree-scoped `model`'s extraction, `{:worktree-id id}` naming [[*worktree-id*]] (nil for
+  the main app); `nil` for models that aren't worktree-scoped, whose tables have no column to restrict. Every
+  extraction query for a scoped model needs it, so an export only ever contains one worktree's content -- the main
+  app's, for the plain serdes API. Handed to the db layer, which turns it into the `worktree_id` restriction."
   [model]
   (when (worktree-scoped? model)
-    [:= :worktree_id *worktree-id*]))
+    {:worktree-id *worktree-id*}))
 
 (defn source-entity-id
   "The `entity_id` `entity-id` is serialized under -- the one the branch knows the entity by. Inside a worktree that
@@ -574,7 +575,10 @@
 (defn- transform->nested [transform opts batch]
   (let [backward-fk (:backward-fk transform)
         entities    (-> (extract-query (name (:model transform))
-                                       (assoc opts :where [:in backward-fk (map :id batch)] ::nested-fetch true))
+                                       (assoc opts
+                                              :filter-column backward-fk
+                                              :filter-ids    (mapv :id batch)
+                                              ::nested-fetch true))
                         t2.realize/realize)]
     (group-by backward-fk entities)))
 
@@ -614,31 +618,34 @@
   (let [serialized? (into (set (:copy spec)) (keys (:transform spec)))]
     (not-empty (filterv (comp serialized? first) stable-storage-order))))
 
+(defn extract-order-columns
+  "The ascending order columns for `model-name`'s extract query: [[stable-storage-order]] restricted to the columns the
+  model's spec actually serializes.
+
+  Empty for a nested fetch (e.g. a Dashboard's DashboardCards): those are embedded as lists inside the parent's file
+  rather than written to their own files, so they keep their natural order and are left untouched."
+  [model-name opts]
+  (when-not (::nested-fetch opts)
+    (mapv first (stable-storage-order-by (*make-spec* model-name opts)))))
+
 (defn extract-query-collections
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
   collection."
-  [model {:keys [collection-set where] :as opts}]
-  (let [spec     (*make-spec* (name model) opts)
-        ;; Nested fetches (e.g. a Dashboard's DashboardCards) are embedded as lists inside the parent's file
-        ;; rather than written to their own files, so they keep their natural order and are left untouched.
-        order-by (when-not (::nested-fetch opts)
-                   (stable-storage-order-by spec))
-        scope    (worktree-scope-clause model)
-        where    (cond
-                   (and where scope) [:and where scope]
-                   scope             scope
-                   :else             where)]
+  [model {:keys [collection-set filter-column filter-ids] :as opts}]
+  (let [spec          (*make-spec* (name model) opts)
+        order-columns (extract-order-columns (name model) opts)
+        scope         (worktree-scope model)]
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
-      (models.db/entities-reducible model where order-by)
-      (models.db/entities-in-collections-reducible model collection-set where order-by))))
+      (models.db/entities-reducible model filter-column filter-ids order-columns scope)
+      (models.db/entities-in-collections-reducible model collection-set filter-column filter-ids order-columns scope))))
 
 (defmethod extract-query :default [model-name opts]
   (let [spec    (*make-spec* model-name opts)
         nested? (some ::nested (vals (:transform spec)))]
     (cond->> (extract-query-collections (keyword "model" model-name) opts)
-      nested? (extract-reducible-nested model-name (dissoc opts :where)))))
+      nested? (extract-reducible-nested model-name (dissoc opts :filter-column :filter-ids)))))
 
 (defmulti descendants
   "Returns map of `{[model-name database-id] {initiating-model id}}` for all entities contained or used by this

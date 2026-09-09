@@ -1252,7 +1252,8 @@
   []
   (eduction (filter (comp exportable-in-scope? key))
             (map (fn [[model ids]]
-                   (serdes/extract-all model {:where         [:in (pk-col model) ids]
+                   (serdes/extract-all model {:filter-column (pk-col model)
+                                              :filter-ids    (vec ids)
                                               :skip-archived true})))
             cat
             (exportable-entities)))
@@ -1265,7 +1266,8 @@
   (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
     (eduction (filter (comp exportable-in-scope? key))
               (map (fn [[model ids]]
-                     (serdes/extract-all model {:where         [:in (pk-col model) ids]
+                     (serdes/extract-all model {:filter-column (pk-col model)
+                                                :filter-ids    (vec ids)
                                                 :skip-archived true})))
               cat
               by-model)))

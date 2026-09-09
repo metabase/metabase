@@ -14,6 +14,41 @@
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
 
+(def ^:private not-in-exploration-document
+  "The `:where` fragment excluding Cards that belong to an exploration Summary document.
+
+  Such a Card is materialized by the Summary itself — its `name` and `dataset_query` are copied from the
+  `ExplorationQuery` it renders, so they carry dimension values discovered under the creator's data-access lens. Its
+  parent Document is never serialized (see `metabase.documents.models.document`'s `extract-query`), and this Card's
+  `deserialization-dependencies` name that Document, so exporting the Card without it would leave a dangling
+  reference even setting the lens question aside."
+  [:or
+   [:= :document_id nil]
+   [:in :document_id ^:allow-subquery {:select [:id]
+                                       :from   [:document]
+                                       :where  [:= :exploration_id nil]}]])
+
+(mu/defn cards-for-serdes-reducible
+  "A reducible of the Cards to export via serdes: those whose `:collection_id` is in `collection-set` (nil in the set
+  counts as the root collection; an empty or nil set means every collection), further restricted to the rows whose
+  `filter-column` is one of `filter-ids` when `filter-column` is given, never a Card materialized by an exploration
+  Summary document, and ordered ascending by `order-columns` (unordered when empty)."
+  [collection-set :- [:maybe [:or [:set [:maybe ::lib.schema.id/collection]] [:sequential [:maybe ::lib.schema.id/collection]]]]
+   filter-column  :- [:maybe :keyword]
+   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns  :- [:maybe [:sequential :keyword]]]
+  (t2/reducible-select :model/Card
+                       (cond-> {:where [:and
+                                        (when (seq collection-set)
+                                          [:or
+                                           [:in :collection_id collection-set]
+                                           (when (some nil? collection-set)
+                                             [:= :collection_id nil])])
+                                        (when filter-column
+                                          [:in filter-column filter-ids])
+                                        not-in-exploration-document]}
+                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
+
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]

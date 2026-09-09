@@ -1486,29 +1486,12 @@
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
-(def ^:private not-in-exploration-document
-  "HoneySQL predicate: this Card does not belong to an exploration Summary document.
-
-  Such a Card is materialized by the Summary itself — its `name` and `dataset_query` are copied
-  from the `ExplorationQuery` it renders, so they carry dimension values discovered under the
-  creator's data-access lens. Its parent Document is never serialized (see
-  `metabase.documents.models.document`'s `extract-query`), and this Card's
-  `deserialization-dependencies` name that Document, so exporting the Card without it would leave a
-  dangling reference even setting the lens question aside."
-  [:or
-   [:= :document_id nil]
-   [:in :document_id ^:allow-subquery {:select [:id]
-                                       :from   [:document]
-                                       :where  [:= :exploration_id nil]}]])
-
 (defmethod serdes/extract-query "Card"
-  [model-name opts]
-  ((get-method serdes/extract-query :default)
-   model-name
-   (update opts :where (fn [where]
-                         (if where
-                           [:and where not-in-exploration-document]
-                           not-in-exploration-document)))))
+  [model-name {:keys [collection-set filter-column filter-ids] :as opts}]
+  (queries.db/cards-for-serdes-reducible collection-set
+                                         filter-column
+                                         filter-ids
+                                         (serdes/extract-order-columns model-name opts)))
 
 (defmethod serdes/serialization-dependencies "Card" [_model-name card]
   (card-deps true card))
