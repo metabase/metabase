@@ -32,11 +32,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/library/:path"
   "Get the Python library for user modules. `worktree-id` reads the copy checked out into a remote-sync worktree
-  instead of the main app's, and is admin-only; 404 when that worktree has no library."
+  instead of the main app's and requires the remote-sync application permission (or admin); 404 when that worktree has no library."
   [{:keys [path]} :- [:map [:path ms/NonBlankString]]
    {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (get-python-library-by-path path worktree-id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -45,14 +45,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/library/:path"
   "Update the Python library source code for user modules. `worktree_id` writes the copy checked out into a
-  remote-sync worktree instead of the main app's, and is admin-only."
+  remote-sync worktree instead of the main app's and requires the remote-sync application permission (or admin)."
   [{:keys [path]} :- [:map [:path ms/NonBlankString]]
    _query-params
    {:keys [source worktree_id]} :- [:map {:closed true}
                                     [:source :string]
                                     [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
   (if worktree_id
-    (do (api/check-superuser)
+    (do (perms/check-can-access-worktrees)
         (remote-sync/check-worktree-exists! worktree_id))
     ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
     (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*)))

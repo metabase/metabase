@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
@@ -26,8 +27,8 @@
    [:can_run {:optional true} :boolean]])
 
 (api.macros/defendpoint :post "/" :- TransformTagResponse
-  "Create a new transform tag. Pass `worktree_id` to create it inside a remote-sync worktree, which is
-  admin-only; tag names are unique within a worktree rather than across the instance."
+  "Create a new transform tag. Pass `worktree_id` to create it inside a remote-sync worktree, which needs
+  the `:remote-sync` application permission; tag names are unique within a worktree rather than across the instance."
   [_route-params
    _query-params
    {:keys [name worktree_id]} :- [:map
@@ -66,13 +67,13 @@
 (api.macros/defendpoint :get "/" :- [:sequential TransformTagResponse]
   "Get a list of the transform tags the current user can read. Tags checked out into a remote-sync worktree are
   left out unless a single worktree's tags are requested via `worktree-id`, which returns *only* that worktree's
-  tags and is admin-only."
+  tags and needs the `:remote-sync` application permission."
   [_route-params
    {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (log/info "Getting all transform tags")
   (api/check-data-analyst)
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (-> (transforms-rest.db/tags worktree-id)
       (->> (filterv mi/can-read?))
       (t2/hydrate :can_run)))

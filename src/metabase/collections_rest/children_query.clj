@@ -475,8 +475,9 @@
   [_ collection {:keys [archived? pinned-state]}]
   (let [worktree-id (:worktree_id collection)
         table-collection-id (published-tables-collection-id collection)
-        user-info {:user-id       api/*current-user-id*
-                   :is-superuser? api/*is-superuser?*}
+        user-info {:user-id               api/*current-user-id*
+                   :is-superuser?         api/*is-superuser?*
+                   :can-access-worktrees? (perms/current-user-can-access-worktrees?)}
         published-clause (perms/published-table-visible-clause :t.id user-info)
         queryable-clause (cond-> [:or
                                   [:in :t.id (perms/visible-table-filter-select
@@ -502,11 +503,11 @@
      :where  [:and
               [:= :t.is_published true]
               (poison-when-pinned-clause pinned-state)
-              ;; the visible-collection CTE holds this worktree's collections, and the tables hang off a main-app
-              ;; one; data permissions still gate them through `queryable-clause`, and a worktree collection is
-              ;; only ever readable by an admin in the first place
+              ;; the visible-collection CTE holds this worktree's collections, but the tables hang off the main-app
+              ;; counterpart, so inside a worktree the main-app collection has to be visible on its own (a
+              ;; `:remote-sync` holder need not be able to read every main-app collection)
               (if worktree-id
-                always-true-hsql-expr
+                (collection/visible-collection-filter-clause :t.collection_id)
                 (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids}))
               queryable-clause
               (if (and worktree-id (nil? table-collection-id))

@@ -13,6 +13,7 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
@@ -1805,18 +1806,26 @@
           (is (pos? (t2/update! :model/Card card-id {:collection_id nil})))
           (is (nil? (t2/select-one-fn :collection_id :model/Card card-id))))))))
 
-(deftest worktree-cards-are-admin-only-test
+(deftest worktree-cards-require-remote-sync-permission-test
   (when config/ee-available?
-    (mt/with-temp [:model/Worktree {wt-id :id} {}
-                   :model/Collection wt-coll {:name "worktree" :worktree_id wt-id}
-                   :model/Card wt-card {:collection_id (:id wt-coll) :worktree_id wt-id}
-                   :model/Collection main-coll {:name "main"}
-                   :model/Card main-card {:collection_id (:id main-coll)}]
-      (testing "an admin sees both"
-        (mt/with-current-user (mt/user->id :crowberto)
-          (is (mi/can-read? wt-card))
-          (is (mi/can-read? main-card))))
-      (testing "everyone else only sees the main app's card, even with permission on the collection"
-        (mt/with-current-user (mt/user->id :rasta)
-          (is (not (mi/can-read? wt-card)))
-          (is (mi/can-read? main-card)))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Collection wt-coll {:name "worktree" :worktree_id wt-id}
+                     :model/Card wt-card {:collection_id (:id wt-coll) :worktree_id wt-id}
+                     :model/Collection main-coll {:name "main"}
+                     :model/Card main-card {:collection_id (:id main-coll)}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (testing "an admin sees both"
+          (mt/with-current-user (mt/user->id :crowberto)
+            (is (mi/can-read? wt-card))
+            (is (mi/can-read? main-card))))
+        (testing "a non-admin without the remote-sync permission only sees the main app's card, even with permission on the collection"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (not (mi/can-read? wt-card)))
+            (is (mi/can-read? main-card))))
+        (testing "a non-admin holding the remote-sync permission sees both, given permission on the collection"
+          (perms/grant-application-permissions! group-id :remote-sync)
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (mi/can-read? wt-card))
+            (is (mi/can-read? main-card))))))))

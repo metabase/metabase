@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.transforms.test-dataset :as transforms-dataset]
@@ -94,15 +95,29 @@
       (mt/with-temp [:model/Worktree {wt-id :id} {}]
         (t2/delete! :model/PythonLibrary)
         (python-library/update-python-library-source! "common" "# main app")
-        (testing "the worktree params are admin-only"
+        (testing "the worktree params need the remote-sync application permission"
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :lucky :get 403 "ee/transforms-python/library/common"
-                                           :worktree-id wt-id)))
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :lucky :put 403 "ee/transforms-python/library/common"
-                                           {:source "# nope" :worktree_id wt-id}))))))
+              (mt/with-temp [:model/PermissionsGroup           group {}
+                             :model/PermissionsGroupMembership _     {:user_id  (mt/user->id :lucky)
+                                                                      :group_id (:id group)}]
+                (testing "transforms perms alone are not enough"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :lucky :get 403 "ee/transforms-python/library/common"
+                                               :worktree-id wt-id)))
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :lucky :put 403 "ee/transforms-python/library/common"
+                                               {:source "# nope" :worktree_id wt-id}))))
+                (testing "granting the remote-sync permission allows the worktree params"
+                  (mt/with-premium-features #{:transforms-python :transforms-basic :advanced-permissions}
+                    (perms/grant-application-permissions! group :remote-sync)
+                    (is (= "Not found."
+                           (mt/user-http-request :lucky :get 404 "ee/transforms-python/library/common"
+                                                 :worktree-id wt-id)))
+                    (is (=? {:source "# lucky's worktree write" :worktree_id wt-id}
+                            (mt/user-http-request :lucky :put 200 "ee/transforms-python/library/common"
+                                                  {:source "# lucky's worktree write" :worktree_id wt-id})))
+                    (t2/delete! :model/PythonLibrary :worktree_id wt-id)))))))
         (testing "an unknown worktree 404s"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :put 404 "ee/transforms-python/library/common"

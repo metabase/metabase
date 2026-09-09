@@ -2309,9 +2309,17 @@
               (let [ids (collection-ids :crowberto :worktree-id wt-id)]
                 (is (contains? ids wt-coll-id))
                 (is (not (contains? ids main-id)))))
-            (testing "worktree-id is admin-only"
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 "search" :q term :worktree-id wt-id))))
+            (testing "worktree-id requires the remote-sync application permission"
+              (mt/with-temp [:model/PermissionsGroup group {}
+                             :model/PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
+                                                                  :group_id (:id group)}]
+                (testing "denied without the permission"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :get 403 "search" :q term :worktree-id wt-id))))
+                (testing "allowed once the user's group is granted `remote-sync`"
+                  (mt/with-premium-features #{:advanced-permissions :remote-sync}
+                    (perms/grant-application-permissions! group :remote-sync)
+                    (mt/user-http-request :rasta :get 200 "search" :q term :worktree-id wt-id)))))
             (testing "cards are scoped the same way"
               (is (= #{main-card-id} (card-ids)))
               (is (= #{wt-card-id} (card-ids :worktree-id wt-id))))

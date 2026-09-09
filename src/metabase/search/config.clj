@@ -415,6 +415,7 @@
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
+   [:can-access-worktrees? {:optional true} :boolean]
    [:is-data-analyst?   :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
    [:context               {:optional true} [:maybe :keyword]]

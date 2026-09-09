@@ -85,10 +85,10 @@
      (mi/can-write? transform))))
 
 (defmethod mi/visible-filter-clause :model/Transform
-  [_model column-or-exp {:keys [is-superuser? is-data-analyst?] :as user-info} _perm-type->perm-level & [{:keys [worktree-id]}]]
+  [_model column-or-exp {:keys [is-superuser? is-data-analyst? can-access-worktrees?] :as user-info} _perm-type->perm-level & [{:keys [worktree-id]}]]
   {:clause (cond
-             ;; a superuser sees the scope they asked for; worktree content is admin-only, so an analyst is
-             ;; pinned to the main app and everyone else sees nothing
+             ;; a superuser sees the scope they asked for; so does an analyst holding the `:remote-sync` application
+             ;; permission, while an analyst without it is pinned to the main app and everyone else sees nothing
              is-superuser?
              [:in column-or-exp ^:allow-subquery {:select [:id]
                                                   :from   [:transform]
@@ -98,7 +98,7 @@
              [:in column-or-exp ^:allow-subquery {:select [:id]
                                                   :from   [:transform]
                                                   :where  [:and
-                                                           [:= :transform.worktree_id nil]
+                                                           [:= :transform.worktree_id (when can-access-worktrees? worktree-id)]
                                                            [:in :transform.source_database_id
                                                             (perms/visible-database-filter-select
                                                              user-info

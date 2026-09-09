@@ -3,12 +3,12 @@
   same tables as the main app, tagged with a `worktree_id`, and is synced with the worktree's own `branch`. Only
   transform content is checked out into a worktree for now.
 
-  Worktrees are superuser-only: read, write, and create all require admin, and so does every piece of content
-  checked out into one."
+  Worktrees need the `:remote-sync` application permission (held implicitly by admins): read, write, and create
+  all require it, and so does every piece of content checked out into one."
   (:require
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
-   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -22,16 +22,16 @@
   (derive :hook/timestamped?))
 
 (defmethod mi/can-read? :model/Worktree
-  ([_instance] api/*is-superuser?*)
-  ([_model _pk] api/*is-superuser?*))
+  ([_instance] (perms/current-user-can-access-worktrees?))
+  ([_model _pk] (perms/current-user-can-access-worktrees?)))
 
 (defmethod mi/can-write? :model/Worktree
-  ([_instance] api/*is-superuser?*)
-  ([_model _pk] api/*is-superuser?*))
+  ([_instance] (perms/current-user-can-access-worktrees?))
+  ([_model _pk] (perms/current-user-can-access-worktrees?)))
 
 (defmethod mi/can-create? :model/Worktree
   [_model _instance]
-  api/*is-superuser?*)
+  (perms/current-user-can-access-worktrees?))
 
 (methodical/defmethod t2/batched-hydrate [:model/Worktree :creator]
   [_model k worktrees]

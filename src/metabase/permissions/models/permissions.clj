@@ -427,6 +427,8 @@
   "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
   permissions.db/namespace-clause)
 
+(declare current-user-can-access-worktrees?)
+
 (defn can-read-via-parent-collection?
   "Read permission for rows whose read policy is a pure function of `:collection_id`, `:worktree_id` and
   current user perms.
@@ -435,10 +437,10 @@
   Takes the two ids (not an instance) so the logic cannot grow a dependency on other instance fields.
 
   `worktree-id` is denormalized from the row's collection, so a row checked out into a remote-sync worktree
-  is admin-only without a second lookup. Rows on models with no such column pass nil and are unaffected."
+  is gated on [[current-user-can-access-worktrees?]] without a second lookup. Rows on models with no such column pass nil and are unaffected."
   ([coll-id] (can-read-via-parent-collection? coll-id nil))
   ([coll-id worktree-id]
-   (and (or (nil? worktree-id) api/*is-superuser?*)
+   (and (or (nil? worktree-id) (current-user-can-access-worktrees?))
         (or (premium-features/enable-audit-app?)
             (not (and (some? coll-id) (audit/is-collection-id-audit? coll-id))))
         (mi/current-user-has-full-permissions?
@@ -612,3 +614,11 @@
   metabase-enterprise.advanced-permissions.common
   [_instance]
   false)
+
+(defn current-user-can-access-worktrees?
+  "Whether `*current-user*` may see and edit remote-sync worktrees and the content checked out into them: a
+  superuser, or a user granted the `:remote-sync` application permission. Without the `advanced-permissions`
+  feature the permission cannot be granted, so this falls back to superusers only."
+  []
+  (boolean (or api/*is-superuser?*
+               (current-user-has-application-permissions? :remote-sync))))

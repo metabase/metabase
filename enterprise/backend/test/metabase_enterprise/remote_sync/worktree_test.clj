@@ -1,7 +1,7 @@
 (ns metabase-enterprise.remote-sync.worktree-test
-  "Tests for remote-sync worktrees: the admin-only worktree API, the entity_id remapping serdes resolves through,
-  and what deleting a worktree takes with it. The rules that pin a piece of content to one worktree are tested
-  alongside the models they guard."
+  "Tests for remote-sync worktrees: the worktree API (gated on the :remote-sync application permission), the
+  entity_id remapping serdes resolves through, and what deleting a worktree takes with it. The rules that pin
+  a piece of content to one worktree are tested alongside the models they guard."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -13,6 +13,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -30,11 +31,11 @@
 
 ;;; ------------------------------------------------- API -------------------------------------------------
 
-(deftest worktree-crud-is-admin-only-test
-  (testing "worktrees are superuser-only"
+(deftest worktree-crud-requires-remote-sync-permission-test
+  (testing "worktrees are gated on the :remote-sync application permission, not just superuser"
     (mt/with-premium-features #{:remote-sync}
       (mt/with-temp [:model/Worktree {wt-id :id} {}]
-        (testing "a non-admin sees no worktrees at all"
+        (testing "without the permission, a non-admin sees no worktrees at all"
           (is (= [] (mt/user-http-request :rasta :get 200 "ee/remote-sync/worktree"))))
         (testing "and cannot read, create or delete one"
           (is (= "You don't have permissions to do that."
@@ -42,7 +43,20 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 "ee/remote-sync/worktree" {:branch "nope"})))
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :delete 403 (str "ee/remote-sync/worktree/" wt-id)))))))))
+                 (mt/user-http-request :rasta :delete 403 (str "ee/remote-sync/worktree/" wt-id)))))))
+    (testing "granted the :remote-sync application permission (with advanced-permissions on), a non-admin can read, create and delete"
+      (mt/with-premium-features #{:remote-sync :advanced-permissions}
+        (mt/with-user-in-groups [group {:name "Remote Sync Group"}
+                                 user  [group]]
+          (perms/grant-application-permissions! group :remote-sync)
+          (mt/with-temp [:model/Worktree {wt-id :id} {}]
+            (is (contains? (into #{} (map :id) (mt/user-http-request user :get 200 "ee/remote-sync/worktree"))
+                           wt-id))
+            (is (=? {:id wt-id} (mt/user-http-request user :get 200 (str "ee/remote-sync/worktree/" wt-id))))
+            (mt/with-model-cleanup [:model/Worktree]
+              (is (=? {:branch "granted-branch"}
+                      (mt/user-http-request user :post 200 "ee/remote-sync/worktree" {:branch "granted-branch"}))))
+            (is (nil? (mt/user-http-request user :delete 204 (str "ee/remote-sync/worktree/" wt-id))))))))))
 
 (deftest worktree-create-and-list-test
   (testing "an admin can create a worktree and read it back"

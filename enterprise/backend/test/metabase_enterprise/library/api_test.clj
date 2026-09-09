@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -98,9 +99,18 @@
          (testing "an unknown worktree 404s rather than falling back to the main app"
            (is (= "Not found."
                   (mt/user-http-request :crowberto :get 404 "ee/library" :worktree-id 99999999))))
-         (testing "worktree-id is admin-only"
-           (is (= "You don't have permissions to do that."
-                  (mt/user-http-request :rasta :get 403 "ee/library" :worktree-id wt-id))))
+         (testing "worktree-id requires the remote-sync application permission"
+           (mt/with-temp [:model/PermissionsGroup           group {}
+                          :model/PermissionsGroupMembership _     {:user_id  (mt/user->id :rasta)
+                                                                   :group_id (:id group)}]
+             (testing "denied without the permission"
+               (is (= "You don't have permissions to do that."
+                      (mt/user-http-request :rasta :get 403 "ee/library" :worktree-id wt-id))))
+             (testing "allowed once the user's group is granted `remote-sync`"
+               (mt/with-premium-features #{:library :advanced-permissions :remote-sync}
+                 (perms/grant-application-permissions! group :remote-sync)
+                 (is (= {:data nil}
+                        (mt/user-http-request :rasta :get 200 "ee/library" :worktree-id wt-id)))))))
          (let [main-library (collection/create-library-collection!)
                main-data-id (t2/select-one-pk :model/Collection
                                               :type collection/library-data-collection-type

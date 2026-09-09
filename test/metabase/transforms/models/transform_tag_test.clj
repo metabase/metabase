@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.util.i18n :as i18n]
@@ -48,12 +49,22 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"worktree_id cannot be changed"
                             (t2/update! :model/TransformTag tag-id {:worktree_id wt-id}))))))
 
-(deftest creating-a-worktree-tag-is-admin-only-test
+(deftest creating-a-worktree-tag-requires-remote-sync-permission-test
   (when config/ee-available?
-    (mt/with-temp [:model/Worktree {wt-id :id} {}]
-      (mt/with-current-user (mt/user->id :rasta)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
-                              (t2/insert! :model/TransformTag {:name "sneaky" :worktree_id wt-id})))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (testing "a non-admin without the remote-sync permission cannot put a tag into a worktree"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                                  (t2/insert! :model/TransformTag {:name "sneaky" :worktree_id wt-id})))))
+        (testing "a non-admin holding the remote-sync permission can"
+          (perms/grant-application-permissions! group-id :remote-sync)
+          (mt/with-current-user (mt/user->id :rasta)
+            (mt/with-model-cleanup [:model/TransformTag]
+              (is (=? {:worktree_id wt-id}
+                      (t2/insert-returning-instance! :model/TransformTag {:name "not sneaky" :worktree_id wt-id}))))))))))
 
 (deftest tag-assignment-must-match-both-sides-test
   (when config/ee-available?

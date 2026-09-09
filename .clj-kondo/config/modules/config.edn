@@ -858,6 +858,7 @@
            lib-be
            models
            parameters
+           permissions
            public-sharing
            queries
            query-permissions
@@ -1533,6 +1534,7 @@
            classloader
            legacy-mbql
            lib
+           permissions
            settings
            util}
    :model-imports #{:model/Card
@@ -2551,6 +2553,7 @@
            events
            lib
            models
+           permissions
            remote-sync
            util}
    :model-exports #{:model/Timeline}
@@ -2656,6 +2659,7 @@
    :uses #{api
            lib
            models
+           permissions
            remote-sync
            request
            transforms
@@ -3535,6 +3539,7 @@
    :uses #{api
            collections
            lib
+           permissions
            premium-features
            remote-sync
            util}
@@ -3658,6 +3663,7 @@
            events
            lib
            models
+           permissions
            premium-features
            search
            settings

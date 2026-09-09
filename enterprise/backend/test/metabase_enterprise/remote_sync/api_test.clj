@@ -13,6 +13,8 @@
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -206,18 +208,6 @@
             (is (=? {:status "success" :task_id int?} resp))
             (is (remote-sync.task/successful? completed-task))))))))
 
-(deftest import-with-specific-branch-test
-  (testing "POST /api/ee/remote-sync/import succeeds with specific branch"
-    (let [mock-develop (test-helpers/create-mock-source :branch "develop")]
-      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
-                                         remote-sync-token "test-token"
-                                         remote-sync-branch "main"]
-        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-develop)]
-          (let [{:as response :keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "feature-branch" :expected_branch "main"})
-                completed-task (wait-for-task-completion task_id)]
-            (is (= "success" (:status response)))
-            (is (remote-sync.task/successful? completed-task))))))))
-
 (deftest import-dirty-guard-includes-dirty-objects-test
   (testing "GHY-4019: a blocked (dirty, non-forced) import names the un-pushed changes it would discard"
     (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
@@ -234,7 +224,7 @@
                                            remote-sync-branch "main"]
           (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import"
-                                             {:branch "develop" :expected_branch "main"})]
+                                             {:expected_branch "main"})]
               (is (true? (:conflicts resp)))
               (is (some (comp #{"Local Metric"} :name) (:dirty_objects resp))
                   "the response lists the un-pushed local metric"))))))))
@@ -249,21 +239,68 @@
           (testing "stale expected_branch -> 409 branch_mismatch, no task created"
             (let [before (t2/count :model/RemoteSyncTask)
                   resp   (mt/user-http-request :crowberto :post 409 "ee/remote-sync/import"
-                                               {:branch "main" :expected_branch "stale-branch"})]
+                                               {:expected_branch "stale-branch"})]
               (is (true? (:branch_mismatch resp)))
               (is (= "main" (:current_branch resp)))
               (is (= before (t2/count :model/RemoteSyncTask))
                   "no RemoteSyncTask row is created when the guard fires")))
           (testing "matching expected_branch -> pull proceeds"
             (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
-                                                                   {:branch "main" :expected_branch "main"})]
+                                                                   {:expected_branch "main"})]
               (is (=? {:status "success" :task_id int?} resp))
-              (wait-for-task-completion task_id)))
-          (testing "a branch switch (operational branch != expected_branch) is allowed when expected_branch matches the setting"
-            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+              (wait-for-task-completion task_id))))))))
+
+;;; ------------------------------------------------- Switch Branch Endpoint -------------------------------------------------
+
+(deftest switch-branch-succeeds-test
+  (testing "POST /api/ee/remote-sync/switch-branch succeeds and pulls the new branch"
+    (let [mock-develop (test-helpers/create-mock-source :branch "develop")]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-develop)]
+          (let [{:as response :keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/switch-branch"
+                                                                     {:branch "feature-branch" :expected_branch "main"})
+                completed-task (wait-for-task-completion task_id)]
+            (is (= "success" (:status response)))
+            (is (remote-sync.task/successful? completed-task))))))))
+
+(deftest switch-branch-rejects-expected-branch-mismatch-test
+  (testing "POST /api/ee/remote-sync/switch-branch rejects when expected_branch disagrees with the configured setting"
+    (let [mock-main (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
+          (testing "stale expected_branch -> 409 branch_mismatch, no task created"
+            (let [before (t2/count :model/RemoteSyncTask)
+                  resp   (mt/user-http-request :crowberto :post 409 "ee/remote-sync/switch-branch"
+                                               {:branch "feature-branch" :expected_branch "stale-branch"})]
+              (is (true? (:branch_mismatch resp)))
+              (is (= "main" (:current_branch resp)))
+              (is (= before (t2/count :model/RemoteSyncTask))
+                  "no RemoteSyncTask row is created when the guard fires")))
+          (testing "matching expected_branch, different target branch -> the switch proceeds"
+            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/switch-branch"
                                                                    {:branch "feature-branch" :expected_branch "main"})]
               (is (=? {:status "success" :task_id int?} resp))
               (wait-for-task-completion task_id))))))))
+
+(deftest switch-branch-requires-superuser-test
+  (testing "POST /api/ee/remote-sync/switch-branch requires superuser permissions, even for a :remote-sync holder"
+    (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-branch "main"]
+      (testing "a plain non-admin cannot switch"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "ee/remote-sync/switch-branch"
+                                     {:branch "develop" :expected_branch "main"}))))
+      (testing "a non-admin holding the :remote-sync application permission still cannot switch"
+        (mt/with-premium-features #{:remote-sync :advanced-permissions}
+          (mt/with-user-in-groups [group {:name "Remote Sync Group"}
+                                   user  [group]]
+            (perms/grant-application-permissions! group :remote-sync)
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request user :post 403 "ee/remote-sync/switch-branch"
+                                         {:branch "develop" :expected_branch "main"})))))))))
 
 (deftest import-creates-audit-log-entry-test
   (testing "POST /api/ee/remote-sync/import records a remote-sync-import audit log entry (#73335)"
@@ -289,16 +326,11 @@
                   (is (= "main" (get-in entry [:details :branch])))
                   (is (not (contains? (:details entry) :auto))))))))))))
 
-(deftest import-requires-superuser-test
-  (testing "POST /api/ee/remote-sync/import requires superuser permissions"
+(deftest import-requires-remote-sync-permission-test
+  (testing "POST /api/ee/remote-sync/import requires the :remote-sync application permission (a plain non-admin lacks it)"
     (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-branch "main"]
-      (testing "a non-admin cannot pull"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "ee/remote-sync/import" {:expected_branch "main"}))))
-      (testing "a non-admin cannot switch branches (branch != expected_branch)"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "ee/remote-sync/import"
-                                     {:branch "develop" :expected_branch "main"})))))))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "ee/remote-sync/import" {:expected_branch "main"}))))))
 
 (deftest import-errors-when-remote-sync-disabled-test
   (testing "POST /api/ee/remote-sync/import errors when remote sync is disabled"
@@ -1392,7 +1424,13 @@
                                            :message    "Stash message"})))
             (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
                    (set (source.p/branches mock-source))))
-            (is (= 1 @export-calls))))))))
+            (is (= 1 @export-calls))
+            (testing "the commit message is optional: a stash from a pull or switch conflict has none"
+              (is (=? {:status  "success"
+                       :message "Stashing to other-branch"}
+                      (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"
+                                            {:new_branch "other-branch"})))
+              (is (= 2 @export-calls)))))))))
 
 ;;; ------------------------------------------------- Has Remote Changes Endpoint -------------------------------------------------
 
@@ -1867,3 +1905,75 @@
                 "no new branch should be pushed to the source when the guard fires")
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
+
+;;; ------------------------------------------- Application Permission Gating -------------------------------------------
+
+(deftest remote-sync-permission-gates-read-write-endpoints-test
+  (testing "the :remote-sync application permission (not just superuser) gates the read/sync endpoints"
+    ;; a pull reindexes search, and on H2 that runs synchronously: creating the index table is DDL, which
+    ;; would commit the rollback-only transaction with-user-in-groups runs in.
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (mt/with-premium-features #{:remote-sync :advanced-permissions}
+        (mt/with-user-in-groups [group {:name "Remote Sync Group"}
+                                 user  [group]]
+          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                             remote-sync-token  "test-token"
+                                             remote-sync-branch "main"
+                                             remote-sync-type   :read-write]
+            (testing "without the permission, every gated endpoint 403s"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request user :get 403 "ee/remote-sync/is-dirty")))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request user :get 403 "ee/remote-sync/dirty")))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request user :get 403 "ee/remote-sync/branches")))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request user :post 403 "ee/remote-sync/import" {:expected_branch "main"})))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request user :post 403 "ee/remote-sync/export" {:branch "main"})))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request user :get 403 "ee/remote-sync/export-preflight?branch=main")))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request user :post 403 "ee/remote-sync/create-branch" {:name "wt-branch" :checkout false}))))
+            (perms/grant-application-permissions! group :remote-sync)
+            (testing "granted, the same endpoints succeed"
+              (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (test-helpers/create-mock-source))]
+                (is (=? {:is_dirty false} (mt/user-http-request user :get 200 "ee/remote-sync/is-dirty")))
+                (is (=? {:dirty []} (mt/user-http-request user :get 200 "ee/remote-sync/dirty")))
+                (let [{:keys [task_id]} (mt/user-http-request user :post 200 "ee/remote-sync/import" {:expected_branch "main"})]
+                  (wait-for-task-completion task_id))
+                (let [{:keys [task_id]} (mt/user-http-request user :post 200 "ee/remote-sync/export" {:branch "main"})]
+                  (wait-for-task-completion task_id))
+                (is (=? {:has_changes boolean?} (mt/user-http-request user :get 200 "ee/remote-sync/export-preflight?branch=main")))
+                (is (=? {:status "success"} (mt/user-http-request user :post 200 "ee/remote-sync/create-branch" {:name "wt-branch" :checkout false}))))
+              (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source :branches ["main" "develop"]))]
+                (is (=? {:items ["main" "develop"]} (mt/user-http-request user :get 200 "ee/remote-sync/branches")))))))))))
+
+(deftest remote-sync-permission-does-not-grant-admin-only-actions-test
+  (testing "the :remote-sync application permission does not unlock actions that change the main app's branch or configuration"
+    (mt/with-premium-features #{:remote-sync :advanced-permissions}
+      (mt/with-user-in-groups [group {:name "Remote Sync Group"}
+                               user  [group]]
+        (perms/grant-application-permissions! group :remote-sync)
+        (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                           remote-sync-token  "test-token"
+                                           remote-sync-branch "main"
+                                           remote-sync-type   :read-write]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (test-helpers/create-mock-source))]
+            (testing "create-branch defaults to checkout true, which switches the main app's branch"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request user :post 403 "ee/remote-sync/create-branch" {:name "checked-out-branch"}))))
+            (testing "stash always switches the main app's branch"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request user :post 403 "ee/remote-sync/stash" {:new_branch "stash-branch" :message "msg"})))))
+          (testing "settings and test-connection stay admin-only"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request user :put 403 "ee/remote-sync/settings" {})))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request user :post 403 "ee/remote-sync/test-connection" {})))))))))
+
+(deftest remote-sync-branch-visible-to-authenticated-non-admin-test
+  (testing "remote-sync-branch is visible in GET /api/session/properties to any authenticated user, not just admins"
+    (mt/with-temporary-setting-values [remote-sync-branch "a-visible-branch"]
+      (is (= "a-visible-branch"
+             (:remote-sync-branch (mt/user-http-request :rasta :get 200 "session/properties")))))))

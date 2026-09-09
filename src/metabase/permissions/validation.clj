@@ -20,6 +20,14 @@
      (when require-superuser?
        (api/check-superuser)))))
 
+(defn check-can-access-worktrees
+  "403s unless the current user may work with remote-sync worktrees: a superuser, or a holder of the
+  `:remote-sync` application permission when `advanced-permissions` is enabled. Call before honouring a
+  `worktree-id` request parameter or running a remote-sync pull/push. Returns nil."
+  []
+  (check-has-application-permission :remote-sync)
+  nil)
+
 (defn check-advanced-permissions-enabled
   "Check if advanced permissions is enabled to use permission types such as :group-manager or :application-permissions."
   [perm-type]

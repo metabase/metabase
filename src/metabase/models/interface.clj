@@ -610,14 +610,22 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
 
-(declare superuser? current-user-id)
+(declare current-user-id)
+
+(defn- current-user-can-access-worktrees?
+  "Whether the current user may put content into a remote-sync worktree; resolved lazily to avoid a models ->
+  permissions load cycle."
+  []
+  ;; resolved lazily for the same reason as [[check-perms-with-fn]]: models cannot depend on permissions
+  (let [f #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve 'metabase.permissions.core/current-user-can-access-worktrees?)]
+    (f)))
 
 (t2/define-before-insert :hook/worktree-id
   [instance]
   (when (and (:worktree_id instance)
              (not *deserializing?*)
              (current-user-id)
-             (not (superuser?)))
+             (not (current-user-can-access-worktrees?)))
     (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
   instance)
 

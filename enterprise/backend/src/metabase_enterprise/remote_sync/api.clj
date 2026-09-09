@@ -18,6 +18,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -70,25 +71,26 @@
   If `force=false` (default) and there are unsaved changes in the Remote Sync collection,
   the import returns a 400 response.
 
-  Requires superuser permissions."
+  This pulls the current sync branch — the `remote-sync-branch` setting for the main app, or the
+  worktree's own branch inside a worktree — and never switches it. To change the main app's sync
+  branch, use `POST /switch-branch` instead.
+
+  Requires the `:remote-sync` application permission (admins have it)."
   [_route
    _query
-   {:keys [branch force merge expected_branch worktree_id]}
-   :- [:map [:branch {:optional true} ms/NonBlankString]
-       [:force {:optional true} :boolean]
+   {:keys [force merge expected_branch worktree_id]}
+   :- [:map [:force {:optional true} :boolean]
        [:merge {:optional true} :boolean]
        ;; the branch the client believes is currently active; rejected if it disagrees with the
-       ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
-       ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
+       ;; remote-sync-branch setting (a pull from a stale tab).
        [:expected_branch ms/NonBlankString]
        [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+  (perms/check-can-access-worktrees)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [worktree-id (check-worktree worktree_id)
-        current     (effective-branch worktree-id)]
-    (check-branch-matches-setting! expected_branch current)
-    (let [branch-name (if worktree-id current (or branch current))
-          user-id     api/*current-user-id*
+        branch-name (effective-branch worktree-id)]
+    (check-branch-matches-setting! expected_branch branch-name)
+    (let [user-id api/*current-user-id*
           {task-id :id}
           (impl/async-import!
            branch-name force {}
@@ -100,12 +102,37 @@
        :task_id task-id
        :message (when-not task-id "No changes since last import")})))
 
+(api.macros/defendpoint :post "/switch-branch" :- remote-sync.schema/ImportResponse
+  "Switch the main app's remote-sync branch and pull it. Admin-only, because it changes the branch the
+  whole instance is on. To pull the current branch without switching, use `POST /import`."
+  [_route
+   _query
+   {:keys [branch expected_branch force merge]}
+   :- [:map [:branch ms/NonBlankString]
+       [:expected_branch ms/NonBlankString]
+       [:force {:optional true} :boolean]
+       [:merge {:optional true} :boolean]]]
+  (api/check-superuser)
+  (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
+  (check-branch-matches-setting! expected_branch)
+  (let [user-id api/*current-user-id*
+        {task-id :id}
+        (impl/async-import!
+         branch force {}
+         :merge?      (or merge false)
+         :worktree-id nil
+         :on-success  (fn [task-id _result]
+                        (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch} user-id)))]
+    {:status :success
+     :task_id task-id
+     :message (when-not task-id "No changes since last import")}))
+
 (api.macros/defendpoint :get "/is-dirty" :- remote-sync.schema/IsDirtyResponse
   "Check if any remote-synced collection or collection item has local changes that have not been pushed
   to the remote sync source. Pass `worktree-id` to ask about a worktree instead of the main app."
   [_route-params
    {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+  (perms/check-can-access-worktrees)
   {:is_dirty (remote-sync.object/dirty? (check-worktree worktree-id))})
 
 (api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse
@@ -124,7 +151,7 @@
                                            [:force-refresh {:optional true} :boolean]
                                            [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]
    _body]
-  (api/check-superuser)
+  (perms/check-can-access-worktrees)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [worktree-id (check-worktree worktree-id)
         result      (binding [serdes/*worktree-id* worktree-id]
@@ -141,7 +168,7 @@
   remote-synced collection. Pass `worktree-id` to ask about a worktree instead of the main app."
   [_route-params
    {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+  (perms/check-can-access-worktrees)
   {:dirty (into []
                 (m/distinct-by (juxt :id :model))
                 (remote-sync.object/dirty-objects (check-worktree worktree-id)))})
@@ -157,7 +184,7 @@
   - Commit the changes if possible
   - Sync to the source if possible
 
-  Requires superuser permissions."
+  Requires the `:remote-sync` application permission (admins have it)."
   [_route
    _query
    {:keys [message branch force merge worktree_id]} :- [:map
@@ -166,7 +193,7 @@
                                                         [:force {:optional true} :boolean]
                                                         [:merge {:optional true} :boolean]
                                                         [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+  (perms/check-can-access-worktrees)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
   (let [worktree-id (check-worktree worktree_id)
@@ -197,12 +224,12 @@
     `{:deleted [labels] :overwritten [labels]}`
   - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists
 
-  Requires superuser permissions."
+  Requires the `:remote-sync` application permission (admins have it)."
   [_route
    {:keys [branch worktree-id]} :- [:map
                                     [:branch ms/NonBlankString]
                                     [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+  (perms/check-can-access-worktrees)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [worktree-id (check-worktree worktree-id)
         branch-name (check-branch-matches-setting! branch (effective-branch worktree-id))
@@ -220,7 +247,7 @@
   "Get the current sync task. Pass `worktree-id` for a worktree's tasks instead of the main app's."
   [_route-params
    {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+  (perms/check-can-access-worktrees)
   (when-let [task (remote-sync.task/most-recent-task (check-worktree worktree-id))]
     (t2/hydrate task :status)))
 
@@ -230,7 +257,7 @@
   [_route
    _query
    {:keys [worktree_id]} :- [:map [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+  (perms/check-can-access-worktrees)
   (let [worktree-id (check-worktree worktree_id)
         task        (remote-sync.task/most-recent-task worktree-id)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
@@ -294,8 +321,8 @@
        [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
   ;; In read-write mode, changing the branch here would flip the setting without reconciling synced
-  ;; collections (the setting would silently disagree with local content), so a switch must go through the
-  ;; guarded import (POST /import), which blocks on unsaved changes and surfaces deletion conflicts. In
+  ;; collections (the setting would silently disagree with local content), so a switch must go through
+  ;; POST /switch-branch, which blocks on unsaved changes and surfaces deletion conflicts. In
   ;; read-only mode the branch is a declarative setting whose change triggers a reconciling import, so it is
   ;; still allowed here. Setting the branch during first-time configuration (no current branch) is allowed.
   ;; Blanking the branch is also blocked in read-write — otherwise it would reset the guard and let a
@@ -353,9 +380,9 @@
 
   Returns a JSON object with branch names under the :items key.
 
-  Requires superuser permissions."
+  Requires the `:remote-sync` application permission (admins have it)."
   []
-  (api/check-superuser)
+  (perms/check-can-access-worktrees)
   (let [source (source/source-from-settings)]
     (api/check-400 source "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable.")
     (try
@@ -368,15 +395,18 @@
                           e)))))))
 
 (api.macros/defendpoint :post "/create-branch" :- remote-sync.schema/CreateBranchResponse
-  "Create a new branch from the current remote-sync branch. By default the instance checks the new branch out;
-  pass `checkout` false to create it and stay where you are, which is what checking a branch out into a
-  worktree wants. Requires superuser permissions."
+  "Create a new branch from the current remote-sync branch. By default the instance checks the new branch out,
+  which requires superuser permissions since it changes the main app's sync branch; pass `checkout` false to
+  create it and stay where you are — which is what checking a branch out into a worktree wants, and only
+  requires the `:remote-sync` application permission (admins have it)."
   [_route
    _query
    {:keys [name checkout]} :- [:map
                                [:name ms/NonBlankString]
                                [:checkout {:default true} [:maybe ms/BooleanValue]]]]
-  (api/check-superuser)
+  (if checkout
+    (api/check-superuser)
+    (perms/check-can-access-worktrees))
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")
     (api/check-400 base-branch "Base commit not found")
@@ -393,19 +423,19 @@
                         {:status-code 400} e))))))
 
 (api.macros/defendpoint :post "/stash" :- remote-sync.schema/StashResponse
-  "Stashes changes to a new branch, and changes the current branch to it.
-  Requires superuser permissions."
+  "Creates a new branch, pushes the local unsaved changes to it, and switches the main app to that branch.
+  Since it changes the main app's sync branch, it requires superuser permissions."
   [_route
    _query
    {new-branch :new_branch message :message} :- [:map
                                                  [:new_branch ms/NonBlankString]
-                                                 [:message ms/NonBlankString]]]
+                                                 [:message {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Stash is only allowed when remote-sync-type is set to 'read-write'")
   (api/check-400 (source/source-from-settings) "Source not configured")
   (try
     (let [user-id       api/*current-user-id*
-          {task-id :id} (impl/stash! new-branch message
+          {task-id :id} (impl/stash! new-branch (or message "Exported from Metabase")
                                      :on-success (fn [task-id _result]
                                                    (impl/publish-sync-event! :event/remote-sync-stash task-id {:branch new-branch} user-id)))]
       {:status "success"

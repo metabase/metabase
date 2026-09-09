@@ -25,7 +25,7 @@
 (defsetting remote-sync-branch
   (deferred-tru "The remote branch to sync with, e.g. `main`")
   :type :string
-  :visibility :admin
+  :visibility :authenticated
   :encryption :when-encryption-key-set
   :export? false
   :can-read-from-env? true)

@@ -2283,19 +2283,21 @@
           (testing "worktree-id returns only that worktree's transforms"
             (is (= [wt-tf-id]
                    (mapv :id (mt/user-http-request :crowberto :get 200 "transform" :worktree-id wt-id)))))
-          (testing "worktree-id is admin-only"
+          (testing "worktree-id needs the remote-sync permission"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 "transform" :worktree-id wt-id)))))))))
 
-(deftest worktree-transform-endpoints-are-admin-only-test
+(deftest worktree-transform-endpoints-require-remote-sync-permission-test
   (when config/ee-available?
-    (testing "every verb on a worktree transform is superuser-only, via read-check/write-check"
-      (mt/with-premium-features #{:transforms-basic}
+    (testing "every verb on a worktree transform requires the remote-sync permission, via read-check/write-check"
+      (mt/with-premium-features #{:transforms-basic :advanced-permissions}
         (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
           (mt/with-temp [:model/Worktree {wt-id :id} {}
-                         :model/Transform {tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
+                         :model/Transform {tf-id :id} {:name "worktree transform" :worktree_id wt-id}
+                         :model/PermissionsGroup {group-id :id} {}
+                         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
             (let [denied "You don't have permissions to do that."]
-              (testing "a non-admin is refused everywhere"
+              (testing "a non-admin without the remote-sync permission is refused everywhere"
                 (is (= denied (mt/user-http-request :rasta :get 403 (format "transform/%d" tf-id))))
                 (is (= denied (mt/user-http-request :rasta :get 403 (format "transform/%d/dependencies" tf-id))))
                 (is (= denied (mt/user-http-request :rasta :put 403 (format "transform/%d" tf-id)
@@ -2307,7 +2309,16 @@
                         (mt/user-http-request :crowberto :get 200 (format "transform/%d" tf-id))))
                 (is (= [] (mt/user-http-request :crowberto :get 200 (format "transform/%d/dependencies" tf-id))))
                 (is (= "Transforms in a remote sync worktree cannot be run."
-                       (mt/user-http-request :crowberto :post 400 (format "transform/%d/run" tf-id))))))))))))
+                       (mt/user-http-request :crowberto :post 400 (format "transform/%d/run" tf-id)))))
+              (testing "a non-admin holding the remote-sync permission (and data-analyst access to the source database) can read it too, but still cannot run it"
+                (perms/grant-application-permissions! group-id :remote-sync)
+                (mt/with-full-data-perms-for-all-users!
+                  (mt/with-data-analyst-role! (mt/user->id :rasta)
+                    (is (=? {:id tf-id :worktree_id wt-id :can_execute false}
+                            (mt/user-http-request :rasta :get 200 (format "transform/%d" tf-id))))
+                    (is (= [] (mt/user-http-request :rasta :get 200 (format "transform/%d/dependencies" tf-id))))
+                    (is (= "Transforms in a remote sync worktree cannot be run."
+                           (mt/user-http-request :rasta :post 400 (format "transform/%d/run" tf-id))))))))))))))
 
 (deftest creating-a-worktree-transform-over-the-api-test
   (when config/ee-available?

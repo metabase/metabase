@@ -85,7 +85,7 @@
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
        [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                   :include-hidden-fields?       include_hidden_fields
                                   :include-editable-data-model? include_editable_data_model

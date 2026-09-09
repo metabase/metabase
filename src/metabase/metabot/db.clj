@@ -12,6 +12,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -482,8 +483,9 @@
   (let [{table-where-clause :clause table-cte :with}
         (mi/visible-filter-clause :model/Table
                                   :id
-                                  {:user-id       api/*current-user-id*
-                                   :is-superuser? api/*is-superuser?*}
+                                  {:user-id               api/*current-user-id*
+                                   :is-superuser?         api/*is-superuser?*
+                                   :can-access-worktrees? (perms/current-user-can-access-worktrees?)}
                                   {:perms/view-data      :unrestricted
                                    :perms/create-queries :query-builder-and-native})]
     (cond-> {:where table-where-clause}

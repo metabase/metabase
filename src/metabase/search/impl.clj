@@ -279,6 +279,7 @@
    [:is-impersonated-user?               {:optional true} :boolean]
    [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
+   [:can-access-worktrees?               {:optional true} :boolean]
    [:is-data-analyst?                    {:optional true} :boolean]
    [:current-user-perms                                   [:set perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
@@ -327,6 +328,7 @@
            include-dashboard-questions?
            include-metadata?
            is-superuser?
+           can-access-worktrees?
            is-data-analyst?
            last-edited-at
            last-edited-by
@@ -368,6 +370,7 @@
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
                         :is-superuser?                       is-superuser?
+                        :can-access-worktrees?               (boolean can-access-worktrees?)
                         :is-data-analyst?                    (boolean is-data-analyst?)
                         :models                              models
                         :model-ancestors?                    (boolean model-ancestors?)

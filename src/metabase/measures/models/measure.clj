@@ -86,7 +86,7 @@
      (mi/can-write? measure))))
 
 (defmethod mi/visible-filter-clause :model/Measure
-  [_model column-or-exp {:keys [is-superuser?] :as user-info} _perm-type->perm-level
+  [_model column-or-exp {:keys [is-superuser? can-access-worktrees?] :as user-info} _perm-type->perm-level
    & [{:keys [include-archived-items worktree-id] :or {include-archived-items :exclude}}]]
   {:clause [:in column-or-exp
             ^:allow-subquery
@@ -109,7 +109,7 @@
                         :exclude [:= :measure.archived false]
                         :only    [:= :measure.archived true]
                         :all     nil)
-                      [:= :measure.worktree_id (when is-superuser? worktree-id)]]}]})
+                      [:= :measure.worktree_id (when (or is-superuser? can-access-worktrees?) worktree-id)]]}]})
 
 ;; Measures can be created by superusers, but only if the parent table is editable
 ;; (not in a remote-synced collection in read-only mode).

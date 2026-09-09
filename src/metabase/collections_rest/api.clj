@@ -101,7 +101,7 @@
        [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
        [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (as->
    (select-collections {:archived                       (boolean archived)
                         :worktree-id                    worktree-id
@@ -227,7 +227,7 @@
   (api/check-400
    (not (and namespace (seq namespaces))))
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (let [archived    (if exclude-archived false nil)
         namespaces (cond
                      namespace #{namespace}
@@ -829,7 +829,7 @@
   have at least one visible item in the requested scope.
 
   `worktree-id` selects the root-level content of a remote-sync worktree instead of the main app's; nil (the
-  default) is the main app. Admin-only.
+  default) is the main app. Needs the `:remote-sync` application permission.
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
@@ -852,7 +852,7 @@
                                                                                    [:show_exploration_documents  {:optional true} [:maybe ms/MaybeBooleanValue]]
                                                                                    [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace :worktree_id worktree-id)
@@ -893,8 +893,8 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new Collection. Pass `worktree_id` to create it at the root of a remote-sync worktree, which is
-  admin-only; with a `parent_id` the parent's worktree wins, so pass one or the other."
+  "Create a new Collection. Pass `worktree_id` to create it at the root of a remote-sync worktree, which needs
+  the `:remote-sync` application permission; with a `parent_id` the parent's worktree wins, so pass one or the other."
   [_route-params
    _query-params
    body :- [:map

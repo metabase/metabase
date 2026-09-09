@@ -6487,16 +6487,22 @@
 
 (deftest worktree-content-is-excluded-from-the-list-test
   (when config/ee-available?
-    (mt/with-temp [:model/Worktree {wt-id :id} {}
-                   :model/Collection wt-coll {:name "worktree collection" :worktree_id wt-id}
-                   :model/Dashboard {main-id :id} {:name "main dashboard"}
-                   :model/Dashboard {wt-content-id :id} {:name "worktree dashboard" :collection_id (:id wt-coll) :worktree_id wt-id}]
-      (testing "the main-app list leaves worktree content out"
-        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "dashboard"))]
-          (is (contains? ids main-id))
-          (is (not (contains? ids wt-content-id)))))
-      (testing "worktree-id returns only that worktree's content"
-        (is (= [wt-content-id] (mapv :id (mt/user-http-request :crowberto :get 200 "dashboard" :worktree-id wt-id)))))
-      (testing "worktree-id is admin-only"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 "dashboard" :worktree-id wt-id)))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Collection wt-coll {:name "worktree collection" :worktree_id wt-id}
+                     :model/Dashboard {main-id :id} {:name "main dashboard"}
+                     :model/Dashboard {wt-content-id :id} {:name "worktree dashboard" :collection_id (:id wt-coll) :worktree_id wt-id}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (testing "the main-app list leaves worktree content out"
+          (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "dashboard"))]
+            (is (contains? ids main-id))
+            (is (not (contains? ids wt-content-id)))))
+        (testing "worktree-id returns only that worktree's content"
+          (is (= [wt-content-id] (mapv :id (mt/user-http-request :crowberto :get 200 "dashboard" :worktree-id wt-id)))))
+        (testing "worktree-id requires the remote-sync permission"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "dashboard" :worktree-id wt-id))))
+        (testing "a non-admin holding the remote-sync permission sees that worktree's content too"
+          (perms/grant-application-permissions! group-id :remote-sync)
+          (is (= [wt-content-id] (mapv :id (mt/user-http-request :rasta :get 200 "dashboard" :worktree-id wt-id)))))))))

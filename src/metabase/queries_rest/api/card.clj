@@ -157,14 +157,15 @@
   `archived`. See corresponding implementation functions above for the specific behavior of each filter
   option. :card_index:
 
-  `worktree-id` lists the cards checked out into a remote-sync worktree instead of the main app (admin only)."
+  `worktree-id` lists the cards checked out into a remote-sync worktree instead of the main app (needs
+  the `:remote-sync` application permission)."
   [_route-params
    {:keys [f worktree-id], model-id :model_id} :- [:map
                                                    [:f           {:default :all}  (into [:enum] card-filter-options)]
                                                    [:model_id    {:optional true} [:maybe ms/PositiveInt]]
                                                    [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (when (contains? #{:database :table :using_model :using_segment} f)
     (api/checkp (integer? model-id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                        (name f)))

@@ -39,7 +39,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `Segment`. The Segment's table is derived from its `definition`. Pass `worktree_id` to create it
-  inside a remote-sync worktree, which is admin-only; the table itself is shared with the main app."
+  inside a remote-sync worktree, which needs the `:remote-sync` application permission; the table itself is shared with the main app."
   [_route-params
    _query-params
    {:keys [name description definition worktree_id], :as body} :- [:map
@@ -49,7 +49,7 @@
                                                                    [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (when worktree_id
-    (api/check-superuser)
+    (perms/check-can-access-worktrees)
     (remote-sync/check-worktree-exists! worktree_id))
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
@@ -78,11 +78,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`. `worktree-id` lists the segments checked out into a remote-sync worktree instead of
-  the main app (admin only)."
+  the main app (needs the `:remote-sync` application permission)."
   [_route-params
    {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (let [segments  (segments.db/unarchived-segments worktree-id)
         table-ids (into #{} (keep :table_id) segments)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)

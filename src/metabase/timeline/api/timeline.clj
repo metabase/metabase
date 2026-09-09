@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
+   [metabase.permissions.core :as perms]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -67,14 +68,15 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines. `worktree-id` lists
-  the timelines checked out into a remote-sync worktree instead of the main app (admin only)."
+  the timelines checked out into a remote-sync worktree instead of the main app (needs
+  the `:remote-sync` application permission)."
   [_route-params
    {:keys [include worktree-id], archived? :archived} :- [:map
                                                           [:include     {:optional true} ::include]
                                                           [:archived    {:default false} ms/BooleanValue]
                                                           [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (let [timelines (->> (list-timelines archived? worktree-id)
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)

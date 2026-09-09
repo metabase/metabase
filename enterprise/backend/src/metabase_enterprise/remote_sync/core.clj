@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -47,11 +48,12 @@
   nil)
 
 (defenterprise worktree-accessible?
-  "Whether the current user may see or edit `instance`: content checked out into a worktree is admin-only."
+  "Whether the current user may see or edit `instance`: content checked out into a worktree needs the
+  `:remote-sync` application permission, which admins hold implicitly."
   :feature :none
   [instance]
   (or (nil? (:worktree_id instance))
-      api/*is-superuser?*))
+      (perms/current-user-can-access-worktrees?)))
 
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.

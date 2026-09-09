@@ -20,6 +20,7 @@
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -186,7 +187,7 @@
   visibility_type :sensitive in the response.
 
   `worktree_id` describes the query as it would run inside a remote-sync worktree, resolving its source cards
-  from that worktree instead of the main app (admin only)."
+  from that worktree instead of the main app (needs the `:remote-sync` application permission)."
   [_route-params
    _query-params
    ;; `worktree_id` rides along on the query body, so the body has to stay open: a declared map drops every key it
@@ -195,7 +196,7 @@
                                       {:closed false}
                                       [:worktree_id {:optional true} [:maybe ::lib.schema.id/worktree]]]]
   (when (some? worktree_id)
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (let [query (lib-be/normalize-query (dissoc body :worktree_id))]
     (queries/batch-fetch-query-metadata
      [query]

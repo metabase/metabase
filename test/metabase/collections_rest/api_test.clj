@@ -3827,47 +3827,67 @@
 ;;; A worktree is an enterprise concept, so these need `:model/Worktree` on the classpath. The
 ;;; endpoints they cover are OSS.
 
-(deftest collection-worktree-id-is-admin-only-test
+(deftest collection-worktree-id-requires-remote-sync-permission-test
   (when config/ee-available?
-    (mt/with-temp [:model/Worktree {wt-id :id} {}]
-      (testing "a non-admin cannot create a collection in a worktree"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "collection" {:name "nope" :worktree_id wt-id}))))
-      (testing "an unknown worktree 404s rather than failing on the foreign key"
-        (is (= "Not found."
-               (mt/user-http-request :crowberto :post 404 "collection"
-                                     {:name "nope" :worktree_id 99999999}))))
-      (mt/with-model-cleanup [:model/Collection]
-        (testing "an admin can, and a worktree collection is remote-synced by definition"
-          (is (=? {:worktree_id wt-id :is_remote_synced true}
-                  (mt/user-http-request :crowberto :post 200 "collection"
-                                        {:name "in worktree" :worktree_id wt-id}))))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (testing "a non-admin without the remote-sync permission cannot create a collection in a worktree"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "collection" {:name "nope" :worktree_id wt-id}))))
+        (testing "an unknown worktree 404s rather than failing on the foreign key"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :post 404 "collection"
+                                       {:name "nope" :worktree_id 99999999}))))
+        (mt/with-model-cleanup [:model/Collection]
+          (testing "an admin can, and a worktree collection is remote-synced by definition"
+            (is (=? {:worktree_id wt-id :is_remote_synced true}
+                    (mt/user-http-request :crowberto :post 200 "collection"
+                                          {:name "in worktree" :worktree_id wt-id})))))
+        (perms/grant-application-permissions! group-id :remote-sync)
+        (mt/with-model-cleanup [:model/Collection]
+          (testing "a non-admin holding the remote-sync permission can create a collection in a worktree"
+            (is (=? {:worktree_id wt-id :is_remote_synced true}
+                    (mt/user-http-request :rasta :post 200 "collection"
+                                          {:name "in worktree by non-admin" :worktree_id wt-id})))))))))
 
 (deftest worktree-collections-are-excluded-from-listings-test
   (when config/ee-available?
-    (mt/with-temp [:model/Worktree {wt-id :id} {}
-                   :model/Collection {wt-coll :id} {:name "worktree collection" :worktree_id wt-id}
-                   :model/Collection {main-coll :id} {:name "main collection"}]
-      (testing "worktree collections are absent from the main-app listing and tree"
-        (doseq [route ["collection" "collection/tree"]]
-          (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 route))]
-            (is (contains? ids main-coll) (str route " should include main-app collections"))
-            (is (not (contains? ids wt-coll)) (str route " should not include worktree collections")))))
-      (testing "worktree-id selects that worktree's collections instead"
-        (doseq [route ["collection" "collection/tree"]]
-          (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 route :worktree-id wt-id))]
-            (is (contains? ids wt-coll) (str route " should include the worktree's collections"))
-            (is (not (contains? ids main-coll)) (str route " should not mix in main-app collections")))))
-      (testing "worktree-id is admin-only, and the collection itself is unreadable to a non-admin"
-        (doseq [route ["collection" "collection/tree"]]
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Collection {wt-coll :id} {:name "worktree collection" :worktree_id wt-id}
+                     :model/Collection {main-coll :id} {:name "main collection"}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (testing "worktree collections are absent from the main-app listing and tree"
+          (doseq [route ["collection" "collection/tree"]]
+            (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 route))]
+              (is (contains? ids main-coll) (str route " should include main-app collections"))
+              (is (not (contains? ids wt-coll)) (str route " should not include worktree collections")))))
+        (testing "worktree-id selects that worktree's collections instead"
+          (doseq [route ["collection" "collection/tree"]]
+            (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 route :worktree-id wt-id))]
+              (is (contains? ids wt-coll) (str route " should include the worktree's collections"))
+              (is (not (contains? ids main-coll)) (str route " should not mix in main-app collections")))))
+        (testing "worktree-id requires the remote-sync permission, and the collection itself is unreadable to a non-admin without it"
+          (doseq [route ["collection" "collection/tree"]]
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 route :worktree-id wt-id))))
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 route :worktree-id wt-id))))
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "collection/" wt-coll))))))))
+                 (mt/user-http-request :rasta :get 403 (str "collection/" wt-coll)))))
+        (perms/grant-application-permissions! group-id :remote-sync)
+        (perms/grant-collection-read-permissions! group-id wt-coll)
+        (testing "a non-admin holding the remote-sync permission and read access to the worktree collection can list and read it"
+          (doseq [route ["collection" "collection/tree"]]
+            (let [ids (into #{} (map :id) (mt/user-http-request :rasta :get 200 route :worktree-id wt-id))]
+              (is (contains? ids wt-coll) (str route " should include the worktree's collections"))))
+          (is (=? {:id wt-coll}
+                  (mt/user-http-request :rasta :get 200 (str "collection/" wt-coll)))))))))
 
 (deftest root-items-worktree-id-test
   (when config/ee-available?
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :advanced-permissions}
       (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
         (mt/with-temp [:model/Worktree   {wt-id :id}     {}
                        :model/Collection {wt-coll :id}   {:name        "worktree root collection"
@@ -3877,27 +3897,37 @@
                                                           :namespace "transforms"}
                        :model/Transform  {wt-tf :id}     {:name        "worktree transform"
                                                           :worktree_id wt-id}
-                       :model/Transform  {main-tf :id}   {:name "main transform"}]
-          (letfn [(item-ids [& params]
-                    (->> (apply mt/user-http-request :crowberto :get 200 "collection/root/items"
+                       :model/Transform  {main-tf :id}   {:name "main transform"}
+                       :model/PermissionsGroup {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+          (letfn [(item-ids [user & params]
+                    (->> (apply mt/user-http-request user :get 200 "collection/root/items"
                                 :namespace "transforms" params)
                          :data
                          (into #{} (map (juxt :model :id)))))]
             (testing "by default the root listing shows only main-app content"
-              (let [ids (item-ids)]
+              (let [ids (item-ids :crowberto)]
                 (is (contains? ids ["collection" main-coll]))
                 (is (contains? ids ["transform" main-tf]))
                 (is (not (contains? ids ["collection" wt-coll])))
                 (is (not (contains? ids ["transform" wt-tf])))))
             (testing "worktree-id selects only that worktree's root-level content"
-              (let [ids (item-ids :worktree-id wt-id)]
+              (let [ids (item-ids :crowberto :worktree-id wt-id)]
                 (is (contains? ids ["collection" wt-coll]))
                 (is (contains? ids ["transform" wt-tf]))
                 (is (not (contains? ids ["collection" main-coll])))
                 (is (not (contains? ids ["transform" main-tf]))))))
-          (testing "worktree-id is admin-only"
+          (testing "worktree-id requires the remote-sync permission"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 "collection/root/items" :worktree-id wt-id)))))))))
+                   (mt/user-http-request :rasta :get 403 "collection/root/items" :worktree-id wt-id))))
+          (testing "a non-admin holding the remote-sync permission (and data-analyst access to the transforms namespace) sees the worktree's root-level content"
+            (perms/grant-application-permissions! group-id :remote-sync)
+            (mt/with-data-analyst-role! (mt/user->id :rasta)
+              (let [ids (into #{} (map (juxt :model :id))
+                              (:data (mt/user-http-request :rasta :get 200 "collection/root/items"
+                                                           :namespace "transforms" :worktree-id wt-id)))]
+                (is (contains? ids ["collection" wt-coll]))
+                (is (contains? ids ["transform" wt-tf]))))))))))
 
 (deftest root-items-worktree-snippets-test
   (when config/ee-available?
@@ -3976,6 +4006,38 @@
             (is (= #{} (item-ids (:id branch-coll)))))
           (testing "the main-app collection is unaffected"
             (is (contains? (item-ids (:id main-coll)) ["table" tbl-id]))))))))
+
+(deftest worktree-collection-published-tables-respect-main-app-collection-permission-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:library :advanced-permissions}
+      (mt/with-temp [:model/Worktree   {wt-id :id}     {}
+                     :model/Collection main-coll       {:name "checked out collection"
+                                                        :type collection/library-data-collection-type}
+                     :model/Collection wt-coll         {:name        "checked out collection"
+                                                        :type        collection/library-data-collection-type
+                                                        :worktree_id wt-id}
+                     :model/Table      {tbl-id :id}    {:db_id         (mt/id)
+                                                        :display_name  "Published Table"
+                                                        :collection_id (:id main-coll)
+                                                        :is_published  true}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (t2/insert! :model/WorktreeRemapping {:worktree_id      wt-id
+                                              :type             "Collection"
+                                              :source_entity_id (:entity_id main-coll)
+                                              :local_entity_id  (:entity_id wt-coll)})
+        (perms/revoke-collection-permissions! (perms/all-users-group) main-coll)
+        (perms/grant-application-permissions! group-id :remote-sync)
+        (perms/grant-collection-read-permissions! group-id wt-coll)
+        (letfn [(item-ids []
+                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" (:id wt-coll) "/items"))
+                       :data
+                       (into #{} (map (juxt :model :id)))))]
+          (testing "a remote-sync holder without read access to the main-app counterpart collection does not see its published table"
+            (is (not (contains? (item-ids) ["table" tbl-id]))))
+          (testing "granting read access to the main-app counterpart collection reveals the published table"
+            (perms/grant-collection-read-permissions! group-id main-coll)
+            (is (contains? (item-ids) ["table" tbl-id]))))))))
 
 (defn- exploration-items-in [coll-id & {:keys [user] :or {user :crowberto}}]
   (->> (:data (mt/user-http-request user :get 200 (str "collection/" coll-id "/items")))

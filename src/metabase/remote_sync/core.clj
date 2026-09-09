@@ -5,9 +5,12 @@
    [metabase.remote-sync.db :as remote-sync.db]))
 
 (defenterprise worktree-accessible?
-  "Whether the current user may see or edit `instance`: content checked out into a remote-sync worktree is
-  admin-only, always. Main-app content (`:worktree_id` `nil`) is not restricted here. AND this into a
-  worktree-scoped model's `can-read?` / `can-write?` / `can-create?`.
+  "Whether the current user may see or edit `instance`: content checked out into a remote-sync worktree needs
+  the `:remote-sync` application permission, which admins hold implicitly. Main-app content (`:worktree_id`
+  `nil`) is not restricted here. AND this into a worktree-scoped model's `can-read?` / `can-write?` /
+  `can-create?`. Collection permissions never stand in the way inside a worktree: a permission holder is granted
+  read-write on every worktree collection (see `metabase.permissions.user/user-permissions-set`), so the only other
+  gates a worktree row keeps are non-collection ones such as data or transforms permissions.
 
   Always true on OSS: worktrees are an enterprise feature, so there are none to hide."
   metabase-enterprise.remote-sync.core

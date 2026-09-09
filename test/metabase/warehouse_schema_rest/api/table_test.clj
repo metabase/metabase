@@ -1597,32 +1597,42 @@
 (deftest query-metadata-worktree-segments-and-measures-test
   (when config/ee-available?
     (testing "GET /api/table/:id/query_metadata"
-      (mt/with-temp [:model/Worktree {wt-id :id}     {}
-                     :model/Segment  {main-seg :id}  {:name "main segment" :table_id (mt/id :venues) :definition {}}
-                     :model/Segment  {wt-seg :id}    {:name        "worktree segment"
-                                                      :table_id    (mt/id :venues)
-                                                      :definition  {}
-                                                      :worktree_id wt-id}
-                     :model/Measure  {main-msr :id}  {:name "main measure" :table_id (mt/id :venues)}
-                     :model/Measure  {wt-msr :id}    {:name        "worktree measure"
-                                                      :table_id    (mt/id :venues)
-                                                      :worktree_id wt-id}]
-        (letfn [(ids [response k] (into #{} (map :id) (get response k)))]
-          (testing "the main app is described with its own segments and measures only"
-            (let [response (mt/user-http-request :crowberto :get 200
-                                                 (format "table/%d/query_metadata" (mt/id :venues)))]
-              (is (contains? (ids response :segments) main-seg))
-              (is (not (contains? (ids response :segments) wt-seg)))
-              (is (contains? (ids response :measures) main-msr))
-              (is (not (contains? (ids response :measures) wt-msr)))))
-          (testing "worktree-id swaps in the ones that worktree checked out"
-            (let [response (mt/user-http-request :crowberto :get 200
-                                                 (format "table/%d/query_metadata" (mt/id :venues))
-                                                 :worktree-id wt-id)]
-              (is (= #{wt-seg} (ids response :segments)))
-              (is (= #{wt-msr} (ids response :measures)))))
-          (testing "worktree-id is admin-only"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403
-                                         (format "table/%d/query_metadata" (mt/id :venues))
-                                         :worktree-id wt-id)))))))))
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Worktree {wt-id :id}     {}
+                       :model/Segment  {main-seg :id}  {:name "main segment" :table_id (mt/id :venues) :definition {}}
+                       :model/Segment  {wt-seg :id}    {:name        "worktree segment"
+                                                        :table_id    (mt/id :venues)
+                                                        :definition  {}
+                                                        :worktree_id wt-id}
+                       :model/Measure  {main-msr :id}  {:name "main measure" :table_id (mt/id :venues)}
+                       :model/Measure  {wt-msr :id}    {:name        "worktree measure"
+                                                        :table_id    (mt/id :venues)
+                                                        :worktree_id wt-id}
+                       :model/PermissionsGroup {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+          (letfn [(ids [response k] (into #{} (map :id) (get response k)))]
+            (testing "the main app is described with its own segments and measures only"
+              (let [response (mt/user-http-request :crowberto :get 200
+                                                   (format "table/%d/query_metadata" (mt/id :venues)))]
+                (is (contains? (ids response :segments) main-seg))
+                (is (not (contains? (ids response :segments) wt-seg)))
+                (is (contains? (ids response :measures) main-msr))
+                (is (not (contains? (ids response :measures) wt-msr)))))
+            (testing "worktree-id swaps in the ones that worktree checked out"
+              (let [response (mt/user-http-request :crowberto :get 200
+                                                   (format "table/%d/query_metadata" (mt/id :venues))
+                                                   :worktree-id wt-id)]
+                (is (= #{wt-seg} (ids response :segments)))
+                (is (= #{wt-msr} (ids response :measures)))))
+            (testing "worktree-id requires the remote-sync permission"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403
+                                           (format "table/%d/query_metadata" (mt/id :venues))
+                                           :worktree-id wt-id))))
+            (testing "a non-admin holding the remote-sync permission sees that worktree's content too"
+              (perms/grant-application-permissions! group-id :remote-sync)
+              (let [response (mt/user-http-request :rasta :get 200
+                                                   (format "table/%d/query_metadata" (mt/id :venues))
+                                                   :worktree-id wt-id)]
+                (is (= #{wt-seg} (ids response :segments)))
+                (is (= #{wt-msr} (ids response :measures)))))))))))

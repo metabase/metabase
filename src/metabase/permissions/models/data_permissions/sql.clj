@@ -107,11 +107,14 @@
     :having   [(perm-condition perm-type required-level (or most-or-least :least))]}])
 
 (def UserInfo
-  "The user-id to use in the visibility query and their superuser status."
+  "The user-id to use in the visibility query and their superuser status. `:can-access-worktrees?` says whether
+  the user may see remote-sync worktree content (see `metabase.permissions.core/current-user-can-access-worktrees?`);
+  absent means no, so a worktree scope is downgraded to the main app."
   [:map
-   [:user-id          pos-int?]
-   [:is-superuser?    :boolean]
-   [:is-data-analyst? {:optional true} :boolean]])
+   [:user-id               pos-int?]
+   [:is-superuser?         :boolean]
+   [:is-data-analyst?      {:optional true} :boolean]
+   [:can-access-worktrees? {:optional true} :boolean]])
 
 (def PermissionMapping
   "Map of permission-type to either a permission value or tuple of (permission-value, :most/:least) indicating if we want to get the

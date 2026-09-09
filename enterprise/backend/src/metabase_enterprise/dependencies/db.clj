@@ -19,11 +19,12 @@
 
 (def ^:private VisibleOpts
   "Opts consumed by [[visible-entities-expr]]: the current user (`:user-id`, `:is-superuser?`,
-  `:is-data-analyst?`), whether to include archived items (`:include-archived-items`, default `:exclude`), and the
+  `:can-access-worktrees?`, `:is-data-analyst?`), whether to include archived items (`:include-archived-items`, default `:exclude`), and the
   remote-sync worktree to scope to (`:worktree-id`, nil for the main app)."
   [:map {:closed true}
    [:user-id ::lib.schema.id/user]
    [:is-superuser? {:optional true} [:maybe :boolean]]
+   [:can-access-worktrees? {:optional true} [:maybe :boolean]]
    [:is-data-analyst? {:optional true} [:maybe :boolean]]
    [:include-archived-items {:optional true} [:enum :exclude :all :only]]
    [:worktree-id {:optional true} [:maybe ::lib.schema.id/worktree]]])
@@ -53,7 +54,7 @@
 
 (defn- visible-entities-expr
   "Matches entities at `entity-type-field`/`entity-id-field` that are readable by the user described by `user-id`,
-  `is-superuser?`, and `is-data-analyst?`, honoring `include-archived-items` (`:exclude`, `:all`, or `:only`,
+  `is-superuser?`, `can-access-worktrees?`, and `is-data-analyst?`, honoring `include-archived-items` (`:exclude`, `:all`, or `:only`,
   default `:exclude`; applies to both archived collections and archived entities) and `worktree-id`, the remote-sync
   worktree to scope to (nil is the main app).
 
@@ -64,11 +65,13 @@
   implementation returns a CTE, which cannot be spliced into these queries, and they are NOT filtered by
   active/visibility_type, so dependencies broken by dropped or hidden tables stay visible.
   TODO (ed 2025-12-16): support CTE-based filters in the dependency graph and drop the special case."
-  [entity-type-field entity-id-field {:keys [user-id is-superuser? is-data-analyst? include-archived-items worktree-id]
+  [entity-type-field entity-id-field {:keys [user-id is-superuser? can-access-worktrees? is-data-analyst?
+                                             include-archived-items worktree-id]
                                       :or   {include-archived-items :exclude}}]
-  (let [user-info {:user-id          user-id
-                   :is-superuser?    (boolean is-superuser?)
-                   :is-data-analyst? (boolean is-data-analyst?)}]
+  (let [user-info {:user-id               user-id
+                   :is-superuser?         (boolean is-superuser?)
+                   :can-access-worktrees? (boolean can-access-worktrees?)
+                   :is-data-analyst?      (boolean is-data-analyst?)}]
     (into [:or]
           (map (fn [[entity-type model]]
                  [:and
@@ -163,13 +166,14 @@
   scope (nil is the main app)."
   [source-entity-type  :- EntityType
    source-entity-ids   :- [:sequential ::deps.dependency-types/entity-id]
-   {:keys [user-id is-superuser? is-data-analyst? worktree-id]} :- VisibleOpts]
+   {:keys [user-id is-superuser? can-access-worktrees? is-data-analyst? worktree-id]} :- VisibleOpts]
   (t2/select :model/AnalysisFindingError
              {:where [:and
                       [:= :source_entity_type (name source-entity-type)]
                       [:in :source_entity_id source-entity-ids]
                       (visible-entities-expr :analyzed_entity_type :analyzed_entity_id
                                              {:user-id user-id :is-superuser? is-superuser?
+                                              :can-access-worktrees? can-access-worktrees?
                                               :is-data-analyst? is-data-analyst? :worktree-id worktree-id})]}))
 
 (mu/defn finding-errors-for-entities-with-visible-sources
@@ -178,7 +182,7 @@
   `worktree-id`'s scope (nil is the main app)."
   [entity-type :- EntityType
    entity-ids  :- [:sequential ::deps.dependency-types/entity-id]
-   {:keys [user-id is-superuser? is-data-analyst? worktree-id]} :- VisibleOpts]
+   {:keys [user-id is-superuser? can-access-worktrees? is-data-analyst? worktree-id]} :- VisibleOpts]
   (t2/select :model/AnalysisFindingError
              {:where [:and
                       [:= :analyzed_entity_type (name entity-type)]
@@ -187,6 +191,7 @@
                        [:= :source_entity_type nil]
                        (visible-entities-expr :source_entity_type :source_entity_id
                                               {:user-id user-id :is-superuser? is-superuser?
+                                               :can-access-worktrees? can-access-worktrees?
                                                :is-data-analyst? is-data-analyst? :worktree-id worktree-id})]]}))
 
 ;;; ------------------------------------------ Dependency item list queries -------------------------------------------
@@ -367,13 +372,14 @@
   and `include-personal-collections?`, visible to the user described by `user-id`, `is-superuser?`, and
   `is-data-analyst?` in `worktree-id`'s scope (nil is the main app), with `sort-column`'s expression selected as
   `:sort_key`. Throws when `user-id` is missing, since the visibility restriction must always be applied."
-  [{:keys [query-type entity-type sort-column user-id is-superuser? is-data-analyst? worktree-id] :as params}]
+  [{:keys [query-type entity-type sort-column user-id is-superuser? can-access-worktrees? is-data-analyst? worktree-id]
+    :as   params}]
   (when-not user-id
     (throw (ex-info "dependency-item-select requires a user-id so the visibility restriction is always applied"
                     {:query-type query-type :entity-type entity-type})))
   (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
-        visible {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?
-                 :worktree-id worktree-id}
+        visible {:user-id user-id :is-superuser? is-superuser? :can-access-worktrees? can-access-worktrees?
+                 :is-data-analyst? is-data-analyst? :worktree-id worktree-id}
         default-visible-restriction {:visible visible}
         ;; The item's own visibility check includes archived items when listing what's breaking other entities,
         ;; so dependencies broken by an archived source still surface; nothing else is affected by this.
@@ -408,6 +414,7 @@
    [:limit ms/PositiveInt]
    [:user-id ::lib.schema.id/user]
    [:is-superuser? {:optional true} [:maybe :boolean]]
+   [:can-access-worktrees? {:optional true} [:maybe :boolean]]
    [:is-data-analyst? {:optional true} [:maybe :boolean]]
    [:worktree-id {:optional true} [:maybe ::lib.schema.id/worktree]]])
 
@@ -443,7 +450,7 @@
   for no restriction), visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?` in
   `worktree-id`'s scope (nil is the main app)."
   [{:keys [source-entity-type source-entity-id dependent-types dependent-card-types
-           user-id is-superuser? is-data-analyst? worktree-id]}
+           user-id is-superuser? can-access-worktrees? is-data-analyst? worktree-id]}
    :- [:map {:closed true}
        [:source-entity-type EntityType]
        [:source-entity-id ms/PositiveInt]
@@ -451,6 +458,7 @@
        [:dependent-card-types {:optional true} [:maybe [:sequential :string]]]
        [:user-id ::lib.schema.id/user]
        [:is-superuser? {:optional true} [:maybe :boolean]]
+       [:can-access-worktrees? {:optional true} [:maybe :boolean]]
        [:is-data-analyst? {:optional true} [:maybe :boolean]]
        [:worktree-id {:optional true} [:maybe ::lib.schema.id/worktree]]]]
   (t2/query
@@ -466,6 +474,7 @@
                             [:= :af.result false]
                             (visible-entities-expr :afe.analyzed_entity_type :afe.analyzed_entity_id
                                                    {:user-id user-id :is-superuser? is-superuser?
+                                                    :can-access-worktrees? can-access-worktrees?
                                                     :is-data-analyst? is-data-analyst?
                                                     :include-archived-items :exclude
                                                     :worktree-id worktree-id})]

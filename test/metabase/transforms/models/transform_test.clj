@@ -274,15 +274,26 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"worktree_id cannot be changed"
                               (t2/update! :model/Transform tf-id {:worktree_id wt-id})))))))
 
-(deftest creating-a-worktree-transform-is-admin-only-test
+(deftest creating-a-worktree-transform-requires-remote-sync-permission-test
   (when config/ee-available?
-    (testing "a non-admin cannot put a transform into a worktree"
-      (mt/with-temp [:model/Worktree {wt-id :id} {}]
-        (mt/with-current-user (mt/user->id :rasta)
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
-                                (t2/insert! :model/Transform
-                                            (merge (mt/with-temp-defaults :model/Transform)
-                                                   {:name "sneaky" :worktree_id wt-id})))))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (testing "a non-admin without the remote-sync permission cannot put a transform into a worktree"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                                  (t2/insert! :model/Transform
+                                              (merge (mt/with-temp-defaults :model/Transform)
+                                                     {:name "sneaky" :worktree_id wt-id}))))))
+        (testing "a non-admin holding the remote-sync permission can"
+          (perms/grant-application-permissions! group-id :remote-sync)
+          (mt/with-current-user (mt/user->id :rasta)
+            (mt/with-model-cleanup [:model/Transform]
+              (is (=? {:worktree_id wt-id}
+                      (t2/insert-returning-instance! :model/Transform
+                                                     (merge (mt/with-temp-defaults :model/Transform)
+                                                            {:name "not sneaky" :worktree_id wt-id})))))))))))
 
 (deftest transform-takes-its-worktree-from-its-collection-test
   (when config/ee-available?

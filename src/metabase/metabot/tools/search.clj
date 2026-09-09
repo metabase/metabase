@@ -319,6 +319,7 @@
                                                          :is-impersonated-user?               (perms/impersonated-user?)
                                                          :is-sandboxed-user?                  (perms/sandboxed-user?)
                                                          :is-superuser?                       api/*is-superuser?*
+                                                         :can-access-worktrees?               (perms/current-user-can-access-worktrees?)
                                                          :current-user-perms                  @api/*current-user-permissions-set*
                                                          :filter-items-in-personal-collection "exclude-others"
                                                          :context                             :metabot

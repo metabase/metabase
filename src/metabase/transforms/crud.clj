@@ -11,6 +11,7 @@
    [metabase.events.core :as events]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -116,12 +117,12 @@
 (defn get-transforms
   "Get a list of transforms the current user can read. Transforms checked out into a remote-sync worktree are left
   out unless a single worktree's transforms are requested via `worktree-id`, which returns *only* that worktree's
-  transforms and is admin-only."
+  transforms and needs the `:remote-sync` application permission."
   [& {:keys [last-run-start-time last-run-statuses tag-ids database-id worktree-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
     (when worktree-id
-      (api/check-superuser))
+      (perms/check-can-access-worktrees))
     (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id worktree-id)]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
            (into []

@@ -7,6 +7,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -51,13 +52,14 @@
 (api.macros/defendpoint :get "/" :- [:or ::collections.schema/CollectionItem [:map [:data nil?]]]
   "Get the Library. If no library exists, it doesn't fail but returns an empty response.
 
-  `worktree-id` gets the Library a remote-sync worktree checked out rather than the main app's (admin only)."
+  `worktree-id` gets the Library a remote-sync worktree checked out rather than the main app's (requires the remote-sync
+  application permission, or admin)."
   [_route
    {:keys [worktree-id]} :- [:map
                              [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]
    _body]
   (when worktree-id
-    (api/check-superuser)
+    (perms/check-can-access-worktrees)
     (remote-sync/check-worktree-exists! worktree-id))
   (if-let [library (collections/library-collection worktree-id)]
     (-> (api/read-check library)
@@ -73,12 +75,13 @@
 (api.macros/defendpoint :get "/tree"
   "This matches /api/collection/tree but only returns the library collection.
 
-  `worktree-id` returns the Library a remote-sync worktree checked out rather than the main app's (admin only)."
+  `worktree-id` returns the Library a remote-sync worktree checked out rather than the main app's (requires the remote-sync
+  application permission, or admin)."
   [_route-params
    {:keys [worktree-id]} :- [:map
                              [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
-    (api/check-superuser)
+    (perms/check-can-access-worktrees)
     (remote-sync/check-worktree-exists! worktree-id))
   (let [collections              (-> (library.db/library-collections worktree-id)
                                      (t2/hydrate :can_write))

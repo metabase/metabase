@@ -387,35 +387,52 @@
 
 (deftest worktree-content-is-excluded-from-the-list-test
   (when config/ee-available?
-    (mt/with-temp [:model/Worktree {wt-id :id} {}
-                   :model/Segment {main-id :id} {:name "main segment" :table_id (mt/id :venues) :definition {}}
-                   :model/Segment {wt-content-id :id} {:name "worktree segment" :table_id (mt/id :venues) :definition {} :worktree_id wt-id}]
-      (testing "the main-app list leaves worktree content out"
-        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "segment"))]
-          (is (contains? ids main-id))
-          (is (not (contains? ids wt-content-id)))))
-      (testing "worktree-id returns only that worktree's content"
-        (is (= [wt-content-id]
-               (mapv :id (mt/user-http-request :crowberto :get 200 "segment" :worktree-id wt-id)))))
-      (testing "worktree-id is admin-only"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 "segment" :worktree-id wt-id)))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Segment {main-id :id} {:name "main segment" :table_id (mt/id :venues) :definition {}}
+                     :model/Segment {wt-content-id :id} {:name "worktree segment" :table_id (mt/id :venues) :definition {} :worktree_id wt-id}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (testing "the main-app list leaves worktree content out"
+          (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "segment"))]
+            (is (contains? ids main-id))
+            (is (not (contains? ids wt-content-id)))))
+        (testing "worktree-id returns only that worktree's content"
+          (is (= [wt-content-id]
+                 (mapv :id (mt/user-http-request :crowberto :get 200 "segment" :worktree-id wt-id)))))
+        (testing "worktree-id requires the remote-sync permission"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "segment" :worktree-id wt-id))))
+        (testing "a non-admin holding the remote-sync permission sees that worktree's content too"
+          (perms/grant-application-permissions! group-id :remote-sync)
+          (is (= [wt-content-id]
+                 (mapv :id (mt/user-http-request :rasta :get 200 "segment" :worktree-id wt-id)))))))))
 
-(deftest create-segment-in-a-worktree-test
+(deftest create-segment-in-a-worktree-requires-remote-sync-permission-test
   (when config/ee-available?
-    (mt/with-temp [:model/Worktree {wt-id :id} {}]
-      (mt/with-model-cleanup [:model/Segment]
-        (let [definition (mbql4-segment-definition (mt/id :users) (mt/id :users :id) 20)]
-          (testing "an admin can create a segment inside a worktree"
-            (let [created (mt/user-http-request :crowberto :post 200 "segment"
-                                                {:name "worktree segment" :definition definition :worktree_id wt-id})]
-              (is (= wt-id (:worktree_id created)))
-              (is (= wt-id (t2/select-one-fn :worktree_id :model/Segment :id (:id created))))))
-          (testing "a non-admin cannot"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403 "segment"
-                                         {:name "nope" :definition definition :worktree_id wt-id}))))
-          (testing "an unknown worktree 404s rather than failing on the foreign key"
-            (is (= "Not found."
-                   (mt/user-http-request :crowberto :post 404 "segment"
-                                         {:name "nope" :definition definition :worktree_id 99999999})))))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (mt/with-model-cleanup [:model/Segment]
+          (let [definition (mbql4-segment-definition (mt/id :users) (mt/id :users :id) 20)]
+            (testing "an admin can create a segment inside a worktree"
+              (let [created (mt/user-http-request :crowberto :post 200 "segment"
+                                                  {:name "worktree segment" :definition definition :worktree_id wt-id})]
+                (is (= wt-id (:worktree_id created)))
+                (is (= wt-id (t2/select-one-fn :worktree_id :model/Segment :id (:id created))))))
+            (testing "a non-admin without the remote-sync permission cannot"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "segment"
+                                           {:name "nope" :definition definition :worktree_id wt-id}))))
+            (testing "an unknown worktree 404s rather than failing on the foreign key"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :post 404 "segment"
+                                           {:name "nope" :definition definition :worktree_id 99999999}))))
+            (testing "a non-admin holding the remote-sync permission (and data-analyst access to the table) can"
+              (perms/grant-application-permissions! group-id :remote-sync)
+              (mt/with-data-analyst-role! (mt/user->id :rasta)
+                (let [created (mt/user-http-request :rasta :post 200 "segment"
+                                                    {:name "worktree segment by rasta" :definition definition :worktree_id wt-id})]
+                  (is (= wt-id (:worktree_id created)))
+                  (is (= wt-id (t2/select-one-fn :worktree_id :model/Segment :id (:id created)))))))))))))

@@ -309,7 +309,7 @@
    These options are provided for use in the Admin Edit Metadata page.
 
    Passing `worktree-id` describes the table with the segments and measures a remote-sync worktree checked out
-   instead of the main app's (admin only). The table itself is shared between the two."
+   instead of the main app's (needs the `:remote-sync` application permission). The table itself is shared between the two."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model worktree-id]}
@@ -319,7 +319,7 @@
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
        [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (schema.table/fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                                :include-hidden-fields?       include_hidden_fields
                                                :include-editable-data-model? include_editable_data_model

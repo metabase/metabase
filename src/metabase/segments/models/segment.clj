@@ -111,7 +111,7 @@
      (mi/can-write? segment))))
 
 (defmethod mi/visible-filter-clause :model/Segment
-  [_model column-or-exp {:keys [is-superuser?] :as user-info} _perm-type->perm-level
+  [_model column-or-exp {:keys [is-superuser? can-access-worktrees?] :as user-info} _perm-type->perm-level
    & [{:keys [include-archived-items worktree-id] :or {include-archived-items :exclude}}]]
   {:clause [:in column-or-exp
             ^:allow-subquery
@@ -134,7 +134,7 @@
                         :exclude [:= :segment.archived false]
                         :only    [:= :segment.archived true]
                         :all     nil)
-                      [:= :segment.worktree_id (when is-superuser? worktree-id)]]}]})
+                      [:= :segment.worktree_id (when (or is-superuser? can-access-worktrees?) worktree-id)]]}]})
 
 ;; Segments can be created by
 ;; a) superusers

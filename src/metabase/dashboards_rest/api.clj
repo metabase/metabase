@@ -80,15 +80,15 @@
   *  `mine`     - Return Dashboards created by the current user.
   *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)
 
-  `worktree-id` lists the dashboards checked out into a remote-sync worktree instead of the main app (admin
-  only)."
+  `worktree-id` lists the dashboards checked out into a remote-sync worktree instead of the main app (needs
+  the `:remote-sync` application permission)."
   {:deprecated true}
   [_route-params
    {:keys [f worktree-id]} :- [:map
                                [:f           {:optional true} [:maybe [:enum "all" "mine" "archived"]]]
                                [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (let [dashboards (dashboards-list f worktree-id)
         edit-infos (:dashboard (revisions/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
     (into []

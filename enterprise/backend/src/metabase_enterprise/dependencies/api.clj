@@ -15,6 +15,7 @@
    [metabase.graph.core :as graph]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
@@ -187,16 +188,17 @@
   `:include-archived-items` (:exclude, :all, :only; the db layer defaults to :exclude) and `:worktree-id`, the
   remote-sync worktree to scope to (nil is the main app)."
   [{:keys [include-archived-items worktree-id]}]
-  (cond-> {:user-id          api/*current-user-id*
-           :is-superuser?    api/*is-superuser?*
-           :is-data-analyst? api/*is-data-analyst?*
-           :worktree-id      worktree-id}
+  (cond-> {:user-id               api/*current-user-id*
+           :is-superuser?         api/*is-superuser?*
+           :can-access-worktrees? (perms/current-user-can-access-worktrees?)
+           :is-data-analyst?      api/*is-data-analyst?*
+           :worktree-id           worktree-id}
     include-archived-items (assoc :include-archived-items include-archived-items)))
 
 (defn- entity-worktree-id
   "The remote-sync worktree the request's starting entity lives in; nil for the main app. A dependency graph never
   spans two scopes, so the whole request follows the entity the caller named. `api/read-check` on that entity is
-  what keeps a worktree's graph admin-only."
+  what keeps a worktree's graph to admins and holders of the remote-sync application permission."
   [entity-type id]
   (when id
     ;; a model whose table carries no `worktree_id` -- a table, a sandbox -- simply has no such key
@@ -544,7 +546,7 @@
          sort-column :name
          sort-direction :asc}} :- dependency-items-args]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         selected-types (cond->> (if (sequential? types) types [types])
@@ -597,7 +599,7 @@
          sort-column :name
          sort-direction :asc}} :- dependency-items-args]
   (when worktree-id
-    (api/check-superuser))
+    (perms/check-can-access-worktrees))
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         selected-types (cond->> (if (sequential? types) types [types])

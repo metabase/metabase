@@ -800,8 +800,9 @@
 
 (def ^:private UserScope
   [:map
-   [:current-user-id pos-int?]
-   [:is-superuser?   :boolean]])
+   [:current-user-id       pos-int?]
+   [:is-superuser?         :boolean]
+   [:can-access-worktrees? {:optional true} :boolean]])
 
 (def ^:private default-visibility-config
   {:cte-name nil
@@ -835,8 +836,9 @@
   "Should this user be shown the root collection, given the `visibility-config` passed?"
   ([visibility-config]
    (should-display-root-collection?
-    {:current-user-id api/*current-user-id*
-     :is-superuser?   api/*is-superuser?*}
+    {:current-user-id       api/*current-user-id*
+     :is-superuser?         api/*is-superuser?*
+     :can-access-worktrees? (perms/current-user-can-access-worktrees?)}
     visibility-config))
   ([user-scope visibility-config]
    (and
@@ -861,11 +863,12 @@
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
   ([visibility-config :- CollectionVisibilityConfig]
    (visible-collection-query visibility-config
-                             {:current-user-id api/*current-user-id*
-                              :is-superuser?   api/*is-superuser?*}))
+                             {:current-user-id       api/*current-user-id*
+                              :is-superuser?         api/*is-superuser?*
+                              :can-access-worktrees? (perms/current-user-can-access-worktrees?)}))
 
   ([visibility-config :- CollectionVisibilityConfig
-    {:keys [current-user-id is-superuser?]} :- UserScope]
+    {:keys [current-user-id is-superuser? can-access-worktrees?]} :- UserScope]
    ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
    ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
    ;; `collection-id-field` matches the criteria passed by the user. The criteria we use are:
@@ -879,11 +882,14 @@
    ;; - effective child (if you're only interested in things that are an effective child of another collection, we can do that)
    ^:allow-subquery {:select :id
                      ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
-                     ;; that's all of them. For regular users, it's:
+                     ;; that's all of them, and so it is inside a worktree for a holder of the remote-sync application
+                     ;; permission (worktree collections carry no permission rows; worktree access stands in, see
+                     ;; `metabase.permissions.user/user-permissions-set`). For regular users, it's:
                      ;; a) the collections they have permission in the DB for,
                      ;; b) the trash collection, and
                      ;; c) their personal collection and its descendants
-                     :from [(if is-superuser?
+                     :from [(if (or is-superuser?
+                                    (and (some? (:worktree-id visibility-config)) can-access-worktrees?))
                               [:collection :c]
                               [^:allow-subquery {:union-all (keep identity [^:allow-subquery {:select visible-union-columns
                                                                                               :from   [[:collection :c]]
@@ -956,8 +962,9 @@
     visibility-config :- CollectionVisibilityConfig]
    (visible-collection-filter-clause collection-id-field
                                      visibility-config
-                                     {:current-user-id api/*current-user-id*
-                                      :is-superuser?   api/*is-superuser?*}))
+                                     {:current-user-id       api/*current-user-id*
+                                      :is-superuser?         api/*is-superuser?*
+                                      :can-access-worktrees? (perms/current-user-can-access-worktrees?)}))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig
     user-scope :- UserScope]
@@ -975,16 +982,17 @@
 (mu/defn visible-collection-content-select
   "Ids of `table-name`'s rows the current user can see, for a model whose read permission is its collection's:
   the collection is visible, the archived state matches `:include-archived-items`, and the row is in
-  `:worktree-id`'s scope. Worktree content is admin-only, so anyone but a superuser only ever sees the main app.
+  `:worktree-id`'s scope. Worktree content needs the `:remote-sync` application permission (or superuser), so
+  anyone without it only ever sees the main app.
 
   Assumes `table-name` has `collection_id`, `archived` and `worktree_id` columns, which every collection-based
   content model does. Backs those models' [[metabase.models.interface/visible-filter-clause]]."
   [table-name :- :keyword
-   {:keys [user-id is-superuser?]} :- perms/UserInfo
+   {:keys [user-id is-superuser? can-access-worktrees?]} :- perms/UserInfo
    {:keys [include-archived-items worktree-id] :or {include-archived-items :exclude}}]
   ;; the row's collection has to be in the same scope as the row itself, or nothing matches: a worktree's content
   ;; sits in the worktree's collections, and the main app's in the main app's
-  (let [worktree-id (when is-superuser? worktree-id)]
+  (let [worktree-id (when (or is-superuser? can-access-worktrees?) worktree-id)]
     ^:allow-subquery
     {:select [:id]
      :from   [table-name]
@@ -992,8 +1000,9 @@
               (visible-collection-filter-clause (u/qualified-key table-name :collection_id)
                                                 {:include-archived-items include-archived-items
                                                  :worktree-id            worktree-id}
-                                                {:current-user-id user-id
-                                                 :is-superuser?   is-superuser?})
+                                                {:current-user-id       user-id
+                                                 :is-superuser?         is-superuser?
+                                                 :can-access-worktrees? (boolean can-access-worktrees?)})
               (case include-archived-items
                 :exclude [:= (u/qualified-key table-name :archived) false]
                 :only    [:= (u/qualified-key table-name :archived) true]
