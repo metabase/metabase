@@ -141,8 +141,7 @@ function expectNoConsecutiveOrTrailingDividers() {
 }
 
 describe("MetricToolbar", () => {
-  // In OSS, canManageSubscriptions is always true (the PLUGIN_APPLICATION_PERMISSIONS_SELECTORS default),
-  // so the alert item is always visible.
+  // In OSS, canManageSubscriptions always returns true, so the alert item is always visible.
 
   beforeAll(() => {
     mockSettings({
