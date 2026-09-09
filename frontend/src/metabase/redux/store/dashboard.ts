@@ -75,6 +75,7 @@ export type TimelineEventsSelection = {
 export interface DashboardTimelineEventsState {
   overrides: Record<DashCardId, TimelineEventsVisibility>;
   selection: TimelineEventsSelection | null;
+  hasTrackedEventsShown: boolean;
 }
 
 export type StoreDashboardTab = DashboardTab & {

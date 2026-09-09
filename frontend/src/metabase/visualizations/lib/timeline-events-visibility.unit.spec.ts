@@ -87,11 +87,8 @@ const unfetchedEvent = createMockTimelineEvent({
 const timelines = [releases, marketing, incidents];
 const context = timelines;
 
-const visibleNames = (
-  visibility?: TimelineEventsVisibility,
-  enabled?: boolean,
-) =>
-  resolveVisibleTimelineEvents({ timelines, visibility, enabled }).map(
+const visibleNames = (visibility?: TimelineEventsVisibility) =>
+  resolveVisibleTimelineEvents({ timelines, visibility }).map(
     (event) => event.name,
   );
 
@@ -106,10 +103,6 @@ describe("resolveVisibleTimelineEvents", () => {
       "Launch",
       "RC2",
     ]);
-  });
-
-  it("shows nothing when events are turned off", () => {
-    expect(visibleNames({ [SELECTED]: [releases.id] }, false)).toEqual([]);
   });
 
   it("hides single events of shown timelines", () => {

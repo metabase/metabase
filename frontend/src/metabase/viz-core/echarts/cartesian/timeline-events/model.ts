@@ -2,6 +2,7 @@ import type { SupportedUnit } from "types/dayjs";
 import _ from "underscore";
 
 import { type OpUnitType, dayjs } from "metabase/dayjs";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type { TimelineEvent } from "metabase-types/api";
 
 import { CHART_STYLE } from "../constants/style";
@@ -99,7 +100,7 @@ export const isTimelineEventInRange = (
   interval: TimeSeriesInterval | null,
 ) => {
   const unit: SupportedUnit | undefined = interval?.unit;
-  return dayjs(event.timestamp).isBetween(min, max, unit, "[]");
+  return parseTimestamp(event.timestamp).isBetween(min, max, unit, "[]");
 };
 
 const getTimelineEventsInsideRange = (

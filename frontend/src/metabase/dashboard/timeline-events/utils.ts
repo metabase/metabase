@@ -1,4 +1,5 @@
 import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { isTimelineEventsEnabled } from "metabase/visualizations/lib/timeline-events-visibility";
 import {
   type TimeseriesXAxis,
   canDisplayTimelineEvents,
@@ -14,25 +15,14 @@ import type {
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
-const hasTimelineEventsEnabled = (dashcard: QuestionDashboardCard) => {
-  const isEnabled =
-    dashcard.visualization_settings?.["timeline_events.enabled"] ??
-    dashcard.card.visualization_settings?.["timeline_events.enabled"];
-  return isEnabled !== false;
-};
-
+// "timeline_events.enabled" is a question-only setting, so dashcard settings can't override it
 export const shouldDashCardDisplayTimelineEvents = (
   dashcard: DashboardCard,
 ): dashcard is QuestionDashboardCard =>
   isQuestionDashCard(dashcard) &&
   !isVisualizerDashboardCard(dashcard) &&
   canDisplayTimelineEvents(dashcard.card.display) &&
-  hasTimelineEventsEnabled(dashcard);
-
-export const isDashCardDataLoaded = (
-  dashcard: QuestionDashboardCard,
-  dashcardData: DashCardDataMap[number] | undefined,
-) => dashcardData?.[dashcard.card.id] != null;
+  isTimelineEventsEnabled(dashcard.card.visualization_settings);
 
 export const computeDashCardTimeseriesXAxis = (
   dashcard: DashboardCard,
