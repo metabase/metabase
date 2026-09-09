@@ -1,4 +1,8 @@
+import { createSelector } from "@reduxjs/toolkit";
+
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { selectMetadataProviderFactory } from "metabase/metadata-store";
+import type { State } from "metabase/redux/store";
 import { formatValue } from "metabase/value-formatting";
 import {
   getComputedSettings,
@@ -193,21 +197,25 @@ export const getEntityIcon = (entityType?: Table["entity_type"]) => {
   }
 };
 
-export function getTableQuery(
-  metadataProvider: Lib.MetadataProvider,
-  table: Table | undefined,
-): Lib.Query | undefined {
-  if (!table) {
-    return undefined;
-  }
+export const getTableQuery = createSelector(
+  [
+    selectMetadataProviderFactory,
+    (_state: State, table: Table | undefined) => table,
+  ],
+  (getMetadataProvider, table): Lib.Query | undefined => {
+    if (!table) {
+      return undefined;
+    }
 
-  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
-  if (tableMetadata == null) {
-    return undefined;
-  }
+    const metadataProvider = getMetadataProvider(table.db_id);
+    const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+    if (tableMetadata == null) {
+      return undefined;
+    }
 
-  return Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
-}
+    return Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
+  },
+);
 
 export function filterByPk(
   query: Lib.Query,

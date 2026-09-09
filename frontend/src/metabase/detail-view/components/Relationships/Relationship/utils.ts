@@ -1,3 +1,7 @@
+import { createSelector } from "@reduxjs/toolkit";
+
+import { selectMetadataProviderFactory } from "metabase/metadata-store";
+import type { State } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
@@ -44,32 +48,36 @@ function getForeignKeyFilterClause(field: Lib.ColumnMetadata, rowId: RowValue) {
   }
 }
 
-export function getForeignKeyQuery(
-  fk: ForeignKey,
-  rowId: RowValue,
-  metadataProvider: Lib.MetadataProvider,
-) {
-  if (fk.origin == null || fk.origin.table == null) {
-    return;
-  }
+export const getForeignKeyQuery = createSelector(
+  [
+    selectMetadataProviderFactory,
+    (_state: State, fk: ForeignKey) => fk,
+    (_state: State, _fk: ForeignKey, rowId: RowValue) => rowId,
+  ],
+  (getMetadataProvider, fk, rowId) => {
+    if (fk.origin == null || fk.origin.table == null) {
+      return;
+    }
 
-  const table = Lib.tableOrCardMetadata(metadataProvider, fk.origin.table_id);
-  const field = Lib.fieldMetadata(metadataProvider, fk.origin_id);
-  if (table == null || field == null) {
-    return;
-  }
+    const metadataProvider = getMetadataProvider(fk.origin.table.db_id);
+    const table = Lib.tableOrCardMetadata(metadataProvider, fk.origin.table_id);
+    const field = Lib.fieldMetadata(metadataProvider, fk.origin_id);
+    if (table == null || field == null) {
+      return;
+    }
 
-  const filter = getForeignKeyFilterClause(field, rowId);
-  if (filter == null) {
-    return;
-  }
+    const filter = getForeignKeyFilterClause(field, rowId);
+    if (filter == null) {
+      return;
+    }
 
-  return Lib.filter(
-    Lib.queryFromTableOrCardMetadata(metadataProvider, table),
-    STAGE_INDEX,
-    filter,
-  );
-}
+    return Lib.filter(
+      Lib.queryFromTableOrCardMetadata(metadataProvider, table),
+      STAGE_INDEX,
+      filter,
+    );
+  },
+);
 
 export function getForeignKeyCountQuery(fkQuery: Lib.Query) {
   return Lib.aggregateByCount(fkQuery, STAGE_INDEX);

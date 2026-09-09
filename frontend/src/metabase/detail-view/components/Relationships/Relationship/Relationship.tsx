@@ -1,12 +1,11 @@
 import cx from "classnames";
 import { inflect } from "inflection";
 import { useMemo } from "react";
-import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
-import { useMetadataProvider } from "metabase/metadata-store";
+import { useStore } from "metabase/redux";
 import { Loader, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { ForeignKey } from "metabase-types/api";
@@ -25,12 +24,12 @@ interface Props {
 }
 
 export const Relationship = ({ fk, rowId, onClick }: Props) => {
-  const metadataProvider = useMetadataProvider(fk.origin?.table?.db_id ?? null);
-  // held in a ref on purpose: the query is not rebuilt when metadata changes
-  const metadataProviderRef = useLatest(metadataProvider);
+  // Read at build time rather than subscribed: the query feeds an ad-hoc
+  // request, and rebuilding it on every metadata change would refetch.
+  const store = useStore();
   const fkQuery = useMemo(
-    () => getForeignKeyQuery(fk, rowId, metadataProviderRef.current),
-    [fk, rowId, metadataProviderRef],
+    () => getForeignKeyQuery(store.getState(), fk, rowId),
+    [store, fk, rowId],
   );
   const fkCountQuery = useMemo(
     () => (fkQuery != null ? getForeignKeyCountQuery(fkQuery) : undefined),

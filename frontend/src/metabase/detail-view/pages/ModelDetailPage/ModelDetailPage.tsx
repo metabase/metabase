@@ -12,7 +12,6 @@ import {
   getRowName,
   getTableQuery,
 } from "metabase/detail-view/utils";
-import { useMetadataProvider } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { useParams } from "metabase/router";
@@ -49,11 +48,7 @@ export function ModelDetailPage() {
     virtualTableId != null
       ? queryMetadata?.tables?.find((table) => table.id === virtualTableId)
       : undefined;
-  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
-  const tableQuery = useMemo(
-    () => getTableQuery(metadataProvider, table),
-    [metadataProvider, table],
-  );
+  const tableQuery = useSelector((state) => getTableQuery(state, table));
   const objectQuery = useMemo(() => {
     return tableQuery && table
       ? filterByPk(tableQuery, table.fields ?? [], rowId)
