@@ -1,14 +1,9 @@
 (ns metabase.metabot.self.ollama
-  "Ollama adapter for self-hosted, OpenAI-compatible inference servers.
+  "Ollama adapter, serving both deployments: Cloud and self-hosted.
 
-  Ollama serves the Chat Completions API under `/v1`, so the transport is the same one
-  [[metabase.metabot.self.vllm]] uses. It is a sibling of that adapter rather than a layer over it:
-  the code is near-identical but every diagnosis differs, because Ollama has no server flags to point
-  an admin at. Where vLLM says \"restart with --tool-call-parser\", Ollama's answer is \"pull a model
-  whose capabilities include tools\", and the difference is the whole reason this provider type
-  exists — an Ollama operator sent to vLLM's messages is sent somewhere they cannot act.
+  A sibling of [[metabase.metabot.self.vllm]] rather than a layer over it — same Chat Completions
+  transport, but Ollama has no server flags to point an admin at, so every diagnosis differs.
 
-  It serves both Ollama deployments: cloud and self-hosted.
   https://docs.ollama.com/api/openai-compatibility"
   (:require
    [clojure.string :as str]
@@ -35,9 +30,8 @@
             :error-code :proxy-unsupported}))
 
 (defn- missing-base-url-ex []
-  ;; `:status-code` matters: `provider-client-error?` needs a numeric status to render this under the
-  ;; base URL field, and without one the admin gets a 500. vLLM never reaches here because its base
-  ;; URL is `:required?`; Ollama's is conditional, so the adapter owns the error.
+  ;; `provider-client-error?` needs a numeric status to render this under the field; without one the
+  ;; admin gets a 500. The base URL is only conditionally required, so the adapter owns this error.
   (ex-info (tru "No Ollama base URL is set. Give the address of your server, or switch this connection to Ollama Cloud.")
            {:api-error   true
             :status-code 400
@@ -61,21 +55,19 @@
       (tru "Ollama API error (HTTP {0})" status))))
 
 (def reasoning-config-key
-  "The connection `:config` key [[preflight!]]'s reasoning observation is recorded under. It is not an
-  admin-entered field: whether a pulled model reasons depends on the model's own template, so only
-  the probe can answer it."
+  "The `:config` key [[preflight!]] records its reasoning observation under. Not admin-entered: only
+  the probe can tell whether a model reasons."
   :model-reasoning)
 
 (defn reasoning-connection?
-  "Whether the connection carrying `credentials` was observed streaming its reasoning. A hand-written
-  `llm-providers` can hold a JSON boolean where the API stores the string it round-trips."
+  "Whether the probe found this connection's model streaming reasoning. Accepts both spellings: the
+  API stores the string it round-trips, a hand-written `llm-providers` can hold a JSON boolean."
   [credentials]
   (let [recorded (get credentials reasoning-config-key)]
     (or (true? recorded) (= "true" recorded))))
 
 (def cloud-base-url
-  "Ollama Cloud's OpenAI-compatible API. The one Ollama address we can know: a self-hosted server is
-  wherever the operator put it, but the hosted service is always here."
+  "Ollama Cloud's OpenAI-compatible API — the one Ollama address that is not configurable."
   "https://ollama.com/v1")
 
 (defn- cloud?
@@ -84,21 +76,16 @@
   (= llm.provider/ollama-cloud (:hosting credentials)))
 
 (defn- resolve-base-url
-  "The address to call, from a connection's `:hosting` mode and `:base-url`.
-
-  Cloud has one address, so it is not configurable and any stored `:base-url` is ignored. A
-  self-hosted connection is wherever the operator put it, and one carrying no address throws rather
-  than quietly falling through to Cloud, which would send their data somewhere they did not choose."
-
+  "The address to call. A self-hosted connection with no address throws rather than falling through
+  to Cloud, which would send the operator's data somewhere they did not choose."
   [credentials]
   (if (cloud? credentials)
     cloud-base-url
     (or (not-empty (:base-url credentials)) (throw (missing-base-url-ex)))))
 
 (defn- ollama-auth
-  "Auth map for an Ollama request. The map is never nil, so `core/resolve-auth` cannot reach its
-  `missing-api-key-ex` branch — a keyless self-hosted server is a complete configuration, and is in
-  fact the normal one."
+  "Auth map for an Ollama request. Never nil, so `core/resolve-auth`'s missing-key branch is
+  unreachable: a keyless self-hosted server is the normal configuration, not a broken one."
   [credentials ai-proxy?]
   (when ai-proxy? (throw (ai-proxy-unsupported-ex)))
   (let [token (not-empty (:api-key credentials))
@@ -123,8 +110,7 @@
   120000)
 
 (defn- probe-timeouts
-  "Timeouts for a preflight probe. An operator who lowers `llm-ollama-request-timeout-ms` below the
-  ceiling gets their own value."
+  "Timeouts for a preflight probe, capped at [[probe-timeout-ceiling-ms]]."
   []
   {:socket-timeout     (min (llm/llm-ollama-request-timeout-ms) probe-timeout-ceiling-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
@@ -140,9 +126,8 @@
            e))
 
 (defn- list-models-io-ex
-  "The Ollama error for a transport failure while fetching the model catalog — the request behind the
-  admin Connect button. Tagged `:status-code 400` so a mistyped base URL surfaces the message rather
-  than the 500 `core/rethrow-api-error!`'s untagged no-response branch would produce."
+  "Transport failure while fetching the catalog — the request behind the Connect button. Tagged 400
+  so a mistyped base URL surfaces this message rather than a 500."
   [^IOException e {:keys [url] :as auth}]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The Ollama server at {0} did not respond within {1}ms. Check that it is running and not loading a model."
@@ -156,12 +141,8 @@
 ;;; ------------------------------------------------ Model listing -----------------------------------------------
 
 (defn- list-all-models
-  "Fetch the pulled model catalog, which doubles as the credential round-trip behind the admin
-  Connect button.
-
-  A 2xx whose body is not a recognizable catalog fails closed via
-  [[chat-completions/models-catalog]], naming the base URL — the likeliest cause for a provider whose
-  base URL the admin types."
+  "Fetch the pulled model catalog. Doubles as the credential round-trip behind the Connect button,
+  and fails closed on a 2xx whose body is not a catalog — a mistyped base URL is the likeliest cause."
   [auth]
   (try
     (let [res (core/request auth (merge {:method  :get
@@ -198,14 +179,13 @@
 
 (def ^:private probe-max-tokens
   "Generation ceiling for a preflight probe. High enough to clear a reasoning model's thinking, which
-  is billed against it: a probe that stops at `length` before the tool call looks identical to a
-  model that will not call tools at all."
+  is billed against it — a probe truncated before the tool call looks like a model that cannot call
+  tools at all."
   2048)
 
 (def ^:private forced-tool-call-token-floor
-  "Smallest `max_tokens` a forced tool call is given, regardless of what the caller asked for — below
-  it a reasoning model spends the budget thinking and emits no tool call. Equal to
-  [[probe-max-tokens]], which [[preflight!]] already proves the pulled model can clear."
+  "Floor for a forced tool call: below it a reasoning model spends the budget thinking and emits no
+  call. Equal to [[probe-max-tokens]], which [[preflight!]] proves the model can clear."
   probe-max-tokens)
 
 (def ^:private reasoning-model-token-floor
@@ -214,10 +194,8 @@
   16384)
 
 (def ^:private default-temperature
-  "Sampling temperature for a caller that supplies none. Ollama defaults per-model via the Modelfile,
-  commonly to values far too high for the tool-calling and SQL-generation work the agent loop does.
-  The hosted providers pick a sane default server-side; a self-hosted server does not, so the adapter
-  supplies one."
+  "Sampling temperature when the caller supplies none. Ollama's per-model Modelfile default is
+  commonly far too high for tool calling and SQL generation, and no server-side default corrects it."
   0.3)
 
 (defn- preflight-ex
@@ -228,9 +206,8 @@
                 :error-code  :ollama-preflight-failed}))
 
 (defn- probe-chat!
-  "Run one non-streaming Chat Completions turn against `model` and return the first choice. The
-  `finish_reason` is part of the return value because a generation truncated at
-  [[probe-max-tokens]] and a model that will not call tools both produce empty `tool_calls`."
+  "One non-streaming Chat Completions turn, returning the first choice. `finish_reason` comes with it
+  because truncation and a model that cannot call tools both produce empty `tool_calls`."
   [auth model tool-choice]
   (let [res (core/request auth (merge {:method  :post
                                        :url     "/chat/completions"
@@ -246,11 +223,8 @@
     (get-in res [:body :choices 0])))
 
 (defn- check-tool-calling!
-  "Check that the model can call tools. Ollama drives tool calling from the model's own template
-  rather than from server flags, so the fix is always a different model — there is nothing to
-  reconfigure.
-
-  Returns whether the model emitted reasoning, the only signal anywhere that it is a reasoning model."
+  "Check that the model can call tools; Ollama drives this from the model's own template, so the fix
+  is always a different model. Returns whether it emitted reasoning — the only signal we get."
   [auth model]
   (let [{:keys [message finish_reason]} (probe-chat! auth model "auto")
         content    (str (:content message))
@@ -328,14 +302,12 @@
         (throw (no-models-ex)))))
 
 (defn- run-probes!
-  "Run both contract probes against `model` and return whether it streamed reasoning.
+  "Run both contract probes and return whether the model streamed reasoning.
 
-  Sequential, tool calling first: it is the more actionable diagnosis when a model fails both, and
-  structured output is only meaningful once tool calling works, so stopping at the first failure is
-  strictly less work than running them together. Running them concurrently would also not buy the
-  wall-clock it looks like — Ollama serializes generation per model unless the operator raised
-  `OLLAMA_NUM_PARALLEL`, and a losing probe could not be called off anyway: `future-cancel`
-  interrupts, and the blocking socket read these park in ignores interrupts."
+  Sequential, tool calling first: structured output only means anything once tool calling works, so
+  stopping at the first failure is strictly less work. Concurrency would not help — Ollama serializes
+  generation per model unless `OLLAMA_NUM_PARALLEL` is raised, and a losing probe cannot be called
+  off: `future-cancel` interrupts, and a blocking socket read ignores interrupts."
   [auth model]
   (try
     (let [reasoning? (check-tool-calling! auth model)]
@@ -349,18 +321,12 @@
       (core/rethrow-api-error! "ollama" ollama-error-msg e))))
 
 (defn- preflight!
-  "Exercise the contract the agent loop depends on, against the model that will actually be used, and
-  return `{:model id :reasoning? bool}`. The connect path must adopt exactly this model rather than
+  "Exercise the agent loop's contract against the model that will actually serve it, returning
+  `{:model id :reasoning? bool}`. The connect path must adopt exactly this model rather than
   re-deriving it from the listing, which agrees only while nothing reorders the catalog.
 
-  There is no context-window check here, unlike vLLM's: Ollama's catalog carries no equivalent of
-  `max_model_len`, so nothing at connect time can see the window. A model whose window is too small
-  fails the probes above by truncating, and the ceiling messages say so. Operators raise it with
-  `OLLAMA_CONTEXT_LENGTH`.
-
-  `:reasoning?` reports whether the probed model streamed reasoning. Only the probe can answer that,
-  and the answer drives which renderer the frontend picks, so the connection records it (see
-  [[reasoning-config-key]])."
+  No context-window check, unlike vLLM's: Ollama's catalog carries no `max_model_len`, so nothing at
+  connect time can see the window. Too small a window shows up as truncation in the probes above."
   [auth entries requested-model]
   (let [entry (probe-target entries requested-model)
         model (:id entry)]
@@ -368,15 +334,11 @@
      :reasoning? (run-probes! auth model)}))
 
 (defn list-models
-  "List the models the connection's Ollama server has pulled. Pass-through: there is nothing to
-  whitelist, and `display_name` falls back to the pulled id.
+  "The models the server has pulled. Pass-through — there is nothing to whitelist.
 
-  `:probe?` additionally runs [[preflight!]], and reports what it determined as `:learned-config`,
-  for the connect path to store on the connection: whether the model reasons, and the model it
-  exercised, which the connect path adopts as the one to run on. Reserved for the connect and edit
-  paths — a tool-call probe on every model listing would stall the admin picker behind a full model
-  load. On edit, a `:proposed-model` is re-probed only while the server still has it; otherwise the
-  normal candidate selection chooses a replacement."
+  `:probe?` also runs [[preflight!]] and returns what it learned as `:learned-config` for the connect
+  path to store. Reserved for connect and edit: probing on every listing would stall the model picker
+  behind a full model load. A `:proposed-model` is re-probed only while the server still has it."
   ([] (list-models {}))
   ([{:keys [credentials ai-proxy? model proposed-model probe?]}]
    (let [auth     (ollama-auth credentials ai-proxy?)
@@ -396,13 +358,11 @@
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 
 (mu/defn ollama-request-body
-  "Build the Chat Completions request body for an LLM request.
-
-  Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is always sent —
-  without a ceiling a looping small model consumes the whole context window in a single call — and is
-  raised to [[forced-tool-call-token-floor]] or [[reasoning-model-token-floor]] where either applies,
-  and `temperature` falls back to [[default-temperature]]. All three stay adapter-local rather than
-  moving into the shared builder, which would also change Z.AI, Mistral, and OpenRouter."
+  "The Chat Completions body, as [[chat-completions/request-body]] builds it plus three adapter-local
+  adjustments: `max_tokens` is always sent (uncapped, a looping small model burns the whole context
+  window in one call), raised to the floors above where they apply, and `temperature` falls back to
+  [[default-temperature]]. They stay here rather than in the shared builder, which also serves Z.AI,
+  Mistral and OpenRouter."
   [{:keys [max-tokens temperature schema tool_choice credentials] :as opts} :- core/LLMRequestOpts]
   (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
     (assoc (chat-completions/request-body (cond-> opts
@@ -412,11 +372,9 @@
                          (reasoning-connection? credentials) (max reasoning-model-token-floor)))))
 
 (defn- stream-io-ex
-  "The Ollama error for a transport failure while *consuming* a response stream. Tagged
-  `:retryable? false`: on a self-hosted server a stalled or severed response means \"too slow\" or
-  \"it died\", not \"transient\", and a retry replays a full cold prefill at up to
-  `llm-ollama-request-timeout-ms` (300s) apiece. The tag is required — `retryable-error?` walks the
-  cause chain and would otherwise match the `IOException` below."
+  "Transport failure while *consuming* a stream. `:retryable? false` is required, not decorative:
+  `retryable-error?` walks the cause chain and would otherwise match the `IOException`, replaying a
+  full cold prefill for what is really \"too slow\" or \"it died\"."
   [^IOException e timeout-ms]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The Ollama server stopped responding after {0}ms. Raise the Ollama request timeout, or pull a smaller model."
@@ -432,12 +390,10 @@
              e)))
 
 (defn- request-io-ex
-  "The Ollama error for a transport failure while *establishing* a request. `core/rethrow-api-error!`
-  would render these as \"ollama API request failed: Read timed out\", naming neither the server's
-  slowness nor the setting that governs it.
-
-  Tagged `:retryable? false` for the same reason as [[stream-io-ex]], and more importantly: nothing
-  has been emitted yet, so `call-llm`'s own \"nothing emitted\" predicate would not stop a replay."
+  "Transport failure while *establishing* a request. `core/rethrow-api-error!` would render these as
+  \"ollama API request failed: Read timed out\", naming neither the slowness nor the setting for it.
+  `:retryable? false` matters more here than in [[stream-io-ex]]: nothing has been emitted yet, so
+  `call-llm`'s own \"nothing emitted\" guard would not stop a replay."
   [^IOException e auth timeout-ms]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The Ollama server did not respond within {0}ms. A cold model load happens on the first request — retry once it is warm, or raise the Ollama request timeout."
@@ -449,11 +405,11 @@
     (unreachable-ex e auth {:retryable? false})))
 
 (defn- io-guarded
-  "Wrap a stream reducible so a transport failure while consuming it surfaces as [[stream-io-ex]]
-  rather than a raw `IOException`. The adapter's own `try` covers only establishing the request.
+  "Surface an `IOException` raised while *consuming* the stream as [[stream-io-ex]]; the adapter's
+  own `try` covers only establishing the request.
 
-  Goes inside `core/reducible-with-api-errors`, never outside: [[stream-io-ex]] tags `:api-error
-  true`, which `core/rethrow-api-error!` rethrows unchanged, so this translation wins for IO."
+  Goes inside `core/reducible-with-api-errors`, never outside — [[stream-io-ex]] tags `:api-error`,
+  which `rethrow-api-error!` passes through, so this translation wins for IO."
   [reducible timeout-ms]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
@@ -463,18 +419,15 @@
           (throw (stream-io-ex e timeout-ms)))))))
 
 (mu/defn ollama-raw
-  "Perform a streaming request to an Ollama Chat Completions API.
-
-  Opts map takes `:credentials` from the connection serving this request; [[resolve-base-url]] turns
-  those into the address to call, and throws when a self-hosted connection names none.
-  `:ai-proxy?` is not supported for Ollama and throws when true."
+  "Stream a Chat Completions request. `:credentials` come from the connection serving it;
+  `:ai-proxy?` is unsupported and throws."
   [{:keys [model tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (when ai-proxy? (throw (ai-proxy-unsupported-ex)))
   (when (str/blank? model) (throw (missing-model-ex)))
   (let [req        (ollama-request-body opts)
         timeout-ms (llm/llm-ollama-request-timeout-ms)
-        ;; resolved before the `try` so the IO handler has the address actually called and the
-        ;; deployment it belongs to; a Cloud connection carries no `:base-url` of its own.
+        ;; before the `try`, so the IO handler can name the address actually called — a Cloud
+        ;; connection carries no `:base-url` of its own
         auth       (ollama-auth credentials ai-proxy?)]
     (log/debug "Ollama request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
     (with-span :info {:name       :metabot.ollama/request
@@ -504,13 +457,8 @@
           (core/rethrow-api-error! "ollama" ollama-error-msg e))))))
 
 (defn ollama->aisdk-chunks-xf
-  "Translates Ollama Chat Completions streaming chunks into AI SDK v5 protocol chunks.
-
-  A reasoning model routes thinking to `delta.reasoning` and its answer back to `delta.content`; both
-  are forwarded. The branch is self-gating — the field is present only when the pulled model reasons
-  — so nothing here needs to know which model is loaded.
-
-  Ollama adds no `finish_reason` beyond OpenAI's, so it takes the base stop-reason table."
+  "Chat Completions chunks to AI SDK v5. Reasoning is forwarded when present, which is self-gating —
+  the field only appears for a reasoning model. Ollama adds no `finish_reason` beyond OpenAI's."
   []
   (chat-completions/chat-completions->aisdk-chunks-xf chat-completions/stop-reasons
                                                       {:forward-reasoning? true}))

@@ -113,8 +113,8 @@
   "The value a field starts at, or nil when it has no `:default`."
   [{:keys [default]}]
   (when default
-    ;; the stored value, not the form's label: this sentence usually sits next to the environment
-    ;; variable that can supply it, and that variable has to carry the value
+    ;; the stored value, not the form's label — an environment variable or an `MB_LLM_PROVIDERS`
+    ;; config map has to carry the value, and the form's own dropdown is where labels are read
     (str "Defaults to " (md/code default) ".")))
 
 (defn- field-env-var-sentence

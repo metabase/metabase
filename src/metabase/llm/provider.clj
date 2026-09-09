@@ -41,9 +41,8 @@
         (sort llm.settings/known-aws-regions)))
 
 (def ollama-self-hosted
-  "The `:hosting` value for an Ollama server the operator runs. Named because the adapter has to
-  recognize it too, and a literal on each side could drift apart silently: a renamed value would stop
-  matching and a Cloud connection would quietly start demanding a base URL."
+  "The `:hosting` value for a self-hosted Ollama. Named rather than inlined because the adapter
+  matches on it too, and a literal on each side could drift apart silently."
   "self-hosted")
 
 (def ollama-cloud
@@ -348,14 +347,12 @@
                      :help     (deferred-tru "Only needed if you started your server with --api-key.")}]}
    {:type          "ollama"
     :label         (deferred-tru "Ollama")
-    ;; Like vLLM, an Ollama server serves whatever the operator pulled, so the model a new connection
-    ;; starts on comes from the catalog that connecting fetches (see
-    ;; [[metabase.metabot.self.ollama/list-models]]).
+    ;; serves whatever the operator pulled, so a new connection takes its model from the catalog
+    ;; that connecting fetches (see [[metabase.metabot.self.ollama/list-models]])
     :default-model nil
     :stored-config-fields [:model-reasoning]
-    ;; Ollama comes in two deployments that need opposite things. Cloud is the one Ollama endpoint whose address we know, and it
-    ;; needs a key; a self-hosted server is at an address only the admin knows, and might need no
-    ;; key at all.
+    ;; the two deployments need opposite things: Cloud has a known address and needs a key,
+    ;; self-hosted has an address only the admin knows and often needs no key
     :required-any  [[:base-url] [:api-key]]
     :fields        [{:key       :hosting
                      :label     (deferred-tru "Where Ollama runs")

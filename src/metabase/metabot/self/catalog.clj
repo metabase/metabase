@@ -15,9 +15,9 @@
 (defn streams-reasoning?
   "Whether a model reference names a model that streams its reasoning back to us.
 
-  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body. vLLM and
-  Ollama answer from what their connect-time probe observed and recorded on the connection — the flag depends on how
-  the operator started the server or built the model as well as on the model itself, so the name cannot settle it."
+  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body.
+  The self-hosted types answer from what their connect-time probe recorded on the connection — how
+  the server was started or the model built matters too, so the name alone cannot settle it."
   [model-ref]
   (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
     (case type
