@@ -775,7 +775,8 @@
   ;; Compare calendar dates (in the report timezone) rather than truncated timestamps: `timestamp_diff` counts whole
   ;; 24-hour periods, so an interval spanning a spring-forward DST transition would come up one day short (#82193).
   (let [->date (get-method ->temporal-type :default)]
-    [:date_diff (->date :date y) (->date :date x) [:raw "day"]]))
+    ;; `:'day` emits the bare date part; a plain `:day` would be quoted as an identifier
+    [:date_diff (->date :date y) (->date :date x) :'day]))
 
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :hour] [_driver _unit x y] (timestamp-diff :hour x y))
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :minute] [_driver _unit x y] (timestamp-diff :minute x y))
