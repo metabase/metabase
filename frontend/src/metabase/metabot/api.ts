@@ -25,6 +25,10 @@ import type {
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 
+export type SavedEntity =
+  | { type: "card"; chart_id: string | null; card_id: number }
+  | { type: "dashboard"; generated_dashboard_id: string; dashboard_id: number };
+
 export type MetabotConversationDetail = {
   conversation_id: string;
   created_at: string;
@@ -32,6 +36,7 @@ export type MetabotConversationDetail = {
   user_id: number | null;
   forked_from_conversation_id: string | null;
   state?: MetabotStateContext;
+  saved_entities?: SavedEntity[];
   messages: MetabotMessage[];
   context_window_tokens?: number;
 };
