@@ -220,12 +220,12 @@
       (for [[value parser] (u/map-all vector row parsers)]
         (do
           (when-not parser
-            (throw (ex-info (format "Column count in data (%s) exceeds the number of in the header (%s)"
-                                    (count rows)
+            (throw (ex-info (format "Column count in data (%s) exceeds the number of columns in the header (%s)"
+                                    (count row)
                                     (count parsers))
                             {:status-code      422
                              :settings         settings
-                             :col-upload-types rows
+                             :col-upload-types col-upload-types
                              :row              row})))
           (when-not (str/blank? value)
             (parser value)))))))
@@ -341,6 +341,18 @@
          ffirst
          assert-separator-chosen)))
 
+(defn- tag-csv-errors
+  "Rethrows the plain exceptions data.csv uses for malformed input as upload errors, so their message reaches the user."
+  [rows]
+  (lazy-seq
+   (try
+     (when-let [s (seq rows)]
+       (cons (first s) (tag-csv-errors (rest s))))
+     (catch Exception e
+       (if (str/starts-with? (str (ex-message e)) "CSV error")
+         (throw (ex-info (ex-message e) {:status-code 422}))
+         (throw e))))))
+
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
   [filename ^File file]
@@ -348,7 +360,7 @@
             \tab
             (infer-separator file))]
     (fn [stream]
-      (csv/read-csv stream :separator s))))
+      (tag-csv-errors (csv/read-csv stream :separator s)))))
 
 (defn- columns-with-auto-pk [columns]
   (merge (ordered-map/ordered-map auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk) columns))
