@@ -3315,8 +3315,8 @@
             "metabot_conversation.state is gone")))))
 
 (deftest timeline-event-entity-ids-test
-  (testing "v64.2026-09-09: existing timeline events receive distinct portable IDs without changing their data"
-    (impl/test-migrations ["v64.2026-09-09T00:00:00" "v64.2026-09-09T00:00:02"] [migrate!]
+  (testing "v64.h1c4r5 thru v64.0npr54: existing timeline events get distinct portable IDs, other data unchanged"
+    (impl/test-migrations ["v64.h1c4r5" "v64.0npr54"] [migrate!]
       (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-birds@example.com"
                                                              :password    "password"
                                                              :date_joined :%now

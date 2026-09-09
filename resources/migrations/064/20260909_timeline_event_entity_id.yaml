@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: v64.2026-09-09T00:00:00
+      id: v64.h1c4r5
       author: havenchyk
       comment: Add a portable entity ID to timeline events
       changes:
@@ -16,7 +16,7 @@ databaseChangeLog:
                     unique: true
 
   - changeSet:
-      id: v64.2026-09-09T00:00:01
+      id: v64.zvhbd7
       author: havenchyk
       comment: Backfill entity IDs for existing timeline events
       changes:
@@ -32,7 +32,7 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
-      id: v64.2026-09-09T00:00:02
+      id: v64.0npr54
       author: havenchyk
       comment: Require an entity ID on timeline events
       changes:
