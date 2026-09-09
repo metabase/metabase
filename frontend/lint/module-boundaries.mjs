@@ -345,6 +345,7 @@ const elements = [
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
+  createElement({ type: "feature", name: "viz-ab" }),
   createElement({
     type: "feature",
     name: "query_builder",

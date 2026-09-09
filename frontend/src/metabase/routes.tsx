@@ -124,6 +124,11 @@ const metricsViewerPage = () =>
     Component: MetricsViewerPage,
   }));
 
+const vizAbPage = () =>
+  import(/* webpackChunkName: "viz-ab" */ "metabase/viz-ab/VizAbPage").then(
+    ({ VizAbPage }) => ({ Component: VizAbPage }),
+  );
+
 const tableDetailPage = () =>
   import(
     /* webpackChunkName: "table-detail" */ "metabase/detail-view/pages/TableDetailPage"
@@ -317,6 +322,12 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                     },
                   ],
                 }),
+              },
+
+              {
+                path: "_internal/viz-ab",
+                element: <IsAdmin />,
+                children: [{ index: true, lazy: vizAbPage }],
               },
 
               {

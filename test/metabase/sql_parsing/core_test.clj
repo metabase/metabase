@@ -760,6 +760,50 @@
       (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
       (is (=? {:errors #{}} (sql-parsing/field-references "postgres" sql))))))
 
+(deftest ^:parallel select-structure-test
+  (testing "GROUP BY with a positional reference and an aliased aggregate"
+    (is (= {:aggregated true
+            :kind       "select"
+            :items      [{:name               "status"
+                          :kind               "column"
+                          :in_group_by        true
+                          :contains_aggregate false
+                          :source_column      {:table "tickets" :schema nil :column "status"}}
+                         {:name               "n"
+                          :kind               "aggregate"
+                          :fn                 "COUNT"
+                          :distinct           false
+                          :in_group_by        false
+                          :contains_aggregate true}]}
+           (sql-parsing/select-structure "postgres" "SELECT status, count(*) AS n FROM tickets GROUP BY 1"))))
+  (testing "Plain column projection is not aggregated and resolves source columns to the single root table"
+    (is (= {:aggregated false
+            :kind       "select"
+            :items      [{:name               "created_at"
+                          :kind               "column"
+                          :in_group_by        false
+                          :contains_aggregate false
+                          :source_column      {:table "payments" :schema nil :column "created_at"}}
+                         {:name               "amount"
+                          :kind               "column"
+                          :in_group_by        false
+                          :contains_aggregate false
+                          :source_column      {:table "payments" :schema nil :column "amount"}}]}
+           (sql-parsing/select-structure "postgres" "SELECT created_at, amount FROM payments LIMIT 500"))))
+  (testing "Window functions are not aggregation"
+    (is (= {:aggregated false
+            :kind       "select"
+            :items      [{:name               "id"
+                          :kind               "column"
+                          :in_group_by        false
+                          :contains_aggregate false
+                          :source_column      {:table "t" :schema nil :column "id"}}
+                         {:name               "running"
+                          :kind               "expression"
+                          :in_group_by        false
+                          :contains_aggregate false}]}
+           (sql-parsing/select-structure "postgres" "SELECT id, sum(x) OVER (ORDER BY id) AS running FROM t")))))
+
 (deftest ^:parallel large-values-referenced-tables-test
   (testing "referenced-tables works on queries with massive VALUES clauses"
     (let [tuples (str/join ", " (map #(format "(%d, %d)" % (mod % 100)) (range 20000)))

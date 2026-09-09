@@ -68,7 +68,7 @@
   [{:keys [type]} :- [:map
                       [:type ms/NonBlankString]]
    _query-params
-   body]
+   body :- [:map-of :keyword :any]]
   (let [id (t2/insert-returning-pk! (prototype-table)
                                     {:type    type
                                      :content (json/encode body)})]
@@ -80,7 +80,7 @@
                          [:type ms/NonBlankString]
                          [:id ms/PositiveInt]]
    _query-params
-   body]
+   body :- [:map-of :keyword :any]]
   (t2/update! (prototype-table) id
               {:type    type
                :content (json/encode body)})
@@ -94,7 +94,6 @@
    _query-params
    body]
   (api/check-404 (t2/delete! (prototype-table) id))
-
   {:id id})
 
 (api.macros/defendpoint :delete "/:type/all"
@@ -104,5 +103,4 @@
    _query-params
    body]
   (t2/delete! (prototype-table) :type type)
-
   {:message "All records deleted" :type type})

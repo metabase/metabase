@@ -403,6 +403,119 @@ def simple_query(sql: str, dialect: str = None) -> str:
     except Exception as e:
         return json.dumps({"is_simple": False, "reason": f"Unexpected error: {str(e)}"})
 
+def _contains_aggregate(expr):
+    """
+    Whether `expr` contains an aggregate function call, ignoring aggregates that are the function of
+    a window (``SUM(x) OVER (...)`` is not aggregation).
+    """
+    return any(
+        isinstance(n, exp.AggFunc) and n.find_ancestor(exp.Window) is None
+        for n in expr.walk()
+    )
+
+
+def _root_source_parts(ast):
+    """
+    Map source alias/name -> (catalog, schema, table) for the real tables of the root scope only.
+    CTEs, subqueries, and UDTFs are omitted.
+    """
+    alias_to_parts = {}
+    for alias, source in optimizer.build_scope(ast).sources.items():
+        if isinstance(source, exp.Table):
+            parts = table_parts(source)
+            if parts is not None:
+                alias_to_parts[alias] = parts
+    return alias_to_parts
+
+
+def _in_group_by(group, inner, alias, position):
+    """
+    Whether a SELECT item is grouped on: a GROUP BY expression is identical to `inner`, is the
+    integer literal `position` (1-based), or is a bare identifier equal to the item's alias.
+    """
+    if not group:
+        return False
+    inner_sql = inner.sql()
+    for g in group.expressions:
+        if g.sql() == inner_sql:
+            return True
+        if isinstance(g, exp.Literal) and not g.is_string and g.this == str(position):
+            return True
+        if isinstance(g, (exp.Column, exp.Identifier)) and g.name == alias:
+            return True
+    return False
+
+
+def select_structure(sql: str, dialect: str = None) -> str:
+    """
+    Describe the shape of a SELECT's projection: whether it aggregates, and per SELECT item
+    its kind (column / aggregate / expression), source column, and whether it is grouped on.
+
+    Returns a JSON object:
+    {"aggregated": bool, "kind": "select" | "union" | "other", "items": [...]}
+
+    Each item has "name", "kind", "in_group_by", "contains_aggregate", and either
+    "source_column" ({"table", "schema", "column"} or null) for columns or "fn"/"distinct" for
+    aggregates. Wildcards (`*`) are skipped. Source columns are resolved against real tables in
+    the root scope only (CTE/subquery sources resolve to null).
+
+    :param sql: SQL query string
+    :param dialect: SQL dialect (postgres, mysql, snowflake, bigquery, etc.)
+    """
+    try:
+        ast = sqlglot.parse_one(sql, read=dialect)
+    except ParseError as e:
+        return json.dumps({"aggregated": False, "kind": "other", "items": [], "error": str(e)})
+
+    if not isinstance(ast, exp.Select):
+        kind = "union" if isinstance(ast, exp.Union) else "other"
+        return json.dumps({"aggregated": False, "kind": kind, "items": []})
+
+    group = ast.args.get("group")
+    sources = _root_source_parts(ast)
+    items = []
+    aggregated = bool(group)
+
+    for position, item in enumerate(ast.expressions, start=1):
+        inner = item.unalias()
+        if isinstance(inner, exp.Star):
+            continue
+        # Unaliased aggregates report their argument as the name (COUNT(*) -> "*"); use the function
+        # name instead, which is what most databases name the column.
+        name = item.alias_or_name
+        if isinstance(inner, exp.AggFunc) and not item.alias:
+            name = inner.sql_name().lower()
+
+        contains_aggregate = _contains_aggregate(inner)
+        aggregated = aggregated or contains_aggregate
+        entry = {
+            "name": name,
+            "in_group_by": _in_group_by(group, inner, item.alias, position),
+            "contains_aggregate": contains_aggregate,
+        }
+
+        if isinstance(inner, exp.AggFunc):
+            entry["kind"] = "aggregate"
+            entry["fn"] = inner.sql_name().upper()
+            entry["distinct"] = bool(inner.find(exp.Distinct))
+        elif isinstance(inner, exp.Column) and inner.name != "*":
+            entry["kind"] = "column"
+            parts = None
+            if inner.table:
+                parts = sources.get(inner.table)
+            elif len(sources) == 1:
+                parts = next(iter(sources.values()))
+            entry["source_column"] = (
+                {"table": parts[2], "schema": parts[1], "column": inner.name} if parts else None
+            )
+        else:
+            entry["kind"] = "expression"
+
+        items.append(entry)
+
+    return json.dumps({"aggregated": aggregated, "kind": "select", "items": items})
+
+
 def _wrap_base_table(table, alias):
     """Build a self-UNION subquery, aliased `alias`, that scans `table` once but strips any IDENTITY
     property inherited from it (see `add_into_clause`)."""

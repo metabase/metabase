@@ -23,6 +23,9 @@
   (simple-query [parser dialect sql]
     "Whether the SQL is a simple SELECT without LIMIT, OFFSET, or CTEs. Returns a keywordized
     `{:is_simple ...}` map with a `:reason` when false.")
+  (select-structure [parser dialect sql]
+    "The shape of a SELECT's projection — whether it aggregates and, per SELECT item, its kind, source column,
+    and whether it is grouped on. Returns a keywordized `{:aggregated ... :kind ... :items [...]}` map.")
   (add-into-clause [parser dialect sql table-name]
     "Add an `INTO table-name` clause to a SELECT statement (SQL Server SELECT INTO syntax). Returns the
     rewritten SQL string.")
