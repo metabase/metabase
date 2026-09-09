@@ -59,8 +59,9 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
     },
     "waterfall.show_total": {
       getSection: () => t`Display`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Show total`,
+      get title() {
+        return t`Show total`;
+      },
       widget: "toggle",
       getDefault: () => true,
       inline: true,
