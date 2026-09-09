@@ -554,6 +554,53 @@
                     (t2/select-one-fn :result_metadata :model/Card :id (:id card)))
           "a refused update leaves the card's stored column annotations untouched"))))
 
+(deftest update-retype-to-model-normalizes-display-test
+  (testing "retyping a question to a model forces `display` to table, as `PUT /api/card/:id` does
+            (see `model-card-test` in the card REST suite). Not cosmetic: the query processor
+            branches on `(= :pivot (:display card))` to run the pivot QP, so a pivot question
+            retyped to a model would keep returning pivoted data. The model editor only ever offers
+            table and list, so a chart display on a model is unreachable through the app."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "a chart display is normalized away"
+        (mt/with-temp [:model/Card {card-id :id} {:display :bar :dataset_query (orders-query)}]
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method "update" :id card-id :card_type "model"})]
+            (is (not (:isError result)) (-> result :content first :text))
+            (is (= :table (t2/select-one-fn :display :model/Card :id card-id))))))
+      (testing "pivot — the display that changes what the query processor returns"
+        (mt/with-temp [:model/Card {card-id :id} {:display :pivot :dataset_query (orders-query)}]
+          (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                     {:method "update" :id card-id :card_type "model"})
+          (is (= :table (t2/select-one-fn :display :model/Card :id card-id)))))
+      (testing "a display passed in the same call is normalized too, as REST does. (REST leaves an
+                explicit `list` alone, but this tool's display enum has no `list`, so that carve-out
+                is unreachable here — the schema refuses it before the handler runs.)"
+        (mt/with-temp [:model/Card {card-id :id} {:display :bar :dataset_query (orders-query)}]
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method "update" :id card-id :card_type "model" :display "line"})]
+            (is (not (:isError result)) (-> result :content first :text)))
+          (is (= :table (t2/select-one-fn :display :model/Card :id card-id))))
+        (mt/with-temp [:model/Card {card-id :id} {:display :bar :dataset_query (orders-query)}]
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method "update" :id card-id :card_type "model" :display "list"})]
+            (is (not (:isError result)) (-> result :content first :text)))
+          (is (= :list (t2/select-one-fn :display :model/Card :id card-id))
+              "an explicit list survives the normalization — the model list view is a real choice")))
+      (testing "a model can be created directly in the list view"
+        (mt/with-model-cleanup [:model/Card]
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method "create" :name "List model" :card_type "model"
+                                   :display "list"
+                                   :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})]
+            (is (not (:isError result)) (-> result :content first :text))
+            (is (= :list (t2/select-one-fn :display :model/Card
+                                           :id (:id (:structuredContent result))))))))
+      (testing "a card that stays a question keeps its display"
+        (mt/with-temp [:model/Card {card-id :id} {:display :bar :dataset_query (orders-query)}]
+          (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                     {:method "update" :id card-id :name "renamed"})
+          (is (= :bar (t2/select-one-fn :display :model/Card :id card-id))))))))
+
 (deftest update-archive-restore-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card card {:archived false :dataset_query (orders-query)}]

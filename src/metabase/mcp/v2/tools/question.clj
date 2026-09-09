@@ -297,6 +297,18 @@
     (common/throw-teaching-error
      "Pass either collection_id or dashboard_id, not both — a dashboard question's collection is the dashboard's collection.")))
 
+(defn- normalize-model-display
+  "Force `display` to table when a patch retypes a card to a model, as `PUT /api/card/:id` does. A
+   model's display is not inert: the query processor runs the pivot QP when it is `:pivot`, and a
+   chart display also drives subscription rendering, dashcard sizing, and the search display filter.
+   An explicit `list` is left alone, as REST leaves it: the list view is one of the two displays the
+   model editor offers, so it is a real choice rather than a leftover chart display."
+  [card-updates]
+  (cond-> card-updates
+    (and (= :model (:type card-updates))
+         (not= :list (:display card-updates)))
+    (assoc :display :table)))
+
 (defn- resolve-dashboard!
   "Resolve `dashboard_id` to `{:dashboard-id id :collection-id (its collection_id)}`, or nil when
    `dashboard_id` is absent. Read-checked, so a dashboard that doesn't exist and one the caller
@@ -422,7 +434,8 @@
                        (contains? args :archived)               (assoc :archived (boolean archived))
                        new-query                                (assoc :dataset_query new-query))
         card-updates (api/updates-with-archived-directly card-before raw-updates)
-        card-updates (force-restore-on-dashboard-move card-before card-updates)]
+        card-updates (force-restore-on-dashboard-move card-before card-updates)
+        card-updates (normalize-model-display card-updates)]
     ;; the type the card will have once written: the patch's when the caller is converting, else the
     ;; stored one. Never the raw request, which is nil whenever `card_type` is omitted.
     (queries/check-card-can-be-saved! (:dataset_query card-updates)
