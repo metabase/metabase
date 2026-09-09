@@ -110,17 +110,17 @@ Metabot, [AI explorations](./metabot.md#ai-exploration), and [SQL generation](./
 
 Embedded Metabot runs on the **Default model** too. There's no separate model setting on the **Embedded** tab, so both Metabots use whatever you pick here.
 
-#### Try a Bedrock model outside the picker
+#### Use another compatible model
 
-The Bedrock model picker lists a curated subset of the models available through AWS Bedrock Mantle. If you're self-hosting, you can test another compatible model by setting [`MB_LLM_METABOT_PROVIDER`](../configuring-metabase/environment-variables.md#mb_llm_metabot_provider) to `connection-key/model-id` and restarting Metabase. For example, for a connection whose key is `bedrock`:
+Metabase shows a curated subset of the models available through AWS Bedrock Mantle. If you're self-hosting, you can test another compatible model by setting [`MB_LLM_METABOT_PROVIDER`](../configuring-metabase/environment-variables.md#mb_llm_metabot_provider) to `connection-key/model-id` and restarting Metabase. For example, for a connection whose key is `bedrock`:
 
 ```sh
 MB_LLM_METABOT_PROVIDER=bedrock/openai.gpt-5.5
 ```
 
-Replace `openai.gpt-5.5` with the exact Mantle model ID available to your AWS account in the connection's region. Metabase sends `openai.*` models to Mantle's OpenAI Responses API and `anthropic.*` models to its Anthropic Messages API. The model must support that API and Metabot's tool calls; a matching prefix alone doesn't establish compatibility. For example, `openai.gpt-oss*` models can't use this OpenAI route.
+Replace `openai.gpt-5.5` with the exact Mantle model ID available to your AWS account in the connection's region. Metabase sends `openai.*` models to Mantle's OpenAI Responses API and `anthropic.*` models to its Anthropic Messages API. Other prefixes, such as `qwen.*` and `deepseek.*`, cause an unsupported-model error. The model must support that API and Metabot's tool calls; a matching prefix alone doesn't establish compatibility. For example, `openai.gpt-oss*` models can't use this OpenAI route.
 
-This overrides the saved default model and uses the connection's existing credentials. It doesn't add the model to the picker or provide context-window metadata for models Metabase doesn't recognize. Remove the environment variable and restart to use the saved selection again. Inference profiles and the `bedrock-runtime` endpoint aren't supported by this setting.
+This overrides the saved default model and uses the connection's authentication. It doesn't add the model to the picker or provide context-window metadata for models Metabase doesn't recognize. Remove the environment variable and restart to use the saved selection again. Inference profiles and the `bedrock-runtime` endpoint aren't supported by this setting.
 
 ### Mini model
 
