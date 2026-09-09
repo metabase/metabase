@@ -1,34 +1,32 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 
 import { useListTimelinesQuery } from "metabase/api";
-import { trackDashboardEventsShown } from "metabase/dashboard/analytics";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   DashCardId,
   DashboardCard,
-  DashboardId,
   TimelineEvent,
   TimelineEventId,
+  TimelineEventsVisibility,
 } from "metabase-types/api";
 
 import {
   deselectTimelineEvents,
   openEventsSidebar,
   selectTimelineEvents,
+  trackTimelineEventsShown,
 } from "../actions/timeline-events";
 
 import {
   getDashCardSelectedTimelineEventIds,
-  getDashCardVisibleTimelineEvents,
-  getHasVisibleTimelineEvents,
-  getIsTimelineEventsDashCard,
+  getDashCardTimelineEventsVisibility,
+  getDashCardTimeseriesXAxis,
   getTimelineEventsDashCardIds,
 } from "./selectors";
 
-const NO_EVENTS: TimelineEvent[] = [];
-
+// keeps the timelines loaded for the events sidebar; charts load their own
 export const useDashboardTimelines = () => {
   const { withTimelineEvents } = useDashboardContext();
   const hasEventsDashCards = useSelector(
@@ -39,49 +37,47 @@ export const useDashboardTimelines = () => {
     { include: "events" },
     { skip: !withTimelineEvents || !hasEventsDashCards },
   );
-
-  useTrackDashboardEventsShown();
-};
-
-const useTrackDashboardEventsShown = () => {
-  const { dashboard, withTimelineEvents } = useDashboardContext();
-  const dashboardId = dashboard?.id;
-  const hasVisibleEvents = useSelector(
-    (state) => !!withTimelineEvents && getHasVisibleTimelineEvents(state),
-  );
-  const trackedDashboardIdRef = useRef<DashboardId>();
-
-  useEffect(() => {
-    const isTracked = trackedDashboardIdRef.current === dashboardId;
-    if (hasVisibleEvents && dashboardId != null && !isTracked) {
-      trackedDashboardIdRef.current = dashboardId;
-      trackDashboardEventsShown(dashboardId);
-    }
-  }, [dashboardId, hasVisibleEvents]);
 };
 
 type DashCardTimelineEventsProps = Pick<
   VisualizationProps,
-  | "timelineEvents"
+  | "timelineEventsVisibility"
   | "selectedTimelineEventIds"
   | "onOpenTimelines"
   | "onSelectTimelineEvents"
   | "onDeselectTimelineEvents"
+  | "onTimelineEventsShown"
 >;
+
+type DashCardTimelineEvents = {
+  isEnabled: boolean;
+} & DashCardTimelineEventsProps;
+
+const NO_TIMELINE_EVENTS: TimelineEventsVisibility = {
+  "timeline.selected_timeline_ids": [],
+};
+
+const DISABLED: DashCardTimelineEvents = {
+  isEnabled: false,
+  timelineEventsVisibility: NO_TIMELINE_EVENTS,
+};
 
 export const useDashCardTimelineEvents = (
   dashcard: DashboardCard,
-): { isEnabled: boolean } & DashCardTimelineEventsProps => {
+): DashCardTimelineEvents => {
   const dispatch = useDispatch();
   const { withTimelineEvents = false } = useDashboardContext();
   const dashcardId: DashCardId = dashcard.id;
   const isEnabled = useSelector(
     (state) =>
-      withTimelineEvents && getIsTimelineEventsDashCard(state, dashcardId),
+      withTimelineEvents &&
+      getDashCardTimeseriesXAxis(state, dashcardId) != null,
   );
 
-  const timelineEvents = useSelector((state) =>
-    isEnabled ? getDashCardVisibleTimelineEvents(state, dashcardId) : NO_EVENTS,
+  const timelineEventsVisibility = useSelector((state) =>
+    isEnabled
+      ? getDashCardTimelineEventsVisibility(state, dashcardId)
+      : NO_TIMELINE_EVENTS,
   );
   const selectedTimelineEventIds = useSelector((state) =>
     isEnabled
@@ -108,13 +104,21 @@ export const useDashCardTimelineEvents = (
     () => dispatch(deselectTimelineEvents()),
     [dispatch],
   );
+  const onTimelineEventsShown = useCallback(
+    () => dispatch(trackTimelineEventsShown()),
+    [dispatch],
+  );
 
+  if (!isEnabled) {
+    return DISABLED;
+  }
   return {
     isEnabled,
-    timelineEvents,
+    timelineEventsVisibility,
     selectedTimelineEventIds,
-    onOpenTimelines: isEnabled ? onOpenTimelines : undefined,
-    onSelectTimelineEvents: isEnabled ? onSelectTimelineEvents : undefined,
-    onDeselectTimelineEvents: isEnabled ? onDeselectTimelineEvents : undefined,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    onTimelineEventsShown,
   };
 };

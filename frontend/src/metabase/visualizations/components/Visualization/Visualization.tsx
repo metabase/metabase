@@ -71,6 +71,7 @@ import type {
   SeriesCard,
   SingleSeries,
   TimelineEvent,
+  TimelineEventsVisibility,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -165,6 +166,8 @@ type VisualizationOwnProps = {
   hideLegend?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
+  timelineEventsVisibility?: TimelineEventsVisibility;
+  onTimelineEventsShown?: () => void;
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
@@ -689,12 +692,14 @@ class Visualization extends PureComponent<
       style,
       tableHeaderHeight,
       timelineEvents,
+      timelineEventsVisibility,
       totalNumGridCols,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
       onSelectTimelineEvents,
       onSeeAllEvents,
+      onTimelineEventsShown,
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
@@ -964,6 +969,8 @@ class Visualization extends PureComponent<
                       showTitle={!!showTitle}
                       tableHeaderHeight={tableHeaderHeight}
                       timelineEvents={timelineEvents}
+                      timelineEventsVisibility={timelineEventsVisibility}
+                      onTimelineEventsShown={onTimelineEventsShown}
                       totalNumGridCols={totalNumGridCols}
                       visualizationIsClickable={this.visualizationIsClickable}
                       width={width}

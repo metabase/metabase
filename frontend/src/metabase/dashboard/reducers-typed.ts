@@ -62,6 +62,7 @@ import {
 } from "./actions";
 import {
   deselectTimelineEvents,
+  markTimelineEventsShown,
   selectTimelineEvents,
   setDashCardTimelineEventsVisibility,
 } from "./actions/timeline-events";
@@ -216,10 +217,10 @@ export const timelineEvents = createReducer(
   (builder) => {
     builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.timelineEvents);
     builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.timelineEvents);
-    builder.addCase(
-      SET_EDITING_DASHBOARD,
-      () => INITIAL_DASHBOARD_STATE.timelineEvents,
-    );
+    builder.addCase(SET_EDITING_DASHBOARD, (state) => ({
+      ...INITIAL_DASHBOARD_STATE.timelineEvents,
+      hasTrackedEventsShown: state.hasTrackedEventsShown,
+    }));
     builder.addCase(fetchDashboard.fulfilled, (state) => {
       if (Object.keys(state.overrides).length > 0) {
         state.overrides = {};
@@ -241,6 +242,9 @@ export const timelineEvents = createReducer(
     });
     builder.addCase(deselectTimelineEvents, (state) => {
       state.selection = null;
+    });
+    builder.addCase(markTimelineEventsShown, (state) => {
+      state.hasTrackedEventsShown = true;
     });
   },
 );

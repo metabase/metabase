@@ -338,12 +338,12 @@ describe("scenarios > organization > timelines > question", () => {
         // should hide individual events from chart if hidden in sidebar
         cy.icon("calendar").click();
         cy.findByTestId("sidebar-content").findByText("Releases").click();
-        toggleEventVisibility("RC1");
+        H.toggleTimelineEventVisibility("RC1");
 
         H.timelineEventChip("RC1").should("not.exist");
 
         // should show individual events in chart again
-        toggleEventVisibility("RC1");
+        H.toggleTimelineEventVisibility("RC1");
 
         H.timelineEventChip("RC1").should("be.visible");
 
@@ -359,27 +359,22 @@ describe("scenarios > organization > timelines > question", () => {
 
         // should then hide the newly created event
         H.timelineEventVisibility("RC2").should("be.checked");
-        toggleEventVisibility("RC2");
+        H.toggleTimelineEventVisibility("RC2");
         H.timelineEventVisibility("RC2").should("not.be.checked");
 
         H.timelineEventChip("RC2").should("not.exist");
 
         // its timeline, visible but having one hidden event
         // should display its checkbox in an indeterminate state
-        cy.findByTestId("sidebar-content")
-          .findByText("Releases")
-          .closest("[aria-label='Timeline card header']")
-          .within(() => {
-            cy.findByRole("checkbox").should(
-              "have.prop",
-              "indeterminate",
-              true,
-            );
+        H.timelineVisibility("Releases").should(
+          "have.prop",
+          "indeterminate",
+          true,
+        );
 
-            // Hide the timeline then show it again
-            cy.findByRole("checkbox").click();
-            cy.findByRole("checkbox").click();
-          });
+        // Hide the timeline then show it again
+        H.timelineVisibility("Releases").click();
+        H.timelineVisibility("Releases").click();
 
         // once timeline is visible, all its events should be visible
         H.timelineEventChip("RC2").should("be.visible");
@@ -400,16 +395,13 @@ describe("scenarios > organization > timelines > question", () => {
 
         // making a hidden timeline visible
         // should make its events automatically visible
-        cy.findByTestId("sidebar-content")
-          .findByText("Timeline for collection")
-          .closest("[aria-label='Timeline card header']")
-          .within(() => cy.findByRole("checkbox").click());
+        H.timelineVisibility("Timeline for collection").click();
 
         H.timelineEventChip("TC1").should("be.visible");
 
         // events whose timeline was invisible on page load
         // should be hideable once their timelines are visible
-        toggleEventVisibility("TC1");
+        H.toggleTimelineEventVisibility("TC1");
 
         H.timelineEventChip("TC1").should("not.exist");
 
@@ -436,8 +428,8 @@ describe("scenarios > organization > timelines > question", () => {
         H.modal().should("not.exist"); // wait for modal to close
 
         cy.log("remove all other events except the new one");
-        toggleEventVisibility("RC1").should("not.be.checked");
-        toggleEventVisibility("RC2").should("not.be.checked");
+        H.toggleTimelineEventVisibility("RC1").should("not.be.checked");
+        H.toggleTimelineEventVisibility("RC2").should("not.be.checked");
 
         cy.log("the new event should be visible in the chart");
         H.timelineEventChip("Event at the end of range").should("be.visible");
@@ -856,7 +848,7 @@ describe("scenarios > organization > timelines > question", () => {
         triggered_from: "footer",
       });
 
-      toggleEventVisibility("RC1");
+      H.toggleTimelineEventVisibility("RC1");
       H.timelineEventChip("RC1").should("not.exist");
       H.saveSavedQuestion();
 
@@ -867,7 +859,3 @@ describe("scenarios > organization > timelines > question", () => {
     });
   });
 });
-
-function toggleEventVisibility(eventName) {
-  return H.timelineEventVisibility(eventName).click();
-}
