@@ -77,11 +77,12 @@ export const trackQuestionTimelineEventsSaved = (
   const originalVisibility = getRecordedTimelineEventsVisibility(
     originalQuestion?.settings(),
   );
-  if (
-    visibility &&
-    (!originalVisibility ||
-      !isSameTimelineEventsVisibility(visibility, originalVisibility))
-  ) {
+  const isVisibilityChanged =
+    visibility != null &&
+    (originalVisibility == null ||
+      !isSameTimelineEventsVisibility(visibility, originalVisibility));
+
+  if (isVisibilityChanged) {
     trackSimpleEvent({
       event: "question_timeline_events_saved",
       target_id: question.id(),

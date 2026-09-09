@@ -7,8 +7,9 @@ import { getDashCardById } from "metabase/dashboard/selectors";
 import {
   getDashCardSelectedTimelineEventIds,
   getDashCardTimeseriesXAxis,
-  getDashCardVisibleTimelineEvents,
+  getDashCardVisibleTimelineEventIds,
 } from "metabase/dashboard/timeline-events";
+import { isDashCardOnTab } from "metabase/dashboard/utils";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import type { DashCardId, TimelineEventId } from "metabase-types/api";
@@ -26,8 +27,8 @@ export function DashCardEventsSidebar({
   const { selectedTabId, closeSidebar } = useDashboardContext();
   const dashcard = useSelector((state) => getDashCardById(state, dashcardId));
   const timelines = useSelector(getTransformedTimelines);
-  const visibleEvents = useSelector((state) =>
-    getDashCardVisibleTimelineEvents(state, dashcardId),
+  const visibleEventIds = useSelector((state) =>
+    getDashCardVisibleTimelineEventIds(state, dashcardId),
   );
   const selectedEventIds = useSelector((state) =>
     getDashCardSelectedTimelineEventIds(state, dashcardId),
@@ -39,17 +40,13 @@ export function DashCardEventsSidebar({
   const isOnAnotherTab =
     dashcard == null ||
     dashcard.isRemoved ||
-    (selectedTabId != null && dashcard.dashboard_tab_id !== selectedTabId);
+    !isDashCardOnTab(dashcard, selectedTabId);
   useEffect(() => {
     if (isOnAnotherTab) {
       closeSidebar();
     }
   }, [isOnAnotherTab, closeSidebar]);
 
-  const visibleEventIds = useMemo(
-    () => visibleEvents.map((event) => event.id),
-    [visibleEvents],
-  );
   const dashcardIds = useMemo(() => [dashcardId], [dashcardId]);
 
   const handleShowAllEvents = useCallback(() => {
