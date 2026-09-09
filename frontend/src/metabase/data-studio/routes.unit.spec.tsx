@@ -1,8 +1,11 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import { lazyLoaders } from "__support__/lazy-routes";
 import { setupUserKeyValueEndpoints } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
+import { act, renderWithProviders, screen } from "__support__/ui";
+import { Link, Outlet, Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { DataStudioIndexRedirect, getDataStudioRoutes } from "./routes";
@@ -79,4 +82,79 @@ describe("Data Studio index redirect", () => {
     expect(await screen.findByTestId("library-index")).toBeInTheDocument();
     expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
   });
+
+  it("does not redirect over a navigation the user already started", async () => {
+    const hasSeenGuide = deferred<boolean>();
+    const transformsModule = deferred<void>();
+
+    fetchMock.get(
+      "path:/api/user-key-value/namespace/data_studio/key/hasSeenGuide",
+      () =>
+        hasSeenGuide.promise.then(
+          (value) =>
+            new Response(JSON.stringify(value), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+        ),
+    );
+
+    renderWithProviders(
+      <Route path="/">
+        <Route
+          path="data-studio"
+          element={
+            <>
+              {/* Stands in for the Data Studio nav, which the layout renders
+                  around the index route while the redirect is still deciding. */}
+              <Link to="/data-studio/transforms">Transforms</Link>
+              <Outlet />
+            </>
+          }
+        >
+          <Route index element={<DataStudioIndexRedirect />} />
+          <Route path="guide" element={<div data-testid="guide-page" />} />
+          <Route
+            path="transforms"
+            lazy={async () => {
+              await transformsModule.promise;
+              return {
+                Component: () => <div data-testid="transforms-index" />,
+              };
+            }}
+          />
+        </Route>
+      </Route>,
+      {
+        withRouter: true,
+        initialRoute: "/data-studio",
+        storeInitialState: createMockState({
+          currentUser: createMockUser({ is_superuser: true }),
+        }),
+      },
+    );
+
+    await userEvent.click(await screen.findByText("Transforms"));
+
+    // The redirect makes up its mind while the lazy destination is still loading.
+    // Give it a full render to act on that decision before the destination lands:
+    // that window is where the navigation used to be lost.
+    hasSeenGuide.resolve(false);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    transformsModule.resolve();
+
+    expect(await screen.findByTestId("transforms-index")).toBeInTheDocument();
+    expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
+  });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}

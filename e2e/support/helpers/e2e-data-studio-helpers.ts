@@ -19,6 +19,19 @@ const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
   breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
+  /**
+   * Visits Data Studio and waits for its index redirect to land.
+   *
+   * `/data-studio` is an index route that redirects asynchronously: the nav is up
+   * right away, but the target is only known once the `hasSeenGuide` user key-value
+   * request comes back. Driving the nav from that half-settled state is what made
+   * GDGT-3169 flaky, so land on the real page first.
+   */
+  visit: () => {
+    cy.visit("/data-studio");
+    cy.location("pathname").should("not.eq", "/data-studio");
+    DataStudio.nav().should("be.visible");
+  },
   Transforms: {
     header: () => cy.findByTestId("transforms-header"),
     sectionHeader: () => cy.findByTestId("transforms-section-header"),
