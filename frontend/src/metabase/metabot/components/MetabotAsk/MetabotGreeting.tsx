@@ -106,7 +106,6 @@ export const MetabotGreeting = ({
                 value={metabot.prompt}
                 autoFocus
                 disabled={metabot.isDoingScience}
-                placeholder={t`Ask about your data, and type @ to mention an item`}
                 onChange={metabot.setPrompt}
                 onSubmit={handleSubmit}
                 onStop={metabot.cancelRequest}
