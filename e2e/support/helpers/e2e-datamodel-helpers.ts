@@ -1,3 +1,4 @@
+import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   DatabaseId,
   FieldId,
@@ -311,11 +312,14 @@ function expandTablePickerDatabase(name: string) {
   );
   getTablePickerDatabaseToggle(name).click();
 
-  cy.wait(`@${schemasAlias}`, { timeout: 30000 }).then(({ response }) => {
+  cy.wait(`@${schemasAlias}`, { timeout: 25000 }).then(({ response }) => {
     expect(response?.statusCode).to.eq(200);
     const schemas = response?.body;
-    if (Array.isArray(schemas) && schemas.length === 1) {
-      cy.wait(`@${tablesAlias}`, { timeout: 30000 }).then(
+    if (
+      Array.isArray(schemas) &&
+      (schemas.length === 1 || schemas.includes(UNNAMED_SCHEMA_NAME))
+    ) {
+      cy.wait(`@${tablesAlias}`, { timeout: 25000 }).then(
         ({ response: tablesResponse }) => {
           expect(tablesResponse?.statusCode).to.eq(200);
         },
@@ -346,7 +350,7 @@ function expandTablePickerSchema(name: string) {
   );
   getTablePickerSchemaToggle(name).click();
 
-  cy.wait(`@${tablesAlias}`, { timeout: 30000 }).then(({ response }) => {
+  cy.wait(`@${tablesAlias}`, { timeout: 25000 }).then(({ response }) => {
     expect(response?.statusCode).to.eq(200);
   });
 
