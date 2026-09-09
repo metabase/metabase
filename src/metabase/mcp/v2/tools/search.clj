@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -19,8 +20,7 @@
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -118,7 +118,7 @@
     (into {}
           (comp (filter mi/can-read?)
                 (map (juxt :id :name)))
-          (t2/select [:model/Collection :id :name :namespace :type] :id [:in ids]))))
+          (mcp.db/collections-for-read-check ids))))
 
 (defn- add-collection-paths
   "Attach `:collection_path` — ancestor collection names joined with `/`, ending in the
@@ -132,9 +132,7 @@
   [rows]
   (let [parent-ids     (into #{} (keep #(get-in % [:collection :id])) rows)
         parents        (when (seq parent-ids)
-                         (t2/select-fn->fn :id (juxt :name :location)
-                                           [:model/Collection :id :name :location]
-                                           :id [:in parent-ids]))
+                         (mcp.db/collection-id->name+location parent-ids))
         ancestor-ids   (into #{}
                              (comp (mapcat location->ids)
                                    (remove parent-ids))
@@ -422,12 +420,7 @@
    sandboxed-user exclusion apply — optionally narrowed to names containing any query as a
    case-insensitive substring."
   [queries archived]
-  (let [readable (filter mi/can-read?
-                         ;; Select only what we return (id/name/description) plus :collection_id,
-                         ;; which can-read? consults — never :content, which holds the SQL body.
-                         (t2/select [:model/NativeQuerySnippet :id :name :description :collection_id]
-                                    :archived (boolean archived)
-                                    {:order-by [[:%lower.name :asc]]}))
+  (let [readable (filter mi/can-read? (mcp.db/snippets-by-archived-state archived))
         matches  (if (seq queries)
                    (let [needles (mapv u/lower-case-en queries)]
                      (filter (fn [{:keys [name]}]
