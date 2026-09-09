@@ -161,6 +161,7 @@
    :api     #{metabase.agent-api.api
               metabase.agent-api.init
               metabase.agent-api.query-guards
+              metabase.agent-api.settings
               metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
@@ -1355,14 +1356,19 @@
            dashboards
            documents
            eid-translation
+           lib
+           lib-be
            llm
            metabot
            models
            notification
            oauth-server
+           parameters
            permissions
            premium-features
            pulse
+           queries
+           query-processor
            request
            server
            session
@@ -1374,6 +1380,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Document
+                    :model/Field
                     :model/User}}
 
   measures
@@ -1402,6 +1409,7 @@
               metabase.metabot.scope
               metabase.metabot.self
               metabase.metabot.settings
+              metabase.metabot.tools.construct
               metabase.metabot.tools.entity-details}
    :friends #{agent-api
               enterprise/metabot

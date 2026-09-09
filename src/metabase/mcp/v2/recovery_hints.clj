@@ -3,10 +3,11 @@
 
    The pipeline throws a bare statement of what went wrong plus structured `ex-data`; it does
    not know which tools the caller has. This namespace turns that `ex-data` into the sentence
-   telling *this* surface's agent how to recover. Its first consumer arrives with the query
-   tools (which hand it to the pipeline as `:recovery-hint`); it lands here so those slices wire
-   it in without also authoring it. v1's equivalent is
-   [[metabase.metabot.tools.recovery-hints/recovery-hint]].
+   telling *this* surface's agent how to recover. The v2 query entry point must pass it to
+   `construct/execute-representations-query` as `:recovery-hint` — the same way the v1 entry
+   points pass [[metabase.metabot.tools.recovery-hints/recovery-hint]]. Until the v2 query slice
+   lands, this namespace has no production caller: nothing on the v2 surface reaches the shared
+   pipeline yet, so wiring it is that slice's responsibility, not an accomplished fact.
 
    Keep every sentence inside v2's own vocabulary — `browse_data`, `search`, numeric ids. An
    error key with no entry here yields no sentence, which is the intended failure mode: a
@@ -45,6 +46,9 @@
     (uri-hint entity-type entity-id)
 
     (:unknown-table :unknown-table-id)
+    ;; On the numeric-id surface both keys resolve the same way: list the tables and pick a
+    ;; numeric id. (v1 keeps them separate because a portable-FK miss and a numeric-id miss want
+    ;; different vocabulary; here both want the numeric id.)
     (tru "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids, then use one as `source-table`.")
 
     :ambiguous-table
@@ -55,6 +59,9 @@
 
     :ambiguous-fk
     (tru "Call `browse_data` with action \"get_fields\" for the source table to list the available foreign-key columns.")
+
+    :no-fk-path
+    (tru "If a metric relates to that table, call `browse_data` with action \"get_fields\" for the table that owns the metric to read its dimensions, which give the exact `joins:` clause.")
 
     (:unknown-card :unknown-card-id)
     (tru "Find the question or model with `search` and put its bare numeric id into `source-card:`.")
