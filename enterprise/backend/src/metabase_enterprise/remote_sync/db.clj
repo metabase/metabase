@@ -265,7 +265,7 @@
              :where  (path-expr paths true)}))
 
 (mu/defn card-types
-  "The `:id`, `:type`, and `:card_schema` of the Cards with `card-ids`."
+  "The `:id`, `:type`, :display, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :display :card_schema] :id [:in card-ids]))
 
