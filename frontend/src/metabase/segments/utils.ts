@@ -1,23 +1,23 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { selectMetadataProviderFactory } from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, TableId } from "metabase-types/api";
 
 /**
- * The segment's definition as a query. The database is only known from the
- * definition itself, which is why this reaches for the provider factory rather
- * than a provider.
+ * The segment's definition as a query. The database comes from the definition,
+ * so the provider is selected for it rather than looked up at build time.
  */
 export const getSegmentQuery = createSelector(
   [
-    selectMetadataProviderFactory,
+    (state: State, query: DatasetQuery | undefined) =>
+      selectMetadataProvider(state, query?.database ?? null),
     (_state: State, query: DatasetQuery | undefined) => query,
     (_state: State, _query: DatasetQuery | undefined, tableId?: TableId) =>
       tableId,
   ],
-  (getMetadataProvider, query, tableId) => {
+  (metadataProvider, query, tableId) => {
     if (!query) {
       return undefined;
     }
@@ -32,7 +32,7 @@ export const getSegmentQuery = createSelector(
       return undefined;
     }
 
-    return Lib.fromJsQuery(getMetadataProvider(databaseId), query);
+    return Lib.fromJsQuery(metadataProvider, query);
   },
 );
 
