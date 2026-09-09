@@ -14,15 +14,8 @@ export function MapsSettingsPage() {
       <SettingsSection>
         <AdminSettingInput
           name="map-tile-server-url"
-          title={t`Map tile server URL`}
-          description={
-            <>
-              <div>
-                {t`URL of the map tile server to use for rendering maps. If you're using a custom map tile server, you can set it here.`}
-              </div>
-              <div>{t`Metabase uses OpenStreetMaps by default.`}</div>
-            </>
-          }
+          title={t`Map tile server public URL`}
+          description={t`Public URL of the tile server to use when rendering maps. Defaults to OpenStreetMap, but you can set a custom URL. This URL is visible to clients, so do not include private keys.`}
           inputType="text"
         />
         <CustomGeoJSONWidget />
