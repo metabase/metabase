@@ -21,17 +21,19 @@ Docs will be written to:
 docs/exploration-and-organization/keyboard-shortcuts.md
 ```
 
-## Check nav links
+## Check links
 
-Verifies that every `url` in `data/nav.yml` points at a page under `docs/`, and that any `#anchor` exists in that page. Runs in CI as part of `.github/workflows/docs-links.yml`, after the [lychee](https://lychee.cli.rs) check of the docs body.
+Checks every link in the markdown under `docs/`, and every `url` in `data/nav.yml`: that each nav url points at a page under `docs/`, and that any `#anchor` exists in that page. CI runs the same checks in `.github/workflows/docs-links.yml`.
 
-To run it locally you need lychee and jq (`brew install lychee jq`). From the repo root:
+To run it locally you need [lychee](https://lychee.cli.rs) and jq (`brew install lychee jq`). From the repo root:
 
 ```bash
-docs/util/check-nav-links.sh
+docs/util/check-links.sh        # both
+docs/util/check-links.sh docs   # only the markdown under docs/
+docs/util/check-links.sh nav    # only nav.yml
 ```
 
-Each broken url is reported as `docs/util/data/nav.yml:LINE`. If the page moved, grep `docs/` for a `redirect_from` entry matching the old url to find the new one.
+Each broken nav url is reported as `docs/util/data/nav.yml:LINE`. If the page moved, grep `docs/` for a `redirect_from` entry matching the old url to find the new one.
 
 CI runs on Linux, which is case-sensitive, so a url with the wrong capitalization can pass locally on macOS and still fail in CI.
 

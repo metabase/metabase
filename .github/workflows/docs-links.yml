@@ -37,4 +37,4 @@ jobs:
       # renders it as markdown, runs lychee (on PATH after the step above), and reports nav.yml lines.
       - name: Check nav.yml links
         if: ${{ !cancelled() }}
-        run: docs/util/check-nav-links.sh
+        run: docs/util/check-links.sh nav
