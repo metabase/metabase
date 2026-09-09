@@ -1,0 +1,65 @@
+## Serialize full search reindexes without holding a connection or transaction for the entire rebuild.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v64.2026-08-18T13:57:56
+      author: crisptrutski
+      comment: Add renewable leases for search reindex jobs
+      changes:
+        - createTable:
+            tableName: search_index_lease
+            remarks: Coordinates full search reindexes across Metabase nodes.
+            columns:
+              - column:
+                  name: engine
+                  type: varchar(64)
+                  remarks: Search engine being reindexed.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: varchar(254)
+                  remarks: Search specification version being reindexed.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lang_code
+                  type: varchar(20)
+                  remarks: Site locale used by the index.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: owner
+                  type: varchar(36)
+                  remarks: Opaque token identifying the current lease holder.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: acquired_at
+                  type: ${timestamp_type}
+                  remarks: App database time when the current owner acquired the lease.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_renewed_at
+                  type: ${timestamp_type}
+                  remarks: App database time of the current owner's latest successful renewal.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: ${timestamp_type}
+                  remarks: Time after which another process may reclaim the lease.
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-08-18T13:57:57
+      author: crisptrutski
+      comment: Key search reindex leases by engine, version, and locale
+      changes:
+        - addPrimaryKey:
+            tableName: search_index_lease
+            columnNames: engine, version, lang_code
+            constraintName: pk_search_index_lease

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [t]
@@ -10,8 +11,9 @@
                         (t))))
 
 (deftest batch-upsert-test
-  (with-redefs [t2/query identity]
-    (let [query (specialization/batch-upsert! :some-table
+  (mt/with-dynamic-fn-redefs [t2/query (fn [_conn query] query)]
+    (let [query (specialization/batch-upsert! nil
+                                              :some-table
                                               [{:display_data :a}
                                                {:legacy_input :b}])]
       (is (= [{:display_data :a} {:legacy_input :b}] (:values query)))
