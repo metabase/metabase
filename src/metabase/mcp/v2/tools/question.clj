@@ -127,9 +127,12 @@
   "The gates an inline `native` source passes: the `agent:sql:run` scope and the
    `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own two, because the stored card is raw
    SQL a later `run_saved_question` executes, so accepting one under the content write scope alone
-   would rebuild `execute_sql` without its scope or its kill switch. A `query_handle` needs neither
-   here: minting one already passed them. No-op on the scope half for unscoped callers (cookie
-   sessions bind the unrestricted sentinel, which matches everything)."
+   would rebuild `execute_sql` without its scope or its kill switch. Every source that can resolve
+   to native passes these, `query_handle` included — holding a handle is not proof the gates were
+   spent (`construct_native_query` mints under `agent:sql:construct` and never consults the kill
+   switch, and a handle resolves on `core_session.user_id`, so any credential of that user can spend
+   one minted by another). No-op on the scope half for unscoped callers (cookie sessions bind the
+   unrestricted sentinel, which matches everything)."
   [token-scopes]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
     (throw (ex-info (format (str "Saving a native (SQL) query requires the %s scope — this token can "
@@ -157,10 +160,13 @@
        "Pass exactly one query source: `query_handle` (a handle from an execute tool), `query` (an inline query), or `native` ({database_id, sql})."))
     (cond
       query_handle
-      (lib-be/normalize-query
-       nil
-       (:query (v2.queries/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
-       {:strict? true})
+      (let [resolved (lib-be/normalize-query
+                      nil
+                      (:query (v2.queries/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
+                      {:strict? true})]
+        (when (query-guards/native-query? resolved)
+          (check-native-source-gates! token-scopes))
+        resolved)
 
       query
       (let [resolved (try

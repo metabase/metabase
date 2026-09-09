@@ -236,19 +236,72 @@
 (deftest create-question-via-native-query-handle-test
   (mt/with-model-cleanup [:model/Card :model/McpQueryHandle]
     (mt/with-current-user (mt/user->id :crowberto)
-      (testing "a native handle — the shape execute_sql mints — is saveable"
-        (let [sid    (str (random-uuid))
-              mp     (mt/metadata-provider)
-              handle (v2.queries/mint-query-handle!
-                      sid (mt/user->id :crowberto)
-                      (v2.queries/encode-serialized-query
-                       (lib/prepare-for-serialization (lib/native-query mp "SELECT 1"))))
-              result (call-tool #{"agent:content:write"} sid "question_write"
-                                {:method "create" :name "From SQL Handle" :query_handle handle})]
-          (is (not (:isError result)) (-> result :content first :text))
-          (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
-                  (t2/select-one-fn :dataset_query :model/Card
-                                    :id (:id (:structuredContent result))))))))))
+      (testing "a native handle — the shape execute_sql mints — is gated exactly like the native
+                source. A handle is not proof the SQL gates were spent: `construct_native_query`
+                mints under agent:sql:construct and never consults the kill switch, and a handle
+                resolves on core_session.user_id, so any credential of that user can spend one
+                minted by any other."
+        (let [mp        (mt/metadata-provider)
+              mint!     (fn [sid]
+                          (v2.queries/mint-query-handle!
+                           sid (mt/user->id :crowberto)
+                           (v2.queries/encode-serialized-query
+                            (lib/prepare-for-serialization (lib/native-query mp "SELECT 1")))))]
+          (testing "the content write scope alone is refused, and nothing is written"
+            (let [sid    (str (random-uuid))
+                  result (call-tool #{"agent:content:write"} sid "question_write"
+                                    {:method "create" :name "From SQL Handle"
+                                     :query_handle (mint! sid)})]
+              (is (:isError result))
+              (is (str/includes? (-> result :content first :text) "agent:sql:run"))
+              (is (zero? (t2/count :model/Card :name "From SQL Handle")))))
+          (testing "with agent:sql:run it saves, and the native query round-trips"
+            (let [sid    (str (random-uuid))
+                  result (call-tool #{"agent:content:write" "agent:sql:run"} sid "question_write"
+                                    {:method "create" :name "From SQL Handle" :query_handle (mint! sid)})]
+              (is (not (:isError result)) (-> result :content first :text))
+              (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+                      (t2/select-one-fn :dataset_query :model/Card
+                                        :id (:id (:structuredContent result)))))))
+          (testing "the kill switch covers the handle route too"
+            (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
+              (let [sid    (str (random-uuid))
+                    result (call-tool #{"agent:content:write" "agent:sql:run"} sid "question_write"
+                                      {:method "create" :name "Killed Handle Q" :query_handle (mint! sid)})]
+                (is (:isError result))
+                (is (str/includes? (-> result :content first :text) "mcp-execute-sql-enabled"))
+                (is (zero? (t2/count :model/Card :name "Killed Handle Q")))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest update-via-native-query-handle-is-gated-test
+  (testing "the update path stores the resolved query the same way create does, so a native handle
+            must pass the same two gates there — otherwise swapping a question's query is a second
+            route to storing raw SQL without them"
+    (mt/with-model-cleanup [:model/Card :model/McpQueryHandle]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (orders-query)}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [mp    (mt/metadata-provider)
+                mint! (fn [sid]
+                        (v2.queries/mint-query-handle!
+                         sid (mt/user->id :crowberto)
+                         (v2.queries/encode-serialized-query
+                          (lib/prepare-for-serialization (lib/native-query mp "SELECT 1")))))]
+            (testing "refused on the content write scope alone, and the stored query is untouched"
+              (let [sid    (str (random-uuid))
+                    result (call-tool #{"agent:content:write"} sid "question_write"
+                                      {:method "update" :id card-id :query_handle (mint! sid)})]
+                (is (:isError result))
+                (is (str/includes? (-> result :content first :text) "agent:sql:run"))
+                (is (not= :mbql.stage/native
+                          (get-in (t2/select-one-fn :dataset_query :model/Card :id card-id)
+                                  [:stages 0 :lib/type])))))
+            (testing "allowed with agent:sql:run"
+              (let [sid    (str (random-uuid))
+                    result (call-tool #{"agent:content:write" "agent:sql:run"} sid "question_write"
+                                      {:method "update" :id card-id :query_handle (mint! sid)})]
+                (is (not (:isError result)) (-> result :content first :text))
+                (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+                        (t2/select-one-fn :dataset_query :model/Card :id card-id)))))))))))
 
 (deftest create-question-name-required-test
   (mt/with-current-user (mt/user->id :crowberto)
