@@ -21,7 +21,7 @@
           :fk_target       nil
           :fingerprint     nil
           :human_set       #{}
-          :current         {:data_sensitivity nil :human_set? false}
+          :current         {:data_sensitivity nil :human_set false}
           :cached_values   nil
           :sample_values   nil}
          overrides))
@@ -72,7 +72,7 @@
     (is (str/includes? (llm/render-field-line (field "X" :display_name "Ex" :human_set #{:display_name}))
                        "display name: \"Ex\" [human-set]")))
   (testing "the current data_sensitivity is never rendered"
-    (let [msg (llm/user-message (packet []) [(field "SSN" :current {:data_sensitivity :SEC_KEY :human_set? true})])]
+    (let [msg (llm/user-message (packet []) [(field "SSN" :current {:data_sensitivity :SEC_KEY :human_set true})])]
       (is (not (str/includes? msg "SEC_KEY")))
       (is (not (str/includes? msg "human-set"))))))
 

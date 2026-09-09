@@ -4,12 +4,12 @@
   provider configured, usage limit) are reported as a 400 before any work starts."
   (:require
    [metabase-enterprise.data-sensitivity.core :as core]
+   [metabase-enterprise.data-sensitivity.db :as db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,7 +29,7 @@
   `data_sensitivity` labels. Nothing is written; the response is the proposal."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+  (let [table (api/check-404 (db/table id))]
     (api/write-check :model/Database (:db_id table))
     (check-available!)
     (core/classify-table! table)))

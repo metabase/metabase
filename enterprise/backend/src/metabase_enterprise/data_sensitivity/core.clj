@@ -8,6 +8,7 @@
   [[unavailable-reason]]. Result keys are snake_case because the maps are API responses."
   (:require
    [metabase-enterprise.data-sensitivity.context :as context]
+   [metabase-enterprise.data-sensitivity.db :as db]
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase.database-routing.core :as database-routing]
    [metabase.metabot.core :as metabot]
@@ -16,8 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,6 +39,7 @@
    [:fields           :int]
    [:agree            :int]
    [:disagree         :int]
+   [:new              :int]
    [:abstain          :int]
    [:dropped          :int]
    [:semantic_changed :int]])
@@ -51,7 +52,7 @@
    [:base_type         :keyword]
    [:current           [:map
                         [:data_sensitivity [:maybe :keyword]]
-                        [:human_set?       :boolean]
+                        [:human_set       :boolean]
                         [:state            [:enum :human :classifier :unscanned]]
                         [:semantic_type    [:maybe :keyword]]]]
    [:proposed          [:map
@@ -59,8 +60,8 @@
                         [:confidence       [:maybe :string]]
                         [:semantic_type    [:maybe :keyword]]
                         [:reasoning        [:maybe :string]]]]
-   [:status            [:enum :agree :disagree :abstain :dropped]]
-   [:semantic_changed? :boolean]])
+   [:status            [:enum :agree :disagree :new :abstain :dropped]]
+   [:semantic_changed :boolean]])
 
 (mr/def ::table-result
   [:map
@@ -111,7 +112,7 @@
   {:input_tokens 0 :output_tokens 0 :cache_read_tokens 0 :cache_creation_tokens 0})
 
 (def ^:private zero-counts
-  {:fields 0 :agree 0 :disagree 0 :abstain 0 :dropped 0 :semantic_changed 0})
+  {:fields 0 :agree 0 :disagree 0 :new 0 :abstain 0 :dropped 0 :semantic_changed 0})
 
 ;;; Pre-flight
 
@@ -129,13 +130,13 @@
 
 (mu/defn diff-field :- ::field-result
   "Join one packet field to its parsed model entry. `:status` is `:abstain` or `:dropped` when the parse said so,
-  `:agree` when the proposal equals the current label, otherwise `:disagree`. `:state` says where the current label
-  came from so a nil reads as unscanned rather than blank."
+  `:new` when the field has no current label, `:agree` when the proposal equals the current label, otherwise
+  `:disagree`. `:state` says where the current label came from so a nil reads as unscanned rather than blank."
   [{:keys [id name display_name base_type semantic_type current]} :- ::context/field
    entry                                                          :- [:maybe ::llm/entry]]
   (let [{:keys [status] :as entry} (or entry dropped-entry)
         current-label  (:data_sensitivity current)
-        human-set?     (:human_set? current)
+        human-set?     (:human_set current)
         proposed-label (:data-sensitivity entry)
         proposed-st    (:semantic-type entry)]
     {:field_id          id
@@ -143,7 +144,7 @@
      :display_name      display_name
      :base_type         base_type
      :current           {:data_sensitivity current-label
-                         :human_set?       human-set?
+                         :human_set       human-set?
                          :state            (cond
                                              human-set?            :human
                                              (some? current-label) :classifier
@@ -156,17 +157,21 @@
      :status            (case status
                           :abstain :abstain
                           :dropped :dropped
-                          :labeled (if (= proposed-label current-label) :agree :disagree))
-     :semantic_changed? (boolean (and proposed-st (not= proposed-st semantic_type)))}))
+                          :labeled (cond
+                                     (nil? current-label)               :new
+                                     (= proposed-label current-label)   :agree
+                                     :else                              :disagree))
+     :semantic_changed (boolean (and proposed-st (not= proposed-st semantic_type)))}))
 
 (defn- field-counts [fields]
   (let [by-status (frequencies (map :status fields))]
     {:fields           (count fields)
      :agree            (get by-status :agree 0)
      :disagree         (get by-status :disagree 0)
+     :new              (get by-status :new 0)
      :abstain          (get by-status :abstain 0)
      :dropped          (get by-status :dropped 0)
-     :semantic_changed (count (filter :semantic_changed? fields))}))
+     :semantic_changed (count (filter :semantic_changed fields))}))
 
 ;;; Classify
 
@@ -220,12 +225,6 @@
   "Tables classified concurrently by [[classify-database!]]."
   4)
 
-(defn- select-tables [database schema]
-  (t2/select :model/Table
-             {:where    (cond-> [:and [:= :db_id (:id database)] [:= :active true]]
-                          schema (conj [:= :schema schema]))
-              :order-by [[:schema :asc] [:name :asc]]}))
-
 (mu/defn classify-database! :- ::database-result
   "Run [[classify-table!]] over every active table of `database`, restricted to `:schema` when given. A table whose
   classification throws becomes an error entry and the run continues. Synchronous; intended for the REPL and small
@@ -233,7 +232,7 @@
   [database :- (ms/InstanceOf :model/Database)
    & {:keys [schema parallelism] :as opts} :- [:maybe ::database-options]]
   (let [table-opts (dissoc opts :schema :parallelism)
-        tables     (select-tables database schema)
+        tables     (db/active-tables (:id database) schema)
         results    (run-batches tables
                                 (or parallelism default-parallelism)
                                 (fn [table]

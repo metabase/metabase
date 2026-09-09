@@ -53,12 +53,12 @@
     (testing "a field with no user-settings row has no human-set keys"
       (let [entry (field-by-name (schema-only-packet (people-table)) "labeled_f")]
         (is (= #{} (:human_set entry)))
-        (is (= {:data_sensitivity :PII :human_set? false} (:current entry)))))
+        (is (= {:data_sensitivity :PII :human_set false} (:current entry)))))
     (testing "non-nil user-settings values are reported as human-set"
       (field-user-settings/upsert-user-settings f {:semantic_type :type/Email :data_sensitivity :PUBLIC :description nil})
       (let [entry (field-by-name (schema-only-packet (people-table)) "labeled_f")]
         (is (= #{:semantic_type :data_sensitivity} (:human_set entry)))
-        (is (= {:data_sensitivity :PUBLIC :human_set? true} (:current entry)))
+        (is (= {:data_sensitivity :PUBLIC :human_set true} (:current entry)))
         (is (= :type/Email (:semantic_type entry))))
       (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id))))))
 

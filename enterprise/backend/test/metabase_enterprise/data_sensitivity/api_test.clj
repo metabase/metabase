@@ -74,7 +74,7 @@
                    :usage       {:input_tokens 100 :output_tokens 20}
                    :counts      {:fields (count (:fields response))}}
                   response))
-          (is (=? {:current  {:data_sensitivity "PII" :human_set? false :state "classifier"}
+          (is (=? {:current  {:data_sensitivity "PII" :human_set false :state "classifier"}
                    :proposed {:data_sensitivity "PII" :confidence "high" :reasoning "because"}
                    :status   "agree"}
                   (get by-name "ds_api_agree")))
@@ -83,7 +83,7 @@
                    :status   "disagree"}
                   (get by-name "ds_api_disagree")))
           (is (=? {:current {:data_sensitivity nil :state "unscanned"}
-                   :status  "disagree"}
+                   :status  "new"}
                   (get by-name "EMAIL"))))))))
 
 (deftest classify-database-test

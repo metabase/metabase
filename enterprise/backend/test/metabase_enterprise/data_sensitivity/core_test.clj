@@ -97,18 +97,19 @@
                  :sample_error nil}
                 result)))
       (testing "a human-set label the model agrees with"
-        (is (=? {:current  {:data_sensitivity :PII :human_set? true :state :human}
+        (is (=? {:current  {:data_sensitivity :PII :human_set true :state :human}
                  :proposed {:data_sensitivity :PII :confidence "high" :semantic_type nil :reasoning "because"}
                  :status   :agree}
                 (result-field result "ds_human"))))
       (testing "a classifier-set label the model disagrees with"
-        (is (=? {:current  {:data_sensitivity :PII :human_set? false :state :classifier}
+        (is (=? {:current  {:data_sensitivity :PII :human_set false :state :classifier}
                  :proposed {:data_sensitivity :PUBLIC :confidence "low"}
                  :status   :disagree}
                 (result-field result "ds_classifier"))))
-      (testing "an unscanned field the model labels is a disagreement from an unscanned state"
-        (is (=? {:current {:data_sensitivity nil :human_set? false :state :unscanned}
-                 :status  :disagree}
+      (testing "an unscanned field the model labels is new rather than a disagreement"
+        (is (=? {:current  {:data_sensitivity nil :human_set false :state :unscanned}
+                 :proposed {:data_sensitivity :PII}
+                 :status   :new}
                 (result-field result "ds_unscanned"))))
       (testing "UNSURE abstains and proposes nothing"
         (is (=? {:proposed {:data_sensitivity nil}
@@ -121,13 +122,14 @@
       (testing "a proposed semantic type differing from the current one is flagged"
         (is (=? {:current           {:semantic_type :type/Name}
                  :proposed          {:semantic_type :type/Email}
-                 :semantic_changed? true}
+                 :semantic_changed true}
                 (result-field result "ds_semantic")))
-        (is (false? (:semantic_changed? (result-field result "ds_human")))))
+        (is (false? (:semantic_changed (result-field result "ds_human")))))
       (testing "counts match the per-field statuses"
-        (let [{:keys [fields agree disagree abstain dropped semantic_changed]} (:counts result)]
+        (let [{:keys [fields agree disagree new abstain dropped semantic_changed]} (:counts result)]
           (is (= (count (:fields result)) fields))
-          (is (= fields (+ agree disagree abstain dropped)))
+          (is (= fields (+ agree disagree new abstain dropped)))
+          (is (= 1 disagree))
           (is (= 1 abstain))
           (is (= 1 dropped))
           (is (= 1 semantic_changed)))))))
@@ -196,7 +198,8 @@
         (is (= (* 100 (count tables)) (get-in result [:usage :input_tokens])))
         (is (= (get-in result [:counts :fields])
                (+ (get-in result [:counts :agree]) (get-in result [:counts :disagree])
-                  (get-in result [:counts :abstain]) (get-in result [:counts :dropped]))))))
+                  (get-in result [:counts :new]) (get-in result [:counts :abstain])
+                  (get-in result [:counts :dropped]))))))
     (testing "the schema option restricts the tables"
       (let [schema (:schema (first tables))
             result (do-with-llm! (canned-llm (constantly {}))

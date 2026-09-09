@@ -5,6 +5,7 @@
   builds so a broken connection degrades to schema-only classification."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-sensitivity.db :as db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
@@ -13,8 +14,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-values :as field-values]))
 
 (set! *warn-on-reflection* true)
 
@@ -50,7 +50,7 @@
    [:human_set       [:set :keyword]]
    [:current         [:map
                       [:data_sensitivity [:maybe :keyword]]
-                      [:human_set?       :boolean]]]
+                      [:human_set       :boolean]]]
    [:cached_values   [:maybe [:sequential :string]]]
    [:sample_values   [:maybe [:sequential :string]]]])
 
@@ -71,18 +71,6 @@
              [:truncation :int]
              [:error      [:maybe :string]]]]])
 
-(defn- select-fields [table-id]
-  (t2/select :model/Field
-             {:where    [:and
-                         [:= :table_id table-id]
-                         [:= :active true]
-                         [:not= :visibility_type "retired"]]
-              :order-by [[:position :asc] [:id :asc]]}))
-
-(defn- user-settings-by-field [field-ids]
-  (when (seq field-ids)
-    (into {} (map (juxt :field_id identity)) (t2/select :model/FieldUserSettings :field_id [:in field-ids]))))
-
 (defn- human-set-keys [user-settings]
   (into #{} (filter #(some? (get user-settings %))) field/field-user-settings))
 
@@ -91,9 +79,8 @@
   [fields]
   (let [target-ids (into #{} (keep :fk_target_field_id) fields)]
     (when (seq target-ids)
-      (let [targets (t2/select [:model/Field :id :name :table_id] :id [:in target-ids])
-            tables  (into {} (map (juxt :id identity))
-                          (t2/select [:model/Table :id :name :schema] :id [:in (into #{} (map :table_id) targets)]))]
+      (let [targets (db/field-names-and-tables target-ids)
+            tables  (db/tables-by-id (into #{} (map :table_id) targets))]
         (into {} (map (fn [{:keys [id name table_id]}]
                         (let [{table-name :name schema :schema} (get tables table_id)]
                           [id (str/join "." (remove nil? [schema table-name name]))])))
@@ -185,7 +172,7 @@
      :fingerprint     (fingerprint-summary (:fingerprint field))
      :human_set       human-set
      :current         {:data_sensitivity (:data_sensitivity field)
-                       :human_set?       (contains? human-set :data_sensitivity)}
+                       :human_set       (contains? human-set :data_sensitivity)}
      :cached_values   (get cached id)
      :sample_values   (get sampled id)}))
 
@@ -198,14 +185,14 @@
   (let [{:keys [include-values? sample-rows truncation cached-values-cap] :as opts}
         (merge default-options opts)
 
-        database  (t2/select-one :model/Database :id (:db_id table))
-        fields    (select-fields (:id table))
+        database  (db/database (:db_id table))
+        fields    (db/active-fields (:id table))
         field-ids (map :id fields)
         cached    (when include-values?
                     (cached-values field-ids cached-values-cap truncation))
         {sampled :values sample-error :error} (when include-values?
                                                 (sample-values database table fields opts))
-        ctx       {:user-settings (user-settings-by-field field-ids)
+        ctx       {:user-settings (db/user-settings-by-field field-ids)
                    :fk-targets    (fk-targets fields)
                    :cached        cached
                    :sampled       sampled}]
