@@ -71,8 +71,8 @@
                     {:provider provider}))))
 
 (defn- normalize-known-model
-  "Check one adapter's `supported-models` value is the `{:display-name ... :context-window ...}` map every
-  adapter stores. Anything else throws, so an adapter that invents a second shape fails loudly instead of
+  "Check one adapter's `supported-models` value is a map containing at least `:display-name` (and optionally
+  `:context-window`). Anything else throws, so an adapter that invents a different shape fails loudly instead of
   quietly documenting a model with no name."
   [provider model-id value]
   (if (map? value)
