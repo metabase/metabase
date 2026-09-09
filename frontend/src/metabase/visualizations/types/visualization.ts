@@ -1,6 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
 
-import type { CardQuestionBuilder } from "metabase/metadata-store";
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconProps } from "metabase/ui";
 import type {
@@ -55,7 +54,6 @@ export interface VisualizationProps {
   card: SeriesCard;
   getHref?: () => string | undefined;
   data: DatasetData;
-  buildQuestion?: CardQuestionBuilder;
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;

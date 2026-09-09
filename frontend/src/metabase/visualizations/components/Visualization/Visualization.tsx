@@ -676,7 +676,6 @@ class Visualization extends PureComponent<
       isSlow,
       isVisualizer,
       isDownloadingToImage,
-      buildQuestion,
       mode,
       editSummary,
       queryBuilderMode,
@@ -958,7 +957,6 @@ class Visualization extends PureComponent<
                       isSettings={!!isSettings}
                       isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
                       scrollToLastColumn={scrollToLastColumn}
-                      buildQuestion={buildQuestion}
                       mode={mode}
                       queryBuilderMode={queryBuilderMode}
                       // Unjustified type cast. FIXME

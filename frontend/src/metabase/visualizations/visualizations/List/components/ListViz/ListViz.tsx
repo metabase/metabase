@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { useMemo } from "react";
 
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { Box } from "metabase/ui";
 import type {
   VisualizationPassThroughProps,
@@ -16,7 +17,6 @@ import S from "./ListViz.module.css";
 
 const ListVizComponent = ({
   card,
-  buildQuestion,
   data,
   settings,
   onVisualizationClick,
@@ -24,12 +24,11 @@ const ListVizComponent = ({
   isDashboard,
   onZoomRow,
 }: VisualizationProps & VisualizationPassThroughProps) => {
-  const question = useMemo(() => {
-    if (!card || !buildQuestion) {
-      return null;
-    }
-    return buildQuestion(card);
-  }, [card, buildQuestion]);
+  const buildQuestion = useQuestionFromCard();
+  const question = useMemo(
+    () => (card ? buildQuestion(card) : null),
+    [card, buildQuestion],
+  );
 
   const { sortedColumnName, sortingDirection } = useMemo(() => {
     if (!question) {

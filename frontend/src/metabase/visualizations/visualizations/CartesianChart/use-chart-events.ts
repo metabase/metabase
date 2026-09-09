@@ -3,6 +3,7 @@ import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -85,7 +86,6 @@ export const useChartEvents = (
     onVisualizationClick,
     onHoverChange,
     clicked,
-    buildQuestion,
     isDashboard,
   }: VisualizationProps,
   // The ECharts instance, mirrored into state by the caller. Used as a signal
@@ -94,6 +94,7 @@ export const useChartEvents = (
   // has measured it.
   chartInstance?: EChartsType,
 ) => {
+  const buildQuestion = useQuestionFromCard();
   const isBrushing = useRef<boolean>();
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
