@@ -39,22 +39,43 @@ const timeline = createMockTimeline({ id: 10, events: [eventA, eventB] });
 
 function setup({
   savedVisibility,
-}: { savedVisibility?: VisualizationSettings } = {}) {
+  duplicateQuestion = false,
+}: {
+  savedVisibility?: VisualizationSettings;
+  duplicateQuestion?: boolean;
+} = {}) {
+  const card = createMockCard({
+    visualization_settings: { ...savedVisibility },
+  });
+  const dashcards = [
+    createMockDashboardCard({
+      id: DASHCARD_ID,
+      card,
+      visualization_settings: { "card.title": "First placement" },
+    }),
+    ...(duplicateQuestion
+      ? [
+          createMockDashboardCard({
+            id: 2,
+            card,
+            visualization_settings: { "card.title": "Second placement" },
+          }),
+        ]
+      : []),
+  ];
   return getMainStore(
     createMockState({
       dashboard: createMockDashboardState({
         dashboardId: 1,
         dashboards: {
-          1: createMockStoreDashboard({ id: 1, dashcards: [DASHCARD_ID] }),
-        },
-        dashcards: {
-          [DASHCARD_ID]: createMockDashboardCard({
-            id: DASHCARD_ID,
-            card: createMockCard({
-              visualization_settings: { ...savedVisibility },
-            }),
+          1: createMockStoreDashboard({
+            id: 1,
+            dashcards: dashcards.map(({ id }) => id),
           }),
         },
+        dashcards: Object.fromEntries(
+          dashcards.map((dashcard) => [dashcard.id, dashcard]),
+        ),
       }),
       "metabase-api": seedApiQueryCache(createMockApiState(), [
         {
@@ -128,6 +149,31 @@ describe("dashboard timeline events visibility", () => {
     expect(getDashCard(store).card.visualization_settings).toEqual(
       savedVisibility,
     );
+  });
+
+  it("changes only the targeted placement of a question and preserves both saved settings", () => {
+    const savedVisibility = {
+      "graph.show_values": true,
+      "timeline.selected_timeline_ids": [timeline.id],
+      "timeline.excluded_timeline_event_ids": [],
+    };
+    const store = setup({ savedVisibility, duplicateQuestion: true });
+    const savedDashcards = store.getState().dashboard.dashcards;
+
+    store.dispatch(
+      updateDashCardsTimelineEventsVisibility(
+        [DASHCARD_ID],
+        (visibility, timelines) =>
+          hideTimelineEvents(visibility, [eventA], timelines),
+      ),
+    );
+
+    expect(getVisibleEventIds(store)).toEqual([eventB.id]);
+    expect(getDashCardVisibleTimelineEventIds(store.getState(), 2)).toEqual([
+      eventA.id,
+      eventB.id,
+    ]);
+    expect(store.getState().dashboard.dashcards).toEqual(savedDashcards);
   });
 
   it("shows the whole timeline when an event is created on a hidden one", () => {

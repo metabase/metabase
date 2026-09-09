@@ -6,6 +6,7 @@ import {
   createQuestionAndDashboardWithEvents,
   expectChartWithoutEvents,
   expectReadOnlyDashboardEvents,
+  interceptTimelineRequests,
 } from "./shared/timeline-events";
 
 describe("scenarios > organization > timelines > public links and embeds", () => {
@@ -73,6 +74,44 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
 
     expectChartWithoutEvents();
   });
+
+  (["question", "dashboard"] as const).forEach((resource) => {
+    it(`should ${resource === "question" ? "not show events" : "show only saved events read-only"} in a ${resource} embed preview`, () => {
+      cy.get<number>(`@${resource}Id`).then((id) => {
+        if (resource === "question") {
+          H.visitQuestion(id);
+        } else {
+          H.visitDashboard(id);
+        }
+        H.timelineEventChip("RC1").should("be.visible");
+
+        interceptTimelineRequests("previewTimelineRequests");
+        cy.intercept(
+          "GET",
+          resource === "question"
+            ? "/api/preview_embed/card/*/query*"
+            : "/api/preview_embed/dashboard/*/dashcard/*/card/*",
+        ).as("previewQuery");
+        H.openLegacyStaticEmbeddingModal({
+          resource,
+          resourceId: id,
+          activeTab: "parameters",
+          previewMode: "preview",
+          unpublishBeforeOpen: false,
+        });
+      });
+
+      cy.wait("@previewQuery");
+      H.getIframeBody().within(() => {
+        if (resource === "question") {
+          expectChartWithoutEvents({ requestAlias: "previewTimelineRequests" });
+        } else {
+          expectReadOnlyDashboardEvents();
+          expectDashboardMenuWithoutEvents("previewTimelineRequests");
+        }
+      });
+    });
+  });
 });
 
 function expectSharedDashboardEvents() {
@@ -100,4 +139,12 @@ function expectSharedDashboardEvents() {
   });
   expectReadOnlyDashboardEvents();
   cy.get("@getTimelines.all").should("have.length", 0);
+}
+
+function expectDashboardMenuWithoutEvents(requestAlias = "timelineRequests") {
+  H.getDashboardCard().realHover();
+  H.getDashboardCard().findByRole("button", { name: "More options" }).click();
+  H.menu().should("be.visible").findByText("Events").should("not.exist");
+  cy.realPress("Escape");
+  cy.get(`@${requestAlias}.all`).should("have.length", 0);
 }
