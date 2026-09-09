@@ -41,6 +41,10 @@ export function dataStudioWorktrees() {
   return WORKTREES_ROOT_URL;
 }
 
+export function dataStudioWorktree(worktreeId: WorktreeId) {
+  return `${WORKTREES_ROOT_URL}/${worktreeId}`;
+}
+
 function transformsRootUrl(worktreeId?: WorktreeId | null) {
   return worktreeId != null
     ? `${WORKTREES_ROOT_URL}/${worktreeId}/transforms`

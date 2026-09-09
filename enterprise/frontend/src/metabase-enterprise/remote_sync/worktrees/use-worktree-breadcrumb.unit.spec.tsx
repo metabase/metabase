@@ -47,15 +47,12 @@ function setup({ insideWorktree = true }: { insideWorktree?: boolean } = {}) {
 }
 
 describe("useWorktreeBreadcrumb", () => {
-  it("prepends the worktree branch linking to the worktree's transforms list", async () => {
+  it("prepends the worktree branch linking to the worktree's home page", async () => {
     setup();
 
     const branchItem = await screen.findByTestId("worktree-breadcrumb");
     expect(branchItem).toHaveTextContent("feature-branch");
-    expect(branchItem).toHaveAttribute(
-      "href",
-      "/data-studio/worktrees/5/transforms",
-    );
+    expect(branchItem).toHaveAttribute("href", "/data-studio/worktrees/5");
 
     expect(screen.getByTestId("data-studio-breadcrumbs")).toHaveTextContent(
       /feature-branch.*Transforms.*New transform/,

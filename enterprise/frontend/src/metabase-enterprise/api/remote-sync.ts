@@ -181,6 +181,23 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("remote-sync-current-task")],
     }),
+    /**
+     * The same read as `getRemoteSyncCurrentTask`, for showing how the last sync ended. Kept as its
+     * own endpoint because the remote-sync listener middleware treats every `getRemoteSyncCurrentTask`
+     * result as progress of a task in flight (adopting it as the tracked task and, once it has ended,
+     * invalidating the sync tags — which would refetch this query in a loop).
+     */
+    getRemoteSyncLastTask: builder.query<
+      RemoteSyncTask | null,
+      { "worktree-id": WorktreeId } | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: `/api/ee/remote-sync/current-task`,
+        params: params ?? undefined,
+      }),
+      providesTags: () => [tag("remote-sync-current-task")],
+    }),
     cancelRemoteSyncCurrentTask: builder.mutation<
       void,
       { worktree_id: WorktreeId } | void
@@ -249,6 +266,7 @@ export const {
   useCreateBranchMutation,
   useImportChangesMutation,
   useGetRemoteSyncCurrentTaskQuery,
+  useGetRemoteSyncLastTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,
   useListWorktreesQuery,

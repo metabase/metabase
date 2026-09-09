@@ -34,6 +34,7 @@ type SetupOpts = {
   hasLibraryFeature?: boolean;
   worktreeHasLibrary?: boolean;
   hasDependenciesFeature?: boolean;
+  initialRoute?: string;
 };
 
 function setup({
@@ -48,6 +49,7 @@ function setup({
   hasLibraryFeature = false,
   worktreeHasLibrary = false,
   hasDependenciesFeature = false,
+  initialRoute = "/",
 }: SetupOpts = {}) {
   setupRemoteSyncEndpoints({
     worktrees,
@@ -86,6 +88,7 @@ function setup({
   renderWithProviders(<WorktreesNavSection isNavbarOpened />, {
     storeInitialState: state,
     withRouter: true,
+    initialRoute,
   });
 }
 
@@ -120,6 +123,65 @@ describe("WorktreesNavSection", () => {
       "href",
       "/data-studio/worktrees/2/transforms",
     );
+  });
+
+  it("links the worktree row to the worktree's home page", async () => {
+    setup({
+      worktrees: [createMockWorktree({ id: 7, branch: "feature-branch" })],
+    });
+
+    const homeLink = await screen.findByRole("link", {
+      name: "feature-branch",
+    });
+    expect(homeLink).toHaveAttribute("href", "/data-studio/worktrees/7");
+  });
+
+  it("marks the worktree row as current on its home page", async () => {
+    setup({
+      worktrees: [createMockWorktree({ id: 7, branch: "feature-branch" })],
+      initialRoute: "/data-studio/worktrees/7",
+    });
+
+    const homeLink = await screen.findByRole("link", {
+      name: "feature-branch",
+    });
+    expect(homeLink).toHaveAttribute("aria-current", "page");
+    expect(
+      screen.getByRole("link", { name: "Transforms" }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks the Transforms item, not the worktree row, as current inside the worktree's transforms", async () => {
+    setup({
+      worktrees: [createMockWorktree({ id: 7, branch: "feature-branch" })],
+      initialRoute: "/data-studio/worktrees/7/transforms",
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Transforms" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      screen.getByRole("link", { name: "feature-branch" }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  it("collapses the worktree's pages from the chevron without leaving the page", async () => {
+    setup({
+      worktrees: [createMockWorktree({ id: 7, branch: "feature-branch" })],
+    });
+    await screen.findByText("feature-branch");
+
+    const chevron = screen.getByRole("button", { name: "Collapse worktree" });
+    expect(chevron).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("link", { name: "feature-branch" }),
+    ).not.toContainElement(chevron);
+
+    await userEvent.click(chevron);
+
+    expect(
+      screen.getByRole("button", { name: "Expand worktree" }),
+    ).toHaveAttribute("aria-expanded", "false");
   });
 
   it("shows a Library item linking into the worktree when the worktree contains a library", async () => {

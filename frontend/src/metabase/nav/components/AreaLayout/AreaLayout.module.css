@@ -23,7 +23,6 @@
 .tab {
   display: flex;
   align-items: center;
-  justify-content: center;
   width: 100%;
 
   &:hover {
@@ -33,6 +32,38 @@
   &.selected {
     background-color: var(--mb-color-background_surface-selected);
   }
+
+  /* the row is the visible target, so draw the link's focus ring around it */
+  &:has(> .tabLink:focus-visible) {
+    outline: 2px solid var(--mb-color-input-focus);
+  }
+}
+
+.tabLink {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: inherit;
+
+  /* stretch the click target over the whole row; the side sections sit above it */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+}
+
+/* specific enough to beat the global anchor focus ring; the row draws it instead */
+.tab > .tabLink:focus-visible {
+  outline: none;
+}
+
+.tabSection {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  /* match the label's line height so controls taller than it don't grow the row */
+  height: 1rem;
 }
 
 .tab,
@@ -88,6 +119,7 @@
   position: absolute;
   top: 0.25rem;
   right: 0.25rem;
+  height: auto;
 }
 
 .upperGroup {

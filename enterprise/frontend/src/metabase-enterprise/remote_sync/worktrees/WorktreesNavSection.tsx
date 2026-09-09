@@ -14,12 +14,10 @@ import {
   ActionIcon,
   Box,
   Collapse,
-  FixedSizeIcon,
-  Flex,
+  Group,
   Icon,
   Loader,
   Menu,
-  Text,
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -81,6 +79,10 @@ export function WorktreesNavSection({
   );
 }
 
+function isWithin(pathname: string, url: string) {
+  return pathname === url || pathname.startsWith(`${url}/`);
+}
+
 type WorktreeNavItemProps = {
   worktree: Worktree;
   isNavbarOpened: boolean;
@@ -88,12 +90,12 @@ type WorktreeNavItemProps = {
 
 function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
   const { pathname } = useLocation();
+  const homeUrl = Urls.dataStudioWorktree(worktree.id);
   const transformsUrl = Urls.transformList({ worktreeId: worktree.id });
   const libraryUrl = Urls.dataStudioLibrary({ worktreeId: worktree.id });
   const dependenciesUrl = Urls.dependencyGraph({ worktreeId: worktree.id });
-  const isInsideWorktree = pathname.startsWith(
-    `${Urls.dataStudioWorktrees()}/${worktree.id}`,
-  );
+  const isInsideWorktree = isWithin(pathname, homeUrl);
+  const isOnHomePage = pathname === homeUrl;
   const [isExpanded, setIsExpanded] = useState(true);
 
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
@@ -109,38 +111,58 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
       <AreaTab
         label={worktree.branch}
         icon="git_branch"
-        to={transformsUrl}
+        to={homeUrl}
         isSelected={isInsideWorktree}
         showLabel={false}
+        rightSection={<WorktreeDirtyBadge worktreeId={worktree.id} />}
       />
     );
   }
 
+  const childrenId = `worktree-${worktree.id}-pages`;
+
   return (
     <Box>
-      <Flex align="center" gap="xs" p="sm" pb={0}>
-        <ActionIcon
-          size="xs"
-          aria-label={isExpanded ? t`Collapse worktree` : t`Expand worktree`}
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          <Icon name={isExpanded ? "chevrondown" : "chevronright"} size={10} />
-        </ActionIcon>
-        <FixedSizeIcon name="git_branch" c="text-secondary" />
-        <Text lh="sm" flex={1} truncate title={worktree.branch}>
-          {worktree.branch}
-        </Text>
-        <WorktreeDirtyBadge worktreeId={worktree.id} />
-        <WorktreeMenu worktree={worktree} isInsideWorktree={isInsideWorktree} />
-      </Flex>
-      <Collapse in={isExpanded}>
-        <Box pl="xl" pt="xs">
+      <AreaTab
+        label={worktree.branch}
+        icon="git_branch"
+        to={homeUrl}
+        // While collapsed, the row stands in for the hidden child pages too.
+        isSelected={isOnHomePage || (isInsideWorktree && !isExpanded)}
+        showLabel
+        leftSection={
+          <ActionIcon
+            size="xs"
+            aria-label={isExpanded ? t`Collapse worktree` : t`Expand worktree`}
+            aria-expanded={isExpanded}
+            aria-controls={childrenId}
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            <Icon
+              name={isExpanded ? "chevrondown" : "chevronright"}
+              size={10}
+            />
+          </ActionIcon>
+        }
+        rightSection={
+          <Group gap="xs" wrap="nowrap">
+            <WorktreeDirtyBadge worktreeId={worktree.id} />
+            <WorktreeMenu
+              worktree={worktree}
+              isInsideWorktree={isInsideWorktree}
+              isOnHomePage={isOnHomePage}
+            />
+          </Group>
+        }
+      />
+      <Collapse in={isExpanded} id={childrenId}>
+        <Box pl="xl">
           {hasLibrary && (
             <AreaTab
               label={t`Library`}
               icon="repository"
               to={libraryUrl}
-              isSelected={pathname.startsWith(libraryUrl)}
+              isSelected={isWithin(pathname, libraryUrl)}
               showLabel
             />
           )}
@@ -148,7 +170,7 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
             label={t`Transforms`}
             icon="transform"
             to={transformsUrl}
-            isSelected={pathname.startsWith(transformsUrl)}
+            isSelected={isWithin(pathname, transformsUrl)}
             showLabel
           />
           {hasDependenciesFeature && (
@@ -156,7 +178,7 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
               label={t`Dependency graph`}
               icon="dependencies"
               to={dependenciesUrl}
-              isSelected={pathname.startsWith(dependenciesUrl)}
+              isSelected={isWithin(pathname, dependenciesUrl)}
               showLabel
             />
           )}
@@ -176,9 +198,14 @@ function WorktreeDirtyBadge({ worktreeId }: { worktreeId: WorktreeId }) {
 type WorktreeMenuProps = {
   worktree: Worktree;
   isInsideWorktree: boolean;
+  isOnHomePage: boolean;
 };
 
-function WorktreeMenu({ worktree, isInsideWorktree }: WorktreeMenuProps) {
+function WorktreeMenu({
+  worktree,
+  isInsideWorktree,
+  isOnHomePage,
+}: WorktreeMenuProps) {
   const [isMenuOpened, setIsMenuOpened] = useState(false);
   const [
     isDeleteModalOpened,
@@ -202,6 +229,8 @@ function WorktreeMenu({ worktree, isInsideWorktree }: WorktreeMenuProps) {
   } = useWorktreeSyncActions(worktree, {
     // Only check statuses while the menu is open, so a long sidebar doesn't query per worktree.
     enabled: isMenuOpened,
+    // The home page mounts its own instance and reports task progress itself while it is shown.
+    showsTaskFeedback: !isOnHomePage,
   });
 
   const handleDelete = async () => {
@@ -227,11 +256,7 @@ function WorktreeMenu({ worktree, isInsideWorktree }: WorktreeMenuProps) {
         onChange={setIsMenuOpened}
       >
         <Menu.Target>
-          <ActionIcon
-            size="sm"
-            aria-label={t`Worktree options`}
-            onClick={(event) => event.preventDefault()}
-          >
+          <ActionIcon size="sm" aria-label={t`Worktree options`}>
             <Icon name="ellipsis" size={12} />
           </ActionIcon>
         </Menu.Target>

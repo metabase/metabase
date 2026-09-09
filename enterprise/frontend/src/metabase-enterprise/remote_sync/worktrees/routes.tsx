@@ -7,7 +7,7 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import { Navigate, Route } from "metabase/router";
+import { Route } from "metabase/router";
 import {
   NewNativeTransformPage,
   NewQueryTransformPage,
@@ -17,12 +17,13 @@ import { TransformListPage } from "metabase/transforms/pages/TransformListPage";
 import { TransformQueryPage } from "metabase/transforms/pages/TransformQueryPage";
 import { TransformSettingsPage } from "metabase/transforms/pages/TransformSettingsPage";
 
+import { WorktreeHomePage } from "./WorktreeHomePage";
 import { WorktreeLayout } from "./WorktreeLayout";
 
 export function getDataStudioWorktreeRoutes(IsAdmin: ComponentType) {
   return (
     <Route path="worktrees/:worktreeId" element={<WorktreeLayout />}>
-      <Route index element={<Navigate to="transforms" replace />} />
+      <Route index element={<WorktreeHomePage />} />
       {PLUGIN_LIBRARY.isEnabled &&
         PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)}
       {PLUGIN_DEPENDENCIES.isEnabled && (

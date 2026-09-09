@@ -5,6 +5,17 @@ import { screen, waitFor, within } from "__support__/ui";
 
 import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
+// The tab's badge sits next to its link, inside the row that wraps both.
+function getTabRow(label: string) {
+  const row = screen
+    .getAllByTestId("area-tab")
+    .find((tab) => within(tab).queryByLabelText(label) != null);
+  if (row == null) {
+    throw new Error(`No tab row found for "${label}"`);
+  }
+  return row;
+}
+
 describe("DataStudioLayout", () => {
   beforeEach(() => {
     fetchMock.removeRoutes();
@@ -156,10 +167,12 @@ describe("DataStudioLayout", () => {
         remoteSyncTransforms: true,
       });
 
-      const transformsTab = await screen.findByLabelText("Data transformation");
+      await screen.findByLabelText("Data transformation");
       await waitFor(() => {
         expect(
-          within(transformsTab).getByTestId("remote-sync-status"),
+          within(getTabRow("Data transformation")).getByTestId(
+            "remote-sync-status",
+          ),
         ).toBeInTheDocument();
       });
     });
@@ -177,9 +190,10 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const transformsTab = screen.getByLabelText("Data transformation");
       expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
+        within(getTabRow("Data transformation")).queryByTestId(
+          "remote-sync-status",
+        ),
       ).not.toBeInTheDocument();
     });
 
@@ -196,9 +210,10 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const transformsTab = screen.getByLabelText("Data transformation");
       expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
+        within(getTabRow("Data transformation")).queryByTestId(
+          "remote-sync-status",
+        ),
       ).not.toBeInTheDocument();
     });
   });
