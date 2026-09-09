@@ -208,7 +208,8 @@
     (if-not (and (seq search-results-to-score)
                  (seq appdb-scorers))
       search-results
-      (->> (semantic-search.db/appdb-scored-rows search-results-to-score search-ctx appdb-scorers)
+      (->> (semantic-search.db/appdb-scored-rows (mapv #(select-keys % [:id :model]) search-results-to-score)
+                                                 search-ctx appdb-scorers)
            (update-with-appdb-scores weights (keys appdb-scorers) search-results)
            (sort-by :score >)
            vec))))

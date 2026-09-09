@@ -51,10 +51,21 @@
   [query :- :map]
   (t2/query query))
 
+(defn- index-search-query
+  "The Honey SQL query selecting `select-items` from the search index `table-name`, matching `search-term` (or every
+  row, when blank/nil), honoring `search-native-query?` (see `metabase.search.appdb.specialization.postgres/base-query`
+  and `.h2/base-query`)."
+  [table-name search-term search-native-query? select-items]
+  (specialization/base-query table-name search-term {:search-native-query search-native-query?} select-items))
+
 (mu/defn search-index-rows
-  "The rows matching the Honey SQL `query` built by `metabase.search.appdb.index/search-query`."
-  [query :- :map]
-  (t2/query query))
+  "The `select-items` rows of the search index `table-name` matching `search-term`, honoring
+  `search-native-query?`."
+  [table-name           :- [:or :keyword :string]
+   search-term          :- [:maybe :string]
+   search-native-query? :- [:maybe :boolean]
+   select-items         :- [:sequential :keyword]]
+  (t2/query (index-search-query table-name search-term search-native-query? select-items)))
 
 (mu/defn view-count-percentile-rows
   "The Model to view-count-percentile rows for the search index table `index-table` at percentile `p-value`."
