@@ -44,9 +44,6 @@
   container whose median over its last [[lookback-days]] days of non-cache-hit executions exceeds
   `threshold-ms`. One grouped query, no per-card loop."
   [threshold-ms]
-  ;; The app dbs share no median/percentile aggregate (H2 has MEDIAN, Postgres percentile_cont, MySQL
-  ;; neither), so compute it portably with window functions: rank each card's executions by
-  ;; running_time, keep the middle row (odd count) or middle two (even), and AVG them.
   (into {}
         ;; AVG comes back as BigDecimal - round to a Long for the native bigint column.
         (map (juxt :card_id #(Math/round (double (:median_ms %)))))
@@ -148,9 +145,6 @@
   duration measures when someone hit cancel, not the transform. Only runs started within the last
   [[lookback-days]] days are considered."
   [threshold-ms]
-  ;; Runs per transform are serialized (`idx_unique_active_transform_run` allows one active run at a
-  ;; time), so among a transform's finished runs MAX(start_time) and MAX(end_time) belong to the same
-  ;; (latest) row - one grouped query, one row per transform, no fetch of the full run history.
   (for [{:keys [transform_id start_time end_time]}
         (cd.db/finished-transform-run-spans (lookback-cutoff))
         :when (and start_time end_time)

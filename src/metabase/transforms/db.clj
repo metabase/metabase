@@ -405,11 +405,11 @@
               :group-by [:transform_id]}))
 
 (defn latest-run-start-times-query
-  "HoneySQL map selecting each Transform's most recent run `start_time` (any status) as `:last_start`,
-  one row per `:transform_id`; optionally restricted to `transform-ids`. The single definition of the
-  \"most recent run\" anchor — embedded as the staleness method's join subquery
-  ([[metabase.staleness.core/find-stale-query]] `:model/Transform`) and realized by [[last-start-times]]
-  for the schedule-freshness check, so the two can't drift apart."
+  "HoneySQL map selecting each transform's most recent run `start_time` (any status) as
+  `:last_start`, one row per `:transform_id`; optionally restricted to `transform-ids`. The single
+  definition of the \"most recent run\" anchor - embedded as the staleness method's join subquery
+  ([[metabase.staleness.core/find-stale-query]] `:model/Transform`) and realized by
+  [[last-start-times]] for the schedule-freshness check, so the two can't drift apart."
   ([]
    (latest-run-start-times-query nil))
   ([transform-ids]
@@ -419,7 +419,9 @@
      (seq transform-ids) (assoc :where [:in :transform_id transform-ids]))))
 
 (defn last-start-times
-  "Rows of Transform ID and the latest `start_time` of its runs, any status, for `transform-ids`."
+  "Rows of Transform ID and the latest `start_time` of its runs, any status, restricted to
+  `transform-ids` when non-empty - an empty collection means every Transform (see
+  [[latest-run-start-times-query]])."
   [transform-ids]
   (t2/select :model/TransformRun (latest-run-start-times-query transform-ids)))
 

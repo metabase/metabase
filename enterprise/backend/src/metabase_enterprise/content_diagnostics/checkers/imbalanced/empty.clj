@@ -30,9 +30,7 @@
   "`{card-id -> started_at}` for every non-archived card in an eligible container whose latest clean run
   returned 0 rows. Clean means unparameterized, unsandboxed, not a cache hit, and error-free - anything
   else is not instance-wide evidence of emptiness (a sandbox filters rows per user, and an errored run
-  means broken, not empty). One windowed query picks each card's most recent run, then keeps it only if
-  its row count was 0. `parameterized` is matched strictly against `false`, so legacy rows predating
-  these columns (NULL) fall out; a NULL `is_sandboxed` is treated as not sandboxed."
+  means broken, not empty)."
   []
   (u/index-by :card_id :started_at
               (cd.db/cards-with-empty-latest-run (common/eligible-container-clause :c.collection_id))))

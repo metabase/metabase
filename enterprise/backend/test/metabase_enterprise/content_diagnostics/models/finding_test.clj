@@ -89,7 +89,8 @@
     ;; so deriving the set from it fails here the moment a fourth app DB lands. `:default` is dropped
     ;; because a catch-all spec method is not itself a dispatch value the trimmer can be asked for.
     (doseq [db-type (remove #{:default} (keys (methods mdb/spec)))]
-      (is (map? (#'cd.db/delete-batch-query db-type (t/offset-date-time) 1000))
+      (is (map? (#'cd.db/delete-batch-query db-type (t/offset-date-time)
+                                            @#'finding/delete-batch-size))
           (str "no batch-delete arm for app db " db-type)))))
 
 (def ^:private long-ago

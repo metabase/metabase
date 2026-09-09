@@ -286,13 +286,7 @@
   exactly like a deleted one."
   [card-ids excluded-personal-ids]
   (when (seq card-ids)
-    (into {}
-          (map (fn [c] [(:id c) {:id         (:id c)
-                                 :name       (:name c)
-                                 :entity_type :card
-                                 :card_type  (:type c)
-                                 :view_count (:view_count c)}]))
-          (cd.db/card-summary-rows (readable-entities-where (set card-ids) excluded-personal-ids)))))
+    (cd.db/card-summaries-by-id (readable-entities-where (set card-ids) excluded-personal-ids))))
 
 (defmulti ^:private read-entity-rows
   "Permission-filtered rows for hydrating a type's duplicate ids, read-gated by [[readable-entities-where]].

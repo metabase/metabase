@@ -18,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------ findings -------------------------------------------------
+;;; ------------------------------------------------ Findings -------------------------------------------------
 
 (mu/defn insert-findings!
   "Insert one chunk of `content_diagnostics_finding` `rows`."
@@ -101,7 +101,7 @@
    batch-size :- ms/PositiveInt]
   (t2/query-one (delete-batch-query (mdb/db-type) cutoff batch-size)))
 
-;;; ----------------------------------------------- collections -----------------------------------------------
+;;; ----------------------------------------------- Collections -----------------------------------------------
 
 (mu/defn collection-ids
   "The ids of the Collections matching `where`."
@@ -148,7 +148,7 @@
                     [:model/Collection :id :location]
                     :id [:in collection-ids]))
 
-;;; --------------------------------------------- entities of a type ------------------------------------------
+;;; --------------------------------------------- Entities of a type ------------------------------------------
 
 (mu/defn collection-ids-by-entity-id
   "`{id → collection_id}` for the rows of `model` with `ids`."
@@ -157,21 +157,23 @@
   (t2/select-pk->fn :collection_id [model :id :collection_id] :id [:in ids]))
 
 (mu/defn entity-attrs-by-id
-  "`{id → {:name :created_at :creator_id :type}}` for the rows of `model` with `ids`. `cols` is the
-  subset of those columns the model actually has, plus whatever its after-select hook requires."
-  [model :- :keyword
-   cols  :- [:maybe [:sequential :keyword]]
-   ids   :- [:set ms/PositiveInt]]
+  "`{id → {:name :created_at :creator_id :type}}` for the rows of `model` with `ids`.
+  `select-cols` is the whole projection - the subset of those columns the model actually has, `:id`,
+  and whatever its after-select hook requires."
+  [model       :- :keyword
+   select-cols :- [:maybe [:sequential :keyword]]
+   ids         :- [:set ms/PositiveInt]]
   (t2/select-pk->fn #(select-keys % [:name :created_at :creator_id :type])
-                    (into [model] cols)
+                    (into [model] select-cols)
                     :id [:in ids]))
 
 (mu/defn entity-context-rows
-  "The `(id, collection_id)` rows of `model` with `ids`, plus the `cols` its display context needs."
-  [model :- :keyword
-   cols  :- [:maybe [:sequential :keyword]]
-   ids   :- [:set ms/PositiveInt]]
-  (t2/select (into [model :id :collection_id] cols) :id [:in ids]))
+  "The `(id, collection_id)` rows of `model` with `ids`, plus the `extra-cols` its display context
+  needs."
+  [model      :- :keyword
+   extra-cols :- [:maybe [:sequential :keyword]]
+   ids        :- [:set ms/PositiveInt]]
+  (t2/select (into [model :id :collection_id] extra-cols) :id [:in ids]))
 
 (mu/defn entity-rows
   "The rows of `selectable` - a model, or a model with a column projection - with `ids`."
@@ -184,12 +186,15 @@
   []
   (t2/select-pks-set [:model/Card :id] {:where [:not= :document_id nil]}))
 
-;;; -------------------------------------------------- users --------------------------------------------------
+;;; -------------------------------------------------- Users --------------------------------------------------
 
 (mu/defn user-names-by-id
   "`{id → common_name}` for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :common_name :model/User :id [:in user-ids]))
+  ;; the projection is what `add-common-name` reads - a bare model select would fetch every user
+  ;; column to derive one field
+  (t2/select-pk->fn :common_name [:model/User :id :email :first_name :last_name]
+                    :id [:in user-ids]))
 
 (mu/defn user-contacts-by-id
   "`{id → {:id :common_name :email}}` for the Users with `user-ids`."
@@ -198,7 +203,7 @@
                     [:model/User :id :email :first_name :last_name]
                     :id [:in user-ids]))
 
-;;; -------------------------------------------------- cards --------------------------------------------------
+;;; -------------------------------------------------- Cards --------------------------------------------------
 
 (mu/defn name-rows
   "The `(id, name)` rows of `model` matching `where` (every row when nil), plus `extra-cols` - the
@@ -208,11 +213,19 @@
    where      :- [:maybe vector?]]
   (t2/select (into [model :id :name] extra-cols) (m/assoc-some {} :where where)))
 
-(mu/defn card-summary-rows
-  "The Cards matching `where`, with the columns a `slow` roll-up's culprit list serves: `name`, the
-  `type` enum driving the per-member link/icon, and the live `view_count`."
+(mu/defn card-summaries-by-id
+  "`{id → {:id :name :entity_type :card_type :view_count}}` for the Cards matching `where` - the
+  columns a `slow` roll-up's culprit list serves: `name`, the `type` enum driving the per-member
+  link/icon, and the live `view_count`. `:card_schema` is required on any Card select - its
+  after-select schema-upgrade hook reads it."
   [where :- vector?]
-  (t2/select [:model/Card :id :name :type :view_count :card_schema] {:where where}))
+  (t2/select-pk->fn (fn [c] {:id          (:id c)
+                             :name        (:name c)
+                             :entity_type :card
+                             :card_type   (:type c)
+                             :view_count  (:view_count c)})
+                    [:model/Card :id :name :type :view_count :card_schema]
+                    {:where where}))
 
 (mu/defn collection-item-card-rows
   "The `(id, collection_id)` rows of the non-archived Cards that are direct collection items - a card
@@ -285,7 +298,7 @@
              :group-by [:card_id]
              :having   [:> [:avg :running_time] threshold-ms]}))
 
-;;; ------------------------------------------------ dashboards -----------------------------------------------
+;;; ------------------------------------------------ Dashboards -----------------------------------------------
 
 (mu/defn active-dashboard-rows
   "The `(id, collection_id)` rows of the non-archived Dashboards in the containers `eligible-clause`
@@ -340,7 +353,7 @@
                       [:report_dashboard :d]      [:= :d.id :dc.dashboard_id]]
              :where  [:and eligible-clause [:in :s.card_id card-ids]]}))
 
-;;; ------------------------------------------------- documents -----------------------------------------------
+;;; ------------------------------------------------- Documents -----------------------------------------------
 
 (mu/defn document-rows
   "The `(id, collection_id)` rows of the non-archived Documents in the containers `eligible-clause`
@@ -368,7 +381,7 @@
                       [:= :content_type content-type]
                       eligible-clause]}))
 
-;;; ------------------------------------------------- transforms ----------------------------------------------
+;;; ------------------------------------------------- Transforms ----------------------------------------------
 
 (mu/defn transform-rows
   "The `(id, collection_id)` rows of every Transform - transforms are hard-deleted, so there is no
@@ -386,8 +399,9 @@
 (mu/defn finished-transform-run-spans
   "The `(transform_id, start_time, end_time)` of each Transform's latest finished run - succeeded, failed
   or timed out, started at or after `cutoff`. Canceled runs are excluded: their duration measures when
-  someone hit cancel, not the transform. Runs per transform are serialized, so the MAX of each timestamp
-  belongs to the same (latest) row."
+  someone hit cancel, not the transform. Runs per transform are serialized
+  (`idx_unique_active_transform_run` allows one active run at a time), so the MAX of each timestamp
+  belongs to the same (latest) row - one grouped query, no fetch of the full run history."
   [cutoff :- ms/TemporalInstant]
   (t2/query {:select   [:transform_id
                         [[:max :start_time] :start_time]
