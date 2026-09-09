@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   type RemoteSyncExportPreflightResponse,
   setupPropertiesEndpoints,
@@ -24,6 +25,7 @@ import { WorktreesNavSection } from "./WorktreesNavSection";
 
 type SetupOpts = {
   isAdmin?: boolean;
+  hasRemoteSyncPermission?: boolean;
   isRemoteSyncEnabled?: boolean;
   worktrees?: Worktree[];
   isDirty?: boolean;
@@ -39,6 +41,7 @@ type SetupOpts = {
 
 function setup({
   isAdmin = true,
+  hasRemoteSyncPermission = false,
   isRemoteSyncEnabled = true,
   worktrees = [],
   isDirty = false,
@@ -65,6 +68,9 @@ function setup({
     "token-features": createMockTokenFeatures({
       library: hasLibraryFeature,
       dependencies: hasDependenciesFeature,
+      // Registers the real (EE) canAccessRemoteSync selector the WorktreesNavSection gate reads,
+      // instead of the OSS plugin default.
+      advanced_permissions: true,
     }),
   });
   setupPropertiesEndpoints(settings);
@@ -81,9 +87,16 @@ function setup({
   fetchMock.get("path:/api/collection/tree", []);
 
   const state = createMockState({
-    currentUser: createMockUser({ is_superuser: isAdmin }),
+    currentUser: createMockUser({
+      is_superuser: isAdmin,
+      permissions: { can_access_remote_sync: hasRemoteSyncPermission },
+    }),
     settings: mockSettings(settings),
   });
+
+  // hasPremiumFeature reads the MetabaseSettings singleton synchronously, so it must be seeded
+  // (mockSettings, above) before the EE plugins register their selectors.
+  setupEnterprisePlugins();
 
   renderWithProviders(<WorktreesNavSection isNavbarOpened />, {
     storeInitialState: state,
@@ -314,7 +327,6 @@ describe("WorktreesNavSection", () => {
       "path:/api/ee/remote-sync/import",
     )?.request;
     expect(await request?.json()).toEqual({
-      branch: "feature-branch",
       expected_branch: "feature-branch",
       worktree_id: 7,
     });
@@ -443,10 +455,19 @@ describe("WorktreesNavSection", () => {
     });
   });
 
-  it("renders nothing for non-admins", async () => {
+  it("renders nothing for non-admins without remote sync access", async () => {
     setup({ isAdmin: false, worktrees: [createMockWorktree()] });
     await waitFor(() => {
       expect(screen.queryByText("Worktrees")).not.toBeInTheDocument();
     });
+  });
+
+  it("shows worktrees for non-admins with remote sync access", async () => {
+    setup({
+      isAdmin: false,
+      hasRemoteSyncPermission: true,
+      worktrees: [createMockWorktree()],
+    });
+    expect(await screen.findByText("Worktrees")).toBeInTheDocument();
   });
 });

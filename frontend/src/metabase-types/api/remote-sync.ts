@@ -101,14 +101,12 @@ export type ExportPreflightResponse = {
 };
 
 export type ImportFromBranchRequest = {
-  branch: string;
   force?: boolean;
   /** Perform a local-only 3-way merge, keeping un-pushed local changes instead of overwriting them. */
   merge?: boolean;
   /**
    * The branch the client believes is currently active. Rejected (409) if it disagrees with the
-   * configured remote-sync-branch — i.e. another session switched branches. Differs from `branch`
-   * on a branch switch, where `branch` is the target and this is the branch being switched away from.
+   * configured remote-sync-branch — i.e. another session switched branches.
    */
   expected_branch: string;
   /** Import into a remote-sync worktree instead of the main app. */
@@ -119,6 +117,39 @@ export type ImportFromBranchResponse = {
   status?: string;
   task_id?: number;
   message?: string;
+};
+
+/**
+ * Switches the main app's sync branch. The only way to do this — `POST /import` always pulls the
+ * current branch. Admin-only.
+ */
+export type SwitchBranchRequest = {
+  /** The branch to switch to. */
+  branch: string;
+  force?: boolean;
+  /** Perform a local-only 3-way merge, keeping un-pushed local changes instead of overwriting them. */
+  merge?: boolean;
+  /**
+   * The branch the client believes is currently active. Rejected (409) if it disagrees with the
+   * configured remote-sync-branch — i.e. another session switched branches.
+   */
+  expected_branch: string;
+};
+
+export type SwitchBranchResponse = ImportFromBranchResponse;
+
+/**
+ * Creates a branch from the current one, pushes local changes there, and switches to it. Admin-only.
+ */
+export type StashChangesRequest = {
+  new_branch: string;
+  message?: string;
+};
+
+export type StashChangesResponse = {
+  status: string;
+  message: string;
+  task_id?: number;
 };
 
 export type CollectionSyncPreferences = Record<number, boolean>;

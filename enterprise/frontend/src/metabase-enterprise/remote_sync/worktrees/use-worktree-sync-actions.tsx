@@ -178,7 +178,6 @@ export function useWorktreeSyncActions(
 
     try {
       await importChanges({
-        branch,
         expected_branch: branch,
         worktree_id: worktreeId,
       }).unwrap();

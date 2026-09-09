@@ -8,6 +8,7 @@ export type AdvancedPermissions = {
   monitoring?: AdvancedPermissionValue;
   setting?: AdvancedPermissionValue;
   subscription?: AdvancedPermissionValue;
+  "remote-sync"?: AdvancedPermissionValue;
 };
 
 export type AdvancedPermissionsGroups = Record<GroupId, AdvancedPermissions>;

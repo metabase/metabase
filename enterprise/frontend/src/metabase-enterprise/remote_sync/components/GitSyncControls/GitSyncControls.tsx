@@ -194,7 +194,6 @@ export const GitSyncControls = () => {
 
     try {
       await importChanges({
-        branch: currentBranch,
         expected_branch: currentBranch,
       }).unwrap();
 

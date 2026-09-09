@@ -2,7 +2,7 @@ import { msgid, ngettext, t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { useToast } from "metabase/common/hooks";
-import { getUserIsAdmin } from "metabase/current-user";
+import { canAccessRemoteSync } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
 import { useCancelRemoteSyncCurrentTaskMutation } from "metabase-enterprise/api";
@@ -38,7 +38,7 @@ export function SyncProgressModal({
   worktreeId = null,
   onDismiss,
 }: SyncProgressModalProps) {
-  const canCancel = useSelector(getUserIsAdmin);
+  const canCancel = useSelector(canAccessRemoteSync);
 
   const [cancelRemoteSyncCurrentTask] =
     useCancelRemoteSyncCurrentTaskMutation();

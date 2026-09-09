@@ -42,6 +42,15 @@ export const canAccessSettings = createSelector(
   (isAdmin, canAccessSettings) => isAdmin || canAccessSettings,
 );
 
+export const canAccessRemoteSync = createSelector(
+  [
+    getUserIsAdmin,
+    (state) =>
+      PLUGIN_APPLICATION_PERMISSIONS.selectors.canAccessRemoteSync(state),
+  ],
+  (isAdmin, canAccessRemoteSync) => isAdmin || canAccessRemoteSync,
+);
+
 export const getUserAttributes = createSelector(
   [getUser],
   (user) => user?.attributes || {},

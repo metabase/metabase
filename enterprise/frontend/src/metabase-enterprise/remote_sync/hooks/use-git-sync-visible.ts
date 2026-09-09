@@ -1,4 +1,4 @@
-import { getUserIsAdmin } from "metabase/current-user";
+import { canAccessRemoteSync } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useAdminSetting } from "metabase/settings";
 
@@ -15,7 +15,7 @@ export interface GitSyncVisibleState {
  * This centralizes the visibility logic used by GitSyncControls and other components.
  */
 export const useGitSyncVisible = (): GitSyncVisibleState => {
-  const isAdmin = useSelector(getUserIsAdmin);
+  const hasRemoteSyncAccess = useSelector(canAccessRemoteSync);
   const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
   const { value: currentBranch, settingDetails: branchDetails } =
     useAdminSetting(BRANCH_KEY);
@@ -23,7 +23,7 @@ export const useGitSyncVisible = (): GitSyncVisibleState => {
 
   const isVisible = !!(
     isRemoteSyncEnabled &&
-    isAdmin &&
+    hasRemoteSyncAccess &&
     currentBranch &&
     syncType === "read-write"
   );

@@ -203,7 +203,6 @@ describe("remote-sync-listener-middleware", () => {
       // Dispatch the mutation
       store.dispatch(
         remoteSyncApi.endpoints.importChanges.initiate({
-          branch: "main",
           expected_branch: "main",
         }),
       );
@@ -232,7 +231,6 @@ describe("remote-sync-listener-middleware", () => {
       // Dispatch the mutation
       store.dispatch(
         remoteSyncApi.endpoints.importChanges.initiate({
-          branch: "main",
           expected_branch: "main",
         }),
       );
@@ -289,7 +287,6 @@ describe("remote-sync-listener-middleware", () => {
 
       store.dispatch(
         remoteSyncApi.endpoints.importChanges.initiate({
-          branch: "feature-branch",
           expected_branch: "feature-branch",
           worktree_id: 5,
         }),

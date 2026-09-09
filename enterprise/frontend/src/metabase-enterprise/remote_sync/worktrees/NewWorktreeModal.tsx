@@ -51,7 +51,6 @@ export function NewWorktreeModal({ onClose }: NewWorktreeModalProps) {
       // Materialize the branch's content into the worktree right away, so it
       // doesn't open empty.
       await importChanges({
-        branch: trimmedBranch,
         expected_branch: trimmedBranch,
         worktree_id: worktree.id,
       });

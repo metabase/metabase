@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useGetSettingsQuery, useSetting } from "metabase/settings";
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";
@@ -82,6 +83,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const { sendErrorToast } = useMetadataToasts();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const isAdmin = useSelector(getUserIsAdmin);
   const { data: settingValues } = useGetSettingsQuery();
   const { data: libraryCollection } = useGetLibraryCollection({
     skip: !isRemoteSyncEnabled,
@@ -218,6 +220,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           variant={variant}
           canMerge={canMerge}
           isWorktree={worktreeId != null}
+          isAdmin={isAdmin}
         />
 
         {optionValue === "force-push" && forcePushCasualties && (

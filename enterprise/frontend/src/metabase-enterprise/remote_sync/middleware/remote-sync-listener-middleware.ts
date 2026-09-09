@@ -115,6 +115,37 @@ remoteSyncListenerMiddleware.startListening({
   },
 });
 
+// A branch switch always runs against the main app, and pulls the target branch, so it tracks the
+// same as an import.
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.switchBranch.matchPending,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskStarted({ taskType: "import", worktreeId: null }));
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.switchBranch.matchRejected,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskCleared());
+  },
+});
+
+// Stashing pushes local changes to a new branch, so it tracks the same as an export.
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.stashChanges.matchPending,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskStarted({ taskType: "export", worktreeId: null }));
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.stashChanges.matchRejected,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskCleared());
+  },
+});
+
 const terminalTaskStates: RemoteSyncTaskStatus[] = [
   "successful",
   "errored",

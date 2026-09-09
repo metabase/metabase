@@ -11,6 +11,7 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 const SETTINGS_INDEX = 0;
 const MONITORING_INDEX = 1;
 const SUBSCRIPTIONS_INDEX = 2;
+const REMOTE_SYNC_INDEX = 3;
 
 const NORMAL_USER_ID = 2;
 
@@ -194,6 +195,25 @@ describe("scenarios > admin > permissions > application", () => {
           .findByText(/changes saved/i)
           .should("be.visible");
       });
+    });
+  });
+
+  describe("remote sync permission", () => {
+    it("can be granted to a group", () => {
+      cy.visit("/admin/permissions/application");
+
+      H.modifyPermission("All Users", REMOTE_SYNC_INDEX, "Yes");
+
+      cy.button("Save changes").click();
+
+      H.modal().within(() => {
+        cy.findByText("Save permissions?");
+        cy.findByText("Are you sure you want to do this?");
+        cy.button("Yes").click();
+      });
+
+      cy.visit("/admin/permissions/application");
+      H.assertPermissionForItem("All Users", REMOTE_SYNC_INDEX, "Yes");
     });
   });
 });

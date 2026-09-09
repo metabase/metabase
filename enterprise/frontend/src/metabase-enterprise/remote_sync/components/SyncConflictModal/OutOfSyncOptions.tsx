@@ -16,6 +16,11 @@ interface BranchSwitchOptionsProps {
   canMerge?: boolean;
   /** A worktree can only sync with its own branch, so the new-branch option is not offered. */
   isWorktree?: boolean;
+  /**
+   * "Create a new branch" stashes local changes and switches the main app to it, which only an
+   * admin can do — non-admins don't get the option.
+   */
+  isAdmin?: boolean;
 }
 
 interface OutOfSyncOption {
@@ -39,6 +44,7 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
     variant,
     canMerge,
     isWorktree = false,
+    isAdmin = true,
   } = props;
 
   const options = useMemo<OutOfSyncOption[]>(() => {
@@ -91,10 +97,17 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
       }
     })();
 
-    return isWorktree
+    return isWorktree || !isAdmin
       ? allOptions.filter((option) => option.value !== "new-branch")
       : allOptions;
-  }, [currentBranch, isRemoteSyncReadOnly, variant, canMerge, isWorktree]);
+  }, [
+    currentBranch,
+    isRemoteSyncReadOnly,
+    variant,
+    canMerge,
+    isWorktree,
+    isAdmin,
+  ]);
 
   const safeOptions = options.filter(
     (option) => !DESTRUCTIVE_OPTIONS.has(option.value),

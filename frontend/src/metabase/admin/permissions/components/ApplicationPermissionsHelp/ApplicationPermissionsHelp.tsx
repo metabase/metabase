@@ -30,6 +30,11 @@ export const ApplicationPermissionsHelp = () => {
             <strong key="label">{t`Subscriptions and alerts:`}</strong>
           )} the group can create dashboard subscriptions and alerts.`}
         </Text>
+        <Text>
+          {jt`${(
+            <strong key="label">{t`Remote sync:`}</strong>
+          )} the group can create and use worktrees, and pull and push the sync branch.`}
+        </Text>
       </Stack>
 
       <Text component="footer" ta="center" py="1rem" fw={600}>

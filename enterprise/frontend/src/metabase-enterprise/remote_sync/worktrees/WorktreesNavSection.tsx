@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useHasTokenFeature, useToast } from "metabase/common/hooks";
-import { getUserIsAdmin } from "metabase/current-user";
+import { canAccessRemoteSync } from "metabase/current-user";
 import { AreaTab, AreaTabGroup } from "metabase/nav/components/AreaLayout";
 import type { DataStudioWorktreesSectionProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -38,9 +38,9 @@ import { useWorktreeSyncActions } from "./use-worktree-sync-actions";
 export function WorktreesNavSection({
   isNavbarOpened,
 }: DataStudioWorktreesSectionProps) {
-  const isAdmin = useSelector(getUserIsAdmin);
+  const hasRemoteSyncAccess = useSelector(canAccessRemoteSync);
   const isRemoteSyncEnabled = useSetting("remote-sync-enabled");
-  const canUseWorktrees = isAdmin && !!isRemoteSyncEnabled;
+  const canUseWorktrees = hasRemoteSyncAccess && !!isRemoteSyncEnabled;
 
   const { data: worktrees = [] } = useListWorktreesQuery(undefined, {
     skip: !canUseWorktrees,

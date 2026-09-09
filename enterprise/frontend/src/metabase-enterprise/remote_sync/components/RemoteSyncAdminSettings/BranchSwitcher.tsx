@@ -14,8 +14,8 @@ import {
   useCombobox,
 } from "metabase/ui";
 import {
-  useImportChangesMutation,
   useLazyGetRemoteSyncChangesQuery,
+  useSwitchBranchMutation,
 } from "metabase-enterprise/api/remote-sync";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
@@ -49,7 +49,7 @@ export const BranchSwitcher = ({
 }: BranchSwitcherProps) => {
   const combobox = useCombobox();
   const [sendToast] = useToast();
-  const [importChanges, { isLoading }] = useImportChangesMutation();
+  const [switchBranch, { isLoading }] = useSwitchBranchMutation();
   const [fetchDirty] = useLazyGetRemoteSyncChangesQuery();
   // Switching goes through superuser-only endpoints, so only admins get the control.
   const isAdmin = useSelector(getUserIsAdmin);
@@ -74,7 +74,7 @@ export const BranchSwitcher = ({
     try {
       // force is left false so the backend surfaces deletion conflicts rather than silently discarding
       // local-only content.
-      await importChanges({
+      await switchBranch({
         branch,
         expected_branch: currentBranch,
       }).unwrap();

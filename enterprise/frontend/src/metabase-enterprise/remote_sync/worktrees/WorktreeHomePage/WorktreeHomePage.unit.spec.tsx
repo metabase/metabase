@@ -213,7 +213,6 @@ describe("WorktreeHomePage", () => {
       "path:/api/ee/remote-sync/import",
     )?.request;
     expect(await request?.json()).toEqual({
-      branch: WORKTREE.branch,
       expected_branch: WORKTREE.branch,
       worktree_id: WORKTREE.id,
     });

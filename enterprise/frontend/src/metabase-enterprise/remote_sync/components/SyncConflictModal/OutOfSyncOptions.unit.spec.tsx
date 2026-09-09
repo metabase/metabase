@@ -7,12 +7,14 @@ type SetupOpts = {
   isRemoteSyncReadOnly?: boolean;
   variant: RemoteSyncConflictVariant;
   canMerge?: boolean;
+  isAdmin?: boolean;
 };
 
 const setup = ({
   variant,
   isRemoteSyncReadOnly = false,
   canMerge,
+  isAdmin,
 }: SetupOpts) => {
   render(
     <OutOfSyncOptions
@@ -21,6 +23,7 @@ const setup = ({
       isRemoteSyncReadOnly={isRemoteSyncReadOnly}
       variant={variant}
       canMerge={canMerge}
+      isAdmin={isAdmin}
     />,
   );
 };
@@ -61,6 +64,24 @@ describe("OutOfSyncOptions", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByLabelText(/Delete unsynced changes/),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("non-admin", () => {
+    it("hides the new-branch option even outside a worktree", () => {
+      // Creating a branch stashes changes onto a new branch and switches the main app to it, which
+      // only an admin can do.
+      setup({ variant: "pull", canMerge: true, isAdmin: false });
+      expect(
+        screen.queryByLabelText(/Create a new branch and push changes there/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("still offers the new-branch option for admins", () => {
+      setup({ variant: "pull", canMerge: true, isAdmin: true });
+      expect(
+        screen.getByLabelText(/Create a new branch and push changes there/),
       ).toBeInTheDocument();
     });
   });

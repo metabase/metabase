@@ -11,6 +11,10 @@ import type {
   RemoteSyncConfigurationSettings,
   RemoteSyncHasChangesResponse,
   RemoteSyncTask,
+  StashChangesRequest,
+  StashChangesResponse,
+  SwitchBranchRequest,
+  SwitchBranchResponse,
   TestRemoteSyncConnectionRequest,
   TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncConfigurationResponse,
@@ -68,11 +72,10 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       ImportFromBranchResponse,
       ImportFromBranchRequest
     >({
-      query: ({ branch, force, merge, expected_branch, worktree_id }) => ({
+      query: ({ force, merge, expected_branch, worktree_id }) => ({
         url: `/api/ee/remote-sync/import`,
         method: "POST",
         body: {
-          branch,
           force,
           merge,
           expected_branch,
@@ -83,6 +86,37 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
        * Tags invalidation for import happens in the middleware after the import task is successful.
        * @see remote-sync-middleware.ts
        */
+    }),
+    switchBranch: builder.mutation<SwitchBranchResponse, SwitchBranchRequest>({
+      query: ({ branch, force, merge, expected_branch }) => ({
+        url: `/api/ee/remote-sync/switch-branch`,
+        method: "POST",
+        body: {
+          branch,
+          force,
+          merge,
+          expected_branch,
+        },
+      }),
+      /**
+       * Tags invalidation for a branch switch happens in the middleware after the task is successful,
+       * same as import.
+       * @see remote-sync-middleware.ts
+       */
+    }),
+    stashChanges: builder.mutation<StashChangesResponse, StashChangesRequest>({
+      query: ({ new_branch, message }) => ({
+        url: `/api/ee/remote-sync/stash`,
+        method: "POST",
+        body: {
+          new_branch,
+          message,
+        },
+      }),
+      invalidatesTags: () => [
+        tag("collection-dirty-entities"),
+        tag("session-properties"),
+      ],
     }),
     getRemoteSyncChanges: builder.query<
       RemoteSyncChangesResponse,
@@ -265,6 +299,8 @@ export const {
   useGetBranchesQuery,
   useCreateBranchMutation,
   useImportChangesMutation,
+  useSwitchBranchMutation,
+  useStashChangesMutation,
   useGetRemoteSyncCurrentTaskQuery,
   useGetRemoteSyncLastTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,

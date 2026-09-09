@@ -1,11 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import {
-  useCreateBranchMutation,
   useExportChangesMutation,
   useImportChangesMutation,
+  useStashChangesMutation,
+  useSwitchBranchMutation,
 } from "metabase-enterprise/api";
 import { parseSyncError } from "metabase-enterprise/remote_sync/utils";
 import type { WorktreeId } from "metabase-types/api";
@@ -108,9 +109,9 @@ export const useMergeImportAction = (worktreeId: WorktreeId | null = null) => {
       async (branch: string, closeModal: VoidFunction) => {
         try {
           // Pull merge: the operational branch is the current branch, so it doubles as the
-          // expected_branch assertion.
+          // expected_branch assertion. Import always pulls the current branch, so there's nothing
+          // else to pass.
           await importChanges({
-            branch,
             merge: true,
             expected_branch: branch,
             worktree_id: worktreeId,
@@ -136,9 +137,7 @@ export const useMergeImportAction = (worktreeId: WorktreeId | null = null) => {
 };
 
 export const useStashToNewBranchAction = (existingBranches: string[]) => {
-  const [exportChanges] = useExportChangesMutation();
-  const [createBranch] = useCreateBranchMutation();
-  const [isStashing, setIsStashing] = useState<boolean>(false);
+  const [stashChanges, { isLoading: isStashing }] = useStashChangesMutation();
   const [sendToast] = useToast();
 
   return {
@@ -165,17 +164,15 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
         }
 
         try {
-          setIsStashing(true);
-          await createBranch({ name: newBranchName }).unwrap();
+          await stashChanges({
+            new_branch: newBranchName,
+            message,
+          }).unwrap();
 
           trackBranchCreated({
             triggeredFrom: "conflict-modal",
           });
 
-          await exportChanges({
-            branch: newBranchName,
-            message,
-          }).unwrap();
           sendToast({
             message: c("{0} is the GitHub branch name")
               .t`Changes pushed to new branch ${newBranchName}`,
@@ -187,11 +184,9 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
             message: t`Failed to push changes to new branch`,
             icon: "warning",
           });
-        } finally {
-          setIsStashing(false);
         }
       },
-      [createBranch, existingBranches, exportChanges, sendToast],
+      [existingBranches, sendToast, stashChanges],
     ),
     isStashing,
   };
@@ -202,6 +197,7 @@ export const useDiscardChangesAndImportAction = (
 ) => {
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
+  const [switchBranch, { isLoading: isSwitching }] = useSwitchBranchMutation();
   const [sendToast] = useToast();
 
   return {
@@ -212,14 +208,27 @@ export const useDiscardChangesAndImportAction = (
         closeModal: VoidFunction,
       ) => {
         try {
-          // targetBranch is what we import (may be a switch target); expectedBranch is the branch
-          // we believe is currently active, asserted against the setting to catch a stale tab.
-          await importChanges({
-            branch: targetBranch,
-            force: true,
-            expected_branch: expectedBranch,
-            worktree_id: worktreeId,
-          }).unwrap();
+          // expectedBranch is the branch we believe is currently active, asserted against the
+          // setting to catch a stale tab. A worktree always syncs with its own branch, so it never
+          // switches; outside a worktree, a target that differs from the expected branch is a
+          // branch switch — the only operation that can change what import always pulls (the
+          // current branch).
+          const isBranchSwitch =
+            worktreeId == null && targetBranch !== expectedBranch;
+
+          if (isBranchSwitch) {
+            await switchBranch({
+              branch: targetBranch,
+              force: true,
+              expected_branch: expectedBranch,
+            }).unwrap();
+          } else {
+            await importChanges({
+              force: true,
+              expected_branch: expectedBranch,
+              worktree_id: worktreeId,
+            }).unwrap();
+          }
           closeModal();
         } catch (error) {
           const { errorMessage } = parseSyncError(error);
@@ -232,8 +241,8 @@ export const useDiscardChangesAndImportAction = (
           });
         }
       },
-      [importChanges, sendToast, worktreeId],
+      [importChanges, switchBranch, sendToast, worktreeId],
     ),
-    isImporting,
+    isImporting: isImporting || isSwitching,
   };
 };

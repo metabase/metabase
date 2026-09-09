@@ -134,6 +134,36 @@ export const setupRemoteSyncExportEndpoint = ({
   );
 };
 
+/**
+ * Setup the remote-sync switch-branch POST endpoint
+ */
+export const setupRemoteSyncSwitchBranchEndpoint = ({
+  status = "running",
+  task_id = 654,
+}: { status?: string; task_id?: number } = {}) => {
+  fetchMock.removeRoute("remote-sync-switch-branch");
+  fetchMock.post(
+    "path:/api/ee/remote-sync/switch-branch",
+    { status, task_id },
+    { name: "remote-sync-switch-branch" },
+  );
+};
+
+/**
+ * Setup the remote-sync stash POST endpoint
+ */
+export const setupRemoteSyncStashEndpoint = ({
+  status = "running",
+  task_id = 987,
+}: { status?: string; task_id?: number } = {}) => {
+  fetchMock.removeRoute("remote-sync-stash");
+  fetchMock.post(
+    "path:/api/ee/remote-sync/stash",
+    { status, message: "Stash task started", task_id },
+    { name: "remote-sync-stash" },
+  );
+};
+
 export interface RemoteSyncExportPreflightResponse {
   has_changes: boolean;
   clean: boolean;
@@ -244,6 +274,8 @@ export const setupRemoteSyncEndpoints = ({
   setupRemoteSyncCurrentTaskEndpoint("idle");
   setupRemoteSyncImportEndpoint();
   setupRemoteSyncExportEndpoint();
+  setupRemoteSyncSwitchBranchEndpoint();
+  setupRemoteSyncStashEndpoint();
   setupRemoteSyncExportPreflightEndpoint(exportPreflight);
   setupRemoteSyncSettingsEndpoint(settingsResponse);
   setupRemoteSyncTestConnectionEndpoint({ error: testConnectionError });

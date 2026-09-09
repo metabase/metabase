@@ -47,6 +47,11 @@ export const canAccessSettings = createSelector(
   (user) => user?.permissions?.can_access_setting ?? false,
 );
 
+export const canAccessRemoteSync = createSelector(
+  (state: ApplicationPermissionsState) => getUser(state),
+  (user) => user?.permissions?.can_access_remote_sync ?? false,
+);
+
 const getApplicationPermission = (
   permissions: ApplicationPermissions,
   groupId: number,
@@ -148,6 +153,15 @@ export const getApplicationPermissionEditor = createSelector(
             "subscription",
             isAdmin,
           ),
+          getPermission(
+            permissions,
+            isAdmin,
+            group.id,
+            isExternal ? externalUsersGroup : defaultGroup,
+            "remote-sync",
+            isAdmin || isExternal,
+            isExternal ? Messages.EXTERNAL_USERS_NO_ACCESS_REMOTE_SYNC : null,
+          ),
         ],
       };
     });
@@ -162,6 +176,10 @@ export const getApplicationPermissionEditor = createSelector(
           hint: t`This grants access to Tools`,
         },
         { name: t`Subscriptions and Alerts` },
+        {
+          name: t`Remote sync access`,
+          hint: t`Create and use worktrees, pull and push the sync branch`,
+        },
       ],
       entities,
     };

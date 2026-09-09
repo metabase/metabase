@@ -2,7 +2,7 @@ import { skipToken } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { WorktreeProvider } from "metabase/common/worktrees";
-import { getUserIsAdmin } from "metabase/current-user";
+import { canAccessRemoteSync } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
@@ -12,17 +12,17 @@ import { useGetWorktreeQuery } from "metabase-enterprise/api";
 export function WorktreeLayout() {
   const params = useParams<{ worktreeId: string }>();
   const worktreeId = Urls.extractEntityId(params.worktreeId);
-  const isAdmin = useSelector(getUserIsAdmin);
+  const hasRemoteSyncAccess = useSelector(canAccessRemoteSync);
 
   const {
     data: worktree,
     isLoading,
     error,
   } = useGetWorktreeQuery(
-    isAdmin && worktreeId != null ? worktreeId : skipToken,
+    hasRemoteSyncAccess && worktreeId != null ? worktreeId : skipToken,
   );
 
-  if (worktreeId == null || !isAdmin) {
+  if (worktreeId == null || !hasRemoteSyncAccess) {
     return <NotFound />;
   }
 

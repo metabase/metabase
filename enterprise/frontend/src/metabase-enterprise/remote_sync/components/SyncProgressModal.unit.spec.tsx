@@ -1,13 +1,19 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   findRequests,
   setupRemoteSyncCancelTaskEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { RemoteSyncOutcome } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { SyncProgressModal } from "./SyncProgressModal";
 
@@ -21,6 +27,7 @@ const setup = ({
   isSuccess = false,
   outcome = null,
   isAdmin = true,
+  hasRemoteSyncPermission = false,
   onDismiss = jest.fn(),
   cancelResponse,
 }: {
@@ -33,12 +40,23 @@ const setup = ({
   isSuccess?: boolean;
   outcome?: RemoteSyncOutcome | null;
   isAdmin?: boolean;
+  hasRemoteSyncPermission?: boolean;
   onDismiss?: jest.Mock;
   cancelResponse?: { status?: number; body?: any; delay?: number };
 } = {}) => {
   if (cancelResponse) {
     setupRemoteSyncCancelTaskEndpoint(cancelResponse);
   }
+
+  const settings = createMockSettings({
+    // Registers the real (EE) canAccessRemoteSync selector the cancel-button gate reads, instead
+    // of the OSS plugin default.
+    "token-features": createMockTokenFeatures({ advanced_permissions: true }),
+  });
+  const settingsState = mockSettings(settings);
+  // hasPremiumFeature reads the MetabaseSettings singleton synchronously, so it must be seeded
+  // (mockSettings, above) before the EE plugins register their selectors.
+  setupEnterprisePlugins();
 
   return {
     onDismiss,
@@ -56,7 +74,11 @@ const setup = ({
       />,
       {
         storeInitialState: createMockState({
-          currentUser: createMockUser({ is_superuser: isAdmin }),
+          currentUser: createMockUser({
+            is_superuser: isAdmin,
+            permissions: { can_access_remote_sync: hasRemoteSyncPermission },
+          }),
+          settings: settingsState,
         }),
       },
     ),
@@ -98,12 +120,24 @@ describe("SyncProgressModal", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not show cancel button when user is not admin", () => {
+    it("should not show cancel button when user is not admin and lacks remote sync access", () => {
       setup({ isAdmin: false });
 
       expect(
         screen.queryByRole("button", { name: "Cancel" }),
       ).not.toBeInTheDocument();
+    });
+
+    it("should show cancel button for a non-admin with remote sync access", () => {
+      setup({
+        isAdmin: false,
+        hasRemoteSyncPermission: true,
+        cancelResponse: { status: 200 },
+      });
+
+      expect(
+        screen.getByRole("button", { name: "Cancel" }),
+      ).toBeInTheDocument();
     });
   });
 
