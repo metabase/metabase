@@ -648,7 +648,7 @@
                                                                  :base-url "https://api.anthropic.com"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                 (fn [_provider {:keys [credentials]}]
-                                  (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} credentials)
+                                  (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"} credentials)
                                       "the stored secret is what gets verified, not the mask")
                                   {:models []})]
       (is (= {:key        "anthropic"
@@ -658,13 +658,118 @@
               :usable     true
               :env_vars   []
               :env_fields []
-              :config     {:api-key "**********ed" :base-url "https://new.example.com"}}
+              :config     {:api-key "**********ed" :base-url "https://api.anthropic.com"}}
              (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                    {:name   "Anthropic (prod)"
-                                    :config {:api-key  "**********ed"
-                                             :base-url "https://new.example.com"}})))
-      (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} (stored-config "anthropic"))))))
+                                    :config {:api-key "**********ed"}})))
+      (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"} (stored-config "anthropic"))))))
 
+(deftest update-requires-fresh-secrets-to-change-base-url-test
+  (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-stored"
+                                                                   :base-url "https://api.anthropic.com"})]]
+      (let [probes (atom [])]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                    (fn [_provider {:keys [credentials]}]
+                                      (swap! probes conj credentials)
+                                      {:models []})]
+          (doseq [config [{:base-url "https://new.example.com"}
+                          {:api-key "**********ed" :base-url "https://new.example.com"}]]
+            (is (=? {:message "Enter this connection's credentials again to point it at a different base URL."}
+                    (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic" {:config config}))))
+          (is (empty? @probes) "the old key was rejected before credential verification made a request")
+          (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"}
+                 (stored-config "anthropic")))
+          (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                                {:config {:api-key  "sk-ant-fresh"
+                                          :base-url "https://new.example.com"}})
+          (is (= [{:api-key "sk-ant-fresh" :base-url "https://new.example.com"}] @probes))
+          (is (= {:api-key "sk-ant-fresh" :base-url "https://new.example.com"}
+                 (stored-config "anthropic"))))))))
+
+(deftest update-requires-every-kind-of-sensitive-field-to-change-base-url-test
+  (testing "the rule comes from the registry rather than being special-cased to API keys"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                  {:auth-method         "service-account-key"
+                                                                   :service-account-key "{\"private_key\":\"stored\"}"
+                                                                   :project-id          "my-project"
+                                                                   :base-url            "https://discoveryengine.googleapis.com"})]]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                             (is false "the stored service-account key must not leave")
+                                                             {:models []})]
+        (is (=? {:message "Enter this connection's credentials again to point it at a different base URL."}
+                (mt/user-http-request :crowberto :put 400 "llm/providers/google"
+                                      {:config {:base-url "https://new.example.com"}})))))))
+
+(deftest update-refuses-to-move-an-environment-owned-secret-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                {:api-key  "sk-ant-stored"
+                                                                 :base-url "https://api.anthropic.com"})]]
+    (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                             (is false "the environment key must not leave")
+                                                             {:models []})]
+        (is (=? {:message "This connection's credentials come from environment variables. Change its base URL there too."}
+                (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
+                                      {:config {:api-key  "sk-ant-attempted-override"
+                                                :base-url "https://new.example.com"}})))))))
+
+(deftest generic-setting-api-cannot-write-provider-connections-test
+  (let [planted [(connection "anthropic" "anthropic" {:base-url "https://attacker.example.com"})]]
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+        (doseq [[endpoint body] [["setting/llm-providers" {:value planted}]
+                                 ["setting"               {:llm-providers planted}]]]
+          (is (=? {:message "Manage LLM provider connections through the provider connection settings."}
+                  (mt/user-http-request :crowberto :put 400 endpoint body))))
+        (is (= [] (llm.provider/stored-connections))
+            "neither generic settings endpoint may plant a URL that later receives the environment key")))))
+
+(deftest legacy-base-url-setting-refuses-to-move-a-stored-secret-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                {:api-key  "sk-ant-stored"
+                                                                 :base-url "https://api.anthropic.com"})]]
+    (is (=? {:message "Use the provider connection settings to change the base URL and enter the credentials again."}
+            (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                  {:value "https://new.example.com"})))
+    (is (= {:api-key "sk-ant-stored" :base-url "https://api.anthropic.com"}
+           (stored-config "anthropic")))
+    (testing "and explains when the credential must be moved through deployment configuration"
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+        (is (=? {:message "This connection's credentials come from environment variables. Change its base URL there too."}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                      {:value "https://new.example.com"}))))))
+  (testing "and never plants a dormant value underneath an environment-owned base URL"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-stored"
+                                                                   :base-url "https://api.anthropic.com"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (is (=? {:message "This connection's base URL comes from an environment variable. Change it there."}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-base-url"
+                                      {:value "https://attacker.example.com"}))))
+      (is (= "https://api.anthropic.com" (:base-url (stored-config "anthropic")))
+          "removing the environment overlay leaves the original stored URL, not the rejected one"))))
+
+(deftest legacy-credential-setting-refuses-a-connection-on-its-own-base-url-test
+  (testing (str "The per-provider settings write one field at a time, so a credential entered through them arrives "
+                "with no sight of the base URL it would be sent to. A connection on its own URL takes its "
+                "credentials through the connection settings, which submit both together.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:base-url "https://proxy.example.com"})]]
+      (is (=? {:message "This connection has its own base URL. Use the provider connection settings to enter its credentials."}
+              (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-key"
+                                    {:value "sk-ant-fresh"})))
+      (is (nil? (:api-key (stored-config "anthropic"))))))
+  (testing "a connection still on the type's default URL is the ordinary first-time setup, and is allowed"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
+      (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic"))))))
+  (testing "so is a base URL the environment supplies, which the operator chose"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
+        (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic"))))))))
 (deftest update-preserves-a-masked-service-account-key-test
   (testing (str "re-saving a Google connection without touching the key file echoes back the mask of a JSON key "
                 "that ends in a newline — the stored key has to survive it rather than be replaced by the mask")
@@ -1274,35 +1379,32 @@
                                 {:config {:api-key "sk-ant-rotated"}}))
         (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))))))
 
-(deftest settings-api-cannot-store-a-base-url-on-a-blocked-network-test
-  (testing (str "the connection list is a setting in its own right, so writing the raw JSON through the settings "
-                "API has to be refused the way the connection endpoints refuse it")
+(deftest provisioning-connections-validates-changed-fields-test
+  (testing "trusted provisioning still validates changed fields after direct settings API writes are forbidden"
     (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
       (mt/with-temporary-setting-values [llm-providers []]
         (let [conn #(connection "vllm" "vllm" {:base-url %})]
-          (is (=? {:message #".*127\.0\.0\.1 is on a network.*"
-                   :field   "base-url"}
-                  (mt/user-http-request :crowberto :put 400 "setting/llm-providers"
-                                        {:value [(conn "http://127.0.0.1:8000/v1")]})))
+          (is (=? {:status-code 400, :field :base-url}
+                  (try
+                    (setting/set! :llm-providers [(conn "http://127.0.0.1:8000/v1")])
+                    (catch clojure.lang.ExceptionInfo e (ex-data e)))))
           (is (= [] (vec (llm.provider/stored-connections))))
           (testing "a base URL the policy permits still saves"
-            (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
-                                  {:value [(conn "https://8.8.8.8/v1")]})
+            (setting/set! :llm-providers [(conn "https://8.8.8.8/v1")])
             (is (= [(conn "https://8.8.8.8/v1")] (vec (llm.provider/stored-connections)))))
           (testing "a base URL stored before the check does not make its connection unwritable"
             (let [grandfathered (assoc-in (conn "http://127.0.0.1:8000/v1") [:config :api-key] "sk-old")]
               (mt/with-temporary-raw-setting-values [llm-providers (json/encode [grandfathered])]
                 (testing "another connection can still be added"
-                  (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
-                                        {:value [grandfathered
-                                                 (connection "anthropic" "anthropic" {:api-key "sk-ant-valid"})]})
+                  (setting/set! :llm-providers [grandfathered
+                                                (connection "anthropic" "anthropic" {:api-key "sk-ant-valid"})])
                   (is (= ["vllm" "anthropic"] (map :key (llm.provider/stored-connections)))))
                 (testing "and its own API key can still be rotated"
-                  (mt/user-http-request :crowberto :put 204 "setting/llm-providers"
-                                        {:value [(assoc-in grandfathered [:config :api-key] "sk-new")]})
+                  (setting/set! :llm-providers [(assoc-in grandfathered [:config :api-key] "sk-new")])
                   (is (= "sk-new" (get-in (first (llm.provider/stored-connections)) [:config :api-key]))))
                 (testing "but changing the base URL itself is still checked"
-                  (is (=? {:field "base-url"}
-                          (mt/user-http-request :crowberto :put 400 "setting/llm-providers"
-                                                {:value [(assoc-in grandfathered
-                                                                   [:config :base-url] "http://10.0.0.1/v1")]}))))))))))))
+                  (is (=? {:status-code 400, :field :base-url}
+                          (try
+                            (setting/set! :llm-providers
+                                          [(assoc-in grandfathered [:config :base-url] "http://10.0.0.1/v1")])
+                            (catch clojure.lang.ExceptionInfo e (ex-data e))))))))))))))

@@ -2467,6 +2467,7 @@
            config
            lib
            lib-be
+           llm
            mcp
            permissions
            premium-features
@@ -3744,6 +3745,7 @@
            models
            permissions
            premium-features
+           request
            search
            settings
            task

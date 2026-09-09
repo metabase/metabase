@@ -3,9 +3,10 @@
    [clojure.string :as str]
    [metabase.events.core :as events]
    [metabase.llm.settings :as llm-settings]
+   [metabase.request.current :as request.current]
    [metabase.search.config :as search.config]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 ;; Topic for the just-in-time HNSW build, handled in metabase-enterprise.semantic-search.events. Declared
 ;; here, not there, so it's valid wherever the setter runs regardless of handler-namespace load order.
@@ -84,6 +85,20 @@
                  (setting/get-value-of-type :string :ee-embedding-service-base-url)))
   :setter     (fn [new-value]
                 (let [new-value (normalize-base-url new-value)]
+                  ;; Generic settings writes cannot atomically authorize a URL change with replacement credentials.
+                  ;; Clear a stored key before changing its destination; environment keys require deployment changes.
+                  ;; Bulk settings writes call every supplied setter in one transaction, including unchanged values.
+                  ;; Accept an unchanged URL so resubmitting it does not roll back unrelated setting changes.
+                  (when (and (request.current/current-request)
+                             (not-empty (setting/get-value-of-type :string :ee-embedding-service-api-key))
+                             (not= new-value (normalize-base-url
+                                              (setting/get-value-of-type :string :ee-embedding-service-base-url))))
+                    (throw (ex-info (if (setting/env-var-value :ee-embedding-service-api-key)
+                                      (tru "The embedding service API key comes from an environment variable. Set its base URL there too.")
+                                      (tru "Clear the embedding service API key before changing its base URL, then set a replacement key."))
+                                    {:status-code 400
+                                     :api-error   true
+                                     :error-code  :embedding-base-url-change-requires-credentials})))
                   (when-let [problem (llm-settings/llm-url-problem new-value)]
                     (throw (ex-info problem {:status-code 400})))
                   (setting/set-value-of-type! :string :ee-embedding-service-base-url new-value)))
