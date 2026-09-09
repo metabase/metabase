@@ -186,6 +186,7 @@
       (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
         (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post

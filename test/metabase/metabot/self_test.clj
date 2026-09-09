@@ -2054,7 +2054,7 @@
     (let [models (self/known-models "anthropic")]
       (is (seq models))
       (is (every? (comp :display-name val) models))))
-  (testing "DeepSeek keys model id straight to a display name, and is normalized to the same shape"
+  (testing "DeepSeek records only a display name, and still comes back in the same shape"
     (let [models (self/known-models "deepseek")]
       (is (seq models))
       (is (every? (comp string? :display-name val) models))))
@@ -2065,7 +2065,7 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Unknown LLM provider"
                           (self/known-models "brand-new"))))
-  (testing "an entry that is neither a map nor a string throws"
+  (testing "an entry that is not a map throws"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Unrecognized supported-models entry"
                           (#'self/normalize-known-model "anthropic" "some-model" 42)))))

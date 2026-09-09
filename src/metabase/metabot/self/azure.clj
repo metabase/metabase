@@ -17,16 +17,14 @@
   (:require
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -100,10 +98,15 @@
             :error-code  :api-key-missing
             :status-code 403}))
 
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for Azure")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
+(def ^:private provider
+  (adapter/provider
+   {:slug         "azure"
+    :display-name "Azure"
+    :errors       {401 #(tru "Azure rejected the API key for this resource")
+                   403 #(tru "Azure API key lacks permission for this resource or deployment")
+                   404 #(tru "Azure API endpoint or deployment was not found — check the base URL and deployment name")
+                   429 #(tru "Azure has rate limited us")
+                   500 #(tru "Azure is not working but not saying why")}}))
 
 (defn- ensure-credentials
   "Validate the credentials of the connection serving this request.
@@ -113,33 +116,25 @@
     (throw (missing-credentials-ex)))
   credentials)
 
-(defn- azure-error-msg
-  "Canonical, status-specific Azure error message."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      401 (tru "Azure rejected the API key for this resource")
-      403 (tru "Azure API key lacks permission for this resource or deployment")
-      404 (tru "Azure API endpoint or deployment was not found — check the base URL and deployment name")
-      429 (tru "Azure has rate limited us")
-      500 (tru "Azure is not working but not saying why")
-      (tru "Azure API error (HTTP {0})" status))))
+(defn- azure-auth
+  "Resolve auth for a request against the Azure resource's compatible surface, from the
+  `{:api-key ... :base-url ...}` credentials of the connection serving it.
+  `ai-proxy?` is accepted for parity with the other provider adapters but is not supported:
+  throws when true. Auth goes through [[core/resolve-auth]] so proxy redirection is already
+  wired up should Azure proxying ever be supported."
+  [credentials ai-proxy?]
+  (adapter/reject-ai-proxy! provider ai-proxy?)
+  (let [{:keys [api-key base-url]} (ensure-credentials credentials)]
+    (core/resolve-auth "azure" "Azure"
+                       {:url     base-url
+                        :headers {"Authorization" (str "Bearer " api-key)}}
+                       ai-proxy?)))
 
 (defn- azure-request
   "Perform an HTTP request against the Azure resource's compatible surface.
-  `credentials` is the `{:api-key ... :base-url ...}` map of the connection serving this request.
-  `headers` are extra headers (e.g. `anthropic-version`).
-  `ai-proxy?` is accepted for parity with the other provider adapters but is not supported:
-  throws when true. Auth is resolved through [[core/resolve-auth]]/[[core/request]] so proxy
-  redirection is already wired up should Azure proxying ever be supported."
+  `headers` are extra headers (e.g. `anthropic-version`)."
   [{:keys [method path body as headers credentials ai-proxy?]}]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (let [{:keys [api-key base-url]} (ensure-credentials credentials)
-        auth (core/resolve-auth "azure" "Azure"
-                                {:url     base-url
-                                 :headers {"Authorization" (str "Bearer " api-key)}}
-                                ai-proxy?)]
+  (let [auth (azure-auth credentials ai-proxy?)]
     (core/request auth
                   (cond-> {:method  method
                            :url     path
@@ -201,7 +196,7 @@
          :anthropic (validate-anthropic-surface! credentials ai-proxy?)
          :openai    (validate-openai-surface! credentials ai-proxy?))
        (catch Exception e
-         (core/rethrow-api-error! "azure" azure-error-msg e))))
+         (adapter/rethrow! provider e))))
    {:models []}))
 
 ;;; --------------------------------------------------- Streaming -----------------------------------------------
@@ -210,7 +205,7 @@
   "Perform a streaming request to an Azure-hosted model deployment.
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing. `:ai-proxy?` is not supported for Azure and throws when true."
-  [{:keys [model input tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
+  [{:keys [model credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (let [family (model->family model)
         opts   (assoc opts :model (model->deployment model) :reasoning? false :fast? false)
         {:keys [path headers req]}
@@ -220,30 +215,12 @@
                       :req     (claude/claude-request-body opts)}
           :openai    {:path "/v1/responses"
                       :req  (openai/openai-request-body opts)})]
-    (with-span :info {:name       :metabot.azure/request
-                      :model      model
-                      :family     family
-                      :msg-count  (count input)
-                      :tool-count (count tools)}
-      (try
-        (let [response (azure-request {:method      :post
-                                       :path        path
-                                       :as          :stream
-                                       :headers     headers
-                                       :body        (json/encode req)
-                                       :credentials credentials
-                                       :ai-proxy?   ai-proxy?})]
-          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
-          ;; the reducible so mid-stream IO/timeout failures get the same
-          ;; provider-friendly translation as request-time errors.
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "azure"
-                                     :model    model
-                                     :url      path
-                                     :request  req})
-              (core/reducible-with-api-errors "azure" azure-error-msg)))
-        (catch Exception e
-          (core/rethrow-api-error! "azure" azure-error-msg e))))))
+    (adapter/stream! provider {:model      model
+                               :path       path
+                               :body       req
+                               :headers    headers
+                               :span-attrs {:family family}
+                               :auth       (azure-auth credentials ai-proxy?)})))
 
 (defn- model->aisdk-chunks-xf
   "The SSE->AISDK translating transducer for an Azure model string.

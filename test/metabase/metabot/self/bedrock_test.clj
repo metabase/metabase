@@ -33,15 +33,15 @@
    :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
    :region            "us-east-1"})
 
-(deftest ^:parallel supported-model?-test
+(deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
     (doseq [id ["anthropic.claude-fable-5" "anthropic.claude-opus-5" "anthropic.claude-opus-4-8"
                 "anthropic.claude-sonnet-5" "openai.gpt-5.5"]]
-      (is (true? (#'bedrock/supported-model? {:id id})) id)))
+      (is (contains? bedrock/supported-models id) id)))
   (testing "non-whitelisted models are not supported, even for supported vendors"
     (doseq [id ["anthropic.claude-3-5-sonnet" "openai.gpt-oss-120b"
                 "qwen.qwen3-next-80b-a3b-instruct" "deepseek.v3.2"]]
-      (is (false? (#'bedrock/supported-model? {:id id})) id))))
+      (is (not (contains? bedrock/supported-models id)) id))))
 
 (deftest list-models-filters-to-whitelist-test
   (mt/with-dynamic-fn-redefs [bedrock/list-all-models (constantly fake-catalog)]
