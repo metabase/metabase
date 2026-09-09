@@ -47,12 +47,17 @@ check_nav() {
     { print "" }
   ' "$nav" > "$rendered"
 
-  # lychee exits 2 when links fail and still prints the JSON report.
+  # lychee exits 2 when links fail and still prints the JSON report. It also exits 2 on a bad flag
+  # and prints nothing, so check for the report itself rather than the exit code: `jq -e` fails when
+  # there is no result. (Errexit is suspended inside this function because it is called with `||`.)
   report=$(lychee --offline --root-dir ./docs --fallback-extensions md,html --include-fragments \
                   --no-progress --format json "$rendered" || true)
+  total=$(jq -e -r '.total' <<<"$report") || {
+    echo "lychee produced no report (see errors above)" >&2
+    return 1
+  }
 
   failures=$(jq -r '.error_map | to_entries[] | .value[] | "\(.span.line)\t\(.status.text)"' <<<"$report")
-  total=$(jq -r '.total' <<<"$report")
 
   count=0
   while IFS=$'\t' read -r line text; do
