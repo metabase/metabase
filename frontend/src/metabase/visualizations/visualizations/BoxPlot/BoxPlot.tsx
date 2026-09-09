@@ -216,7 +216,7 @@ function BoxPlotInner({
         />
       )}
       {goalStatus !== "resolved" ? (
-        <GoalResolutionState height={height} kind="value" status={goalStatus} />
+        <GoalResolutionState kind="value" status={goalStatus} />
       ) : (
         <CartesianChartLegendLayout
           isReversed={settings["legend.is_reversed"]}

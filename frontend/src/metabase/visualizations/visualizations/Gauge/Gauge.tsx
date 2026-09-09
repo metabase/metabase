@@ -148,7 +148,6 @@ function GaugeComponent({
     return (
       <GoalResolutionState
         className={className}
-        height={heightProp}
         kind="segments"
         status={goalSegments.status}
       />
