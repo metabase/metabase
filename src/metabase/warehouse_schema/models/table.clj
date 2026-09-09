@@ -779,11 +779,12 @@
                                    (take max-table-children))
                              ;; The order is part of the stored value: it goes into the basis and is diffed
                              ;; against the previous run, so an order that shifts on its own reads as an
-                             ;; authored change and regenerates every library table for nothing. Sorting
-                             ;; here rather than in the query keeps it off the app db's collation, and
-                             ;; sorting on the whole summary rather than the name alone settles ties
-                             ;; between two children sharing a name — which is what fixes who survives
-                             ;; the cap.
+                             ;; authored change and regenerates every library table for nothing. The query
+                             ;; cannot own it — it fetches a chunk of tables at once, so a per-table cap
+                             ;; there needs a window function, and which rows that cap keeps would then
+                             ;; rest on tie and NULL ordering that varies by dialect, and on the app db's
+                             ;; collation, which an H2-to-Postgres move changes. Ties sort on the whole
+                             ;; summary because two children of one table can share a name.
                              (sort-by (juxt :name :description) rows))))))
           ;; Chunked for the app db's bind-parameter limit, by table id so every child of a table lands in
           ;; the one chunk holding its id and no partial entry can clobber a full one.
