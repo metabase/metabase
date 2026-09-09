@@ -17,6 +17,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.core :as mcp.core]
+   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -24,6 +25,7 @@
    [metabase.mcp.v2.tools.visualize]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -95,7 +97,10 @@
         (testing "GHY-4157: a supplied handle is reused as-is rather than re-minted — the stored query is unchanged"
           (is (= handle (:query_handle body))))
         (testing "GHY-4157: the query itself never reaches the model — only the handle does"
-          (is (= #{:query_handle} (set (keys body))))
+          ;; Asserted as the absence of query data, not as an exact key set. Pinning
+          ;; `#{:query_handle}` pinned one side of a two-sided contract: it passed while the
+          ;; iframe, which needs a key it can resolve, rendered a permanent spinner.
+          (is (not (contains? body :query)))
           (is (not (str/includes? (response-text (call! "visualize_query" sid {:query_handle handle}))
                                   "source-table"))))))))
 
@@ -117,21 +122,23 @@
               (is (= "show me orders" prompt)))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
-(deftest visualize-query-display-test
+(deftest visualize-query-rejects-display-test
+  ;; `display` was accepted, enum-validated and echoed, but no renderer ever read it, and
+  ;; `mcp_query_handle` has no column to carry it — so on the documented preferred path (mint by
+  ;; `query`, then re-visualize by `query_handle`) the chart type was silently lost. Rather than
+  ;; advertise a knob that does nothing, the argument is gone until it can be honored end to end.
+  ;; GHY-4451 restores it; that work must delete this test rather than route around it.
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (let [sid    (str (random-uuid))
             handle (mint-mbql-handle! sid (mt/user->id :rasta))]
-        (testing "GHY-4157: a requested display rides along to the iframe"
-          (is (= "bar" (:display (payload (call! "visualize_query" sid {:query_handle handle
-                                                                        :display      "bar"}))))))
-        (testing "GHY-4157: an omitted display stays absent so the iframe infers one from the result shape"
-          (is (not (contains? (payload (call! "visualize_query" sid {:query_handle handle}))
-                              :display))))
-        (testing "GHY-4157: an unknown display is a schema error, not a silently ignored value"
+        (testing "GHY-4157: display is rejected outright, not accepted and dropped"
           (is (str/includes? (error-text (call! "visualize_query" sid {:query_handle handle
-                                                                       :display      "hologram"}))
-                             "Invalid arguments")))))))
+                                                                       :display      "bar"}))
+                             "Invalid arguments")))
+        (testing "GHY-4157: the payload carries the handle and nothing that pretends to be a chart type"
+          (is (not (contains? (payload (call! "visualize_query" sid {:query_handle handle}))
+                              :display))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest visualize-query-accepts-native-handle-test
@@ -346,3 +353,61 @@
       (let [render (fn [uri] (-> (v2.resources/read-resource uri viz-scopes {}) :contents first :text))]
         (is (not= (render v2.resources/visualize-query-uri)
                   (render v2.resources/render-drill-through-uri)))))))
+
+;;; ------------------------------------------ End-to-end contract -------------------------------------------------
+
+;; The other tests in this namespace stop at `registry/call-tool`'s return map — one side of a
+;; two-sided contract. That is why a suite this size stayed green while both tools rendered a
+;; permanent spinner: nothing asserted the emitted payload was one the iframe could act on.
+;;
+;; This test walks the whole loop instead: mint a handle, call the tool, then resolve the handle the
+;; tool returned over the same credential-authenticated route the iframe uses. It fails if the
+;; resolve endpoint is deleted, if the allowlist entry that admits it is removed, or if the tool
+;; stops emitting the key the iframe reads.
+
+(def ^:private ui-app-payload-keys
+  "The keys `useMcpApp.tsx` destructures out of `structuredContent`. `query` is v1's inline shape;
+   `query_handle` is v2's. The iframe short-circuits unless it finds one of them, so a payload
+   carrying neither renders nothing at all."
+  #{:query :query_handle})
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest visualize-query-payload-resolves-over-the-callback-route-test
+  (testing "GHY-4157: the handle visualize_query emits is resolvable by the iframe that receives it"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id (mt/user->id :crowberto)]
+        (mt/with-current-user user-id
+          (let [sid        (str (random-uuid))
+                minted     (mint-mbql-handle! sid user-id)
+                body       (payload (call! "visualize_query" sid {:query_handle minted}))
+                credential (mcp.session/issue-ui-credential sid user-id)]
+            (testing "the payload names a query in a shape the iframe reads"
+              (is (seq (filter (set (keys body)) ui-app-payload-keys))
+                  (str "structuredContent has no key useMcpApp.tsx acts on: " (pr-str (keys body)))))
+            (testing "and resolving that handle over the callback route yields the query"
+              (let [{:keys [status body]}
+                    (client/client-full-response
+                     :get 200 (str "embed-mcp/queries/" (:query_handle body))
+                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                  "mcp-session-id" sid}}})]
+                (is (= 200 status))
+                (is (string? (:query body))
+                    "the iframe needs a base64 query to build a card from")))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest render-drill-through-payload-resolves-over-the-callback-route-test
+  (testing "GHY-4157: a drill handle survives the round trip the iframe makes"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id (mt/user->id :crowberto)]
+        (mt/with-current-user user-id
+          (let [sid        (str (random-uuid))
+                ;; The shape `POST /api/embed-mcp/drills` mints: legacy dataset_query, no prompt.
+                drill      (mcp.session/store-handle! sid user-id "ZW5jb2RlZA==")
+                body       (payload (call! "render_drill_through" sid {:query_handle drill}))
+                credential (mcp.session/issue-ui-credential sid user-id)]
+            (is (= drill (:query_handle body)))
+            (is (=? {:status 200 :body {:query "ZW5jb2RlZA=="}}
+                    (client/client-full-response
+                     :get 200 (str "embed-mcp/queries/" (:query_handle body))
+                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                  "mcp-session-id" sid}}})))))))))
