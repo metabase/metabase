@@ -118,18 +118,6 @@
   [memory dashboard-id dashboard]
   (record memory [:dashboards dashboard-id] dashboard))
 
-(defn find-dashboard
-  "Retrieve a generated dashboard by its dashboard-id. Throws if not found."
-  [memory dashboard-id]
-  (let [dashboards (get-in memory [:state :dashboards] {})]
-    (if-let [dashboard (get dashboards dashboard-id)]
-      dashboard
-      (throw (ex-info (str "Dashboard with ID " dashboard-id " not found in memory. "
-                           "Available dashboards: [" (str/join ", " (keys dashboards)) "]")
-                      {:agent-error? true
-                       :dashboard-id dashboard-id
-                       :available-dashboards (keys dashboards)})))))
-
 ;;; Transform Management
 
 (defn set-transform

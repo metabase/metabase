@@ -814,6 +814,15 @@
              :archived false
              {:order-by [[:id :asc]]}))
 
+(defn saved-dashboard-for-conversation
+  "The unarchived Dashboard already saved from the MetabotConversation with `conversation-id` as the generated
+  dashboard `generated-id`, or nil."
+  [conversation-id generated-id]
+  (t2/select-one :model/Dashboard
+                 :metabot_conversation_id conversation-id
+                 :metabot_dashboard_id    generated-id
+                 :archived                false))
+
 (defn link-dashboard-to-conversation!
   "Record that the Dashboard with `dashboard-id` was saved from the MetabotConversation with `conversation-id` as
   the generated dashboard `generated-id`."
