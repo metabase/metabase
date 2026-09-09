@@ -218,7 +218,11 @@
                                      :fk-field.active]
                          :order-by [[:fk-field.id :desc]
                                     [:pk-field.id :desc]]})
-        joins (for [{:keys [t1 f1 t2 f2]} rows]
+        ;; The `:fk-table.active` / `:pk-field.active` LEFT JOIN clauses null out the target endpoint
+        ;; when the FK-owning table or FK target field is inactive; drop those rows so no nil-keyed
+        ;; entries leak into the join graph. Regression for #80557.
+        joins (for [{:keys [t1 f1 t2 f2]} rows
+                    :when (and t1 f1 t2 f2)]
                 {:lhs {:table t1, :field f1}
                  :rhs {:table t2, :field f2}})
         reversed (map (fn [{:keys [lhs rhs]}]
@@ -260,7 +264,7 @@
            seen  #{start}]
       (let [path (peek paths)
             node (peek path)]
-        (cond (nil? node)
+        (cond (nil? path)
               nil
               ;; found a path, bfs finds shortest first
               (= node end)
