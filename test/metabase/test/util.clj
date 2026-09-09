@@ -33,6 +33,7 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
@@ -1005,7 +1006,8 @@
           ;; Search has no delete hook, so a row the body deleted may still have its document in the index.
           ;; Reindex whenever the cleanup scope touches search, even when nothing is left to delete here.
           (when reindex?
-            (reindex-search-index!)))))))
+            (binding [search.ingestion/*force-sync* true]
+              (reindex-search-index!))))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`.
