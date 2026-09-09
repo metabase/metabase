@@ -157,7 +157,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
 
   if (isDefaultGroup(group)) {
     return (
-      <Box maw="38rem" mb="md">
+      <Box maw="38rem" mb="lg">
         <Text>
           {t`All users belong to the ${getGroupNameLocalized(
             group,
@@ -170,7 +170,7 @@ const GroupDescription = ({ group }: { group: Group }) => {
 
   if (isAdminGroup(group)) {
     return (
-      <Box maw="38rem" mb="md">
+      <Box maw="38rem" mb="lg">
         <Text>
           {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
         settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}

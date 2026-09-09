@@ -99,7 +99,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   const showOtherUsersCollections = useShowOtherUsersCollections();
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       {getFilter(SearchFilterKeys.Type)}
       <Stack gap="sm">
         {getFilter(SearchFilterKeys.CreatedBy)}

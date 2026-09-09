@@ -306,7 +306,8 @@
 
                                         :update
                                         (let [[_ id body] dispatched]
-                                          (update! id body session-id))))]
+                                          (update! id body session-id)))
+                                      nil)]
     ;; text-only, matching the stack convention (see common/success-content): the write echo has no
     ;; concrete programmatic consumer, so it doesn't ride structuredContent.
     (common/success-content payload)))

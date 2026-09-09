@@ -47,7 +47,7 @@ const TabCountBadge = ({
     ))
     .with({ status: "loaded" }, ({ value }) =>
       isActive ? (
-        <Badge variant="filled" size="xs" color="brand" c="white">
+        <Badge variant="filled" size="xs" color="brand">
           {value}
         </Badge>
       ) : (

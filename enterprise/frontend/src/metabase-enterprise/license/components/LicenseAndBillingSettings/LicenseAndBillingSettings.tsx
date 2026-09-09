@@ -126,7 +126,7 @@ export const LicenseAndBillingSettings = () => {
   return (
     <SettingsPageWrapper title={t`License`}>
       <SettingsSection>
-        <Stack data-testid="license-and-billing-content" gap="xl" maw="40rem">
+        <Stack data-testid="license-and-billing-content" gap="xxl" maw="40rem">
           <BillingInfo
             isStoreManagedBilling={isStoreManagedBilling}
             hasToken={hasToken}
@@ -179,7 +179,7 @@ function UpsellSection() {
           </ExternalLink>
         )}`}
       />
-      <Flex mt="lg" justify="center">
+      <Flex mt="xl" justify="center">
         <ExplorePlansIllustration />
       </Flex>
       <Divider />

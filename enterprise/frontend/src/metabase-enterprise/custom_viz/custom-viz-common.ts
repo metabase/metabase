@@ -9,7 +9,9 @@ import type {
 import { columnSettings } from "metabase/viz-core";
 import type {
   CustomVizPluginRuntime,
+  Series,
   VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
@@ -32,18 +34,22 @@ export function applyDefaultVisualizationProps(
   settings: {
     identifier: VisualizationDisplay;
     plugin: CustomVizPluginRuntime;
-    getUiName: () => string;
     iconUrl?: string | undefined;
     isDev?: boolean;
   },
 ): Visualization {
   const { plugin, ...componentSettings } = settings;
+  const uiName = resolveUiName(vizDef, plugin);
   return Object.assign(Component, {
     settings: {
       ...columnSettings({ getHidden: () => true }),
       ...sanitizePluginSettings(vizDef.settings, vizDef.mount, plugin),
     },
-    checkRenderable: vizDef.checkRenderable,
+    checkRenderable: (series: Series, vizSettings: VisualizationSettings) => {
+      if (typeof vizDef.checkRenderable === "function") {
+        vizDef.checkRenderable(series, vizSettings);
+      }
+    },
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
     hidden: false,
@@ -51,6 +57,17 @@ export function applyDefaultVisualizationProps(
     defaultSize: vizDef.defaultSize,
     isDev: settings.isDev,
     pluginId: plugin.id,
+    getUiName: () => uiName,
     ...componentSettings,
   });
+}
+
+function resolveUiName(
+  vizDef: CustomVisualization<Record<string, unknown>>,
+  plugin: CustomVizPluginRuntime,
+): string {
+  const name = vizDef.getName?.();
+  return typeof name === "string" && name.trim() !== ""
+    ? name
+    : plugin.display_name;
 }

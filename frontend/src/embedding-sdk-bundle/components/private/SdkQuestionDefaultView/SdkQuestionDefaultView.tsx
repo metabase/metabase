@@ -204,7 +204,7 @@ export const SdkQuestionDefaultView = ({
         component={Stack}
         className={InteractiveQuestionS.TopBar}
         gap="sm"
-        p="md"
+        p="lg"
       >
         <RenderIfHasContent
           component={Group}
@@ -212,7 +212,7 @@ export const SdkQuestionDefaultView = ({
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
         >
-          <RenderIfHasContent component={Group} gap="xs">
+          <RenderIfHasContent component={Group} gap="xxs">
             <Stack align="flex-start">
               <SdkInternalNavigationBackButton />
               <DefaultViewTitle title={title} />
@@ -225,7 +225,7 @@ export const SdkQuestionDefaultView = ({
             component={ResultToolbar}
             data-testid="interactive-question-result-toolbar"
           >
-            <RenderIfHasContent component={Group} gap="xs">
+            <RenderIfHasContent component={Group} gap="xxs">
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
@@ -246,7 +246,7 @@ export const SdkQuestionDefaultView = ({
 
                       {!isNativeQuestion && !isMobile && (
                         <Divider
-                          mx="xs"
+                          mx="xxs"
                           orientation="vertical"
                           style={{
                             color: "var(--mb-color-border-neutral) !important",

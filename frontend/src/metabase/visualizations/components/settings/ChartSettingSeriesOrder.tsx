@@ -8,7 +8,7 @@ import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
 import { Box, Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import { getAccentColors } from "metabase/ui/colors/groups";
+import { getNamedAccentColors } from "metabase/ui/colors/groups";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { getEventTarget } from "metabase/utils/dom";
 import { isEmpty } from "metabase/utils/validate";
@@ -117,8 +117,12 @@ export const ChartSettingSeriesOrder = ({
   );
 
   const handleColorChange = useCallback(
-    (item: ChartSettingSeriesOrderItem, color: string) => {
-      onChangeSeriesColor(item.key, color);
+    (
+      item: ChartSettingSeriesOrderItem,
+      hexValue: string,
+      colorName?: string,
+    ) => {
+      onChangeSeriesColor(item.key, hexValue, colorName);
     },
     [onChangeSeriesColor],
   );
@@ -155,7 +159,7 @@ export const ChartSettingSeriesOrder = ({
             <Group p={4} gap="sm">
               <ColorSelector
                 value={otherColor ?? color("text-disabled")}
-                colors={getAccentColors()}
+                colors={getNamedAccentColors()}
                 onChange={onOtherColorChange}
                 pillSize="small"
               />
@@ -181,7 +185,7 @@ export const ChartSettingSeriesOrder = ({
   ]);
 
   return (
-    <Box pl="md" pb="sm">
+    <Box pl="lg" pb="sm">
       {orderedItems.length > 0 ? (
         <>
           <ChartSettingOrderedItems

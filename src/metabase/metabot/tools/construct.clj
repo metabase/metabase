@@ -13,6 +13,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
@@ -28,8 +29,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -314,9 +314,13 @@
     (cond
       source-table-fk
       (let [db-name (nth source-table-fk 0)
-            ids     (t2/select-pks-vec :model/Database :name db-name)]
+            ids     (metabot.db/database-ids-by-name db-name)]
         (case (count ids)
-          0 (throw (ex-info (tru "Unknown database: `{0}`." db-name)
+          0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
+                                      "reported by search / `read_resource` (it appears "
+                                      "as the first element of every portable FK, e.g. "
+                                      "`source-table: [<db-name>, <schema>, <table>]`).")
+                                 db-name)
                             {:agent-error? true
                              :status-code  400
                              :error        :unknown-database
@@ -333,7 +337,7 @@
                            :database-ids (vec (sort ids))}))))
 
       numeric-table
-      (or (t2/select-one-fn :db_id :model/Table :id numeric-table :active true)
+      (or (:db_id (metabot.db/active-table-with-columns [:model/Table :db_id] numeric-table))
           ;; the id renders via str, not as a number — tru's MessageFormat would add locale
           ;; digit grouping ("999,999,999").
           ;; `:unknown-table-id`, not `:unknown-table`: a portable-FK miss (`:unknown-table`)
@@ -356,7 +360,7 @@
 
       numeric-card
       (let [card-id numeric-card
-            card    (t2/select-one :model/Card :id card-id)]
+            card    (metabot.db/card card-id)]
         (when-not card
           (throw (ex-info (tru "No saved question or model found with id {0}."
                                (str card-id))

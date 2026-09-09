@@ -18,8 +18,8 @@ import type {
 import { getIsTenantUser } from "metabase/current-user";
 import { isEmbedding } from "metabase/embedding/config";
 import { getMetadata } from "metabase/metadata-store";
-import { loadMetadataForTable } from "metabase/questions/actions";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
+import { fetchTableMetadata } from "metabase/redux/tables";
 import { Icon, TextInput } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -87,7 +87,7 @@ export function NotebookDataPicker({
   const isTenantUser = useSelector(getIsTenantUser);
 
   const handleChange = async (tableId: TableId) => {
-    await dispatch(loadMetadataForTable(tableId));
+    await dispatch(fetchTableMetadata({ id: tableId }));
     const state = store.getState();
     const { data: tableMetadata } = selectTableQueryMetadata({ id: tableId })(
       state,
@@ -265,7 +265,7 @@ function ModernDataPicker({
         shouldHide={shouldHide}
         shouldShowLibrary={shouldShowLibrary}
         menuDropdownProps={{
-          mt: "xl",
+          mt: "xxl",
           ml: "-1rem",
         }}
       />

@@ -8,6 +8,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
+   [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -30,7 +31,7 @@
 (api.macros/defendpoint :get "/:run-id/transform-runs" :- [:sequential transforms-rest.api.u/MemberTransformRunResponse]
   "Get the transform runs that made up a specific DAG run."
   [{:keys [run-id]} :- [:map [:run-id ms/PositiveInt]]]
-  (let [dag-run (api/check-404 (t2/select-one :model/TransformDagRun :id run-id))]
+  (let [dag-run (api/check-404 (transforms-rest.db/dag-run run-id))]
     (check-seed-transform api/read-check dag-run)
     (->> (t2/hydrate (transforms.core/transform-runs-for-dag-run run-id)
                      [:transform :collection :transform_tag_ids])
@@ -39,7 +40,7 @@
 (api.macros/defendpoint :post "/:run-id/cancel" :- :nil
   "Cancel an in-progress manual DAG run and request cancellation of its still-running transforms."
   [{:keys [run-id]} :- [:map [:run-id ms/PositiveInt]]]
-  (let [dag-run (api/check-404 (t2/select-one :model/TransformDagRun :id run-id))]
+  (let [dag-run (api/check-404 (transforms-rest.db/dag-run run-id))]
     (check-seed-transform api/write-check dag-run)
     (api/check-400 (transforms.core/cancel-dag-run! run-id))
     nil))

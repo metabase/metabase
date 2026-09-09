@@ -3,13 +3,13 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- ensure-type
   "Ensure that the ref exists and is of type required for indexing."
@@ -64,7 +64,7 @@
                                :model-id model_id})
       (task.index-values/add-indexing-job model-index)
       (model-index/add-values! model-index)
-      (t2/select-one :model/ModelIndex :id (:id model-index)))))
+      (indexed-entities.db/model-index (:id model-index)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -84,7 +84,7 @@
       (throw (ex-info (tru "Question {0} is not a model" model_id)
                       {:model_id model_id
                        :status-code 400})))
-    (t2/select :model/ModelIndex :model_id model_id)))
+    (indexed-entities.db/model-indexes-for-model model_id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -94,7 +94,7 @@
   "Retrieve ModelIndex."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [model-index (api/check-404 (t2/select-one :model/ModelIndex :id id))
+  (let [model-index (api/check-404 (indexed-entities.db/model-index id))
         model       (api/read-check :model/Card (:model_id model-index))]
     (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" id)
@@ -110,6 +110,6 @@
   "Delete ModelIndex."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/let-404 [model-index (t2/select-one :model/ModelIndex :id id)]
+  (api/let-404 [model-index (indexed-entities.db/model-index id)]
     (api/write-check :model/Card (:model_id model-index))
-    (t2/delete! :model/ModelIndex id)))
+    (indexed-entities.db/delete-model-index! id)))

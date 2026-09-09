@@ -7,6 +7,7 @@
    [metabase.channel.email.messages :as messages]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.notification.db :as notification.db]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -26,16 +27,12 @@
 
 (defn- notification-name-by-handler-id
   [notification-handler-id]
-  (let [notification (t2/hydrate (t2/select-one :model/Notification
-                                                :id [:in ^:allow-subquery {:select [:notification_id]
-                                                                           :from  :notification_handler
-                                                                           :where [:= :id notification-handler-id]}])
-                                 :payload)]
+  (let [notification (t2/hydrate (notification.db/notification-for-handler notification-handler-id) :payload)]
     (case (:payload_type notification)
       ;; use the card name
-      :notification/card (->> notification :payload :card_id (t2/select-one-fn :name :model/Card))
+      :notification/card (->> notification :payload :card_id notification.db/card-name)
       ;; use the dashboard name
-      :notification/dashboard (->> notification :payload :dashboard_id (t2/select-one-fn :name :model/Dashboard))
+      :notification/dashboard (->> notification :payload :dashboard_id notification.db/dashboard-name)
       (name (:payload_type notification)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -53,12 +50,10 @@
    request]
   (check-hash notification-handler-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
-    (let [recipients (t2/select :model/NotificationRecipient
-                                :notification_handler_id notification-handler-id
-                                :type :notification-recipient/raw-value)
+    (let [recipients (notification.db/raw-value-recipients-for-handler notification-handler-id)
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if matching-recipient
-        (t2/delete! :model/NotificationRecipient (:id matching-recipient))
+        (notification.db/delete-recipient! (:id matching-recipient))
         (throw (ex-info (tru "Email doesn''t exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-ex {:details {:email email}
                                                              :object {:id notification-handler-id}})
@@ -79,13 +74,12 @@
    request]
   (check-hash notification-handler-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
-    (let [recipients         (t2/select :model/NotificationRecipient :notification_handler_id notification-handler-id
-                                        :type :notification-recipient/raw-value)
+    (let [recipients         (notification.db/raw-value-recipients-for-handler notification-handler-id)
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if-not matching-recipient
-        (t2/insert! :model/NotificationRecipient {:type                    :notification-recipient/raw-value
-                                                  :details                 {:value email}
-                                                  :notification_handler_id notification-handler-id})
+        (notification.db/insert-recipients! {:type                    :notification-recipient/raw-value
+                                             :details                 {:value email}
+                                             :notification_handler_id notification-handler-id})
         (throw (ex-info (tru "Email already exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-undo-ex {:details {:email email}
                                                                   :object {:id notification-handler-id}})

@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -47,17 +48,12 @@
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
-                   (first (t2/insert-returning-instances! :model/Segment
-                                                          :table_id    table-id
-                                                          :creator_id  api/*current-user-id*
-                                                          :name        name
-                                                          :description description
-                                                          :definition  definition)))]
+                   (segments.db/insert-segment! table-id api/*current-user-id* name description definition))]
       (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
       (t2/hydrate segment :creator))))
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
-  (-> (api/read-check (t2/select-one :model/Segment :id id))
+  (-> (api/read-check (segments.db/segment id))
       (t2/hydrate :creator)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -77,12 +73,10 @@
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
   []
-  (let [segments  (t2/select :model/Segment
-                             :archived false
-                             {:order-by [[:%lower.name :asc]]})
+  (let [segments  (segments.db/unarchived-segments)
         table-ids (into #{} (keep :table_id) segments)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+                                                 (segments.db/table-database-ids table-ids))
                                     :table-ids table-ids})
     (-> (filterv mi/can-read? segments)
         (t2/hydrate :creator :definition_description))))
@@ -106,7 +100,7 @@
         (when (not= new-table-id (:table_id existing))
           (api/create-check :model/Segment {:table_id new-table-id}))))
     (when changes
-      (t2/update! :model/Segment id changes))
+      (segments.db/update-segment! id changes))
     (u/prog1 (hydrated-segment id)
       (events/publish-event! :event/segment-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
@@ -157,4 +151,4 @@
   "Return related entities."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Segment :id id) api/read-check xrays/related))
+  (-> (segments.db/segment id) api/read-check xrays/related))

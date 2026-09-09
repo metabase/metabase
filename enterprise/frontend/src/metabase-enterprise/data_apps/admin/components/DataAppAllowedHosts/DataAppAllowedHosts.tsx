@@ -36,7 +36,7 @@ export function DataAppAllowedHosts({ hosts }: Props) {
         </Text>
       </HoverCard.Target>
       <HoverCard.Dropdown p="sm">
-        <Stack gap="xs">
+        <Stack gap="xxs">
           {hosts.map((host, index) => (
             <Text key={`${index}-${host}`} ff="monospace" size="sm">
               {host}
