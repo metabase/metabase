@@ -17,8 +17,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useToast } from "metabase/common/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import { useIsRemoteSyncReadOnly } from "metabase/common/worktrees";
 import { useParams } from "metabase/router";
 import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -36,9 +35,7 @@ export function EditSnippetPage() {
   const params = useParams<EditSnippetPageParams>();
   const snippetId = Urls.extractEntityId(params.snippetId);
   const [sendToast] = useToast();
-  const remoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const remoteSyncReadOnly = useIsRemoteSyncReadOnly();
 
   const {
     data: snippet,

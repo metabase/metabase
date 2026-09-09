@@ -5,11 +5,13 @@ import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
-import { useWorktreeId } from "metabase/common/worktrees";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isEmptyStateData } from "metabase/data-studio/common/utils";
-import { useSelector } from "metabase/redux";
 import { useSearchParams } from "metabase/router";
 import {
   EntityNameCell,
@@ -20,7 +22,6 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Collection } from "metabase-types/api";
 
 import { ActionCell } from "../components/ActionCell";
@@ -46,7 +47,7 @@ export function useLibraryTreeTableInstance({
   onPublishTableClick,
 }: Params) {
   const [searchParams] = useSearchParams();
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const isRemoteSyncReadOnly = useIsRemoteSyncReadOnly();
   const worktreeId = useWorktreeId();
 
   const expandedIdsFromUrl = useMemo(() => {

@@ -17,9 +17,11 @@ import {
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useToast } from "metabase/common/hooks";
-import { useWorktreeId } from "metabase/common/worktrees";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
+import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useNavigate } from "metabase/router";
 import { Card, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -44,9 +46,7 @@ export function NewSnippetPage() {
   );
   const [createSnippet, { isLoading: isSaving }] = useCreateSnippetMutation();
   const isValid = name.length > 0 && content.length > 0;
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const isRemoteSyncReadOnly = useIsRemoteSyncReadOnly();
   const worktreeId = useWorktreeId();
 
   const handleCreateSnippet = async (

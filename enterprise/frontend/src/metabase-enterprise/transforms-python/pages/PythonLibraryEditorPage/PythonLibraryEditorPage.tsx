@@ -5,8 +5,10 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { useWorktreeId } from "metabase/common/worktrees";
-import { useSelector } from "metabase/redux";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
 import { useParams } from "metabase/router";
 import { Alert, Box, Card, Stack } from "metabase/ui";
 import type * as Urls from "metabase/urls";
@@ -15,7 +17,6 @@ import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 import { PythonEditor } from "../../components/PythonEditor";
 
@@ -40,7 +41,7 @@ type PythonLibraryEditorProps = {
 
 function PythonLibraryEditor({ path }: PythonLibraryEditorProps) {
   const [source, setSource] = useState(EMPTY_LIBRARY_SOURCE);
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const isRemoteSyncReadOnly = useIsRemoteSyncReadOnly();
   const worktreeId = useWorktreeId();
 
   const {

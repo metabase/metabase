@@ -17,9 +17,11 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import { useToast } from "metabase/common/hooks";
-import { useWorktreeId } from "metabase/common/worktrees";
-import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import * as Urls from "metabase/urls";
 import type { NativeQuerySnippet, WorktreeId } from "metabase-types/api";
 
@@ -37,9 +39,7 @@ export function SnippetHeader({
   actions,
   ...rest
 }: SnippetHeaderProps & Omit<PaneHeaderProps, "breadcrumbs">) {
-  const remoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const remoteSyncReadOnly = useIsRemoteSyncReadOnly();
   const worktreeId = useWorktreeId();
 
   const { path, isLoadingPath } = useCollectionPath({

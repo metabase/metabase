@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
-import { useWorktreeId } from "metabase/common/worktrees";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
 import type { TreeItem } from "metabase/data-studio/common/types";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 
 import { buildActiveSnippetTree, buildArchivedSnippetTree } from "./utils";
 
@@ -35,9 +36,7 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
     },
     { refetchOnMountOrArgChange: true },
   );
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const isRemoteSyncReadOnly = useIsRemoteSyncReadOnly();
 
   return useMemo(() => {
     if (

@@ -2,12 +2,14 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { useWorktreeId } from "metabase/common/worktrees";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
 import { dataStudioArchivedSnippets } from "metabase/urls";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import { SnippetCollectionPermissionsModal } from "metabase-enterprise/snippets/components/SnippetCollectionPermissionsModal";
 import type { CollectionId } from "metabase-types/api";
 
@@ -20,7 +22,7 @@ export const RootSnippetsCollectionMenu = ({
 }: RootSnippetsCollectionMenu) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const worktreeId = useWorktreeId();
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const remoteSyncReadOnly = useIsRemoteSyncReadOnly();
   const isReadOnly = remoteSyncReadOnly || !isAdmin;
   const [showPermissionsModal, { toggle: togglePermissionsModal }] =
     useDisclosure(false);

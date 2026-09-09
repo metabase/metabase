@@ -41,6 +41,7 @@ const setup = ({
       "token-features": createMockTokenFeatures({
         library: true,
         snippet_collections: true,
+        remote_sync: true,
       }),
       "remote-sync-type": remoteSyncType,
       "remote-sync-enabled": !!remoteSyncType,

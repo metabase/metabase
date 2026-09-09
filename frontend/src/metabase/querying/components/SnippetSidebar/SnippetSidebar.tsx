@@ -12,16 +12,18 @@ import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { SidebarHeader } from "metabase/common/components/SidebarHeader";
-import { useWorktreeId } from "metabase/common/worktrees";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
 import CS from "metabase/css/core/index.css";
 import {
-  PLUGIN_REMOTE_SYNC,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
   type SnippetSidebarMenuOption,
 } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
 import type {
@@ -311,9 +313,7 @@ function SnippetSidebarWithSearch(props: SnippetSidebarWithSearchProps) {
 
 export function SnippetSidebar(props: SnippetSidebarProps) {
   const dispatch = useDispatch();
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const isRemoteSyncReadOnly = useIsRemoteSyncReadOnly();
   const worktreeId = useWorktreeId();
   const collectionId =
     props.snippetCollectionId === null ? "root" : props.snippetCollectionId;
@@ -408,9 +408,7 @@ function ArchivedSnippetsInner({
 }
 
 function ArchivedSnippets(props: { onBack: () => void }) {
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const isRemoteSyncReadOnly = useIsRemoteSyncReadOnly();
   const worktreeId = useWorktreeId();
 
   const {

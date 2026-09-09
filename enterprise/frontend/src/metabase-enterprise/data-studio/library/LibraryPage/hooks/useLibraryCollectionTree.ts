@@ -6,7 +6,10 @@ import {
   skipToken,
   useListCollectionItemsQuery,
 } from "metabase/api";
-import { useWorktreeId } from "metabase/common/worktrees";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
 import type {
   LibrarySectionType,
   TreeItem,
@@ -16,8 +19,7 @@ import {
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useDispatch, useSelector } from "metabase/redux";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { useDispatch } from "metabase/redux";
 import type {
   Collection,
   CollectionId,
@@ -48,7 +50,7 @@ export function useLibraryCollectionTree(
       : skipToken,
   );
 
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const isRemoteSyncReadOnly = useIsRemoteSyncReadOnly();
 
   // 2. Lazy-loaded subcollection items
   const [loadedCollections, setLoadedCollections] = useState<
