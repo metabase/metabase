@@ -1,6 +1,6 @@
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
