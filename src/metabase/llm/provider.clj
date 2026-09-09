@@ -55,7 +55,7 @@
                      :required?   true
                      :placeholder "sk-ant-api03-..."
                      :prefix      "sk-ant-"
-                     :docs-url    "https://console.anthropic.com/settings/keys"}
+                     :docs-url    "https://platform.claude.com/settings/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
                      :validate  llm.settings/llm-url-problem
