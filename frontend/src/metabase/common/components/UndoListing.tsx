@@ -32,7 +32,6 @@ import {
   Portal,
   Progress,
   Stack,
-  rem,
 } from "metabase/ui";
 import { capitalize, inflect } from "metabase/utils/formatting";
 
@@ -41,16 +40,6 @@ import S from "./UndoListing.module.css";
 const TOAST_TRANSITION_DURATION = 300;
 const MARGIN = 8;
 const TOAST_MESSAGE_MAX_LINES = 4;
-
-// The transparent action button's fixed height, padding, and tight line-height
-// offset it (and its sibling controls) from the toast text's vertical rhythm.
-// Counter-shift the whole controls group (pos="relative" + top) up or down based
-// on `contentAlignment` so the controls optically align with the message.
-// Tune these values visually.
-const CONTROLS_VERTICAL_OFFSET: Record<"center" | "flex-start", string> = {
-  center: rem(2),
-  "flex-start": rem(-3),
-};
 
 function defaultMessage({
   verb = t`modified`,
@@ -98,34 +87,6 @@ function UndoToast({
   const dark = undo.dark ?? true;
   const noBorder = undo.showProgress;
 
-  const contentRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
-  const [contentAlignment, setContentAlignment] = useState<
-    "center" | "flex-start"
-  >("center");
-
-  const hasAction =
-    (undo.actions?.length ?? 0) > 0 || Boolean(undo.extraAction);
-  const controlsVerticalOffset = hasAction
-    ? CONTROLS_VERTICAL_OFFSET[contentAlignment]
-    : undefined;
-
-  /**
-   * When the text is shorter than the content wrapper, center align. This can happen
-   * when there is an undo button rendered (which is taller than a line of text).
-   *
-   * When the text is the same height or taller than the content wrapper, top align so
-   * that the icon/undo/close parts of the UI are all aligned at the top of the toast.
-   */
-  useLayoutEffect(() => {
-    const textHeight = textRef.current?.getBoundingClientRect().height ?? 0;
-    const contentHeight =
-      contentRef.current?.getBoundingClientRect().height ?? 0;
-    if (textHeight > 0 && contentHeight > 0) {
-      setContentAlignment(textHeight < contentHeight ? "center" : "flex-start");
-    }
-  }, [undo]);
-
   return (
     <Card
       ref={undo.ref}
@@ -167,19 +128,13 @@ function UndoToast({
           }}
         />
       )}
-      <Flex ref={contentRef} align={contentAlignment} justify="space-between">
-        <Flex
-          ref={textRef}
-          className={S.contentSide}
-          align="flex-start"
-          maw="75ch"
-        >
+      <Flex align="flex-start" justify="space-between">
+        <Flex className={S.message} align="flex-start" maw="75ch">
           {undo.icon && (
             <Icon
+              className={S.messageIcon}
               name={undo.icon}
               c={undo.iconColor ?? "text-secondary-inverse"}
-              pos="relative"
-              top="1px"
               mr="sm"
               flex="0 0 auto"
             />
@@ -192,15 +147,10 @@ function UndoToast({
             </Ellipsified>
           )}
         </Flex>
-        <Flex
-          className={S.contentSide}
-          align="center"
-          flex="0 0 auto"
-          pos="relative"
-          top={controlsVerticalOffset}
-        >
+        <Flex className={S.controls} align="center" flex="0 0 auto">
           {undo.actions && undo.actions.length > 0 && (
             <Button
+              className={S.actionButton}
               variant="transparent"
               color="text-secondary-inverse"
               size="compact-md"
@@ -211,6 +161,7 @@ function UndoToast({
           )}
           {undo.extraAction && (
             <Button
+              className={S.actionButton}
               variant="transparent"
               color="text-secondary-inverse"
               size="compact-md"
@@ -230,8 +181,6 @@ function UndoToast({
               color={undo.dismissIconColor || "text-secondary-inverse"}
               name="close"
               onClick={onDismiss}
-              pos="relative"
-              top="1px"
               ml="lg"
             />
           )}
