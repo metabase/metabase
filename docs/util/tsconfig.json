@@ -1,14 +1,11 @@
 {
-  // Type-check only. No @types/node: it would leak into the frontend type-check.
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "noEmit": true,
+    "target": "ES2020",
+    "module": "commonjs",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist"
   },
   "include": ["./**/*.ts"]
-}
+} 

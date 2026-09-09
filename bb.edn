@@ -115,6 +115,12 @@
    :requires [[mage.codespell]]
    :task (task! (mage.codespell/codespell-interactive (:arguments parsed)))}
 
+  docs-check-nav-links
+  {:doc "Check that every url in docs/util/data/nav.yml points at a page (and anchor) under docs/. Needs lychee."
+   :examples [["./bin/mage docs-check-nav-links"]]
+   :requires [[mage.nav-links]]
+   :task (task! (mage.nav-links/check-nav-links parsed))}
+
   start-maildev
   {:doc "Start Maildev"
    :examples [["./bin/mage start-maildev -h" "print help for start-maildev"]]
