@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 
+import type { CardQuestionBuilder } from "metabase/metadata-store";
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconProps } from "metabase/ui";
 import type {
@@ -11,7 +12,6 @@ import type {
 } from "metabase/viz-core";
 import type { BrushClickObject } from "metabase-lib/query/types";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard,
   DashboardCard,
@@ -55,7 +55,7 @@ export interface VisualizationProps {
   card: SeriesCard;
   getHref?: () => string | undefined;
   data: DatasetData;
-  metadata?: Metadata;
+  buildQuestion?: CardQuestionBuilder;
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;

@@ -26,12 +26,12 @@ function TableComponent(props: TableProps) {
   const {
     series,
     settings,
-    metadata,
+    buildQuestion,
     isShowingDetailsOnlyColumns,
     isDashboard,
   } = props;
 
-  const question = useSyncedQuestion(series, metadata);
+  const question = useSyncedQuestion(series, buildQuestion);
 
   const data = useMemo<VisibleTableData>(
     () =>
@@ -96,13 +96,13 @@ function TableComponent(props: TableProps) {
  */
 function useSyncedQuestion(
   series: VisualizationProps["series"],
-  metadata: VisualizationProps["metadata"],
+  buildQuestion: VisualizationProps["buildQuestion"],
 ) {
-  const metadataRef = useLatest(metadata);
+  const buildQuestionRef = useLatest(buildQuestion);
   return useMemo(() => {
     const [{ card }] = series;
-    return new Question(card, metadataRef.current);
-  }, [series, metadataRef]);
+    return buildQuestionRef.current?.(card) ?? new Question(card);
+  }, [series, buildQuestionRef]);
 }
 
 function AllFieldsHiddenMessage({ isDashboard }: { isDashboard: boolean }) {

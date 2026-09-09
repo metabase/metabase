@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { isNative } from "metabase/common/utils/card";
 import { dayjs } from "metabase/dayjs";
+import type { CardQuestionBuilder } from "metabase/metadata-store";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { formatChangeWithSign, formatPercent } from "metabase/utils/formatting";
 import { getObjectKeys } from "metabase/utils/objects";
@@ -60,7 +61,6 @@ import type {
 } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate, isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -1065,7 +1065,7 @@ export const getBrushClickObject = (
 
 export const getBrushData = (
   rawSeries: RawSeries,
-  metadata: Metadata | undefined,
+  buildQuestion: CardQuestionBuilder | undefined,
   chartModel: BaseCartesianChartModel,
   event: EChartsSeriesBrushEndEvent,
 ) => {
@@ -1081,7 +1081,7 @@ export const getBrushData = (
 
   const column = chartModel.dimensionModel.column;
   const card = rawSeries[0].card;
-  const question = new Question(card, metadata);
+  const question = buildQuestion?.(card) ?? new Question(card);
   const query = question.query();
   const stageIndex = -1;
 

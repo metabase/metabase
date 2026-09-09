@@ -85,7 +85,7 @@ export const useChartEvents = (
     onVisualizationClick,
     onHoverChange,
     clicked,
-    metadata,
+    buildQuestion,
     isDashboard,
   }: VisualizationProps,
   // The ECharts instance, mirrored into state by the caller. Used as a signal
@@ -256,7 +256,7 @@ export const useChartEvents = (
           } else {
             const eventData = getBrushData(
               isVisualizerCard ? visualizerRawSeries : rawSeries,
-              metadata,
+              buildQuestion,
               chartModel,
               adjustedBrushEndEvent,
             );
@@ -285,7 +285,7 @@ export const useChartEvents = (
       rawSeries,
       visualizerRawSeries,
       isVisualizerCard,
-      metadata,
+      buildQuestion,
       onChangeCardAndRun,
       onBrush,
     ],

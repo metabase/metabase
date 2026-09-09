@@ -608,7 +608,6 @@ export function DashCardVisualization({
               ? rawSeries
               : undefined
           }
-          metadata={metadata}
           mode={clickActionMode ?? dashboardClickActionMode}
           getHref={getHref}
           gridSize={gridSize}

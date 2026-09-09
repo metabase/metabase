@@ -7,7 +7,6 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { LIST_DEFINITION } from "../../definition";
@@ -17,7 +16,7 @@ import S from "./ListViz.module.css";
 
 const ListVizComponent = ({
   card,
-  metadata,
+  buildQuestion,
   data,
   settings,
   onVisualizationClick,
@@ -26,11 +25,11 @@ const ListVizComponent = ({
   onZoomRow,
 }: VisualizationProps & VisualizationPassThroughProps) => {
   const question = useMemo(() => {
-    if (!card || !metadata) {
+    if (!card || !buildQuestion) {
       return null;
     }
-    return new Question(card, metadata);
-  }, [card, metadata]);
+    return buildQuestion(card);
+  }, [card, buildQuestion]);
 
   const { sortedColumnName, sortingDirection } = useMemo(() => {
     if (!question) {

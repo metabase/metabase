@@ -19,6 +19,8 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { CardQuestionBuilder } from "metabase/metadata-store";
+import { selectQuestionFromCardBuilder } from "metabase/metadata-store";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
@@ -59,7 +61,6 @@ import {
   prefetchVisualizationComponent,
 } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   Dashboard,
@@ -96,6 +97,7 @@ type StateDispatchProps = {
 };
 
 type StateProps = {
+  buildQuestion: CardQuestionBuilder;
   hasDevWatermark: boolean;
   fontFamily: string;
   isEmbeddingSdk: boolean;
@@ -155,7 +157,6 @@ type VisualizationOwnProps = {
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   /** Shown while a custom viz plugin loads. Documents supply their card-embed loading view here. */
   customVizLoadingView?: ReactNode;
-  metadata?: Metadata;
   mode?: ClickActionsMode;
   editSummary?: () => void;
   rawSeries?: VisualizationRawSeries;
@@ -212,6 +213,7 @@ type VisualizationState = {
 };
 
 const mapStateToProps = (state: State): StateProps => ({
+  buildQuestion: selectQuestionFromCardBuilder(state),
   hasDevWatermark: getTokenFeature(state, "development_mode"),
   fontFamily: getFont(state),
   isEmbeddingSdk: isEmbeddingSdk(),
@@ -431,10 +433,10 @@ class Visualization extends PureComponent<
   };
 
   private static getQuestionForCard(
-    metadata: Metadata | undefined,
+    buildQuestion: CardQuestionBuilder,
     card: SeriesCard | undefined,
   ) {
-    return !!card && !!metadata ? new Question(card, metadata) : undefined;
+    return card ? buildQuestion(card) : undefined;
   }
 
   // Memoized per instance. The cache keys on the arguments, and the object
@@ -444,8 +446,8 @@ class Visualization extends PureComponent<
       clickedObject: ClickObject | null | undefined,
       mode: ClickActionsMode | undefined,
       computedSettings: Record<string, string>,
-      dashcard?: DashboardCard,
-      metadata?: Metadata,
+      dashcard: DashboardCard | undefined,
+      buildQuestion: CardQuestionBuilder,
       rawSeries: VisualizationRawSeries = [],
       visualizerRawSeries: RawSeries = [],
       isRawTable = false,
@@ -471,7 +473,7 @@ class Visualization extends PureComponent<
       if (!isQuestionCard(card)) {
         return [];
       }
-      const question = Visualization.getQuestionForCard(metadata, card);
+      const question = Visualization.getQuestionForCard(buildQuestion, card);
 
       return mode
         ? mode.actionsForClick(
@@ -492,7 +494,7 @@ class Visualization extends PureComponent<
     const {
       mode,
       dashcard,
-      metadata,
+      buildQuestion,
       rawSeries,
       visualizerRawSeries,
       isRawTable,
@@ -507,7 +509,7 @@ class Visualization extends PureComponent<
       mode,
       computedSettings,
       dashcard,
-      metadata,
+      buildQuestion,
       rawSeries,
       visualizerRawSeries,
       isRawTable,
@@ -674,7 +676,7 @@ class Visualization extends PureComponent<
       isSlow,
       isVisualizer,
       isDownloadingToImage,
-      metadata,
+      buildQuestion,
       mode,
       editSummary,
       queryBuilderMode,
@@ -956,7 +958,7 @@ class Visualization extends PureComponent<
                       isSettings={!!isSettings}
                       isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
                       scrollToLastColumn={scrollToLastColumn}
-                      metadata={metadata}
+                      buildQuestion={buildQuestion}
                       mode={mode}
                       queryBuilderMode={queryBuilderMode}
                       // Unjustified type cast. FIXME
