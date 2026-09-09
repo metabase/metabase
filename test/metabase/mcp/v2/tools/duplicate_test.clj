@@ -12,6 +12,8 @@
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.duplicate :as tools.duplicate]
    [metabase.metabot.scope :as metabot.scope]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -115,6 +117,72 @@
           (is (nil? (:dashboard_id copy)))
           (is (= coll-id (:collection_id copy))))))))
 
+(deftest duplicate-document-scoped-question-test
+  (testing "GHY-4218: a question saved inside a document is refused, and no copy is written.
+            `document_id` is not placement — `mi/can-read? :model/Card` conjoins
+            `parent-document-permits?`, which short-circuits to true on a nil `document_id`, so a
+            copy that dropped the column would be readable by anyone with collection perms on the
+            destination, permanently, and would disclose material the Document's content gate
+            exists to withhold"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Document {doc-id :id} {:name          "Exploration summary"
+                                                   :collection_id coll-id
+                                                   :document      (documents.tu/text->prose-mirror-ast "Secret.")}
+                     :model/Card {card-id :id} {:name          "Lens-derived question"
+                                                :type          :question
+                                                :collection_id coll-id
+                                                :document_id   doc-id
+                                                :dataset_query (venues-query)}]
+        (is (= (format (str "Card %d is saved inside a document — duplicate the document instead, "
+                            "which copies the questions saved in it.")
+                       card-id)
+               (tool-error (call-tool! :crowberto {:type "question" :id card-id :collection_id coll-id}))))
+        (testing "and no ungated copy exists — asserted through the read gate itself, as a user who
+                  cannot read the parent document, rather than by inspecting the returned map"
+          (is (= 1 (t2/count :model/Card :collection_id coll-id)))
+          (mt/with-non-admin-groups-no-collection-perms coll-id
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (not-any? mi/can-read? (t2/select :model/Card :collection_id coll-id))))))))))
+
+(deftest duplicate-native-question-without-authoring-perms-test
+  (testing "GHY-4218: copying is not authoring. A caller who can read and run a native card but
+            lacks native query-building perms can duplicate it, matching `POST /api/card/:id/copy`
+            and `documents.models.document/clone-card!` (UXW-5037). The old
+            `check-allowed-to-create-card!` ran run-permissions on the source's own query and
+            refused with \"you do not have permissions to run its query\" — a query the caller can
+            plainly run through the source card"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:name          "Native revenue"
+                                                :type          :question
+                                                :collection_id coll-id
+                                                :dataset_query (mt/native-query {:query "SELECT 1"})}]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (let [result (tool-result (call-tool! :rasta {:type          "question"
+                                                        :id            card-id
+                                                        :collection_id coll-id}))]
+            (is (= "Copy of Native revenue"
+                   (t2/select-one-fn :name :model/Card :id (:id result))))))))))
+
+(deftest duplicate-into-uncuratable-collection-still-refused-test
+  (testing "GHY-4218: dropping the authoring check must not drop the destination create-check —
+            copying into a collection the caller cannot curate is still refused"
+    (mt/with-temp [:model/Collection {source-coll :id} {}
+                   :model/Collection {dest-coll :id} {}
+                   :model/Card {card-id :id} {:name          "Revenue"
+                                              :type          :question
+                                              :collection_id source-coll
+                                              :dataset_query (venues-query)}]
+      (mt/with-non-admin-groups-no-collection-perms dest-coll
+        (is (re-find #"(?i)permission"
+                     (tool-error (call-tool! :rasta {:type          "question"
+                                                     :id            card-id
+                                                     :collection_id dest-coll}))))
+        (is (= 1 (t2/count :model/Card :name "Revenue")))))))
+
 (deftest duplicate-card-flavor-mismatch-test
   (testing "GHY-4151: a model or metric passed as a question is a teaching error saying so, rather than
             silently copying it as a question — the other card flavors aren't supported yet"
@@ -143,10 +211,15 @@
           (testing type
             (is (= (format "%s %d is in the trash — restore it before duplicating." (name model) id)
                    (tool-error (call-tool! :crowberto {:type type :id id}))))))
+        ;; The calls above omit `collection_id`, so a copy that slipped past the guard would land in
+        ;; the caller's personal collection -- counting the *source* collection would pass either
+        ;; way. Count the destination, and the totals, so a resurrected copy has nowhere to hide.
         (testing "and nothing was written"
-          (is (= 1 (t2/count :model/Card :collection_id coll-id)))
-          (is (= 1 (t2/count :model/Dashboard :collection_id coll-id)))
-          (is (= 1 (t2/count :model/Document :collection_id coll-id))))))))
+          (let [personal-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))]
+            (doseq [model [:model/Card :model/Dashboard :model/Document]]
+              (testing model
+                (is (zero? (t2/count model :collection_id personal-id)))
+                (is (= 1 (t2/count model :collection_id coll-id)))))))))))
 
 ;;; ------------------------------------------------- dashboard ----------------------------------------------------
 
@@ -228,6 +301,91 @@
                                  :name "Revenue"
                                  :collection_id (:id (collection/user->personal-collection
                                                       (mt/user->id :rasta)))))))))))))
+
+(deftest duplicate-dashboard-shallow-uncopied-test
+  (testing "GHY-4218: a *shallow* copy drops unreadable cards too, and reports them. `card->decision`
+            evaluates its `:discard` branch before it ever consults `deep-copy?`, so the default
+            copy path can silently lose dashcards — the description used to promise `uncopied` only
+            for deep copies, giving an agent no reason to look at it here"
+    (mt/with-model-cleanup [:model/Dashboard :model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Collection {secret-coll :id} {}
+                     :model/Card {secret-card :id} {:name          "Salaries"
+                                                    :type          :question
+                                                    :collection_id secret-coll
+                                                    :dataset_query (venues-query)}
+                     :model/Card {ok-card :id} {:name          "Revenue"
+                                                :type          :question
+                                                :collection_id coll-id
+                                                :dataset_query (venues-query)}
+                     :model/Dashboard {dash-id :id} {:name "Sales" :collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id secret-card}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id ok-card}]
+        (mt/with-non-admin-groups-no-collection-perms secret-coll
+          ;; No `is_deep_copy` — the documented default, and the path an agent takes unless it has a
+          ;; reason not to.
+          (let [result (tool-result (call-tool! :rasta {:type "dashboard" :id dash-id}))]
+            (is (= [{:id secret-card}] (:uncopied result))
+                "the unreadable card is reported by id alone on a shallow copy too")
+            (is (= 1 (:uncopied_count result)))
+            (testing "and it really is left out of the copy"
+              (is (= [ok-card] (map :card_id (copied-dashcards (:id result))))))))))))
+
+(deftest duplicate-uncopied-count-survives-readback-degradation-test
+  (testing "GHY-4218: a write-only token still learns the copy was partial. `:uncopied` itself must
+            not ride out — `cards-to-copy`'s `redact` reduces a card to its id only when it is
+            *unreadable*, so an archived-but-readable card keeps its real name, which would make the
+            write scope a read oracle. The scalar count carries the signal without the names"
+    (mt/with-model-cleanup [:model/Dashboard :model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Collection {secret-coll :id} {}
+                     :model/Card {secret-card :id} {:name          "Salaries"
+                                                    :type          :question
+                                                    :collection_id secret-coll
+                                                    :dataset_query (venues-query)}
+                     :model/Card {ok-card :id} {:name          "Revenue"
+                                                :type          :question
+                                                :collection_id coll-id
+                                                :dataset_query (venues-query)}
+                     :model/Dashboard {dash-id :id} {:name "Sales" :collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id secret-card}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id ok-card}]
+        (mt/with-non-admin-groups-no-collection-perms secret-coll
+          (let [result (tool-result (call-tool! :rasta #{metabot.scope/agent-content-write}
+                                                {:type "dashboard" :id dash-id :is_deep_copy true}))]
+            (is (= #{:id :type :note :uncopied_count} (set (keys result))))
+            (is (= 1 (:uncopied_count result)))
+            (testing "the names of cards the token cannot read never appear"
+              (is (nil? (:uncopied result))))))))))
+
+(deftest duplicate-explicit-false-deep-copy-test
+  (testing "GHY-4218: `is_deep_copy: false` is the documented default, and the published strict
+            inputSchema marks every property required — so a strict client must send it. Rejecting
+            it refused a request the tool already serves; only an explicit `true` is wrong here"
+    (mt/with-model-cleanup [:model/Card :model/Document]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:name          "Revenue"
+                                                :type          :question
+                                                :collection_id coll-id
+                                                :dataset_query (venues-query)}
+                     :model/Document {doc-id :id} {:name          "Notes"
+                                                   :collection_id coll-id
+                                                   :document      (documents.tu/text->prose-mirror-ast "Hi.")}]
+        (testing "question"
+          (is (=? {:type "question" :name "Copy of Revenue"}
+                  (tool-result (call-tool! :crowberto {:type          "question"
+                                                       :id            card-id
+                                                       :collection_id coll-id
+                                                       :is_deep_copy  false})))))
+        (testing "document"
+          (is (=? {:type "document" :name "Copy of Notes"}
+                  (tool-result (call-tool! :crowberto {:type          "document"
+                                                       :id            doc-id
+                                                       :collection_id coll-id
+                                                       :is_deep_copy  false})))))
+        (testing "an explicit true is still a teaching error on a non-dashboard"
+          (is (= "`is_deep_copy` applies to dashboards only — omit it when duplicating a question."
+                 (tool-error (call-tool! :crowberto {:type "question" :id card-id :is_deep_copy true})))))))))
 
 (deftest duplicate-dashboard-shallow-with-dashboard-questions-test
   (testing "GHY-4151: a shallow copy of a dashboard holding dashboard questions is a teaching error
@@ -325,7 +483,13 @@
                                               :collection_id source-coll
                                               :dataset_query (venues-query)}]
       (mt/with-non-admin-groups-no-collection-perms dest-coll
-        (is (:isError (call-tool! :rasta {:type "question" :id card-id :collection_id dest-coll})))
+        ;; A bare `:isError` cannot tell a permission refusal from a Malli failure, a not-found on
+        ;; the destination id, or an internal error sanitized to "Internal error" -- assert the
+        ;; refusal actually mentions permissions, the way every other error test here does.
+        (is (re-find #"(?i)permission"
+                     (tool-error (call-tool! :rasta {:type          "question"
+                                                     :id            card-id
+                                                     :collection_id dest-coll}))))
         (is (= 1 (t2/count :model/Card :name "Revenue")))))))
 
 (deftest scope-test
@@ -353,7 +517,10 @@
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Board deck Q3"}]
         (let [result (tool-result (call-tool! :crowberto #{metabot.scope/agent-content-write}
                                               {:type "dashboard" :id dash-id}))]
-          (is (= #{:id :note} (set (keys result))))
+          ;; `:type` is the caller's own argument, so it survives as an ack-key; the source-derived
+          ;; `:name` and `:collection_id` do not.
+          (is (= #{:id :type :note} (set (keys result))))
+          (is (= "dashboard" (:type result)))
           (is (re-find #"agent:content:read" (:note result)))
           (testing "and the copy still happened"
             (is (= "Copy of Board deck Q3"
@@ -374,5 +541,5 @@
                                                 :dataset_query (venues-query)}]
         (let [result (tool-result (call-tool! :crowberto #{metabot.scope/agent-content-write}
                                               {:type "question" :id card-id :new_name "Mine"}))]
-          (is (= #{:id :note} (set (keys result))))
+          (is (= #{:id :type :note} (set (keys result))))
           (is (= "Mine" (t2/select-one-fn :name :model/Card :id (:id result)))))))))
