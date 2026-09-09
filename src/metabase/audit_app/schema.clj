@@ -17,7 +17,7 @@
    [:timestamp     ms/TemporalInstant]
    [:end_timestamp [:maybe ms/TemporalInstant]]
    [:user_id       [:maybe ::lib.schema.id/user]]
-   [:model         [:maybe :string]]
+   [:model         [:maybe [:or :keyword :string]]]
    [:model_id      [:maybe :int]]
    [:details       ::audit-log.details]])
 
@@ -28,6 +28,6 @@
    [:timestamp     {:optional true} [:maybe ms/TemporalInstant]]
    [:end_timestamp {:optional true} [:maybe ms/TemporalInstant]]
    [:user_id       {:optional true} [:maybe ::lib.schema.id/user]]
-   [:model         {:optional true} [:maybe :string]]
+   [:model         {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id      {:optional true} [:maybe :int]]
    [:details       {:optional true} [:maybe ::audit-log.details]]])

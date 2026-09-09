@@ -13,7 +13,7 @@
   "A Revision as selected from the app DB: every column of `:revision`."
   [:map {:closed true}
    [:id               ms/PositiveInt]
-   [:model            :string]
+   [:model            [:or :keyword :string]]
    [:model_id         [:maybe :int]]
    [:user_id          ::lib.schema.id/user]
    [:timestamp        ms/TemporalInstant]
@@ -27,7 +27,7 @@
 (mr/def ::revision.update
   "What an update (or insert) of a Revision accepts: every column of `:revision` except `id`, all optional."
   [:map {:closed true}
-   [:model            {:optional true} [:maybe :string]]
+   [:model            {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id         {:optional true} [:maybe :int]]
    [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]
    [:timestamp        {:optional true} [:maybe ms/TemporalInstant]]

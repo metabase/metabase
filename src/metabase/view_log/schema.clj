@@ -14,7 +14,7 @@
   [:map {:closed true}
    [:id                          ms/PositiveInt]
    [:user_id                     [:maybe ::lib.schema.id/user]]
-   [:model                       :string]
+   [:model                       [:or :keyword :string]]
    [:model_id                    [:maybe :int]]
    [:timestamp                   ms/TemporalInstant]
    [:metadata                    [:maybe ::view-log.metadata]]
@@ -22,7 +22,7 @@
    [:context                     [:maybe [:or :keyword :string]]]
    [:embedding_client            [:maybe :string]]
    [:embedding_sdk_version       [:maybe :string]]
-   [:auth_method                 [:maybe :string]]
+   [:auth_method                 [:maybe [:or :keyword :string]]]
    [:tenant_id                   [:maybe ms/PositiveInt]]
    [:embedding_hostname          [:maybe :string]]
    [:embedding_path              [:maybe :string]]
@@ -37,7 +37,7 @@
   "What an update (or insert) of a ViewLog accepts: every column of `:view_log` except `id`, all optional."
   [:map {:closed true}
    [:user_id                     {:optional true} [:maybe ::lib.schema.id/user]]
-   [:model                       {:optional true} [:maybe :string]]
+   [:model                       {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id                    {:optional true} [:maybe :int]]
    [:timestamp                   {:optional true} [:maybe ms/TemporalInstant]]
    [:metadata                    {:optional true} [:maybe ::view-log.metadata]]
@@ -45,7 +45,7 @@
    [:context                     {:optional true} [:maybe [:or :keyword :string]]]
    [:embedding_client            {:optional true} [:maybe :string]]
    [:embedding_sdk_version       {:optional true} [:maybe :string]]
-   [:auth_method                 {:optional true} [:maybe :string]]
+   [:auth_method                 {:optional true} [:maybe [:or :keyword :string]]]
    [:tenant_id                   {:optional true} [:maybe ms/PositiveInt]]
    [:embedding_hostname          {:optional true} [:maybe :string]]
    [:embedding_path              {:optional true} [:maybe :string]]

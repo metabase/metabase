@@ -136,7 +136,7 @@
    [:id               ms/PositiveInt]
    [:name             :string]
    [:entity_id        :string]
-   [:magic_group_type [:maybe :string]]
+   [:magic_group_type [:maybe [:or :keyword :string]]]
    [:is_tenant_group  :boolean]])
 
 (mr/def ::permissions-group.update
@@ -144,7 +144,7 @@
   [:map {:closed true}
    [:name             {:optional true} [:maybe :string]]
    [:entity_id        {:optional true} [:maybe :string]]
-   [:magic_group_type {:optional true} [:maybe :string]]
+   [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
    [:is_tenant_group  {:optional true} [:maybe :boolean]]])
 
 (mr/def ::permissions-group-membership

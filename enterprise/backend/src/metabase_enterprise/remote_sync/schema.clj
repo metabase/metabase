@@ -173,13 +173,13 @@
   "A RemoteSyncObject as selected from the app DB: every column of `:remote_sync_object`."
   [:map {:closed true}
    [:id                  ms/PositiveInt]
-   [:model_type          :string]
+   [:model_type          [:or :keyword :string]]
    [:model_id            [:maybe :int]]
-   [:status              :string]
+   [:status              [:or :keyword :string]]
    [:status_changed_at   ms/TemporalInstant]
    [:model_name          :string]
    [:model_collection_id [:maybe ::lib.schema.id/collection]]
-   [:model_display       [:maybe :string]]
+   [:model_display       [:maybe [:or :keyword :string]]]
    [:model_table_id      [:maybe ::lib.schema.id/table]]
    [:model_table_name    [:maybe :string]]
    [:file_path           [:maybe :string]]
@@ -188,13 +188,13 @@
 (mr/def ::remote-sync-object.update
   "What an update (or insert) of a RemoteSyncObject accepts: every column of `:remote_sync_object` except `id`, all optional."
   [:map {:closed true}
-   [:model_type          {:optional true} [:maybe :string]]
+   [:model_type          {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id            {:optional true} [:maybe :int]]
-   [:status              {:optional true} [:maybe :string]]
+   [:status              {:optional true} [:maybe [:or :keyword :string]]]
    [:status_changed_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:model_name          {:optional true} [:maybe :string]]
    [:model_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:model_display       {:optional true} [:maybe :string]]
+   [:model_display       {:optional true} [:maybe [:or :keyword :string]]]
    [:model_table_id      {:optional true} [:maybe ::lib.schema.id/table]]
    [:model_table_name    {:optional true} [:maybe :string]]
    [:file_path           {:optional true} [:maybe :string]]
@@ -216,7 +216,7 @@
   "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."
   [:map {:closed true}
    [:id                      ms/PositiveInt]
-   [:sync_task_type          :string]
+   [:sync_task_type          [:or :keyword :string]]
    [:progress                [:maybe number?]]
    [:cancelled               :boolean]
    [:started_at              ms/TemporalInstant]
@@ -231,7 +231,7 @@
 (mr/def ::remote-sync-task.update
   "What an update (or insert) of a RemoteSyncTask accepts: every column of `:remote_sync_task` except `id`, all optional."
   [:map {:closed true}
-   [:sync_task_type          {:optional true} [:maybe :string]]
+   [:sync_task_type          {:optional true} [:maybe [:or :keyword :string]]]
    [:progress                {:optional true} [:maybe number?]]
    [:cancelled               {:optional true} [:maybe :boolean]]
    [:started_at              {:optional true} [:maybe ms/TemporalInstant]]

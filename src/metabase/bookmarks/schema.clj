@@ -10,7 +10,7 @@
   [:map {:closed true}
    [:id       ms/PositiveInt]
    [:user_id  ::lib.schema.id/user]
-   [:type     :string]
+   [:type     [:or :keyword :string]]
    [:item_id  ms/PositiveInt]
    [:ordering :int]])
 
@@ -18,7 +18,7 @@
   "What an update (or insert) of a BookmarkOrdering accepts: every column of `:bookmark_ordering` except `id`, all optional."
   [:map {:closed true}
    [:user_id  {:optional true} [:maybe ::lib.schema.id/user]]
-   [:type     {:optional true} [:maybe :string]]
+   [:type     {:optional true} [:maybe [:or :keyword :string]]]
    [:item_id  {:optional true} [:maybe ms/PositiveInt]]
    [:ordering {:optional true} [:maybe :int]]])
 

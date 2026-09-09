@@ -18,7 +18,7 @@
   [:map {:closed true}
    [:id           ms/PositiveInt]
    [:user_id      ::lib.schema.id/user]
-   [:provider     :string]
+   [:provider     [:or :keyword :string]]
    [:credentials  [:maybe ::auth-identity.credentials]]
    [:metadata     [:maybe ::auth-identity.metadata]]
    [:provider_id  [:maybe :string]]
@@ -32,7 +32,7 @@
   "What an update (or insert) of a AuthIdentity accepts: every column of `:auth_identity` except `id`, all optional."
   [:map {:closed true}
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
-   [:provider     {:optional true} [:maybe :string]]
+   [:provider     {:optional true} [:maybe [:or :keyword :string]]]
    [:credentials  {:optional true} [:maybe ::auth-identity.credentials]]
    [:metadata     {:optional true} [:maybe ::auth-identity.metadata]]
    [:provider_id  {:optional true} [:maybe :string]]

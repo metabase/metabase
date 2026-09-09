@@ -10,7 +10,7 @@
    [:id                  ms/PositiveInt]
    [:updated_at          ms/TemporalInstant]
    [:created_at          ms/TemporalInstant]
-   [:status              [:maybe :string]]
+   [:status              [:maybe [:or :keyword :string]]]
    [:text                [:maybe :string]]
    [:moderated_item_id   ms/PositiveInt]
    [:moderated_item_type [:or :keyword :string]]
@@ -22,7 +22,7 @@
   [:map {:closed true}
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:status              {:optional true} [:maybe :string]]
+   [:status              {:optional true} [:maybe [:or :keyword :string]]]
    [:text                {:optional true} [:maybe :string]]
    [:moderated_item_id   {:optional true} [:maybe ms/PositiveInt]]
    [:moderated_item_type {:optional true} [:maybe [:or :keyword :string]]]

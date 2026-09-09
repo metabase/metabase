@@ -16,7 +16,7 @@
   "A CacheConfig as selected from the app DB: every column of `:cache_config`."
   [:map {:closed true}
    [:id                    ms/PositiveInt]
-   [:model                 :string]
+   [:model                 [:or :keyword :string]]
    [:model_id              [:maybe :int]]
    [:created_at            ms/TemporalInstant]
    [:updated_at            ms/TemporalInstant]
@@ -30,7 +30,7 @@
 (mr/def ::cache-config.update
   "What an update (or insert) of a CacheConfig accepts: every column of `:cache_config` except `id`, all optional."
   [:map {:closed true}
-   [:model                 {:optional true} [:maybe :string]]
+   [:model                 {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id              {:optional true} [:maybe :int]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]

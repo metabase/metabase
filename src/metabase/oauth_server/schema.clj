@@ -58,7 +58,7 @@
    [:nonce                 [:maybe :string]]
    [:expiry                :int]
    [:code_challenge        [:maybe :string]]
-   [:code_challenge_method [:maybe :string]]
+   [:code_challenge_method [:maybe [:or :keyword :string]]]
    [:resource              [:maybe ::oauth-authorization-code.resource]]
    [:created_at            ms/TemporalInstant]])
 
@@ -73,7 +73,7 @@
    [:nonce                 {:optional true} [:maybe :string]]
    [:expiry                {:optional true} [:maybe :int]]
    [:code_challenge        {:optional true} [:maybe :string]]
-   [:code_challenge_method {:optional true} [:maybe :string]]
+   [:code_challenge_method {:optional true} [:maybe [:or :keyword :string]]]
    [:resource              {:optional true} [:maybe ::oauth-authorization-code.resource]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]])
 
@@ -107,14 +107,14 @@
    [:grant_types                    ::oauth-client.grant-types]
    [:response_types                 ::oauth-client.response-types]
    [:scopes                         ::oauth-client.scopes]
-   [:token_endpoint_auth_method     [:maybe :string]]
+   [:token_endpoint_auth_method     [:maybe [:or :keyword :string]]]
    [:client_name                    [:maybe :string]]
    [:client_uri                     [:maybe :string]]
    [:logo_uri                       [:maybe :string]]
    [:contacts                       [:maybe ::oauth-client.contacts]]
-   [:registration_type              :string]
-   [:client_type                    :string]
-   [:application_type               [:maybe :string]]
+   [:registration_type              [:or :keyword :string]]
+   [:client_type                    [:or :keyword :string]]
+   [:application_type               [:maybe [:or :keyword :string]]]
    [:registration_access_token_hash [:maybe :string]]
    [:created_at                     ms/TemporalInstant]
    [:updated_at                     ms/TemporalInstant]])
@@ -128,14 +128,14 @@
    [:grant_types                    {:optional true} [:maybe ::oauth-client.grant-types]]
    [:response_types                 {:optional true} [:maybe ::oauth-client.response-types]]
    [:scopes                         {:optional true} [:maybe ::oauth-client.scopes]]
-   [:token_endpoint_auth_method     {:optional true} [:maybe :string]]
+   [:token_endpoint_auth_method     {:optional true} [:maybe [:or :keyword :string]]]
    [:client_name                    {:optional true} [:maybe :string]]
    [:client_uri                     {:optional true} [:maybe :string]]
    [:logo_uri                       {:optional true} [:maybe :string]]
    [:contacts                       {:optional true} [:maybe ::oauth-client.contacts]]
-   [:registration_type              {:optional true} [:maybe :string]]
-   [:client_type                    {:optional true} [:maybe :string]]
-   [:application_type               {:optional true} [:maybe :string]]
+   [:registration_type              {:optional true} [:maybe [:or :keyword :string]]]
+   [:client_type                    {:optional true} [:maybe [:or :keyword :string]]]
+   [:application_type               {:optional true} [:maybe [:or :keyword :string]]]
    [:registration_access_token_hash {:optional true} [:maybe :string]]
    [:created_at                     {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                     {:optional true} [:maybe ms/TemporalInstant]]])
@@ -146,7 +146,7 @@
    [:id              ms/PositiveInt]
    [:oauth_client_id [:maybe ms/PositiveInt]]
    [:user_id         [:maybe ::lib.schema.id/user]]
-   [:event_type      :string]
+   [:event_type      [:or :keyword :string]]
    [:created_at      ms/TemporalInstant]])
 
 (mr/def ::oauth-client-event.update
@@ -154,7 +154,7 @@
   [:map {:closed true}
    [:oauth_client_id {:optional true} [:maybe ms/PositiveInt]]
    [:user_id         {:optional true} [:maybe ::lib.schema.id/user]]
-   [:event_type      {:optional true} [:maybe :string]]
+   [:event_type      {:optional true} [:maybe [:or :keyword :string]]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::oauth-refresh-token.scope

@@ -14,7 +14,7 @@
    [:tenant_id     [:maybe ms/PositiveInt]]
    [:client_name   [:maybe :string]]
    [:operation     [:maybe :string]]
-   [:status        [:maybe :string]]
+   [:status        [:maybe [:or :keyword :string]]]
    [:duration_ms   [:maybe :int]]
    [:ip_address    [:maybe :string]]
    [:error_message [:maybe :string]]])
@@ -27,7 +27,7 @@
    [:tenant_id     {:optional true} [:maybe ms/PositiveInt]]
    [:client_name   {:optional true} [:maybe :string]]
    [:operation     {:optional true} [:maybe :string]]
-   [:status        {:optional true} [:maybe :string]]
+   [:status        {:optional true} [:maybe [:or :keyword :string]]]
    [:duration_ms   {:optional true} [:maybe :int]]
    [:ip_address    {:optional true} [:maybe :string]]
    [:error_message {:optional true} [:maybe :string]]])

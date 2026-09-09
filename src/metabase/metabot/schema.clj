@@ -113,8 +113,8 @@
   [:map {:closed true}
    [:id                    ms/PositiveInt]
    [:created_at            ms/TemporalInstant]
-   [:source                :string]
-   [:model                 :string]
+   [:source                [:or :keyword :string]]
+   [:model                 [:or :keyword :string]]
    [:prompt_tokens         :int]
    [:completion_tokens     :int]
    [:total_tokens          :int]
@@ -131,8 +131,8 @@
   "What an update (or insert) of a AiUsageLog accepts: every column of `:ai_usage_log` except `id`, all optional."
   [:map {:closed true}
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:source                {:optional true} [:maybe :string]]
-   [:model                 {:optional true} [:maybe :string]]
+   [:source                {:optional true} [:maybe [:or :keyword :string]]]
+   [:model                 {:optional true} [:maybe [:or :keyword :string]]]
    [:prompt_tokens         {:optional true} [:maybe :int]]
    [:completion_tokens     {:optional true} [:maybe :int]]
    [:total_tokens          {:optional true} [:maybe :int]]
@@ -206,7 +206,7 @@
   [:map {:closed true}
    [:message_id        ms/PositiveInt]
    [:positive          :boolean]
-   [:issue_type        [:maybe :string]]
+   [:issue_type        [:maybe [:or :keyword :string]]]
    [:freeform_feedback [:maybe :string]]
    [:created_at        ms/TemporalInstant]
    [:updated_at        ms/TemporalInstant]
@@ -218,7 +218,7 @@
   [:map {:closed true}
    [:message_id        {:optional true} [:maybe ms/PositiveInt]]
    [:positive          {:optional true} [:maybe :boolean]]
-   [:issue_type        {:optional true} [:maybe :string]]
+   [:issue_type        {:optional true} [:maybe [:or :keyword :string]]]
    [:freeform_feedback {:optional true} [:maybe :string]]
    [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
@@ -315,7 +315,7 @@
    [:message_id  ms/PositiveInt]
    [:user_id     ::lib.schema.id/user]
    [:source_id   ms/PositiveInt]
-   [:source_type :string]
+   [:source_type [:or :keyword :string]]
    [:positive    :boolean]
    [:created_at  ms/TemporalInstant]
    [:updated_at  ms/TemporalInstant]])
@@ -326,7 +326,7 @@
    [:message_id  {:optional true} [:maybe ms/PositiveInt]]
    [:user_id     {:optional true} [:maybe ::lib.schema.id/user]]
    [:source_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:source_type {:optional true} [:maybe :string]]
+   [:source_type {:optional true} [:maybe [:or :keyword :string]]]
    [:positive    {:optional true} [:maybe :boolean]]
    [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at  {:optional true} [:maybe ms/TemporalInstant]]])

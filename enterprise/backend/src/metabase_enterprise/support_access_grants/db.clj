@@ -150,7 +150,7 @@
    changes          :- [:map {:closed true}
                         [:id            {:optional true} ms/PositiveInt]
                         [:user_id       {:optional true} ::lib.schema.id/user]
-                        [:provider      {:optional true} :string]
+                        [:provider      {:optional true} yword :string]
                         [:provider_id   {:optional true} [:maybe :string]]
                         [:expires_at    {:optional true} [:maybe ms/TemporalInstant]]
                         [:last_used_at  {:optional true} [:maybe ms/TemporalInstant]]

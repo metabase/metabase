@@ -18,7 +18,7 @@
   [:map {:closed true}
    [:id                ms/PositiveInt]
    [:parent_comment_id [:maybe ms/PositiveInt]]
-   [:target_type       :string]
+   [:target_type       [:or :keyword :string]]
    [:target_id         ms/PositiveInt]
    [:child_target_id   [:maybe :string]]
    [:creator_id        ::lib.schema.id/user]
@@ -34,7 +34,7 @@
   "What an update (or insert) of a Comment accepts: every column of `:comment` except `id`, all optional."
   [:map {:closed true}
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]
-   [:target_type       {:optional true} [:maybe :string]]
+   [:target_type       {:optional true} [:maybe [:or :keyword :string]]]
    [:target_id         {:optional true} [:maybe ms/PositiveInt]]
    [:child_target_id   {:optional true} [:maybe :string]]
    [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]

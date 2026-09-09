@@ -161,7 +161,7 @@
 
 (def ^:private RevisionRow
   [:map {:closed true}
-   [:model        :string]
+   [:model        [:or :keyword :string]]
    [:model_id     ms/PositiveInt]
    [:user_id      ::lib.schema.id/user]
    [:object       :map]

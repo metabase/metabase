@@ -203,7 +203,7 @@
    [:entity_id       :string]
    [:created_at      ms/TemporalInstant]
    [:updated_at      ms/TemporalInstant]
-   [:built_in_type   [:maybe :string]]
+   [:built_in_type   [:maybe [:or :keyword :string]]]
    [:ui_display_type [:or :keyword :string]]
    [:active          :boolean]])
 
@@ -216,7 +216,7 @@
    [:entity_id       {:optional true} [:maybe :string]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:built_in_type   {:optional true} [:maybe :string]]
+   [:built_in_type   {:optional true} [:maybe [:or :keyword :string]]]
    [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]
    [:active          {:optional true} [:maybe :boolean]]])
 
@@ -333,7 +333,7 @@
    [:entity_id     :string]
    [:created_at    ms/TemporalInstant]
    [:updated_at    ms/TemporalInstant]
-   [:built_in_type [:maybe :string]]])
+   [:built_in_type [:maybe [:or :keyword :string]]]])
 
 (mr/def ::transform-tag.update
   "What an update (or insert) of a TransformTag accepts: every column of `:transform_tag` except `id`, all optional."
@@ -342,7 +342,7 @@
    [:entity_id     {:optional true} [:maybe :string]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:built_in_type {:optional true} [:maybe :string]]])
+   [:built_in_type {:optional true} [:maybe [:or :keyword :string]]]])
 
 (mr/def ::transform-transform-tag
   "A TransformTransformTag as selected from the app DB: every column of `:transform_transform_tag`."

@@ -63,7 +63,7 @@
    [:view_count              :int]
    [:archived_directly       :boolean]
    [:last_viewed_at          ms/TemporalInstant]
-   [:embedding_type          [:maybe :string]]
+   [:embedding_type          [:maybe [:or :keyword :string]]]
    [:public_uuid_prefix      [:maybe :string]]])
 
 (mr/def ::dashboard.update
@@ -94,7 +94,7 @@
    [:view_count              {:optional true} [:maybe :int]]
    [:archived_directly       {:optional true} [:maybe :boolean]]
    [:last_viewed_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:embedding_type          {:optional true} [:maybe :string]]
+   [:embedding_type          {:optional true} [:maybe [:or :keyword :string]]]
    [:public_uuid_prefix      {:optional true} [:maybe :string]]])
 
 (mr/def ::dashboard-card.parameter-mapping

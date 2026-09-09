@@ -15,7 +15,7 @@
    [:fingerprint :string]
    [:score_data  ::data-complexity-score.score-data]
    [:created_at  ms/TemporalInstant]
-   [:source      :string]])
+   [:source      [:or :keyword :string]]])
 
 (mr/def ::data-complexity-score.update
   "What an update (or insert) of a DataComplexityScore accepts: every column of `:data_complexity_score` except `id`, all optional."
@@ -23,4 +23,4 @@
    [:fingerprint {:optional true} [:maybe :string]]
    [:score_data  {:optional true} [:maybe ::data-complexity-score.score-data]]
    [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
-   [:source      {:optional true} [:maybe :string]]])
+   [:source      {:optional true} [:maybe [:or :keyword :string]]]])
