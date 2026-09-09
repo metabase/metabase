@@ -10,8 +10,8 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -36,8 +36,12 @@ import type {
   SettingDefinitionMap,
 } from "metabase-types/api";
 
-// Attribute-key fields show only a placeholder, no helper text. Env-locked
-// fields swap the placeholder for the readOnly "Using MB_..." notice.
+import { JWTGroupMappingSection } from "./JWTGroupMappingSection";
+
+/**
+ * Attribute-key fields show only a placeholder, no helper text.
+ * Env-locked fields swap the placeholder for the readOnly "Using MB_..." notice.
+ */
 const getAttributeFieldProps = (
   setting: SettingDefinition | undefined,
   placeholder?: string,
@@ -55,6 +59,8 @@ export type JWTFormValues = Pick<
   | "jwt-attribute-email"
   | "jwt-attribute-firstname"
   | "jwt-attribute-lastname"
+  | "jwt-attribute-groups"
+  | "jwt-attribute-tenant"
 >;
 
 export const SettingsJWTForm = () => {
@@ -67,14 +73,34 @@ export const SettingsJWTForm = () => {
   const applicationName = useSelector(getApplicationName);
   const [sendToast] = useToast();
 
-  const handleSubmit = async (values: Partial<JWTFormValues>) => {
+  // a paused JWT keeps its settings, so "configured" means an identity provider URI exists
+  const uriSetting = settingDetails?.["jwt-identity-provider-uri"];
+  const isServerConfigured =
+    Boolean(uriSetting?.value) || (uriSetting?.is_env_setting ?? false);
+
+  // either env var locks the whole group mapping section, since the two settings act as one feature
+  const groupMappingEnvNames = [
+    settingDetails?.["jwt-group-sync"],
+    settingDetails?.["jwt-group-mappings"],
+  ].flatMap((setting) =>
+    setting?.is_env_setting && setting.env_name ? [setting.env_name] : [],
+  );
+  const isGroupMappingEnvConfigured = groupMappingEnvNames.length > 0;
+
+  const saveSettings = async (values: JWTFormValues) => {
     const { "jwt-shared-secret": jwtSecret, ...rest } = values;
-    const settingsToUpdate: Partial<JWTFormValues> = { ...rest };
+    const settingsToUpdate: Partial<EnterpriseSettings> = { ...rest };
 
     // jwt-shared-secret may be initialized with the obfuscated value from /api/setting.
     // Only send it to the backend if it's a newly generated plaintext value.
     if (jwtSecret != null && !isObfuscatedValue(jwtSecret)) {
       settingsToUpdate["jwt-shared-secret"] = jwtSecret;
+    }
+
+    // per the design, the first save turns automatic group mapping on; the section owns it from then on
+    if (!isServerConfigured && !isGroupMappingEnvConfigured) {
+      settingsToUpdate["jwt-group-sync"] = true;
+      settingsToUpdate["jwt-group-mappings"] = {};
     }
 
     const result = await updateSettings({
@@ -83,7 +109,7 @@ export const SettingsJWTForm = () => {
       toast: false,
     });
     // Make sure the shared token obfuscated value is fetched from the backend.
-    refetchSettingDetails();
+    await refetchSettingDetails();
 
     if (result.error) {
       throw new Error(t`Error saving JWT Settings`);
@@ -110,8 +136,7 @@ export const SettingsJWTForm = () => {
     settingDetails["jwt-attribute-groups"],
     ...(usingTenants ? [settingDetails["jwt-attribute-tenant"]] : []),
   ].some(
-    // env-configured attributes come back with a nil value and only the
-    // is_env_setting flag, so value alone can't detect them
+    // env-configured attributes come back as nil with only the is_env_setting flag set
     (setting) => Boolean(setting?.value) || (setting?.is_env_setting ?? false),
   );
 
@@ -129,10 +154,10 @@ export const SettingsJWTForm = () => {
       )}
       <FormProvider
         initialValues={getFormValues(settingDetails)}
-        onSubmit={handleSubmit}
+        onSubmit={saveSettings}
         enableReinitialize
       >
-        {({ dirty }) => (
+        {({ dirty, isSubmitting }) => (
           <Form>
             <Stack gap="xl">
               <SettingsSection
@@ -165,6 +190,7 @@ export const SettingsJWTForm = () => {
                 title={t`User attribute configuration`}
                 description={t`You can send additional user attributes to ${applicationName} by adding the attributes as key/value pairs to your JWT`}
                 defaultOpened={hasUserAttributes}
+                disabled={!isServerConfigured}
               >
                 <Stack gap="lg">
                   <FormTextInput
@@ -216,14 +242,13 @@ export const SettingsJWTForm = () => {
                 description={t`Lets you assign users to custom ${applicationName} groups based on their JWT attributes`}
                 descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
+                disabled={!isServerConfigured}
               >
+                {/* the section saves on its own, so it stays out of the form's values */}
                 <Box data-testid="jwt-group-schema">
-                  <GroupMappingsWidget
-                    setting={{ key: "jwt-group-sync" }}
-                    onChange={handleSubmit}
-                    mappingSetting="jwt-group-mappings"
-                    groupHeading={t`Group Name`}
-                    groupPlaceholder={t`Group Name`}
+                  <JWTGroupMappingSection
+                    isServerConfigured={isServerConfigured}
+                    lockedEnvNames={groupMappingEnvNames}
                   />
                 </Box>
               </SettingsSection>
@@ -236,6 +261,7 @@ export const SettingsJWTForm = () => {
                 />
               </Flex>
             </Stack>
+            <LeaveRouteConfirmModal isEnabled={dirty && !isSubmitting} />
           </Form>
         )}
       </FormProvider>
@@ -247,15 +273,13 @@ const getFormValues = (settingDetails: SettingDefinitionMap): JWTFormValues => {
   const jwtSettings = _.pick(settingDetails, [
     "jwt-identity-provider-uri",
     "jwt-shared-secret",
-    "jwt-group-sync",
     "jwt-attribute-email",
     "jwt-attribute-firstname",
     "jwt-attribute-lastname",
     "jwt-attribute-groups",
     "jwt-attribute-tenant",
   ]);
-
-  // cast undefined to null
+  // mapObject widens the picked setting values (and casts undefined to null)
   return _.mapObject(jwtSettings, (val) => val?.value ?? null) as JWTFormValues;
 };
 

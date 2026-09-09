@@ -29,10 +29,8 @@ import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
 import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
-import { memoizeClass } from "metabase/utils/memoize";
+import { memoize } from "metabase/utils/memoize";
 import { getVisualizationComponent } from "metabase/visualizations";
-import { Mode } from "metabase/visualizations/click-actions/Mode";
-import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
@@ -40,13 +38,10 @@ import { performDefaultAction } from "metabase/visualizations/lib/action";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   type CardSlownessStatus,
-  type ClickActionModeGetter,
   type ClickActionsMode,
   type ClickObject,
   type OnBrush,
-  type QueryClickActionsMode,
   type VisualizationPassThroughProps,
-  isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
 import {
@@ -161,7 +156,7 @@ type VisualizationOwnProps = {
   /** Shown while a custom viz plugin loads. Documents supply their card-embed loading view here. */
   customVizLoadingView?: ReactNode;
   metadata?: Metadata;
-  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
+  mode?: ClickActionsMode;
   editSummary?: () => void;
   rawSeries?: VisualizationRawSeries;
   visualizerRawSeries?: RawSeries;
@@ -442,85 +437,56 @@ class Visualization extends PureComponent<
     return !!card && !!metadata ? new Question(card, metadata) : undefined;
   }
 
-  _getClickActionsCached(
-    clickedObject: ClickObject | null | undefined,
-    mode:
-      | ClickActionModeGetter
-      | ClickActionsMode
-      | QueryClickActionsMode
-      | undefined,
-    computedSettings: Record<string, string>,
-    dashcard?: DashboardCard,
-    metadata?: Metadata,
-    rawSeries: VisualizationRawSeries = [],
-    visualizerRawSeries: RawSeries = [],
-    isRawTable = false,
-    getExtraDataForClick: (
-      clicked: ClickObject | null,
-    ) => Record<string, unknown> = () => ({}),
-    transformClickObject?: (clicked: ClickObject) => ClickObject,
-  ) {
-    if (!clickedObject) {
-      return [];
-    }
+  // Memoized per instance. The cache keys on the arguments, and the object
+  // ones are held weakly, so entries go when the click context does.
+  private _getClickActionsCached = memoize(
+    (
+      clickedObject: ClickObject | null | undefined,
+      mode: ClickActionsMode | undefined,
+      computedSettings: Record<string, string>,
+      dashcard?: DashboardCard,
+      metadata?: Metadata,
+      rawSeries: VisualizationRawSeries = [],
+      visualizerRawSeries: RawSeries = [],
+      isRawTable = false,
+      getExtraDataForClick: (
+        clicked: ClickObject | null,
+      ) => Record<string, unknown> = () => ({}),
+      transformClickObject?: (clicked: ClickObject) => ClickObject,
+    ) => {
+      if (!clickedObject) {
+        return [];
+      }
 
-    const clicked = transformClickObject
-      ? transformClickObject(clickedObject)
-      : clickedObject;
+      const clicked = transformClickObject
+        ? transformClickObject(clickedObject)
+        : clickedObject;
 
-    const card = Visualization.findCardById(
-      clicked.cardId,
-      dashcard,
-      rawSeries,
-      visualizerRawSeries,
-    );
-    if (!isQuestionCard(card)) {
-      return [];
-    }
-    const question = Visualization.getQuestionForCard(metadata, card);
-    const modeInstance = Visualization.getMode(mode, question);
+      const card = Visualization.findCardById(
+        clicked.cardId,
+        dashcard,
+        rawSeries,
+        visualizerRawSeries,
+      );
+      if (!isQuestionCard(card)) {
+        return [];
+      }
+      const question = Visualization.getQuestionForCard(metadata, card);
 
-    return modeInstance
-      ? modeInstance.actionsForClick(
-          {
-            ...clicked,
-            extraData: {
-              ...getExtraDataForClick(clicked),
-              isRawTable,
+      return mode
+        ? mode.actionsForClick(
+            {
+              ...clicked,
+              extraData: {
+                ...getExtraDataForClick(clicked),
+                isRawTable,
+              },
             },
-          },
-          computedSettings,
-        )
-      : [];
-  }
-
-  private static getMode(
-    modeOrModeGetter:
-      | ClickActionModeGetter
-      | ClickActionsMode
-      | QueryClickActionsMode
-      | undefined,
-    question: Question | undefined,
-  ) {
-    const modeOrQueryMode =
-      typeof modeOrModeGetter === "function"
-        ? question
-          ? modeOrModeGetter({ question })
-          : null
-        : modeOrModeGetter;
-
-    if (isClickActionsMode(modeOrQueryMode)) {
-      return modeOrQueryMode;
-    }
-
-    if (question && modeOrQueryMode) {
-      return new Mode(question, modeOrQueryMode);
-    }
-
-    if (question) {
-      return getMode(question);
-    }
-  }
+            { question, settings: computedSettings },
+          )
+        : [];
+    },
+  );
 
   getClickActions(clickedObject?: ClickObject | null) {
     const {
@@ -684,6 +650,7 @@ class Visualization extends PureComponent<
       fontFamily,
       getExtraDataForClick,
       getHref,
+      hasColumnReordering,
       hasDevWatermark,
       headerIcon,
       highlighted,
@@ -967,6 +934,7 @@ class Visualization extends PureComponent<
                       getExtraDataForClick={getExtraDataForClick}
                       getHref={getHref}
                       gridSize={gridSize}
+                      hasColumnReordering={hasColumnReordering}
                       headerIcon={hasHeader ? null : headerIcon}
                       height={height}
                       hovered={hovered}
@@ -1068,10 +1036,6 @@ class Visualization extends PureComponent<
   }
 }
 
-const VisualizationMemoized = memoizeClass<Visualization>(
-  "_getClickActionsCached",
-)(Visualization);
-
 // eslint-disable-next-line import/no-default-export
 export default _.compose(
   connect(mapStateToProps),
@@ -1104,7 +1068,7 @@ export default _.compose(
         return <VisualizationRunningState className={cx(CS.spread, CS.z2)} />;
       }
 
-      return <VisualizationMemoized {...props} forwardedRef={ref} />;
+      return <Visualization {...props} forwardedRef={ref} />;
     },
   ),
 ) as ComponentType<VisualizationOwnProps>;

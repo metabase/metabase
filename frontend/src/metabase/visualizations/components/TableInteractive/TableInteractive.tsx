@@ -51,7 +51,7 @@ import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
 import { createPlainCellFormatter } from "metabase/visualizations/lib/plain-cell-formatter";
 import type {
-  QueryClickActionsMode,
+  ClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import {
@@ -122,8 +122,9 @@ interface TableProps extends VisualizationProps {
   rowIndexToPkMap?: Record<number, string>;
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
+  hasColumnReordering?: boolean;
   question: Question;
-  mode: QueryClickActionsMode;
+  mode?: ClickActionsMode;
   scrollToColumn?: number;
   scrollToLastColumn?: boolean;
   theme: MantineTheme;
@@ -174,6 +175,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     question,
     clicked,
     hasMetadataPopovers = true,
+    hasColumnReordering = false,
     mode,
     theme,
     scrollToColumn,
@@ -470,32 +472,32 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const handleAddColumnButtonClick = useMemo(() => {
     if (
       !question ||
-      !mode?.clickActions ||
+      !mode?.hasColumnShortcutActions ||
       !onVisualizationClick ||
       isPivoted
     ) {
       return undefined;
     }
 
-    for (const action of mode.clickActions) {
-      const res = action({
-        question,
-        clicked: {
-          columnShortcuts: true,
-          extraData: {
-            isRawTable,
-          },
+    const hasActions = mode.hasColumnShortcutActions({
+      question,
+      clicked: {
+        columnShortcuts: true,
+        extraData: {
+          isRawTable,
         },
-      });
-      if (res?.length > 0) {
-        return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-          onVisualizationClick({
-            columnShortcuts: true,
-            element: e.currentTarget,
-          });
-        };
-      }
+      },
+    });
+    if (!hasActions) {
+      return undefined;
     }
+
+    return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      onVisualizationClick({
+        columnShortcuts: true,
+        element: e.currentTarget,
+      });
+    };
   }, [isRawTable, mode, onVisualizationClick, question, isPivoted]);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
@@ -506,7 +508,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
       const isImage = columnSettings["view_as"] === "image";
-      const headerVariant = mode != null || isDashboard ? "light" : "outline";
+      const headerVariant =
+        hasColumnReordering || isDashboard ? "light" : "outline";
       const getBackgroundColor = memoize(
         (value: RowValue, rowIndex: number) =>
           settings["table._cell_background_getter"]?.(
@@ -630,7 +633,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     theme,
     data,
     question,
-    mode,
+    hasColumnReordering,
     renderTableHeader,
     cols,
     getColumnSortDirection,
@@ -878,7 +881,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }
 
   const isColumnReorderingDisabled =
-    (isDashboard || mode == null || isRawTable) && !isSettings;
+    (isDashboard || !hasColumnReordering || isRawTable) && !isSettings;
 
   return (
     <TableInteractiveContextProvider value={tableInteractiveContextValue}>
