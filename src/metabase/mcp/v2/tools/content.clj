@@ -30,6 +30,7 @@
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
+   [metabase.metabot.metadata-perms :as metadata-perms]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
@@ -427,7 +428,27 @@
       {:definition definition})))
 
 (def ^:private card-definition-include (definition-include card-definition))
-(defn- fields-include [row] {:result_metadata (vec (:result_metadata row))})
+
+(defn- strip-restricted-fingerprints
+  "Drop `:fingerprint` from any column belonging to a table whose rows the current user only sees
+   part of. A fingerprint is computed over the whole table: `:min` and `:max` are individual cell
+   values, and `:distinct-count` counts every row — so handing one to a sandboxed caller reports
+   data the sandbox exists to hide, and a caller with no data permission at all gets the same
+   numbers. Nothing else in the column metadata is data-derived — names, types, semantic types and
+   field ids are schema, not rows — so only this key moves.
+
+   `row-restricted-table-ids` fails closed, so a table whose restriction can't be resolved is
+   treated as restricted and loses its fingerprints."
+  [columns]
+  (let [restricted (metadata-perms/row-restricted-table-ids
+                    (into #{} (keep :table_id) columns))]
+    (cond->> columns
+      (seq restricted) (mapv (fn [col]
+                               (cond-> col
+                                 (contains? restricted (:table_id col)) (dissoc :fingerprint)))))))
+
+(defn- fields-include [row]
+  {:result_metadata (vec (strip-restricted-fingerprints (:result_metadata row)))})
 
 (def ^:private type->spec
   "Per-type dispatch, co-located. Each entry carries the fetch fn (`:fetch`, id-or-eid ->
