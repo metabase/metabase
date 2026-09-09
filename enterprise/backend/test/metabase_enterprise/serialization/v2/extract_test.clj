@@ -774,7 +774,7 @@
                         :collection_id coll-id
                         :creator_id    ann-id}
                        :model/TimelineEvent
-                       _
+                       {event-eid :entity_id}
                        {:name        "First Event"
                         :creator_id  ann-id
                         :timestamp   #t "2020-04-11T00:00Z"
@@ -797,7 +797,10 @@
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
                      :created_at    string?
-                     :events        [{:timestamp  "2020-04-11T00:00:00Z"
+                     :events        [{:entity_id  event-eid
+                                      :serdes/meta [{:model "Timeline" :id line-eid}
+                                                    {:model "TimelineEvent" :id event-eid}]
+                                      :timestamp  "2020-04-11T00:00:00Z"
                                       :creator_id "ann@heart.band"
                                       :created_at string?}]}
                     ser))
