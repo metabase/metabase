@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { type ReactNode, Suspense, useEffect, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
@@ -11,7 +11,6 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -29,12 +28,27 @@ import { metabotApi } from "../api";
 import { isHistoryEnabledProfile } from "../constants";
 import type { MetabotAgentId } from "../state";
 
+import S from "./Metabot.module.css";
 import { MetabotConversationHistory } from "./MetabotChat/MetabotConversationHistory";
 import { createLazyMetabotChat, prefetchMetabotChat } from "./MetabotChat/lazy";
 
+const MetabotSidebar = ({ children }: { children: ReactNode }) => {
+  return (
+    <Box
+      component="aside"
+      className={S.sidebar}
+      h="100%"
+      flex="0 0 auto"
+      bg="background_page-primary"
+    >
+      {children}
+    </Box>
+  );
+};
+
 const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
   return (
-    <Sidebar isOpen side="right" width="30rem">
+    <MetabotSidebar>
       <Flex
         h="100%"
         gap="lg"
@@ -56,7 +70,7 @@ const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
           {t`Try again`}
         </Button>
       </Flex>
-    </Sidebar>
+    </MetabotSidebar>
   );
 };
 
@@ -181,12 +195,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
     <ErrorBoundary key={errorBoundaryKey} errorComponent={ErrorFallback}>
       {/* The fallback covers the sidebar too, so an empty panel never opens */}
       <Suspense fallback={null}>
-        <Sidebar
-          isOpen={visible}
-          side="right"
-          width="30rem"
-          aria-hidden={!visible}
-        >
+        <MetabotSidebar>
           <MetabotChat
             conversationId={conversationId}
             agentId={agentId}
@@ -194,7 +203,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
             config={config}
             headerActions={<MetabotSidebarActions agentId={agentId} />}
           />
-        </Sidebar>
+        </MetabotSidebar>
       </Suspense>
     </ErrorBoundary>
   );

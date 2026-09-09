@@ -1,0 +1,13 @@
+.sidebar {
+  position: relative;
+  z-index: 4;
+  width: 30rem;
+  border-inline-start: 1px solid var(--mb-color-border-neutral);
+
+  @media screen and (--breakpoint-max-sm) {
+    position: absolute;
+    top: 0;
+    inset-inline-end: 0;
+    width: 90vw;
+  }
+}
