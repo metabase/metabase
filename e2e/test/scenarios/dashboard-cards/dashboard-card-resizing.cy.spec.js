@@ -357,7 +357,7 @@ describe("trend charts", () => {
     cy.signInAsAdmin();
   });
 
-  it("comparisons that do not fit should only be shown in a tooltip", () => {
+  it("extra comparisons should only be shown in the hover panel", () => {
     H.createDashboardWithQuestions({
       dashboardDetails: {},
       questions: [
@@ -411,11 +411,12 @@ describe("trend charts", () => {
     });
 
     H.getDashboardCard().within(() => {
-      cy.findByText("34.72%").should("be.visible");
-      cy.findByText("36.65%").should("not.exist");
-      cy.findByText("98.88%").should("not.exist");
+      cy.findByTestId("scalar-previous-value")
+        .should("contain", "-34.72%")
+        .and("not.contain", "36.65%")
+        .and("not.contain", "98.88%");
 
-      cy.findByText("34.72%").realHover();
+      cy.findByTestId("scalar-previous-value").realHover();
     });
 
     H.tooltip().within(() => {

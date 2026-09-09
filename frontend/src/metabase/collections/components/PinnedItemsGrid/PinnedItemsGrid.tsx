@@ -85,7 +85,7 @@ export function PinnedItemsGrid({
   return (
     <Box mb={rem(48)} pos="relative" data-testid="pinned-items">
       <PinDropZone variant="pin" />
-      <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing="lg">
         {sortedItems.map((item, index) => {
           // collection_position isn't guaranteed unique, so drag and drop is
           // keyed by display index instead.

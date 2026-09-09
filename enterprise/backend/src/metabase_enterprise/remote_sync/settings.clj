@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
@@ -111,35 +112,27 @@
    spurious 'delete' entries when going from default false to explicitly false)."
   [enabled?]
   (let [timestamp (t/offset-date-time)
-        existing-rso (t2/select-one :model/RemoteSyncObject
-                                    :model_type "Collection"
-                                    :model_id transforms-root-id)]
+        existing-rso (remote-sync.db/rso "Collection" transforms-root-id)]
     (cond
       ;; When enabling, always create/update to 'create' status
       enabled?
       (do
         (when existing-rso
-          (t2/delete! :model/RemoteSyncObject
-                      :model_type "Collection"
-                      :model_id transforms-root-id))
-        (t2/insert! :model/RemoteSyncObject
-                    {:model_type        "Collection"
-                     :model_id          transforms-root-id
-                     :model_name        "Transforms"
-                     :status            "create"
-                     :status_changed_at timestamp}))
+          (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))
+        (remote-sync.db/insert-rso! {:model_type        "Collection"
+                                     :model_id          transforms-root-id
+                                     :model_name        "Transforms"
+                                     :status            "create"
+                                     :status_changed_at timestamp}))
       ;; When disabling and there's an existing RSO, update to 'delete' status
       existing-rso
       (do
-        (t2/delete! :model/RemoteSyncObject
-                    :model_type "Collection"
-                    :model_id transforms-root-id)
-        (t2/insert! :model/RemoteSyncObject
-                    {:model_type        "Collection"
-                     :model_id          transforms-root-id
-                     :model_name        "Transforms"
-                     :status            "delete"
-                     :status_changed_at timestamp}))
+        (remote-sync.db/delete-rso-of! "Collection" transforms-root-id)
+        (remote-sync.db/insert-rso! {:model_type        "Collection"
+                                     :model_id          transforms-root-id
+                                     :model_name        "Transforms"
+                                     :status            "delete"
+                                     :status_changed_at timestamp}))
       ;; When disabling and there's no existing RSO, do nothing
       ;; (this avoids creating spurious 'delete' entries when going from default false to explicitly false)
       :else

@@ -33,7 +33,11 @@ interface ChartSettingOrderedSimpleProps {
   ) => void;
   series: Series;
   hasEditSettings: boolean;
-  onChangeSeriesColor: (seriesKey: string, color: string) => void;
+  onChangeSeriesColor: (
+    seriesKey: string,
+    hexValue: string,
+    colorName?: string,
+  ) => void;
   onSortEnd: (newItems: SortableItem[]) => void;
 }
 
@@ -93,8 +97,8 @@ export const ChartSettingOrderedSimple = ({
   );
 
   const handleColorChange = useCallback(
-    (item: SortableItem, color: string) => {
-      onChangeSeriesColor(item.key, color);
+    (item: SortableItem, hexValue: string, colorName?: string) => {
+      onChangeSeriesColor(item.key, hexValue, colorName);
     },
     [onChangeSeriesColor],
   );
@@ -104,7 +108,7 @@ export const ChartSettingOrderedSimple = ({
   const nonHiddenItems = orderedItems.filter((item) => !item.hidden);
 
   return (
-    <Box pl="md" pb="sm">
+    <Box pl="lg" pb="sm">
       {orderedItems.length > 0 ? (
         <ChartSettingOrderedItems
           items={nonHiddenItems}

@@ -13,6 +13,7 @@
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive, and the :collection projection its echo is built from.
    [metabase.mcp.v2.tools.collection :as tools.collection]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
@@ -37,19 +38,22 @@
 (defn- tool-result
   "Decoded success payload of a tool response; throws when the call errored, so a tool-level
    error can never masquerade as a result."
-  [response]
-  (when (:isError response)
-    (throw (ex-info (str "tool call failed: " (-> response :content first :text))
-                    {:response response})))
-  (-> response :content first :text json/decode+kw))
+  [{:keys [result error]}]
+  (when error
+    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+  (when (:isError result)
+    (throw (ex-info (str "tool call failed: " (-> result :content first :text))
+                    {:result result})))
+  (-> result :content first :text json/decode+kw))
 
 (defn- tool-error
   "Tool-level error text of a tool response; throws when the call succeeded, so a passing call
    can never satisfy an error assertion."
-  [response]
-  (when-not (:isError response)
-    (throw (ex-info "expected a tool error, got success" {:response response})))
-  (-> response :content first :text))
+  [{:keys [result error]}]
+  (cond
+    error             (:message error)
+    (:isError result) (-> result :content first :text)
+    :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
 
 (defn- create!
   "Create a collection through the tool as `user`, returning the echo payload."
@@ -118,6 +122,17 @@
                   default into"
           (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id payload)))))))))
 
+(deftest create-rejects-unknown-namespace-test
+  (mt/with-model-cleanup [:model/Collection]
+    (testing "GHY-4148: a mistyped namespace is rejected by the args schema rather than landing a
+              collection in a hierarchy nothing in Metabase surfaces — the echo would otherwise
+              confirm a `namespace` that took effect only in the sense that the row is unreachable"
+      (is (str/starts-with? (tool-error (call-tool! :crowberto {:method "create"
+                                                                :name "Typo Snippet Folder"
+                                                                :namespace "snippet"}))
+                            "Invalid arguments"))
+      (is (nil? (t2/select-one :model/Collection :name "Typo Snippet Folder"))))))
+
 (deftest create-rejects-update-only-args-test
   (doseq [[k v] {:archived true :id 1}]
     (testing (str "`" (name k) "` on create is a teaching error, not silently ignored")
@@ -125,16 +140,35 @@
                    (tool-error (call-tool! :crowberto {:method "create" :name "x" k v})))))))
 
 (deftest create-requires-write-perms-on-parent-test
-  (testing "a user cannot create inside someone else's personal collection"
-    (let [crowbertos (t2/select-one-fn :id :model/Collection :personal_owner_id (mt/user->id :crowberto))]
-      (is (re-find #"don't have permissions"
-                   (tool-error (call-tool! :rasta {:method "create" :name "Snooping" :parent_id crowbertos}))))))
+  (testing "a user with read but not write access to the parent is refused, and told why — they can
+            already see the collection, so the permission message leaks nothing"
+    (mt/with-non-admin-groups-no-collection-perms collection/root-collection
+      (mt/with-temp [:model/Collection parent {:name "Read-only shelf"}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) parent)
+        (is (re-find #"don't have permissions"
+                     (tool-error (call-tool! :rasta {:method "create" :name "Snooping"
+                                                     :parent_id (:id parent)})))))))
   (testing "but can create inside their own"
     (mt/with-model-cleanup [:model/Collection]
       (let [personal-id (t2/select-one-fn :id :model/Collection :personal_owner_id (mt/user->id :rasta))
             payload     (create! :rasta {:name "Rasta's subfolder" :parent_id personal-id})]
         (is (= (str "/" personal-id "/")
                (t2/select-one-fn :location :model/Collection :id (:id payload))))))))
+
+(deftest create-unknown-parent-collapses-to-not-found-test
+  (testing "GHY-4148: parent_id must not become a collection-id enumeration oracle — a parent that
+            exists but the caller cannot see must give the same answer as one that does not exist.
+            POST /api/collection answers the same either way, because it reaches api/write-check
+            without a prior existence probe."
+    (mt/with-temp [:model/Collection coll {:name     "Crowberto's personal subfolder"
+                                           :location (str "/" (t2/select-one-fn
+                                                               :id :model/Collection
+                                                               :personal_owner_id (mt/user->id :crowberto)) "/")}]
+      (let [nonexistent (tool-error (call-tool! :rasta {:method "create" :name "x" :parent_id 13371337}))
+            unreadable  (tool-error (call-tool! :rasta {:method "create" :name "x" :parent_id (:id coll)}))]
+        (is (re-find #"not found" nonexistent))
+        (is (= (str/replace nonexistent "13371337" (str (:id coll)))
+               unreadable))))))
 
 ;;; -------------------------------------------------- Update ------------------------------------------------------
 
@@ -160,18 +194,21 @@
 (deftest update-move-requires-write-perms-on-new-parent-test
   (testing "moving needs write access to the destination, not just to the collection being moved —
             the create path checks this, and the move path checks it separately"
-    (mt/with-temp [:model/Collection coll {:name "Rasta's to move"
-                                           :location (str "/" (t2/select-one-fn
-                                                               :id :model/Collection
-                                                               :personal_owner_id (mt/user->id :rasta)) "/")}]
-      (let [crowbertos (t2/select-one-fn :id :model/Collection :personal_owner_id (mt/user->id :crowberto))]
-        ;; Assert on the permission message, not merely that something failed: rasta can read the
-        ;; collection being moved, so a not-found collapse here would mean the destination check
-        ;; had stopped running.
+    (mt/with-non-admin-groups-no-collection-perms collection/root-collection
+      (mt/with-temp [:model/Collection coll        {:name "Rasta's to move"
+                                                    :location (str "/" (t2/select-one-fn
+                                                                        :id :model/Collection
+                                                                        :personal_owner_id (mt/user->id :rasta)) "/")}
+                     :model/Collection destination {:name "Read-only shelf"}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) destination)
+        ;; Assert on the permission message, not merely that something failed: rasta can read both
+        ;; collections, so a not-found collapse here would mean the destination check had stopped
+        ;; running.
         (is (re-find #"don't have permissions"
-                     (tool-error (call-tool! :rasta {:method "update" :id (:id coll) :parent_id crowbertos}))))
+                     (tool-error (call-tool! :rasta {:method "update" :id (:id coll)
+                                                     :parent_id (:id destination)}))))
         (testing "and the collection stays put"
-          (is (not= (str "/" crowbertos "/")
+          (is (not= (str "/" (:id destination) "/")
                     (t2/select-one-fn :location :model/Collection :id (:id coll)))))))))
 
 (deftest update-rejects-archive-with-parent-id-test
@@ -201,6 +238,22 @@
         (is (false? (t2/select-one-fn :archived :model/Collection :id (:id coll))))
         (is (= (str "/" (:id parent) "/")
                (t2/select-one-fn :location :model/Collection :id (:id coll))))))))
+
+(deftest update-rejects-moving-a-trashed-collection-test
+  (testing "GHY-4148: parent_id on a trashed collection without archived: false is a teaching error, not a
+            silent wrong result — archive-collection! never rewrites :location, so the trash guards all read
+            false and the move goes through, leaving the collection in the trash while the echo reports the
+            new location"
+    (mt/with-temp [:model/Collection parent {:name "New home"}
+                   :model/Collection coll   {:name "Trashed mover"}]
+      (tool-result (call-tool! :crowberto {:method "update" :id (:id coll) :archived true}))
+      (let [location (t2/select-one-fn :location :model/Collection :id (:id coll))]
+        (is (re-find #"Pass `archived: false` alongside `parent_id`"
+                     (tool-error (call-tool! :crowberto {:method "update" :id (:id coll)
+                                                         :parent_id (:id parent)}))))
+        (testing "and the collection did not move"
+          (is (= location (t2/select-one-fn :location :model/Collection :id (:id coll))))
+          (is (true? (t2/select-one-fn :archived :model/Collection :id (:id coll)))))))))
 
 (deftest update-archives-and-restores-test
   (mt/with-temp [:model/Collection coll {:name "Trashable"}]
@@ -320,6 +373,29 @@
 (deftest write-scope-grantable-test
   (testing "GHY-4148: the scope the tool checks is advertised, so a token can actually be granted it"
     (is (contains? (registry/registered-scopes) "agent:content:write"))))
+
+(deftest write-echo-degrades-without-read-scope-test
+  (testing "GHY-4148: a token holding the write scope but not `agent:content:read` gets only the
+            acknowledgement, never the row. Without this the write scope is a read oracle — a
+            rename that changes nothing would hand back the name, description, location, and
+            entity_id of a collection the token's read scopes deny. Dropping the `readback` call
+            from the tool, or widening its ack-keys, must fail here."
+    (mt/with-model-cleanup [:model/Collection]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Secret Plans" :description "hush"}]
+        ;; Both methods go through the same `readback`, so a regression could land on either.
+        (doseq [[method args] [["create" {:method "create" :name "Write-only create"}]
+                               ["update" {:method "update" :id coll-id :name "Write-only update"}]]]
+          (testing method
+            (let [payload (tool-result (call-tool! :crowberto #{"agent:content:write"} args))]
+              (is (= #{:id :url :note} (set (keys payload))))
+              (is (nil? (:name payload)))
+              (is (re-find #"agent:content:read" (:note payload))))))))
+    (testing "and the same call with read+write reads back in full, so a gate stuck on fails here too"
+      (mt/with-model-cleanup [:model/Collection]
+        (let [payload (tool-result (call-tool! :crowberto #{"agent:content:read" "agent:content:write"}
+                                               {:method "create" :name "Read-and-write create"}))]
+          (is (= #{:id :name :description :location :archived :entity_id :url :authority_level :namespace}
+                 (set (keys payload)))))))))
 
 (deftest clear-unsets-description-and-authority-level-test
   (testing "GHY-4191: `clear` unsets the properties `collection-write-entry` lists as `:clearable`.

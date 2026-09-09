@@ -141,6 +141,8 @@
     :model/MetabotUsedTable
     :model/MetabotPrompt
     :model/OsiAiContext
+    ;; 61+, by table name: migrations create and seed it on every edition, but its model is EE-only
+    :metabot_permissions
     ;; 62+
     :model/Exploration
     :model/ExplorationThread
@@ -152,8 +154,7 @@
     ;; 63+
     :model/McpFeedback]
    (when config/ee-available?
-     [:model/MetabotPermissions
-      :model/MetabotGroupLimit
+     [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
       :model/Sandbox
       :model/Tenant
@@ -198,6 +199,9 @@
   [model]
   (case model
     :model/Field {:order-by [[:id :asc]]}
+    ;; dumps made by an OSS build before this table was copied still hold the rows the target's own migrations seeded,
+    ;; which can point at group ids the source never had
+    :metabot_permissions {:where [:in :group_id {:select [:id] :from [:permissions_group]}]}
     nil))
 
 (defn- sql-for-selecting-instances-from-source-db [model]
@@ -446,6 +450,24 @@
                                         table-name table-name)]]
         (jdbc/execute! target-db-conn sql)))))
 
+(def ^:private metabot-permissions-seed-sql
+  "The seed of changeset v61.98kjjhf. Dumps made by an OSS build before this table was copied hold the dumping build's
+  seed rows under its own group ids, so the source's magic groups can arrive with none."
+  "INSERT INTO metabot_permissions (group_id, perm_type, perm_value)
+   SELECT pg.id, d.perm_type, d.perm_value
+   FROM permissions_group pg
+   CROSS JOIN (
+     SELECT 'permission/metabot' AS perm_type, 'yes' AS perm_value
+     UNION ALL SELECT 'permission/metabot-sql-generation', 'yes'
+     UNION ALL SELECT 'permission/metabot-nlq', 'yes'
+     UNION ALL SELECT 'permission/metabot-other-tools', 'yes'
+   ) AS d
+   WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+     AND NOT EXISTS (
+       SELECT 1 FROM metabot_permissions mp
+       WHERE mp.group_id = pg.id AND mp.perm_type = d.perm_type
+     )")
+
 (mu/defn copy!
   "Copy data from a source application database into an empty destination application database."
   [source-db-type     :- [:enum :h2 :postgres :mysql]
@@ -456,6 +478,8 @@
   (doseq [ns-symb (cond->> (vals models.resolution/model->namespace)
                     (not config/ee-available?)
                     (remove #(str/starts-with? (str %) "metabase-enterprise")))]
+    ;; Copying the application database requires every registered model namespace.
+    #_{:clj-kondo/ignore [:metabase/modules]}
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date. Skip the encryption check: the source may legitimately be unencrypted
   ;; while MB_ENCRYPTION_SECRET_KEY is set for the target (enabling encryption while migrating off H2); rows are copied
@@ -484,4 +508,6 @@
       (with-disabled-db-constraints target-db-type target-conn-spec
         (copy-data! source-data-source target-db-type target-conn-spec))))
   ;; finally, update sequence values (if needed)
-  (update-sequence-values! target-db-type target-data-source))
+  (update-sequence-values! target-db-type target-data-source)
+  (step (trs "Seeding metabot permissions for magic groups without any...")
+    (jdbc/execute! {:datasource target-data-source} [metabot-permissions-seed-sql])))

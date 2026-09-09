@@ -389,7 +389,7 @@ export function AggregationPicker({
           <Popover
             position="right"
             content={
-              <Box p="md">
+              <Box p="lg">
                 <Markdown disallowHeading unstyleLinks>
                   {tc(item.description)}
                 </Markdown>

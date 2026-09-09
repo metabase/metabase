@@ -29,7 +29,7 @@ export const ChartSettingRadio = ({
       className={className}
       onChange={(value) => onChange(decodeWidgetValue(value))}
     >
-      <Stack gap="xs">
+      <Stack gap="xxs">
         {options.map(({ name, value: optionValue }) => (
           <Radio
             key={optionValue}

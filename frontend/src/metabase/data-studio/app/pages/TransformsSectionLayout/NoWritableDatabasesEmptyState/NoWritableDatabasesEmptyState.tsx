@@ -18,7 +18,7 @@ export function NoWritableDatabasesEmptyState() {
     <PageContainer data-testid="no-writable-databases-empty-state">
       <TransformsHeader showTabs={false} />
       <Center flex={1}>
-        <Stack align="center" maw="30rem" gap="md">
+        <Stack align="center" maw="30rem" gap="lg">
           <Icon name="database" size={48} c="text-disabled" />
           <Title
             order={3}

@@ -34,12 +34,12 @@ export const AppearanceStep = () => {
   };
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {/* When the wizard is opened with a preselected resource (initialState),
           the options step is the user's first step and must show the auth
           controls so they can switch auth type or accept terms. */}
       {isFirstStep && <AuthenticationCard />}
-      <Stack gap="md" {...dimmedProps}>
+      <Stack gap="lg" {...dimmedProps}>
         <BehaviorCard />
         <ParametersCard />
         <AppearanceCard />

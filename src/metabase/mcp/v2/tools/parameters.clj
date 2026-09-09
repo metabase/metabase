@@ -23,6 +23,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
@@ -78,8 +79,7 @@
    which `lib-be/instance->metadata` carries over from the Field's `effective_type` (`base_type` when
    unset)."
   [field-id]
-  (let [{:keys [base_type effective_type]} (t2/select-one [:model/Field :base_type :effective_type]
-                                                          :id field-id)]
+  (let [{:keys [base_type effective_type]} (mcp.db/field-types field-id)]
     (isa? (or effective_type base_type) :type/Temporal)))
 
 (defn- parses-as-date?
@@ -256,7 +256,7 @@
       (format "No values at offset %d — %d available." offset total))
 
     :else
-    (or (common/truncation-line {:param :query :offset offset :limit limit
+    (or (common/truncation-line {:param :query :offset offset :limit limit :returned returned
                                  :total total :total-floor? more?})
         (when more?
           (format "Returned %d — the source holds more values than it will return; narrow with `query` to reach the rest."

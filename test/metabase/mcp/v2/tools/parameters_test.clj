@@ -26,28 +26,41 @@
   ([token-scopes args]
    (registry/call-tool token-scopes "test-session" "get_parameter_values" args)))
 
+(defn- success-text
+  "The text block of a successful response. Throws when the registry rejected the call before
+   dispatch, so a rejection can never masquerade as a result."
+  [{:keys [result error]}]
+  (when error
+    (throw (ex-info (str "get_parameter_values was rejected before dispatch: " (:message error))
+                    {:error error})))
+  (when (:isError result)
+    (throw (ex-info (str "get_parameter_values returned a tool-level error: "
+                         (-> result :content first :text))
+                    {:result result})))
+  (-> result :content first :text))
+
 (defn- params-text
   ([args] (params-text nil args))
-  ([token-scopes args] (-> (call-params token-scopes args) :content first :text)))
+  ([token-scopes args] (success-text (call-params token-scopes args))))
 
 (defn- params-result
-  "The decoded JSON payload of a successful call. Throws on a tool-level error so a rejection can
-   never masquerade as an empty value list."
+  "The decoded JSON payload of a successful call — the first line of the text block, since a
+   steering line may follow it."
   ([args] (params-result nil args))
   ([token-scopes args]
-   (let [result (call-params token-scopes args)]
-     (when (:isError result)
-       (throw (ex-info (str "get_parameter_values returned a tool-level error: "
-                            (-> result :content first :text))
-                       {:result result})))
-     (-> result :content first :text (str/split-lines) first json/decode+kw))))
+   (-> (params-text token-scopes args) str/split-lines first json/decode+kw)))
 
 (defn- params-error
+  "The error text of a rejected call, registry-level (scope, argument validation) and tool-level
+   (teaching error) alike. Throws when the call succeeded, so a passing call can never satisfy an
+   error assertion."
   ([args] (params-error nil args))
   ([token-scopes args]
-   (let [result (call-params token-scopes args)]
-     (is (:isError result) "expected a tool-level error")
-     (-> result :content first :text))))
+   (let [{:keys [result error]} (call-params token-scopes args)]
+     (cond
+       error             (:message error)
+       (:isError result) (-> result :content first :text)
+       :else             (throw (ex-info "expected a tool error, got success" {:result result}))))))
 
 (defn- steering-line
   "The sentence appended after the JSON payload, or nil when the response is the whole story."

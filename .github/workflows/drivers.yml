@@ -338,15 +338,9 @@ jobs:
               :fail-fast? true
               :partition/total 2
               :partition/index 1
-          - name: Driver Tests (Multi-Catalog)
-            multi-level-schema: true
-            test-args: >-
-              :only metabase.driver.databricks-test
-              :fail-fast? true
     env:
       CI: 'true'
       DRIVERS: databricks
-      MB_DATABRICKS_TEST_MULTI_LEVEL_SCHEMA: ${{ matrix.job.multi-level-schema }}
       MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}

@@ -6378,7 +6378,7 @@
         "required" : [ "metrics", "dimension_groups" ]
       },
       "metabase.explorations.api.ExplorationBlockNode" : {
-        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is\n   anchored on its metric or its dimension; `:name` is the computed heading (the metric name, or\n   `By <dimension>`). `:position` is the block's 0-indexed authoring slot.",
+        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:name` is the computed heading\n   (the metric name). `:position` is the block's 0-indexed authoring slot.",
         "type" : "object",
         "properties" : {
           "explore_filters" : {
@@ -6500,13 +6500,9 @@
             "description" : "value must be an integer greater or equal to than zero.",
             "type" : "integer",
             "minimum" : 0
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "metric", "dimension" ]
           }
         },
-        "required" : [ "id", "type", "name", "position", "pages" ]
+        "required" : [ "id", "name", "position", "pages" ]
       },
       "metabase.explorations.api.ExplorationDimensionGroup" : {
         "description" : "Schema for a dimension group in the /dimensions response. A group bundles together dimensions that\n   refer to the same underlying source (same field/binning) so the FE can show a single user-facing\n   entry while still tracking the actual per-metric dimensions needed by `start exploration`.",
@@ -9916,6 +9912,10 @@
         "type" : "string",
         "enum" : [ "question", "metric", "model" ]
       },
+      "metabase.lib.schema.metadata..column.data-sensitivity" : {
+        "type" : "string",
+        "enum" : [ "SEC_KEY", "SYS_TELEMETRY", "PHI", "BIO_GEN", "PCI_FIN", "SENS_PERS", "PII", "CORP_IP", "BIZ_CONF", "PUBLIC" ]
+      },
       "metabase.lib.schema.metadata..column.has-field-values" : {
         "type" : "string",
         "enum" : [ "auto-list", "list", "none", "search" ]
@@ -10116,6 +10116,13 @@
             "lib/source-uuid" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "data-sensitivity" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.data-sensitivity"
               }, {
                 "type" : "null"
               } ]
@@ -10688,6 +10695,13 @@
               "lib/source-uuid" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "data-sensitivity" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.data-sensitivity"
                 }, {
                   "type" : "null"
                 } ]
@@ -12972,7 +12986,7 @@
         "additionalProperties" : false
       },
       "metabase.notification.api.notification.CreateNotificationParams" : {
-        "description" : "Notification schema for a create request.",
+        "description" : "Notification schema for a create request, or for sending one that was never saved. Like\n  FullyHydratedNotification but restricts templates to user-provided types only (no handlebars-resource),\n  and carries no ids since the body has no row of its own.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -13063,13 +13077,6 @@
             "payload" : {
               "$ref" : "#/components/schemas/metabase.notification.models.CreateNotificationCardParams"
             },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "payload_type" : {
               "type" : "string",
               "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
@@ -13169,13 +13176,6 @@
                 "required" : [ "channel_type" ]
               }
             },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "payload_type" : {
               "type" : "string",
               "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
@@ -13190,245 +13190,8 @@
           "required" : [ "payload_type" ]
         } ]
       },
-      "metabase.notification.api.notification.NotificationApiInput" : {
-        "description" : "Notification schema for API input. Like FullyHydratedNotification but restricts templates\n  to user-provided types only (no handlebars-resource).",
-        "oneOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "payload_type" : {
-              "type" : "string",
-              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
-            },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "handlers" : {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "template_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "recipients" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
-                    }
-                  },
-                  "template" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_type" : { },
-                  "channel" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "notification_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "active" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "channel_type" ]
-              }
-            },
-            "id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "active" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "payload" : {
-              "$ref" : "#/components/schemas/metabase.notification.models.NotificationCard"
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "subscriptions" : {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
-              }
-            }
-          },
-          "required" : [ "payload_type", "payload" ]
-        }, {
-          "type" : "object",
-          "properties" : {
-            "active" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "handlers" : {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "template_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "recipients" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
-                    }
-                  },
-                  "template" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_type" : { },
-                  "channel" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "notification_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "active" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "channel_type" ]
-              }
-            },
-            "id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "payload_type" : {
-              "type" : "string",
-              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
-            },
-            "subscriptions" : {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
-              }
-            }
-          },
-          "required" : [ "payload_type" ]
-        } ]
-      },
       "metabase.notification.api.notification.NotificationApiUpdateInput" : {
-        "description" : "::NotificationApiInput restricted to what `notification-update-spec` writes. On PUT the URL,\n  not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped.",
+        "description" : "Notification schema for an update request, restricted to what `notification-update-spec` writes. On PUT\n  the URL, not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -37362,14 +37125,6 @@
                             }, {
                               "type" : "null"
                             } ]
-                          },
-                          "type" : {
-                            "oneOf" : [ {
-                              "type" : "string",
-                              "enum" : [ "metric", "dimension" ]
-                            }, {
-                              "type" : "null"
-                            } ]
                           }
                         }
                       }
@@ -37457,7 +37212,7 @@
       "get" : {
         "operationId" : "get-api-exploration-mine",
         "summary" : "GET /api/exploration/mine",
-        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration, to its Summary document, and its\n  creation — see [[my-explorations-honeysql]]. Explorations that were moved into a collection the\n  user can no longer read are excluded, as are archived ones. Returns the collection-items\n  envelope: `{:total :limit :offset :data}`.",
+        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration, to its Summary document, and its\n  creation — see [[metabase.explorations.db/my-explorations]]. Explorations that were moved into a\n  collection the user can no longer read are excluded, as are archived ones. Returns the\n  collection-items envelope: `{:total :limit :offset :data}`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -38218,6 +37973,14 @@
                   "json_unfolding" : {
                     "oneOf" : [ {
                       "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "data_sensitivity" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "SEC_KEY", "SYS_TELEMETRY", "PHI", "BIO_GEN", "PCI_FIN", "SENS_PERS", "PII", "CORP_IP", "BIZ_CONF", "PUBLIC" ]
                     }, {
                       "type" : "null"
                     } ]
@@ -44426,7 +44189,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.CreateNotificationParams"
               }
             }
           }

@@ -14,7 +14,7 @@ export const ChartSettingSegmentedControl = ({
       <Button
         className={cx(CS.borderBrand, CS.flexGrow1)}
         py="sm"
-        px="xs"
+        px="xxs"
         variant={value === elem.value ? "filled" : "default"}
         key={elem.value}
         onClick={() => onChange(elem.value)}

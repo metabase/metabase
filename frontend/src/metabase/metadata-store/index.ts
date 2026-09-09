@@ -1,16 +1,5 @@
-/**
- * The public face of the metadata mirror.
- *
- * `state.entities` holds one normalized record per database, table, field and
- * so on, merged from many endpoints. Everything outside this folder reads it
- * through the selectors below, and `metabase/enforce-module-public-api` rejects
- * a deeper import.
- *
- * `getMetadata` builds the metabase-lib v1 `Metadata` object. It is the input
- * format the CLJS provider parses, so it stays until that provider does.
- */
-export type { MetadataSelectorOpts } from "./selectors";
 export {
+  getFieldRemappings,
   getMetadata,
   getMetadataUnfiltered,
   getMetadataWithHiddenTables,
@@ -19,3 +8,24 @@ export {
   getShallowSegments,
   getShallowTables,
 } from "./selectors";
+export type { MetadataSelectorOpts } from "./selectors";
+
+export { entitiesReducer } from "./reducer";
+
+export { metadataHydrationMiddleware } from "./hydration";
+
+export { addRemappings, fetchRemapping } from "./remappings";
+
+export {
+  databaseFetched,
+  fieldFetched,
+  fieldRemappingsUpdated,
+  paramFieldsFetched,
+  tableFetched,
+  tableForeignKeysFetched,
+} from "./actions";
+
+export { entityTypeForModel, entityTypeForObject } from "./entity-types";
+
+export { createMockEntitiesState } from "./mocks";
+export type { EntitiesStateOpts } from "./mocks";
