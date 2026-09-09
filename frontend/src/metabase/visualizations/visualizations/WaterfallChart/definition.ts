@@ -34,8 +34,9 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
       metricCount > 0
     );
   },
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`waterfall chart`,
+  get noun() {
+    return t`waterfall chart`;
+  },
   minSize: getMinSize("waterfall"),
   defaultSize: getDefaultSize("waterfall"),
   maxMetricsSupported: 1,

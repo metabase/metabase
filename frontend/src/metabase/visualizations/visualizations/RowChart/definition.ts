@@ -32,8 +32,9 @@ export const ROW_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Row`,
   identifier: "row",
   iconName: "horizontal_bar",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`row chart`,
+  get noun() {
+    return t`row chart`;
+  },
   noHeader: true,
   hasEmptyState: true,
   minSize: getMinSize("row"),
