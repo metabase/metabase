@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
 import * as Urls from "metabase/urls";
 import {
@@ -217,15 +218,18 @@ export function areEntityTypesEqual(
   return a.every((type) => setB.has(type));
 }
 
-const ENTITY_TYPES_KEY = "entityTypes";
-const PERSONAL_COLLECTIONS_KEY = "includePersonalCollections";
+const BASE_FILTER_DIMENSIONS: Record<
+  keyof ContentDiagnosticsBaseFilterOptions<ContentDiagnosticsFilterType>,
+  ContentDiagnosticsFilterDimension
+> = {
+  entityTypes: "entity_type",
+  includePersonalCollections: "personal_collections",
+};
 
-function getThresholds(options: object): Map<string, unknown> {
-  return new Map(
-    Object.entries(options).filter(
-      ([key]) => key !== ENTITY_TYPES_KEY && key !== PERSONAL_COLLECTIONS_KEY,
-    ),
-  );
+function getThresholds<
+  T extends ContentDiagnosticsBaseFilterOptions<ContentDiagnosticsFilterType>,
+>({ entityTypes, includePersonalCollections, ...thresholds }: T) {
+  return thresholds;
 }
 
 export function getChangedFilterDimension<
@@ -237,24 +241,19 @@ export function getChangedFilterDimension<
   if (
     !areEntityTypesEqual(previousOptions.entityTypes, nextOptions.entityTypes)
   ) {
-    return "entity_type";
+    return BASE_FILTER_DIMENSIONS.entityTypes;
   }
 
   if (
     previousOptions.includePersonalCollections !==
     nextOptions.includePersonalCollections
   ) {
-    return "personal_collections";
+    return BASE_FILTER_DIMENSIONS.includePersonalCollections;
   }
 
-  const previousThresholds = getThresholds(previousOptions);
-  const nextThresholds = getThresholds(nextOptions);
-  const thresholdKeys = new Set([
-    ...previousThresholds.keys(),
-    ...nextThresholds.keys(),
-  ]);
-  const hasThresholdChange = [...thresholdKeys].some(
-    (key) => previousThresholds.get(key) !== nextThresholds.get(key),
+  const hasThresholdChange = !_.isEqual(
+    getThresholds(previousOptions),
+    getThresholds(nextOptions),
   );
 
   return hasThresholdChange ? "threshold" : null;

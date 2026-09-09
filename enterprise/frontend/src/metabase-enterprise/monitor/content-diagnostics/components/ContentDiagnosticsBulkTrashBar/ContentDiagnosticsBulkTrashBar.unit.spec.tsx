@@ -174,5 +174,67 @@ describe("ContentDiagnosticsBulkTrashBar", () => {
       expect(onSettled).toHaveBeenCalledWith([2]);
     });
     expect(hasUndo(store, "Couldn't remove 1 item")).toBe(true);
+    expect(trackSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "content_diagnostics_findings_bulk_trashed",
+        triggered_from: "stale",
+        event_detail: "1/2",
+        result: "partial",
+      }),
+    );
+  });
+
+  it("tracks a fully trashed selection as a success", async () => {
+    setupCardEndpoints(createMockCard({ id: 1 }));
+    setupCardEndpoints(createMockCard({ id: 2 }));
+    const { onSettled } = setup([
+      card({ id: 1, entity_id: 1 }),
+      card({ id: 2, entity_id: 2 }),
+    ]);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move to trash" }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Move to trash",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(onSettled).toHaveBeenCalledWith([]);
+    });
+    expect(trackSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "content_diagnostics_findings_bulk_trashed",
+        event_detail: "2/2",
+        result: "success",
+      }),
+    );
+  });
+
+  it("tracks a selection where nothing could be trashed as a failure", async () => {
+    fetchMock.put("path:/api/card/1", { status: 500, body: {} });
+    const { onSettled } = setup([card({ id: 1, entity_id: 1 })]);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move to trash" }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Move to trash",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(onSettled).toHaveBeenCalledWith([1]);
+    });
+    expect(trackSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "content_diagnostics_findings_bulk_trashed",
+        event_detail: "0/1",
+        result: "failure",
+      }),
+    );
   });
 });

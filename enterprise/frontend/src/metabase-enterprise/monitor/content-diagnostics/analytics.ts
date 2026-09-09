@@ -66,18 +66,20 @@ export const trackContentDiagnosticsFiltersChanged = ({
 export const trackContentDiagnosticsFindingsBulkTrashed = ({
   tab,
   removedCount,
+  selectedCount,
   durationMs,
   result,
 }: {
   tab: ContentDiagnosticsFindingType;
   removedCount: number;
+  selectedCount: number;
   durationMs: number;
   result: "success" | "partial" | "failure";
 }) => {
   trackSimpleEvent({
     event: "content_diagnostics_findings_bulk_trashed",
     triggered_from: tab,
-    event_detail: String(removedCount),
+    event_detail: `${removedCount}/${selectedCount}`,
     duration_ms: durationMs,
     result,
   });

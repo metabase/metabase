@@ -83,11 +83,13 @@ function DeleteTransformForm({
     if (transform == null) {
       return;
     }
-    if (shouldDeleteTarget) {
-      await deleteTransformTarget(transform.id).unwrap();
-    }
     await deleteTransformAndTrack({
-      deleteTransform: () => deleteTransform(transform.id).unwrap(),
+      deleteTransform: async () => {
+        if (shouldDeleteTarget) {
+          await deleteTransformTarget(transform.id).unwrap();
+        }
+        await deleteTransform(transform.id).unwrap();
+      },
       transformId: transform.id,
       triggeredFrom: "transform_page",
     });

@@ -129,6 +129,7 @@ export function ContentDiagnosticsBulkTrashBar({
     trackContentDiagnosticsFindingsBulkTrashed({
       tab,
       removedCount,
+      selectedCount: total,
       durationMs: Math.trunc(performance.now() - startTime),
       result: match({ removedCount, failedCount: failedFindings.length })
         .with({ removedCount: 0 }, () => "failure" as const)
