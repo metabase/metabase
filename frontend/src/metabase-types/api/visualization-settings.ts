@@ -95,7 +95,6 @@ export type GoalSegment = {
   max: GoalValue | null;
 };
 
-// Unlike gauge segments, number chart segments were never persisted without a color.
 export type ScalarSegment = {
   min: GoalValue | null;
   max: GoalValue | null;
