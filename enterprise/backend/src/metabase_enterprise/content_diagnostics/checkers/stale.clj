@@ -6,11 +6,11 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    ;; sanctioned export: find-candidates is the stale module's public staleness-rule entry point
    ;; (see enterprise/stale :api in .clj-kondo/config/modules/config.edn).
-   [metabase-enterprise.stale.impl :as stale.impl]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.stale.impl :as stale.impl]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +38,7 @@
                          :sort-direction  :asc})
         ;; post-filter rather than a WHERE in the shared arms; safe because :limit is nil (no page to
         ;; backfill). Also closes the arms' sample-content gap (they never check is_sample).
-        eligible-container-ids (t2/select-pks-set :model/Collection {:where common/eligible-collection-where})]
+        eligible-container-ids (cd.db/collection-ids common/eligible-collection-where)]
     (common/attach-entity-attrs
      (for [{:keys [id model collection_id last_used_at] entity-name :name} rows
            :let  [entity-type (common/model->entity-type model)]

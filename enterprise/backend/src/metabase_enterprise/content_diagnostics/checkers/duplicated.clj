@@ -12,8 +12,8 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.content-diagnostics.common :as common]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,23 +41,24 @@
 (defmethod candidate-rows ::common/collection-item
   [entity-type]
   ;; :card_schema (a candidate-col for cards) is required on any Card select - its after-select hook reads it.
-  (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/candidate-cols entity-type))
-             {:where [:and
-                      [:= :archived false]
-                      ;; peers come from this row set, so a document-owned card has to go before
-                      ;; clustering, not just from the emitted findings
-                      ;; (`common/remove-document-internal-card-findings-xf`)
-                      (when (= entity-type :card) [:= :document_id nil])
-                      (common/eligible-container-clause :collection_id)]}))
+  (cd.db/name-rows (common/entity-type->model entity-type)
+                   (common/candidate-cols entity-type)
+                   [:and
+                    [:= :archived false]
+                    ;; peers come from this row set, so a document-owned card has to go before
+                    ;; clustering, not just from the emitted findings
+                    ;; (`common/remove-document-internal-card-findings-xf`)
+                    (when (= entity-type :card) [:= :document_id nil])
+                    (common/eligible-container-clause :collection_id)]))
 
 (defmethod candidate-rows :transform
   [_]
-  (t2/select [:model/Transform :id :name]))
+  (cd.db/name-rows :model/Transform nil nil))
 
 (defmethod candidate-rows :collection
   [_]
   ;; the shared collection-subject definition, so no two checkers can scan divergent collection sets
-  (t2/select [:model/Collection :id :name] {:where common/eligible-collection-where}))
+  (cd.db/name-rows :model/Collection nil common/eligible-collection-where))
 
 (defn- cluster-findings
   "One `:duplicated` finding per member of a name cluster; peers are the other members (symmetric: in

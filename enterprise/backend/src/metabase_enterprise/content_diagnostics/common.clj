@@ -4,6 +4,7 @@
   Requires nothing module-internal, so both `checkers/*` and `serve` can depend on it acyclically."
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
 
@@ -164,7 +165,7 @@
   ;; the whole owned set rather than the ids a finding mentions, so the filter stays stateless and
   ;; composable; `idx_repord_card_document_id` serves the predicate. The card after-select still runs per
   ;; row, but an :id-only projection short-circuits its schema-upgrade and metric-description branches
-  (let [document-owned (t2/select-pks-set [:model/Card :id] {:where [:not= :document_id nil]})]
+  (let [document-owned (cd.db/document-owned-card-ids)]
     (remove #(and (= (:entity-type %) :card) (contains? document-owned (:entity-id %))))))
 
 (defn attach-entity-attrs
@@ -186,14 +187,13 @@
                                                         ;; :type makes the select "plausible" to the Card
                                                         ;; after-select hook, which then requires :card_schema
                                                         (= entity-type :card)          (conj :type :card_schema))
-                                            id->attrs (t2/select-pk->fn
-                                                       #(select-keys % [:name :created_at :creator_id :type])
-                                                       (into [model] cols)
-                                                       :id [:in (into #{} (map :entity-id) findings-for-type)])]
+                                            id->attrs (cd.db/entity-attrs-by-id
+                                                       model cols
+                                                       (into #{} (map :entity-id) findings-for-type))]
                                      [id attrs] id->attrs]
                                  [[entity-type id] attrs]))
         creator-id->name (if-let [ids (not-empty (into #{} (keep :creator_id) (vals attrs-by-key)))]
-                           (t2/select-pk->fn :common_name :model/User :id [:in ids])
+                           (cd.db/user-names-by-id ids)
                            {})]
     (mapv (fn [{:keys [entity-type entity-id] :as finding}]
             (let [{:keys [name created_at creator_id] card-type :type} (get attrs-by-key [entity-type entity-id])]

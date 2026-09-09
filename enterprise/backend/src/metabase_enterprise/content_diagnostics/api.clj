@@ -12,14 +12,14 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as routes.common :refer [+auth]]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -289,14 +289,13 @@
   any details rewrite - is dispatched inside `api.common/hydrate-findings`), and wrap it in the
   `{:data :total :limit :offset :last_scan_at}` envelope every finding list returns."
   [where sort-column->field sort-column sort-direction excluded-personal-ids]
-  (let [page (t2/select :model/ContentDiagnosticsFinding
-                        (cond-> {:where    where
-                                 :order-by [[(sort-column->field sort-column) sort-direction]
-                                            [:id sort-direction]]}
-                          (request/limit)  (assoc :limit (request/limit))
-                          (request/offset) (assoc :offset (request/offset))))]
+  (let [page (cd.db/findings-page where
+                                  [[(sort-column->field sort-column) sort-direction]
+                                   [:id sort-direction]]
+                                  (request/limit)
+                                  (request/offset))]
     {:data         (api.common/hydrate-findings page excluded-personal-ids)
-     :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
+     :total        (cd.db/finding-count where)
      :limit        (request/limit)
      :offset       (request/offset)
      :last_scan_at (api.common/last-scan-at)}))

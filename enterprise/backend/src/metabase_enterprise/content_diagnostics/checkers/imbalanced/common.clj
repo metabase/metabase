@@ -12,9 +12,9 @@
   grouping - live in the checker namespaces."
   (:require
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase.collections.models.collection :as collection]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,41 +33,24 @@
   `{:id :collection_id}` rows - dashboard/document-internal cards live inside their container, not the
   collection."
   []
-  (t2/query {:select [:id :collection_id]
-             :from   [:report_card]
-             :where  [:and
-                      [:= :archived false]
-                      [:= :dashboard_id nil]
-                      [:= :document_id nil]
-                      (common/eligible-container-clause :collection_id)]}))
+  (cd.db/collection-item-card-rows (common/eligible-container-clause :collection_id)))
 
 (defn active-dashboards
   "Non-archived dashboards in eligible containers as `{:id :collection_id}` rows."
   []
-  (t2/query {:select [:id :collection_id]
-             :from   [:report_dashboard]
-             :where  [:and
-                      [:= :archived false]
-                      (common/eligible-container-clause :collection_id)]}))
+  (cd.db/active-dashboard-rows (common/eligible-container-clause :collection_id)))
 
 (defn document-items
   "Non-archived documents in eligible containers as `{:id :collection_id}` rows - the light form for
   collection counting (no AST fetch)."
   []
-  (t2/query {:select [:id :collection_id]
-             :from   [(t2/table-name :model/Document)]
-             :where  [:and
-                      [:= :archived false]
-                      (common/eligible-container-clause :collection_id)]}))
+  (cd.db/document-rows (common/eligible-container-clause :collection_id)))
 
 (defn active-documents
   "Non-archived documents in eligible containers with their AST - for the document verdicts, which parse
   `:document`."
   []
-  (t2/select [:model/Document :id :collection_id :document :content_type]
-             {:where [:and
-                      [:= :archived false]
-                      (common/eligible-container-clause :collection_id)]}))
+  (cd.db/active-document-rows (common/eligible-container-clause :collection_id)))
 
 (defn transform-items
   "Transforms as `{:id :collection_id}` rows - transforms are hard-deleted (no archived column), so every
@@ -75,23 +58,19 @@
   []
   ;; no container clause: a transform's only possible containers are transforms-namespace collections
   ;; (`allowed-namespaces :model/Transform`), and both consumers ignore ineligible collections' counts
-  (t2/query {:select [:id :collection_id]
-             :from   [:transform]}))
+  (cd.db/transform-rows))
 
 (defn dashboard-dashcard-totals
   "`{dashboard-id -> primary dashcard count across all tabs}`; no row = 0. Counts primary dashcards
   only - a series card layers onto another dashcard without taking a layout slot of its own."
   []
-  (u/index-by :dashboard_id :cnt
-              (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
-                         :from     [:report_dashboardcard]
-                         :group-by [:dashboard_id]})))
+  (u/index-by :dashboard_id :cnt (cd.db/dashboard-dashcard-counts)))
 
 (defn eligible-collections
   "The collections the imbalanced checkers scan: the shared collection-subject set
   (`common/eligible-collection-where`)."
   []
-  (t2/select [:model/Collection :id :location] {:where common/eligible-collection-where}))
+  (cd.db/collection-locations common/eligible-collection-where))
 
 (defn direct-item-counts
   "`{collection-id -> raw direct item count}` over `collections`: child collections plus the

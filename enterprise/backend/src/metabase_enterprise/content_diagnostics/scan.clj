@@ -11,6 +11,7 @@
    [metabase-enterprise.content-diagnostics.checkers.slow :as slow]
    [metabase-enterprise.content-diagnostics.checkers.stale :as stale]
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase.analytics-interface.core :as analytics]
    [metabase.collections.models.collection :as collection]
@@ -104,11 +105,8 @@
               :when      model
               :let       [ids      (set (map :entity-id findings-for-type))
                           id->coll (if (= entity-type :collection)
-                                     (t2/select-pk->fn (comp collection/location-path->parent-id :location)
-                                                       [:model/Collection :id :location]
-                                                       :id [:in ids])
-                                     (t2/select-pk->fn :collection_id [model :id :collection_id]
-                                                       :id [:in ids]))]
+                                     (cd.db/collection-parent-ids-by-id ids)
+                                     (cd.db/collection-ids-by-entity-id model ids))]
               {:keys [entity-id]} findings-for-type]
           [[entity-type entity-id] (get id->coll entity-id)])))
 
@@ -126,7 +124,7 @@
   [findings]
   (let [ids        (into #{} (keep :scope-collection-id) findings)
         id->name   (when (seq ids)
-                     (t2/select-pk->fn :name [:model/Collection :id :name] :id [:in ids]))
+                     (cd.db/collection-names-by-id ids))
         ;; root-resident collection subjects sit under their own tree's root (GDGT-2921 admits
         ;; transforms/tenant-namespace collections as subjects), so look their namespace up
         root-colls (into #{}
@@ -135,8 +133,7 @@
                                (map :entity-id))
                          findings)
         id->ns     (when (seq root-colls)
-                     (t2/select-pk->fn :namespace [:model/Collection :id :namespace]
-                                       :id [:in root-colls]))
+                     (cd.db/collection-namespaces-by-id root-colls))
         ;; str realizes the label NOW, in the job's (site) locale
         root-label (memoize (fn [collection-namespace]
                               (str (:name (collection/root-collection-with-ui-details
@@ -161,29 +158,29 @@
   [scan-id findings]
   (doseq [chunk (partition-all insert-batch-size findings)]
     (t2/with-transaction [_conn]
-      (t2/insert! :model/ContentDiagnosticsFinding
-                  (for [{:keys [entity-type entity-id finding-type details scope-collection-id
-                                last-active-at duration-ms content-count duplicate-count
-                                entity-name entity-created-at entity-creator-id entity-creator-name
-                                card-type entity-collection-name entity-kind]}
-                        chunk]
-                    {:scan_id             scan-id
-                     :entity_type         entity-type
-                     :entity_id           entity-id
-                     :finding_type        finding-type
-                     :scope_collection_id scope-collection-id
-                     :last_active_at      last-active-at
-                     :duration_ms         duration-ms
-                     :content_count       content-count
-                     :duplicate_count     duplicate-count
-                     :entity_name         entity-name
-                     :entity_created_at   entity-created-at
-                     :entity_creator_id   entity-creator-id
-                     :entity_creator_name entity-creator-name
-                     :card_type           card-type
-                     :entity_collection_name entity-collection-name
-                     :entity_kind         entity-kind
-                     :details             details})))))
+      (cd.db/insert-findings!
+       (for [{:keys [entity-type entity-id finding-type details scope-collection-id
+                     last-active-at duration-ms content-count duplicate-count
+                     entity-name entity-created-at entity-creator-id entity-creator-name
+                     card-type entity-collection-name entity-kind]}
+             chunk]
+         {:scan_id             scan-id
+          :entity_type         entity-type
+          :entity_id           entity-id
+          :finding_type        finding-type
+          :scope_collection_id scope-collection-id
+          :last_active_at      last-active-at
+          :duration_ms         duration-ms
+          :content_count       content-count
+          :duplicate_count     duplicate-count
+          :entity_name         entity-name
+          :entity_created_at   entity-created-at
+          :entity_creator_id   entity-creator-id
+          :entity_creator_name entity-creator-name
+          :card_type           card-type
+          :entity_collection_name entity-collection-name
+          :entity_kind         entity-kind
+          :details             details})))))
 
 (defn- count-persisted!
   "Bump `findings-persisted` per finding type - clamped to the registry's declared types, `unknown` otherwise."
