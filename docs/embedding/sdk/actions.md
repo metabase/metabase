@@ -48,7 +48,7 @@ This button calls a custom SQL action to apply a discount to an order:
 
 ### Parameter value types
 
-You can pass strings, number, and boolean parameters. For dates, pass an ISO 8601 string. Examples:
+You can pass string, number, and boolean parameters. For dates, pass an ISO 8601 string. Examples:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/actions/parameter-values.tsx" snippet="primitives-and-dates" %}

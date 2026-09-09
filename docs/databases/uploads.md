@@ -65,7 +65,7 @@ People also need [Curate access](../permissions/collections.md#curate-access) to
 
 ## Note on uploading data to a MySQL database
 
-For speeding up uploads to a MySQL database, we recommend that you set a `local_infile` to `ON`. You'll need to set this `local_infile` in MySQL, not Metabase. The command-line format is `--local-infile=ON`.
+For speeding up uploads to a MySQL database, we recommend that you set `local_infile` to `ON`. You'll need to set this `local_infile` in MySQL, not Metabase. The command-line format is `--local-infile=ON`.
 
 If `local_infile` is disabled (set to `OFF`), Metabase will automatically fall back to uploading CSVs in a much slower way.
 

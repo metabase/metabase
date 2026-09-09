@@ -1,10 +1,10 @@
-import type { Dispatch, GetState } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockLocation,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { navigate } from "metabase/router";
 import {
   createMockDashboard,

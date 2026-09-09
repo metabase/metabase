@@ -18,7 +18,7 @@ Filters can only be linked when they're connected to columns that have an explic
 
 - In the same table.
 - In two different tables that have a foreign key relationship specified in the [table metadata](../data-modeling/metadata-editing.md).
-- In two different tables that have a foreign key relationships to one or more intermediate tables, as specified in the [table metadata](../data-modeling/metadata-editing.md).
+- In two different tables that have foreign key relationships to one or more intermediate tables, as specified in the [table metadata](../data-modeling/metadata-editing.md).
 
 ![Setting up foreign key in table metadata](./images/foreign-key-linked-filters.png)
 
@@ -37,7 +37,7 @@ To link a child filter on a dashboard to one or more parent filters:
 
 ![Linked filters](./images/linked-filter.png)
 
-The filter(s) you select in the **linked filters** tab will be the parent filter(s), that is, the filter(s) that limit the values this (child) filter that you're currently editing.
+The filter(s) you select in the **linked filters** tab will be the parent filter(s), that is, the filter(s) that limit the values of this (child) filter that you're currently editing.
 
 ## Limitations of linked filters
 
@@ -48,7 +48,7 @@ Linked filters are only "aware" of relationships defined in the table metadata. 
 - Linked filters can't see relationships defined by joins in models or questions.
 - Linked filters can't use any filter or join logic from any underlying card or model.
 
-For example, say you have a table with State and City columns, and you build a model that filters out rows with `City = San Francisco`. You ask a question based on that model, and add it to a dashboard. You add State and City filters to the dashboard, and link them. If you were to select `State = CA`, the city filter may still show `San Francisco` as option, even though there are no records with `San Francisco` in the question and the underlying model, because the filter only "knows" about the underlying table metadata (which includes sample values for the column).
+For example, say you have a table with State and City columns, and you build a model that filters out rows with `City = San Francisco`. You ask a question based on that model, and add it to a dashboard. You add State and City filters to the dashboard, and link them. If you were to select `State = CA`, the city filter may still show `San Francisco` as an option, even though there are no records with `San Francisco` in the question and the underlying model, because the filter only "knows" about the underlying table metadata (which includes sample values for the column).
 
 ### Linked filters don't work with custom columns or summaries
 
