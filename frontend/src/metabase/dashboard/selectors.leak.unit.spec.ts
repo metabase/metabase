@@ -1,11 +1,8 @@
 import { requireGarbageCollection, settleAndCollect } from "__support__/memory";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { getQuestionByCard } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
