@@ -1,49 +1,42 @@
-import { getUnansweredGoalEntitiesForValues } from "metabase/visualizations/lib/dynamic-goals";
-import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
+import type { ChartSettingGoalValueProps } from "metabase/viz-core";
+import type { GoalValue } from "metabase-types/api";
+import { isGoalStaticValue } from "metabase-types/guards";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
-import { GoalValueInput, StaticGoalValueInput } from "./GoalValueInput";
-
-export type ChartSettingGoalValueProps = {
-  id: string;
-  value: GoalValue | null | undefined;
-  onChange: (value: GoalValue | null | undefined) => void;
-  data?: DatasetData;
-  datasetQuery?: DatasetQuery;
-  // false keeps the plain numeric input of displays that don't resolve references yet
-  isDynamic?: boolean;
-  placeholder?: string;
-  showSelfColumns?: boolean;
-};
+import { GoalValueInput } from "./GoalValueInput";
 
 export const ChartSettingGoalValue = ({
-  id,
-  value,
-  onChange,
   data,
   datasetQuery,
+  id,
   isDynamic = false,
   placeholder,
   showSelfColumns = true,
+  value,
+  onChange,
 }: ChartSettingGoalValueProps) => {
+  const handleChange = (newValue: GoalValue | null | undefined) => {
+    // Clearing unsets the goal so the default applies, like in ChartSettingInputNumeric
+    onChange(newValue ?? undefined);
+  };
+
   if (!isDynamic) {
+    const hasReference = value != null && !isGoalStaticValue(value);
+    const handleNumericChange = (newValue: number | null | undefined) => {
+      if (newValue == null && hasReference) {
+        // The numeric input shows a reference as empty, so its blur must not erase it
+        return;
+      }
+
+      handleChange(newValue);
+    };
+
     return (
       <ChartSettingInputNumeric
         id={id}
         placeholder={placeholder}
-        value={typeof value === "number" ? value : undefined}
-        onChange={onChange}
-      />
-    );
-  }
-
-  if (data == null) {
-    return (
-      <StaticGoalValueInput
-        id={id}
-        placeholder={placeholder}
-        value={value ?? null}
-        onChange={onChange}
+        value={isGoalStaticValue(value) ? value : undefined}
+        onChange={handleNumericChange}
       />
     );
   }
@@ -54,10 +47,9 @@ export const ChartSettingGoalValue = ({
       datasetQuery={datasetQuery}
       id={id}
       placeholder={placeholder}
-      referencedEntities={getUnansweredGoalEntitiesForValues(data, [value])}
       showSelfColumns={showSelfColumns}
       value={value ?? null}
-      onChange={onChange}
+      onChange={handleChange}
     />
   );
 };

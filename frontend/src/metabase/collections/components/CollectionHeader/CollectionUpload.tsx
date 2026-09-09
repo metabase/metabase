@@ -17,12 +17,12 @@ export function CollectionUpload({
   collection,
   uploadsEnabled,
   isAdmin,
-  saveFile,
+  onSaveFile,
 }: {
   collection: Collection;
   uploadsEnabled: boolean;
   isAdmin: boolean;
-  saveFile: (file: File) => void;
+  onSaveFile: (file: File) => void;
 }) {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +55,7 @@ export function CollectionUpload({
     trackCSVFileUploadClicked();
     const file = event.target.files?.[0];
     if (file !== undefined) {
-      saveFile(file);
+      onSaveFile(file);
 
       // reset the input so that the same file can be uploaded again
       if (uploadInputRef.current) {

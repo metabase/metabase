@@ -1,8 +1,10 @@
-import { resolveGoalSettingsForStaticViz } from "metabase/static-viz/lib/dynamic-goals";
+import { resolveGoalSettings } from "metabase/static-viz/lib/resolve-goal-settings";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
-import { getVisualizationTransformed } from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { StaticVisualizationProps } from "metabase/visualizations/types";
+import {
+  type StaticVisualizationProps,
+  getComputedSettingsForSeries,
+  getVisualizationTransformed,
+} from "metabase/viz-core";
 
 import { BoxPlotChart } from "../BoxPlotChart/BoxPlotChart";
 import { ComboChart } from "../ComboChart";
@@ -30,7 +32,7 @@ export const StaticVisualization = ({
 }: StaticVisualizationProps) => {
   const display = rawSeries[0].card.display;
   const transformedSeries = getVisualizationTransformed(rawSeries).series;
-  const settings = resolveGoalSettingsForStaticViz(
+  const settings = resolveGoalSettings(
     rawSeries[0],
     getComputedSettingsForSeries(transformedSeries),
   );

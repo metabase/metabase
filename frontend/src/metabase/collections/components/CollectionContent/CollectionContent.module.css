@@ -1,0 +1,7 @@
+.root {
+  overflow: hidden;
+}
+
+.main {
+  overflow-y: auto;
+}

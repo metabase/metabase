@@ -11,6 +11,7 @@
 .toast {
   position: absolute;
   bottom: 0;
+  width: max-content;
 }
 
 .progress {

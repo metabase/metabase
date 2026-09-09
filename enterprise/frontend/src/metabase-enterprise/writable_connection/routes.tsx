@@ -1,12 +1,14 @@
 import { Route } from "metabase/router";
 
-import { WritableConnectionInfoPage } from "./pages/WritableConnectionInfoPage";
+const writableConnectionInfoPage = () =>
+  import(
+    /* webpackChunkName: "writable-connection" */ "./pages/WritableConnectionInfoPage"
+  ).then(({ WritableConnectionInfoPage }) => ({
+    Component: WritableConnectionInfoPage,
+  }));
 
 export function getWritableConnectionInfoRoutes() {
   return (
-    <Route
-      path=":databaseId/write-data"
-      element={<WritableConnectionInfoPage />}
-    />
+    <Route path=":databaseId/write-data" lazy={writableConnectionInfoPage} />
   );
 }

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import {
@@ -7,6 +6,7 @@ import {
   setupUploadManagementEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { createMockTable } from "metabase-types/api/mocks";
 
 import { UploadManagementTable } from "./UploadManagementTable";

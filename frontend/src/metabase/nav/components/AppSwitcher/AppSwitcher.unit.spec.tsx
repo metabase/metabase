@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
   createMockAdminAppState,
   createMockAdminState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {

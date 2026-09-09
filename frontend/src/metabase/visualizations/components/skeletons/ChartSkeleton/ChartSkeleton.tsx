@@ -27,7 +27,7 @@ export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
 
 // Returns just the chart-shaped skeleton image for a display type (no caption
 // or surrounding chrome), suitable for embedding inside a chart's own render
-// area — e.g. as the Suspense fallback while the echarts chunk loads.
+// area.
 export const getChartSkeletonImage: (
   display?: VisualizationDisplay,
 ) => JSX.Element | null = (display?: VisualizationDisplay) => {
@@ -80,7 +80,6 @@ const ChartSkeleton = ({
     return (
       <ScalarSkeleton
         className={className}
-        scalarType={display}
         name={name}
         description={description}
         actionMenu={actionMenu}

@@ -9,12 +9,14 @@ import {
   type Location,
   queryToSearch,
   subscribeLocation,
+  useIsNavigating,
   useIsNavigationHeld,
   useNavigate,
 } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
+import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import {
@@ -32,6 +34,7 @@ export function useDashboardUrlQuery(location: Location) {
   const parameters = useSelector(getValuePopulatedParameters);
   const siteUrl = useSetting("site-url");
   const isNavigationHeld = useIsNavigationHeld();
+  const isNavigating = useIsNavigating();
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -78,7 +81,18 @@ export function useDashboardUrlQuery(location: Location) {
       return;
     }
 
-    const pathname = location.pathname.replace(siteUrl, "");
+    /**
+     * The router is on its way somewhere else and has not committed it yet,
+     * which a `route.lazy` destination makes possible. Syncing now would replace
+     * that pending navigation and strand the user on the dashboard. Note the
+     * skip the same way, so the sync still happens if we stay put.
+     */
+    if (isNavigating) {
+      hasDeferredSyncRef.current = true;
+      return;
+    }
+
+    const pathname = getPathnameWithoutSubPath(location.pathname, siteUrl);
     const isDashboardUrl = pathname.startsWith("/dashboard/");
     if (isDashboardUrl) {
       const dashboardSlug = pathname.replace("/dashboard/", "");
@@ -124,6 +138,7 @@ export function useDashboardUrlQuery(location: Location) {
     siteUrl,
     navigate,
     isNavigationHeld,
+    isNavigating,
   ]);
 
   useEffect(() => {

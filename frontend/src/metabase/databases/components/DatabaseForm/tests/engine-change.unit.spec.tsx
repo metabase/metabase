@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
 import { DatabaseForm } from "../DatabaseForm";

@@ -201,8 +201,14 @@
       Closeable
       (close [_]
         (reset! stopped? true)
-        (future-cancel fut)
-        (assert (not= :timeout (try (deref fut 1000 :timeout) (catch Throwable _))) "Observation thread did not exit!")))))
+        ;; Join instead of cancelling: interrupting does not abort an in-flight HTTP request, and cancelling
+        ;; makes deref throw CancellationException immediately, so close would return while a poll is still
+        ;; running. That poll then lands after the transform is cleaned up and fails the enclosing test with
+        ;; an unrelated 404.
+        (let [exited? (not= :timeout (try (deref fut 5000 :timeout) (catch Throwable _ nil)))]
+          (when-not exited?
+            (future-cancel fut))
+          (assert exited? "Observation thread did not exit!"))))))
 
 (deftest python-transform-logging-test
   (mt/with-premium-features #{:transforms-basic :hosting}

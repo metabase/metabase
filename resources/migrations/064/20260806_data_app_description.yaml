@@ -1,0 +1,21 @@
+## Add an optional one-line description to data apps.
+##
+## Authored as `description:` in the app's `data_app.yaml` and surfaced in the
+## admin UI so it's clear what each app does. The field is optional, so this
+## column is nullable and stays NULL for an app that declares none.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-08-06T00:00:00
+      author: timofei
+      comment: Add optional description column to data_app
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Optional one-line description from the manifest, shown in the admin UI. NULL when the app declares none.
+                  constraints:
+                    nullable: true

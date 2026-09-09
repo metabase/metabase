@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 
-import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
-
+import { useGetEmbeddingHubChecklistQuery } from "../api/embedding-hub";
 import type { EmbeddingHubStepId } from "../types";
 
 /**

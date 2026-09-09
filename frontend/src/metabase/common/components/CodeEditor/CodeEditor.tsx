@@ -6,7 +6,7 @@ import { CodeMirror } from "metabase/common/components/CodeMirror";
 import type { CodeLanguage } from "./types";
 import { useExtensions } from "./utils";
 
-type Props = {
+export type CodeEditorProps = {
   className?: string;
   highlightRanges?: { start: number; end: number }[];
   id?: string;
@@ -32,7 +32,7 @@ export function CodeEditor({
   onChange,
   extensions: externalExtensions,
   ...rest
-}: Props) {
+}: CodeEditorProps) {
   const extensions = useExtensions({
     language,
     extensions: externalExtensions,

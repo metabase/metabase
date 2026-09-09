@@ -267,7 +267,7 @@
                                               :cache-strategy {:type             :ttl
                                                                :multiplier       60
                                                                :avg-execution-ms 1000
-                                                               :min-duration-ms  1}})
+                                                               :min_duration_ms  1}})
                            :data
                            :rows))))
               (mt/with-test-user :crowberto
@@ -279,7 +279,7 @@
                                            :cache-strategy {:type             :ttl
                                                             :multiplier       60
                                                             :avg-execution-ms 1000
-                                                            :min-duration-ms  1}}))))
+                                                            :min_duration_ms  1}}))))
               (mt/with-test-user :rasta
                 (is (=? {:data {:rows [["destination"]]}}
                         (qp/process-query {:database (u/the-id router-db)
@@ -288,7 +288,7 @@
                                            :cache-strategy {:type             :ttl
                                                             :multiplier       60
                                                             :avg-execution-ms 1000
-                                                            :min-duration-ms  1}})))
+                                                            :min_duration_ms  1}})))
                 (is (=? {:cache/details {:cached true}
                          :data {:rows [["destination"]]}}
                         (qp/process-query {:database (u/the-id router-db)
@@ -297,7 +297,7 @@
                                            :cache-strategy {:type             :ttl
                                                             :multiplier       60
                                                             :avg-execution-ms 1000
-                                                            :min-duration-ms  1}})))))))))))
+                                                            :min_duration_ms  1}})))))))))))
 
 (deftest get-field-values-endpoint-works
   (mt/with-premium-features #{:database-routing}
@@ -365,9 +365,6 @@
   {:dbname "db_router_data"
    :enable-multiple-db false})
 
-(defmethod router-dataset-details :bigquery-cloud-sdk [driver]
-  {:dataset-filters-patterns (str "*" (str/replace (router-dataset-name driver) "-" "_"))})
-
 (defmethod router-dataset-details :databricks [driver]
   {:multi-level-schema false
    :schema-filters-patterns (router-dataset-name driver)})
@@ -385,8 +382,7 @@
    :enable-multiple-db false})
 
 (defmethod routed-dataset-details :bigquery-cloud-sdk [driver]
-  {:service-account-json     (tx/db-test-env-var-or-throw driver :service-account-json-routing)
-   :dataset-filters-patterns (str "*" (str/replace (routed-dataset-name driver) "-" "_"))})
+  {:service-account-json (tx/db-test-env-var-or-throw driver :service-account-json-routing)})
 
 (defmethod routed-dataset-details :redshift [driver]
   {:db (tx/db-test-env-var-or-throw driver :db-routing)})

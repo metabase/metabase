@@ -514,7 +514,7 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
       .should("be.visible");
 
     cy.log("Navigate to the Orders Data Model page via the table picker tree");
-    H.DataStudio.nav().findByText("Tables").click();
+    H.DataStudio.nav().findByText("Connected data").click();
     cy.findAllByTestId("tree-item").contains("Orders").click();
 
     cy.log(
@@ -551,7 +551,7 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
       });
       req.continue();
     }).as("slowErd");
-    H.DataStudio.nav().findByLabelText("Library").click();
+    H.DataStudio.nav().findByLabelText("Semantic layer").click();
     H.DataStudio.nav().findByLabelText("Schema viewer").click();
     H.miniPicker().findByText("Sample Database").click();
     H.miniPicker().findByText("PUBLIC").click();

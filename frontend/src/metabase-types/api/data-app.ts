@@ -11,6 +11,8 @@ export interface DataApp {
   /** The app's slug. */
   name: string;
   display_name: string;
+  /** Optional one-line summary of what the app does. */
+  description: string | null;
   /** Path within the repo to the built bundle. */
   bundle_path: string;
   /** Admin toggle. When false the app is not served. */

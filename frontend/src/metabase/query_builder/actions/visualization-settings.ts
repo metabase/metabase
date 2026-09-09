@@ -1,5 +1,5 @@
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { hasUnresolvedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
+import { hasUnresolvedGoalReferences } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -10,7 +10,7 @@ import {
   getPreviousQueryBuilderMode,
   getQueryBuilderMode,
   getQuestion,
-} from "../selectors";
+} from "../store/selectors";
 
 import { updateQuestion } from "./core";
 

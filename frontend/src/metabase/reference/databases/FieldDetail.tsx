@@ -1,11 +1,16 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import {
+  type MetadataProviderFactory,
+  getShallowFields,
+  selectMetadataProviderFactory,
+} from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
@@ -13,23 +18,23 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { FieldId, User } from "metabase-types/api";
+import { updateField } from "metabase/reference/update-actions";
+import type { NormalizedField, User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
-  getError,
   getField,
+  getFieldId,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getTable,
   getUser,
 } from "../selectors";
 import type {
   BaseDetailFormFields,
   FieldFormFieldsValues,
+  ReferenceLoadingProps,
   StubbedDatabase,
   StubbedField,
   StubbedTable,
@@ -45,44 +50,39 @@ const interestingQuestions = (
   database: StubbedDatabase,
   table: StubbedTable,
   field: StubbedField,
-  metadata: Metadata,
+  getMetadataProvider: MetadataProviderFactory,
+  breakoutField: NormalizedField | undefined,
 ) => {
   return [
     {
       text: t`Number of ${table.display_name} grouped by ${field.display_name}`,
       icon: "bar" as const,
       link: getQuestionUrl({
-        dbId: database.id,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
+        breakoutField,
         getCount: true,
         visualization: "bar",
-        metadata,
+        metadataProvider: getMetadataProvider(database.id),
       }),
     },
     {
       text: t`Number of ${table.display_name} grouped by ${field.display_name}`,
       icon: "pie" as const,
       link: getQuestionUrl({
-        dbId: database.id,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
+        breakoutField,
         getCount: true,
         visualization: "pie",
-        metadata,
+        metadataProvider: getMetadataProvider(database.id),
       }),
     },
     {
       text: t`All distinct values of ${field.display_name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: database.id,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
-        metadata,
+        breakoutField,
+        metadataProvider: getMetadataProvider(database.id),
       }),
     },
   ];
@@ -95,13 +95,14 @@ const mapStateToProps = (
   const entity = getField(state, props) || {};
 
   return {
+    getMetadataProvider: selectMetadataProviderFactory(state),
+    // `getField` falls back to a stub with only an id, which cannot describe a
+    // column, so the breakout takes the loaded field or nothing
+    breakoutField: getShallowFields(state)?.[getFieldId(state, props)],
     entity,
     field: entity,
     table: getTable(state, props),
     database: getDatabase(state, props),
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -109,7 +110,7 @@ const mapStateToProps = (
 };
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  updateField,
   ...actions,
   onSubmit: actions.rUpdateFieldDetail,
 };
@@ -126,9 +127,10 @@ interface FieldDetailProps {
   endEditing: () => void;
   loading?: boolean;
   loadingError?: unknown;
-  metadata: Metadata;
+  getMetadataProvider: MetadataProviderFactory;
+  breakoutField: NormalizedField | undefined;
 
-  onSubmit: (fields: FieldDetailFormFields, props: any) => void;
+  onSubmit: (fields: FieldDetailFormFields, props: any) => Promise<void>;
 }
 
 const FieldDetail = (props: FieldDetailProps) => {
@@ -142,9 +144,12 @@ const FieldDetail = (props: FieldDetailProps) => {
     isEditing,
     startEditing,
     endEditing,
-    metadata,
+    getMetadataProvider,
+    breakoutField,
     onSubmit,
   } = props;
+
+  const [saveError, setSaveError] = useState<unknown>(null);
 
   const {
     isSubmitting,
@@ -154,8 +159,14 @@ const FieldDetail = (props: FieldDetailProps) => {
     handleReset,
   } = useFormik<FieldDetailFormFields>({
     initialValues: {},
-    onSubmit: (fields): void => {
-      onSubmit(fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit(fields, { ...props, resetForm: handleReset });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -190,8 +201,8 @@ const FieldDetail = (props: FieldDetailProps) => {
         nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() => (
           <div className={CS.wrapper}>
@@ -270,7 +281,8 @@ const FieldDetail = (props: FieldDetailProps) => {
                         props.database,
                         props.table,
                         props.field,
-                        metadata,
+                        getMetadataProvider,
+                        breakoutField,
                       )}
                     />
                   </li>
@@ -288,7 +300,8 @@ const FieldDetail = (props: FieldDetailProps) => {
 // `metadata` is read here but selected by the container. Naming it keeps that
 // contract type-checked.
 type FieldDetailOwnProps = ReferenceRouteProps &
-  Pick<FieldDetailProps, "metadata">;
+  Pick<FieldDetailProps, "getMetadataProvider" | "breakoutField"> &
+  ReferenceLoadingProps;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(

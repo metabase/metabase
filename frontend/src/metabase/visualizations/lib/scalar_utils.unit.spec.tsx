@@ -1,13 +1,11 @@
 import { render, screen } from "__support__/ui";
 import { color } from "metabase/ui/utils/colors";
+import type { ResolvedOpenEndedGoalSegment } from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
-import type { ResolvedOpenEndedGoalSegment } from "./dynamic-goals";
 import {
-  COMPACT_MAX_WIDTH,
-  COMPACT_MIN_LENGTH,
-  COMPACT_WIDTH_PER_DIGIT,
   compactifyValue,
+  estimateScalarValueWidth,
   getColor,
   getTooltipContent,
 } from "./scalar_utils";
@@ -71,6 +69,7 @@ describe("scalar utils", () => {
   });
 
   describe("compactifyValue", () => {
+    const fontSize = 32;
     const formatOptions = {
       column: {
         base_type: TYPE.Number,
@@ -78,24 +77,7 @@ describe("scalar utils", () => {
       },
     };
 
-    it("displayValue is fullScalarValue when fullScalarValue.length <= COMPACT_MIN_LENGTH", () => {
-      const value = 45000;
-      const width = 200;
-
-      // Unjustified type cast. FIXME
-      const { displayValue, fullScalarValue } = compactifyValue(
-        value,
-        width,
-        formatOptions,
-      ) as { displayValue: string; fullScalarValue: string };
-
-      expect(fullScalarValue.length).toBeLessThanOrEqual(COMPACT_MIN_LENGTH);
-
-      expect(displayValue).toBe(fullScalarValue);
-      expect(fullScalarValue).toBe("45,000");
-    });
-
-    it("displayValue is compact when fullScalarValue.length > COMPACT_MIN_LENGTH and width < COMPACT_MAX_WIDTH", () => {
+    it("displayValue is fullScalarValue when the value fits the width", () => {
       const value = 45000.1343;
       const width = 200;
 
@@ -103,70 +85,52 @@ describe("scalar utils", () => {
       const { displayValue, fullScalarValue } = compactifyValue(
         value,
         width,
+        fontSize,
         formatOptions,
       ) as { displayValue: string; fullScalarValue: string };
 
-      expect(fullScalarValue.length).toBeGreaterThan(COMPACT_MIN_LENGTH);
-      expect(width).toBeLessThan(COMPACT_MAX_WIDTH);
+      expect(displayValue).toBe(fullScalarValue);
+      expect(fullScalarValue).toBe("45,000.13");
+    });
+
+    it("displayValue is compact when the value does not fit the width", () => {
+      const value = 45000.1343;
+      const width = 140;
+
+      // Unjustified type cast. FIXME
+      const { displayValue, fullScalarValue } = compactifyValue(
+        value,
+        width,
+        fontSize,
+        formatOptions,
+      ) as { displayValue: string; fullScalarValue: string };
 
       expect(displayValue).not.toBe(fullScalarValue);
       expect(displayValue).toBe("45.0k");
     });
 
-    it("displayValue is compact when fullScalarValue.length > COMPACT_MIN_LENGTH & width >= COMPACT_MAX_WIDTH & width < COMPACT_WIDTH_PER_DIGIT * fullScalarValue.length", () => {
-      const value = 100100100100;
-      const width = 350;
+    it("displayValue is compact when formatOptions request it regardless of width", () => {
+      const value = 45000.1343;
+      const width = 1000;
 
       // Unjustified type cast. FIXME
-      const { displayValue, fullScalarValue } = compactifyValue(
-        value,
-        width,
-        formatOptions,
-      ) as { displayValue: string; fullScalarValue: string };
-
-      expect(fullScalarValue.length).toBeGreaterThan(COMPACT_MIN_LENGTH);
-      expect(width).toBeGreaterThanOrEqual(COMPACT_MAX_WIDTH);
-      expect(width).toBeLessThan(
-        fullScalarValue.length * COMPACT_WIDTH_PER_DIGIT,
-      );
-
-      expect(displayValue).not.toBe(fullScalarValue);
-      expect(displayValue).toBe("100.1B");
-    });
-
-    it("displayValue is not compact when fullScalarValue.length > COMPACT_MIN_LENGTH & width >= COMPACT_MAX_WIDTH & width >= COMPACT_WIDTH_PER_DIGIT * fullScalarValue.length", () => {
-      const value = 10010010010;
-      const width = 350;
-
-      // Unjustified type cast. FIXME
-      const { displayValue, fullScalarValue } = compactifyValue(
-        value,
-        width,
-        formatOptions,
-      ) as { displayValue: string; fullScalarValue: string };
-
-      expect(fullScalarValue.length).toBeGreaterThan(COMPACT_MIN_LENGTH);
-      expect(width).toBeGreaterThanOrEqual(COMPACT_MAX_WIDTH);
-      expect(width).toBeGreaterThanOrEqual(
-        fullScalarValue.length * COMPACT_WIDTH_PER_DIGIT,
-      );
-
-      expect(displayValue).toBe(fullScalarValue);
-      expect(displayValue).toBe("10,010,010,010");
-    });
-
-    it("displayValue is always compact when formatOptions.compact is true", () => {
-      const value = 10010010010;
-      const width = 350;
-
-      // Unjustified type cast. FIXME
-      const { displayValue, fullScalarValue } = compactifyValue(value, width, {
+      const { displayValue } = compactifyValue(value, width, fontSize, {
         ...formatOptions,
         compact: true,
-      }) as { displayValue: string; fullScalarValue: string };
+      }) as { displayValue: string };
 
-      expect(displayValue).toBe("10.0B");
-      expect(fullScalarValue).toBe("10,010,010,010");
+      expect(displayValue).toBe("45.0k");
+    });
+  });
+
+  describe("estimateScalarValueWidth", () => {
+    it("should count locale digit separators as thin characters", () => {
+      const plain = estimateScalarValueWidth("68000", 32);
+      // Swiss apostrophe, no-break space, and narrow no-break space grouping
+      for (const separator of ["’", " ", " ", ","]) {
+        const grouped = estimateScalarValueWidth(`68${separator}000`, 32);
+        expect(grouped - plain).toBeLessThan(0.3 * 32);
+      }
     });
   });
 });

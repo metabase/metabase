@@ -2,6 +2,7 @@
 (ns metabase.search.engine
   (:require
    [clojure.string :as str]
+   [metabase.search.hierarchy :as search.hierarchy]
    [metabase.search.settings :as settings]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -18,7 +19,8 @@
   Implementations must be pure capability checks: app-db type, premium features, required infrastructure.
   They must not read [[settings/search-engine]], which selects among the supported engines."
   {:arglists '([engine])}
-  identity)
+  identity
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmethod supported-engine? :default [engine]
   (throw (ex-info (format "Unknown search engine: %s" engine)
@@ -28,19 +30,22 @@
   "Engines whose indexes this engine needs in order to serve queries.
   Semantic, for example, mixes appdb results into its own and falls back to appdb when its index is unavailable."
   {:arglists '([engine])}
-  identity)
+  identity
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmethod dependencies :default [_] nil)
 
 (defmulti results
   "Return a reducible of the search result matching a given query."
   {:arglists '([search-context])}
-  :search-engine)
+  :search-engine
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmulti model-set
   "Return a set of the models which have at least one result for the given query."
   {:arglists '([search-context])}
-  :search-engine)
+  :search-engine
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmulti diagnose
   "Explain why `(expected-model, expected-id)` does not appear in the index/query stages this engine owns.
@@ -56,12 +61,14 @@
   (semantic) — and [[metabase.search.debug]] promotes those to `:not-permitted`; engines should check them before
   structural filters so access denial wins."
   {:arglists '([search-context expected-model expected-id])}
-  (fn [{engine :search-engine} _ _] engine))
+  (fn [{engine :search-engine} _ _] engine)
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmulti score "For legacy search: perform the in-memory ranking"
   {:arglists '([search-context result])}
   (fn [{engine :search-engine} _]
-    engine))
+    engine)
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmethod score :default [_search-ctx result]
   {:result (dissoc result :score)
@@ -72,38 +79,44 @@
   Returns a map of the number of documents indexed in each model"
   {:arglists '([search-engine document-reducible])}
   (fn [search-engine _document-reducible]
-    search-engine))
+    search-engine)
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmulti delete!
   "Removes the documents from the search index.
   Returns a map of the number of documents deleted in each model"
   {:arglists '([search-engine model ids])}
   (fn [search-engine _model _ids]
-    search-engine))
+    search-engine)
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmulti init!
   "Ensure that the search index exists, and is ready to take search queries.
    Returns a map of the number of documents indexed in each model"
   {:arglists '([engine opts])}
   (fn [engine _opts]
-    engine))
+    engine)
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmulti reindex!
   "Perform a full refresh of the given engine's index."
   {:arglists '([engine opts])}
-  (fn [engine _opts] engine))
+  (fn [engine _opts] engine)
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmulti reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."
   {:arglists '([engine])}
-  identity)
+  identity
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defmulti sync-from-restored-db!
   "Reconcile in-memory search state with what's currently in the database.
    Used after snapshot restore where the DB already contains valid index data.
    Engines that store their index in the appdb can skip reindexing."
   {:arglists '([engine])}
-  identity)
+  identity
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defn known-engines
   "List the possible search engines defined for this version, whether this instance supports them or not."
@@ -115,7 +128,7 @@
   "Is the engine, or an engine it derives from, registered?"
   [engine]
   (let [registered? #(contains? (methods supported-engine?) %)]
-    (boolean (some registered? (cons engine (ancestors engine))))))
+    (boolean (some registered? (cons engine (search.hierarchy/ancestors engine))))))
 
 (def ^:private warned-engine-values
   "Values already warned about, so misconfiguration warns once rather than on every call."
@@ -181,7 +194,8 @@
   "Given multiple terms to search for, reduce this to a search expression that matches any of them in a single search.
    If this is not possible, return a list of terms to be searched for separately."
   {:arglists '([search-engine terms])}
-  (fn [search-engine _terms] search-engine))
+  (fn [search-engine _terms] search-engine)
+  :hierarchy #'search.hierarchy/hierarchy)
 
 (defn default-engine
   "The engine that serves requests with no explicit engine argument.

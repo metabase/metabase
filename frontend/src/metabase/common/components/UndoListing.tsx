@@ -40,6 +40,7 @@ import {
 
 const TOAST_TRANSITION_DURATION = 300;
 const MARGIN = 8;
+const TOAST_MESSAGE_MAX_LINES = 4;
 
 function DefaultMessage({
   undo: { verb = t`modified`, count = 1, subject = t`item` },
@@ -103,10 +104,10 @@ function UndoToast({
       bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
       c={dark ? "text-secondary-inverse" : "text-primary"}
       withBorder={!noBorder}
-      radius="md"
-      p="md"
+      radius="sm"
+      p="lg"
       mt="sm"
-      maw="calc(100vw - 2 * var(--mantine-spacing-md))"
+      maw="calc(100vw - 2 * var(--mantine-spacing-lg))"
       style={{
         overflowX: noBorder ? "hidden" : undefined,
         ...style,
@@ -143,7 +144,9 @@ function UndoToast({
           {undo.renderChildren ? (
             undo.renderChildren(undo)
           ) : (
-            <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+            <Ellipsified showTooltip={false} lines={TOAST_MESSAGE_MAX_LINES}>
+              {renderMessage(undo)}
+            </Ellipsified>
           )}
         </CardContentSide>
         <ControlsCardContent>

@@ -1,6 +1,7 @@
 import { useBeforeUnload } from "react-use";
 import { t } from "ttag";
 
+import { getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_REPLACEMENT,
@@ -8,7 +9,6 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { hasActiveUploads } from "metabase/redux/uploads";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
 
 import { AnalyticsExportStatus } from "../AnalyticsExportStatus";

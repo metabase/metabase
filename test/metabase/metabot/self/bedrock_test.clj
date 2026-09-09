@@ -7,8 +7,12 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json])
+  (:import
+   (software.amazon.awssdk.core.exception SdkClientException SdkException)
+   (software.amazon.awssdk.identity.spi AwsSessionCredentialsIdentity)))
 
 (set! *warn-on-reflection* true)
 
@@ -26,6 +30,12 @@
    {:id "anthropic.claude-fable-5" :object "model" :status "available"}
    {:id "anthropic.claude-3-5-sonnet" :object "model" :status "available"}
    {:id "openai.gpt-5.4" :object "model" :status "available"}])
+
+(def ^:private credentials
+  "What a resolved Bedrock connection hands the adapter: adapters read credentials only, never settings."
+  {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+   :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+   :region            "us-east-1"})
 
 (deftest ^:parallel supported-model?-test
   (testing "whitelisted models are supported"
@@ -45,7 +55,7 @@
                        {:id "anthropic.claude-opus-4-8" :display_name "Claude Opus 4.8"}
                        {:id "openai.gpt-5.4" :display_name "GPT-5.4"}
                        {:id "openai.gpt-5.5" :display_name "GPT-5.5"}]}
-             (bedrock/list-models))))))
+             (bedrock/list-models {:credentials credentials}))))))
 
 (deftest list-models-filters-unavailable-models-test
   (mt/with-dynamic-fn-redefs
@@ -62,23 +72,102 @@
         :data_retention {:allowed_modes ["default" "provider_data_share" "none"] :mode "default" :source "model_default"}}])]
     (testing "whitelisted models whose catalog status is not \"available\" are excluded"
       (is (= {:models [{:id "anthropic.claude-sonnet-5" :display_name "Claude Sonnet 5"}]}
-             (bedrock/list-models))))))
+             (bedrock/list-models {:credentials credentials}))))))
 
-(deftest list-models-missing-credentials-test
-  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id nil
-                                     llm.settings/llm-bedrock-secret-access-key nil]
+(deftest list-models-missing-credentials-uses-default-chain-test
+  (testing "a connection with no credentials signs with the AWS default chain rather than picking up the single-provider settings"
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI"]
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                    (constantly (AwsSessionCredentialsIdentity/create
+                                                 "AKIACHAINCHAINCHAIN1" "chain-secret" "chain-token"))]
+          (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
+            (is (=? {:models [{:id "anthropic.claude-fable-5"}
+                              {:id "anthropic.claude-haiku-4-5"}
+                              {:id "anthropic.claude-opus-4-8"}
+                              {:id "openai.gpt-5.4"}
+                              {:id "openai.gpt-5.5"}]}
+                    (bedrock/list-models)))
+            (is (=? {:url     "https://bedrock-mantle.us-east-1.api.aws/v1/models"
+                     :headers {"Authorization"        #".*Credential=AKIACHAINCHAINCHAIN1/.*"
+                               "X-Amz-Security-Token" "chain-token"}}
+                    @captured))))))))
+
+(deftest list-models-empty-default-chain-test
+  (testing "no configured credentials and nothing in the default chain surface a provider-friendly error"
+    (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                (fn [] (throw (SdkClientException/create "Unable to load credentials")))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"got no credentials from the AWS default credentials chain"
+           (bedrock/list-models))))))
+
+(deftest list-models-chain-refresh-failure-test
+  (testing "a refresh that throws on its own, rather than through the chain's own report, is not called a missing
+            key pair, which would send an operator off to create long-lived keys"
+    (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                (fn [] (throw (-> (SdkException/builder)
+                                                  (.message "User: arn:aws:sts::123456789012:assumed-role/x is not authorized")
+                                                  (.build))))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"could not refresh its AWS credentials"
+           (bedrock/list-models)))
+      (is (= :credentials-unavailable
+             (try (bedrock/list-models)
+                  (catch clojure.lang.ExceptionInfo e (:error-code (ex-data e)))))))))
+
+(deftest list-models-session-token-without-pair-test
+  (testing "a session token without its key pair throws instead of silently signing as the ambient identity"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"AWS Bedrock credentials are not configured"
-         (bedrock/list-models)))))
+         #"session token without its access key pair"
+         (bedrock/list-models {:credentials {:session-token "FwoGZXIvYXdzEXAMPLE"}})))))
 
-(deftest list-models-requires-both-keys-test
-  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
-                                     llm.settings/llm-bedrock-secret-access-key nil]
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"AWS Bedrock credentials are not configured"
-         (bedrock/list-models)))))
+(deftest list-models-hosted-keyless-rejected-test
+  (testing "a hosted deployment rejects a keyless connection before the credentials chain is touched"
+    (mt/with-premium-features #{:hosting}
+      (let [chain-calls (atom 0)
+            requests    (atom 0)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]
+          (with-redefs [http/request (fn [_] (swap! requests inc) {:body {:data fake-catalog}})]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Metabase Cloud requires an access key pair"
+                 (bedrock/list-models)))
+            (is (zero? @chain-calls))
+            (is (zero? @requests))))))))
+
+(deftest list-models-unconfirmed-hosting-keyless-rejected-test
+  (testing "a token status the token service could not confirm is treated as hosted, so a Cloud instance that
+            cannot reach it does not fall back to the operator identity"
+    (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly nil)]
+      (let [chain-calls (atom 0)
+            requests    (atom 0)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]
+          (with-redefs [http/request (fn [_] (swap! requests inc) {:body {:data fake-catalog}})]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Metabase Cloud requires an access key pair"
+                 (bedrock/list-models)))
+            (is (zero? @chain-calls))
+            (is (zero? @requests))))))))
+
+(deftest list-models-hosted-explicit-pair-works-test
+  (testing "a hosted deployment still signs with an explicit customer key pair"
+    (mt/with-premium-features #{:hosting}
+      (let [captured (atom nil)]
+        (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
+          (is (=? {:models [{:id "anthropic.claude-fable-5"}
+                            {:id "anthropic.claude-haiku-4-5"}
+                            {:id "anthropic.claude-opus-4-8"}
+                            {:id "openai.gpt-5.4"}
+                            {:id "openai.gpt-5.5"}]}
+                  (bedrock/list-models {:credentials {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                      :secret-access-key "wJalrXUtnFEMI"}})))
+          (is (=? {:headers {"Authorization" #".*Credential=AKIAIOSFODNN7EXAMPLE/.*"}}
+                  @captured)))))))
 
 (deftest list-models-accepts-credentials-override-test
   (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
@@ -101,10 +190,10 @@
                   @captured)))))))
 
 (deftest list-models-credentials-override-must-be-complete-test
-  (testing "an override missing the secret access key throws without falling back to saved settings"
+  (testing "an override missing the secret access key throws without falling back to saved settings or the chain"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"AWS Bedrock credentials are not configured"
+         #"AWS Bedrock needs both an access key ID and a secret access key"
          (bedrock/list-models {:credentials {:access-key-id "AKIAOVERRIDEOVERRID1"}})))))
 
 (deftest list-models-credentials-override-region-validated-test
@@ -123,25 +212,38 @@
 
 (deftest list-models-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
-    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
-                                       llm.settings/llm-bedrock-secret-access-key nil]
-      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"AI proxy is not supported for AWS Bedrock"
-             (bedrock/list-models {:ai-proxy? true})))))))
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for AWS Bedrock"
+           (bedrock/list-models {:ai-proxy? true}))))))
+
+(deftest bedrock-raw-forwards-credentials-test
+  (testing "credentials passed to bedrock-raw reach the request, without requiring saved settings"
+    (with-redefs [http/request (fn [req]
+                                 (is (= "https://bedrock-mantle.eu-west-1.api.aws/anthropic/v1/messages"
+                                        (:url req)))
+                                 (is (str/includes? (get-in req [:headers "Authorization"])
+                                                    "AKIAOVERRIDEOVERRID1"))
+                                 (throw (ex-info "stop" {::stop true})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"stop"
+           (bedrock/bedrock-raw {:model       "anthropic.claude-haiku-4-5"
+                                 :input       [{:role :user :content "hi"}]
+                                 :credentials {:access-key-id     "AKIAOVERRIDEOVERRID1"
+                                               :secret-access-key "override-secret"
+                                               :region            "eu-west-1"}}))))))
 
 (deftest bedrock-raw-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
-    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
-                                       llm.settings/llm-bedrock-secret-access-key nil]
-      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"AI proxy is not supported for AWS Bedrock"
-             (bedrock/bedrock-raw {:model     "anthropic.claude-haiku-4-5"
-                                   :input     [{:role :user :content "hi"}]
-                                   :ai-proxy? true})))))))
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for AWS Bedrock"
+           (bedrock/bedrock-raw {:model     "anthropic.claude-haiku-4-5"
+                                 :input     [{:role :user :content "hi"}]
+                                 :ai-proxy? true}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; API family dispatch
@@ -150,15 +252,11 @@
 (defn- captured-raw-request!
   "Run `bedrock-raw` with HTTP stubbed out and return the clj-http request map it would send."
   [opts]
-  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
-                                     llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
-                                     llm.settings/llm-bedrock-session-token nil
-                                     llm.settings/llm-bedrock-region "us-east-1"]
-    (with-redefs [self.core/sse-reducible identity
-                  self.core/reducible-with-api-errors (fn [r _ _] r)
-                  debug/capture-stream    (fn [r _] r)
-                  http/request            (fn [req] {:body req})]
-      (bedrock/bedrock-raw opts))))
+  (with-redefs [self.core/sse-reducible             identity
+                self.core/reducible-with-api-errors (fn [r _ _] r)
+                debug/capture-stream                (fn [r _] r)
+                http/request                        (fn [req] {:body req})]
+    (bedrock/bedrock-raw (merge {:credentials credentials} opts))))
 
 (deftest anthropic-model-dispatches-to-messages-api-test
   (let [req  (captured-raw-request! {:model "anthropic.claude-haiku-4-5"
@@ -229,6 +327,14 @@
       (is (not (contains? body :reasoning)))
       (is (not (contains? body :include))))))
 
+(deftest fast-mode-is-disabled-test
+  (testing "a fast-mode request is stripped before the anthropic body is built"
+    (let [body (json/decode+kw
+                (:body (captured-raw-request! {:model "anthropic.claude-opus-4-8"
+                                               :fast? true
+                                               :input [{:role :user :content "hi"}]})))]
+      (is (not (contains? body :speed))))))
+
 (deftest unsupported-model-throws-test
   (is (thrown-with-msg?
        clojure.lang.ExceptionInfo
@@ -257,14 +363,12 @@
             (.getBytes (str/join (map #(str "data: " (json/encode %) "\n\n") events)) "UTF-8"))})
 
 (defn- aisdk-parts-for! [model events]
-  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
-                                     llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
-                                     llm.settings/llm-bedrock-region "us-east-1"]
-    (with-redefs [debug/capture-stream (fn [r _] r)
-                  http/request         (fn [_] (sse-response-for events))]
-      (into [] (self.core/aisdk-xf)
-            (bedrock/bedrock {:model model
-                              :input [{:role :user :content "hi"}]})))))
+  (with-redefs [debug/capture-stream (fn [r _] r)
+                http/request         (fn [_] (sse-response-for events))]
+    (into [] (self.core/aisdk-xf)
+          (bedrock/bedrock {:model       model
+                            :input       [{:role :user :content "hi"}]
+                            :credentials credentials}))))
 
 (deftest anthropic-model-uses-claude-stream-translation-test
   (is (=? [{:type :start :id "msg_1"}
@@ -297,15 +401,12 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest invalid-region-rejected-before-request-test
-  (testing "a bogus region set via env var is rejected before the mantle URL is built"
-    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
-                                       llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
-      (mt/with-temp-env-var-value! [mb-llm-bedrock-region "evil.example/?x="]
-        (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Invalid AWS Bedrock region \"evil\.example/\?x=\""
-               (bedrock/list-models))))))))
+  (testing "a bogus region on the connection is rejected before the mantle URL is built"
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid AWS Bedrock region \"evil\.example/\?x=\""
+           (bedrock/list-models {:credentials (assoc credentials :region "evil.example/?x=")}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Error translation
@@ -314,16 +415,13 @@
 (defn- list-models-error-message!
   "The translated message `list-models` throws when the HTTP layer fails with `status`/`body`."
   [status body]
-  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
-                                     llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
-                                     llm.settings/llm-bedrock-region "us-east-1"]
-    (with-redefs [http/request (fn [_] (throw (ex-info "HTTP error" {:status  status
-                                                                     :headers {"content-type" "application/json"}
-                                                                     :body    body})))]
-      (try
-        (bedrock/list-models)
-        (catch Exception e
-          (ex-message e))))))
+  (with-redefs [http/request (fn [_] (throw (ex-info "HTTP error" {:status  status
+                                                                   :headers {"content-type" "application/json"}
+                                                                   :body    body})))]
+    (try
+      (bedrock/list-models {:credentials credentials})
+      (catch Exception e
+        (ex-message e)))))
 
 (deftest auth-error-is-translated-without-body-preview-test
   (testing "403s get the canonical message; the upstream body is withheld (may carry auth detail)"

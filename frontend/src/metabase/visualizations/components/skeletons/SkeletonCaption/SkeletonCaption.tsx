@@ -35,7 +35,7 @@ const SkeletonCaption = ({
           <Tooltip
             maw="22em"
             label={
-              <Markdown dark disallowHeading unstyleLinks>
+              <Markdown dark compact disallowHeading unstyleLinks lineClamp={8}>
                 {description}
               </Markdown>
             }

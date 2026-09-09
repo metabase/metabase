@@ -31,6 +31,24 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(defn- default-last-synced-at
+  "A sync that records `last_synced_sha` happened now unless it says otherwise."
+  [row]
+  (cond-> row
+    (and (contains? row :last_synced_sha) (not (contains? row :last_synced_at)))
+    (assoc :last_synced_at (mi/now))))
+
+(t2/define-before-insert :model/DataApp
+  [data-app]
+  (default-last-synced-at data-app))
+
+(t2/define-before-update :model/DataApp
+  [data-app]
+  (let [changes (t2/changes data-app)]
+    (cond-> data-app
+      (and (contains? changes :last_synced_sha) (not (contains? changes :last_synced_at)))
+      (assoc :last_synced_at (mi/now)))))
+
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
 ;; the column existed has NULL until it's re-synced. Guard on `contains?` so
 ;; selects that don't fetch the column (e.g. `select-one-fn :bundle`) are left
@@ -39,22 +57,6 @@
   [app]
   (cond-> app
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
-
-(def non-blob-columns
-  "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
-  [:id :name :display_name :bundle_path :enabled :allowed_hosts
-   :bundle_hash :last_synced_sha :last_synced_at :sync_error
-   :created_at :updated_at])
-
-(defn select-one-non-blob
-  "Like `t2/select-one` on `:model/DataApp`, but excludes the bundle blob."
-  [& conditions]
-  (apply t2/select-one (into [:model/DataApp] non-blob-columns) conditions))
-
-(defn select-non-blob
-  "Like `t2/select` on `:model/DataApp`, but excludes the bundle blob."
-  [& conditions]
-  (apply t2/select (into [:model/DataApp] non-blob-columns) conditions))
 
 ;; Deliberately ungated: any signed-in user may view a data app, and the `+auth`
 ;; endpoints mean reaching a read check already implies authentication. See the

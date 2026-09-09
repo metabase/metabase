@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import {
@@ -6,6 +5,7 @@ import {
   useRefreshModelCacheMutation,
 } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { dayjs } from "metabase/dayjs";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -92,7 +92,7 @@ export function ModelCacheManagementSection({ model }: Props) {
           {canRefreshCache && canManageDB && (
             <Button
               variant="subtle"
-              p="xs"
+              p="xxs"
               c="text-primary"
               size="xs"
               onClick={() => onRefresh(model.id())}

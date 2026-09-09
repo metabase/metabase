@@ -1,83 +1,142 @@
-import { useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import { archiveAndTrack } from "metabase/archive/analytics";
-import { useSetArchive } from "metabase/archive/hooks";
-import { canArchiveItem } from "metabase/common/collections/utils";
 import { BulkActionButton } from "metabase/common/components/BulkActionBar";
-import { canMoveItem } from "metabase/common/hooks";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import { Icon, Menu } from "metabase/ui";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+
+import { useBulkBookmark } from "./use-bulk-bookmark";
+import { useBulkDuplicate } from "./use-bulk-duplicate";
+import { useBulkPin } from "./use-bulk-pin";
 
 type UnarchivedBulkActionsProps = {
-  selected: any[];
+  selected: CollectionItem[];
   collection: Collection;
+  bookmarks: Bookmark[];
   clearSelected: () => void;
-  setSelectedItems: (items: CollectionItem[] | null) => void;
-  setSelectedAction: (action: string) => void;
+  onRequestMove?: () => void;
+  onRequestTrash?: () => void;
 };
 
 export const UnarchivedBulkActions = ({
   selected,
   collection,
+  bookmarks,
   clearSelected,
-  setSelectedItems,
-  setSelectedAction,
+  onRequestMove,
+  onRequestTrash,
 }: UnarchivedBulkActionsProps) => {
-  const archive = useSetArchive();
-
-  // archive
-  const canArchive = useMemo(() => {
-    return selected.every((item) => canArchiveItem(item, collection));
-  }, [selected, collection]);
-
-  const handleBulkArchive = async () => {
-    const actions = selected.map((item) => {
-      return archiveAndTrack({
-        archive: async () => {
-          await archive(item, true, { notify: false });
-        },
-        model: item.model,
-        modelId: item.id,
-        triggeredFrom: "collection",
-      });
-    });
-
-    Promise.all(actions).finally(() => clearSelected());
-  };
-
-  // move
-  const canMove = useMemo(() => {
-    return selected.every((item) => canMoveItem(item, collection));
-  }, [selected, collection]);
-
-  const handleBulkMoveStart = () => {
-    setSelectedItems(selected);
-    setSelectedAction("move");
-  };
-
-  useRegisterShortcut(
-    [
-      {
-        id: "collection-send-items-to-trash",
-        perform: () => {
-          handleBulkArchive();
-        },
-      },
-    ],
-    [selected],
+  const {
+    hasPinned,
+    hasUnpinned,
+    canPinAll,
+    canUnpinAll,
+    pinSelected,
+    unpinSelected,
+  } = useBulkPin(selected, collection);
+  const { canBookmark, bookmarkSelected } = useBulkBookmark(
+    selected,
+    bookmarks,
   );
+  const { canDuplicate, duplicateSelected } = useBulkDuplicate(
+    selected,
+    collection,
+  );
+
+  const handlePinAll = () => {
+    pinSelected().finally(clearSelected);
+  };
+
+  const handleUnpinAll = () => {
+    unpinSelected().finally(clearSelected);
+  };
+
+  const handleBookmark = () => {
+    bookmarkSelected().finally(clearSelected);
+  };
+
+  const handleDuplicate = () => {
+    duplicateSelected().finally(clearSelected);
+  };
+
+  const isPinnedOnly = hasPinned && !hasUnpinned;
+  const isMixed = hasPinned && hasUnpinned;
 
   return (
     <>
-      <BulkActionButton
-        disabled={!canMove}
-        onClick={handleBulkMoveStart}
-      >{t`Move`}</BulkActionButton>
-      <BulkActionButton
-        disabled={!canArchive}
-        onClick={handleBulkArchive}
-      >{t`Move to trash`}</BulkActionButton>
+      {isPinnedOnly ? (
+        <BulkActionButton
+          disabled={!canUnpinAll}
+          onClick={handleUnpinAll}
+        >{t`Unpin all`}</BulkActionButton>
+      ) : (
+        <BulkActionButton
+          disabled={onRequestMove == null}
+          onClick={onRequestMove}
+        >{t`Move`}</BulkActionButton>
+      )}
+      <Menu position="top-end">
+        <Menu.Target>
+          <BulkActionButton aria-label={t`More actions`} px="sm">
+            <Icon name="ellipsis" />
+          </BulkActionButton>
+        </Menu.Target>
+        <Menu.Dropdown data-testid="bulk-actions-menu">
+          {isPinnedOnly && (
+            <Menu.Item
+              leftSection={<Icon name="move" aria-hidden />}
+              disabled={onRequestMove == null}
+              onClick={onRequestMove}
+            >
+              {t`Move`}
+            </Menu.Item>
+          )}
+          {hasUnpinned && (
+            <Menu.Item
+              leftSection={<Icon name="pin" aria-hidden />}
+              disabled={!canPinAll}
+              onClick={handlePinAll}
+            >
+              {t`Pin all`}
+            </Menu.Item>
+          )}
+          {isMixed && (
+            <Menu.Item
+              leftSection={<Icon name="unpin" aria-hidden />}
+              disabled={!canUnpinAll}
+              onClick={handleUnpinAll}
+            >
+              {t`Unpin all`}
+            </Menu.Item>
+          )}
+          <Menu.Item
+            leftSection={<Icon name="bookmark" aria-hidden />}
+            disabled={!canBookmark}
+            onClick={handleBookmark}
+          >
+            {c("Verb").t`Bookmark`}
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<Icon name="clone" aria-hidden />}
+            disabled={!canDuplicate}
+            onClick={handleDuplicate}
+          >
+            {c("Verb").t`Duplicate`}
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<Icon name="close" aria-hidden />}
+            onClick={clearSelected}
+          >
+            {t`Deselect all`}
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<Icon name="trash" aria-hidden />}
+            disabled={onRequestTrash == null}
+            onClick={onRequestTrash}
+          >
+            {t`Move to trash`}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
     </>
   );
 };

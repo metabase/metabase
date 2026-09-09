@@ -6,11 +6,6 @@ import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useUpdateMetabotSlackSettingsMutation } from "metabase/api/metabot";
-import {
-  useGetSlackAppInfoQuery,
-  useGetSlackManifestQuery,
-} from "metabase/api/slack";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -21,6 +16,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { useUpdateMetabotSlackSettingsMutation } from "metabase/metabot";
 import {
   useAdminSetting,
   useAdminSettings,
@@ -29,6 +25,11 @@ import {
 import { Accordion, Button, Flex, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { SlackAppInfo } from "metabase-types/api/slack";
+
+import {
+  useGetSlackAppInfoQuery,
+  useGetSlackManifestQuery,
+} from "../settings/api/slack";
 
 import {
   EncryptionRequiredAlert,
@@ -109,7 +110,7 @@ const MetabotSlackSettingsForm = ({
             />
             <FormErrorMessage />
             {!isConfigured && (
-              <Flex justify="flex-end" mt="md">
+              <Flex justify="flex-end" mt="lg">
                 <FormSubmitButton label={t`Save changes`} variant="filled" />
               </Flex>
             )}
@@ -185,7 +186,7 @@ export function MetabotSlackSetup() {
         title={t`Natural language questions in Slack`}
         description={t`Add a few more details to unlock the full power of Metabot in Slack.`}
       >
-        <Stack gap="lg">
+        <Stack gap="xl">
           {notification === "setup" && <MetabotSetupRequiredAlert />}
 
           {notification === "encryption" && (
@@ -251,11 +252,11 @@ export function MetabotSlackSetup() {
 
 function ConnectionDetails({ children }: { children: React.ReactNode }) {
   return (
-    <Accordion variant="contained" radius="md">
+    <Accordion variant="contained" radius="sm">
       <Accordion.Item value="connection">
         <Accordion.Control>{t`View connection details`}</Accordion.Control>
         <Accordion.Panel>
-          <Stack pt="md" pb="sm">
+          <Stack pt="lg" pb="sm">
             {children}
           </Stack>
         </Accordion.Panel>

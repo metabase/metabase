@@ -1,8 +1,10 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { color as getColor } from "metabase/ui/colors";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style.ts";
-import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
-import { TREND_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/trend-line.ts";
+import {
+  CHART_STYLE,
+  GOAL_LINE_DASH,
+  TREND_LINE_DASH,
+} from "metabase/viz-core";
 
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
 

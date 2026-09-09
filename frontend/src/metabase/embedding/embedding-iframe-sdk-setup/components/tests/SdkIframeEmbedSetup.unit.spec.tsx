@@ -4,7 +4,8 @@ import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
-import { screen, waitFor } from "__support__/ui";
+import { fireEvent, screen, waitFor } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {
   createMockCard,
@@ -161,6 +162,65 @@ describe("Embed flow > custom visualizations", () => {
         "custom:calendar",
         "custom:thumbs",
       ]);
+    });
+  });
+});
+
+describe("Embed flow > Get Code Snippet", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("copies the SSO code snippet with only instanceUrl in the config", async () => {
+    jest.mocked(navigator.clipboard.writeText).mockClear();
+
+    setup({
+      simpleEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { useExistingUserSession: false },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+    await userEvent.click(screen.getByRole("button", { name: /Copy code/ }));
+
+    const [copiedSnippet] = jest.mocked(navigator.clipboard.writeText).mock
+      .calls[0];
+
+    // defineMetabaseConfig accepts a config object
+    const metabaseConfigObjectRegex = /defineMetabaseConfig\((\{.*?\})\);/s;
+    const [, config] = copiedSnippet.match(metabaseConfigObjectRegex) ?? [];
+
+    // fields like `useExistingUserSession` should not exist
+    expect(JSON.parse(config)).toStrictEqual({
+      instanceUrl: window.location.origin,
+    });
+  });
+
+  it("tracks embed_wizard_code_copied when the snippet is copied without the button (EMB-2309)", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+
+    setup({
+      simpleEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { useExistingUserSession: true },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+
+    // A keyboard or context-menu copy never reaches the Copy code button, so
+    // the card tracks the snippet's own `copy` event too.
+    fireEvent.copy(await screen.findByTestId("embed-code-snippet"));
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "embed_wizard_code_copied",
+      event_detail:
+        "experience=dashboard,snippetType=frontend,authSubType=user-session",
     });
   });
 });

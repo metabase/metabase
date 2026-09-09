@@ -1,7 +1,13 @@
-import { Text } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 export const Separator = () => (
-  <Text c="text-secondary" flex="0 0 auto" fw="bold">
+  <Box
+    c="text-disabled"
+    flex="0 0 auto"
+    fw="bold"
+    fz="0.8em"
+    style={{ userSelect: "none" }}
+  >
     /
-  </Text>
+  </Box>
 );

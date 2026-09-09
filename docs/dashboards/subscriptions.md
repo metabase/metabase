@@ -9,7 +9,7 @@ redirect_from:
 
 Dashboard subscriptions allow you to send the results of questions on a dashboard to people via email or Slack - even to people who lack an account in your Metabase.
 
-If your Metabase has email or Slack set up, all you need to do is create a dashboard, add subscribers to it, and tell Metabase how often you'd like the send out an update. You can set up as many subscriptions to a dashboard as you like, and if you make any changes to the dashboard, Metabase will update the subscriptions the next time they're delivered.
+If your Metabase has email or Slack set up, all you need to do is create a dashboard, add subscribers to it, and tell Metabase how often you'd like to send out an update. You can set up as many subscriptions to a dashboard as you like, and if you make any changes to the dashboard, Metabase will update the subscriptions the next time they're delivered.
 
 ## Enabling dashboard subscriptions
 
@@ -42,7 +42,6 @@ On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https:/
 For Slack subscriptions, you can set up a subscription for a channel (like #general), or for a single person via their Slack username (not their display name).
 
 You can also send subscriptions to private channels, but that requires additional configuration, see [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
-
 
 If you rename the subscribed channel in Slack, you'll need to update the subscription to point to the new Slack channel name.
 
@@ -134,7 +133,7 @@ You can view a list of all alerts and dashboard subscriptions that people have s
 
 {% include plans-blockquote.html feature="Dashboard subscription filter customization" %}
 
-You can customize which filter values to apply to each dashboard subscription. That way you can send  an email (or Slack message) with the dashboard results to different groups of people, with different dashboard filters applied for each group. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber. For example, send a dashboard filtered for "Marketing" department and "This week" date weekly to a marketing lead, and send the dashboard filtered for all departments and "This quarter" to the CEO.
+You can customize which filter values to apply to each dashboard subscription. That way you can send an email (or Slack message) with the dashboard results to different groups of people, with different dashboard filters applied for each group. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber. For example, send a dashboard filtered for "Marketing" department and "This week" date weekly to a marketing lead, and send the dashboard filtered for all departments and "This quarter" to the CEO.
 
 ### Setting filter values
 
@@ -156,7 +155,11 @@ See [Remove Metabase branding from exports](../questions/exporting-results.md#re
 
 ## Subscriptions in embedded dashboards exclude links
 
-Since people viewing embedded dashboards likely don't have direct access to your Metabase, Metabase will omit the links to Metabase items in subscriptions sent from embedded dashboards. That way people don't get broken links in their email. See [embedded dashboards](../embedding/components.md).
+Since people viewing embedded dashboards likely don't have direct access to your Metabase, Metabase will omit the links to Metabase items in subscriptions sent from embedded dashboards. That way people don't get broken links in their email. See [Embed a dashboard](../embedding/dashboard.md).
+
+## Custom visualizations fall back to the default chart
+
+Nobody's signed in when Metabase renders a subscription, so a card that uses a [custom visualization](../questions/visualizations/custom.md) falls back to the default visualization for its results.
 
 ## Further reading
 
@@ -164,3 +167,4 @@ Since people viewing embedded dashboards likely don't have direct access to your
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
+- [Custom visualizations](../questions/visualizations/custom.md)

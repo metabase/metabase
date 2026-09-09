@@ -2,8 +2,9 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { validCollectionModels } from "metabase/common/components/Pickers/utils";
+
 import { useOmniPickerContext } from "../context";
-import { validCollectionModels } from "../utils";
 
 export function useSwitchToSearchFolder() {
   const {

@@ -5,40 +5,30 @@ import CS from "metabase/css/core/index.css";
 import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { extractRemappedColumns } from "metabase/visualizations";
-import {
-  GoalFailedState,
-  GoalResolvingState,
-} from "metabase/visualizations/components/GoalResolutionState";
+import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
-import {
-  getChartGoal,
-  getUnresolvedGoalMessage,
-} from "metabase/visualizations/lib/settings/goal";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
-import { RowChart as SharedRowChart } from "metabase/visualizations/shared/components/RowChart";
-import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
-import type {
-  GroupedDatum,
-  SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
-import type { HoveredData } from "metabase/visualizations/shared/types/events";
-import {
-  getGroupedDataset,
-  trimData,
-} from "metabase/visualizations/shared/utils/data";
-import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
-import type {
-  RemappingHydratedChartData,
-  VisualizationProps,
-} from "metabase/visualizations/types";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   getClickData,
   getHoverData,
   getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
+import {
+  type BarData,
+  type GroupedDatum,
+  type HoveredData,
+  type RemappingHydratedChartData,
+  type RowChartProps,
+  type SeriesInfo,
+  RowChart as SharedRowChart,
+  extractRemappedColumns,
+  getChartGoal,
+  getGroupedDataset,
+  getStackOffset,
+  getTwoDimensionalChartSeries,
+  trimData,
+} from "metabase/viz-core";
 
 import {
   RowChartContainer,
@@ -122,18 +112,9 @@ const RowChartVisualization = ({
     () => getGroupedDataset(data, chartColumns, settings, formatColumnValue),
     [chartColumns, data, settings, formatColumnValue],
   );
-  const goalSettings = useResolvedGoalSettings(
-    card,
-    chartSeries.data,
-    settings,
-  );
-  const goal = useMemo(
-    () =>
-      getChartGoal(
-        goalSettings.status === "resolved" ? goalSettings.settings : settings,
-      ),
-    [goalSettings, settings],
-  );
+  const { status: goalStatus, settings: goalSettings } =
+    useResolvedGoalSettings(card, chartSeries.data, settings);
+  const goal = useMemo(() => getChartGoal(goalSettings), [goalSettings]);
   const stackOffset = getStackOffset(settings);
   const theme = useRowChartTheme(getFontFamilyValue(fontFamily), isDashboard);
 
@@ -275,20 +256,6 @@ const RowChartVisualization = ({
     settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
   const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
 
-  if (goalSettings.status === "resolving") {
-    return <GoalResolvingState className={className} height={outerHeight} />;
-  }
-
-  if (goalSettings.status === "failed") {
-    return (
-      <GoalFailedState
-        className={className}
-        height={outerHeight}
-        message={getUnresolvedGoalMessage()}
-      />
-    );
-  }
-
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
@@ -302,42 +269,50 @@ const RowChartVisualization = ({
           getHref={getHref}
         />
       )}
-      <RowChartLegendLayout
-        width={outerWidth}
-        height={outerHeight}
-        hasLegend={hasLegend}
-        items={legendItems}
-        actionButtons={!hasTitle ? actionButtons : undefined}
-        hovered={hovered}
-        onHoverChange={onHoverChange}
-        isFullscreen={isFullscreen}
-        isQueryBuilder={isQueryBuilder}
-        onSelectSeries={handleSelectSeries}
-      >
-        <RowChartRenderer
-          className={CS.flexFull}
-          data={groupedData}
-          trimData={trimData}
-          series={series}
-          seriesColors={seriesColors}
-          goal={goal}
-          theme={theme}
-          stackOffset={stackOffset}
-          tickFormatters={tickFormatters}
-          labelsFormatter={labelsFormatter}
-          measureTextWidth={textMeasurer}
-          hoveredData={hoverData}
-          onClick={handleClick}
-          onHover={handleHover}
-          xLabel={xLabel}
-          yLabel={yLabel}
-          xScaleType={settings["graph.y_axis.scale"]}
-          xValueRange={xValueRange}
-          labelledSeries={labelledSeries}
-          hasXAxis={hasXAxis}
-          hasYAxis={hasYAxis}
+      {goalStatus !== "resolved" ? (
+        <GoalResolutionState
+          height={outerHeight}
+          kind="value"
+          status={goalStatus}
         />
-      </RowChartLegendLayout>
+      ) : (
+        <RowChartLegendLayout
+          width={outerWidth}
+          height={outerHeight}
+          hasLegend={hasLegend}
+          items={legendItems}
+          actionButtons={!hasTitle ? actionButtons : undefined}
+          hovered={hovered}
+          onHoverChange={onHoverChange}
+          isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
+          onSelectSeries={handleSelectSeries}
+        >
+          <RowChartRenderer
+            className={CS.flexFull}
+            data={groupedData}
+            trimData={trimData}
+            series={series}
+            seriesColors={seriesColors}
+            goal={goal}
+            theme={theme}
+            stackOffset={stackOffset}
+            tickFormatters={tickFormatters}
+            labelsFormatter={labelsFormatter}
+            measureTextWidth={textMeasurer}
+            hoveredData={hoverData}
+            onClick={handleClick}
+            onHover={handleHover}
+            xLabel={xLabel}
+            yLabel={yLabel}
+            xScaleType={settings["graph.y_axis.scale"]}
+            xValueRange={xValueRange}
+            labelledSeries={labelledSeries}
+            hasXAxis={hasXAxis}
+            hasYAxis={hasYAxis}
+          />
+        </RowChartLegendLayout>
+      )}
     </RowVisualizationRoot>
   );
 };

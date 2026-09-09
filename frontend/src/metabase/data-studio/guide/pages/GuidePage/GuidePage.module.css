@@ -1,0 +1,14 @@
+.page {
+  flex: 1;
+  overflow: auto;
+}
+
+.content {
+  margin: 0 auto;
+  max-width: 45rem;
+  width: 100%;
+}
+
+.cardContent {
+  padding: 2.5rem;
+}

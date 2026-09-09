@@ -1,11 +1,10 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { Button, Center, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -17,13 +16,9 @@ export function NoWritableDatabasesEmptyState() {
 
   return (
     <PageContainer data-testid="no-writable-databases-empty-state">
-      <PaneHeader
-        breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
-        }
-      />
+      <TransformsHeader showTabs={false} />
       <Center flex={1}>
-        <Stack align="center" maw="30rem" gap="md">
+        <Stack align="center" maw="30rem" gap="lg">
           <Icon name="database" size={48} c="text-disabled" />
           <Title
             order={3}

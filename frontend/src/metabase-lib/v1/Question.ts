@@ -606,20 +606,17 @@ class Question {
     return question;
   }
 
-  private _getParameters = _.memoize((collectionPreview?: boolean) => {
-    return getCardUiParameters(
-      this.card(),
-      this.metadata(),
-      this._parameterValues,
-      undefined,
-      collectionPreview,
-    );
-  });
+  private _parameters?: ParameterObject[];
 
-  parameters({
-    collectionPreview,
-  }: { collectionPreview?: boolean } = {}): ParameterObject[] {
-    return this._getParameters(collectionPreview);
+  parameters(): ParameterObject[] {
+    if (this._parameters == null) {
+      this._parameters = getCardUiParameters(
+        this.card(),
+        this.metadata(),
+        this._parameterValues,
+      );
+    }
+    return this._parameters;
   }
 
   // predicate function that determines if the question is "dirty" compared to the given question

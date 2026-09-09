@@ -6,6 +6,15 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- `metabase.driver.sql-jdbc.execute/cancelation-poisons-connection?` `[driver]` -- whether canceling a `Statement`
+  leaves the `Connection` unfit for the next query, so that it must be discarded rather than returned to the
+  connection pool. The query processor cancels a `Statement` whenever reduction stops before the `ResultSet` runs out
+  of rows, which abandons a result set the server is still producing. Defaults to `false`, because most drivers
+  recover on their own; `:sqlserver` overrides it to `true`.
+
+- `metabase.driver/validate-impersonated-query` `[driver query]` now has a `:sql-jdbc` implementation that
+  enforces, for every JDBC driver, that a connection-impersonated native query is a single statement.
+
 - `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
   multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
   user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,
@@ -29,6 +38,9 @@ title: Driver interface changelog
 - `metabase.driver.sql-mbql5.pivot/pivot-grouping-hsql` `[driver exprs]` -- produces the HoneySQL
   form for the pivot-grouping bitmask. The default emits `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake
   multi-arg extension); drivers whose SQL dialect uses a different function or shape override this method.
+
+- `:native-pivot-tables` is now enabled for `:hive-like` drivers.
+  Hive-family dialects synthesise the pivot-grouping bitmask from single-arg `GROUPING(x)` calls.
 
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
   distribution keys, clustering, etc.). New driver feature flags:
@@ -57,6 +69,15 @@ title: Driver interface changelog
 
   - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
     the DDL statement(s) that create it.
+
+  - `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
+    tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.
+
+  - `metabase.driver-api.core/aggregation-name` is now deprecated, as it operates on legacy MBQL; use
+    `metabase.driver-api.core/mbql-5-aggregation-name` going forward.
+
+  - The method signature for `metabase.driver/substitute-native-parameters-in-stage-method`, introduced in 63, has
+    changed; please update your implementations accordingly.
 
 ## Metabase 0.63.0
 
@@ -206,6 +227,48 @@ title: Driver interface changelog
   `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` as a parent of your driver.
   See `metabase.driver.mysql` for an example of using the abstract driver.
 
+## Metabase 0.58.23
+
+- `metabase.driver/connection-hosts` `[driver details]` -- new multimethod returning the host names pointed to for a set
+  of connection details. Where `details` is the connection-details map stored
+  on the Database row: the values an admin filled into the "Add a database" form, plus anything Metabase derived from them.
+  The default implementation parses hostnames out of `:host` and/or `:hostname`.
+  The SSH tunnel host is handled externally and should not be returned here.
+
+  If you cannot work out the hosts -- an unparseable connection URI, say -- throw rather than guessing or returning
+  an empty list. Metabase turns a throw into a refusal, which is the safe answer; an empty list reads as "these
+  details name no hosts" and lets the connection through unchecked. Return an empty list only when the details really
+  do name nowhere, as a file-backed database does.
+
+- `metabase.driver/host-carrying-parameters` `[driver]` -- new multimethod returning possible client parameters
+  that can carry a host that the client will connect to: a proxy, a failover partner, a token or authentication
+  endpoint, an alternate API endpoint, etc.
+
+  ```clj
+  (defmethod driver/host-carrying-parameters :sqlserver
+    [_driver]
+    ["serverName" "failoverPartner" "enclaveAttestationUrl"])
+  ```
+
+  To find possible parameter names, `java.sql.Driver/getPropertyInfo` enumerates every parameter it accepts.
+
+- `metabase.driver/non-host-parameters` `[driver]` -- new multimethod naming the parameters that LOOK
+  like they might carry a host but have been checked and do not: a certificate's expected hostname, a Kerberos
+  principal, a local bind address, a proxy's port, etc. Nothing reads it at connection time; it records that
+  somebody looked, so that `host-carrying-parameters` can be checked for completeness in tests against what
+  the client says it accepts. Does NOT have to include all non-host parameters. Just ones that sound like they might
+  but actually don't.
+
+- `metabase.driver/connection-parameter-hosts` `[driver details]` -- new multimethod returning the host *values*
+  those parameters hold, once the details, `:additional-options`, and any driver-specific rewriting have been folded
+  in. The default implementation is almost always valid, but exists as a possible multimethod for special cases
+  such as when your connection string is somewhere the default implementation cannot see.
+
+- `metabase.driver/routes-connection-through-ssh-tunnel?` `[driver]` -- new multimethod saying whether the driver
+  opens its warehouse connection through the SSH tunnel described by the `:tunnel-*` details.
+  Defaults to `false`, and to `true` for `:sql-jdbc` and everything beneath it. A non-`:sql-jdbc`
+  driver that opens a tunnel itself must implement this.
+
 ## Metabase 0.58.0
 
 - Added a `:collate` feature for drivers that support collation settings on text fields
@@ -292,7 +355,7 @@ title: Driver interface changelog
 
 - `metabase.driver-api.core/nest-query` no longer automatically calls `metabase.driver-api.core/add-alias-info` on its
   results, but it also no longer expect its input to have this information. If you were using both of these tools in
-  your driver, make change the order in which the are applied so `nest-query` happens first, followed by
+  your driver, make sure to change the order in which they are applied so `nest-query` happens first, followed by
   `add-alias-info`. Note that drivers deriving from `:sql` do not need to make any changes, since this is done by the
   base `:sql` driver implementation.
 
@@ -328,7 +391,7 @@ title: Driver interface changelog
 
 - Added the driver multi-method `driver/set-database-used!` for drivers to set a database on the connection with statements like `USE DATABASE`.
 
-- Added the driver feature `:transforms/table` for drivers that supports transforms with table as target
+- Added the driver feature `:transforms/table` for drivers that support transforms with table as target
 
 ## Metabase 0.55.9
 
@@ -681,12 +744,12 @@ title: Driver interface changelog
 - `:type/field-values-unsupported` was added in `metabase.types` namespace. It is used in field values computation
   logic, to determine whether a specific field should have its field values computed or not. At the time of writing
   that is performed in `metabase.models.field-values/field-should-have-field-values?`. Deriving from it, driver
-  developers have a way to out of field values computation for fields that are incompatible with the query used for
+  developers have a way to opt out of field values computation for fields that are incompatible with the query used for
   computation. Example could be Druid's `COMPLEX<JSON>` database type fields. See the `:druid-jdbc` implementation
   of `sql-jdbc.sync/database-type->base-type` in the `metabase.driver.druid-jdbc` and derivations in the
   `metabase.types` namespace for an example.
 
-- New feature `:metadata/key-constraints` has been added to signify that a driver support defining and enforcing foreign
+- New feature `:metadata/key-constraints` has been added to signify that a driver supports defining and enforcing foreign
   key constraints at the schema level. This is a different, stronger condition than `:foreign-keys`. Some databases
   (Presto, Athena, etc.) support _querying_ over foreign key relationships (`:foreign-keys`) but do not track or enforce
   those relationships in the schema. Defaults to `true` in `:sql` and `:sql-jdbc` drivers; set to `false` in the
@@ -697,11 +760,11 @@ title: Driver interface changelog
   This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
   Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
 
-- New feature `:identifiers-with-spaces` has been added to indicate where a driver supports identifiers like table or
-  column names that contains a space character. Defaults to `false`.
+- New feature `:identifiers-with-spaces` has been added to indicate whether a driver supports identifiers like table or
+  column names that contain a space character. Defaults to `false`.
 
 - New feature `:uuid-type` has been added to indicate that this database can distinguish and filter against UUIDs.
-  Only a few database support native UUID types. The default is `false`.
+  Only a few databases support native UUID types. The default is `false`.
 
 ## Metabase 0.49.22
 
@@ -794,7 +857,7 @@ title: Driver interface changelog
   - `qp.store/table`
   - `qp.store/field`
 
-  Update usages of the to the corresponding functions in `metabase.lib.metadata` (`lib.metadata`):
+  Update usages of these to the corresponding functions in `metabase.lib.metadata` (`lib.metadata`):
 
   ```clj
   (qp.store/database)       => (lib.metadata/database (qp.store/metadata-provider))
@@ -890,7 +953,7 @@ title: Driver interface changelog
   `database` argument for the arity which previously had one argument. This function might be used in the implementation
   of a driver's multimethods.
 
-- `metabase.driver/prettify-native-form` was added to enable driver developers use native form formatting
+- `metabase.driver/prettify-native-form` was added to enable driver developers to use native form formatting
   specific to their driver. For details see the PR [#34991](https://github.com/metabase/metabase/pull/34991).
 
 ## Metabase 0.46.0
@@ -940,7 +1003,7 @@ title: Driver interface changelog
 - The multimethod `metabase.query-processor.util.add-alias-info/field-reference` has been added. This method is used
   to produce a reference to a field by the `add-alias-info` middleware. (Note that this middleware is optional,
   currently it is only used by the SQL and MongoDB drivers.) The default implementation returns the name of the field
-  instance. It should be overridden if just the name is not a valid a valid reference. For example, MongoDB supports
+  instance. It should be overridden if just the name is not a valid reference. For example, MongoDB supports
   nested documents and references to nested fields should contain the whole path. See the namespace
   `metabase.driver.mongo.query-processor` for an alternative implementation.
 
@@ -960,12 +1023,12 @@ title: Driver interface changelog
 The following only applies to SQL drivers; you can ignore it for non-SQL drivers.
 
 Prior to Metabase 0.46.0, SQL drivers used Honey SQL 1 as an intermediate target when compiling queries. In 0.46.0 we
-have began the process of migrating to Honey SQL 2 as our new intermediate target.
+have begun the process of migrating to Honey SQL 2 as our new intermediate target.
 
 We plan to continue to support use of Honey SQL 1 until Metabase 0.49.0. Please be sure to migrate your drivers before
 then.
 
-In Metabase 0.46.x, 0.47.x, and 0.48.x, you can specify which version of Honey SQL you driver should use by
+In Metabase 0.46.x, 0.47.x, and 0.48.x, you can specify which version of Honey SQL your driver should use by
 implementing the `metabase.driver.sql.query-processor/honey-sql-version` multimethod:
 
 ```clj
@@ -1083,7 +1146,7 @@ differences between the library versions.
 
 The classes `metabase.util.honeysql_extensions.Identifier` and `metabase.util.honeysql_extensions.TypedHoneySQLForm`
 have been moved to `metabase.util.honey_sql_1.Identifier` and `metabase.util.honey_sql_1.TypedHoneySQLForm`,
-respectively. On the off chance that your driver directly referencing these class names, you may need to update things
+respectively. On the off chance that your driver is directly referencing these class names, you may need to update things
 to use the new class names.
 
 Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; use
@@ -1102,7 +1165,7 @@ Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; us
 - `metabase.driver.sql-jdbc.sync.describe-table-fields` has been added. Implement this method if you want to override
   the default behavior for fetching field metadata (such as types) for a table.
 
-- `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` has been added. This methods is used to get a set of pks
+- `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` has been added. This method is used to get a set of pks
   given a table.
 
 - `->honeysql [<driver> :convert-timezone]` has been added. Implement this method if you want your driver to support
@@ -1155,7 +1218,7 @@ If you were manipulating Field or Table aliases, we consolidated a lot of overla
     ...)
   ```
 
-  If you were doing something special here, you'll need to move that special login into `[<driver> :field]` instead.
+  If you were doing something special here, you'll need to move that special logic into `[<driver> :field]` instead.
   (You may no longer need this special logic, however -- see below.)
 
 - `:field`, `:expression`, and `:aggregation-options` clauses now contain information about what aliases you should
@@ -1213,7 +1276,7 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
 
 - `metabase.driver.sql.query-processor/prefix-field-alias` is no longer used. Previously, it was made available to
   give drivers a chance to escape automatically generated aliases for joined Fields. This is no longer necessary,
-  because `metabase.driver/escape-alias` is called on automatically generates aliases. Implement
+  because `metabase.driver/escape-alias` is called on automatically generated aliases. Implement
   `metabase.driver/escape-alias` if you need to do something special.
 - `metabase.driver.sql-jdbc.sync.interface/syncable-schemas` has been deprecated in favor of
   `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas` (see above). The existing default implementation

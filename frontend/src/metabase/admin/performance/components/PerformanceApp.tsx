@@ -10,7 +10,7 @@ import { getPerformanceTabName } from "../utils";
 
 export const PerformanceApp = () => (
   <AdminSettingsLayout
-    maw="60rem"
+    fullWidth
     sidebar={
       <AdminNavWrapper>
         <AdminNavItem

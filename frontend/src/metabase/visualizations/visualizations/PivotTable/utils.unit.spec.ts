@@ -13,6 +13,8 @@ import {
   checkRenderable,
   getColumnValues,
   getLeftHeaderWidths,
+  getTopHeaderRowIndex,
+  getTopHeaderRowsCount,
   isColumnValid,
   isFormattablePivotColumn,
   leftHeaderCellSizeAndPositionGetter,
@@ -421,6 +423,25 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         [0, 1, 2],
       );
       expect(result.width).toBe(100);
+    });
+  });
+
+  describe("getTopHeaderRowsCount", () => {
+    it("adds a measure-name row only when there are multiple measures", () => {
+      expect(getTopHeaderRowsCount([0, 1], [2])).toBe(2);
+      expect(getTopHeaderRowsCount([0, 1], [2, 3])).toBe(3);
+    });
+
+    it("keeps a single header row when there are no column breakouts", () => {
+      expect(getTopHeaderRowsCount([], [0])).toBe(1);
+      expect(getTopHeaderRowsCount([], [0, 1])).toBe(1);
+    });
+  });
+
+  describe("getTopHeaderRowIndex", () => {
+    it("places items by their depth below, deepest at the last row", () => {
+      expect(getTopHeaderRowIndex({ maxDepthBelow: 0 }, 3)).toBe(2);
+      expect(getTopHeaderRowIndex({ maxDepthBelow: 2 }, 3)).toBe(0);
     });
   });
 });

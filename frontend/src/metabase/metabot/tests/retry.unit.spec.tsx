@@ -1,5 +1,6 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { act, screen, waitFor, within } from "__support__/ui";
@@ -11,21 +12,24 @@ import {
   retryPrompt,
   submitInput,
 } from "metabase/metabot/state";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import type { State } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import { isUuid } from "metabase/utils/uuid";
 
 import {
   chatMessages,
+  conversationIdForAgent,
   createMockSSEStream,
   createPauses,
+  createTestMetabotState,
   enterChatMessage,
+  expectContextUsage,
   lastChatMessage,
   lastReqBody,
   mockAgentEndpoint,
   setup,
   stopResponseButton,
+  testConversationId,
   whoIsYourFavoriteResponse,
 } from "./utils";
 
@@ -35,22 +39,28 @@ const emptyContext = {
   capabilities: [],
 };
 
-const turnEvents = (opts: {
+const CONTEXT_WINDOW = 1000;
+
+const turnEvents = ({
+  messageId,
+  text,
+  contextTokens,
+}: {
   messageId: string;
-  userMessageId?: string;
   text: string;
+  contextTokens?: number;
 }): SSEEvent[] => [
-  {
-    type: "start",
-    messageId: opts.messageId,
-    ...(opts.userMessageId
-      ? { messageMetadata: { userMessageId: opts.userMessageId } }
-      : {}),
-  },
+  { type: "start", messageId },
   { type: "text-start", id: "t1" },
-  { type: "text-delta", id: "t1", delta: opts.text },
+  { type: "text-delta", id: "t1", delta: text },
   { type: "text-end", id: "t1" },
-  { type: "finish", finishReason: "stop" },
+  {
+    type: "finish",
+    finishReason: "stop",
+    ...(contextTokens != null && {
+      messageMetadata: { contextTokens, contextWindowTokens: CONTEXT_WINDOW },
+    }),
+  },
 ];
 
 describe("metabot > retry", () => {
@@ -68,12 +78,8 @@ describe("metabot > retry", () => {
 
   it("should reuse the conversation profileOverride when retrying a response", async () => {
     const metabotInitialState = assocIn(
-      assocIn(
-        getMetabotInitialState(),
-        ["conversations", "omnibot", "visible"],
-        true,
-      ),
-      ["conversations", "omnibot", "profileOverride"],
+      assocIn(createTestMetabotState(), ["agents", "omnibot", "visible"], true),
+      ["conversations", testConversationId("omnibot"), "profileOverride"],
       "nlq",
     );
     setup({ metabotInitialState });
@@ -81,18 +87,17 @@ describe("metabot > retry", () => {
     const firstSpy = mockAgentEndpoint({
       events: turnEvents({
         messageId: "msg_1",
-        userMessageId: "user_msg_1",
         text: "first reply",
       }),
     });
     await enterChatMessage("first prompt");
     expect(await screen.findByText("first reply")).toBeInTheDocument();
-    expect((await lastReqBody(firstSpy)).profile_id).toBe("nlq");
+    const firstBody = await lastReqBody(firstSpy);
+    expect(firstBody.profile_id).toBe("nlq");
 
     const retrySpy = mockAgentEndpoint({
       events: turnEvents({
         messageId: "msg_2",
-        userMessageId: "user_msg_1",
         text: "regenerated reply",
       }),
     });
@@ -102,7 +107,7 @@ describe("metabot > retry", () => {
 
     const retryBody = await lastReqBody(retrySpy);
     expect(retryBody.profile_id).toBe("nlq");
-    expect(retryBody.retry_message_id).toBe("user_msg_1");
+    expect(retryBody.retry_message_id).toBe(firstBody.user_message_id);
   });
 
   it("should send an explicit profile on both the original prompt and the retry", async () => {
@@ -113,11 +118,11 @@ describe("metabot > retry", () => {
       void,
       UnknownAction
     >;
+    const conversationId = conversationIdForAgent(store, "explorations");
 
     const firstSpy = mockAgentEndpoint({
       events: turnEvents({
         messageId: "msg_1",
-        userMessageId: "user_msg_1",
         text: "first reply",
       }),
     });
@@ -127,21 +132,21 @@ describe("metabot > retry", () => {
           type: "text",
           message: "first prompt",
           context: emptyContext,
-          agentId: "explorations",
+          conversationId,
           profile: "explorations",
         }),
       );
     });
-    expect((await lastReqBody(firstSpy)).profile_id).toBe("explorations");
+    const firstBody = await lastReqBody(firstSpy);
+    expect(firstBody.profile_id).toBe("explorations");
 
     const messageId = checkNotNull(
-      getMessages(store.getState(), "explorations").at(-1),
+      getMessages(store.getState(), conversationId).at(-1),
     ).id;
 
     const retrySpy = mockAgentEndpoint({
       events: turnEvents({
         messageId: "msg_2",
-        userMessageId: "user_msg_1",
         text: "regenerated reply",
       }),
     });
@@ -150,7 +155,7 @@ describe("metabot > retry", () => {
         retryPrompt({
           messageId,
           context: emptyContext,
-          agentId: "explorations",
+          conversationId,
           profile: "explorations",
         }),
       );
@@ -158,7 +163,7 @@ describe("metabot > retry", () => {
 
     const retryBody = await lastReqBody(retrySpy);
     expect(retryBody.profile_id).toBe("explorations");
-    expect(retryBody.retry_message_id).toBe("user_msg_1");
+    expect(retryBody.retry_message_id).toBe(firstBody.user_message_id);
   });
 
   it("should show retry option for error messages", async () => {
@@ -247,13 +252,12 @@ describe("metabot > retry", () => {
   it("should rewind convo state to before the retried turn", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       events: [
         ...turnEvents({
           messageId: "msg_1",
-          userMessageId: "user_msg_1",
           text: "first reply",
         }).slice(0, -1),
         { type: "data-state", data: { todos: [{ id: "a" }] } },
@@ -268,7 +272,6 @@ describe("metabot > retry", () => {
       events: [
         ...turnEvents({
           messageId: "msg_2",
-          userMessageId: "user_msg_2",
           text: "second reply",
         }).slice(0, -1),
         { type: "data-state", data: { todos: [{ id: "b" }] } },
@@ -284,7 +287,6 @@ describe("metabot > retry", () => {
     mockAgentEndpoint({
       events: turnEvents({
         messageId: "msg_3",
-        userMessageId: "user_msg_2",
         text: "regenerated reply",
       }),
     });
@@ -296,22 +298,55 @@ describe("metabot > retry", () => {
     expect(getConvoReqState()).toEqual({ todos: [{ id: "a" }] });
   });
 
-  it("should stamp the user message with the start event's userMessageId", async () => {
-    const { store } = setup();
+  it("should rewind the context window usage to the retried turn", async () => {
+    setup();
+
     mockAgentEndpoint({
       events: turnEvents({
         messageId: "msg_1",
-        userMessageId: "user_msg_1",
-        text: "hello!",
+        text: "first reply",
+        contextTokens: 520,
       }),
+    });
+    await enterChatMessage("first prompt");
+    expect(await screen.findByText("first reply")).toBeInTheDocument();
+    await expectContextUsage(52);
+
+    mockAgentEndpoint({
+      events: turnEvents({
+        messageId: "msg_2",
+        text: "second reply",
+        contextTokens: 640,
+      }),
+    });
+    await enterChatMessage("second prompt");
+    expect(await screen.findByText("second reply")).toBeInTheDocument();
+    await expectContextUsage(64);
+
+    // the regenerated turn reports no usage of its own, so 52% can only come
+    // from the rewind
+    mockAgentEndpoint({
+      events: turnEvents({ messageId: "msg_3", text: "regenerated reply" }),
+    });
+    await userEvent.click(
+      await screen.findByTestId("metabot-chat-message-retry"),
+    );
+    expect(await screen.findByText("regenerated reply")).toBeInTheDocument();
+    await expectContextUsage(52);
+  });
+
+  it("should stamp the user message with the id it sent", async () => {
+    const { store } = setup();
+    const spy = mockAgentEndpoint({
+      events: turnEvents({ messageId: "msg_1", text: "hello!" }),
     });
 
     await enterChatMessage("hi");
     expect(await screen.findByText("hello!")).toBeInTheDocument();
 
     const convo = getMetabotConversation(store.getState(), "omnibot");
-    expect(convo.messages.find((m) => m.role === "user")).toMatchObject({
-      externalId: "user_msg_1",
+    expect(convo.messages.find((t) => t.role === "user")).toMatchObject({
+      externalId: (await lastReqBody(spy)).user_message_id,
     });
   });
 
@@ -320,22 +355,18 @@ describe("metabot > retry", () => {
     mockAgentEndpoint({
       events: turnEvents({
         messageId: "msg_1",
-        userMessageId: "user_msg_1",
         text: "first reply",
       }),
     });
     await enterChatMessage("first prompt");
     expect(await screen.findByText("first reply")).toBeInTheDocument();
 
-    mockAgentEndpoint({
-      events: turnEvents({
-        messageId: "msg_2",
-        userMessageId: "user_msg_2",
-        text: "second reply",
-      }),
+    const secondSpy = mockAgentEndpoint({
+      events: turnEvents({ messageId: "msg_2", text: "second reply" }),
     });
     await enterChatMessage("second prompt");
     expect(await screen.findByText("second reply")).toBeInTheDocument();
+    const secondBody = await lastReqBody(secondSpy);
 
     const retrySpy = mockAgentEndpoint({ events: [] });
     const messages = await chatMessages();
@@ -344,26 +375,23 @@ describe("metabot > retry", () => {
     );
 
     const body = await lastReqBody(retrySpy);
-    expect(body.retry_message_id).toBe("user_msg_2");
-    expect(body.user_message_id).toBe("user_msg_2");
+    expect(body.retry_message_id).toBe(secondBody.user_message_id);
+    expect(body.user_message_id).toBe(secondBody.user_message_id);
     expect(body.parent_message_id).toBeUndefined();
     expect(body.message).toBe("second prompt");
   });
 
   it("should send retry_message_id when retrying an errored turn", async () => {
     setup();
-    mockAgentEndpoint({
+    const firstSpy = mockAgentEndpoint({
       events: [
-        {
-          type: "start",
-          messageId: "msg_err",
-          messageMetadata: { userMessageId: "user_msg_err" },
-        },
+        { type: "start", messageId: "msg_err" },
         { type: "error", errorText: "boom" },
       ],
     });
     await enterChatMessage("first prompt");
     expect(await screen.findByText(/Something went wrong/)).toBeInTheDocument();
+    const firstBody = await lastReqBody(firstSpy);
 
     const retrySpy = mockAgentEndpoint({ events: [] });
     await userEvent.click(
@@ -371,21 +399,17 @@ describe("metabot > retry", () => {
     );
 
     const body = await lastReqBody(retrySpy);
-    expect(body.retry_message_id).toBe("user_msg_err");
+    expect(body.retry_message_id).toBe(firstBody.user_message_id);
     expect(body.parent_message_id).toBeUndefined();
   });
 
   it("should send retry_message_id when retrying an aborted turn", async () => {
     setup();
     const [pause] = createPauses(1);
-    mockAgentEndpoint({
+    const firstSpy = mockAgentEndpoint({
       stream: createMockSSEStream(
         (async function* () {
-          yield {
-            type: "start",
-            messageId: "msg_aborted",
-            messageMetadata: { userMessageId: "user_msg_aborted" },
-          };
+          yield { type: "start", messageId: "msg_aborted" };
           yield { type: "text-start", id: "t1" };
           yield { type: "text-delta", id: "t1", delta: "Let me think" };
           await pause.promise;
@@ -407,10 +431,12 @@ describe("metabot > retry", () => {
     );
 
     const body = await lastReqBody(retrySpy);
-    expect(body.retry_message_id).toBe("user_msg_aborted");
+    expect(body.retry_message_id).toBe(
+      (await lastReqBody(firstSpy)).user_message_id,
+    );
   });
 
-  it("should retry with the minted user id when aborted before the start event", async () => {
+  it("should retry with the minted user id when aborted before any response", async () => {
     setup();
     const [pause] = createPauses(1);
     const firstSpy = mockAgentEndpoint({
@@ -441,13 +467,14 @@ describe("metabot > retry", () => {
     expect(body.retry_message_id).toBe(firstReqBody.user_message_id);
   });
 
-  it("should fall back to a plain send when the failed turn has no userMessageId", async () => {
+  it("should fall back to a plain send when the request failed before the server started the turn", async () => {
     setup();
-    mockAgentEndpoint({
-      events: [{ type: "error", errorText: "boom" }],
+    fetchMock.post(`path:/api/metabot/agent-streaming`, {
+      status: 500,
+      body: { message: "boom" },
     });
     await enterChatMessage("first prompt");
-    expect(await screen.findByText(/Something went wrong/)).toBeInTheDocument();
+    expect(await screen.findByText(/boom/)).toBeInTheDocument();
 
     const retrySpy = mockAgentEndpoint({ events: [] });
     await userEvent.click(

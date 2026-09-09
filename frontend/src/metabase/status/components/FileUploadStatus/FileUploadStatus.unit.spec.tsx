@@ -1,11 +1,9 @@
-import fetchMock from "fetch-mock";
-
 import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
+import { createMockState, createMockUpload } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState, createMockUpload } from "metabase/redux/store/mocks";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { FileUploadStatus } from "./FileUploadStatus";
@@ -30,13 +28,6 @@ describe("FileUploadStatus", () => {
     setupCollectionsEndpoints({
       collections: [firstCollection, secondCollection],
     });
-    fetchMock.get(
-      "path:/api/table/123",
-      createMockCollection({
-        id: 123,
-        name: "Fancy Table",
-      }),
-    );
   });
 
   it("Should group uploads by collection", async () => {
@@ -85,6 +76,7 @@ describe("FileUploadStatus", () => {
   it("Should show upload status for a table append", async () => {
     const uploadOne = createMockUpload({
       tableId: 123,
+      tableName: "Fancy Table",
       collectionId: undefined,
       id: 1,
     });

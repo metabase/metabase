@@ -1,3 +1,4 @@
+import type { CollectionItemModel } from "./collection";
 import type { EnterpriseSettings } from "./settings";
 import type { UserId } from "./user";
 import type { CardDisplayType } from "./visualization";
@@ -133,6 +134,49 @@ export type RemoteSyncConfigurationSettings = Pick<
 export type UpdateRemoteSyncConfigurationResponse = {
   success: boolean;
   task_id?: number;
+};
+
+export type RemoteSyncDependencyModel = Extract<
+  CollectionItemModel,
+  "card" | "dataset" | "metric" | "dashboard" | "document" | "snippet"
+>;
+
+export type RemoteSyncCollectionRef = {
+  id: number;
+  name: string;
+};
+
+export type RemoteSyncRemedyCollection = RemoteSyncCollectionRef & {
+  personal: boolean;
+};
+
+export type RemoteSyncDependencyRemedy =
+  | { type: "collection"; collection: RemoteSyncRemedyCollection }
+  | { type: "library" }
+  | { type: "none" };
+
+export type RemoteSyncIneligibleDependency = {
+  model: RemoteSyncDependencyModel;
+  id: number;
+  name: string;
+  /** `null` is the root collection; absent means the backend couldn't resolve one. */
+  collection?: RemoteSyncCollectionRef | null;
+  remedy: RemoteSyncDependencyRemedy;
+};
+
+export type RemoteSyncDependencyFailure = {
+  collection: RemoteSyncCollectionRef;
+  dependencies: RemoteSyncIneligibleDependency[];
+};
+
+export const UNSYNCED_DEPENDENCIES_ERROR_CODE = "unsynced-dependencies";
+
+export type RemoteSyncDependencyErrorResponse = {
+  error_code: typeof UNSYNCED_DEPENDENCIES_ERROR_CODE;
+  error: string;
+  errors: {
+    collections: RemoteSyncDependencyFailure[];
+  };
 };
 
 export type RemoteSyncTaskStatus =

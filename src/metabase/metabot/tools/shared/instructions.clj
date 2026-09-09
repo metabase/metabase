@@ -75,31 +75,47 @@ Reference items using: [name](metabase://type/id)")
        "- Consider whether to create a chart or graph when that better matches the user's intent\n"
        "- Present the results in a way that matches the user's intent and follow up if they need clarification"))
 
+(def query-loaded-in-editor-instructions
+  "Instructions for a SQL query proposed in the user's open SQL editor buffer. The editor shows it as
+   a suggested change the user accepts or rejects — it is not applied to the buffer until they accept."
+  (str "The assistant needs to:\n"
+       "- Remember you cannot view the results directly yourself\n"
+       "- Tell the user the query is waiting in their SQL editor as a proposed change to accept or "
+       "reject — do not offer a link, the query is already in front of them\n"
+       "- Present what the query does in a way that matches the user's intent and follow up if they need clarification"))
+
+(defn- delivery-instruction
+  "The delivery line for an updated query: proposed in the user's open editor buffer for them to
+   accept or reject, or handed back as a query they open themselves."
+  [query-id loaded-in-editor?]
+  (if loaded-in-editor?
+    (str "- The updated query is proposed in the user's SQL editor for them to accept or reject — "
+         "tell them it's waiting there, do not offer a link")
+    (str "- Always provide a direct link using: "
+         "`[Updated Query](metabase://query/" query-id ")` "
+         "where Updated Query is a meaningful link text")))
+
 (defn edit-sql-query-instructions-for
-  "Generate instructions for an edited SQL query, embedding the query ID
-   in the link template. Matches Python EditSqlQueryToolV2._create_result."
-  [query-id]
+  "Generate instructions for an edited SQL query. `loaded-in-editor?` reflects how the result was
+   delivered: as a proposed change in an open SQL editor buffer, or as a query the user opens via a link."
+  [query-id loaded-in-editor?]
   (str "The updated query is shown in the result data above.\n\n"
        "After you have edited the query, do a thorough analysis of the query to find any potential errors.\n\n"
        "**If the returned SQL query is NOT correct:**\n\n"
        "- Make further refinements using this tool again\n\n"
        "**If the returned SQL query is correct:**\n\n"
-       "- Always provide a direct link using: "
-       "`[Updated Query](metabase://query/" query-id ")` "
-       "where Updated Query is a meaningful link text"))
+       (delivery-instruction query-id loaded-in-editor?)))
 
 (defn replace-sql-query-instructions-for
-  "Generate instructions for a replaced SQL query, embedding the query ID
-   in the link template. Matches Python ReplaceSqlQueryToolV2._create_result."
-  [query-id]
+  "Generate instructions for a replaced SQL query. `loaded-in-editor?` reflects how the result was
+   delivered: as a proposed change in an open SQL editor buffer, or as a query the user opens via a link."
+  [query-id loaded-in-editor?]
   (str "The updated query is shown in the result data above.\n\n"
        "After you have replaced the query, do a thorough analysis of the query to find any potential errors.\n\n"
        "**If the returned SQL query is NOT correct:**\n\n"
        "- Make further refinements using this tool or edit_sql_query again\n\n"
        "**If the returned SQL query is correct:**\n\n"
-       "- Always provide a direct link using: "
-       "`[Updated Query](metabase://query/" query-id ")` "
-       "where Updated Query is a meaningful link text"))
+       (delivery-instruction query-id loaded-in-editor?)))
 
 (defn sql-validation-error-instructions
   "Generate instructions for failed query validation. Matches Python `format_validation_error_instructions`."

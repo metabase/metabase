@@ -87,9 +87,7 @@ describe("SCALAR_CHART_DEFINITION", () => {
             },
           ],
         }),
-      ).toThrow(
-        "Couldn't load a value one of this chart's color ranges depends on.",
-      );
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
     it("refuses to render when a referenced value is not a number", () => {
@@ -117,9 +115,7 @@ describe("SCALAR_CHART_DEFINITION", () => {
             },
           ],
         }),
-      ).toThrow(
-        "Couldn't load a value one of this chart's color ranges depends on.",
-      );
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
     it("refuses to render a range bound to a column the question no longer has", () => {
@@ -127,9 +123,7 @@ describe("SCALAR_CHART_DEFINITION", () => {
         checkRenderable(createSeries(), {
           "scalar.segments": [{ min: "missing", max: null, color: "red" }],
         }),
-      ).toThrow(
-        "Couldn't load a value one of this chart's color ranges depends on.",
-      );
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
     it("tolerates malformed persisted segments", () => {

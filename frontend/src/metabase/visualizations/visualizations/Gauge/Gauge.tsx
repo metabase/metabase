@@ -2,15 +2,11 @@ import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";
 import { useCallback, useEffect, useRef } from "react";
-import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import {
-  GoalFailedState,
-  GoalResolvingState,
-} from "metabase/visualizations/components/GoalResolutionState";
+import { formatValue } from "metabase/value-formatting";
+import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
 import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { GaugeArc } from "./GaugeArc";
@@ -148,16 +144,13 @@ function GaugeComponent({
     updateLabelSize();
   });
 
-  if (goalSegments.status === "resolving") {
-    return <GoalResolvingState className={className} height={heightProp} />;
-  }
-
-  if (goalSegments.status === "failed") {
+  if (goalSegments.status !== "resolved") {
     return (
-      <GoalFailedState
+      <GoalResolutionState
         className={className}
         height={heightProp}
-        message={t`Couldn't load a value one of this gauge's ranges depends on.`}
+        kind="segments"
+        status={goalSegments.status}
       />
     );
   }

@@ -1,16 +1,11 @@
 import { useMemo } from "react";
 
-import { isDynamicGoalSetting } from "metabase/visualizations/lib/dynamic-goals";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import { needsGraphGoalResolution } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
-import { isGoalStaticValue } from "metabase-types/guards";
 
-import { useResolvedGoal } from "./use-resolved-goal";
-
-export type ResolvedGoalSettings =
-  | { status: "resolving" }
-  | { status: "failed" }
-  | { status: "resolved"; settings: ComputedVisualizationSettings };
+import type { GoalResolutionStatus } from "./use-answered-goal-data";
+import { useResolvedGoalValue } from "./use-resolved-goal-value";
 
 /**
  * Resolves `graph.goal_value` to a number so the chart model only ever sees
@@ -20,17 +15,13 @@ export function useResolvedGoalSettings(
   card: Pick<Card, "display" | "dataset_query">,
   data: DatasetData,
   settings: ComputedVisualizationSettings,
-): ResolvedGoalSettings {
-  const storedGoal = settings["graph.goal_value"];
-  const needsResolving =
-    storedGoal != null &&
-    !isGoalStaticValue(storedGoal) &&
-    isDynamicGoalSetting(card.display, "graph.goal_value");
+): { status: GoalResolutionStatus; settings: ComputedVisualizationSettings } {
+  const needsResolving = needsGraphGoalResolution(card.display, settings);
 
-  const goal = useResolvedGoal(
+  const goal = useResolvedGoalValue(
     card.dataset_query,
     data,
-    needsResolving ? storedGoal : null,
+    needsResolving ? settings["graph.goal_value"] : null,
   );
   const goalValue = goal.status === "resolved" ? goal.value : null;
 
@@ -42,9 +33,5 @@ export function useResolvedGoalSettings(
     [settings, needsResolving, goalValue],
   );
 
-  if (needsResolving && goal.status !== "resolved") {
-    return goal;
-  }
-
-  return { status: "resolved", settings: resolvedSettings };
+  return { status: goal.status, settings: resolvedSettings };
 }

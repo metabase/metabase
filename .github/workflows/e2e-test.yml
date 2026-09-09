@@ -41,7 +41,7 @@ env:
   # (e.g. "https://conductor.<host>"); each consumer appends the path it needs
   # (the reporter POSTs to "/webhooks/failed-tests"). Callers pass
   # `secrets: inherit`; reporting no-ops when it's unset.
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   # Shared secret sent as the `x-internal-secret` header to authenticate.
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
   REPO_ID: ${{ github.event.repository.id }}
@@ -181,7 +181,7 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-            --expose grepTags="-@mongo+-@python+-@OSS+-@skip" \
+            --expose grepTags="-@mongo+-@python+-@OSS" \
             --spec "$SPEC_PATH"
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
@@ -198,7 +198,7 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-          --expose grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@mongo+-@python+-@OSS+-@skip'}}" \
+          --expose grepTags="${{ inputs.tags || '-@mongo+-@python+-@OSS' }}" \
           --spec "$SPEC_PATH"
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
@@ -215,18 +215,6 @@ jobs:
           else
             echo "No ./target/junit directory; nothing to process."
           fi
-
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit
-          # Related to our custom upload to S3
-          output-name: e2e-${{ inputs.name }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
 
       - name: Quarantine gate
         # Only one of the two run steps executes; the other reports `skipped`. Only gate on actual failure.

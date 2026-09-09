@@ -3,14 +3,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.search :as search]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -109,9 +109,9 @@
           (testing "search with metabot verified-or-curated content flag"
             (let [metabot {:entity_id "test-bot"
                            :use_verified_content true}]
-              (with-redefs [t2/select-one (fn [model & _]
-                                            (is (= :model/Metabot model) "Should query for Metabot model")
-                                            metabot)
+              (with-redefs [metabot.db/metabot-by-entity-id (fn [entity-id]
+                                                              (is (= "test-bot" entity-id) "Should look up the Metabot")
+                                                              metabot)
                             search-core/search (fn [context]
                                                  ;; use_verified_content now drives the curated filter, not :verified
                                                  (is (true? (:curated? context)))

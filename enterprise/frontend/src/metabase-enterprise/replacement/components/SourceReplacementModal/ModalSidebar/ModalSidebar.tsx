@@ -47,16 +47,16 @@ export function ModalSidebar({
       className={S.sidebar}
       flex="0 0 auto"
       w="35rem"
-      px="xl"
-      pt="xl"
-      pb="lg"
-      gap="lg"
+      px="xxl"
+      pt="xxl"
+      pb="xl"
+      gap="xl"
     >
       <Stack gap="sm">
         <Title order={2}>{t`Find and replace a data source`}</Title>
         <Text>{t`This lets you change the data source used in queries in bulk. `}</Text>
       </Stack>
-      <Stack gap="lg">
+      <Stack gap="xl">
         <EntitySection icon="search" error={sourceError}>
           <EntitySelect
             selectedItem={sourceItem}

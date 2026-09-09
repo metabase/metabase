@@ -1,5 +1,6 @@
 (ns metabase.actions.types
   (:require
+   [malli.util :as mut]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -22,7 +23,8 @@
 
 ;; Relaxed, as we support it being
 (mr/def ::scope.raw
-  (into [:or] raw-scope-types))
+  (into [:or] (for [s raw-scope-types]
+                (mut/merge s [:map [:type {:optional true} :keyword]]))))
 
 ;; All derivable or unknown data removed, so that this is safe to use as a key.
 (mr/def ::scope.normalized

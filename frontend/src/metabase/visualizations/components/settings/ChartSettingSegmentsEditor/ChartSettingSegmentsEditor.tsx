@@ -15,28 +15,18 @@ import {
 } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
+import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import {
+  getGoalSegmentBounds,
   getSegmentColor,
   getUnansweredGoalEntities,
-} from "metabase/visualizations/lib/dynamic-goals";
-import type {
-  DatasetData,
-  DatasetQuery,
-  GoalSegment,
-} from "metabase-types/api";
+} from "metabase/viz-core";
+import type { GoalSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 import { ICON_BUTTON_SIZE } from "../GoalValueInput/constants";
 
 import { SegmentBoundInput } from "./SegmentBoundInput";
-
-export type ChartSettingSegmentsEditorProps = {
-  data?: DatasetData;
-  datasetQuery?: DatasetQuery;
-  value: GoalSegment[];
-  onChange: (value: GoalSegment[]) => void;
-  canRemoveAll?: boolean;
-};
 
 export const ChartSettingSegmentsEditor = ({
   data,
@@ -55,7 +45,9 @@ export const ChartSettingSegmentsEditor = ({
   const canRemove = segments.length > 1 || canRemoveAll;
 
   const referencedEntities =
-    data != null ? getUnansweredGoalEntities(data, segments) : [];
+    data != null
+      ? getUnansweredGoalEntities(data, getGoalSegmentBounds(segments))
+      : [];
 
   return (
     <Stack gap="lg">
@@ -151,13 +143,12 @@ export const ChartSettingSegmentsEditor = ({
   );
 };
 
-function getColorPalette() {
+export function getColorPalette() {
   return [
     ...getAccentColors(),
     Color(color("feedback-negative")).hex(),
     Color(color("feedback-warning")).hex(),
     Color(color("feedback-positive")).hex(),
-    Color(color("background_page-tertiary")).hex(),
   ];
 }
 

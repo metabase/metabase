@@ -11,6 +11,7 @@
    [metabase.driver.hive-like :as hive-like]
    [metabase.driver.hive-like.fixed-hive-connection :as fixed-hive-connection]
    [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -94,17 +95,32 @@
   (getConnection [_this]
     (fixed-hive-connection/fixed-hive-connection url properties)))
 
+(defn- connection-url
+  [{:keys [host port db jdbc-flags dbname]
+    :or   {host "localhost", port 10000, db "", jdbc-flags ""}}]
+  (let [port (cond-> port
+               (string? port) Integer/parseInt)
+        db   (or dbname db)]
+    (format "jdbc:hive2://%s:%s/%s%s" host port db jdbc-flags)))
+
 (defmethod sql-jdbc.conn/connection-details->spec :sparksql
-  [_driver {:keys [host port db jdbc-flags dbname]
-            :or   {host "localhost", port 10000, db "", jdbc-flags ""}
-            :as   opts}]
-  (let [port        (cond-> port
-                      (string? port) Integer/parseInt)
-        db          (or dbname db)
-        url         (format "jdbc:hive2://%s:%s/%s%s" host port db jdbc-flags)
-        properties  (driver-api/map->properties (dissoc opts :host :port :jdbc-flags))
-        data-source (->SparkSQLDataSource url properties)]
+  [_driver opts]
+  (let [properties  (driver-api/map->properties (dissoc opts :host :port :jdbc-flags))
+        data-source (->SparkSQLDataSource (connection-url opts) properties)]
     {:datasource data-source}))
+
+;; The connection string is built into a `DataSource` rather than left on the spec, so the generic `:sql-jdbc`
+;; implementations cannot see it and both of these read it from [[connection-url]] instead. That is also the only
+;; place the substituted `localhost` shows up when the details name no host at all.
+(defmethod driver/connection-hosts :sparksql
+  [_driver details]
+  (sql-jdbc.common/connection-string-hosts (connection-url details)))
+
+(defmethod driver/connection-parameter-hosts :sparksql
+  [driver details]
+  (sql-jdbc.common/connection-parameter-hosts (connection-url details)
+                                              nil
+                                              (driver/host-carrying-parameters driver)))
 
 (defn- dash-to-underscore [s]
   (when s
@@ -162,6 +178,7 @@
   (let [inner-query (-> (assoc inner-query
                                :remark   (driver-api/query->remark :sparksql outer-query)
                                :query    sql
+                               ;; driver still executes legacy outer queries; legacy limit calculation matches
                                :max-rows #_{:clj-kondo/ignore [:deprecated-var]} (driver-api/query->max-rows-limit outer-query))
                         (dissoc :params))
         query       (assoc outer-query :native inner-query)]

@@ -119,7 +119,10 @@
 (mr/def ::join
   [:and
    [:map
-    {:default {}, :decode/normalize normalize-join}
+    {:default          {}
+     :decode/normalize normalize-join
+     :decode/api       common/remove-internal-keys
+     :encode/serialize common/remove-internal-keys}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
     [:stages      [:ref :metabase.lib.schema/stages]]
     [:conditions  ::conditions]
@@ -136,7 +139,8 @@
      :filter             "join should not have top-level :filters; these should belong to one of the join :stages"
      :filters            "join should not have top-level :filters; these should belong to one of the join :stages"
      :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"
-     :ident              ":ident is deprecated and should not be included in joins"})
+     :ident              ":ident is deprecated and should not be included in joins"
+     :lib/options        "A join should not have :lib/options"})
    [:ref ::validate-field-aliases-match-join-alias]])
 
 (mr/def ::joins

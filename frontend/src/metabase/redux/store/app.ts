@@ -4,12 +4,12 @@ import type { CollectionId } from "metabase-types/api/collection";
 export type ChecklistItemValue =
   | "database"
   | "invite"
-  | "x-ray"
-  | "notebook"
-  | "sql"
+  | "ai"
+  | "query"
   | "dashboard"
-  | "subscription"
-  | "alert";
+  | "alert"
+  | "data-studio"
+  | "permissions";
 
 export interface AppErrorDescriptor {
   status: number;

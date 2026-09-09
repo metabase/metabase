@@ -3,6 +3,7 @@
    [clojure.core.cache :as cache]
    [medley.core :as m]
    [metabase-enterprise.dependencies.async :as async]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.metadata-provider :as deps.metadata-provider]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -18,8 +19,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (defn- mbql-graph
   "Returns a graph that is limited to sandboxes, segments, measures, and mbql cards.
@@ -27,14 +27,7 @@
   All other types of nodes are ignored and are neither included in the graph or traversed to find transitive
   dependents."
   [mp]
-  (-> (models.dependency/filtered-graph-dependents
-       nil
-       (fn [type-field _id-field]
-         [:or
-          [:= type-field "card"]
-          [:= type-field "sandbox"]
-          [:= type-field "segment"]
-          [:= type-field "measure"]]))
+  (-> (models.dependency/filtered-graph-dependents nil {:types #{:card :sandbox :segment :measure}})
       (graph/filtered-graph (fn [[type id]]
                               (not (and (= type :card)
                                         (->> (lib.metadata/card mp id)
@@ -188,7 +181,7 @@
                               ::graph/stop
                               [node-id new-metadata]))))))]
     (doseq [[card-id new-metadata] updates]
-      (t2/update! :model/Card card-id {:result_metadata new-metadata}))))
+      (dependencies.db/set-card-result-metadata! card-id new-metadata))))
 
 (events/derive! ::update-card-dependents-metadata :metabase/event)
 (events/derive! :event/card-update ::update-card-dependents-metadata)
@@ -196,6 +189,7 @@
 (methodical/defmethod events/publish-event! ::update-card-dependents-metadata
   [_ {{:keys [id dataset_query]} :object :keys [previous-object]}]
   (when (and (premium-features/has-feature? :dependencies)
+             (seq dataset_query)
              (not (lib/any-native-stage? dataset_query)))
     (async/submit!
      (fn []

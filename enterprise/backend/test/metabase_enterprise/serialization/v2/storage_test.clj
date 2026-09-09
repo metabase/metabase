@@ -145,6 +145,25 @@
                        (update :visibility_type keyword)
                        (update :base_type       keyword))))))))))
 
+(deftest field-data-sensitivity-yaml-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database          db    {:name "My Company Data"}
+                         :model/Table             table {:name "Customers" :db_id (:id db)}
+                         :model/Field             email {:name             "Email"
+                                                         :table_id         (:id table)
+                                                         :data_sensitivity :PII}
+                         :model/Field             _     {:name "Id" :table_id (:id table)}
+                         :model/FieldUserSettings _     {:field_id (:id email) :data_sensitivity :PII}]
+        (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
+        (let [fields-dir (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields")
+              read-yaml  (fn [file-name] (yaml/from-file (io/file fields-dir file-name)))]
+          (testing "the label is written as the bare enum string on both files"
+            (is (= "PII" (:data_sensitivity (read-yaml "email.yaml"))))
+            (is (= "PII" (:data_sensitivity (read-yaml "email___fieldusersettings.yaml")))))
+          (testing "an unlabeled field's file has no data_sensitivity line"
+            (is (not (contains? (read-yaml "id.yaml") :data_sensitivity)))))))))
+
 (deftest entity-counts-report-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!

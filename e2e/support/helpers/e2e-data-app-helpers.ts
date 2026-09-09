@@ -48,6 +48,7 @@ export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   id: 1,
   name: DATA_APP_NAME,
   display_name: DATA_APP_DISPLAY_NAME,
+  description: null,
   bundle_path: `data_apps/${DATA_APP_NAME}/dist/index.js`,
   enabled: true,
   allowed_hosts: [],

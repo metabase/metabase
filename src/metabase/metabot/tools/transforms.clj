@@ -3,12 +3,13 @@
   SQL transform tools are implemented directly in OSS.
   Python transform tools use defenterprise (return nil/error in OSS, real impl in EE)."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.dependencies :as deps]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.transforms.write :as transforms-write-tools]
    [metabase.metabot.tools.util :as metabot.tools.u]
-   [metabase.metabot.util :as metabot.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
@@ -20,16 +21,30 @@
 ;;; Formatting helpers
 ;;; ──────────────────────────────────────────────────────────────────
 
+;; Hand-built rather than `clojure.data.xml` so query and body content stays verbatim:
+;; data.xml escapes `<`/`>`/`&`, and an escaped query breaks `old_string` matching when
+;; the model quotes it back to the write tools.
 (defn- format-transform-details-output
-  [{:keys [id name description source target] :as _transform}]
-  (metabot.u/xml
-   [:transform {:id id :name name}
-    (when description [:description description])
-    (when source
-      [:source {:type (:type source)}
-       (when (:query source) [:query (:query source)])
-       (when (:source-database source) [:database (:source-database source)])])
-    (when target [:target (pr-str target)])]))
+  [{:keys [id description source target] :as transform}]
+  (let [{source-type :type, :keys [query body source-database]} source]
+    (->> [(str "<transform id=\"" id "\" name=\"" (llm-shape/escape-xml (:name transform)) "\">")
+          (when description
+            (str "  <description>" (llm-shape/escape-xml-content description) "</description>"))
+          (when source
+            (str "  <source type=\"" (some-> source-type name) "\">"))
+          (when-let [query-text (some-> query llm-shape/transform-query->text)]
+            (str "    <query>" query-text "</query>"))
+          (when body
+            (str "    <body>" body "</body>"))
+          (when source-database
+            (str "    <database>" source-database "</database>"))
+          (when source
+            "  </source>")
+          (when target
+            (str "  <target>" (llm-shape/escape-xml-content (pr-str target)) "</target>"))
+          "</transform>"]
+         (remove nil?)
+         (str/join "\n"))))
 
 (defn format-transform-write-output
   "Format the output of a transform write operation."
@@ -90,7 +105,10 @@
     (add-output {:structured_output (transforms/get-transform transform_id)}
                 format-transform-details-output)
     (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+      (if (= 403 (:status-code (ex-data e)))
+        ;; A permission refusal is an answer for the agent, not a tool failure -- relay the standard message.
+        {:output (ex-message e) :status-code 403}
+        (metabot.tools.u/handle-agent-error e)))))
 
 (def ^:private python-lib-schema
   [:map {:closed true} [:path :string]])
@@ -163,7 +181,7 @@
   For edit mode, provide edits as an array of {old_string, new_string, replace_all} objects.
   For replace mode, provide new_content with the complete SQL."
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           database_id source_tables]}
+           database_id]}
    :- write-transform-sql-schema]
   (try
     (let [result (add-output
@@ -174,7 +192,6 @@
                     :transform_name transform_name
                     :transform_description transform_description
                     :database_id database_id
-                    :source_tables source_tables
                     :memory-atom shared/*memory-atom*
                     :context (shared/current-context)})
                   format-transform-write-output)
@@ -247,7 +264,7 @@
                        "The table_id values MUST be IDs of database tables. You CAN NOT use metabase model IDs. "
                        "You MUST provide this argument when modifying the source tables of an existing transform "
                        "or when creating a new transform. DO NOT guess or make up table IDs, use the "
-                       "search_tables tool to find the correct table IDs first.")}
+                       "`search` tool to find the correct table IDs first.")}
     [:sequential
      [:map
       [:alias :string]

@@ -30,7 +30,6 @@ export async function createModelFromTable(options: Options) {
       display: "table",
       result_metadata: null,
       collection_id: collectionId,
-      collection_position: 1,
       visualization_settings: {},
       dataset_query: datasetQuery,
       description: `A model created via the embedding sdk's CLI`,

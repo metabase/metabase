@@ -10,20 +10,22 @@ import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CardType, CollectionId, DatabaseId } from "metabase-types/api";
+import type { CollectionId, DatabaseId, TableId } from "metabase-types/api";
+
+import type { SavedEntityType } from "../types";
 
 import SavedEntityListS from "./SavedEntityList.module.css";
 import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
-  type: Extract<CardType, "model" | "question">;
-  selectedId?: string;
-  databaseId?: DatabaseId;
+  type: SavedEntityType;
+  selectedId?: TableId;
+  databaseId?: DatabaseId | null;
   collectionId?: CollectionId;
   onSelect: (tableOrModelId: string) => void;
 }
 
-const SavedEntityList = ({
+export const SavedEntityList = ({
   type,
   selectedId,
   databaseId,
@@ -98,6 +100,3 @@ const SavedEntityList = ({
     </Box>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SavedEntityList;

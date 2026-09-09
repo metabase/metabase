@@ -6,13 +6,12 @@ import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
+import { getShallowDatabases as getDatabases } from "metabase/metadata-store";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   ConcreteTableId,
@@ -28,14 +27,11 @@ import {
 } from "../analytics";
 
 import S from "./TableBrowser.module.css";
+import { getTableUrl } from "./selectors";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
-
-type GetTableUrl = (table: Table, metadata?: Metadata) => string;
 
 type TableBrowserProps = {
   tables: Table[];
-  getTableUrl: GetTableUrl;
-  metadata?: Metadata;
   dbId: DatabaseId;
   schemaName?: string;
   xraysEnabled?: boolean;
@@ -44,8 +40,6 @@ type TableBrowserProps = {
 
 export const TableBrowserInner = ({
   tables,
-  getTableUrl,
-  metadata,
   dbId,
   schemaName,
   xraysEnabled,
@@ -63,7 +57,7 @@ export const TableBrowserInner = ({
 
   return (
     <>
-      <Flex align="center" pt="md" pr="sm" pb="sm">
+      <Flex align="center" pt="lg" pr="sm" pb="sm">
         <BrowserCrumbs
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },
@@ -72,15 +66,13 @@ export const TableBrowserInner = ({
           ]}
         />
       </Flex>
-      <BrowseGrid pt="lg">
+      <BrowseGrid pt="xl">
         {tables.map((table) => (
           <TableBrowserItem
             key={table.id}
             table={table}
             dbId={dbId}
-            getTableUrl={getTableUrl}
             xraysEnabled={xraysEnabled}
-            metadata={metadata}
             canEditTables={canEditTables}
           />
         ))}
@@ -93,8 +85,6 @@ type TableBrowserItemProps = {
   table: Table;
   dbId: DatabaseId;
   xraysEnabled?: boolean;
-  metadata?: Metadata;
-  getTableUrl: GetTableUrl;
   canEditTables?: boolean;
 };
 
@@ -102,17 +92,16 @@ const TableBrowserItem = ({
   table,
   dbId,
   xraysEnabled,
-  metadata,
-  getTableUrl,
   canEditTables,
 }: TableBrowserItemProps) => {
+  const tableUrl = useSelector((state) => getTableUrl(state, table));
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
   const isTableWritable = table.is_writable;
 
   return (
     <BrowseCard
-      to={!isSyncInProgress(table) ? getTableUrl(table, metadata) : ""}
+      to={!isSyncInProgress(table) ? tableUrl : ""}
       icon="table"
       title={table.display_name || table.name}
       // Unjustified type cast. FIXME

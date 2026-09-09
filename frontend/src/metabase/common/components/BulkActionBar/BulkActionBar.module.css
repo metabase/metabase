@@ -1,4 +1,4 @@
-.BulkActionButton:not([data-css-specificity-hack="🤣"]) {
+.BulkActionButton {
   color: var(--mb-color-text-primary-inverse);
   border-color: color-mix(
     in srgb,
@@ -25,7 +25,8 @@
     );
   }
 
-  &:disabled {
+  &:disabled,
+  &:disabled:hover {
     color: var(--mb-color-text-disabled-inverse);
     border-color: color-mix(
       in srgb,
@@ -36,7 +37,7 @@
   }
 }
 
-.BulkActionDangerButton:not([data-css-specificity-hack="🤣"]) {
+.BulkActionDangerButton {
   &:hover {
     color: var(--mb-color-text-primary-inverse);
     border-color: color-mix(
@@ -60,4 +61,8 @@
       transparent 90%
     );
   }
+}
+
+.BulkActionButtonLabel {
+  display: inline-flex;
 }

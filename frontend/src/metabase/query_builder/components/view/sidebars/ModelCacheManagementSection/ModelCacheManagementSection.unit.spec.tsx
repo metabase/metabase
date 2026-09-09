@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -9,6 +8,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { checkNotNull } from "metabase/utils/types";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks";

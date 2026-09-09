@@ -1,30 +1,28 @@
 .editorContainer {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   width: 100%;
   height: 100%;
+  min-height: 46px;
 }
 
-.iconContainer {
-  padding-top: 12px;
-  width: 2.375rem;
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: center;
+.contentWrapper {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding-left: 0.5rem;
 }
 
 .button {
-  margin-bottom: 0.625rem;
-  margin-right: -0.125rem;
+  margin: 0 -0.25rem calc(0.5rem - 1px) 2px;
   background: var(--mb-color-core-brand);
-  border-radius: 50%;
-  align-self: flex-end;
-  margin-left: 2px;
-  width: 1.25rem;
-  height: 1.25rem;
+  border-radius: 6px;
+  width: 2rem;
+  height: 2rem;
   display: flex;
   justify-content: center;
   align-items: center;
+  align-self: flex-end;
   transition:
     opacity 300ms ease,
     background 150ms ease,
@@ -65,13 +63,7 @@
 
 .stopIcon {
   color: var(--mb-color-core-brand);
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.7rem;
+  height: 0.7rem;
   transition: color 150ms ease;
-}
-
-.contentWrapper {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
 }

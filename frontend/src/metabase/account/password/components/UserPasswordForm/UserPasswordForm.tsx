@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { useUpdatePasswordMutation } from "metabase/api";
@@ -13,6 +12,7 @@ import {
   requiredErrorMessage,
 } from "metabase/forms";
 import { Group, Stack } from "metabase/ui";
+import { memoize } from "metabase/utils/memoize";
 import type { User } from "metabase-types/api";
 
 import type { UserPasswordData } from "../../types";
@@ -47,7 +47,7 @@ export const UserPasswordForm = ({
   }, []);
 
   const validationContext = useMemo(
-    () => ({ onValidatePassword: _.memoize(onValidatePassword) }),
+    () => ({ onValidatePassword: memoize(onValidatePassword) }),
     [onValidatePassword],
   );
 

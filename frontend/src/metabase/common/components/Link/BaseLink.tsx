@@ -1,3 +1,4 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   type CSSProperties,
   type HTMLProps,
@@ -11,7 +12,9 @@ import {
   type NavLinkRenderProps,
   Link as RouterLink,
   type To,
+  prefetchPage,
   useInRouterContext,
+  usePrefetchOnVisible,
 } from "metabase/router";
 
 const INACTIVE: NavLinkRenderProps = {
@@ -92,9 +95,21 @@ export interface BaseLinkProps extends Omit<
  * that need it subscribe to the current route.
  */
 export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
-  function BaseLink({ to, innerRef, className, style, end, ...rest }, ref) {
-    const linkRef = ref ?? innerRef;
+  function BaseLink(
+    { to, innerRef, className, style, end, onMouseEnter, onFocus, ...rest },
+    ref,
+  ) {
+    const forwardedRef = ref ?? innerRef;
     const inRouter = useInRouterContext();
+
+    // A touch device never fires the hover below, so watch the link instead and
+    // start the fetch when it comes into view. `usePrefetchOnVisible` decides
+    // whether that applies; on a device with a pointer it does nothing.
+    const hasTarget = to != null && to !== "";
+    const visibleRef = usePrefetchOnVisible(
+      inRouter && hasTarget ? hrefFor(anchorTarget(to)) : null,
+    );
+    const linkRef = useMergedRef(forwardedRef, visibleRef);
 
     // A link with no destination (`to` null or `""`) is used as a button: it
     // navigates through its `onClick`. A real `<Link>` would additionally
@@ -106,12 +121,14 @@ export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
     // rendered in isolation (common in unit tests) has no router, so fall back
     // to a plain anchor with the resolved href. The real app always mounts a
     // router, so that path never runs there.
-    if (to == null || to === "" || !inRouter) {
+    if (to == null || to === "" || to === "#" || !inRouter) {
       const href = to == null || to === "" ? undefined : hrefFor(to);
       return (
         <a
           {...rest}
           href={href}
+          onMouseEnter={onMouseEnter}
+          onFocus={onFocus}
           className={resolveClassName(className, INACTIVE)}
           style={resolveStyle(style, INACTIVE)}
           ref={linkRef}
@@ -121,10 +138,26 @@ export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
 
     const target = anchorTarget(to);
 
+    // Reaching for a link is the earliest reliable sign that the user is about
+    // to follow it, so a target in its own chunk starts loading here instead of
+    // when its route renders. `prefetchPage` does nothing for a target that
+    // registered no loader, which is almost all of them.
+    const prefetchProps = {
+      onMouseEnter: (event: React.MouseEvent<HTMLAnchorElement>) => {
+        onMouseEnter?.(event);
+        prefetchPage(hrefFor(target));
+      },
+      onFocus: (event: React.FocusEvent<HTMLAnchorElement>) => {
+        onFocus?.(event);
+        prefetchPage(hrefFor(target));
+      },
+    };
+
     if (typeof className === "function" || typeof style === "function") {
       return (
         <NavLink
           {...rest}
+          {...prefetchProps}
           to={target}
           end={end}
           // Normalize both to callbacks: given a plain string `NavLink` appends
@@ -139,6 +172,7 @@ export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
     return (
       <RouterLink
         {...rest}
+        {...prefetchProps}
         to={target}
         className={className}
         style={style}

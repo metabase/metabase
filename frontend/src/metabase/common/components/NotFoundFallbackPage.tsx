@@ -1,7 +1,7 @@
 import { useMount } from "react-use";
 
-import { useLazyGetCurrentUserQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { useLazyGetCurrentUserQuery } from "metabase/current-user";
 import { useNavigate } from "metabase/router";
 
 export const NotFoundFallbackPage = () => {

@@ -1,14 +1,16 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { serializeCardForUrl } from "metabase/common/utils/card";
+import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Card, VisualizationDisplay } from "metabase-types/api";
-import type { DatabaseId } from "metabase-types/api/database";
-import type { FieldId } from "metabase-types/api/field";
+import type {
+  Card,
+  Field,
+  NormalizedField,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import type { SegmentId } from "metabase-types/api/segment";
 import type { TableId } from "metabase-types/api/table";
 
@@ -41,25 +43,24 @@ export const isEmptyObject = (object: object): boolean =>
   Object.keys(object).length === 0;
 
 export interface GetQuestionArgs {
-  dbId: DatabaseId;
   tableId: TableId;
-  fieldId?: FieldId;
+  metadataProvider: Lib.MetadataProvider;
+  // the field to group by, when the caller has loaded it. Either shape a
+  // caller holds works, since `Lib.fromLegacyColumn` reads both.
+  breakoutField?: NormalizedField | Field;
   segmentId?: SegmentId;
   getCount?: boolean;
   visualization?: VisualizationDisplay;
-  metadata: Metadata;
 }
 
 export const getQuestion = ({
-  dbId: databaseId,
   tableId,
-  fieldId,
+  metadataProvider,
+  breakoutField,
   segmentId,
   getCount,
   visualization,
-  metadata,
 }: GetQuestionArgs): Card | undefined => {
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
   if (table == null) {
     return;
@@ -70,8 +71,8 @@ export const getQuestion = ({
     query = Lib.aggregateByCount(query, -1);
   }
 
-  if (fieldId) {
-    query = breakoutWithDefaultTemporalBucket(query, metadata, fieldId);
+  if (breakoutField) {
+    query = breakoutWithDefaultTemporalBucket(query, breakoutField);
   }
 
   if (segmentId) {
@@ -88,21 +89,10 @@ export const getQuestion = ({
 
 function breakoutWithDefaultTemporalBucket(
   query: Lib.Query,
-  metadata: Metadata,
-  fieldId: FieldId,
+  field: NormalizedField | Field,
 ): Lib.Query {
   const stageIndex = -1;
-  const field = metadata.field(fieldId);
-
-  if (!field) {
-    return query;
-  }
-
-  const column = Lib.fromLegacyColumn(
-    query,
-    stageIndex,
-    field.getPlainObject(),
-  );
+  const column = Lib.fromLegacyColumn(query, stageIndex, field);
 
   if (!column) {
     return query;
@@ -135,8 +125,8 @@ export const getQuestionUrl = (getQuestionArgs: GetQuestionArgs): string => {
 export const has = (entity: unknown): boolean =>
   Array.isArray(entity) ? entity.length > 0 : Boolean(entity);
 
-export const getDescription = (question: Question): string => {
-  const timestamp = dayjs(question.getCreatedAt()).fromNow();
-  const author = question.getCreator().common_name;
+export const getDescription = (card: Card): string => {
+  const timestamp = dayjs(card.created_at).fromNow();
+  const author = card.creator?.common_name;
   return t`Created ${timestamp} by ${author}`;
 };

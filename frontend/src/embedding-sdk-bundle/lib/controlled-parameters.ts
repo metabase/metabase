@@ -75,7 +75,11 @@ export function buildParametersPayload(
   applied: ParameterValuesMap,
   parameterDefinitions: UiParameter[],
   lastUsedParameterValues?: ParameterValuesMap,
-) {
+): {
+  parameters: ParameterValues;
+  defaultParameters: ParameterValues;
+  lastUsedParameters?: ParameterValues;
+} {
   return {
     parameters: getParameterValuesBySlug(parameterDefinitions, applied),
     defaultParameters: getParameterValuesBySlug(

@@ -16,11 +16,14 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
+   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; ms/InstanceOf validates Toucan Database instances; lib.schema has no app-db instance schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [mapv empty? some]])
   (:import
@@ -120,6 +123,117 @@
        (or (instance? java.net.ConnectException throwable)
            (recur (.getCause throwable)))))
 
+(def ^:private auth-provider-url-detail-keys
+  "Detail keys holding a URL that Metabase fetches over plain HTTP -- not through the warehouse connection and not
+  through the SSH tunnel -- while resolving an auth provider (see [[fetch-and-incorporate-auth-provider-details]])."
+  [:http-auth-url :oauth-token-url])
+
+(defn- hosts-metabase-will-connect-to
+  "The hosts Metabase itself resolves and connects to for `details`. With an SSH tunnel enabled Metabase connects to
+  the tunnel server and the tunnel server resolves the warehouse host on the far side, so `:host` is (legitimately)
+  often `localhost` there and only `:tunnel-host` is ours to check. That only holds for a driver that actually routes
+  its connection through the tunnel -- details are an open map, and for a driver that ignores the `:tunnel-*` keys
+  (BigQuery) believing them would leave the host it really connects to unchecked.
+
+  Eager on purpose: [[validate-connection-hosts!]] turns a failure to extract the hosts into a refusal, which it can
+  only do if the failure happens at the call and not later, when a lazy sequence is walked."
+  [driver details]
+  (into []
+        cat
+        [(if (and (:tunnel-enabled details)
+                  (driver/routes-connection-through-ssh-tunnel? driver))
+           (driver/hosts-from-details details [:tunnel-host])
+           ;; Fail closed if loading the driver or extracting its hosts fails. Falling back to generic keys here could
+           ;; turn a bug in a driver's implementation into an unchecked connection.
+           (vec (driver/connection-hosts driver details)))
+         ;; deliberately outside the tunnel branch: a tunnel rewrites the host detail, but the client still honors a
+         ;; host named in its connection parameters, so those are checked either way
+         (driver/connection-parameter-hosts driver details)
+         (when (:use-auth-provider details)
+           (driver/hosts-from-details details auth-provider-url-detail-keys))]))
+
+(defn- blocked-network-address-exception []
+  (let [message (str (deferred-tru "Cannot connect to a private or internal network address."))]
+    (ex-info message
+             {:status-code 400
+              :message     message
+              :errors      {:host (str (deferred-tru "check your host settings"))}})))
+
+(defn- unknown-connection-hosts-exception [cause]
+  (let [message (str (deferred-tru "Error resolving hosts: could not apply security policy."))]
+    (ex-info message
+             {:status-code 400
+              :message     message
+              :errors      {:host (str (deferred-tru "check your host settings"))}}
+             cause)))
+
+(def ^:private ^:dynamic *allow-private-connection-hosts*
+  "When true, an `:external-only` [[driver.settings/warehouse-allowed-networks]] policy is enforced as
+  `:allow-private`. Bound only by [[do-with-database-network-policy]]."
+  false)
+
+(defn- effective-warehouse-allowed-networks
+  "[[driver.settings/warehouse-allowed-networks]] as it applies to the connection being validated right now:
+  [[*allow-private-connection-hosts*]] relaxes `:external-only` to `:allow-private`."
+  []
+  (let [policy (driver.settings/warehouse-allowed-networks)]
+    (if (and *allow-private-connection-hosts* (= policy :external-only))
+      :allow-private
+      policy)))
+
+(defn network-exempt-warehouse?
+  "Whether `database` may sit on a private network under an `:external-only`
+  [[driver.settings/warehouse-allowed-networks]] policy: today only the attached DWH, and only when the token also
+  carries the `:attached-dwh` feature. The flag alone is not enough -- serialization import can set it -- so the
+  exemption is confined to instances whose token vouches that a DWH really was attached.
+
+  `database` may be a Toucan row or a config-file entry (`:is_attached_dwh`) or a Lib metadata
+  database (`:is-attached-dwh` -- and a map that throws on `:snake_case` lookups outside prod, which is why the two
+  shapes are told apart rather than the keys tried in turn)."
+  [database]
+  (boolean (and (if (= (:lib/type database) :metadata/database)
+                  (:is-attached-dwh database)
+                  (:is_attached_dwh database))
+                (premium-features/has-attached-dwh?))))
+
+(defn do-with-database-network-policy
+  "Impl for [[with-database-network-policy]]."
+  [database thunk]
+  (binding [*allow-private-connection-hosts* (network-exempt-warehouse? database)]
+    (thunk)))
+
+(defmacro with-database-network-policy
+  "Run `body` with [[driver.settings/warehouse-allowed-networks]] enforced the way it applies to `database`: a
+  network-exempt warehouse (see [[network-exempt-warehouse?]]) gets `:external-only` relaxed to `:allow-private`,
+  any other database the policy as configured. Wrap this around anything that validates connection hosts on
+  `database`'s behalf."
+  {:style/indent 1}
+  [database & body]
+  `(do-with-database-network-policy ~database (^:once fn* [] ~@body)))
+
+(defn validate-resolved-addresses!
+  "Throw when any of the already-resolved `addresses` is disallowed by [[driver.settings/warehouse-allowed-networks]].
+  Used by connection transports, such as Mongo's `InetAddressResolver`, that can enforce the policy on the exact
+  addresses used to open a socket."
+  [addresses]
+  (let [policy (effective-warehouse-allowed-networks)]
+    (when (some #(not (u.http/address-allowed-for-network-policy? policy %)) addresses)
+      (throw (blocked-network-address-exception)))))
+
+(defn validate-connection-hosts!
+  "Throw a 400 if `details` would have Metabase open a connection to an address disallowed by
+  [[driver.settings/warehouse-allowed-networks]]. Returns nil when the details are acceptable."
+  [driver details]
+  (let [policy (effective-warehouse-allowed-networks)]
+    (when (not= policy :allow-all)
+      (let [hosts (try
+                    (hosts-metabase-will-connect-to driver details)
+                    (catch Throwable e
+                      (log/error e "Could not determine the hosts a connection to this database would open")
+                      (throw (unknown-connection-hosts-exception e))))]
+        (when (some #(not (u.http/host-allowed-for-network-policy? policy %)) hosts)
+          (throw (blocked-network-address-exception)))))))
+
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
   1`. Specify optional param `throw-exceptions` if you want to handle any exceptions thrown yourself (e.g., so you
@@ -130,27 +244,32 @@
   ^Boolean [driver details-map & [throw-exceptions]]
   {:pre [(keyword? driver) (map? details-map)]}
   (if throw-exceptions
-    (try
-      (u/with-timeout (driver.settings/db-connection-timeout-ms)
-        (or (driver/can-connect? driver details-map)
-            (throw (Exception. "Failed to connect to Database"))))
-      ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
-      ;; first
-      (catch Throwable e
-        (log/errorf "Failed to connect to Database: %s" (ex-message e))
-        (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
-                                                   (driver/humanize-connection-error-message driver))]
-                 (let [error-data (cond
-                                    (keyword? humanized-message)
-                                    (tr-connection-error-messages humanized-message)
+    (do
+      ;; deliberately outside the `try` below: this error is already the message we want the caller to see, and
+      ;; running it through `humanize-connection-error-message` would let a driver turn it into something more
+      ;; revealing. The boolean arity reaches it through its own `try`, so that one still answers `false`.
+      (validate-connection-hosts! driver details-map)
+      (try
+        (u/with-timeout (driver.settings/db-connection-timeout-ms)
+          (or (driver/can-connect? driver details-map)
+              (throw (Exception. "Failed to connect to Database"))))
+        ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the
+        ;; message first
+        (catch Throwable e
+          (log/errorf "Failed to connect to Database: %s" (ex-message e))
+          (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
+                                                     (driver/humanize-connection-error-message driver))]
+                   (let [error-data (cond
+                                      (keyword? humanized-message)
+                                      (tr-connection-error-messages humanized-message)
 
-                                    (connection-error? e)
-                                    (tr-connection-error-messages :cannot-connect-check-host-and-port)
+                                      (connection-error? e)
+                                      (tr-connection-error-messages :cannot-connect-check-host-and-port)
 
-                                    :else
-                                    {:message humanized-message})]
-                   (ex-info (str (:message error-data)) error-data e))
-                 e))))
+                                      :else
+                                      {:message humanized-message})]
+                     (ex-info (str (:message error-data)) error-data e))
+                   e)))))
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
@@ -205,10 +324,20 @@
    accidental coupling between tests."
   (not (or config/is-test? config/is-dev?)))
 
+(defn- check-feature
+  "Ask `driver` whether it supports one feature, degrading to false (with a log line) if it throws. Puts no bound on
+  how long the driver may take -- callers bound it at whatever granularity suits them."
+  [driver feature database]
+  (try
+    (driver/database-supports? driver feature database)
+    (catch Throwable e
+      (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
+      false)))
+
 (defn- supports?* [driver feature database]
   (try
     (u/with-timeout supports?-timeout-ms
-      (driver/database-supports? driver feature database))
+      (check-feature driver feature database))
     (catch Throwable e
       (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
       false)))
@@ -258,10 +387,35 @@
   #{;; used intenrally during the sync process, does not really need to be hydrated
     :metadata/table-writable-check})
 
-(defn- features* [driver database]
+(defn- feature-set
+  "The set of features for which `supported?` returns truthy, minus the ones we never hydrate."
+  [supported?]
   (set (for [feature driver/features
-             :when (and (not (skip-internal-features feature)) (supports? driver feature database))]
+             :when (and (not (skip-internal-features feature)) (supported? feature))]
          feature)))
+
+(defn- features* [driver database]
+  (feature-set #(supports? driver % database)))
+
+(defn- features-timeout-ms
+  "Budget for one batched scan of every feature. Read per call so that rebinding [[supports?-timeout-ms]] moves it too."
+  []
+  (* 4 supports?-timeout-ms))
+
+(defn- features-batched*
+  "Like [[features*]], but bounds the whole scan with a single timeout instead of giving each of the ~90 checks its
+  own. A per-check timeout costs a thread handoff that the check itself does not, and that handoff dominates the scan.
+
+  Only used while [[*memoize-supports?*]] is off. With memoization on, [[memoized-supports?*]] already absorbs the
+  repeat cost, and going around it would change what that cache ends up holding."
+  [driver database]
+  (try
+    (u/with-timeout (features-timeout-ms)
+      (feature-set #(check-feature driver % database)))
+    (catch Throwable _
+      ;; Budget blown, so fall back to the per-feature path: it bounds each check separately and therefore yields
+      ;; exactly what this call would have yielded had it never been batched.
+      (features* driver database))))
 
 (def ^:private memoized-features*
   (memoize/memo
@@ -278,9 +432,10 @@
                 [:map
                  [:lib/type [:= :metadata/database]]]
                 (ms/InstanceOf :model/Database)]]
-  (let [database (ensure-lib-database database)
-        f (if *memoize-supports?* memoized-features* features*)]
-    (f driver database)))
+  (let [database (ensure-lib-database database)]
+    (if *memoize-supports?*
+      (memoized-features* driver database)
+      (features-batched* driver database))))
 
 (defn available-drivers
   "Return a set of all currently available drivers."

@@ -277,7 +277,7 @@
           eid    (fn [c] (apply str (repeat 21 c)))]
       (testing "MBQL ref clauses"
         (doseq [[label serialized raw ser-models raw-models]
-                [["field (pMBQL)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{"Database"} #{"Field"}]
+                [["field (MBQL 5)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{"Database"} #{"Field"}]
                  ["field (legacy)" [:field ["DB" "S" "T" "F"] {}] [:field 53 {}]  #{"Database"} #{"Field"}]
                  ["metric"         [:metric {} (eid \a)]          [:metric {} 99] #{"Card"}     #{"Card"}]
                  ["segment"        [:segment {} (eid \b)]         [:segment {} 5]  #{"Segment"}  #{"Segment"}]
@@ -313,3 +313,103 @@
                                        :values_source_type   :card
                                        :values_source_config {:card_id 1, :value_field [:field 53 nil]}
                                        :position             0}])))))
+
+(def ^:private native-query-with-template-tag
+  "A native query with one variable, already past FK resolution (numeric `:database`), as [[serdes/import-mbql]]
+  sees it mid-import."
+  {:lib/type :mbql/query
+   :database 1
+   :stages   [{:lib/type      :mbql.stage/native
+               :native        "SELECT * FROM PRODUCTS WHERE ID = {{id}}"
+               :template-tags {"id" {:type :number :name "id" :display-name "ID" :id "abc-123"}}}]})
+
+(def ^:private query-with-unknown-tag-type
+  "The same query with a template tag whose `:type` this version has no representation for - what an export from a
+  newer Metabase that introduced a new tag type would look like. It normalizes without complaint, so only validating
+  the result catches it."
+  (assoc-in native-query-with-template-tag [:stages 0 :template-tags]
+            {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}}))
+
+(deftest ^:parallel import-mbql-validates-against-local-schema-test
+  (testing "GHY-4241: a query shape this version cannot represent is refused instead of stored"
+    (testing "a query matching this instance's schema imports"
+      (is (=? {:lib/type :mbql/query}
+              (serdes/import-mbql native-query-with-template-tag))))
+    (testing "a query carrying a shape with no representation here is refused"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"does not match this Metabase's query schema"
+           (serdes/import-mbql query-with-unknown-tag-type))))))
+
+(deftest ^:parallel import-mbql-schema-validation-opt-out-test
+  (testing "GHY-4241: binding *skip-schema-validation?* disables the schema check"
+    ;; Skipping does not make the import succeed - `repair-card-template-tag-names` rejects a tag type it does not
+    ;; know on its own. Asserting on that downstream failure keeps this from passing for the wrong reason.
+    (binding [serdes/*skip-schema-validation?* true]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid input.*:template-tags"
+           (serdes/import-mbql query-with-unknown-tag-type))))))
+
+;;; ------------------------------------------- Dynamic goals -------------------------------------------
+
+(def ^:private card-eid "card00000000000000001")
+(def ^:private measure-eid "meas00000000000000007")
+
+(def ^:private goal-viz-settings
+  {:graph.goal_value {:id 1 :type "card" :column "total"}
+   :progress.goal    {:id 7 :type "measure" :column "avg"}
+   :gauge.segments   [{:min 0 :max {:id 1 :type "card" :column "total"} :color "#fff"}]
+   :scalar.segments  [{:min {:id 7 :type "measure" :column "avg"} :max "self-col"}]})
+
+(def ^:private exported-goal-viz-settings
+  {:graph.goal_value {:id card-eid :type "card" :column "total"}
+   :progress.goal    {:id measure-eid :type "measure" :column "avg"}
+   :gauge.segments   [{:min 0 :max {:id card-eid :type "card" :column "total"} :color "#fff"}]
+   :scalar.segments  [{:min {:id measure-eid :type "measure" :column "avg"} :max "self-col"}]})
+
+(defn- export-goals
+  "Exports `settings`, dropping the `:column_settings` key [[serdes/export-visualization-settings]] always adds."
+  [settings]
+  (binding [serdes/*export-fk* (fn [id model]
+                                 (case [(name model) id]
+                                   ["Card" 1]    card-eid
+                                   ["Measure" 7] measure-eid))]
+    (dissoc (serdes/export-visualization-settings settings) :column_settings)))
+
+(deftest ^:parallel export-viz-dynamic-goals-test
+  (testing "card and measure goal refs export as entity ids, in scalar settings and segment bounds"
+    (is (= exported-goal-viz-settings (export-goals goal-viz-settings))))
+  (testing "literal goals and self-column names are untouched"
+    (is (= {:graph.goal_value 100 :progress.goal "self-col"}
+           (export-goals {:graph.goal_value 100 :progress.goal "self-col"})))))
+
+(deftest ^:parallel import-viz-dynamic-goals-test
+  (testing "entity ids resolve back to numeric ids"
+    (binding [serdes/*import-fk* (fn [eid _model] (condp = eid card-eid 1, measure-eid 7))]
+      (is (= goal-viz-settings
+             (dissoc (serdes/import-visualization-settings exported-goal-viz-settings)
+                     :column_settings))))))
+
+(deftest ^:parallel export-viz-dynamic-goals-deleted-target-test
+  (testing "a goal pointing at a deleted entity exports as no goal rather than a dangling ref"
+    (binding [serdes/*export-fk* (fn [_id model]
+                                   (throw (ex-info "FK target not found"
+                                                   {:model model ::serdes/type :target-not-found})))]
+      (is (= {:graph.goal_value nil
+              :progress.goal    nil
+              :gauge.segments   [{:min 0 :max nil :color "#fff"}]
+              :scalar.segments  [{:min nil :max "self-col"}]}
+             (dissoc (serdes/export-visualization-settings goal-viz-settings) :column_settings))))))
+
+(deftest ^:parallel viz-dynamic-goals-deps-test
+  (testing "export deps use the raw numeric ids"
+    (is (= #{[{:model "Card" :id 1}] [{:model "Measure" :id 7}]}
+           (serdes/visualization-settings-deps true goal-viz-settings))))
+  (testing "import deps use the portable entity ids"
+    (is (= #{[{:model "Card" :id card-eid}] [{:model "Measure" :id measure-eid}]}
+           (serdes/visualization-settings-deps false exported-goal-viz-settings))))
+  (testing "numeric ids are not treated as refs at load time"
+    (is (= #{} (serdes/visualization-settings-deps false goal-viz-settings))))
+  (testing "literal goals produce no deps"
+    (is (= #{} (serdes/visualization-settings-deps true {:graph.goal_value 100})))))

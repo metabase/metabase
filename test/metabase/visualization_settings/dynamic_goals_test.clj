@@ -75,19 +75,23 @@
   (testing "same id, different type, different value"
     (is (= 100 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "total"} referenced-entities)))
     (is (= 7 (dynamic-goals/resolve-goal-value {:id 1 :type "measure" :column "avg"} referenced-entities))))
-  (testing "a type with no results at all is :query-failed"
-    (is (= :query-failed (unresolved-reason {:id 1 :type "dashboard" :column "avg"} referenced-entities))))
+  (testing "a type with no results at all is :never-ran"
+    (is (= :never-ran (unresolved-reason {:id 1 :type "dashboard" :column "avg"} referenced-entities))))
   (testing "keyword statuses are accepted too"
     (is (= 100 (dynamic-goals/resolve-goal-value
                 {:id 1 :type "card" :column "total"}
                 (update-in referenced-entities ["card" "1" :status] keyword))))))
 
 (deftest ^:parallel resolve-goal-value-unresolved-test
-  (testing ":query-failed"
-    (are [refs] (= :query-failed (unresolved-reason {:id 1 :type "card" :column "total"} refs))
+  (testing ":never-ran when the entity has no entry at all"
+    (are [refs] (= :never-ran (unresolved-reason {:id 1 :type "card" :column "total"} refs))
       nil
       (dissoc referenced-entities "card")
-      {"card" {"1" (get-in referenced-entities ["card" "2"])}}))
+      (update referenced-entities "card" dissoc "1")))
+  (testing ":query-failed"
+    (are [refs] (= :query-failed (unresolved-reason {:id 1 :type "card" :column "total"} refs))
+      {"card" {"1" (get-in referenced-entities ["card" "2"])}}
+      {"card" {"1" {:status "completed"}}}))
   (testing ":column-not-found"
     (is (= :column-not-found (unresolved-reason {:id 1 :type "card" :column "nope"} referenced-entities))))
   (testing ":not-a-number"

@@ -6,14 +6,14 @@
    [metabase.permissions.core :as perms]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.request.core :as request]
+   [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -129,10 +129,10 @@
    [:entity_id   ms/PositiveInt]
    [:entity_name {:optional true} [:maybe :string]]])
 
-(def ^:private entity-type->model
-  {:database  :model/Database
-   :card      :model/Card
-   :dashboard :model/Dashboard})
+(def ^:private entity-type->names-fn
+  {:database  task-history.db/database-names-by-id
+   :card      task-history.db/card-names-by-id
+   :dashboard task-history.db/dashboard-names-by-id})
 
 (defn- hydrate-entity-names
   "Hydrate entity names based on entity_type and entity_id."
@@ -141,12 +141,12 @@
     runs
     (let [grouped    (group-by :entity_type runs)
           name-lookup (into {}
-                            (mapcat (fn [[entity-type model]]
+                            (mapcat (fn [[entity-type names-fn]]
                                       (when-let [entity-runs (grouped entity-type)]
                                         (let [ids   (map :entity_id entity-runs)
-                                              names (t2/select-pk->fn :name model :id [:in ids])]
+                                              names (names-fn ids)]
                                           (map (fn [[id name]] [[entity-type id] name]) names))))
-                                    entity-type->model))]
+                                    entity-type->names-fn))]
       (map #(assoc % :entity_name (get name-lookup [(:entity_type %) (:entity_id %)])) runs))))
 
 (defn- hydrate-task-counts
@@ -155,15 +155,7 @@
   (if (empty? runs)
     runs
     (let [run-ids      (map :id runs)
-          counts       (t2/query {:select   [:run_id
-                                             [[:count :id] :task_count]
-                                             [[:raw "SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END)"]
-                                              :success_count]
-                                             [[:raw "SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)"]
-                                              :failed_count]]
-                                  :from     :task_history
-                                  :where    [:in :run_id run-ids]
-                                  :group-by [:run_id]})
+          counts       (task-history.db/task-counts-for-runs run-ids)
           ;; Coerce counts to int (MySQL may return BigDecimal)
           counts-by-id (into {} (map (fn [{:keys [run_id task_count success_count failed_count]}]
                                        [run_id {:task_count    (int task_count)
@@ -175,79 +167,37 @@
                    (get counts-by-id (:id %)))
            runs))))
 
-(defn- timestamp-constraint
-  [field-name date-string]
+(defn- timestamp-range
+  [date-string]
   (let [{:keys [start end]}
         (try
           (params.dates/date-string->range date-string {:inclusive-end? false})
           (catch Exception e
             (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
                             {:status-code 400}
-                            e))))
-        start (some-> start u.date/parse)
-        end   (some-> end   u.date/parse)]
-    (into [:and] (remove nil?)
-          [(when start
-             [:>= field-name start])
-           (when end
-             [:< field-name end])])))
+                            e))))]
+    [(some-> start u.date/parse) (some-> end u.date/parse)]))
 
-(defn- build-run-where-clause
+(defn- run-filters
   [{:keys [run-type entity-type entity-id status started-at]}]
-  ;; columns are qualified because the entity_name/task_count sorts add joins whose tables may share column names
-  ;; (e.g. report_card.entity_id)
-  (let [conditions (cond-> []
-                     run-type    (conj [:= :task_run.run_type run-type])
-                     entity-type (conj [:= :task_run.entity_type entity-type])
-                     entity-id   (conj [:= :task_run.entity_id entity-id])
-                     status      (conj [:= :task_run.status status])
-                     started-at  (conj (timestamp-constraint :task_run.started_at started-at)))]
-    (if (seq conditions)
-      {:where (into [:and] conditions)}
-      {})))
-
-(defn- runs-order-by
-  "Build the honeysql fragment used to order the task runs list. Direct columns order in place; `:entity_name`
-  LEFT JOINs the three entity tables and orders by the coalesced name; `:task_count` LEFT JOINs a grouped
-  `task_history` subquery. Derived-column variants keep the selected shape to `task_run.*` and add a
-  deterministic `[:id :desc]` secondary key."
-  [{col :sort-column dir :sort-direction}]
-  (let [secondary [:task_run.id :desc]]
-    (case col
-      :entity_name
-      {:select    [:task_run.*]
-       :left-join [[:metabase_database :sort_db]
-                   [:and [:= :task_run.entity_type "database"]  [:= :task_run.entity_id :sort_db.id]]
-                   [:report_card :sort_card]
-                   [:and [:= :task_run.entity_type "card"]      [:= :task_run.entity_id :sort_card.id]]
-                   [:report_dashboard :sort_dash]
-                   [:and [:= :task_run.entity_type "dashboard"] [:= :task_run.entity_id :sort_dash.id]]]
-       :order-by  [[[:coalesce :sort_db.name :sort_card.name :sort_dash.name] dir] secondary]}
-
-      :task_count
-      {:select    [:task_run.*]
-       :left-join [[{:select   [:run_id [[:count :*] :task_count]]
-                     :from     [:task_history]
-                     :group-by [:run_id]}
-                    :sort_tc]
-                   [:= :sort_tc.run_id :task_run.id]]
-       :order-by  [[[:coalesce :sort_tc.task_count [:inline 0]] dir] secondary]}
-
-      {:order-by [[col dir] secondary]})))
+  (let [[start end] (when started-at (timestamp-range started-at))]
+    {:run-type          run-type
+     :entity-type       entity-type
+     :entity-id         entity-id
+     :status            status
+     :started-at-start  start
+     :started-at-end    end}))
 
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
   [_
-   params :- [:maybe [:merge ::RunFilterParams ::RunSortParams]]]
+   {:keys [sort-column sort-direction] :as params} :- [:maybe [:merge ::RunFilterParams ::RunSortParams]]]
   (perms/check-has-application-permission :monitoring)
-  (let [where-clause (build-run-where-clause params)
-        limit        (request/limit)
-        offset       (request/offset)
-        runs         (t2/select :model/TaskRun (merge where-clause
-                                                      (runs-order-by params)
-                                                      (when limit {:limit limit})
-                                                      (when offset {:offset offset})))]
-    {:total  (t2/count :model/TaskRun where-clause)
+  (let [filters (run-filters params)
+        limit   (request/limit)
+        offset  (request/offset)
+        runs    (task-history.db/task-runs filters sort-column sort-direction limit offset)]
+    {:total  (task-history.db/task-run-count filters)
      :limit  limit
      :offset offset
      :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
@@ -256,8 +206,8 @@
   "Get a single task run with all its child tasks."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
-  (let [run   (api/check-404 (t2/select-one :model/TaskRun :id id))
-        tasks (t2/select :model/TaskHistory :run_id id {:order-by [[:started_at :asc]]})]
+  (let [run   (api/check-404 (task-history.db/task-run id))
+        tasks (task-history.db/tasks-for-run id)]
     (-> [run]
         hydrate-entity-names
         hydrate-task-counts
@@ -271,10 +221,7 @@
               [:run-type   (into [:enum] (map name task-run/run-types))]
               [:started-at ms/NonBlankString]]]
   (perms/check-has-application-permission :monitoring)
-  (let [where-conditions [[:= :run_type (:run-type params)]
-                          (timestamp-constraint :started_at (:started-at params))]]
-    (->> (t2/query {:select-distinct [:entity_type :entity_id]
-                    :from            :task_run
-                    :where           (into [:and] where-conditions)})
+  (let [[start end] (timestamp-range (:started-at params))]
+    (->> (task-history.db/distinct-run-entities (:run-type params) start end)
          (map #(update % :entity_type keyword))
          hydrate-entity-names)))

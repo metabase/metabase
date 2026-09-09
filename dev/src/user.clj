@@ -110,7 +110,8 @@
        enumeration-seq
        rest ; First file in the enumeration will be this file, so skip it.
        (run! #(do
-                #_:clj-kondo/ignore
+                ;; bootstrap chatter on stdout; logging isn't configured this early
+                #_{:clj-kondo/ignore [:discouraged-var]}
                 (println "Loading" (str %))
                 (clojure.lang.Compiler/load (io/reader %))))))
 
@@ -118,7 +119,7 @@
 ;; We sometimes need to run cmd stuffs like `clojure -M:migrate rollback n 3` and these
 ;; libraries might not be available in the classpath
 (u/ignore-exceptions
- ;; make sure stuff like `=?` and what not are loaded
+  ;; make sure stuff like `=?` and what not are loaded
   (classloader/require 'mb.hawk.assert-exprs))
 
 (u/ignore-exceptions
@@ -130,9 +131,9 @@
 
 (u/ignore-exceptions
   (classloader/require 'pjstadig.humane-test-output)
- ;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
- ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config.core]] so we don't load that
- ;; namespace before we load [[metabase.core.bootstrap]]
+  ;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
+  ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config.core]] so we don't load that
+  ;; namespace before we load [[metabase.core.bootstrap]]
   (when-not (= (env/env :mb-run-mode) "test")
     ((resolve 'pjstadig.humane-test-output/activate!))))
 
@@ -167,18 +168,21 @@
   [& args]
   (let [{:keys [help hot port]} (:options (cli/parse-opts args cli-spec))]
     (when help
-      #_:clj-kondo/ignore
+      ;; CLI help text belongs on stdout
+      #_{:clj-kondo/ignore [:discouraged-var :redundant-do]}
       (do
         (println "Usage: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev [options]")
         (println "Options:")
         (println (:summary (cli/parse-opts [] cli-spec))))
       (System/exit 0))
     (when hot
-      #_:clj-kondo/ignore
+      ;; CLI startup message belongs on stdout
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Enabling hot reloading of code. Backend code will reload on every request.")
       (alter-var-root #'*enable-hot-reload* (constantly true)))
     (future
-      #_:clj-kondo/ignore
+      ;; CLI startup message belongs on stdout
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Starting Metabase cider repl on port" port)
       (spit ".nrepl-port" port)
       (nrepl-server/start-server

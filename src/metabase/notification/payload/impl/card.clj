@@ -2,6 +2,7 @@
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
@@ -9,8 +10,7 @@
    [metabase.notification.send :as notification.send]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.visualization-settings.ui-logic :as ui-logic]
-   [toucan2.core :as t2]))
+   [metabase.visualization-settings.ui-logic :as ui-logic]))
 
 (mu/defmethod notification.payload/payload :notification/card
   [{:keys [creator_id payload subscriptions] :as _notification-info} :- ::notification.payload/Notification]
@@ -24,7 +24,7 @@
                          :status (:status card-result)
                          :error  (:error card-result)})))
       {:card_part        part
-       :card             (t2/select-one :model/Card card-id)
+       :card             (notification.db/card card-id)
        :style            {:color_text_dark   channel.render/color-text-dark
                           :color_text_light  channel.render/color-text-light
                           :color_text_medium channel.render/color-text-medium}
@@ -72,7 +72,7 @@
   (when (and (-> notification-info :payload :send_once)
              (not skipped?))
     (log/info "Archiving due to send_once")
-    (t2/update! :model/Notification (:id notification-info) {:active false}))
+    (notification.db/deactivate-notification! (:id notification-info)))
   (try
     (when-let [rows (-> notification-payload :payload :card_part :result :data :rows)]
       (notification.payload/cleanup! rows))

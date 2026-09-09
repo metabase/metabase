@@ -91,6 +91,10 @@
     (let [session-id (extended-session-id {:v 1 :ui true})]
       (is (true? (mcp.session/valid-id? session-id)))
       (is (true? (mcp.session/supports-mcp-ui? session-id)))))
+  (testing "unknown keys in a known-version hint are ignored, not rejected"
+    (let [session-id (extended-session-id {:v 1 :ui true :a 1})]
+      (is (true? (mcp.session/valid-id? session-id)))
+      (is (true? (mcp.session/supports-mcp-ui? session-id)))))
   (testing "unknown payload versions keep the session valid but disable UI capability"
     (let [session-id (extended-session-id {:v 2 :ui true})]
       (is (true? (mcp.session/valid-id? session-id)))

@@ -163,17 +163,17 @@
 (defn viz-settings->goal-specs
   "Extract referenced-entity specs from merged viz settings; nil when there are none."
   [viz]
-  (let [sources (into []
-                      (comp (keep dynamic-goals/goal-source)
-                            ;; a goal pointing at something we can't run is dropped rather than failing the request
-                            (filter (comp entity-types :type)))
-                      (dynamic-goals/goal-values viz))]
-    (when (seq sources)
-      (perf/mapv (fn [[[entity-type id] ss]]
-                   {:type    entity-type
-                    :id      id
-                    :columns (vec (distinct (map :column ss)))})
-                 (group-by (juxt :type :id) sources)))))
+  (when-let [sources (not-empty
+                      (into []
+                            (comp (keep dynamic-goals/goal-source)
+                                  ;; a goal pointing at something we can't run is dropped rather than failing the request
+                                  (filter (comp entity-types :type)))
+                            (dynamic-goals/goal-values viz)))]
+    (perf/mapv (fn [[[entity-type id] ss]]
+                 {:type    entity-type
+                  :id      id
+                  :columns (vec (distinct (map :column ss)))})
+               (group-by (juxt :type :id) sources))))
 
 (defn maybe-wrap-qp-for-goals
   "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."

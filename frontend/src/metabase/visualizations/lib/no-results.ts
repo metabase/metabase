@@ -1,4 +1,7 @@
-import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
+import {
+  isPivotDetailRow,
+  isPivotGroupColumn,
+} from "metabase/visualizations/lib/data_grid";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type { DatasetData } from "metabase-types/api";
 
@@ -18,7 +21,5 @@ export function hasNoResults(
     return false;
   }
 
-  // Detail rows (real data, not subtotals/totals) have a pivot-grouping of 0;
-  // Number() so a string-typed value from some drivers still compares.
-  return !data.rows.some((row) => Number(row[pivotGroupingIndex]) === 0);
+  return !data.rows.some((row) => isPivotDetailRow(row, pivotGroupingIndex));
 }

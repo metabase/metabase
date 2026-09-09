@@ -1,5 +1,5 @@
+import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { SourceReplacementButton } from "./components/SourceReplacementButton";

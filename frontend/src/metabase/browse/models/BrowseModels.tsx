@@ -8,14 +8,14 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/current-user";
+import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import {
-  canUserCreateNativeQueries,
-  canUserCreateQueries,
-} from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -70,7 +70,7 @@ export const BrowseModels = () => {
       flex={1}
       direction="column"
       wrap="nowrap"
-      pt="md"
+      pt="lg"
       aria-labelledby={titleId}
     >
       <Flex
@@ -93,7 +93,7 @@ export const BrowseModels = () => {
                 {t`Models`}
               </Group>
             </Title>
-            <Group gap="xs">
+            <Group gap="xxs">
               {canCreateNewModel && (
                 <Tooltip label={t`Create a new model`} position="bottom">
                   <ActionIcon
@@ -120,15 +120,15 @@ export const BrowseModels = () => {
       </Flex>
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
         <Flex maw="64rem" mx="auto" w="100%">
-          <Stack mb="lg" gap="md" w="100%">
+          <Stack mb="xl" gap="lg" w="100%">
             {isEmpty ? (
-              <Stack gap="lg" align="center" data-testid="empty-state">
+              <Stack gap="xl" align="center" data-testid="empty-state">
                 {showMetabaseLinks && (
                   <Box maw="45rem" w="100%">
                     <ModelsVideo autoplay={0} />
                   </Box>
                 )}
-                <Stack gap="xs" maw="28rem">
+                <Stack gap="xxs" maw="28rem">
                   <Title
                     order={3}
                     ta="center"

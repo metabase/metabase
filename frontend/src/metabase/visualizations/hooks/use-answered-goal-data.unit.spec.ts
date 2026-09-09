@@ -2,7 +2,11 @@ import fetchMock from "fetch-mock";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import type { DatasetData, ReferencedEntity } from "metabase-types/api";
+import type {
+  DatasetData,
+  DatasetQuery,
+  ReferencedEntity,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -27,18 +31,33 @@ const CARD_9_ANSWER = {
   },
 };
 
-function setup(data: DatasetData, entities: ReferencedEntity[]) {
+interface SetupOpts {
+  data?: DatasetData;
+  datasetQuery?: DatasetQuery;
+  entities?: ReferencedEntity[];
+}
+
+function setup(opts: SetupOpts = {}) {
+  const { datasetQuery, data, entities } = {
+    datasetQuery: DATASET_QUERY,
+    data: DATA,
+    entities: [],
+    ...opts,
+  };
+
   return renderHookWithProviders(
-    () => useAnsweredGoalData(DATASET_QUERY, data, entities),
-    {},
+    ({ entities }: { entities: ReferencedEntity[] }) => {
+      return useAnsweredGoalData(datasetQuery, data, entities);
+    },
+    { initialProps: { entities } },
   );
 }
 
 describe("useAnsweredGoalData", () => {
   it("returns the dataset as is without fetching when nothing is unanswered", () => {
-    const { result } = setup(DATA, []);
+    const { result } = setup();
 
-    expect(result.current).toEqual({ status: "answered", data: DATA });
+    expect(result.current).toEqual({ status: "resolved", data: DATA });
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
@@ -51,12 +70,12 @@ describe("useAnsweredGoalData", () => {
       },
     });
 
-    const { result } = setup(DATA, [CARD_9]);
+    const { result } = setup({ entities: [CARD_9] });
     expect(result.current).toEqual({ status: "resolving" });
 
     await waitFor(() =>
       expect(result.current).toEqual({
-        status: "answered",
+        status: "resolved",
         data: {
           ...DATA,
           referenced_entities: { card: CARD_9_ANSWER, measure: {} },
@@ -89,11 +108,11 @@ describe("useAnsweredGoalData", () => {
       },
     });
 
-    const { result } = setup(data, [CARD_9]);
+    const { result } = setup({ data, entities: [CARD_9] });
 
     await waitFor(() =>
       expect(result.current).toEqual({
-        status: "answered",
+        status: "resolved",
         data: {
           ...data,
           referenced_entities: { card: CARD_9_ANSWER, measure: measureAnswer },
@@ -102,10 +121,17 @@ describe("useAnsweredGoalData", () => {
     );
   });
 
+  it("fails without fetching when there is no query to re-run", () => {
+    const { result } = setup({ datasetQuery: undefined, entities: [CARD_9] });
+
+    expect(result.current).toEqual({ status: "failed" });
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
   it("fails when the resolving query fails", async () => {
     setupCardDataset({ status: 500 });
 
-    const { result } = setup(DATA, [CARD_9]);
+    const { result } = setup({ entities: [CARD_9] });
 
     await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
   });
@@ -113,7 +139,7 @@ describe("useAnsweredGoalData", () => {
   it("fails when the response carries no referenced entities", async () => {
     setupCardDataset({ dataset: { data: createMockDatasetData({}) } });
 
-    const { result } = setup(DATA, [CARD_9]);
+    const { result } = setup({ entities: [CARD_9] });
 
     await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
   });
@@ -124,6 +150,7 @@ describe("useAnsweredGoalData", () => {
         .lastCall(call.url)
         ?.request?.json();
       const [entity] = body.referenced_entities;
+
       return {
         data: createMockDatasetData({
           referenced_entities: {
@@ -141,13 +168,9 @@ describe("useAnsweredGoalData", () => {
       };
     });
 
-    const { result, rerender } = renderHookWithProviders(
-      ({ entities }: { entities: ReferencedEntity[] }) =>
-        useAnsweredGoalData(DATASET_QUERY, DATA, entities),
-      { initialProps: { entities: [CARD_9] } },
-    );
+    const { result, rerender } = setup({ entities: [CARD_9] });
 
-    await waitFor(() => expect(result.current.status).toBe("answered"));
+    await waitFor(() => expect(result.current.status).toBe("resolved"));
 
     rerender({ entities: [{ type: "card", id: 10 }] });
 
@@ -155,7 +178,7 @@ describe("useAnsweredGoalData", () => {
 
     await waitFor(() =>
       expect(result.current).toMatchObject({
-        status: "answered",
+        status: "resolved",
         data: {
           referenced_entities: { card: { 10: { status: "completed" } } },
         },

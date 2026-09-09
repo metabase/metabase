@@ -19,8 +19,10 @@ import type {
 } from "metabase/redux/store/visualizer";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { clone } from "metabase/utils/clone";
-import { isCartesianChart } from "metabase/visualizations";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  isCartesianChart,
+} from "metabase/viz-core";
 import type {
   Card,
   CardId,

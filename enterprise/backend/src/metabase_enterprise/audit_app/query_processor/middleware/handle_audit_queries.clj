@@ -39,7 +39,9 @@
      :xform    ...}"
   (:require
    [clojure.data :as data]
+   [malli.core :as mc]
    [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -47,7 +49,9 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (defn- check-results-and-metadata-keys-match
   "Primarily for dev and debugging purposes. We can probably take this out when shipping the finished product."
@@ -80,18 +84,36 @@
 
 (def InternalQuery
   "Schema for a valid `internal` type query."
-  [:map
-   [:type [:enum :internal "internal"]]
-   [:fn   [:and
-           :string
-           [:fn
-            {:error/message "namespace-qualified symbol serialized as a string"}
-            (fn [s]
-              (try
-                (when-let [symb (some-> s symbol)]
-                  (qualified-symbol? symb))
-                (catch Throwable _)))]]]
-   [:args {:optional true} [:sequential :any]]])
+  (into [:multi {:dispatch :fn}]
+        (cond-> [["metabase-enterprise.audit-app.pages.queries/bad-table"
+                  [:map
+                   [:type   [:enum :internal "internal"]]
+                   [:args   {:optional true}
+                    [:maybe [:or
+                             [:= []]
+                             [:tuple
+                              [:maybe :string]
+                              [:maybe [:enum "card_id" "card_name" "error_substr" "collection_id" "collection_name"
+                                       "database_id" "database_name" "schema_name" "table_id" "table_name"
+                                       "last_run_at" "total_runs" "num_dashboards" "user_id" "user_name"
+                                       "updated_at"]]
+                              [:maybe [:enum "asc" "desc"]]]]]]
+                   [:limit  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                   [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]]
+          config/is-test?
+          (conj [::mc/default
+                 [:map
+                  [:type   [:enum :internal "internal"]]
+                  [:args   {:optional true} [:maybe [:sequential :any]]]
+                  [:limit  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                  [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]))))
+
+(defn- validate-internal-query
+  [query]
+  (when-not (mr/validate InternalQuery query)
+    (throw (ex-info (tru "Invalid internal query.")
+                    {:type        qp.error-type/invalid-query
+                     :status-code 400}))))
 
 (def ^:dynamic *additional-query-params*
   "Additional `internal` query params beyond `type`, `fn`, and `args`. These are bound to this dynamic var which is a
@@ -120,8 +142,9 @@
      reduce-legacy-results) rff results))
 
 (mu/defn- process-internal-query
-  [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery
-   rff                                           :- ::qp.schema/rff]
+  [{qualified-fn-str :fn, args :args, :as query}
+   rff :- ::qp.schema/rff]
+  (validate-internal-query query)
   ;; Make sure current user is a superuser or has monitoring permissions
   (perms/check-has-application-permission :monitoring)
   ;; Make sure audit app is enabled (currently the only use case for internal queries). We can figure out a way to

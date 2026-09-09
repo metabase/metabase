@@ -1,7 +1,6 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -10,6 +9,7 @@ import {
   setupListMetabotConversationsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   type RenderWithProvidersOptions,
   act,
@@ -28,8 +28,8 @@ import {
   mockStreamedEndpoint,
 } from "metabase/api/ai-streaming/test-utils";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   MetabotConversation,
   MetabotInfo,
@@ -42,17 +42,96 @@ import {
 } from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
+import "../components/MetabotChat/MetabotChat";
 import { FIXED_METABOT_ENTITY_IDS, FIXED_METABOT_IDS } from "../constants";
 import { MetabotProvider } from "../context";
 import {
   type MetabotAgentId,
   type MetabotState,
+  fixedMetabotAgentIds,
   metabotReducer,
   setVisible,
 } from "../state";
-import { getMetabotInitialState } from "../state/reducer-utils";
+import { sendAgentRequest } from "../state/actions";
+import {
+  createAgentState,
+  createConversationForAgent,
+  getMetabotInitialState,
+} from "../state/reducer-utils";
 
 export { createMockReadableStream, createMockSSEStream, createPauses };
+
+type MetabotStoreLike = { getState: () => { metabot: MetabotState } };
+
+const agentIn = (state: MetabotState, agentId: MetabotAgentId) =>
+  checkNotNull(state.agents[agentId]);
+
+const convoIn = (state: MetabotState, conversationId: string) =>
+  checkNotNull(state.conversations[conversationId]);
+
+export const conversationIdForAgent = (
+  store: MetabotStoreLike,
+  agentId: MetabotAgentId = "omnibot",
+) => agentIn(store.getState().metabot, agentId).conversationId;
+
+export const convoForAgent = (
+  store: MetabotStoreLike,
+  agentId: MetabotAgentId = "omnibot",
+) => convoIn(store.getState().metabot, conversationIdForAgent(store, agentId));
+
+// starts turns without making an API request
+export const startRequestlessAgentTurn = (
+  store: { dispatch: (action: unknown) => unknown },
+  conversationId: string,
+  assistantMessageId?: string,
+) =>
+  store.dispatch({
+    type: sendAgentRequest.pending.type,
+    meta: {
+      arg: {
+        conversation_id: conversationId,
+        assistant_message_id: assistantMessageId,
+      },
+    },
+  });
+
+// make ids easer to address than production's random uuids
+export const testConversationId = (agentId: MetabotAgentId) =>
+  `convo-${agentId}`;
+
+export const createTestMetabotState = ({
+  visibleAgentIds = [],
+  conversationTitle,
+}: {
+  visibleAgentIds?: MetabotAgentId[];
+  conversationTitle?: string;
+} = {}): MetabotState => {
+  const agentConversations = fixedMetabotAgentIds.map((agentId) => ({
+    agentId,
+    conversationId: testConversationId(agentId),
+  }));
+
+  return {
+    ...getMetabotInitialState(),
+    conversations: Object.fromEntries(
+      agentConversations.map(({ agentId, conversationId }) => [
+        conversationId,
+        createConversationForAgent(agentId, {
+          conversationId,
+          title: conversationTitle,
+        }),
+      ]),
+    ),
+    agents: Object.fromEntries(
+      agentConversations.map(({ agentId, conversationId }) => [
+        agentId,
+        createAgentState(conversationId, {
+          visible: visibleAgentIds.includes(agentId),
+        }),
+      ]),
+    ),
+  };
+};
 
 const mockReducedMotion = () => {
   window.matchMedia = (query: string) =>
@@ -92,7 +171,7 @@ export const lastChatMessage = async (options?: {
 }) => (await chatMessages(options)).at(-1);
 export const input = async () => {
   const chatInput = await screen.findByTestId("metabot-chat-input");
-  return chatInput.querySelector('[contenteditable="true"]')!;
+  return chatInput.querySelector<HTMLElement>("[contenteditable]")!;
 };
 export const enterChatMessage = async (message: string, send = true) => {
   // using userEvent.type works locally but in CI characters are sometimes dropped
@@ -110,6 +189,12 @@ export const sendMessageButton = () =>
   screen.findByTestId("metabot-send-message");
 export const stopResponseButton = () =>
   screen.findByTestId("metabot-stop-response");
+export const continueResponseButton = () =>
+  screen.findByTestId("metabot-chat-message-continue");
+export const queryContinueResponseButton = () =>
+  screen.queryByTestId("metabot-chat-message-continue");
+export const queryTurnAlert = () =>
+  screen.queryByTestId("metabot-chat-message-turn-alert");
 export const closeChatButton = () => screen.findByTestId("metabot-close-chat");
 export const responseLoader = () =>
   screen.findByTestId("metabot-response-loader");
@@ -156,7 +241,6 @@ export const assertNotVisible = async () =>
     expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
   });
 
-// NOTE: for some reason the keyboard shortcuts won't work with tinykeys while testing, using redux for now...
 export const hideMetabot = (
   dispatch: any,
   agentId: MetabotAgentId = "omnibot",
@@ -188,6 +272,14 @@ export const assertConversation = async (
     });
   });
 };
+
+export const expectContextUsage = (percent: number) =>
+  waitFor(() =>
+    expect(screen.getByTestId("metabot-context-usage-ring")).toHaveAttribute(
+      "aria-label",
+      `${percent}% of the context window used`,
+    ),
+  );
 
 export const lastReqBody = async (
   agentSpy: ReturnType<typeof mockAgentEndpoint>,
@@ -298,22 +390,12 @@ export function setup(
     initialRoute,
   } = options || {};
 
-  const visibleState = assocIn(
-    getMetabotInitialState(),
-    ["conversations", "omnibot", "visible"],
-    true,
-  );
   const metabotState =
     metabotInitialState ??
-    Object.keys(visibleState.conversations).reduce(
-      (state, agentId) =>
-        assocIn(
-          state,
-          ["conversations", agentId, "title"],
-          conversationTitle || undefined,
-        ),
-      visibleState,
-    );
+    createTestMetabotState({
+      visibleAgentIds: ["omnibot"],
+      conversationTitle: conversationTitle || undefined,
+    });
 
   fetchMock.get(
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
@@ -34,7 +35,7 @@
 
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :type       :json
   :doc        false
@@ -77,7 +78,7 @@
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :deprecated "0.54.0"
   :default "metabase_files"
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter
   :setter (fn [channel-name]
@@ -86,7 +87,7 @@
 (defsetting slack-bug-report-channel
   (deferred-tru "The name of the channel where bug reports should be posted")
   :default "metabase-bugs"
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter
   :export?    false
@@ -116,7 +117,7 @@
 
 (defsetting notification-link-base-url
   (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :internal
   :type       :string
   :feature    :whitelabel
@@ -126,14 +127,14 @@
 
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    "notifications@metabase.com"
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-from-address-override
   (deferred-tru "The email address you want to use for the sender of emails from your custom SMTP server.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :feature   :cloud-custom-smtp
   :default    "notifications@metabase.com"
   :visibility :settings-manager
@@ -142,7 +143,7 @@
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter
   :setter     (fn [new-value]
@@ -165,7 +166,7 @@
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :visibility :settings-manager
   :audit      :getter
@@ -314,7 +315,7 @@
   :visibility :internal
   :audit      :getter)
 
-(defsetting http-channel-host-strategy
+(defsetting http-channel-allowed-networks
   (deferred-tru (str "Controls which types of hosts are allowed as HTTP channel destinations.\n"
                      "Options:\n"
                      "- external-only (default - only external hosts)\n"
@@ -324,11 +325,12 @@
   :visibility :internal
   :default    :external-only
   :export?    false
+  :deprecated-name :http-channel-host-strategy
   :setter     (fn [new-value]
                 (when (some? new-value)
                   (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed.")))
-                (setting/set-value-of-type! :keyword :http-channel-host-strategy new-value)))
+                          (tru "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed.")))
+                (setting/set-value-of-type! :keyword :http-channel-allowed-networks new-value)))
 
 (defsetting slack-configured?
   "Is Slack integration configured?"
@@ -337,3 +339,46 @@
   :getter     (fn [] (boolean (slack-app-token)))
   :export?    false
   :setter     :none)
+
+;;; Retry settings for delivering notifications via channels. The retry machinery itself lives in
+;;; [[metabase.util.retry]]; the settings live here so `util` stays settings-free.
+;;;
+;;; TODO (Chris 2026-07-30) -- rename these to `channel-retry-*`: the bare `retry-` names read as global retry
+;;; policy, but they only configure channel delivery. Needs a deprecation alias for the existing names, since
+;;; `MB_RETRY_MAX_RETRIES` and friends are user-facing.
+
+(defsetting retry-max-retries
+  (deferred-tru "The maximum number of retries for an event.")
+  :type :integer
+  :default (if config/is-dev?
+             0
+             6))
+
+(defsetting retry-initial-interval
+  (deferred-tru "The initial retry delay in milliseconds.")
+  :type :integer
+  :default 500)
+
+(defsetting retry-multiplier
+  (deferred-tru "The delay multiplier between attempts.")
+  :type :double
+  :default 2.0)
+
+(defsetting retry-jitter-factor
+  (deferred-tru "The jitter factor of the retry delay.")
+  :type :double
+  :default 0.1)
+
+(defsetting retry-max-interval-millis
+  (deferred-tru "The maximum delay between attempts.")
+  :type :integer
+  :default 30000)
+
+(defn retry-configuration
+  "Returns a map with the default retry configuration, suitable for [[metabase.util.retry/with-retry]]."
+  []
+  {:max-retries             (retry-max-retries)
+   :initial-interval-millis (retry-initial-interval)
+   :multiplier              (retry-multiplier)
+   :jitter-factor           (retry-jitter-factor)
+   :max-interval-millis     (retry-max-interval-millis)})

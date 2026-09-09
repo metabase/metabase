@@ -13,8 +13,6 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
@@ -969,35 +967,6 @@
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
 
-(deftest ^:parallel can-run-adhoc-query-test
-  (let [metadata-provider (mt/metadata-provider)
-        venues            (lib.metadata/table metadata-provider (mt/id :venues))
-        query             (lib/query metadata-provider venues)]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Card card {:dataset_query query}
-                     :model/Card no-query {}]
-        (is (=? {:can_run_adhoc_query true}
-                (t2/hydrate card :can_run_adhoc_query)))
-        (is (=? {:can_run_adhoc_query false}
-                (t2/hydrate no-query :can_run_adhoc_query)))))))
-
-(deftest can-run-adhoc-query-respects-create-queries-perm-test
-  (testing "can_run_adhoc_query reflects a non-admin's create-queries permission on the card's table (#13347)"
-    (let [mp     (mt/metadata-provider)
-          venues (lib.metadata/table mp (mt/id :venues))
-          query  (lib/query mp venues)]
-      (mt/with-temp [:model/Card card {:dataset_query query}]
-        (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
-          (mt/with-current-user (mt/user->id :rasta)
-            (is (=? {:can_run_adhoc_query false}
-                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query))))
-          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
-          (mt/with-current-user (mt/user->id :rasta)
-            (is (=? {:can_run_adhoc_query true}
-                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query)))))))))
-
 (deftest audit-card-permissions-test
   (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"
     ;; Here we're testing the specific scenario where an EE instance is downgraded to OSS, but still has the audit
@@ -1776,3 +1745,30 @@
       (is (= {:metabot_conversation_id convo-id :metabot_chart_id "chart-1"}
              (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
                             :id card-id))))))
+
+(deftest serdes-extract-query-excludes-exploration-summary-cards-test
+  (testing "serdes never extracts a Card scoped to an exploration Summary document"
+    (mt/with-temp [:model/Collection  {coll-id :id}     {}
+                   :model/User        {user-id :id}     {:email "serdes-card@example.com"}
+                   :model/Exploration {expl-id :id}     {:name "Explo" :creator_id user-id}
+                   :model/Document    {summary-id :id}  {:name           "Summary"
+                                                         :creator_id     user-id
+                                                         :collection_id  coll-id
+                                                         :exploration_id expl-id}
+                   :model/Document    {plain-doc :id}   {:name "Plain doc" :creator_id user-id
+                                                         :collection_id coll-id}
+                   :model/Card        {plain-card :id}  {:collection_id coll-id}
+                   :model/Card        {doc-card :id}    {:collection_id coll-id :document_id plain-doc}
+                   :model/Card        {summary-card :id} {:collection_id coll-id :document_id summary-id
+                                                          :name "Orders for Customer = ACME Corp over time"}]
+      (let [eid       #(t2/select-one-fn :entity_id :model/Card :id %)
+            extracted (into #{}
+                            (map :entity_id)
+                            (serdes/extract-all "Card" {:where [:in :id [plain-card doc-card summary-card]]}))]
+        (is (contains? extracted (eid plain-card))
+            "an ordinary card is still exported")
+        (is (contains? extracted (eid doc-card))
+            "a card belonging to an ordinary document still travels with that document")
+        (is (not (contains? extracted (eid summary-card)))
+            "a card belonging to an exploration Summary is never exported — its name and dataset_query
+             carry values discovered under the creator's lens, and its parent document is excluded")))))

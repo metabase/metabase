@@ -1,24 +1,23 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { hasFailedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
+  type VisualizationDefinition,
+  columnSettings,
+  fieldSetting,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+  validateGoalReferences,
+} from "metabase/viz-core";
 import type { DatasetData } from "metabase-types/api/dataset";
-
-export const getUnresolvedSegmentsMessage = () =>
-  t`Couldn't load a value one of this chart's color ranges depends on.`;
 
 export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Number`,
   identifier: "scalar",
   iconName: "number",
   canSavePng: false,
+  noHeader: true,
+  noLoadingHeader: true,
 
   minSize: getMinSize("scalar"),
   defaultSize: getDefaultSize("scalar"),
@@ -27,10 +26,8 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
     return rows.length === 1 && cols.length === 1;
   },
 
-  checkRenderable([{ data }], settings) {
-    if (hasFailedGoalReferences(data, settings["scalar.segments"])) {
-      throw new Error(getUnresolvedSegmentsMessage());
-    }
+  checkRenderable(series, settings) {
+    validateGoalReferences(series, settings);
   },
 
   settings: {

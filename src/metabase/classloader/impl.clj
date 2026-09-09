@@ -14,8 +14,11 @@
   (:refer-clojure :exclude [require])
   (:require
    [clojure.string :as str]
-   [dynapath.util :as dynapath]
-   [metabase.util.log :as log])
+   ;; classloader sits below `util` in the module graph (util's i18n and quick-task need `the-classloader`),
+   ;; so using `metabase.util.log` here would create a module cycle; plain tools.logging hits the same log4j2
+   ;; backend, we just lose test log capture for these handful of trace messages.
+   [clojure.tools.logging :as log]
+   [dynapath.util :as dynapath])
   (:import
    (clojure.lang DynamicClassLoader RT)
    (java.net URL)))

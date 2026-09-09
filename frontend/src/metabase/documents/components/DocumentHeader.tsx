@@ -8,11 +8,10 @@ import {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
-import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
@@ -28,6 +27,7 @@ import {
   Transition,
   type TransitionProps,
 } from "metabase/ui";
+import { waitUntilNextFramePainted } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { Document } from "metabase-types/api";
 
@@ -150,7 +150,7 @@ export const DocumentHeader = ({
           }}
         />
         {document && (
-          <Flex gap="md">
+          <Flex gap="lg">
             <Flex align="center" gap="0.25rem" c="text-secondary">
               <Icon name="person" />
               <Text>{document.creator.common_name}</Text>
@@ -168,7 +168,7 @@ export const DocumentHeader = ({
           </Flex>
         )}
       </Flex>
-      <Flex gap="md" align="center" className={S.actionsContainer}>
+      <Flex gap="lg" align="center" className={S.actionsContainer}>
         <Transition
           mounted={showSaveButton}
           transition={saveButtonTransition}

@@ -12,15 +12,18 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  setupLlmModelsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupMetabotPromptSuggestionsEndpoint,
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import {
   createMockCollection,
@@ -101,28 +104,11 @@ const setup = async ({
       key: "llm-metabot-provider",
       value: null,
     }),
-    createMockSettingDefinition({
-      key: "llm-anthropic-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-openai-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-openrouter-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-zai-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-mistral-api-key",
-      value: undefined,
-    }),
   ]);
   setupUpdateSettingEndpoint();
+  setupLlmProviderTypesEndpoint();
+  setupLlmProvidersEndpoint();
+  setupLlmModelsEndpoint();
   setupCollectionByIdEndpoint({ collections });
   setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
   setupCollectionsEndpoints({ collections: [] });

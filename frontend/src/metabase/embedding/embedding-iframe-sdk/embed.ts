@@ -372,6 +372,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     this._iframe.setAttribute("data-metabase-embed", "true");
 
+    // Chrome blocks the Clipboard API in cross-origin iframes unless the host
+    // explicitly delegates the permission (e.g. copying a Metabot answer).
+    this._iframe.setAttribute("allow", "clipboard-write");
+
     this._removeMessageListener = listenForEajsMessages({
       messageSource: "iframe-content",
       iframe: this._iframe,

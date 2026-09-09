@@ -1,4 +1,9 @@
-import { Button, Flex, Tooltip, type TooltipProps } from "metabase/ui";
+import type { StoryFn } from "@storybook/react";
+
+import { Box, Button, Flex, Tooltip, type TooltipProps } from "metabase/ui";
+import { StoryJsx, StoryShowcase } from "metabase/ui/stories/showcase";
+
+const POSITIONS = ["top", "bottom", "left", "right"] as const;
 
 const args = {
   label: "Tooltip",
@@ -39,6 +44,37 @@ const DefaultTemplate = (args: TooltipProps) => (
   </Flex>
 );
 
+const OverviewTemplate: StoryFn<TooltipProps> = ({ label }) => (
+  <StoryShowcase title="Tooltip">
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${POSITIONS.length}, max-content)`,
+        columnGap: "2rem",
+        rowGap: "1rem",
+      }}
+    >
+      {POSITIONS.map((position) => (
+        <StoryJsx key={position}>
+          {`<Tooltip position="${position}" />`}
+        </StoryJsx>
+      ))}
+      {POSITIONS.map((position) => (
+        <Flex key={position} align="center" justify="center" w={140} h={100}>
+          <Tooltip
+            label={label}
+            opened
+            position={position}
+            withinPortal={false}
+          >
+            <Button variant="filled">Target</Button>
+          </Tooltip>
+        </Flex>
+      ))}
+    </Box>
+  </StoryShowcase>
+);
+
 export default {
   title: "Components/Overlays/Tooltip",
   component: Tooltip,
@@ -49,6 +85,13 @@ export default {
 export const Default = {
   render: DefaultTemplate,
   parameters: { loki: { skip: true } },
+};
+
+export const Overview = {
+  render: OverviewTemplate,
+  parameters: {
+    controls: { include: ["label", "theme"] },
+  },
 };
 
 export const LongContentWithFixedWidth = {

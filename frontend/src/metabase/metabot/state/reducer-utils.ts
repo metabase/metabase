@@ -1,4 +1,4 @@
-import { type PayloadAction, nanoid } from "@reduxjs/toolkit";
+import type { PayloadAction } from "@reduxjs/toolkit";
 import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
@@ -9,40 +9,88 @@ import {
 } from "metabase/metabot/constants";
 import { uuid } from "metabase/utils/uuid";
 
-import type {
-  MetabotAgentChainOfThoughtMessage,
-  MetabotAgentId,
-  MetabotAgentTurnDisplayError,
-  MetabotAgentTurnError,
-  MetabotConverstationState,
-  MetabotDebugToolCallMessage,
-  MetabotSearchResults,
-  MetabotState,
+import {
+  type MetabotAgentChainOfThoughtMessage,
+  type MetabotAgentId,
+  type MetabotAgentState,
+  type MetabotConversationState,
+  type MetabotDebugToolCallMessage,
+  type MetabotMessage,
+  type MetabotMessagePart,
+  type MetabotSearchResults,
+  type MetabotState,
+  fixedMetabotAgentIds,
 } from "./types";
 import { createMessageId } from "./utils";
 
 export type ConvoPayloadAction<
   Value extends Record<string, any> = Record<string, any>,
+> = PayloadAction<{ conversationId: string } & Value>;
+
+export type AgentPayloadAction<
+  Value extends Record<string, any> = Record<string, any>,
 > = PayloadAction<{ agentId: MetabotAgentId } & Value>;
 
-export const findLastToolCallMessage = (
-  convo: WritableDraft<MetabotConverstationState>,
+export const openAgentMessage = (
+  convo: WritableDraft<MetabotConversationState>,
+): WritableDraft<MetabotMessage> => {
+  const message = convo.messages.at(-1);
+  const statusType = message?.status.type;
+  const isOpenAgentMessage =
+    message?.role === "agent" &&
+    (statusType === "streaming" || statusType === "in_progress");
+  if (!isOpenAgentMessage) {
+    throw new Error("Metabot conversation has no open agent message");
+  }
+  return message;
+};
+
+export const startUserMessage = (
+  convo: WritableDraft<MetabotConversationState>,
+  { id, externalId }: { id: string; externalId?: string },
+) => {
+  // push literal and access to prevent TS2589 / immer excessively deep type
+  convo.messages.push({
+    id,
+    role: "user",
+    externalId,
+    parts: [],
+    status: { type: "done" },
+  });
+  return convo.messages[convo.messages.length - 1];
+};
+
+export const startAgentMessage = (
+  convo: WritableDraft<MetabotConversationState>,
+  externalId?: string,
+) => {
+  convo.messages.push({
+    id: createMessageId(),
+    role: "agent",
+    externalId,
+    parts: [],
+    status: { type: "streaming" },
+  });
+};
+
+export const findLastToolCallPart = (
+  convo: WritableDraft<MetabotConversationState>,
   toolCallId: string,
 ) =>
-  convo.messages.findLast(
-    (m): m is MetabotDebugToolCallMessage =>
-      m.type === "tool_call" && m.id === toolCallId,
+  openAgentMessage(convo).parts.findLast(
+    (p): p is WritableDraft<MetabotDebugToolCallMessage> =>
+      p.type === "tool_call" && p.id === toolCallId,
   );
 
 export const pushNewToolCall = (
-  convo: WritableDraft<MetabotConverstationState>,
+  convo: WritableDraft<MetabotConversationState>,
   {
     toolCallId,
     toolName,
     args,
   }: { toolCallId: string; toolName: string; args?: string },
 ) => {
-  convo.messages.push({
+  openAgentMessage(convo).parts.push({
     id: toolCallId,
     role: "agent",
     type: "tool_call",
@@ -58,12 +106,13 @@ export const pushNewToolCall = (
   });
 };
 
-const activeChain = (convo: WritableDraft<MetabotConverstationState>) => {
-  const chain = convo.activeChainId
-    ? convo.messages.find((m) => m.id === convo.activeChainId)
-    : undefined;
-  return chain?.type === "chain_of_thought" ? chain : undefined;
-};
+const isOpenChain = (
+  part: WritableDraft<MetabotMessagePart>,
+): part is WritableDraft<MetabotAgentChainOfThoughtMessage> =>
+  part.type === "chain_of_thought" && !part.finished;
+
+const activeChain = (convo: WritableDraft<MetabotConversationState>) =>
+  openAgentMessage(convo).parts.findLast(isOpenChain);
 
 const stampChainSpan = (
   chain: WritableDraft<MetabotAgentChainOfThoughtMessage>,
@@ -76,8 +125,8 @@ const stampChainSpan = (
   chain.endedAtMs = nowMs;
 };
 
-const ensureChain = (
-  convo: WritableDraft<MetabotConverstationState>,
+export const ensureChain = (
+  convo: WritableDraft<MetabotConversationState>,
   nowMs?: number,
 ): WritableDraft<MetabotAgentChainOfThoughtMessage> => {
   const existing = activeChain(convo);
@@ -90,27 +139,24 @@ const ensureChain = (
     role: "agent",
     type: "chain_of_thought",
     steps: [],
+    finished: false,
     startedAtMs: nowMs,
     endedAtMs: nowMs,
   };
-  convo.messages.push(chain);
-  convo.activeChainId = chain.id;
+  openAgentMessage(convo).parts.push(chain);
   return chain;
 };
 
-export const openChain = (convo: WritableDraft<MetabotConverstationState>) => {
-  ensureChain(convo);
-};
-
 const dropChain = (
-  convo: WritableDraft<MetabotConverstationState>,
+  convo: WritableDraft<MetabotConversationState>,
   id: string,
 ) => {
-  convo.messages = convo.messages.filter((m) => m.id !== id);
+  const message = openAgentMessage(convo);
+  message.parts = message.parts.filter((p) => p.id !== id);
 };
 
 export const startChainReasoning = (
-  convo: WritableDraft<MetabotConverstationState>,
+  convo: WritableDraft<MetabotConversationState>,
   nowMs?: number,
 ) => {
   ensureChain(convo, nowMs).steps.push({
@@ -121,7 +167,7 @@ export const startChainReasoning = (
 };
 
 export const appendChainReasoning = (
-  convo: WritableDraft<MetabotConverstationState>,
+  convo: WritableDraft<MetabotConversationState>,
   text: string,
   nowMs?: number,
 ) => {
@@ -135,7 +181,7 @@ export const appendChainReasoning = (
 };
 
 export const addChainTool = (
-  convo: WritableDraft<MetabotConverstationState>,
+  convo: WritableDraft<MetabotConversationState>,
   {
     id,
     name,
@@ -158,22 +204,22 @@ export const addChainTool = (
   if (title) {
     existing.step.title = title;
   }
-  if (existing.chain.id === convo.activeChainId) {
+  if (!existing.chain.finished) {
     stampChainSpan(existing.chain, nowMs);
   }
 };
 
-const findChainToolStep = (
-  convo: WritableDraft<MetabotConverstationState>,
+export const findChainToolStep = (
+  convo: WritableDraft<MetabotConversationState>,
   toolCallId: string,
 ) => {
-  for (const message of convo.messages) {
-    if (message.type === "chain_of_thought") {
-      const step = message.steps.find(
+  for (const part of openAgentMessage(convo).parts) {
+    if (part.type === "chain_of_thought") {
+      const step = part.steps.find(
         (s) => s.kind === "tool" && s.id === toolCallId,
       );
       if (step?.kind === "tool") {
-        return { chain: message, step };
+        return { chain: part, step };
       }
     }
   }
@@ -181,7 +227,7 @@ const findChainToolStep = (
 };
 
 export const setChainToolSearchResults = (
-  convo: WritableDraft<MetabotConverstationState>,
+  convo: WritableDraft<MetabotConversationState>,
   toolCallId: string,
   searchResults: MetabotSearchResults,
 ) => {
@@ -192,7 +238,7 @@ export const setChainToolSearchResults = (
 };
 
 export const setChainToolTitle = (
-  convo: WritableDraft<MetabotConverstationState>,
+  convo: WritableDraft<MetabotConversationState>,
   toolCallId: string,
   title: string,
 ) => {
@@ -203,7 +249,7 @@ export const setChainToolTitle = (
 };
 
 export const endChainTool = (
-  convo: WritableDraft<MetabotConverstationState>,
+  convo: WritableDraft<MetabotConversationState>,
   id: string,
   nowMs?: number,
 ) => {
@@ -212,60 +258,43 @@ export const endChainTool = (
     return;
   }
   found.step.status = "ended";
-  const chainStillActive = found.chain.id === convo.activeChainId;
-  if (chainStillActive && nowMs != null) {
+  if (!found.chain.finished && nowMs != null) {
     found.chain.endedAtMs = nowMs;
   }
 };
 
 export const closeChain = (
-  convo: WritableDraft<MetabotConverstationState>,
+  convo: WritableDraft<MetabotConversationState>,
   nowMs?: number,
 ) => {
   const chain = activeChain(convo);
   if (chain && chain.steps.length === 0) {
     dropChain(convo, chain.id);
-  } else if (chain && nowMs != null) {
-    chain.endedAtMs = nowMs;
+  } else if (chain) {
+    chain.finished = true;
+    if (nowMs != null) {
+      chain.endedAtMs = nowMs;
+    }
   }
-  convo.activeChainId = undefined;
 };
 
 export const getRequestConversation = (
   state: WritableDraft<MetabotState>,
-  action: {
-    meta: {
-      arg: { agentId: MetabotAgentId; conversation_id: string; loadId: string };
-    };
-  },
+  action: { meta: { arg: { conversation_id: string } } },
 ) => {
-  const { agentId, conversation_id, loadId } = action.meta.arg;
-  const convo = state.conversations[agentId];
+  const { conversation_id } = action.meta.arg;
+  const convo = state.conversations[conversation_id];
 
   if (!convo) {
-    console.warn(`Unable to find metabot conversation for ${agentId}`);
-    return undefined;
-  }
-
-  if (conversation_id !== convo.conversationId) {
-    console.warn(
-      `Metabot conversation ${agentId} has ${convo.conversationId} but request was for ${conversation_id}`,
-    );
-    return undefined;
-  }
-
-  if (loadId !== convo.loadId) {
-    console.warn(
-      `Metabot conversation ${conversation_id} was reloaded since the request started, ignoring its result`,
-    );
+    console.warn(`Unable to find metabot conversation ${conversation_id}`);
     return undefined;
   }
 
   return convo;
 };
 
-const agentOverridesByAgentId: Partial<
-  Record<MetabotAgentId, Partial<MetabotConverstationState>>
+const conversationDefaultsByAgentId: Partial<
+  Record<MetabotAgentId, Partial<MetabotConversationState>>
 > = {
   sql: {
     profileOverride: METABOT_PROFILE_OVERRIDES.SQL,
@@ -276,33 +305,41 @@ const agentOverridesByAgentId: Partial<
 };
 
 export const createConversation = (
-  agentId: MetabotAgentId,
-  conversationOverrides?: Partial<MetabotConverstationState>,
-): MetabotConverstationState => {
-  const agentOverrides = agentOverridesByAgentId[agentId] ?? {};
-  const overrides = merge(agentOverrides, conversationOverrides);
+  overrides?: Partial<MetabotConversationState>,
+): MetabotConversationState => ({
+  isProcessing: false,
+  hasMessagedInSession: false,
+  title: undefined,
+  messages: [],
+  state: {},
+  activeToolCalls: [],
+  profileOverride: undefined,
+  forkedFromConversationId: undefined,
+  ...overrides,
+  conversationId: overrides?.conversationId ?? uuid(),
+  experimental: {
+    developerMessage: "",
+    metabotReqIdOverride: undefined,
+    ...overrides?.experimental,
+  },
+});
 
-  return {
-    isProcessing: false,
-    title: undefined,
-    forkedFromConversationId: undefined,
-    messages: [],
-    visible: false,
-    state: {},
-    activeToolCalls: [],
-    activeChainId: undefined,
-    profileOverride: undefined,
-    pendingMessageExternalId: undefined,
-    ...overrides,
-    conversationId: overrides?.conversationId ?? uuid(),
-    loadId: overrides?.loadId ?? nanoid(),
-    experimental: {
-      developerMessage: "",
-      metabotReqIdOverride: undefined,
-      ...overrides?.experimental,
-    },
-  };
-};
+export const createConversationForAgent = (
+  agentId: MetabotAgentId,
+  overrides?: Partial<MetabotConversationState>,
+): MetabotConversationState =>
+  createConversation(
+    merge(conversationDefaultsByAgentId[agentId] ?? {}, overrides ?? {}),
+  );
+
+export const createAgentState = (
+  conversationId: string,
+  overrides?: Partial<MetabotAgentState>,
+): MetabotAgentState => ({
+  visible: false,
+  ...overrides,
+  conversationId,
+});
 
 export const resetReactionState = (
   state: WritableDraft<MetabotState>,
@@ -319,15 +356,56 @@ export const resetReactionState = (
     .otherwise(() => {});
 };
 
-export const getConversationOrThrow = (
+export const resetReactionStateForConversation = (
+  state: WritableDraft<MetabotState>,
+  conversationId: string,
+) =>
+  fixedMetabotAgentIds.forEach((agentId) => {
+    if (state.agents[agentId]?.conversationId === conversationId) {
+      resetReactionState(state, agentId);
+    }
+  });
+
+const isConversationReferenced = (
+  state: WritableDraft<MetabotState>,
+  conversationId: string,
+) =>
+  Object.values(state.agents).some(
+    (agent) => agent?.conversationId === conversationId,
+  );
+
+export const evictConversationIfUnused = (
+  state: WritableDraft<MetabotState>,
+  conversationId: string,
+) => {
+  const convo = state.conversations[conversationId];
+  if (
+    convo &&
+    !convo.hasMessagedInSession &&
+    !isConversationReferenced(state, conversationId)
+  ) {
+    delete state.conversations[conversationId];
+  }
+};
+
+export const getAgentOrThrow = (
   state: WritableDraft<MetabotState>,
   agentId: MetabotAgentId,
-): WritableDraft<MetabotConverstationState> => {
-  const convo = state.conversations[agentId];
+): WritableDraft<MetabotAgentState> => {
+  const agent = state.agents[agentId];
+  if (!agent) {
+    throw new Error(`Could not find metabot agent: ${agentId}`);
+  }
+  return agent;
+};
+
+export const getConversationOrThrow = (
+  state: WritableDraft<MetabotState>,
+  conversationId: string,
+): WritableDraft<MetabotConversationState> => {
+  const convo = state.conversations[conversationId];
   if (!convo) {
-    throw new Error(
-      `Could not find metabot conversation with convo id: ${agentId}`,
-    );
+    throw new Error(`Could not find metabot conversation: ${conversationId}`);
   }
   return convo;
 };
@@ -335,57 +413,56 @@ export const getConversationOrThrow = (
 export const convoReducer =
   <
     Action extends {
-      payload: { agentId: MetabotAgentId };
+      payload: { conversationId: string };
     },
   >(
     convoReducerFn: (
-      convo: WritableDraft<MetabotConverstationState>,
+      convo: WritableDraft<MetabotConversationState>,
       action: Action,
       state: WritableDraft<MetabotState>,
     ) => void,
   ) =>
   (state: WritableDraft<MetabotState>, action: Action) => {
     convoReducerFn(
-      getConversationOrThrow(state, action.payload.agentId),
+      getConversationOrThrow(state, action.payload.conversationId),
       action,
       state,
     );
   };
 
-export const appendAgentTurnAborted = (
-  convo: WritableDraft<MetabotConverstationState>,
-) => {
-  convo.messages.push({
-    id: createMessageId(),
-    role: "agent",
-    type: "turn_aborted",
-    externalId: convo.pendingMessageExternalId,
-  });
-};
-
-export const appendAgentTurnErrored = (
-  convo: WritableDraft<MetabotConverstationState>,
-  error: MetabotAgentTurnError,
-  display?: MetabotAgentTurnDisplayError,
-) => {
-  convo.messages.push({
-    id: createMessageId(),
-    role: "agent",
-    type: "turn_errored",
-    error,
-    display,
-    externalId: convo.pendingMessageExternalId,
-  });
-};
+export const agentReducer =
+  <
+    Action extends {
+      payload: { agentId: MetabotAgentId };
+    },
+  >(
+    agentReducerFn: (
+      agent: WritableDraft<MetabotAgentState>,
+      action: Action,
+      state: WritableDraft<MetabotState>,
+    ) => void,
+  ) =>
+  (state: WritableDraft<MetabotState>, action: Action) => {
+    agentReducerFn(
+      getAgentOrThrow(state, action.payload.agentId),
+      action,
+      state,
+    );
+  };
 
 export const getMetabotInitialState = (): MetabotState => {
+  const conversations: MetabotState["conversations"] = {};
+  const agents: MetabotState["agents"] = {};
+
+  fixedMetabotAgentIds.forEach((agentId) => {
+    const convo = createConversationForAgent(agentId);
+    conversations[convo.conversationId] = convo;
+    agents[agentId] = createAgentState(convo.conversationId);
+  });
+
   return {
-    conversations: {
-      omnibot: createConversation("omnibot"),
-      sql: createConversation("sql"),
-      ask: createConversation("ask"),
-      explorations: createConversation("explorations"),
-    },
+    conversations,
+    agents,
     reactions: {
       navigateToPath: null,
       suggestedCodeEdits: {},

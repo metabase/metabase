@@ -12,7 +12,7 @@ import {
   nonAsciiFieldNames,
   portugueseFieldNames,
   stringTranslatedTwice,
-} from "./constants";
+} from "./helpers/constants";
 import {
   assertOnlyTheseTranslationsAreStored,
   generateLargeCSV,

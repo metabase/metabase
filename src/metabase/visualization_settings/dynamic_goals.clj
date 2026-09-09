@@ -2,15 +2,15 @@
   "Dynamic goals: goal values in viz settings that reference another entity's value
   (`{:id 1, :type \"card\", :column \"total\"}`) instead of holding a literal number. Single source of
   truth for which settings carry goal values, so deriving the queries to run and substituting their
-  results can never disagree. Mirrors `frontend/src/metabase/visualizations/lib/dynamic-goals.ts`.")
+  results can never disagree. Mirrors `frontend/src/metabase/viz-core/lib/dynamic-goal-settings.ts`.")
 
 (set! *warn-on-reflection* true)
 
 (def ^:private goal-settings
-  "Viz settings that hold goal values: `:scalar` keys hold a single goal value, `:segments` keys hold
+  "Viz settings that hold goal values: `:value` keys hold a single goal value, `:segments` keys hold
   a sequence of segment maps with goal values at `:min`/`:max`."
-  {:graph.goal_value :scalar
-   :progress.goal    :scalar
+  {:graph.goal_value :value
+   :progress.goal    :value
    :gauge.segments   :segments
    :scalar.segments  :segments})
 
@@ -26,7 +26,7 @@
   (->> goal-settings
        (mapcat (fn [[setting kind]]
                  (case kind
-                   :scalar   [(get viz-settings setting)]
+                   :value    [(get viz-settings setting)]
                    :segments (mapcat (juxt :min :max) (get viz-settings setting)))))
        (remove nil?)))
 
@@ -39,7 +39,7 @@
      (if (nil? (get viz setting))
        viz
        (case kind
-         :scalar   (update viz setting f)
+         :value    (update viz setting f)
          :segments (update viz setting (fn [segments]
                                          (mapv (fn [segment]
                                                  (cond-> segment
@@ -58,11 +58,15 @@
   "Resolve `goal-value` against `referenced-entities` (a query result's `[:data :referenced_entities]`,
   keyed by entity type and then by id *string*). Literal numbers and self-column names pass through
   unchanged; an entity reference becomes the referenced column's first-row value. Throws
-  `::unresolved-goal` with `:reason` `:query-failed`/`:column-not-found`/`:not-a-number` when the
-  reference can't produce a finite number."
+  `::unresolved-goal` with `:reason` `:never-ran`/`:query-failed`/`:column-not-found`/`:not-a-number`
+  when the reference can't produce a finite number."
   [goal-value referenced-entities]
   (if-let [{entity-type :type, :keys [id column] :as ref} (goal-source goal-value)]
-    (let [{:keys [status data]} (get-in referenced-entities [entity-type (str id)])]
+    (let [{:keys [status data] :as result} (get-in referenced-entities [entity-type (str id)])]
+      ;; no entry at all: the entity was never queried (cancelled mid-run, or the caller derived its
+      ;; specs from different settings than the ones being resolved here)
+      (when-not result
+        (unresolved! :never-ran ref))
       (when-not (and data (some-> status name (= "completed")))
         (unresolved! :query-failed ref))
       (let [idx (first (keep-indexed (fn [i col] (when (= column (:name col)) i)) (:cols data)))]

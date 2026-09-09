@@ -41,12 +41,19 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
     enableMfa();
 
-    cy.log("User enrolls from account security settings");
+    cy.log("User enrolls from account authentication settings");
     cy.signInAsNormalUser();
+
+    cy.log("The old security URL lands on the combined Authentication tab");
     cy.visit("/account/security");
+    cy.url().should("contain", "/account/authentication");
     cy.findByTestId("account-header")
-      .findByRole("tab", { name: "Security" })
+      .findByRole("tab", { name: "Authentication" })
       .should("be.visible");
+
+    cy.log("Password and 2FA now share one tab");
+    cy.findByLabelText("Current password").should("be.visible");
+
     enrollViaUI().then((secret) => {
       totpSecret = secret;
     });
@@ -75,7 +82,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
     enableMfa();
     enrollNormalUser().then(({ secret }) => {
       cy.log("Disabling requires a fresh second factor, not just a password");
-      cy.visit("/account/security");
+      cy.visit("/account/password");
       cy.findByRole("button", { name: "Disable" }).click();
       H.modal().within(() => {
         cy.findByText(
@@ -111,7 +118,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       cy.findByTestId("greeting-message").should("be.visible");
 
       cy.log("Regenerate the recovery codes");
-      cy.visit("/account/security");
+      cy.visit("/account/password");
       cy.findByRole("button", { name: "Generate recovery codes" }).click();
       H.modal().within(() => {
         cy.findByText(
@@ -238,7 +245,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       cy.findByTestId("greeting-message").should("be.visible");
 
       cy.log("Managing the existing enrollment still works without a license");
-      cy.visit("/account/security");
+      cy.visit("/account/authentication");
       cy.findByRole("button", { name: "Disable" }).click();
       H.modal().within(() => {
         cy.findByLabelText(
@@ -248,8 +255,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       });
 
       cy.log("Without the feature there is no way back into setup");
-      cy.url().should("contain", "/account/profile");
-      cy.visit("/account/security");
+      cy.url().should("contain", "/account/authentication");
       cy.findByRole("button", {
         name: "Set up two-factor authentication",
       }).should("be.disabled");
@@ -377,7 +383,7 @@ function enrollViaUI(): Cypress.Chainable<string> {
       cy.findByText("Your recovery codes").should("be.visible");
       cy.button("Done").click();
     });
-    return cy.wrap(secret, { log: false });
+    return cy.wrap<string>(secret, { log: false });
   });
 }
 

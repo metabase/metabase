@@ -2,10 +2,6 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
-  useRegenerateApiKeyMutation,
-  useUpdateApiKeyMutation,
-} from "metabase/api";
-import {
   Form,
   FormErrorMessage,
   FormGroupWidget,
@@ -16,6 +12,11 @@ import {
 import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
+
+import {
+  useRegenerateApiKeyMutation,
+  useUpdateApiKeyMutation,
+} from "../../api/api-key";
 
 import S from "./EditApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";
@@ -44,15 +45,15 @@ const RegenerateKeyModal = ({
   return (
     <Modal
       size="40rem"
-      padding="xl"
+      padding="xxl"
       opened
       onClose={() => setModal("edit")}
       title={t`Regenerate API key`}
     >
       <FormProvider initialValues={{}} onSubmit={handleRegenerate}>
         <Form>
-          <Stack gap="xl">
-            <Stack gap="xs">
+          <Stack gap="xxl">
+            <Stack gap="xxs">
               <Text
                 component="label"
                 c="text-secondary"
@@ -60,7 +61,7 @@ const RegenerateKeyModal = ({
               >{t`Key name`}</Text>
               <Text>{apiKey.name}</Text>
             </Stack>
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Text
                 component="label"
                 c="text-secondary"
@@ -71,8 +72,8 @@ const RegenerateKeyModal = ({
             {/* TODO: swap for the planned metabase/ui Alert variant once it lands. */}
             <Paper
               bg="background_page-secondary"
-              radius="md"
-              px="md"
+              radius="sm"
+              px="lg"
               py="sm"
               shadow="none"
             >
@@ -133,7 +134,7 @@ export const EditApiKeyModal = ({
     return (
       <Modal
         size="40rem"
-        padding="xl"
+        padding="xxl"
         opened
         onClose={onClose}
         title={t`Edit API key`}
@@ -145,7 +146,7 @@ export const EditApiKeyModal = ({
         >
           {({ dirty }) => (
             <Form>
-              <Stack gap="xl">
+              <Stack gap="xxl">
                 <FormTextInput name="name" label={t`Key name`} required />
                 <FormGroupWidget
                   name="group_id"

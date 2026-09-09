@@ -1,5 +1,5 @@
 import { Menu, Text } from "metabase/ui";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/value-formatting";
 
 type Props = {
   label: string;

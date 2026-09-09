@@ -10,13 +10,13 @@ import {
 } from "metabase/dashboard/context";
 import { isTableDisplay } from "metabase/dashboard/utils";
 import { canSaveClickBehavior } from "metabase/dashboard/utils/click-behavior";
-import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ClickBehavior,
   DashCardVisualizationSettings,
   DatasetColumn,
 } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 
 import { ClickBehaviorSidebarContent } from "./ClickBehaviorSidebarContent";
 import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader/ClickBehaviorSidebarHeader";

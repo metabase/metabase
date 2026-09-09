@@ -2,7 +2,7 @@ import { msgid, ngettext, t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
 
-export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
+export const CONTEXT_WINDOW_WARNING_PERCENT = 90;
 
 // NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids
 export const FIXED_METABOT_IDS = {

@@ -210,6 +210,7 @@
   Like `mbql-query`, but runs the query as well."
   {:style/indent :defn, :deprecated "0.61.0"}
   [table-name & [query]]
+  ;; deprecated shim expands to the equally-deprecated mbql-query; they'll be removed together
   #_{:clj-kondo/ignore [:deprecated-var]}
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
@@ -274,7 +275,8 @@
      (data/dataset (get-dataset-definition) ...)"
   {:style/indent :defn}
   [dataset & body]
-  `(t/testing (colorize/magenta ~(str (if (symbol? dataset)
+  `(t/testing (colorize/magenta ~(str \newline
+                                      (if (symbol? dataset)
                                         (format "using %s dataset" dataset)
                                         "using inline dataset")
                                       \newline))
@@ -319,7 +321,9 @@
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
      (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script)])
      (mdb/finish-db-setup!)
-     ~@body))
+     ;; This app DB must remain empty, so `with-temp` must not materialize the test-data Database in it.
+     (binding [data.impl/*skip-dataset-prewarm?* true]
+       ~@body)))
 
 ;; Non-"normal" timeseries drivers are tested in [[metabase.query-processor.timeseries-test]] and elsewhere
 (def timeseries-drivers

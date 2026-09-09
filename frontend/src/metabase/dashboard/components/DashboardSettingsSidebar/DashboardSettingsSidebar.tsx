@@ -41,7 +41,6 @@ export function DashboardSettingsSidebar() {
         isOpen={state.caching}
         onClose={closeSidebar}
         onBack={() => close("caching")}
-        pt="md"
       />
     );
   }
@@ -99,7 +98,6 @@ const DashboardSidesheetBody = ({
           label={t`Auto-apply filters`}
           labelPosition="left"
           variant="stretch"
-          size="sm"
           id={autoApplyFilterToggleId}
           checked={dashboard.auto_apply_filters}
           onChange={(e) => handleToggleAutoApplyFilters(e.target.checked)}

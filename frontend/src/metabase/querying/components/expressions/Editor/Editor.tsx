@@ -11,6 +11,7 @@ import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
+import { getMetadata } from "metabase/metadata-store";
 import {
   type ExpressionError,
   diagnoseAndCompile,
@@ -20,7 +21,6 @@ import {
 import { tokenAtPos } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -39,7 +39,7 @@ import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 import { hasActiveSnippet, useInitialClause } from "./utils";
 
-type EditorProps = {
+export type EditorProps = {
   id?: string;
   clause?: Lib.Expressionable | null;
   initialClause?: Lib.Expressionable | null;
@@ -216,7 +216,7 @@ export function Editor(props: EditorProps) {
                 className={S.toolbarButton}
                 variant="subtle"
                 size="xs"
-                p="xs"
+                p="xxs"
                 disabled={isFormatting || error != null}
                 leftSection={<Icon name="format_code" />}
               />

@@ -1,5 +1,7 @@
 (ns metabase-enterprise.semantic-search.embedding
   (:require
+   [buddy.core.codecs :as buddy-codecs]
+   [buddy.core.hash :as buddy-hash]
    [clj-http.client :as http]
    [clojure.string :as str]
    [diehard.circuit-breaker :as dh.cb]
@@ -8,8 +10,10 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -46,14 +50,23 @@
 (defn clean-provider-name
   "Clean up a provider names for use in index names."
   [provider-name]
-  (str/replace provider-name #"[-:.]" "_"))
+  (-> provider-name
+      (str/replace #"[^A-Za-z0-9_]" "_")
+      (str/replace #"_{2,}" "_")
+      (str/replace #"^_+|_+$" "")))
 
 (defn abbrev-provider-name
   "Abbreviate long provider names for use in index names."
   [provider-name]
   (case provider-name
     "ai-service" "ais"
-    (clean-provider-name provider-name)))
+    "ollama" "ollama"
+    "openai" "openai"
+    "in-process" "inproc"
+    ;; Every plugin provider uses the same reserved form, including already-safe names. Otherwise an unsafe name's
+    ;; encoded output could itself be registered as a safe provider name and collide with the same physical index.
+    (str "plugin_" (clean-provider-name provider-name) "_"
+         (subs (buddy-codecs/bytes->hex (buddy-hash/sha1 provider-name)) 0 16))))
 
 ;;; Token Counting for OpenAI Models
 
@@ -133,23 +146,57 @@
       (conj batches current-batch)
       batches)))
 
-;;;; Provider SPI
+;;;; Provider API
 
-(defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
+(defn- record-in-process-token-usage!
+  [{:keys [provider model-name]} texts {:keys [record-tokens? type]}]
+  (when (= "in-process" provider)
+    ;; The bundled tokenizer is intentionally private to the plugin artifact. Use the existing cl100k
+    ;; counter as an operational estimate so local inference participates in the same metrics/tracking.
+    (let [tokens (count-tokens-batch texts)]
+      (analytics/inc! :metabase-search/semantic-embedding-tokens
+                      {:provider provider :model model-name}
+                      tokens)
+      (when record-tokens?
+        (semantic.models.token-tracking/record-tokens model-name type tokens)))))
 
-(defmulti get-embedding
-  "Returns a single embedding vector for the given text.
-  `opts` (kwargs, honoured by the production providers; ollama ignores them):
+(defn resolve-model
+  "Resolve a requested embedding model to its immutable vector-space descriptor."
+  [embedding-model]
+  (embeddings.provider/resolve-model embedding-model))
+
+(defn- in-process-token-model
+  [{:keys [provider model-name] :as embedding-model}]
+  (when (= "in-process" provider)
+    ;; Configured and persisted descriptors already carry the canonical name. Only the optional plugin default
+    ;; needs early resolution so token tracking has a stable label; the provider still owns embed-time resolution.
+    (if (nil? model-name)
+      (resolve-model embedding-model)
+      embedding-model)))
+
+(defn get-embedding
+  "Return one embedding vector for `text`.
+  `opts` (honoured by the production providers; ollama ignores them):
   - `:record-tokens?` — write a token-tracking row for the call
   - `:type`           — what the embedding is for (`:query`/`:index`), recorded with the tokens
   - `:snowplow?`      — ai-service only, default true; synthetic callers (e.g. the health probe) pass
                         false so the call emits no token_usage event"
-  {:arglists '([embedding-model text & opts])} dispatch-provider)
+  [embedding-model text & {:as opts}]
+  (let [token-model (in-process-token-model embedding-model)]
+    (u/prog1 (embeddings.provider/embed-text (or token-model embedding-model) text opts)
+      (when token-model
+        (record-in-process-token-usage! token-model [text] opts)))))
 
-(defmulti get-embeddings-batch
-  "Returns a sequential collection of embedding vectors, in the same order as the input texts.
+(defn get-embeddings-batch
+  "Return one embedding vector per input text, in the same order.
   Takes the same `opts` as [[get-embedding]], minus `:snowplow?` (batch callers are all organic)."
-  {:arglists '([embedding-model texts & opts])} dispatch-provider)
+  [embedding-model texts & {:as opts}]
+  (let [token-model (in-process-token-model embedding-model)]
+    (u/prog1 (embeddings.provider/embed-texts (or token-model embedding-model) texts opts)
+      (when token-model
+        (record-in-process-token-usage! token-model texts opts)))))
+
+(defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
 
 (defmulti embedder-circuit-endpoint
   "Return the remote endpoint that identifies `embedding-model`'s circuit, or nil when its provider does not
@@ -158,9 +205,10 @@
 
 (defmethod embedder-circuit-endpoint :default [_] nil)
 
-(defmulti pull-model
-  "If a model needs to be downloaded (which is the case for ollama), downloads it."
-  {:arglists '([embedding-model])} dispatch-provider)
+(defn pull-model
+  "Prepare a provider model eagerly when the provider supports it."
+  [embedding-model]
+  (embeddings.provider/prepare! embedding-model))
 
 ;;;; Embedding-service circuit breaker
 ;;;
@@ -170,6 +218,10 @@
 ;;; failing. State transitions surface the affected health checks immediately (see the listeners) rather
 ;;; than waiting for the daily job. Thresholds are fixed (the breaker is built once); the setting is a
 ;;; runtime kill switch checked per call.
+;;;
+;;; The breaker wraps the HTTP providers defined below rather than sitting behind the provider SPI, since
+;;; it keys circuits by remote endpoint and an in-process provider has none. If a second provider that
+;;; needs it turns up, move it into `metabase.embeddings.provider` instead of adding a second copy.
 
 (def ^:private embedder-circuit-breaker-failure-threshold
   "Consecutive embedding-service failures that trip the breaker open." 5)
@@ -284,12 +336,11 @@
 
 (defn- service-failure?
   [e]
-  (let [data   (ex-data e)
-        cause  (some-> e ex-cause ex-data)
-        status (or (:status data) (:status cause))
-        reason (or (:cause data) (:cause cause))]
+  (let [{:keys [status cause]} (u/all-ex-data e)]
     (and (not (contains? request-specific-statuses status))
-         (not= :embedder/unexpected-dimensions reason))))
+         (not= :embedder/unexpected-dimensions cause)
+         ;; A connection-time network-policy rejection is about the configured endpoint, not the service's health.
+         (not (llm.settings/llm-network-policy-error? e)))))
 
 (defn- circuit-open-ex
   [endpoint]
@@ -385,11 +436,7 @@
       (throw e))))
 
 ;; Ollama is not used in production. Token tracking is not implemented.
-(defmethod get-embedding "ollama" [{:keys [model-name vector-dimensions]} text & {:as _opts}]
-  (call-through-embedder-breaker #(ollama-get-embedding model-name vector-dimensions text)
-                                 :endpoint ollama-embeddings-endpoint))
-
-(defmethod get-embeddings-batch "ollama" [{:keys [model-name vector-dimensions]} texts & {:as _opts}]
+(defn- ollama-get-embeddings-batch [model-name vector-dimensions texts]
   ;; Ollama doesn't have a native batch API, so we fall back to individual calls. Each call goes through the
   ;; breaker on its own, so an outage mid-batch fast-fails the remaining texts instead of timing out on each.
   (log/debug "Generating" (count texts) "Ollama embeddings (using individual calls)")
@@ -397,8 +444,6 @@
           (call-through-embedder-breaker #(ollama-get-embedding model-name vector-dimensions text)
                                          :endpoint ollama-embeddings-endpoint))
         texts))
-
-(defmethod pull-model "ollama" [{:keys [model-name]}] (ollama-pull-model model-name))
 
 ;;;; OpenAI-compatible embedding service impl (shared by "ai-service" and "openai" providers)
 
@@ -414,18 +459,22 @@
   "Call an OpenAI-compatible /v1/embeddings endpoint. The breaker guards only the remote request and
   response decoding; analytics and token persistence happen after it returns.
 
-  `:provider`        — label for analytics (e.g. \"ai-service\", \"openai\")
-  `:endpoint`        — full URL including /v1/embeddings
-  `:api-key`         — Bearer token. If empty ai service proxying is assumed and premium-embedding-token is
-                       used for authentication
-  `:model-name`      — model identifier sent in the request body
-  `:vector-dimensions` — expected dimensions of each returned vector
-  `:texts`           — collection of input strings
-  `:record-tokens?`  — true writes a `semantic_search_token_tracking` row, false skips it.
-  `:snowplow?`       — optional; when true fires a Snowplow `token_usage` event
-  `:extra-body`      — optional; merged into the request body (e.g. `{:dimensions 1024}`)
-  `:type`            — optional; forwarded to the token-tracking row"
-  [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?]
+  `:provider`          - label for analytics (e.g. \"ai-service\", \"openai\")
+  `:endpoint`          - full URL including /v1/embeddings
+  `:api-key`           - Bearer token. Left empty, an `:instance-token?` endpoint uses `premium-embedding-token`.
+  `:model-name`        - model identifier sent in the request body
+  `:vector-dimensions` - expected dimensions of each returned vector
+  `:texts`             - collection of input strings
+  `:record-tokens?`    - true writes a `semantic_search_token_tracking` row, false skips it.
+  `:snowplow?`         - optional; when true fires a Snowplow `token_usage` event
+  `:extra-body`        - optional; merged into the request body (e.g. `{:dimensions 1024}`)
+  `:type`              - optional; forwarded to the token-tracking row
+
+  `:network-policy-floor` optionally sets the minimum network access for a deployment-controlled endpoint; see
+  [[metabase.llm.settings/network-policy]]. `:instance-token?` marks an endpoint the deployment chose, the only
+  kind the instance token may be sent to."
+  [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
+           network-policy-floor instance-token?]
     :as opts}
    :- [:map
        [:provider       :string]
@@ -436,68 +485,75 @@
        [:texts          [:sequential :string]]
        [:record-tokens? :boolean]
        [:snowplow?      {:optional true} [:maybe :boolean]]
-       [:extra-body     {:optional true} [:maybe :map]]]]
-  (try
-    (log/debug (str "Calling " provider " embeddings API")
-               {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
-    (let [headers              (merge {"Content-Type" "application/json"}
-                                      (if (and (empty? api-key) (= "ai-service" provider))
-                                        {"x-metabase-instance-token"
-                                         (u/prog1 (premium-features/premium-embedding-token)
-                                           (when (nil? <>)
-                                             (throw (ex-info "Premium embedding token not set"
-                                                             {:provider provider}))))}
-                                        {"Authorization" (str "Bearer " api-key)}))
-          request              (merge embedding-http-timeouts
-                                      {:headers headers
-                                       :body    (json/encode
-                                                 (merge {:model           model-name
-                                                         :input           texts
-                                                         :encoding_format "base64"}
-                                                        extra-body))})
-          start-ms             (u/start-timer)
-          {:keys [usage embeddings]}
-          (call-through-embedder-breaker
-           #(let [{:keys [usage data]} (-> (http/post endpoint request)
-                                           :body
-                                           (json/decode true))]
-              {:usage usage
-               :embeddings (validate-embeddings! (decode-embeddings data)
-                                                 (count texts)
-                                                 vector-dimensions)})
-           :endpoint endpoint)
-          total-tokens         (:total_tokens usage 0)
-          prompt-tokens        (:prompt_tokens usage total-tokens)]
-      (analytics/inc! :metabase-search/semantic-embedding-tokens
-                      {:provider provider :model model-name}
-                      total-tokens)
-      (when snowplow?
-        (analytics.core/track-token-usage!
-         {:snowplow            true
-          :prometheus          false    ; already tracked via inc! above
-          :request-id          (analytics.core/uuid->ai-service-hex-uuid (random-uuid))
-          :model-id            model-name
-          :total-tokens        total-tokens
-          :prompt-tokens       prompt-tokens
-          :completion-tokens   0        ; embedding models don't produce completion tokens
-          :estimated-costs-usd 0.0
-          :duration-ms         (long (u/since-ms start-ms))
-          :tag                 "embedding_generation"}))
-      (when record-tokens?
-        (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens))
-      embeddings)
-    (catch ConnectException e
-      (log/error (str "Failed to connect to " provider ": " (ex-message e)) {:endpoint endpoint})
-      (throw (ex-info (str provider " unavailable (connection refused)")
-                      {:status 502 :endpoint endpoint}
-                      e)))
-    (catch Exception e
-      ;; The breaker transition already logs the outage once. Fast-failed calls while it remains open are
-      ;; expected and can be frequent, so do not emit a redundant error for every guarded request.
-      (when-not (= :embedder/circuit-open (:cause (ex-data e)))
-        (log/error (str "Failed to generate " provider " embeddings: " (ex-message e))
-                   {:documents (count texts) :tokens (count-tokens-batch texts)}))
-      (throw e))))
+       [:extra-body     {:optional true} [:maybe :map]]
+       [:network-policy-floor {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]
+       [:instance-token?      {:optional true} [:maybe :boolean]]]]
+  ;; Outside the try: a malformed endpoint is neither a service failure nor something to log per batch.
+  (let [policy-opts (llm.settings/llm-request-opts network-policy-floor endpoint)]
+    (try
+      (log/debug (str "Calling " provider " embeddings API")
+                 {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
+      (let [headers              (merge {"Content-Type" "application/json"}
+                                        (if (and (empty? api-key) instance-token?)
+                                          {"x-metabase-instance-token"
+                                           (u/prog1 (premium-features/premium-embedding-token)
+                                             (when (nil? <>)
+                                               (throw (ex-info "Premium embedding token not set"
+                                                               {:provider provider}))))}
+                                          {"Authorization" (str "Bearer " api-key)}))
+            request              (merge embedding-http-timeouts
+                                        {:headers headers
+                                         :body    (json/encode
+                                                   (merge {:model           model-name
+                                                           :input           texts
+                                                           :encoding_format "base64"}
+                                                          extra-body))}
+                                        policy-opts)
+            start-ms             (u/start-timer)
+            {:keys [usage embeddings]}
+            (call-through-embedder-breaker
+             #(let [{:keys [usage data]} (-> (http/post endpoint request)
+                                             :body
+                                             (json/decode true))]
+                {:usage usage
+                 :embeddings (validate-embeddings! (decode-embeddings data)
+                                                   (count texts)
+                                                   vector-dimensions)})
+             :endpoint endpoint)
+            total-tokens         (:total_tokens usage 0)
+            prompt-tokens        (:prompt_tokens usage total-tokens)]
+        (analytics/inc! :metabase-search/semantic-embedding-tokens
+                        {:provider provider :model model-name}
+                        total-tokens)
+        (when snowplow?
+          (analytics.core/track-token-usage!
+           {:snowplow            true
+            :prometheus          false    ; already tracked via inc! above
+            :request-id          (analytics.core/uuid->ai-service-hex-uuid (random-uuid))
+            :model-id            model-name
+            :total-tokens        total-tokens
+            :prompt-tokens       prompt-tokens
+            :completion-tokens   0        ; embedding models don't produce completion tokens
+            :estimated-costs-usd 0.0
+            :duration-ms         (long (u/since-ms start-ms))
+            :tag                 "embedding_generation"}))
+        (when record-tokens?
+          (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens))
+        embeddings)
+      (catch ConnectException e
+        (llm.settings/rethrow-if-llm-network-policy-error! e endpoint)
+        (log/error (str "Failed to connect to " provider ": " (ex-message e)) {:endpoint endpoint})
+        (throw (ex-info (str provider " unavailable (connection refused)")
+                        {:status 502 :endpoint endpoint}
+                        e)))
+      (catch Exception e
+        (llm.settings/rethrow-if-llm-network-policy-error! e endpoint)
+        ;; The breaker transition already logs the outage once. Fast-failed calls while it remains open are
+        ;; expected and can be frequent, so do not emit a redundant error for every guarded request.
+        (when-not (= :embedder/circuit-open (:cause (ex-data e)))
+          (log/error (str "Failed to generate " provider " embeddings: " (ex-message e))
+                     {:documents (count texts) :tokens (count-tokens-batch texts)}))
+        (throw e)))))
 
 ;;;; Embedding-service provider
 
@@ -508,17 +564,39 @@
                     (str/replace #"/+$" ""))))
 
 (defn- embedding-service-resolve-config!
-  "Returns [endpoint api-key]. When api key is not set or when service url is not set but
-  `llm.settings/ai-service-base-url` is set the ai service proxying is assumed. In that case premium-embedding-token
-  is used for authentication. Throws if neither base URL is configured."
+  "Return the embedding endpoint config, or throw if no base URL is configured.
+
+  `:instance-token?` says the request authenticates with the instance token rather than with an API key of its own.
+  The token is deployment credential, not a setting anyone can enter, so it only travels to an endpoint the
+  deployment chose: `ee-embedding-service-base-url` earns it from the environment, not from the app DB.
+
+  A base URL the environment supplies is deployment-controlled in the same way: its `:allow-private` policy floor
+  admits private addresses but still blocks loopback and link-local."
   []
+  ;; the floor and the token are granted per source, not per setting: a settings manager can write the stored
+  ;; ee-embedding-service-base-url through the generic settings API, while a value the environment supplies bypasses
+  ;; the vetting setter and is trusted instead
   (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
-        [(str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url)) "/v1/embeddings")
-         (semantic-settings/ee-embedding-service-api-key)]
+        (let [env-url? (some? (setting/env-var-value :ee-embedding-service-base-url))
+              api-key  (semantic-settings/ee-embedding-service-api-key)]
+          (when-not (or env-url? (not-empty api-key))
+            (throw (ex-info (str "The embedding service base URL is set in the application database and has no API "
+                                 "key. Set " (setting/env-var-name :ee-embedding-service-base-url)
+                                 " to use the instance token, or configure "
+                                 (setting/env-var-name :ee-embedding-service-api-key) ".")
+                            {:settings ["ee-embedding-service-base-url"
+                                        "ee-embedding-service-api-key"]})))
+          (cond-> {:endpoint        (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url))
+                                         "/v1/embeddings")
+                   :api-key         api-key
+                   :instance-token? env-url?}
+            env-url? (assoc :network-policy-floor :allow-private)))
 
         (string? (not-empty (llm.settings/ai-service-base-url)))
-        [(str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
-         nil]
+        (cond-> {:endpoint        (str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
+                 :instance-token? true}
+          (setting/env-var-value :ai-service-base-url)
+          (assoc :network-policy-floor :allow-private))
 
         :else
         (throw (ex-info "Embedding service and ai service base URLs are not configured"
@@ -526,38 +604,23 @@
                                     "ai-service-base-url"]}))))
 
 (defmethod embedder-circuit-endpoint "ai-service" [_]
-  (first (embedding-service-resolve-config!)))
+  (:endpoint (embedding-service-resolve-config!)))
 
-(defmethod get-embedding "ai-service"
-  [{:keys [model-name vector-dimensions]} text & {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
-  (let [[endpoint api-key] (embedding-service-resolve-config!)]
-    (first (openai-compatible-get-embeddings-batch
-            {:provider       "ai-service"
-             :endpoint       endpoint
-             :api-key        api-key
-             :model-name     model-name
-             :vector-dimensions vector-dimensions
-             :texts          [text]
-             :snowplow?      snowplow?
-             :record-tokens? record-tokens?
-             :type           type}))))
-
-(defmethod get-embeddings-batch "ai-service"
-  [{:keys [model-name vector-dimensions]} texts & {:keys [record-tokens? type]}]
-  (let [[endpoint api-key] (embedding-service-resolve-config!)]
+(defn- ai-service-get-embeddings-batch
+  [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
+  (let [{:keys [endpoint api-key network-policy-floor instance-token?]} (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
-     {:provider       "ai-service"
-      :endpoint       endpoint
-      :api-key        api-key
-      :model-name     model-name
-      :vector-dimensions vector-dimensions
-      :texts          texts
-      :snowplow?      true
-      :record-tokens? record-tokens?
-      :type           type})))
-
-(defmethod pull-model "ai-service" [_]
-  (log/debug "ai-service provider does not require pulling a model"))
+     {:provider             "ai-service"
+      :endpoint             endpoint
+      :api-key              api-key
+      :model-name           model-name
+      :vector-dimensions    vector-dimensions
+      :texts                texts
+      :snowplow?            snowplow?
+      :record-tokens?       record-tokens?
+      :type                 type
+      :network-policy-floor network-policy-floor
+      :instance-token?      instance-token?})))
 
 ;;;; OpenAI provider
 
@@ -572,23 +635,8 @@
 (defmethod embedder-circuit-endpoint "openai" [_]
   (first (openai-resolve-config!)))
 
-(defmethod get-embedding "openai"
-  [embedding-model text & {:keys [record-tokens? type]}]
-  (let [[endpoint api-key] (openai-resolve-config!)]
-    (first (openai-compatible-get-embeddings-batch
-            {:provider       "openai"
-             :endpoint       endpoint
-             :api-key        api-key
-             :model-name     (:model-name embedding-model)
-             :vector-dimensions (:vector-dimensions embedding-model)
-             :texts          [text]
-             :record-tokens? record-tokens?
-             :extra-body     (when (supports-dimensions? embedding-model)
-                               {:dimensions (:vector-dimensions embedding-model)})
-             :type           type}))))
-
-(defmethod get-embeddings-batch "openai"
-  [embedding-model texts & {:keys [record-tokens? type]}]
+(defn- openai-get-embeddings-batch
+  [embedding-model texts {:keys [record-tokens? type]}]
   (let [[endpoint api-key] (openai-resolve-config!)]
     (openai-compatible-get-embeddings-batch
      {:provider       "openai"
@@ -602,18 +650,50 @@
                         {:dimensions (:vector-dimensions embedding-model)})
       :type           type})))
 
-(defmethod pull-model "openai" [_]
-  (log/debug "OpenAI provider does not require pulling a model"))
+(defn- register-built-in-providers!
+  []
+  (let [spi-version embeddings.provider/embedding-spi-version
+        legacy      embeddings.provider/legacy-resolved-model]
+    (embeddings.provider/register-provider!
+     "ollama"
+     {:embedding-spi-version spi-version
+      :readiness             (constantly {:ready? true})
+      :resolve-model         legacy
+      :embed-texts           (fn [{:keys [model-name vector-dimensions]} texts _opts]
+                               (ollama-get-embeddings-batch model-name vector-dimensions texts))
+      :prepare!              (fn [{:keys [model-name]}]
+                               (ollama-pull-model model-name))})
+    (embeddings.provider/register-provider!
+     "ai-service"
+     {:embedding-spi-version spi-version
+      :readiness             (fn [_]
+                               {:ready? (boolean (or (not-empty (semantic-settings/ee-embedding-service-base-url))
+                                                     (not-empty (llm.settings/ai-service-base-url))))})
+      :resolve-model         legacy
+      :embed-texts           ai-service-get-embeddings-batch})
+    (embeddings.provider/register-provider!
+     "openai"
+     {:embedding-spi-version spi-version
+      :readiness             (fn [_]
+                               {:ready? (boolean (not-empty (semantic-settings/openai-api-key)))})
+      :resolve-model         legacy
+      :embed-texts           openai-get-embeddings-batch})))
+
+(register-built-in-providers!)
 
 ;;;; Query prefixes for asymmetric retrieval models
 
 (def ^:private model-family-query-prefixes
   "Query prefixes for embedding-model families trained for asymmetric retrieval.
-  These models expect search queries — but not the indexed documents — to carry a fixed prefix."
-  ;; Patterns must be mutually exclusive: lookup scans entries in unspecified order.
+  These models expect search queries — but not the indexed documents — to carry a fixed prefix.
+  First match wins, so keep more specific patterns first."
+  ;; Arctic Embed moved to the short "query: " prefix at v2.0. Everything earlier expects the original
+  ;; longer instruction: v1 (xs, s, m, m-long, l) and v1.5 alike, including the bundled xs model.
   ;; Keep patterns narrow: a false positive is unfixable without a code change, since the
   ;; `ee-embedding-query-prefix` setting can only replace a matched prefix, never suppress it.
-  {#"(?i)snowflake-arctic-embed" "query: "})
+  ;; Hence the leading anchor, so an unrelated model that merely contains the family name is left alone.
+  [[#"(?i)(?:^|/)snowflake-arctic-embed-\w+-v[2-9]" "query: "]
+   [#"(?i)(?:^|/)snowflake-arctic-embed(?:-|$)"     "Represent this sentence for searching relevant passages: "]])
 
 (defn- default-query-prefix
   [model-name]
@@ -641,27 +721,10 @@
    :model-name (semantic-settings/ee-embedding-model)
    :vector-dimensions (semantic-settings/ee-embedding-model-dimensions)})
 
-(defmulti embedding-supported?
-  "Whether `embedding-model`'s provider is *configured* to compute embeddings — the endpoint/credentials it
-  needs are present. This is a config-presence check, not a liveness probe: a set URL whose service is down
-  (or a stopped ollama) still reads as supported and surfaces at call time. Dispatches on provider,
-  mirroring [[get-embedding]] and the config each provider's impl resolves; a new provider — including a
-  future in-process embedder — adds a method. The `:default` is false, so an unrecognized provider gates
-  callers off safely."
-  {:arglists '([embedding-model])} dispatch-provider)
-
-(defmethod embedding-supported? :default [_] false)
-
-(defmethod embedding-supported? "ai-service" [_]
-  (boolean (or (not-empty (semantic-settings/ee-embedding-service-base-url))
-               (not-empty (llm.settings/ai-service-base-url)))))
-
-(defmethod embedding-supported? "openai" [_]
-  (boolean (not-empty (semantic-settings/openai-api-key))))
-
-;; ollama's endpoint is hardcoded (localhost:11434) with no setting to check, so config-presence is always
-;; true — consistent with ai-service/openai, which likewise check for a configured URL, not a live server.
-(defmethod embedding-supported? "ollama" [_] true)
+(defn embedding-supported?
+  "Whether the selected provider is installed and configured. This is not a remote liveness probe."
+  [embedding-model]
+  (embeddings.provider/ready? embedding-model))
 
 (defn- calc-token-metrics
   [texts]
@@ -704,7 +767,7 @@
 
 (comment
   ;; Configuration:
-  ;; MB_EE_EMBEDDING_PROVIDER:  "ai-service" (default), "openai", or "ollama"
+  ;; MB_EE_EMBEDDING_PROVIDER:  "ai-service" (default), "openai", "ollama", or "in-process"
   ;; MB_EE_EMBEDDING_MODEL: optional override (leave empty for provider defaults)
   ;;   - OpenAI default: "text-embedding-3-small"
   ;;   - Ollama default: "mxbai-embed-large"

@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
@@ -111,9 +112,16 @@
             temporal-unit)
           granularity))))
 
-(defn finest-temporal-breakout-index
-  "Returns the index of leftmost breakout among the breakouts with the finest temporal granularity."
-  [breakouts option-index]
+(mu/defn finest-temporal-breakout-index
+  "Returns the index of leftmost breakout among the breakouts with the finest temporal granularity.
+
+  `option-index` = index within an MBQL clause to look for an options map. Use `2` for Legacy MBQL (MBQL 4) and `1`
+  for MBQL 5.
+
+  TODO (Cam 2026-07-24) remove `option-index` as an argument, I believe it was only here for compatibility with either
+  MBQL 4 or 5, not that we're using MBQL 5 everywhere we can drop compatibility for 4."
+  [breakouts    :- [:maybe [:sequential ::lib.schema.expression/expression]]
+   option-index :- pos-int?]
   (loop [bs (seq breakouts)
          i 0
          min-granularity (inc (apply max (vals granularity)))

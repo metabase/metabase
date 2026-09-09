@@ -15,10 +15,8 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import {
-  type GoalRefError,
-  resolveGoalValue,
-} from "metabase/visualizations/lib/dynamic-goals";
+import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered-goal-value";
+import { type GoalRefError, resolveGoalValue } from "metabase/viz-core";
 import type {
   CardId,
   DatasetData,
@@ -44,7 +42,6 @@ import { ICON_BUTTON_SIZE } from "./constants";
 import type { ColumnOption, PickedItem } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
-import { useResolvedGoalValue } from "./use-resolved-goal-value";
 import { getNumericColumnOptions } from "./utils";
 
 const ROOT_MENU_MIN_WIDTH = 225;
@@ -60,7 +57,7 @@ export type GoalValueInputProps = {
   datasetQuery: DatasetQuery | undefined;
   id: string;
   placeholder?: string;
-  referencedEntities: ReferencedEntity[];
+  referencedEntities?: ReferencedEntity[];
   showSelfColumns?: boolean;
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
@@ -105,7 +102,7 @@ export const GoalValueInput = ({
     },
   );
 
-  const resolved = useResolvedGoalValue(
+  const resolved = useAnsweredGoalValue(
     datasetQuery,
     data,
     value,

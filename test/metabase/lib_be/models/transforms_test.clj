@@ -6,7 +6,8 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
@@ -161,3 +162,20 @@
                                                   :display-name "Bar"
                                                   :type         :card
                                                   :card-id      123}}}}))))))
+
+(deftest transform-query-out-strips-internal-keys-test
+  (testing "an internal namespaced key is stripped when a dataset_query is read back out of the app DB"
+    (is (not (contains? ((:out lib-be/transform-query)
+                         (json/encode {:database (mt/id)
+                                       :type     :query
+                                       :query    {:source-table (mt/id :venues)}
+                                       :a/b      1}))
+                        :a/b)))))
+
+(deftest card-dataset-query-strips-internal-keys-test
+  (testing "a forged internal namespaced key in a Card's :dataset_query does not survive a round-trip through the app DB"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :venues)}
+                                                              :a/b      1}}]
+      (is (not (contains? (:dataset_query (t2/select-one :model/Card :id card-id)) :a/b))))))

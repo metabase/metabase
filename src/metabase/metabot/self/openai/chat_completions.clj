@@ -9,10 +9,10 @@
   which can post-process the body [[request-body]] returns."
   (:require
    [clojure.string :as str]
-   [malli.json-schema :as mjs]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
@@ -96,18 +96,29 @@
 (defn- tool->cc-tool
   "Convert a tool definition map to Chat Completions tool format.
   Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params     (schema/filter-schema-by-features params)
-        doc        (if (str/starts-with? (or doc "") "Inputs: ")
-                     (second (str/split doc #"\n\n  " 2))
-                     doc)]
-    {:type     "function"
-     :function {:name        tool-name
-                :description doc
-                :parameters  (mjs/transform params {:additionalProperties false})}}))
+  [tool]
+  {:type     "function"
+   :function (schema/tool-function tool)})
 
 ;;; Streaming response → AISDK v5 chunks
+
+(def stop-reasons
+  "Chat Completions `finish_reason` → AI SDK v5 `FinishReason`. Adapters whose dialect adds reasons beyond OpenAI's
+  extend this and pass the result to [[chat-completions->aisdk-chunks-xf]]."
+  {"stop"           "stop"
+   "length"         "length"
+   "tool_calls"     "tool-calls"
+   "function_call"  "tool-calls"
+   "content_filter" "content-filter"})
+
+(defn- delta-reasoning
+  "Reasoning text carried by a Chat Completions delta or message, under either spelling. vLLM 0.26
+  emits `reasoning` and treats `reasoning_content` as its deprecated name; older builds, Z.AI, and
+  other OpenAI-compatible servers still emit the latter, and a self-hosted server's version is the
+  customer's choice."
+  [m]
+  (or (not-empty (:reasoning m))
+      (not-empty (:reasoning_content m))))
 
 (defn chat-completions->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
@@ -128,98 +139,136 @@
 
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
-  Parallel tool calls arrive with different `index` values; when a new index
-  appears the previous tool is complete."
-  []
-  (fn [rf]
-    (let [current-type (volatile! nil) ;; :text | :function_call | nil
-          current-id   (volatile! nil) ;; active chunk id (text-id or tool call_id)
-          message-id   (volatile! nil)
-          model-name   (volatile! nil)
-          payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
-          close!       (fn [result]
-                         (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text          :text-end
-                                                             :function_call :tool-input-available)}
-                                                    @payload))
-                           (vreset! current-type nil)
-                           (vreset! current-id nil)
-                           (vreset! payload {})))]
-      (fn
-        ([result]
-         (cond-> result
-           @current-type (close!)
-           true          (rf)))
 
-        ([result {:keys [id model choices usage] :as _chunk}]
-         (let [choice        (first choices)
-               delta         (:delta choice)
-               finish-reason (:finish_reason choice)
-               tool-call     (first (:tool_calls delta))
-               ;; Determine what kind of content this chunk carries.
-               ;; Empty-string content (common between tool calls) is ignored
-               ;; to avoid spurious text blocks that would close open tools.
-               chunk-type    (cond
-                               (not-empty (:content delta)) :text
-                               (some? tool-call)            :function_call
-                               :else                        nil)
-               ;; For new tool calls, the id comes from the chunk; for deltas
-               ;; on the same tool, we keep current-id.
-               chunk-id      (or (:id tool-call) @current-id (core/mkid))]
-           (cond-> result
-             ;; Emit :start on first chunk
-             (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
-                                                                  (u/prog1
-                                                                    (vreset! message-id id)
-                                                                    (vreset! model-name model)))
-             ;; Close previous block when type changes, or when a new tool
-             ;; call arrives (different id = different tool in parallel)
-             (and @current-type
-                  (or (and chunk-type
-                           (not= chunk-type @current-type))
-                      (and (= chunk-type :function_call)
-                           (not= chunk-id @current-id))))     (close!)
-             ;; Start a new text block
-             (and (= chunk-type :text)
-                  (not= @current-type :text))                 (-> (u/prog1
-                                                                    (let [tid (core/mkid)]
-                                                                      (vreset! current-type :text)
-                                                                      (vreset! current-id tid)
-                                                                      (vreset! payload {:id tid})))
-                                                                  (rf (merge {:type :text-start} @payload)))
-             ;; Text delta
-             (and (= chunk-type :text)
-                  (some? (:content delta)))                   (rf {:type  :text-delta
-                                                                   :id    @current-id
-                                                                   :delta (:content delta)})
-             ;; Start a new tool call block
-             (and (= chunk-type :function_call)
-                  (:id tool-call)
-                  (:name (:function tool-call)))              (-> (u/prog1
-                                                                    (vreset! current-type :function_call)
-                                                                    (vreset! current-id (:id tool-call))
-                                                                    (vreset! payload {:toolCallId (:id tool-call)
-                                                                                      :toolName   (:name (:function tool-call))}))
-                                                                  (rf (merge {:type :tool-input-start} @payload))
-                                                                  ;; Emit initial arguments if present
-                                                                  (cond-> (not (str/blank? (:arguments (:function tool-call))))
-                                                                    (rf {:type           :tool-input-delta
-                                                                         :toolCallId     (:id tool-call)
-                                                                         :inputTextDelta (:arguments (:function tool-call))})))
-             ;; Tool argument delta (continuation of existing tool call)
-             (and (= chunk-type :function_call)
-                  (not (:id tool-call))
-                  (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
-                                                                   :toolCallId     (:toolCallId @payload)
-                                                                   :inputTextDelta (:arguments (:function tool-call))})
-             ;; Finish reason — close whatever is open
-             (some? finish-reason)                            (cond->
-                                                               @current-type (close!))
-             ;; Usage (often on a separate final chunk with empty choices)
-             (some? usage)                                    (rf {:type  :usage
-                                                                   :usage (usage->aisdk-usage usage)
-                                                                   :id    @message-id
-                                                                   :model @model-name}))))))))
+  Parallel tool calls are tracked by tool-call `id`, not by `index`, which is
+  never read: a tool-call delta whose `id` differs from the open one closes the
+  previous block and opens a new one. That relies on providers sending `id` only
+  on a tool call's opening chunk — one that repeated it on continuation chunks
+  would lose their arguments, since neither the start branch (needs `:name`) nor
+  the argument-delta branch (needs no `:id`) would fire.
+
+  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]].
+
+  `opts` may carry `:forward-reasoning?`, which additionally translates reasoning
+  deltas (see [[delta-reasoning]]) into :reasoning-start / :reasoning-delta /
+  :reasoning-end. Opt-in, because whether a provider's reasoning renders at all is
+  a separate question (see `metabot.settings/llm-metabot-supports-reasoning?`) and
+  chunks nothing consumes only add stream volume."
+  ([]
+   (chat-completions->aisdk-chunks-xf stop-reasons nil))
+  ([stop-reasons]
+   (chat-completions->aisdk-chunks-xf stop-reasons nil))
+  ([stop-reasons {:keys [forward-reasoning?]}]
+   (fn [rf]
+     (let [current-type (volatile! nil) ;; :text | :reasoning | :function_call | nil
+           current-id   (volatile! nil) ;; active chunk id (text-id, reasoning-id, or tool call_id)
+           message-id   (volatile! nil)
+           model-name   (volatile! nil)
+           payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
+           stop-reason  (volatile! nil)
+           close!       (fn [result]
+                          (u/prog1 (rf result (merge {:type (case @current-type
+                                                              :text          :text-end
+                                                              :reasoning     :reasoning-end
+                                                              :function_call :tool-input-available)}
+                                                     @payload))
+                            (vreset! current-type nil)
+                            (vreset! current-id nil)
+                            (vreset! payload {})))]
+       (fn
+         ([result]
+          (cond-> result
+            @current-type (close!)
+            true          (rf)))
+
+         ([result {:keys [id model choices usage] :as _chunk}]
+          (let [choice        (first choices)
+                delta         (:delta choice)
+                finish-reason (:finish_reason choice)
+                tool-call     (first (:tool_calls delta))
+                ;; Determine what kind of content this chunk carries.
+                ;; Empty-string content (common between tool calls) is ignored
+                ;; to avoid spurious text blocks that would close open tools.
+                chunk-type    (cond
+                                (not-empty (:content delta))  :text
+                                (and forward-reasoning?
+                                     (delta-reasoning delta)) :reasoning
+                                (some? tool-call)             :function_call
+                                :else                         nil)
+                ;; For new tool calls, the id comes from the chunk; for deltas
+                ;; on the same tool, we keep current-id.
+                chunk-id      (or (:id tool-call) @current-id (core/mkid))]
+            (cond-> result
+              ;; Emit :start on first chunk
+              (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
+                                                                   (u/prog1
+                                                                     (vreset! message-id id)
+                                                                     (vreset! model-name model)))
+              ;; Close previous block when type changes, or when a new tool
+              ;; call arrives (different id = different tool in parallel)
+              (and @current-type
+                   (or (and chunk-type
+                            (not= chunk-type @current-type))
+                       (and (= chunk-type :function_call)
+                            (not= chunk-id @current-id))))     (close!)
+              ;; Start a new text block
+              (and (= chunk-type :text)
+                   (not= @current-type :text))                 (-> (u/prog1
+                                                                     (let [tid (core/mkid)]
+                                                                       (vreset! current-type :text)
+                                                                       (vreset! current-id tid)
+                                                                       (vreset! payload {:id tid})))
+                                                                   (rf (merge {:type :text-start} @payload)))
+              ;; Text delta
+              (and (= chunk-type :text)
+                   (some? (:content delta)))                   (rf {:type  :text-delta
+                                                                    :id    @current-id
+                                                                    :delta (:content delta)})
+              ;; Start a new reasoning block
+              (and (= chunk-type :reasoning)
+                   (not= @current-type :reasoning))            (-> (u/prog1
+                                                                     (let [rid (core/mkid)]
+                                                                       (vreset! current-type :reasoning)
+                                                                       (vreset! current-id rid)
+                                                                       (vreset! payload {:id rid})))
+                                                                   (rf (merge {:type :reasoning-start} @payload)))
+              ;; Reasoning delta
+              (= chunk-type :reasoning)                        (rf {:type  :reasoning-delta
+                                                                    :id    @current-id
+                                                                    :delta (delta-reasoning delta)})
+              ;; Start a new tool call block
+              (and (= chunk-type :function_call)
+                   (:id tool-call)
+                   (:name (:function tool-call)))              (-> (u/prog1
+                                                                     (vreset! current-type :function_call)
+                                                                     (vreset! current-id (:id tool-call))
+                                                                     (vreset! payload {:toolCallId (:id tool-call)
+                                                                                       :toolName   (:name (:function tool-call))}))
+                                                                   (rf (merge {:type :tool-input-start} @payload))
+                                                                   ;; Emit initial arguments if present
+                                                                   (cond-> (not (str/blank? (:arguments (:function tool-call))))
+                                                                     (rf {:type           :tool-input-delta
+                                                                          :toolCallId     (:id tool-call)
+                                                                          :inputTextDelta (:arguments (:function tool-call))})))
+              ;; Tool argument delta (continuation of existing tool call)
+              (and (= chunk-type :function_call)
+                   (not (:id tool-call))
+                   (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
+                                                                    :toolCallId     (:toolCallId @payload)
+                                                                    :inputTextDelta (:arguments (:function tool-call))})
+              ;; Finish reason — close whatever is open
+              (some? finish-reason)                            (-> (u/prog1
+                                                                     (vreset! stop-reason finish-reason))
+                                                                   (cond->
+                                                                    @current-type (close!)))
+              ;; Usage (often on a separate final chunk with empty choices)
+              (some? usage)                                    (rf (cond-> {:type  :usage
+                                                                            :usage (usage->aisdk-usage usage)
+                                                                            :id    @message-id
+                                                                            :model @model-name}
+                                                                     @stop-reason
+                                                                     (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
+                                                                            :raw-finish-reason @stop-reason)))))))))))
 
 ;;; Request body
 
@@ -246,3 +295,31 @@
                                         :else       "auto"))
       temperature (assoc :temperature temperature)
       max-tokens  (assoc :max_tokens max-tokens))))
+
+;;; Model catalog
+
+(defn models-catalog
+  "Extract the model list from an OpenAI-compatible `GET /models` response, failing closed.
+
+  `(get-in res [:body :data])` yields nil for any body shape we don't recognize — a base URL pointing at
+  something that isn't a model endpoint, an HTML error page, a provider that renamed the key. Returning nil
+  leaves the caller's whitelist intersection empty, so the admin Connect flow succeeds against a provider we
+  never actually reached and leaves an empty model picker with no diagnostic. Throw instead.
+
+  `provider-name` is the display name, used in the message. The exception is tagged `:api-error` so the
+  adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and carries
+  no `:status`: this isn't a credentials problem, and `metabase.metabot.api`'s `provider-client-error?`
+  renders any 4xx under the admin API-key field, which would attach the wrong message to the wrong input.
+
+  A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes.
+
+  `:detail` is a sentence appended to the message, for a provider that has something more specific to say."
+  ([provider-name res] (models-catalog provider-name res nil))
+  ([provider-name res {:keys [detail]}]
+   (let [data (get-in res [:body :data])]
+     (when-not (sequential? data)
+       (throw (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
+                         detail (str ". " detail))
+                       {:api-error  true
+                        :error-code :malformed-model-catalog})))
+     data)))

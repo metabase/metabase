@@ -21,7 +21,7 @@ export const TrialBanner = ({
       icon="warning_round_filled"
       bg="feedback-warning"
       body={
-        <Flex align="center" gap="xs">
+        <Flex align="center" gap="xxs">
           {/* Text and ExternalLink originally have different line-heights that we need to marry. */}
           <Text lh="inherit">
             {lastDay
@@ -39,7 +39,7 @@ export const TrialBanner = ({
       }
       closable
       onClose={onClose}
-      py="md"
+      py="lg"
     ></Banner>
   );
 };

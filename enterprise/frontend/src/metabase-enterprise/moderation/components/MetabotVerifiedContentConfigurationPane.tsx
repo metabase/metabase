@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { useUpdateMetabotMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import { useUpdateMetabotMutation } from "metabase/metabot";
 import { Stack, Switch } from "metabase/ui";
 import type { MetabotInfo } from "metabase-types/api";
 
@@ -41,7 +41,6 @@ export function MetabotVerifiedContentConfigurationPane({
         onChange={(e) => handleVerifiedContentToggle(e.target.checked)}
         disabled={isUpdating}
         w="auto"
-        size="sm"
       />
     </Stack>
   );

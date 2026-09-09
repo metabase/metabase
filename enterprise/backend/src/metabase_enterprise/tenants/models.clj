@@ -1,5 +1,6 @@
 (ns metabase-enterprise.tenants.models
   (:require
+   [metabase-enterprise.tenants.db :as tenants.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
@@ -8,6 +9,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -27,9 +29,9 @@
 
 (t2/define-before-insert :model/Tenant
   [tenant]
-  (let [tenant-collection-id (t2/insert-returning-pk! :model/Collection {:type collection/tenant-specific-root-collection-type
-                                                                         :name (format "Tenant Collection: %s" (:name tenant))
-                                                                         :namespace "tenant-specific"})]
+  (let [tenant-collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
+                                                             :name      (format "Tenant Collection: %s" (:name tenant))
+                                                             :namespace "tenant-specific"})]
     (u/prog1 (assoc tenant :tenant_collection_id tenant-collection-id)
       ;; The API layer is responsible for doing validation with nice error messages, here we just throw as a final layer
       ;; of defense.
@@ -38,9 +40,7 @@
 (defn tenant-exists?
   "Given a tenant name, returns truthy if the name (or its slugified version) is already reserved."
   [{n :name slug :slug}]
-  (t2/exists? :model/Tenant {:where [:or
-                                     [:= :slug slug]
-                                     [:= :name n]]}))
+  (tenants.db/tenant-name-or-slug-exists? n slug))
 
 (doto :model/Tenant
   (derive :metabase/model)
@@ -51,20 +51,13 @@
   (mi/instances-with-hydrated-data
    tenants k
    (fn []
-     (->> (t2/query {:select [[:tenant_id] [[:count :*] :count]]
-                     :from [(t2/table-name :model/User)]
-                     :where [:and
-                             [:in :tenant_id (map u/the-id tenants)]
-                             [:= :type "personal"]
-                             :is_active]
-                     :group-by [:tenant_id]})
+     (->> (tenants.db/active-member-counts (map u/the-id tenants))
           (map (juxt :tenant_id :count))
           (into {})))
    :id
    {:default 0}))
 
-(def Attributes
-  "Attributes attached to a tenant that will be passed down to users in the tenant."
+(def ^:private StrictAttributes
   [:map-of
    [:and
     (mu/with-api-error-message
@@ -75,17 +68,28 @@
      (deferred-tru "attribute keys must not start with `@`"))]
    :any])
 
+(def Attributes
+  "Attributes attached to a tenant that will be passed down to users in the tenant.
+
+  [[StrictAttributes]] can't be the request schema directly: request decoding drops `:map-of` entries that don't
+  match their schema, so an `@`-prefixed key would be quietly discarded and the tenant saved without it. Decoding
+  therefore sees a permissive `:map-of` that keeps every entry, and the `:fn` re-checks the strict shape afterwards,
+  so an `@`-prefixed key is a 400."
+  [:and
+   [:map-of ms/KeywordOrString :any]
+   (mu/with-api-error-message
+    [:fn #(mr/validate StrictAttributes %)]
+    (deferred-tru "attribute keys must be a keyword or string and must not start with `@`"))])
+
 (defenterprise user->tenant-collection-and-descendant-ids
   "EE version of user->tenant-collection-and-descendant-ids. Returns a vector of the tenant collection ID and all
   descendant collection IDs for the user's tenant, or an empty vector if the user has no tenant."
   :feature :tenants
   [user-or-id]
   (into []
-        (when-let [tenant-id (t2/select-one-fn :tenant_id :model/User :id (u/the-id user-or-id))]
-          (when-let [tenant-collection-id (t2/select-one-fn :tenant_collection_id :model/Tenant :id tenant-id)]
-            (let [descendant-ids (t2/select-pks-set :model/Collection
-                                                    :location
-                                                    [:like (str "/" tenant-collection-id "/%")])]
+        (when-let [tenant-id (tenants.db/user-tenant-id (u/the-id user-or-id))]
+          (when-let [tenant-collection-id (tenants.db/tenant-collection-id tenant-id)]
+            (let [descendant-ids (tenants.db/descendant-collection-ids tenant-collection-id)]
               (conj descendant-ids tenant-collection-id))))))
 
 (defenterprise maybe-localize-tenant-collection-names
@@ -98,9 +102,7 @@
                                     collections)
         collection-id->tenant-name-and-id
         (when (seq tenant-collection-ids)
-          (t2/select-fn->fn :tenant_collection_id (juxt :name :id)
-                            :model/Tenant
-                            :tenant_collection_id [:in tenant-collection-ids]))]
+          (tenants.db/tenant-names-and-ids-by-collection tenant-collection-ids))]
     (mapv (fn [{ttype :type id :id :as coll}]
             (cond-> coll
               (= ttype collection/tenant-specific-root-collection-type)

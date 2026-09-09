@@ -1,4 +1,4 @@
-(ns metabase.activity-feed.models.recent-views-test
+(ns ^:synchronized metabase.activity-feed.models.recent-views-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -20,7 +20,8 @@
 (use-fixtures
   :each (fn [f]
           (clear-test-user-recent-views)
-          (f)))
+          (mt/with-temporary-setting-values [synchronous-batch-updates true]
+            (f))))
 
 (defn fixup [list-item]
   (-> list-item
@@ -32,6 +33,25 @@
   ([user-id] (recent-views user-id [:views]))
   ([user-id context] (recent-views user-id context {}))
   ([user-id context options] (:recents (recent-views/get-recents user-id context options))))
+
+(deftest metric-views-are-pruned-to-the-bucket-cap-test
+  (testing "metric recents are pruned past the per-model cap without affecting other card buckets (#79571)"
+    (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
+      (mt/with-model-cleanup [:model/RecentViews]
+        (mt/with-temp
+          [:model/Database {db-id :id} {}
+           :model/Card {question-id :id} {:type "question" :name "q" :database_id db-id}
+           :model/Card {metric-1-id :id} {:type "metric" :name "m1" :database_id db-id}
+           :model/Card {metric-2-id :id} {:type "metric" :name "m2" :database_id db-id}
+           :model/Card {metric-3-id :id} {:type "metric" :name "m3" :database_id db-id}]
+          (doseq [id [question-id metric-1-id metric-2-id metric-3-id]]
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card id :view))
+          (let [by-model (mt/with-test-user :rasta
+                           (group-by :model (recent-views (mt/user->id :rasta))))]
+            (is (= #{metric-2-id metric-3-id}
+                   (into #{} (map :id) (:metric by-model))))
+            (is (= [question-id]
+                   (map :id (:card by-model))))))))))
 
 (deftest simple-get-list-card-test
   (mt/with-temp

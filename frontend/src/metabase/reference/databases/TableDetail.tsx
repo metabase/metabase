@@ -1,60 +1,64 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import {
+  type MetadataProviderFactory,
+  getShallowFields as getFields,
+  selectMetadataProviderFactory,
+} from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import {
-  getShallowFields as getFields,
-  getMetadata,
-} from "metabase/selectors/metadata";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { updateTable } from "metabase/reference/update-actions";
 import type { User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
-  getError,
   getHasSingleSchema,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getTable,
   getUser,
 } from "../selectors";
-import type { BaseDetailFormFields, StubbedTable } from "../types";
+import type {
+  BaseDetailFormFields,
+  ReferenceLoadingProps,
+  StubbedTable,
+} from "../types";
 import { getQuestionUrl } from "../utils";
 
 interface TableDetailFormFields extends BaseDetailFormFields {
   revision_message?: string;
 }
 
-const interestingQuestions = (table: StubbedTable, metadata: Metadata) => {
+const interestingQuestions = (
+  table: StubbedTable,
+  getMetadataProvider: MetadataProviderFactory,
+) => {
   return [
     {
       text: t`Count of ${table.display_name}`,
       icon: "number" as const,
       link: getQuestionUrl({
-        dbId: table.db_id!,
         tableId: table.id,
         getCount: true,
-        metadata,
+        metadataProvider: getMetadataProvider(table.db_id ?? null),
       }),
     },
     {
       text: t`See raw data for ${table.display_name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: table.db_id!,
         tableId: table.id,
-        metadata,
+        metadataProvider: getMetadataProvider(table.db_id ?? null),
       }),
     },
   ];
@@ -71,10 +75,7 @@ const mapStateToProps = (
     entity,
     table: getTable(state, props),
     metadataFields: fields,
-    metadata: getMetadata(state),
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
+    getMetadataProvider: selectMetadataProviderFactory(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     hasSingleSchema: getHasSingleSchema(state, props),
@@ -83,7 +84,7 @@ const mapStateToProps = (
 };
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  updateTable,
   ...actions,
   onSubmit: actions.rUpdateTableDetail,
 };
@@ -99,9 +100,9 @@ interface TableDetailProps {
   hasSingleSchema?: boolean;
   loading?: boolean;
   loadingError?: unknown;
-  metadata: Metadata;
+  getMetadataProvider: MetadataProviderFactory;
 
-  onSubmit: (fields: TableDetailFormFields, props: any) => void;
+  onSubmit: (fields: TableDetailFormFields, props: any) => Promise<void>;
 }
 
 const TableDetail = (props: TableDetailProps) => {
@@ -116,9 +117,11 @@ const TableDetail = (props: TableDetailProps) => {
     startEditing,
     endEditing,
     hasSingleSchema,
-    metadata,
+    getMetadataProvider,
     onSubmit,
   } = props;
+
+  const [saveError, setSaveError] = useState<unknown>(null);
 
   const {
     isSubmitting,
@@ -128,8 +131,14 @@ const TableDetail = (props: TableDetailProps) => {
     handleReset,
   } = useFormik<TableDetailFormFields>({
     initialValues: {},
-    onSubmit: (fields): void => {
-      onSubmit(fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit(fields, { ...props, resetForm: handleReset });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -155,9 +164,8 @@ const TableDetail = (props: TableDetailProps) => {
         type="table"
         headerIcon="table2"
         headerLink={getQuestionUrl({
-          dbId: entity.db_id!,
           tableId: entity.id,
-          metadata,
+          metadataProvider: getMetadataProvider(entity.db_id ?? null),
         })}
         name={t`Details`}
         user={user}
@@ -169,8 +177,8 @@ const TableDetail = (props: TableDetailProps) => {
         nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() => (
           <div className={CS.wrapper}>
@@ -226,7 +234,10 @@ const TableDetail = (props: TableDetailProps) => {
                 {!isEditing && (
                   <li>
                     <UsefulQuestions
-                      questions={interestingQuestions(table, metadata)}
+                      questions={interestingQuestions(
+                        table,
+                        getMetadataProvider,
+                      )}
                     />
                   </li>
                 )}
@@ -244,4 +255,11 @@ export default connect(
   mapStateToProps,
   mapDispatchToProps,
   // Unjustified type cast. FIXME
-)(TableDetail as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  TableDetail as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

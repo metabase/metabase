@@ -1,9 +1,9 @@
 import fetchMock from "fetch-mock";
 
+import { mockDynamicGoalSettingKeys } from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { isDynamicGoalSetting } from "metabase/visualizations/lib/dynamic-goals";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 import {
   createMockCard,
@@ -12,13 +12,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { useResolvedGoalSettings } from "./use-resolved-goal-settings";
-
-jest.mock("metabase/visualizations/lib/dynamic-goals", () => ({
-  ...jest.requireActual("metabase/visualizations/lib/dynamic-goals"),
-  isDynamicGoalSetting: jest.fn(() => false),
-}));
-
-const isDynamicGoalSettingMock = jest.mocked(isDynamicGoalSetting);
 
 const DATA = createMockDatasetData({
   cols: [createMockColumn({ name: "count" })],
@@ -49,14 +42,12 @@ describe("useResolvedGoalSettings", () => {
     const { result } = setup(createMockCard({ display: "line" }), settings);
 
     expect(result.current).toEqual({ status: "resolved", settings });
-    expect(
-      result.current.status === "resolved" && result.current.settings,
-    ).toBe(settings);
+    expect(result.current.settings).toBe(settings);
   });
 
-  it("leaves a reference alone for a display that does not resolve goals", () => {
+  it("leaves a reference alone for a display that does not resolve graph goals", () => {
     const { result } = setup(
-      createMockCard({ display: "line" }),
+      createMockCard({ display: "scalar" }),
       REFERENCED_SETTINGS,
     );
 
@@ -67,15 +58,18 @@ describe("useResolvedGoalSettings", () => {
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
-  describe("for a display that resolves goals", () => {
+  describe("for a display that resolves graph goals", () => {
     const card = createMockCard({ display: "line" });
 
-    beforeEach(() => {
-      isDynamicGoalSettingMock.mockReturnValue(true);
-    });
+    mockDynamicGoalSettingKeys(["graph.goal_value"]);
 
-    afterEach(() => {
-      isDynamicGoalSettingMock.mockReturnValue(false);
+    it("leaves a hidden goal line alone", () => {
+      const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
+      const { result } = setup(card, settings);
+
+      expect(result.current).toEqual({ status: "resolved", settings });
+      expect(result.current.settings).toBe(settings);
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
     });
 
     it("substitutes an answer the dataset already has", () => {
@@ -122,7 +116,10 @@ describe("useResolvedGoalSettings", () => {
       });
 
       const { result } = setup(card, REFERENCED_SETTINGS);
-      expect(result.current).toEqual({ status: "resolving" });
+      expect(result.current).toEqual({
+        status: "resolving",
+        settings: { ...REFERENCED_SETTINGS, "graph.goal_value": null },
+      });
 
       await waitFor(() =>
         expect(result.current).toEqual({
@@ -137,7 +134,12 @@ describe("useResolvedGoalSettings", () => {
 
       const { result } = setup(card, REFERENCED_SETTINGS);
 
-      await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
+      await waitFor(() =>
+        expect(result.current).toEqual({
+          status: "failed",
+          settings: { ...REFERENCED_SETTINGS, "graph.goal_value": null },
+        }),
+      );
     });
   });
 });

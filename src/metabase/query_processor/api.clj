@@ -1,6 +1,6 @@
 (ns metabase.query-processor.api
   "/api/dataset endpoints."
-  (:refer-clojure :exclude [not-empty get-in])
+  (:refer-clojure :exclude [get-in select-keys])
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -8,7 +8,9 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
@@ -20,11 +22,14 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.referenced-entities :as qp.referenced-entities]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.core :as server]
    [metabase.util :as u]
@@ -32,11 +37,12 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :refer [not-empty get-in]]
+   [metabase.util.performance :refer [get-in select-keys]]
    [metabase.visualization-settings.core :as mb.viz]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -46,33 +52,29 @@
   is a wrapper for the function of the same name in the QP util namespace; it adds additional permissions checking as
   well."
   [query]
-  (when-let [source-card-id (and ((complement #{:internal "internal"}) (:type query))
-                                 (some-> query not-empty lib-be/normalize-query lib/primary-source-card-id))]
+  (when-let [source-card-id (lib/primary-source-card-id query)]
     (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
     (api/read-check :model/Card source-card-id)
     source-card-id))
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
-  [{:keys [database], :as query}
+  [query :- [:or ::lib.schema/query ::lib-be.schema/internal-query]
    & {:keys [context export-format was-pivot referenced-entities-specs]
       :or   {context       :ad-hoc
              export-format :api}}]
   (span/with-span!
     {:name "run-query-async"}
-    (when (and (not= (:type query) "internal")
-               (not= database lib.schema.id/saved-questions-virtual-database-id))
-      (when-not database
-        (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
-                        {:status-code 400, :query query}))))
     ;; store table id trivially iff we get a query with simple source-table
-    (let [table-id (get-in query [:query :source-table])]
+    (let [table-id (when (= (lib/normalized-query-type query) :mbql/query)
+                     (lib/primary-source-table-id query))]
       (when (int? table-id)
-        (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
+        (events/publish-event! :event/table-read {:object  (query-processor.db/table table-id)
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
-    (let [source-card-id (query->source-card-id query) ; This is only set for direct :source-table "card__..."
+    (let [source-card-id (when (= (lib/normalized-query-type query) :mbql/query)
+                           (query->source-card-id query))
           source-card    (when source-card-id
-                           (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
+                           (query-processor.db/source-card-metadata source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
@@ -95,6 +97,14 @@
                                         rff))
             (qp/process-query (assoc query :info info) rff)))))))
 
+(defn- request-referenced-entities
+  "The `referenced_entities` specs, read off the raw body. Normalizing the query to MBQL 5 rebuilds it and drops
+  every key that isn't part of the query itself, so they can't come in on the decoded `query` param."
+  [request]
+  (let [specs (get-in request [:body :referenced_entities])]
+    (api/check-400 (mr/validate qp.referenced-entities/specs-schema specs))
+    specs))
+
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache.
@@ -102,15 +112,13 @@
   `data.referenced_entities`."
   [_route-params
    _query-params
-   {:keys [referenced_entities] :as query} :- [:map
-                                               [:database {:optional true} [:maybe :int]]
-                                               [:referenced_entities {:optional true} qp.referenced-entities/specs-schema]]]
+   query :- ::lib-be.schema/maybe-legacy-or-internal-query
+   request]
   (run-streaming-query
    (-> query
-       (dissoc :referenced_entities)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)
-   :referenced-entities-specs referenced_entities))
+   :referenced-entities-specs (request-referenced-entities request)))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
@@ -146,12 +154,14 @@
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map
-       [:query                  [:map
+       [:query                  [:schema
                                  {:decode/api (fn [x]
                                                 (cond-> x
-                                                  (string? x) json/decode+kw))}]]
+                                                  (string? x) json/decode))}
+                                 ::lib-be.schema/maybe-legacy-or-internal-query]]
        [:visualization_settings {:default {}} [:map
-                                               {:decode/api (fn [x]
+                                               {:closed     false
+                                                :decode/api (fn [x]
                                                               (cond-> x
                                                                 (string? x) (json/decode viz-setting-key-fn)))}]]
        [:format_rows            {:default false} ms/BooleanValue]
@@ -161,10 +171,10 @@
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
         query                         (-> query
-                                          (assoc :viz-settings viz-settings)
                                           (dissoc :constraints)
+                                          (assoc :viz-settings viz-settings)
                                           (update :middleware #(-> %
-                                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
+                                                                   (select-keys [:ignore-cached-results?])
                                                                    (assoc :format-rows?           (or format-rows false)
                                                                           :pivot?                 (or pivot-results false)
                                                                           :csv-include-bom?       (if (some? csv-include-bom) csv-include-bom false)
@@ -192,13 +202,10 @@
   visibility_type :sensitive in the response."
   [_route-params
    _query-params
-   query :- [:map
-             [:database ms/PositiveInt]
-             [:settings {:optional true} [:maybe [:map
-                                                  [:include_sensitive_fields {:optional true} :boolean]]]]]]
+   query :- ::lib-be.schema/maybe-legacy-query]
   (queries/batch-fetch-query-metadata
    [query]
-   (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
+   (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
      {:include-sensitive-fields? include-sensitive-fields})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -209,29 +216,46 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map
+   {:keys [database pretty] :as query} :- [:map {:closed false}
                                            [:database ms/PositiveInt]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
   (model-persistence/with-persisted-substituion-disabled
-    (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (let [driver (driver.u/database->driver database)
-          prettify (partial driver/prettify-native-form driver)
-          compiled (qp.compile/compile-with-inline-parameters query)]
-      (cond-> compiled
-        pretty (update :query prettify)))))
+    (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
+                    (dissoc :constraints :middleware)
+                    lib/disable-default-limit)]
+      (qp.perms/check-current-user-has-adhoc-native-query-perms query)
+      (qp.setup/with-qp-setup [query query]
+        (binding [driver/*compile-with-inline-parameters* true]
+          ;; Preprocess once, then run the same permission checks the run path (execute chain) runs, so both
+          ;; endpoints agree on which referenced cards and tables the caller may use. Preprocessing resolves
+          ;; `card__N` source tables and card/snippet template tags, so the referenced entities are known by
+          ;; the time we check.
+          (let [preprocessed (qp.preprocess/preprocess query)]
+            (try
+              (qp.perms/check-query-permissions* preprocessed)
+              (catch clojure.lang.ExceptionInfo e
+                (throw (if (:permissions-error? (ex-data e))
+                         (ex-info (ex-message e) (assoc (ex-data e) :status-code 403) e)
+                         e))))
+            (let [compiled (qp.compile/compile-preprocessed preprocessed)
+                  driver (driver.u/database->driver database)]
+              ;; Return only the compiled query and its params, not the internal keys the compiler carries
+              ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids). `:collection` is kept so
+              ;; the frontend can pre-select the source table when converting a MongoDB question to native.
+              (-> (select-keys compiled [:query :params :collection])
+                  (cond-> pretty (update :query #(driver/prettify-native-form driver %)))))))))))
 
 (api.macros/defendpoint :post "/pivot"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
-   {:keys [database] :as query} :- [:map
-                                    [:database ms/PositiveInt]]]
+   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [rff :api]
-      (qp.pivot/run-pivot-query (assoc query
+      (qp.pivot/run-pivot-query (assoc (update query :middleware select-keys [:js-int-to-string? :ignore-cached-results?])
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
                                 rff)

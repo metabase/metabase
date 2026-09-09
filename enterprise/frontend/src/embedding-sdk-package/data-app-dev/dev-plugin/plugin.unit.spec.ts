@@ -617,6 +617,140 @@ describe("dataAppSandboxDevPlugin", () => {
         const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
         expect(body.entries).toEqual([]);
       });
+
+      describe("entries an earlier build left behind", () => {
+        // Every save rebuilds, so a multi-step edit runs through builds that
+        // throw. Those errors describe code the preview has already replaced.
+        const rebuild = (server: FakeDevServer) =>
+          server.watcher.emit("all", "change", "/app/src/App.tsx");
+
+        it("serves the current build's entries and withholds the rest", async () => {
+          const { server } = await setup();
+          await report(server, [{ summary: "mid-edit crash", buildId: 1 }]);
+
+          await rebuild(server);
+          await report(server, [{ summary: "still crashing", buildId: 2 }]);
+
+          const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+
+          // A rebuild re-evaluates the bundle and remounts the app, so
+          // whatever is still wrong reports itself again under build 2 — and
+          // what doesn't was fixed by the edit that triggered the rebuild.
+          expect(
+            body.entries.map((entry: { summary: string }) => entry.summary),
+          ).toEqual(["still crashing"]);
+          expect(body.buildId).toBe(2);
+          expect(body.staleEntries).toBe(1);
+        });
+
+        it("keeps entries no build owns", async () => {
+          const { server } = await setup();
+          await report(server, [
+            { summary: "the preview page itself failed", buildId: null },
+          ]);
+
+          await rebuild(server);
+
+          // Recorded before any bundle loaded — a rebuild neither re-runs nor
+          // disproves it, so hiding it would lose the report for good.
+          const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+          expect(body.entries).toHaveLength(1);
+          expect(body.staleEntries).toBe(0);
+        });
+
+        it("keeps entries stamped ahead of the server's own counter", async () => {
+          const { server } = await setup();
+          await report(server, [
+            { summary: "from before the restart", buildId: 9 },
+          ]);
+
+          // A dev-server restart begins counting again while an open preview
+          // keeps running the bundle it already has. Nothing replaced that
+          // code, so its failures are as live as any.
+          const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+          expect(body.entries).toHaveLength(1);
+          expect(body.staleEntries).toBe(0);
+        });
+
+        it("keeps entries from a page that stamps nothing", async () => {
+          const { server } = await setup();
+          await report(server, [{ summary: "boom" }]);
+
+          await rebuild(server);
+
+          // An older dev entry reports without a build id. Filtering those out
+          // would empty the feed of a preview that is genuinely broken.
+          expect(
+            (await server.request(DATA_APP_DIAGNOSTICS_URL)).body.entries,
+          ).toHaveLength(1);
+        });
+
+        it("hands back everything for a reader that asks", async () => {
+          const { server } = await setup();
+          await report(server, [{ summary: "mid-edit crash", buildId: 1 }]);
+          await rebuild(server);
+
+          for (const query of [
+            "?includeStale",
+            "?includeStale=true",
+            "?includeStale=1",
+          ]) {
+            const { body } = await server.request(
+              `${DATA_APP_DIAGNOSTICS_URL}${query}`,
+            );
+
+            expect(body.entries).toHaveLength(1);
+            expect(body.staleEntries).toBe(0);
+          }
+
+          // Spelling out false is the one way to ask and still be filtered.
+          const { body } = await server.request(
+            `${DATA_APP_DIAGNOSTICS_URL}?includeStale=false`,
+          );
+          expect(body.entries).toEqual([]);
+        });
+
+        it("counts only what the cursor would have shown", async () => {
+          const { server } = await setup();
+          await report(server, [
+            { summary: "read already", buildId: 1 },
+            { summary: "read already too", buildId: 1 },
+          ]);
+          const cursor = (await server.request(DATA_APP_DIAGNOSTICS_URL)).body
+            .nextEventId;
+
+          await rebuild(server);
+          await report(server, [{ summary: "old news", buildId: 1 }]);
+
+          // Reporting entries the reader consumed before its cursor moved
+          // would make a clean feed look like it was hiding a pile.
+          const { body } = await server.request(
+            `${DATA_APP_DIAGNOSTICS_URL}?startEventId=${cursor}`,
+          );
+          expect(body.entries).toEqual([]);
+          expect(body.staleEntries).toBe(1);
+        });
+
+        it("names the build it serves on the bundle itself", async () => {
+          const { server } = await setup();
+
+          const { res } = await server.request(DATA_APP_BUNDLE_URL);
+
+          // How the page learns which generation to stamp: the header comes
+          // with the exact bytes it is about to evaluate.
+          expect(res.setHeader).toHaveBeenCalledWith(
+            "x-data-app-build-id",
+            "1",
+          );
+
+          await rebuild(server);
+          const { res: rebuilt } = await server.request(DATA_APP_BUNDLE_URL);
+          expect(rebuilt.setHeader).toHaveBeenCalledWith(
+            "x-data-app-build-id",
+            "2",
+          );
+        });
+      });
     });
   });
 });

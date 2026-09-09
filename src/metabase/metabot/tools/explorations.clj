@@ -1,14 +1,18 @@
 (ns metabase.metabot.tools.explorations
   "Exploration-specific tool wrappers.
 
-  Every tool here returns `{:output <json-string>}`: the exploration chat FE applies plan edits
-  by parsing the tool result it sees on the `tool-output-available` stream event, and only a
-  result's `:output` string makes it onto the wire (see
-  `metabase.metabot.self.core/tool-output->wire-output`) — a bare map would reach the LLM but
-  stream to the client as an empty string, and the plan would silently never update."
+  A tool result's `:output` is the one string that goes to *both* the LLM and the client,
+  so the small plan edits the FE applies by parsing the tool result — `remove_from_research_plan`, `set_research_name`,
+  `select_research_timelines` — return `{:output <json-string>}`; a bare map would reach the LLM
+  but stream to the client as an empty string, and the plan would silently never update.
+
+  `add_research_groups` is the exception: its picker hydration is far too large to spend LLM
+  context on and grows with every metric the call references, so it rides a `research_plan_update`
+  data part (FE only) while `:output` carries a plain-text summary."
   (:require
    [clojure.string :as str]
    [metabase.explorations.core :as explorations]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.util.json :as json]
@@ -25,16 +29,10 @@
 (defn- format-research-plan-group
   "Format one group of the draft Research plan as a single line the LLM can act on. The
   `block_id` is surfaced verbatim so the agent can echo it back to plan-editing tools, and each
-  member dimension/metric carries its id in parentheses."
-  [{:keys [block_id anchor metric dimensions dimension metrics]}]
-  (case anchor
-    "metric"
-    (str "- [" block_id "] " (:name metric)
-         ", broken out by: " (str/join ", " (map named-with-id dimensions)))
-    "dimension"
-    (str "- [" block_id "] by " (:name dimension)
-         ", slicing: " (str/join ", " (map named-with-id metrics)))
-    nil))
+  member dimension carries its id in parentheses."
+  [{:keys [block_id metric dimensions]}]
+  (str "- [" block_id "] " (:name metric)
+       ", broken out by: " (str/join ", " (map named-with-id dimensions))))
 
 (defn format-research-plan
   "Format the user's in-progress draft Research plan for injection into the system message.
@@ -57,7 +55,7 @@
          ""
          (te/field "Plan name" (not-empty name))
          (when (seq groups)
-           (te/lines "Groups:" (keep format-research-plan-group groups)))
+           (te/lines "Groups:" (map format-research-plan-group groups)))
          (when (seq timelines)
            (te/field "Selected timelines" (str/join ", " (map named-with-id timelines)))))))))
 
@@ -68,50 +66,122 @@
   [context]
   {:research_plan (format-research-plan context)})
 
-(def ^:private get-research-candidates-schema
+(def ^:private list-research-metrics-schema
   [:map {:closed true}
    [:q {:optional true} [:maybe :string]]])
+
+(mu/defn ^{:tool-name "list_research_metrics"
+           :scope     scope/agent-explorations-read}
+  list-research-metrics-tool
+  "List the metrics available for research: one slim row per metric (id, name, description,
+   in_library — a quality signal), best first. Dimensions are not included; pass metric ids from
+   this index to `get_research_candidates` to see their candidate dimensions. Pass `q` to filter
+   by a case-insensitive substring of a metric or dimension name — e.g. `q: \"region\"` returns
+   the metrics that have a Region-like dimension. More than 500 matches are truncated to the top
+   500 with `truncated: true` — narrow with `q`."
+  [{:keys [q]} :- list-research-metrics-schema]
+  {:output (json/encode (explorations/research-metric-index {:q q}))})
+
+(def ^:private get-research-candidates-schema
+  [:map {:closed true}
+   [:q {:optional true} [:maybe :string]]
+   [:metric_ids {:optional true} [:maybe [:sequential :int]]]])
 
 (mu/defn ^{:tool-name "get_research_candidates"
            :scope     scope/agent-explorations-read}
   get-research-candidates-tool
-  "List the metrics and dimensions available for research. Each metric lists its candidate
-   dimensions (id, name, interestingness); each dimension group lists the dimension ids it bundles
-   and the metric ids it can slice. Use this to choose valid metric and dimension ids before
-   calling `add_research_groups`. Pass `q` to filter by a search term."
-  [{:keys [q]} :- get-research-candidates-schema]
-  {:output (json/encode (explorations/research-candidates {:q q}))})
+  "Get the candidate dimensions for chosen research metrics. Pass `metric_ids` (up to 20, from
+   `list_research_metrics`) and/or `q` (a case-insensitive substring of a metric or dimension
+   name) — at least one is required. Each metric lists the `dimensions` it can be sliced by: the
+   `id` to pass to `add_research_groups`, the `group` it belongs to, and a `name` only when this
+   metric calls it something other than the group name. Each entry in `dimension_groups` states
+   that group's types and interestingness once, plus the `metric_ids` it can slice. Every metric
+   and dimension id you pass to `add_research_groups` must come from this tool. Requested ids you
+   can't see come back as `missing_metric_ids`; a too-broad `q` returns the top matches with
+   `truncated: true` — narrow the search or pass explicit `metric_ids`."
+  [{:keys [q metric_ids]} :- get-research-candidates-schema]
+  (cond
+    (and (str/blank? q) (empty? metric_ids))
+    {:output (str "Error: pass metric_ids (up to " explorations/research-candidates-max-metrics
+                  ", from list_research_metrics) and/or q (a search term). This tool reports"
+                  " dimensions for metrics you have already chosen; use list_research_metrics or"
+                  " search to choose them.")}
+
+    (> (count metric_ids) explorations/research-candidates-max-metrics)
+    {:output (str "Error: pass at most " explorations/research-candidates-max-metrics
+                  " metric_ids per call (got " (count metric_ids)
+                  "). Split the request into multiple calls.")}
+
+    :else
+    {:output (json/encode (explorations/research-candidates {:metric-ids metric_ids :q q}))}))
+
+(defn- research-groups-payload
+  "Validate `groups` and hydrate the FE picker payload for them, in the snake_case shape the
+   client consumes."
+  [groups]
+  (explorations/exploration-data->api (explorations/research-groups {:groups groups})))
+
+(def ^:private summary-max-names
+  "How many dimension names one summary line spells out before falling back to a count. A metric
+   can be sliced by a long list of candidate dimensions, and the summary is the whole of what the
+   LLM sees of the result."
+  15)
+
+(defn- summarize-names [names]
+  (let [extra (- (count names) summary-max-names)]
+    (if (pos? extra)
+      (str (str/join ", " (take summary-max-names names)) " and " extra " more")
+      (str/join ", " names))))
+
+(defn- format-added-groups
+  "Plain-text summary of the groups `add_research_groups` just applied — the whole of what the
+   LLM sees of the result, since the picker hydration rides a data part instead. Names what the
+   user now has in the plan so the agent can describe it without re-reading the catalog; ids are
+   deliberately absent, as the next turn's plan snapshot carries
+   the `block_id`s needed to edit these groups."
+  [{:keys [metrics dimension_groups groups]}]
+  (let [metric-name (into {} (map (juxt :id :name)) metrics)
+        group-idx   (into {} (for [[i g] (map-indexed vector dimension_groups)
+                                   d     (:dimensions g)]
+                               [(:id d) i]))
+        group-names (mapv :name dimension_groups)
+        ;; Nil for a dimension the payload doesn't group: groups are validated against the
+        ;; unresolved catalog, so a dimension can pass validation and still be dropped from the
+        ;; hydrated metrics because their query can't actually break out on it. The summary skips
+        ;; what it can't name rather than failing the whole tool call.
+        group-name  (fn [dimension-id] (some-> (group-idx dimension-id) group-names))]
+    (te/lines
+     (str "Added " (count groups) " group(s) to the research plan:")
+     (for [g groups]
+       (let [dims (seq (keep group-name (:dimension_ids g)))]
+         (str "- " (metric-name (:metric_id g))
+              (cond
+                (and dims (:replace_default_dimensions g)) (str ", by exactly: " (summarize-names dims))
+                dims (str ", by: " (summarize-names dims) ", plus the automatic selection")
+                :else ", by the automatically-selected dimensions")))))))
 
 (def ^:private add-research-groups-schema
   [:map {:closed true}
    [:groups
     [:sequential
      [:map {:closed true}
-      [:anchor [:enum "metric" "dimension"]]
-      [:metric_id {:optional true} :int]
-      [:dimension_id {:optional true} :string]
+      [:metric_id :int]
       [:dimension_ids {:optional true} [:sequential :string]]
-      [:metric_ids {:optional true} [:sequential :int]]
       [:replace_default_dimensions {:optional true} :boolean]]]]])
 
 (mu/defn ^{:tool-name "add_research_groups"
            :scope     scope/agent-explorations-write}
   add-research-groups-tool
-  "Add one or more groups to the research artifact. Each group is either:
-   - metric-anchored: `{\"anchor\": \"metric\", \"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`
-     — the metric sliced by the chosen dimensions. By default `dimension_ids` are added on top of
-     the automatically-selected interesting dimensions; omit it to use only the automatic
-     selection. To pin the metric to exactly the dimensions you list (no automatic ones), also
-     pass `\"replace_default_dimensions\": true` - then `dimension_ids` must be non-empty.
-   - dimension-anchored: `{\"anchor\": \"dimension\", \"dimension_id\": <id>}`, the dimension
-     slicing every related metric. To slice only a chosen few, pass
-     `\"metric_ids\": [<id>, ...]` and just those metrics are included. Prefer this (a single
-     dimension-anchored group with a curated `metric_ids`) when the user asks to look at a handful
-     of metrics by one dimension — it reads as one \"by <dimension>\" block rather than several
-     loose metrics."
+  "Add one or more groups to the research artifact. Each group is a metric sliced by chosen
+   dimensions: `{\"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`. By default
+   `dimension_ids` are added on top of the automatically-selected interesting dimensions; omit
+   it to use only the automatic selection. To pin the metric to exactly the dimensions you
+   list (no automatic ones), also pass `\"replace_default_dimensions\": true` - then
+   `dimension_ids` must be non-empty."
   [{:keys [groups]} :- add-research-groups-schema]
-  {:output (json/encode (explorations/exploration-data->api
-                         (explorations/research-groups {:groups groups})))})
+  (let [payload (research-groups-payload groups)]
+    {:output     (format-added-groups payload)
+     :data-parts [(streaming/research-plan-update-part payload)]}))
 
 (def ^:private remove-from-research-plan-schema
   [:map {:closed true}
@@ -120,23 +190,20 @@
     [:sequential
      [:map {:closed true}
       [:block_id :string]
-      [:metric_ids {:optional true} [:sequential :int]]
-      [:dimension_ids {:optional true} [:sequential :string]]]]]
+      [:dimension_ids [:sequential :string]]]]]
    [:timeline_ids {:optional true} [:sequential :int]]])
 
 (mu/defn ^{:tool-name "remove_from_research_plan"
            :scope     scope/agent-explorations-write}
   remove-from-research-plan-tool
-  "Remove groups, individual metrics/dimensions within a group, or timelines from the research
-   plan. Address groups by the `block_id` shown in brackets for each group in the current research
-   plan (e.g. `metric:42`, `dim:7`).
+  "Remove groups, individual dimensions within a group, or timelines from the research plan.
+   Address groups by the `block_id` shown in brackets for each group in the current research
+   plan (e.g. `metric:42`).
 
    - To drop whole groups, pass `block_ids`: `{\"block_ids\": [\"metric:42\"]}`. Use this when the
-     user no longer wants a metric or dimension area at all (e.g. \"actually I don't care about
-     revenue\").
-   - To prune within a group, pass `members`. For a metric-anchored group, list the
-     `dimension_ids` to stop slicing by; for a dimension-anchored group, list the `metric_ids` to
-     stop including: `{\"members\": [{\"block_id\": \"metric:42\", \"dimension_ids\": [\"d1\"]}]}`.
+     user no longer wants a metric at all (e.g. \"actually I don't care about revenue\").
+   - To prune within a group, pass `members` with the `dimension_ids` to stop slicing that
+     group's metric by: `{\"members\": [{\"block_id\": \"metric:42\", \"dimension_ids\": [\"d1\"]}]}`.
    - To drop timelines, pass `timeline_ids` (the ids shown in the current plan's selected
      timelines): `{\"timeline_ids\": [7]}`.
 

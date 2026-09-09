@@ -1,22 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
-import { embedApi, makePivotAwareQueryRunner, publicApi } from "metabase/api";
+import { embedApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { applyParameters } from "metabase/common/utils/card";
 import { fetchDataOrError } from "metabase/dashboard/utils";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
+import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { updateMetadata } from "metabase/redux/metadata";
 import { useLocation, useParams } from "metabase/router";
-import { FieldSchema } from "metabase/schema";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
@@ -78,11 +77,7 @@ export const PublicOrEmbeddedQuestion = () => {
       }
 
       if (card.param_fields) {
-        await dispatch(
-          updateMetadata(Object.values(card.param_fields).flat(), [
-            FieldSchema,
-          ]),
-        );
+        await dispatch(paramFieldsFetched(card.param_fields));
       }
 
       const parameters = getCardUiParameters(

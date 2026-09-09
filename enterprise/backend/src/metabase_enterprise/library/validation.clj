@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library.validation
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.library.db :as library.db]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
@@ -26,7 +27,7 @@
   :feature :library
   [content-type collection-id]
   (when collection-id
-    (let [collection-type (t2/select-one-fn :type [:model/Collection :type] :id collection-id)]
+    (let [collection-type (library.db/collection-type collection-id)]
       (when-let [{:keys [allowed-content-types error-message]} (some-> collection-type
                                                                        library-collection-content-specs)]
         (when-not (allowed-content-types content-type)
@@ -48,6 +49,6 @@
     (when (and (collection/is-library-collection? (:id collection))
                (contains? change-keys :location)
                (when-let [parent-id (collection/location-path->parent-id (:location collection))]
-                 (not= (:type collection) (t2/select-one-fn :type :model/Collection :id parent-id))))
+                 (not= (:type collection) (library.db/collection-type parent-id))))
       (throw (ex-info "Cannot move a Library collection outside the Library" {}))))
   true)

@@ -145,9 +145,7 @@
                            remarks))
           :type        ttype})))))
 
-(defn db-tables
-  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
-  schema. Returns a reducible sequence of results."
+(defmethod sql-jdbc.sync.interface/db-tables :sql-jdbc
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   ;; seems like some JDBC drivers like Snowflake are dumb and still narrow the search results by the current session
   ;; schema if you pass in `nil` for `schema-or-nil`, which means not to narrow results at all... For Snowflake, I fixed
@@ -157,6 +155,11 @@
   (jdbc-get-tables driver metadata db-name-or-nil schema-or-nil "%"
                    ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
                     "EXTERNAL TABLE" "DYNAMIC_TABLE"]))
+
+(defn db-tables
+  "Compatibility wrapper for drivers calling `sql-jdbc.describe-database/db-tables` directly."
+  [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
+  (sql-jdbc.sync.interface/db-tables driver metadata schema-or-nil db-name-or-nil))
 
 (defn- build-privilege-map
   "Build a nested map of schema -> table -> set of permissions from current user table privileges.
@@ -260,7 +263,7 @@
                                       (-> table
                                           (dissoc :type)
                                           (assoc :is_writable (privilege-fn table :write))))))
-                         (db-tables driver metadata schema db-name-or-nil))))
+                         (sql-jdbc.sync.interface/db-tables driver metadata schema db-name-or-nil))))
               syncable-schemas)))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
@@ -284,7 +287,7 @@
              (-> table
                  (dissoc :type)
                  (assoc :is_writable (privilege-fn table :write))))))
-     (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
+     (sql-jdbc.sync.interface/db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
 (defn db-or-id-or-spec->database
   "Get database instance from `db-or-id-or-spec`."

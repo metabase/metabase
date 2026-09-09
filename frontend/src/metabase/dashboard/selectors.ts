@@ -1,5 +1,4 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
@@ -11,6 +10,10 @@ import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getIsWebApp } from "metabase/embedding/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
+import {
+  getMetadata,
+  selectQuestionFromCardBuilder,
+} from "metabase/metadata-store";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,
@@ -24,13 +27,13 @@ import type {
   State,
   StoreDashboard,
 } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import { extendCardWithDashcardSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
@@ -50,6 +53,13 @@ import type {
 } from "metabase-types/api";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
+import {
+  getDashboard,
+  getDashboardBeforeEditing,
+  getDashboardId,
+  getDashboards,
+  getIsEditing,
+} from "./shell-selectors";
 import {
   canResetFilter,
   findDashCardForInlineParameter,
@@ -73,19 +83,12 @@ function isEditParameterSidebar(
   return sidebar.name === SIDEBAR_NAME.editParameter;
 }
 
-export const getDashboardBeforeEditing = (state: State) =>
-  state.dashboard.editingDashboard;
-
-export const getIsEditing = (state: State) =>
-  Boolean(getDashboardBeforeEditing(state));
-
 export const getClickBehaviorSidebarDashcard = (state: State) => {
   const { sidebar, dashcards } = state.dashboard;
   return isClickBehaviorSidebar(sidebar)
     ? dashcards[sidebar.props?.dashcardId]
     : null;
 };
-export const getDashboards = (state: State) => state.dashboard.dashboards;
 export const getDashcardDataMap = (state: State) =>
   state.dashboard.dashcardData;
 
@@ -159,14 +162,6 @@ export const getIsShowDashboardSettingsSidebar = createSelector(
   (sidebar) => sidebar.name === SIDEBAR_NAME.settings,
 );
 
-export const getDashboardId = (state: State) => state.dashboard.dashboardId;
-
-export const getDashboard = createSelector(
-  [getDashboardId, getDashboards],
-  (dashboardId, dashboards) =>
-    dashboardId !== null ? dashboards[dashboardId] : undefined,
-);
-
 export const getDashcards = (state: State) => state.dashboard.dashcards;
 
 export const getDashCardById = (state: State, dashcardId: DashCardId) => {
@@ -186,6 +181,9 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
 };
+
+export const getLinkTargetEntities = (state: State) =>
+  state.dashboard.linkTargets;
 
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
@@ -224,8 +222,13 @@ export const getCurrentDashcards = createSelector(
 );
 
 export const getDashcardHref = createSelector(
-  [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
-  (metadata, dashboard, parameterValues, dashcard) => {
+  [
+    selectQuestionFromCardBuilder,
+    getDashboardComplete,
+    getParameterValues,
+    getDashCardById,
+  ],
+  (buildQuestion, dashboard, parameterValues, dashcard) => {
     if (
       !dashboard ||
       !dashcard ||
@@ -241,7 +244,7 @@ export const getDashcardHref = createSelector(
     );
 
     return getNewCardUrl({
-      metadata,
+      buildQuestion,
       dashboard,
       parameterValues,
       dashcard,
@@ -437,7 +440,6 @@ export const getParameters = createSelector(
           dashboard.dashcards,
           dashboard.parameters,
           dashboard.param_fields,
-          metadata,
         );
   },
 );
@@ -494,9 +496,13 @@ export const getMissingRequiredParameters = createSelector(
 );
 
 /**
- * It's a memoized version, it uses LRU cache per card identified by id
+ * Holds one Question per card, so that connected components keep the same
+ * reference between renders. reselect keys weakly on the card and the metadata,
+ * so an entry is released once its card leaves the store or the metadata is
+ * replaced. Keying on the card id instead would hold every Question, and the
+ * metadata snapshot each one carries, for the life of the tab.
  */
-export const getQuestionByCard = createCachedSelector(
+export const getQuestionByCard = createSelector(
   [
     (_state: State, props: { card: Card | VirtualCard }) => props.card,
     getMetadata,
@@ -504,12 +510,9 @@ export const getQuestionByCard = createCachedSelector(
   (card, metadata) => {
     return isQuestionCard(card) ? new Question(card, metadata) : undefined;
   },
-)((_state, props) => {
-  // Virtual cards don't have an ID and should not return a question so we use "virtual" as a cache key for all of them
-  return props.card.id == null ? "virtual" : props.card.id;
-});
+);
 
-export const getDashcardParameterMappingOptions = createCachedSelector(
+export const getDashcardParameterMappingOptions = createSelector(
   [getQuestionByCard, getEditingParameter, getCard, getDashCard, getDashcards],
   (question, parameter, card, dashcard, dashcards) => {
     const parameterDashcard =
@@ -524,9 +527,7 @@ export const getDashcardParameterMappingOptions = createCachedSelector(
       parameterDashcard,
     );
   },
-)((state, props) => {
-  return props.card.id ?? props.dashcard.id;
-});
+);
 
 // Embeddings might be published without passing embedding_params to the server,
 // in which case it's an empty object. We should treat such situations with
@@ -602,7 +603,7 @@ function getInitialSelectedTabId(
   siteUrl: string,
   isWebApp: boolean,
 ) {
-  const pathname = window.location.pathname.replace(siteUrl, "");
+  const pathname = getPathnameWithoutSubPath(window.location.pathname, siteUrl);
   const isDashboardUrl = pathname.includes("/dashboard/");
 
   if (isDashboardUrl) {
@@ -721,3 +722,13 @@ export const getCanResetFilters = createSelector(
   [getFiltersToReset],
   (filtersToReset) => filtersToReset.length > 0,
 );
+
+// Defined in a leaf module so the app shell can read them without pulling this
+// one in. Re-exported so every existing call site is unchanged.
+export {
+  getDashboard,
+  getDashboardBeforeEditing,
+  getDashboardId,
+  getDashboards,
+  getIsEditing,
+};

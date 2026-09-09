@@ -99,6 +99,36 @@ jobs:
       )
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
+      - name: "!! double-backport and triple-backport label deprecation warning !!"
+        if:
+          |
+          github.event.pull_request.merged == true && (
+            github.event.action == 'closed' && (
+              contains(github.event.pull_request.labels.*.name, 'double-backport') ||
+              contains(github.event.pull_request.labels.*.name, 'triple-backport')
+            ) ||
+            github.event.action == 'labeled' && (
+              github.event.label.name == 'double-backport' ||
+              github.event.label.name == 'triple-backport'
+            )
+          )
+        env:
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          msg="🚨🚨 Backport failed because \`double-backport\` and \`triple-backport\` labels are **deprecated**! Use the \`backport\` label to port changes to all supported releases instead. 🚨🚨"
+
+          gh api \
+            --silent \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            /repos/"$REPO"/issues/"$PR"/comments \
+            -f "body=$msg"
+
+          echo "::error::$msg"
+          exit 1
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -109,29 +139,6 @@ jobs:
         with:
           pull-request-number: ${{ github.event.pull_request.number }}
           base-ref: ${{ github.event.pull_request.base.ref }}
-
-      - name: how many backports?
-        id: how-many-backports
-        uses: actions/github-script@v9
-        with:
-          script: | # js
-            const labels = [
-              ...${{ toJson(github.event.pull_request.labels) }},
-              { name:"${{ github.event.label.name }}" }
-            ];
-
-            const backportLabelNames = labels.filter(label => label.name.includes('backport')).map(label => label.name);
-
-            let result = 1;
-
-            if (backportLabelNames.includes("triple-backport")) {
-              result = 3;
-            } else if (backportLabelNames.includes("double-backport")) {
-              result = 2;
-            }
-
-            console.log("backports", result);
-            return result;
 
       - name: get release versions
         id: get-latest-release-version
@@ -154,24 +161,6 @@ jobs:
         uses: ./.github/actions/create-backport
         with:
           target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).latest }}
-          backport-commit: ${{ steps.find_commit.outputs.commit }}
-          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          github-token-2: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Double Backport
-        if: ${{ always() && fromJson(steps.how-many-backports.outputs.result) >= 2 }}
-        uses: ./.github/actions/create-backport
-        with:
-          target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).secondLatest }}
-          backport-commit: ${{ steps.find_commit.outputs.commit }}
-          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          github-token-2: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Triple Backport
-        if: ${{ always() && fromJson(steps.how-many-backports.outputs.result) >= 3 }}
-        uses: ./.github/actions/create-backport
-        with:
-          target-version: ${{ fromJson(steps.get-latest-release-version.outputs.result).thirdLatest }}
           backport-commit: ${{ steps.find_commit.outputs.commit }}
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           github-token-2: ${{ secrets.GITHUB_TOKEN }}

@@ -5,7 +5,6 @@
 
   https://docs.mistral.ai/api/"
   (:require
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
@@ -35,10 +34,16 @@
       500 (tru "Mistral returned an internal server error")
       (tru "Mistral API error (HTTP {0})" status))))
 
-(def ^:private supported-models
-  "Mistral models offered in the Metabot model picker, as a map of model id -> display name.
+(def supported-models
+  "Mistral models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
-  {"mistral-medium-3-5" "Mistral Medium 3.5"})
+  {"mistral-medium-3-5" {:display-name "Mistral Medium 3.5" :context-window 262144}})
+
+(defn context-window-tokens
+  "The input context window for `model`, or nil when it isn't one we know.
+  Catalog aliases (e.g. `mistral-medium-latest`) are not resolved."
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (defn- whitelisted-id
   "The [[supported-models]] id a `/models` catalog entry resolves to, or nil when unsupported.
@@ -51,22 +56,23 @@
 
 (defn- list-all-models
   "Fetch the full Mistral model catalog (`GET /models`).
+  A 2xx whose body isn't a recognizable catalog throws rather than yielding an empty picker — see
+  [[chat-completions/models-catalog]].
   `:ai-proxy?` is not supported for Mistral and throws when true."
   [{:keys [credentials ai-proxy?]}]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
   (try
     (let [auth (core/resolve-auth "mistral" "Mistral"
-                                  (when-let [k (or (not-empty (:api-key credentials))
-                                                   (not-empty (llm/llm-mistral-api-key)))]
-                                    {:url     (llm/llm-mistral-api-base-url)
+                                  (when-let [k (not-empty (:api-key credentials))]
+                                    {:url     (:base-url credentials)
                                      :headers {"Authorization" (str "Bearer " k)}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
                                    :url     "/models"
                                    :as      :json
                                    :headers {"Content-Type" "application/json"}})]
-      (get-in res [:body :data]))
+      (chat-completions/models-catalog "Mistral" res))
     (catch Exception e
       (core/rethrow-api-error! "mistral" mistral-error-msg e))))
 
@@ -80,7 +86,7 @@
                  distinct
                  sort
                  (mapv (fn [id]
-                         {:id id :display_name (supported-models id)})))}))
+                         {:id id :display_name (get-in supported-models [id :display-name])})))}))
 
 (mu/defn mistral-request-body
   "Build the Chat Completions request body for an LLM request.
@@ -99,8 +105,10 @@
 
 (mu/defn mistral-raw
   "Perform a streaming request to the Mistral Chat Completions API.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing.
   `:ai-proxy?` is not supported for Mistral and throws when true."
-  [{:keys [model tools ai-proxy?] :as opts
+  [{:keys [model tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
@@ -111,10 +119,10 @@
                       :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
-        (let [api-key  (not-empty (llm/llm-mistral-api-key))
+        (let [api-key  (not-empty (:api-key credentials))
               auth     (core/resolve-auth "mistral" "Mistral"
                                           (when api-key
-                                            {:url     (llm/llm-mistral-api-base-url)
+                                            {:url     (:base-url credentials)
                                              :headers {"Authorization" (str "Bearer " api-key)}})
                                           ai-proxy?)
               response (core/request auth
@@ -131,10 +139,17 @@
         (catch Exception e
           (core/rethrow-api-error! "mistral" mistral-error-msg e))))))
 
+(def ^:private stop-reasons
+  "Mistral adds `model_length` — the model's own context limit, a truncation just like `length` — and reports a
+  mid-generation failure as a finish reason instead of an error event."
+  (assoc chat-completions/stop-reasons
+         "model_length" "length"
+         "error"        "error"))
+
 (defn mistral->aisdk-chunks-xf
   "Translates Mistral Chat Completions streaming chunks into AI SDK v5 protocol chunks."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf))
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
 
 (defn mistral
   "Call the Mistral Chat Completions API, return AISDK stream."

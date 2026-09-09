@@ -2,7 +2,7 @@ name: Bundle Size Stats
 
 # Reuses the uberjar built on every master merge: downloads the jar (for the
 # emitted JS) plus the bundle-stats and embedding-sdk artifacts, measures
-# initial/total bundle sizes, and appends them to stats.metabase.com.
+# initial/total bundle sizes, and appends them to eng-stats-importer.
 
 on:
   workflow_run:
@@ -32,6 +32,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: ./.github/actions/prepare-node-bun
       - name: Download EE uberjar
         uses: ./.github/actions/fetch-artifact
         with:
@@ -104,42 +105,15 @@ jobs:
           # Passed via env (not interpolated into the shell) so the commit
           # message can't inject commands; the script keeps only the subject.
           COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
-        run: node ./.github/scripts/bundle-size-stats-prepare.js
-      - name: Upload sizes (with deltas) to Stats
+        run: bun ./.github/scripts/bundle-size-stats-prepare.ts
+      - name: Import sizes (with deltas) into Stats
         id: upload
         if: steps.prepare.outputs.significant == 'true'
-        uses: actions/github-script@v9
         env:
-          API_KEY: ${{ secrets.STATS_API_KEY }}
-        with:
-          script: | # js
-            const fs = require("fs");
-            const { uploadCsvToMb } = require("${{ github.workspace }}/.github/scripts/csv-to-mb.js");
-
-            const data = JSON.parse(
-              fs.readFileSync("${{ github.workspace }}/artifacts/upload-rows.json", "utf8"),
-            );
-
-            console.table(data);
-
-            try {
-              await uploadCsvToMb({
-                baseUrl: "https://stats.metabase.com",
-                tableId: 79702,
-                jsonData: data,
-                mode: "append",
-              });
-              console.log("Bundle sizes uploaded successfully");
-              core.setOutput("uploaded", "true");
-            } catch (error) {
-              // Stats logging is best-effort: if stats.metabase.com is still
-              // unreachable after the client's retries, keep the run green. The
-              // last-plotted cache is only saved on a successful upload (below),
-              // so this point is re-attempted on the next master build and
-              // nothing is silently dropped.
-              core.warning(`Bundle-size upload failed after retries; leaving run green: ${error.message}`);
-              core.setOutput("uploaded", "false");
-            }
+          ROWS: artifacts/upload-rows.json
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+        run: bun .github/scripts/upload-bundle-size-stats.ts
       - name: Remember this as the last plotted point
         if: steps.upload.outputs.uploaded == 'true'
         uses: actions/cache/save@v4

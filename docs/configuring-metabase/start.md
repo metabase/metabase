@@ -34,7 +34,7 @@ Configure Metabase on launch via environment variables.
 
 On self-hosted Pro and Enterprise plans, you can configure Metabase via a configuration file.
 
-## [Metabase logs configuration](./log-configuration.md)
+## [Application logs](../monitor/application-logs.md)
 
 Tell Metabase what to log.
 

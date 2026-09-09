@@ -18,16 +18,22 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: var(--mantine-spacing-xl);
+  padding: var(--mantine-spacing-xxl);
 
   .searchInput {
-    border-radius: var(--mantine-radius-md);
+    border-radius: var(--mantine-radius-sm);
   }
 }
 
 .scrollArea {
   flex: 1;
   min-height: 0;
+  /* Extend into the column padding so the scrollbar sits beside the rows instead of shrinking them */
+  margin-right: calc(-1 * var(--scrollarea-scrollbar-size));
+
+  .scrollAreaViewport {
+    padding-right: var(--scrollarea-scrollbar-size);
+  }
 }
 
 .emptyState {
@@ -40,8 +46,8 @@
 .row {
   min-height: 2.5rem;
   border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
 }
 
 .row:hover {
@@ -68,8 +74,8 @@
 .addableRow {
   min-height: 2.5rem;
   border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
 }
 
 .addableRow:hover {
@@ -79,7 +85,7 @@
 .accordion .item,
 .accordion .item[data-active] {
   border: none;
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
 }
 
 .accordion .item + .item {
@@ -88,7 +94,7 @@
 
 .accordion .control {
   padding: var(--mantine-spacing-sm);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   background-color: var(--mb-color-background-secondary);
 }
 
@@ -114,7 +120,7 @@
 }
 
 .accordion .content {
-  padding: var(--mantine-spacing-sm) 0 0 var(--mantine-spacing-lg);
+  padding: var(--mantine-spacing-sm) 0 0 var(--mantine-spacing-xl);
   border-top: none;
 }
 

@@ -11,14 +11,12 @@ export interface EditableDescriptionProps
   description: string | null;
   canWrite: boolean;
   onChange: (newDescription: string) => void;
-  key?: string | number;
 }
 
 export const EditableDescription = ({
   description,
   canWrite,
   onChange,
-  key,
   ...props
 }: EditableDescriptionProps) => {
   return (
@@ -33,7 +31,6 @@ export const EditableDescription = ({
       isOptional
       isMultiline
       isMarkdown
-      key={key}
       lh={1.57}
       {...props}
     />

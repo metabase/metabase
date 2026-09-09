@@ -10,10 +10,16 @@
 
 (defn- maybe-set-site-url
   [request]
+  ;; `site-url` is only ever derived from a request now made by an authenticated superuser; mark the request as such
+  ;; the way the upstream auth middleware would, so these tests exercise the derivation path.
   ((mw.misc/maybe-set-site-url (fn [request respond _] (respond request)))
-   request
+   (assoc request :is-superuser? true)
    identity
    (fn [e] (throw e))))
+
+(defmacro ^:private with-fresh-instance!
+  [& body]
+  `(do ~@body))
 
 (defn- mock-request
   [uri origin-header x-forwarded-host-header host-header]
@@ -23,72 +29,95 @@
     host-header             (ring.mock/header "Host" host-header)))
 
 (deftest maybe-set-site-url-test
-  (testing "Make sure `maybe-set-site-url` middleware looks at the correct headers in the correct order (#12528)"
-    (doseq [origin-header           ["https://mb1.example.com" nil]
-            x-forwarded-host-header ["https://mb2.example.com" nil]
-            host-header             ["https://mb3.example.com" nil]
-            :let                    [request (mock-request "/" origin-header x-forwarded-host-header host-header)]]
-      (testing (format "headers = %s" (pr-str (:headers request)))
-        (mt/with-temporary-setting-values [site-url nil]
-          (maybe-set-site-url request)
-          (is (= (or origin-header x-forwarded-host-header host-header)
-                 (system/site-url)))))))
-  (testing "Site URL should not be inferred from healthcheck requests"
-    (mt/with-temporary-setting-values [site-url nil]
-      (doseq [uri ["/api/health" "/livez" "/readyz"]]
-        (let [request (mock-request uri "https://mb1.example.com" nil nil)]
-          (maybe-set-site-url request)
-          (is (nil? (system/site-url)))))))
-  (testing "Site URL should not be inferred if already set in DB"
-    (mt/with-temporary-setting-values [site-url "https://mb1.example.com"]
-      (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
-        (maybe-set-site-url request)
-        (is (= "https://mb1.example.com" (system/site-url))))))
-  (testing "Site URL should not be inferred if already set by env variable"
-    (mt/with-temporary-setting-values [site-url nil]
-      (mt/with-temp-env-var-value! [mb-site-url "https://mb1.example.com"]
+  (with-fresh-instance!
+    (testing "Make sure `maybe-set-site-url` middleware looks at the correct headers in the correct order (#12528)"
+      (doseq [origin-header           ["https://mb1.example.com" nil]
+              x-forwarded-host-header ["https://mb2.example.com" nil]
+              host-header             ["https://mb3.example.com" nil]
+              :let                    [request (mock-request "/" origin-header x-forwarded-host-header host-header)]]
+        (testing (format "headers = %s" (pr-str (:headers request)))
+          (mt/with-temporary-setting-values [site-url nil]
+            (maybe-set-site-url request)
+            (is (= (or origin-header x-forwarded-host-header host-header)
+                   (system/site-url)))))))
+    (testing "Site URL should not be inferred from healthcheck requests"
+      (mt/with-temporary-setting-values [site-url nil]
+        (doseq [uri ["/api/health" "/livez" "/readyz"]]
+          (let [request (mock-request uri "https://mb1.example.com" nil nil)]
+            (maybe-set-site-url request)
+            (is (nil? (system/site-url)))))))
+    (testing "Site URL should not be inferred if already set in DB"
+      (mt/with-temporary-setting-values [site-url "https://mb1.example.com"]
         (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
           (maybe-set-site-url request)
-          (is (= "https://mb1.example.com" (system/site-url))))))))
+          (is (= "https://mb1.example.com" (system/site-url))))))
+    (testing "Site URL should not be inferred if already set by env variable"
+      (mt/with-temporary-setting-values [site-url nil]
+        (mt/with-temp-env-var-value! [mb-site-url "https://mb1.example.com"]
+          (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
+            (maybe-set-site-url request)
+            (is (= "https://mb1.example.com" (system/site-url)))))))))
+
+(deftest maybe-set-site-url-requires-superuser-test
+  ;; `maybe-set-site-url` is Ring middleware: it sets `site-url` as a side effect, then calls the handler it wraps. We
+  ;; pass `req` in and wrap a throwaway handler whose own args we ignore -- the test asserts the side effect via
+  ;; `(system/site-url)`, not the response. (Unlike the shared `maybe-set-site-url` helper above, this doesn't inject
+  ;; `:is-superuser?`, so each case sets that flag itself.)
+  (letfn [(run-middleware [req]
+            ((mw.misc/maybe-set-site-url (fn [_req respond _raise] (respond nil)))
+             req identity (fn [e] (throw e))))]
+    (testing "site-url is NOT derived from a non-superuser request, even before the first user exists"
+      (mt/with-temporary-setting-values [site-url nil, has-user-setup false]
+        (run-middleware (assoc (mock-request "/api/setup" nil nil "attacker.example")
+                               :is-superuser? false))
+        (is (nil? (system/site-url))
+            "a pre-setup request does not set site-url")))
+    (testing "site-url IS derived from an authenticated superuser request"
+      (mt/with-temporary-setting-values [site-url nil]
+        (run-middleware (assoc (mock-request "/" nil nil "mb.example.com")
+                               :is-superuser? true))
+        (is (= "http://mb.example.com" (system/site-url))
+            "a superuser request still auto-derives site-url")))))
 
 (deftest maybe-set-site-url-forwarded-proto-test
-  (testing "scheme-less `*-host` headers get the scheme from `X-Forwarded-Proto` (BOT-1617)"
-    (doseq [host-header ["X-Forwarded-Host" "Host"]]
-      (testing host-header
-        (mt/with-temporary-setting-values [site-url nil]
-          (maybe-set-site-url (-> (m/dissoc-in (ring.mock/request :get "/") [:headers "host"])
-                                  (ring.mock/header host-header "mb.example.com")
-                                  (ring.mock/header "X-Forwarded-Proto" "https")))
-          (is (= "https://mb.example.com" (system/site-url)))))))
-  (testing "`X-Forwarded-Proto` is matched case-insensitively (RFC 3986)"
-    (mt/with-temporary-setting-values [site-url nil]
-      (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
-                              (ring.mock/header "X-Forwarded-Proto" "HTTPS")))
-      (is (= "https://mb.example.com" (system/site-url)))))
-  (testing "the first hop wins when `X-Forwarded-Proto` is a comma-separated chain"
-    (mt/with-temporary-setting-values [site-url nil]
-      (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
-                              (ring.mock/header "X-Forwarded-Proto" "https, http")))
-      (is (= "https://mb.example.com" (system/site-url)))))
-  (testing "the alternate HTTPS-indicator headers `u/https?` recognizes also seed the scheme"
-    (doseq [[header value] [["X-Forwarded-Protocol" "https"]
-                            ["X-URL-Scheme"         "https"]
-                            ["X-Forwarded-Ssl"      "on"]
-                            ["Front-End-Https"      "on"]]]
-      (testing header
-        (mt/with-temporary-setting-values [site-url nil]
-          (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
-                                  (ring.mock/header header value)))
-          (is (= "https://mb.example.com" (system/site-url)))))))
-  (testing "without `X-Forwarded-Proto`, a scheme-less host falls back to http:// (unchanged behavior)"
-    (mt/with-temporary-setting-values [site-url nil]
-      (maybe-set-site-url (mock-request "/" nil "mb.example.com" nil))
-      (is (= "http://mb.example.com" (system/site-url)))))
-  (testing "a scheme-bearing host header is left untouched, even alongside `X-Forwarded-Proto` (no double scheme)"
-    (mt/with-temporary-setting-values [site-url nil]
-      (maybe-set-site-url (-> (mock-request "/" nil "https://mb.example.com" nil)
-                              (ring.mock/header "X-Forwarded-Proto" "https")))
-      (is (= "https://mb.example.com" (system/site-url))))))
+  (with-fresh-instance!
+    (testing "scheme-less `*-host` headers get the scheme from `X-Forwarded-Proto` (BOT-1617)"
+      (doseq [host-header ["X-Forwarded-Host" "Host"]]
+        (testing host-header
+          (mt/with-temporary-setting-values [site-url nil]
+            (maybe-set-site-url (-> (m/dissoc-in (ring.mock/request :get "/") [:headers "host"])
+                                    (ring.mock/header host-header "mb.example.com")
+                                    (ring.mock/header "X-Forwarded-Proto" "https")))
+            (is (= "https://mb.example.com" (system/site-url)))))))
+    (testing "`X-Forwarded-Proto` is matched case-insensitively (RFC 3986)"
+      (mt/with-temporary-setting-values [site-url nil]
+        (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
+                                (ring.mock/header "X-Forwarded-Proto" "HTTPS")))
+        (is (= "https://mb.example.com" (system/site-url)))))
+    (testing "the first hop wins when `X-Forwarded-Proto` is a comma-separated chain"
+      (mt/with-temporary-setting-values [site-url nil]
+        (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
+                                (ring.mock/header "X-Forwarded-Proto" "https, http")))
+        (is (= "https://mb.example.com" (system/site-url)))))
+    (testing "the alternate HTTPS-indicator headers `u/https?` recognizes also seed the scheme"
+      (doseq [[header value] [["X-Forwarded-Protocol" "https"]
+                              ["X-URL-Scheme"         "https"]
+                              ["X-Forwarded-Ssl"      "on"]
+                              ["Front-End-Https"      "on"]]]
+        (testing header
+          (mt/with-temporary-setting-values [site-url nil]
+            (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
+                                    (ring.mock/header header value)))
+            (is (= "https://mb.example.com" (system/site-url)))))))
+    (testing "without `X-Forwarded-Proto`, a scheme-less host falls back to http:// (unchanged behavior)"
+      (mt/with-temporary-setting-values [site-url nil]
+        (maybe-set-site-url (mock-request "/" nil "mb.example.com" nil))
+        (is (= "http://mb.example.com" (system/site-url)))))
+    (testing "a scheme-bearing host header is left untouched, even alongside `X-Forwarded-Proto` (no double scheme)"
+      (mt/with-temporary-setting-values [site-url nil]
+        (maybe-set-site-url (-> (mock-request "/" nil "https://mb.example.com" nil)
+                                (ring.mock/header "X-Forwarded-Proto" "https")))
+        (is (= "https://mb.example.com" (system/site-url)))))))
 
 (deftest add-version-header-test
   (testing "x-metabase-version is only added on API calls"

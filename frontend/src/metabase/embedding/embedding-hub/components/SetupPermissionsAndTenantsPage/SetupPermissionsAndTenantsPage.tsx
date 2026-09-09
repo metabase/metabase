@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 import { Link } from "metabase/common/components/Link";
 import { OnboardingStepper } from "metabase/embedding/embedding-hub/components/OnboardingStepper";
 import type { OnboardingStepperHandle } from "metabase/embedding/embedding-hub/components/OnboardingStepper/types";
@@ -12,6 +11,8 @@ import {
 } from "metabase/plugins/oss/tenants";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
 import type { DataSegregationStrategy } from "metabase-types/api";
+
+import { useGetEmbeddingHubChecklistQuery } from "../../api/embedding-hub";
 
 import { ConnectionImpersonationStepContent } from "./ConnectionImpersonationStepContent";
 import { DataSegregationStrategyPicker } from "./DataSegregationStrategyPicker";
@@ -134,13 +135,13 @@ export const SetupPermissionsAndTenantsPage = () => {
   return (
     <Stack mx="auto" gap="sm" maw={680}>
       <Link to={SETUP_GUIDE_PATH} className={S.backLink}>
-        <Group gap="xs">
+        <Group gap="xxs">
           <Icon name="chevronleft" size={12} />
           <Text size="sm" c="text-secondary">{t`Back to the setup guide`}</Text>
         </Group>
       </Link>
 
-      <Title order={1} c="text-primary" mb="xl">
+      <Title order={1} c="text-primary" mb="xxl">
         {t`Configure data permissions and enable tenants`}
       </Title>
 

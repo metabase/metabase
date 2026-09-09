@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.models.serialization :as serdes]
    [metabase.search.test-util :as search.tu]
@@ -51,10 +52,8 @@
                                                                             :database db-id
                                                                             :query    {:source-table (str "card__" card1-id)}}}
                        :model/User          user           {:email "dirk@kirk.ir"}
-                       :model/Collection    pcoll          {:name              "Personal Collection"
-                                                            :personal_owner_id (:id user)}
                        :model/Card          pcard          {:name          "Personal Card"
-                                                            :collection_id (:id pcoll)}
+                                                            :collection_id (personal-collection-id user)}
                        :model/Card          _              {:name          "External Card"
                                                             :dataset_query {:database db-id
                                                                             :type     :query
@@ -252,3 +251,36 @@
               (is (= #{[{:model "Collection" :id child-id}]
                        [{:model "Card" :id embed-card-id}]}
                      (deps "Document" doc-id))))))))))
+
+(deftest dependency-validation-dynamic-goal-ref-test
+  (testing "Export aborts when a dynamic goal references something the archive won't satisfy"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
+                         :model/Database   {db-id :id}       {:engine :postgres}
+                         :model/Table      {table-id :id}    {:db_id db-id :name "T"}
+                         :model/Collection {coll-id :id}     {:name "Target Collection"}
+                         :model/Collection {outside-id :id}  {:name "Somewhere Else"}
+                         :model/Card       {goal-card :id}   {:name "Goal Source" :collection_id outside-id}
+                         :model/Measure    {measure-id :id}  {:table_id table-id :name "M" :definition {}}]
+        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true :no-transforms true}]
+          (testing "a card goal pointing outside the exported collection"
+            (ts/with-temp-dpc [:model/Card _ {:name          "Revenue"
+                                              :collection_id coll-id
+                                              :visualization_settings
+                                              {:graph.goal_value {:id goal-card :type "card" :column "total"}}}]
+              (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+                (extract-aborts! opts)
+                (is (some #(re-find #"Card .* is not included in the export" %) (map :message (messages)))
+                    "the warning names the unsatisfied goal reference"))))
+          (testing "a measure goal pointing at a measure deleted from the appdb"
+            (ts/with-temp-dpc [:model/Card _ {:name          "Revenue"
+                                              :collection_id coll-id
+                                              :visualization_settings
+                                              {:progress.goal {:id measure-id :type "measure" :column "avg"}}}]
+              (testing "with the measure present, the export succeeds"
+                (is (seq (into [] (extract/extract opts)))))
+              (t2/delete! :model/Measure measure-id)
+              (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+                (extract-aborts! opts)
+                (is (some #(re-find #"Measure .* is missing from the source database" %) (map :message (messages)))
+                    "the warning names the unsatisfied measure reference")))))))))

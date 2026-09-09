@@ -1,22 +1,18 @@
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import { getUserId } from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
-import { getUserId } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text, Timeline } from "metabase/ui";
-import type { FieldDiff, Revision, TableId } from "metabase-types/api";
+import type { FieldDiff, Revision } from "metabase-types/api";
 
 import { RevisionDiff } from "./RevisionDiff";
 import S from "./RevisionHistory.module.css";
 import type { DefinitionType, RevisionActionDescriptor } from "./types";
 
-dayjs.extend(relativeTime);
-
 type RevisionItemProps = {
   revision: Revision;
-  tableId: TableId;
   userColor?: string;
   getActionDescription: RevisionActionDescriptor;
   definitionLabel: string;
@@ -25,7 +21,6 @@ type RevisionItemProps = {
 
 export function RevisionItem({
   revision,
-  tableId,
   userColor,
   getActionDescription,
   definitionLabel,
@@ -44,8 +39,8 @@ export function RevisionItem({
 
   return (
     <Timeline.Item bullet={<UserAvatar user={revision.user} bg={userColor} />}>
-      <Stack gap="sm" ml="md">
-        <Flex justify="space-between" align="flex-start" gap="md">
+      <Stack gap="sm" ml="lg">
+        <Flex justify="space-between" align="flex-start" gap="lg">
           <Stack gap={2}>
             <Text fw={600} size="md">
               {userName}
@@ -74,7 +69,6 @@ export function RevisionItem({
                 key={key}
                 property={key}
                 diff={getDiffForKey(revision.diff, key)}
-                tableId={tableId}
                 definitionLabel={definitionLabel}
                 definitionType={definitionType}
               />

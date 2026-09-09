@@ -18,14 +18,14 @@ An admin can turn 2FA on for your Metabase:
 1. Go to **Admin settings** > **Settings** > **Authentication**.
 2. Find the **Two-factor authentication** card.
 3. Toggle it to **Enabled**.
-Once enabled, a **Security** tab shows up in each person's account settings, where they can enroll in 2FA.
+   Once enabled, a **Two-factor authentication** section shows up in each person's account settings under the **Authentication** tab, where they can enroll in 2FA.
 
 If you configure Metabase through environment variables or a [config file](../configuring-metabase/config-file.md), the matching setting is [`MB_MFA_ENFORCEMENT`](../configuring-metabase/environment-variables.md#mb_mfa_enforcement). Set `MB_MFA_ENFORCEMENT` to `optional` to let people enroll, or `off` to turn 2FA off.
 
 ## Supported methods
 
 - **Authenticator app (primary).** People scan a QR code with an app like Google Authenticator or 1Password, which then generates a new six-digit code every 30 seconds.
-- **Email code (fallback at login).** If an admin has set up [email](../configuring-metabase/email.md), people who are already enrolled in two-factor authentication can have Metabase email them a one-time code when they can't reach their authenticator app. You can only use the code once, and expires after ten minutes. If email isn't configured, Metabase hides this option.
+- **Email code (fallback at login).** If an admin has set up [email](../configuring-metabase/email.md), people who are already enrolled in two-factor authentication can have Metabase email them a one-time code when they can't reach their authenticator app. You can only use the code once, and it expires after ten minutes. If email isn't configured, Metabase hides this option.
 - **Recovery codes.** When someone enrolls in 2FA, Metabase gives them ten single-use codes to save.
 
 Metabase doesn't support SMS codes or hardware keys (passkeys, U2F, or WebAuthn).

@@ -1,15 +1,19 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import {
   createMockQueryBuilderState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { SummarizeSidebar } from "./SummarizeSidebar";
 
@@ -82,6 +86,8 @@ async function setup({
 }: SetupOpts = {}) {
   const onQueryChange = jest.fn();
   const onClose = jest.fn();
+
+  setupDatabaseEndpoints(createSampleDatabase());
 
   function Wrapper() {
     const [query, setQuery] = useState(initialQuery);

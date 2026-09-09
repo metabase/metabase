@@ -1,104 +1,89 @@
 name: Build Uberjar
 
-# This workflow builds an uberjar and pushes it to dockerhub for any branch, either on-demand,
-# or automatically for the listed branches
+# This workflow builds and containerizes an uberjar and pushes it to dockerhub.
 
 concurrency:
-  group: uberjar-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+  group: uberjar-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: false
 
 on:
-  push:
-    branches:
-      - master
-      - internal-tools
-      - ai-service-port
-      - metabot-mbql-improvements
-    paths-ignore:
-      # config files
-      - ".**"
-      # documentation
-      - "docs/**"
-      - "**.md"
-      # this covers both BE and FE unit tests, as well as E2E tests
-      - "**test/**"
-      - "**_test.clj"
-      - "**/frontend/**.unit.*"
   workflow_dispatch:
     inputs:
       commit:
         description: "Optional full-length commit SHA-1 hash"
+        type: string
+        default: ''
+        required: false
+      containerize:
+        description: "Set if the uberjar should be containerized and pushed to Dockerhub."
+        type: boolean
+        default: false
+        required: false
   workflow_call:
+    inputs:
+      commit:
+        description: "Optional full-length commit SHA-1 hash"
+        type: string
+        default: ''
+        required: false
+      containerize:
+        description: "Set if the uberjar should be containerized and pushed to Dockerhub."
+        type: boolean
+        default: false
+        required: false
 
 jobs:
-  check-existing-artifacts:
+  setup:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
-      ee_exists: ${{ steps.check-ee.outcome == 'success' }}
-      oss_exists: ${{ steps.check-oss.outcome == 'success' }}
-      should_build: ${{ steps.decide.outputs.should_build }}
-    steps:
-      - name: Check out the code
-        uses: actions/checkout@v6
-      - name: Try to fetch existing EE artifact
-        id: check-ee
-        continue-on-error: true
-        uses: ./.github/actions/fetch-artifact
-        with:
-          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
-          edition: ee
-          output-name: metabase-ee.jar
-
-      - name: Try to fetch existing OSS artifact
-        id: check-oss
-        continue-on-error: true
-        uses: ./.github/actions/fetch-artifact
-        with:
-          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
-          edition: oss
-          output-name: metabase-oss.jar
-
-      - name: Decide if build is needed
-        id: decide
-        run: |
-          EE_EXISTS="${{ steps.check-ee.outcome == 'success' }}"
-          OSS_EXISTS="${{ steps.check-oss.outcome == 'success' }}"
-
-          echo "EE exists: $EE_EXISTS"
-          echo "OSS exists: $OSS_EXISTS"
-
-          # Build only if artifacts don't exist for this commit hash
-          # Since we build by hash, if artifacts exist for this hash, we don't need to rebuild
-          if [[ "$EE_EXISTS" == "false" ]] || [[ "$OSS_EXISTS" == "false" ]]; then
-            SHOULD_BUILD="true"
-            echo "Will build: ee_exists=$EE_EXISTS, oss_exists=$OSS_EXISTS"
-          else
-            SHOULD_BUILD="false"
-            echo "Skipping build: artifacts exist for this commit hash"
-          fi
-
-          echo "should_build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
-
-  # if this is on a release branch, we need to check the build requirements
-  get-build-requirements:
-    if: |
-      !cancelled() &&
-      contains(github.ref, 'release-x')
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
-    outputs:
-      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
-      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+      build_editions: ${{ steps.matrix.outputs.build_editions }}
+      java_version: ${{ steps.dependencies.outputs.java_version }}
+      node_version: ${{ steps.dependencies.outputs.node_version }}
     steps:
       - uses: actions/checkout@v6
+
+      - name: Check for existing EE uberjar
+        id: check-ee
+        uses: ./.github/actions/fetch-artifact
+        continue-on-error: true
         with:
-          sparse-checkout: |
-            release
-            .github
+          commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          edition: ee
+          download: false
+
+      - name: Check for existing OSS uberjar
+        id: check-oss
+        uses: ./.github/actions/fetch-artifact
+        continue-on-error: true
+        with:
+          commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          edition: oss
+          download: false
+
+      - name: Create build matrix
+        id: matrix
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const hit = {
+              ee: "${{ steps.check-ee.outputs.fetch-hit }}" === "true",
+              oss: "${{ steps.check-oss.outputs.fetch-hit }}" === "true",
+            };
+
+            // Don't rebuild an edition whose uberjar already exists for this commit.
+            const editions = ['ee', 'oss'].filter((edition) => !hit[edition]);
+
+            core.info(`build: ${editions.join(', ') || '(nothing, both artifacts already exist)'}`);
+
+            core.setOutput('build_editions', JSON.stringify(editions));
+
       - name: Prepare release scripts
+        if: ${{ contains(github.ref, 'release-x') }}
         uses: ./.github/actions/prepare-release-scripts
+
       - name: Get build dependencies
+        if: ${{ contains(github.ref, 'release-x') }}
         uses: actions/github-script@v9
         id: dependencies
         with:
@@ -108,26 +93,22 @@ jobs:
             const version = getVersionFromReleaseBranch('${{ github.ref }}');
             const requirements = getBuildRequirements(version);
 
-            return {
-              java_version: requirements.java,
-              node_version: requirements.node,
-            };
-
+            core.setOutput('java_version', requirements.java);
+            core.setOutput('node_version', requirements.node);
 
   build:
-    needs:
-      [check-existing-artifacts, get-build-requirements]
-    if: always() && !cancelled() && needs.check-existing-artifacts.outputs.should_build == 'true' && (needs.get-build-requirements.result == 'success' || needs.get-build-requirements.result == 'skipped')
-    name: Build MB ${{ matrix.edition }}
+    needs: [setup]
+    if: ${{ needs.setup.outputs.build_editions != '[]' }}
+    name: build (${{ matrix.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     strategy:
       matrix:
-        edition: ["ee", "oss"]
+        edition: ${{ fromJson(needs.setup.outputs.build_editions) }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' && !inputs.containerize }}  # faster builds for dev
       # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
       # (the bundle-size check reads them for both the PR head and its base ref).
       EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
@@ -135,15 +116,15 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.inputs.commit }}
+          ref: ${{ inputs.commit }}
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
         with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version || '22' }}"
+          node-version: "${{ needs.setup.outputs.node_version || '22' }}"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 25 }}"
+          java-version: "${{ needs.setup.outputs.java_version || 25 }}"
       - name: Build
         run: ./bin/build.sh
       - name: Upload bundle stats
@@ -151,30 +132,36 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
-          name: metabase-bundle-stats-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          name: metabase-bundle-stats-${{ matrix.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
           path: target/bundle-stats
           if-no-files-found: warn
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
+      - name: Mark with the commit hash
+        run: git rev-parse --short HEAD > COMMIT-ID
+        shell: bash
+      - name: Calculate SHA256 checksum
+        run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
+        shell: bash
+      - name: Upload JARs as artifact
+        uses: actions/upload-artifact@v7
         with:
-          edition: ${{ matrix.edition }}
+          # Same key the artifact lookups use, so a build for an explicitly dispatched commit
+          # uploads where `setup` and `jar-healthcheck` go looking for it.
+          name: metabase-${{ matrix.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          path: |
+            ./target/uberjar/metabase.jar
+            ./COMMIT-ID
+            ./SHA256.sum
 
-  check-jar-health:
+  jar-healthcheck:
+    needs: [setup, build]
+    # Health-check whatever we are about to containerize, plus every build on master and release.
+    if: ${{ !failure() && !cancelled() && (inputs.containerize || github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) }}
+    name:  jar-healthcheck (${{ matrix.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
-    needs: [build, check-existing-artifacts]
-    # We only care about the explicit JAR health check on push to `master` and the `release-` branches.
-    # JARs created in random branches on PRs are 99% of the time treated as ephemeral, and used only in e2e tests.
-    # E2E tests already have a step where they wait for the instance health check.
-    if: |
-      always() && !cancelled() &&
-      (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) &&
-      (needs.build.result == 'success' || (needs.check-existing-artifacts.outputs.should_build == 'false' && needs.check-existing-artifacts.outputs.ee_exists == 'true' && needs.check-existing-artifacts.outputs.oss_exists == 'true'))
     timeout-minutes: 10
     strategy:
       matrix:
-        edition: ["ee", "oss"]
-        java-version: [25]
+        edition: [ee, oss]
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
@@ -182,13 +169,13 @@ jobs:
         uses: actions/setup-java@v5.2.0
         with:
           java-package: jre
-          java-version: ${{ matrix.java-version }}
+          java-version: ${{ needs.setup.outputs.java_version || 25 }}
           distribution: "temurin"
       - run: java -version
       - name: Retrieve uberjar artifact
         uses: ./.github/actions/fetch-artifact
         with:
-          commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
           edition: ${{ matrix.edition }}
       - name: Verify license files are present in uberjar
         run: |
@@ -201,3 +188,19 @@ jobs:
           java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./metabase.jar &
       - name: Wait for Metabase to start
         run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+
+  containerize:
+    needs: [build, jar-healthcheck]
+    if: ${{ inputs.containerize && !failure() && !cancelled() }}
+    name: containerize (${{ matrix.edition }})
+    strategy:
+      matrix:
+        edition: [ee, oss]
+    uses: ./.github/workflows/containerize-jar.yml
+    secrets: inherit
+    with:
+      edition: ${{ matrix.edition }}
+      commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+      release: false
+      build-args: |
+        GIT_COMMIT_SHA=${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}

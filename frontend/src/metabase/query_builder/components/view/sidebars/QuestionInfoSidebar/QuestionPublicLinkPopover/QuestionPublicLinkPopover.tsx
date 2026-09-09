@@ -4,7 +4,6 @@ import {
   useCreateCardPublicLinkMutation,
   useDeleteCardPublicLinkMutation,
 } from "metabase/api";
-import { type ExportFormat, exportFormats } from "metabase/common/types/export";
 import { PublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover/PublicLinkPopover";
 import {
   trackPublicLinkCopied,
@@ -12,6 +11,7 @@ import {
 } from "metabase/embedding/lib/analytics";
 import { publicQuestion as getPublicQuestionUrl } from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
+import { type ExportFormat, exportFormats } from "metabase-types/api";
 
 export const QuestionPublicLinkPopover = ({
   question,

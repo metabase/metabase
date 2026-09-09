@@ -28,8 +28,12 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { loadCurrentUser, refetchCurrentUser, userApi } from "metabase/api";
 import { PLUGIN_API } from "metabase/api/client";
+import {
+  currentUserApi,
+  loadCurrentUser,
+  refetchCurrentUser,
+} from "metabase/current-user";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
 import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
@@ -101,7 +105,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         }),
       );
       dispatch(
-        userApi.util.upsertQueryData(
+        currentUserApi.util.upsertQueryData(
           "getCurrentUser",
           undefined,
           authState.user,
@@ -273,12 +277,23 @@ const getRefreshToken = async ({
         headers: getSdkRequestHeaders(),
       });
 
-  const { method, url: responseUrl, hash } = urlResponseJson || {};
-  if (method === "saml") {
-    const token = await openSamlLoginPopup(responseUrl);
-    samlTokenStorage.set(token);
+  const {
+    method,
+    url: responseUrl,
+    hash,
+    "saml-popup-url": samlPopupUrl,
+  } = urlResponseJson || {};
 
-    return token;
+  if (method === "saml") {
+    const sessionToken = await openSamlLoginPopup(
+      responseUrl,
+      metabaseInstanceUrl,
+      samlPopupUrl,
+    );
+
+    samlTokenStorage.set(sessionToken);
+
+    return sessionToken;
   }
   if (method === "jwt" && responseUrl) {
     return jwtDefaultRefreshTokenFunction(

@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:sequential register-index-check!-migrates-a-legacy-registry-test
+(deftest ^:synchronized register-index-check!-migrates-a-legacy-registry-test
   (testing "a live upgrade migrates the defonce'd registry's former vector value"
     (let [measures (atom [{:check-name :legacy-measure, :collect (constantly nil)}])
           checks   (atom {})]
@@ -60,7 +60,7 @@
   (testing "health is linear between the warning and critical thresholds"
     (is (=? {:health 50} (index-health/staleness-result 330 60 600 nil)))))
 
-(deftest ^:sequential run-measure!-test
+(deftest ^:synchronized run-measure!-test
   (let [calls (atom [])
         live  (atom #{})]
     (with-redefs [index-health/live-gauge-series live]
@@ -101,7 +101,7 @@
                                              :index     :interrupted-test
                                              :collect   #(throw (InterruptedException.))}))))
 
-(deftest ^:sequential inapplicable-measure-does-not-create-series-test
+(deftest ^:synchronized inapplicable-measure-does-not-create-series-test
   (testing "an inapplicable measure does not create a NaN-only series"
     (let [calls (atom [])]
       (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
@@ -110,7 +110,7 @@
                                       :collect   (constantly nil)}))
       (is (empty? @calls)))))
 
-(deftest ^:sequential failed-first-write-does-not-mark-series-live-test
+(deftest ^:synchronized failed-first-write-does-not-mark-series-live-test
   (testing "a failed first gauge write does not make later clears create a NaN-only series"
     (let [set-index-gauge! @#'index-health/set-index-gauge!
           live             @#'index-health/live-gauge-series
@@ -129,7 +129,7 @@
         (finally
           (swap! live disj series))))))
 
-(deftest ^:sequential refresh-isolates-measure-failures-test
+(deftest ^:synchronized refresh-isolates-measure-failures-test
   (testing "one collector failure does not stop later measures from refreshing"
     (let [calls (atom [])
           live  (atom #{})
@@ -153,7 +153,7 @@
                [:metabase-search/index-coverage-ratio {:index "refresh-isolation-test"} 1.0]]
               @calls)))))
 
-(deftest ^:sequential pull-collector-refreshes-gauges-on-each-instance-test
+(deftest ^:synchronized pull-collector-refreshes-gauges-on-each-instance-test
   (let [measures  @#'index-health/index-measures
         running?  @#'index-health/gauge-refresh-running?
         before    @measures
@@ -181,7 +181,7 @@
         (reset! running? false)
         (reset! measures before)))))
 
-(deftest ^:sequential background-gauge-refresh-isolates-write-failures-test
+(deftest ^:synchronized background-gauge-refresh-isolates-write-failures-test
   (let [measures (atom {:one {:check-name :one}, :two {:check-name :two}})
         running? (atom true)
         seen     (atom [])]

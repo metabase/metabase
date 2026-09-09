@@ -1,9 +1,47 @@
 import type {
   BaseCartesianChartModel,
   BreakoutSeriesModel,
+  ChartBoundsCoords,
+  ChartLayout,
+  Padding,
   SeriesModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+  TicksDimensions,
+} from "metabase/viz-core";
 import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+
+type MockChartLayoutOpts = Partial<
+  Omit<ChartLayout, "ticksDimensions" | "padding" | "bounds">
+> & {
+  ticksDimensions?: Partial<TicksDimensions>;
+  padding?: Partial<Padding>;
+  bounds?: Partial<ChartBoundsCoords>;
+};
+
+export const createMockChartLayout = (
+  opts: MockChartLayoutOpts = {},
+): ChartLayout => {
+  const { ticksDimensions, padding, bounds, ...rest } = opts;
+  return {
+    boundaryWidth: 0,
+    outerHeight: 0,
+    outerWidth: 800,
+    padding: { top: 0, left: 0, bottom: 0, right: 0, ...padding },
+    bounds: { top: 0, left: 0, bottom: 0, right: 0, ...bounds },
+    ticksDimensions: {
+      yTicksWidthLeft: 0,
+      yTicksWidthRight: 0,
+      xTicksHeight: 0,
+      xTickWidthCap: 0,
+      firstXTickWidth: 0,
+      lastXTickWidth: 0,
+      getXTickWidth: () => 40,
+      ...ticksDimensions,
+    },
+    axisEnabledSetting: true,
+    panelGap: 0,
+    ...rest,
+  };
+};
 
 export const createMockSeriesModel = (
   opts?: Partial<SeriesModel>,
@@ -43,6 +81,7 @@ export const createMockCartesianChartModel = (
       column,
       columnIndex: 0,
       columnByCardId: {},
+      columns: [column],
     },
     seriesModels: [],
     dataset: [],

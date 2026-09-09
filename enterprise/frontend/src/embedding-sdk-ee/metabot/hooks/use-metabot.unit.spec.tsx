@@ -6,11 +6,13 @@ import { act, screen, waitFor } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { metabotActions } from "metabase/metabot/state";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
+  createTestMetabotState,
   lastReqBody,
   mockAgentEndpoint,
   setup,
+  startRequestlessAgentTurn,
+  testConversationId,
   whoIsYourFavoriteResponse,
 } from "metabase/metabot/tests/utils";
 import * as Urls from "metabase/urls";
@@ -32,13 +34,34 @@ const makeCard = (id: string, sourceTable = 1): GeneratedCard => ({
   display: "table",
 });
 
+const conversationId = testConversationId("omnibot");
+
+const addAgentMessage = (
+  store: { dispatch: (action: unknown) => unknown },
+  ...parts: unknown[]
+) => {
+  startRequestlessAgentTurn(store, conversationId);
+  parts.forEach((part) =>
+    // `addAgentMessage`/`addUserMessage` in reducer.ts type their payload
+    // as `Omit<UnionType, ...>`. Non-distributive `Omit` collapses the
+    // discriminated union to common keys only, so branch-specific fields
+    // (message, navigateTo, payload, ...) fail excess-property checks
+    // without `as any`. Switching to a DistributiveOmit would unblock
+    // call sites here but surfaces more errors elsewhere (e.g. the
+    // edit_suggestion payload hits the "infinite TS errors" noted in
+    // reducer.ts). Keeping `as any` for now — applies to every dispatch
+    // here.
+    store.dispatch(metabotActions.addAgentMessage(part as any)),
+  );
+};
+
 const cardMessage = (id: string, sourceTable = 1) =>
   // `addAgentMessage` types its payload with a non-distributive `Omit` that
   // collapses the message union to common keys, so the branch-specific `part`
-  // field fails excess-property checks (see the fuller note in the
-  // "maps agent.text passthrough" test below).
+  // field fails excess-property checks (see the fuller note on `addAgentMessage`
+  // above).
   ({
-    agentId: "omnibot",
+    conversationId,
     type: "data_part",
     part: {
       type: "data-generated_entity",
@@ -232,7 +255,7 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u1",
             type: "text",
             message: "hi",
@@ -249,22 +272,7 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
-        store.dispatch(
-          // `addAgentMessage`/`addUserMessage` in reducer.ts type their payload
-          // as `Omit<UnionType, ...>`. Non-distributive `Omit` collapses the
-          // discriminated union to common keys only, so branch-specific fields
-          // (message, navigateTo, payload, ...) fail excess-property checks
-          // without `as any`. Switching to a DistributiveOmit would unblock
-          // call sites here but surfaces more errors elsewhere (e.g. the
-          // edit_suggestion payload hits the "infinite TS errors" noted in
-          // reducer.ts). Keeping `as any` for now — applies to every dispatch
-          // below.
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "text",
-            message: "ok",
-          } as any),
-        );
+        addAgentMessage(store, { conversationId, type: "text", message: "ok" });
       });
 
       const [message] = await readMessages();
@@ -280,7 +288,7 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("card-1")));
+        addAgentMessage(store, cardMessage("card-1"));
       });
 
       const [message] = await readMessages();
@@ -301,19 +309,11 @@ describe("useMetabot", () => {
 
       act(() => {
         store.dispatch(metabotActions.setDebugMode(true));
-        store.dispatch(
-          // Unjustified type cast. FIXME
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "tool_call",
-            name: "fn",
-            status: "started",
-          } as any),
-        );
-        store.dispatch(
-          // Unjustified type cast. FIXME
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
+        addAgentMessage(
+          store,
+          { conversationId, type: "tool_call", name: "fn", status: "started" },
+          {
+            conversationId,
             type: "edit_suggestion",
             model: "transform",
             payload: {
@@ -327,12 +327,9 @@ describe("useMetabot", () => {
                 suggestionId: "s1",
               },
             },
-          } as any),
-        );
-        store.dispatch(
-          // Unjustified type cast. FIXME
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
+          },
+          {
+            conversationId,
             type: "todo_list",
             payload: [
               {
@@ -342,15 +339,8 @@ describe("useMetabot", () => {
                 priority: "high",
               },
             ],
-          } as any),
-        );
-        store.dispatch(
-          // Unjustified type cast. FIXME
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "text",
-            message: "ok",
-          } as any),
+          },
+          { conversationId, type: "text", message: "ok" },
         );
       });
 
@@ -370,29 +360,26 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u1",
             type: "text",
             message: "first",
           }),
         );
-        store.dispatch(
-          metabotActions.addAgentMessage(cardMessage("card-1A", 1)),
-        );
-        store.dispatch(
-          metabotActions.addAgentMessage(cardMessage("card-1B", 2)),
+        addAgentMessage(
+          store,
+          cardMessage("card-1A", 1),
+          cardMessage("card-1B", 2),
         );
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u2",
             type: "text",
             message: "second",
           }),
         );
-        store.dispatch(
-          metabotActions.addAgentMessage(cardMessage("card-2", 3)),
-        );
+        addAgentMessage(store, cardMessage("card-2", 3));
       });
 
       const messages = await readMessages();
@@ -439,27 +426,25 @@ describe("useMetabot", () => {
       // observe whether submitMessage would flip it back on.
       const { store } = setup({
         ui: <TestSubmit />,
-        metabotInitialState: getMetabotInitialState(),
+        metabotInitialState: createTestMetabotState(),
       });
 
       expect(
-        store.getState().metabot?.conversations?.omnibot?.messages.length,
+        store.getState().metabot?.conversations?.[conversationId]?.messages
+          .length,
       ).toBe(0);
-      expect(store.getState().metabot?.conversations?.omnibot?.visible).toBe(
-        false,
-      );
+      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
 
       await userEvent.click(screen.getByTestId("submit-btn"));
 
       await waitFor(() => {
         expect(
-          store.getState().metabot?.conversations?.omnibot?.messages.length,
+          store.getState().metabot?.conversations?.[conversationId]?.messages
+            .length,
         ).toBeGreaterThan(0);
       });
 
-      expect(store.getState().metabot?.conversations?.omnibot?.visible).toBe(
-        false,
-      );
+      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
     });
 
     it("resolves to undefined even though agent.submitInput returns an action", async () => {
@@ -489,7 +474,7 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestChart /> });
 
       act(() => {
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("card-1")));
+        addAgentMessage(store, cardMessage("card-1"));
       });
 
       expect(await screen.findByTestId("mock-static-question")).toBeVisible();
@@ -499,7 +484,7 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestChart drills /> });
 
       act(() => {
-        store.dispatch(metabotActions.addAgentMessage(cardMessage("card-1")));
+        addAgentMessage(store, cardMessage("card-1"));
       });
 
       expect(
@@ -526,15 +511,13 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u1",
             type: "text",
             message: "first",
           }),
         );
-        store.dispatch(
-          metabotActions.addAgentMessage(cardMessage("card-abc", 1)),
-        );
+        addAgentMessage(store, cardMessage("card-abc", 1));
       });
 
       await waitFor(() => {
@@ -547,15 +530,13 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u2",
             type: "text",
             message: "second",
           }),
         );
-        store.dispatch(
-          metabotActions.addAgentMessage(cardMessage("card-xyz", 2)),
-        );
+        addAgentMessage(store, cardMessage("card-xyz", 2));
       });
 
       await waitFor(() => {

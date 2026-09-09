@@ -6,20 +6,20 @@
   (:require
    [malli.util]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- parent-or-root
   "From a create request return either the parent collection or the root collection."
   [{collection-id :parent_id collection-namespace :namespace}]
   (if collection-id
-    (t2/select-one :model/Collection :id collection-id)
+    (collections.db/collection collection-id)
     (collection/root-collection-with-ui-details collection-namespace)))
 
 (defn- write-check-authority-level
@@ -89,8 +89,7 @@
   create and touch events. The single source of truth for collection creation; REST and agent
   callers both go through here."
   [coll-data]
-  (u/prog1 (t2/insert-returning-instance!
-            :model/Collection
+  (u/prog1 (collections.db/insert-collection!
             (-> (apply-defaults-to-collection coll-data)
                 write-check-authority-level
                 validate-new-tenant-collection!))

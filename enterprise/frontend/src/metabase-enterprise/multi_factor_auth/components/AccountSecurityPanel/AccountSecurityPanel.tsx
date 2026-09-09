@@ -3,9 +3,7 @@ import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useNavigate } from "metabase/router";
 import { Box, Button, Group, Stack } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { useGetMfaStatusQuery } from "metabase-enterprise/api";
 import type { MfaStatus } from "metabase-types/api";
 
@@ -19,19 +17,15 @@ export function AccountSecurityPanel() {
   const { data: status, isLoading, error } = useGetMfaStatusQuery();
   const [openedModal, setOpenedModal] = useState<SecurityModal | null>(null);
   const hasFeature = useHasTokenFeature("multi-factor-auth");
-  const navigate = useNavigate();
 
   const handleCloseModal = () => setOpenedModal(null);
 
-  const handleDisableSuccess = () => {
-    setOpenedModal(null);
-    if (!hasFeature) {
-      navigate(Urls.accountSettings());
-    }
-  };
-
   if (isLoading || error != null || status == null) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (!status.mfa_enabled) {
+    return null;
   }
 
   return (
@@ -48,7 +42,7 @@ export function AccountSecurityPanel() {
       />
       <DisableModal
         opened={openedModal === "disable"}
-        onSuccess={handleDisableSuccess}
+        onSuccess={handleCloseModal}
         onCancel={handleCloseModal}
       />
       <RecoveryCodesModal
@@ -69,7 +63,7 @@ type MfaSectionProps = {
 function MfaSection({ status, hasFeature, onOpenModal }: MfaSectionProps) {
   return (
     <Group justify="space-between" align="flex-start" wrap="nowrap">
-      <Stack gap="xs">
+      <Stack gap="xxs">
         <Box fw="bold" lh="1.25rem">{t`Two-factor authentication`}</Box>
         <Box c="text-secondary" lh="1.25rem" mb="sm">
           {status.enrolled

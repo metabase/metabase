@@ -1,4 +1,9 @@
-import type { NavigateFunction, NavigateOptions, To } from "react-router";
+import type {
+  DataRouter,
+  NavigateFunction,
+  NavigateOptions,
+  To,
+} from "react-router";
 
 import type { Location as HistoryLocation } from "./types";
 
@@ -37,6 +42,42 @@ let isRouterExpected = false;
 
 export function setRouterExpected(expected: boolean): void {
   isRouterExpected = expected;
+}
+
+/**
+ * The live router, registered as it is built. Only `getIsNavigationPending`
+ * reads it, and only for state react-router publishes nowhere else outside a
+ * component.
+ */
+let currentRouter: DataRouter | null = null;
+
+export function setRouter(router: DataRouter | null): void {
+  currentRouter = router;
+}
+
+/**
+ * Whether the router has accepted a navigation it has not committed yet.
+ *
+ * `useIsNavigating` answers the same question during a render. This is for the
+ * callers that cannot hold a hook, the same ones `navigate` below exists for.
+ *
+ * A `route.lazy` destination is what makes the window real: the router resolves
+ * the module before it commits the location, so the old page stays mounted at
+ * the old URL. Anything that navigates in that window replaces the pending
+ * navigation rather than queueing behind it, and the destination the user asked
+ * for is dropped. Effects that mirror state into the URL have to sit it out.
+ *
+ * Read from the router rather than tracked alongside it, because the router
+ * updates this synchronously and a React render does not: a caller navigating
+ * from a promise callback can run again before anything re-renders. It is
+ * precise in the other direction too. A navigation to a route that is already
+ * loaded commits during the call, so the window is never open for one, and a
+ * URL sync that follows it still runs.
+ */
+export function getIsNavigationPending(): boolean {
+  return (
+    currentRouter != null && currentRouter.state.navigation.state !== "idle"
+  );
 }
 
 export function setRouterNavigate(navigate: NavigateFunction | null): void {

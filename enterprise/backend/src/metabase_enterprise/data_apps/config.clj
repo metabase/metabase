@@ -3,6 +3,7 @@
    directory under `data_apps/` (see `README.md` in this directory for the layout):
 
      name: Sales dashboard      # display name
+     description: Pipeline …    # optional — one line on what the app does
      path: dist/index.js        # bundle path, relative to this app's directory
      allowed_hosts:             # optional — origins the sandboxed bundle may fetch/XHR
        - https://api.example.com
@@ -43,6 +44,32 @@
   "Trim and drop a leading `./` so the path is relative to the app directory."
   [p]
   (-> (str p) str/trim (str/replace #"^\./" "")))
+
+(defn- normalize-description
+  "Trim and fold whitespace runs, so a YAML block scalar still stores as one line."
+  [d]
+  (-> (str d) str/trim (str/replace #"\s+" " ")))
+
+(def ^:private max-description-chars
+  "Cap on `description`. Checked here, not by the column type, so an over-long one fails just its own app."
+  255)
+
+(defn- parse-description
+  "Validate + normalize the optional one-line `description`. Returns nil when it's
+   absent or blank; throws a 400 when it's present but not a string — a YAML list or
+   mapping would otherwise `str`-ify into Clojure collection syntax and sync as-is —
+   or when it exceeds [[max-description-chars]]."
+  [raw ^String dir]
+  (when (some? raw)
+    (when-not (string? raw)
+      (throw (ex-info (tru "{0}/{1}: \"description\" must be a one-line string." dir config-file-name)
+                      {:status-code 400})))
+    (let [d (not-empty (normalize-description raw))]
+      (when (and d (> (count d) max-description-chars))
+        (throw (ex-info (tru "{0}/{1}: \"description\" is a one-line summary — it must be {2} characters or fewer."
+                             dir config-file-name max-description-chars)
+                        {:status-code 400})))
+      d)))
 
 (def ^:private allowed-host-re
   "A single `allowed_hosts` entry: an origin the app's sandboxed bundle may
@@ -106,16 +133,19 @@
 
 (defn parse-app-config
   "Parse the bytes of one `data_app.yaml` from the app directory `dir` (e.g.
-   `data_apps/sales`) into `{:slug ..., :display_name ..., :path ...,
-   :allowed_hosts [...]}`. The slug is the directory's name; `path` is relative to
-   the directory; `:allowed_hosts` is a (possibly empty) vector of origins the
-   sandboxed bundle may reach. Throws an `ex-info` with `:status-code` 400 on
+   `data_apps/sales`) into `{:slug ..., :display_name ..., :description ...,
+   :path ..., :allowed_hosts [...]}`. The slug is the directory's name; `path` is
+   relative to the directory; `:description` is an optional one-liner (nil when
+   absent or blank, capped at [[max-description-chars]]); `:allowed_hosts` is a
+   (possibly empty) vector of origins the sandboxed bundle may reach. Throws an
+   `ex-info` with `:status-code` 400 on
    malformed or incomplete content — including a directory whose name isn't a
    usable slug, since that app has no URL to be served at."
   [^bytes bytes ^String dir]
   (let [parsed        (parse-yaml bytes dir)
         slug          (dir-slug dir)
         name          (some-> (:name parsed) str str/trim not-empty)
+        description   (parse-description (:description parsed) dir)
         path          (some-> (:path parsed) normalize-path not-empty)
         allowed-hosts (parse-allowed-hosts parsed dir)]
     (when-not (re-matches slug-pattern slug)
@@ -133,4 +163,4 @@
     (when (path-traversal? path)
       (throw (ex-info (tru "{0}/{1}: \"path\" must not contain \"..\"." dir config-file-name)
                       {:status-code 400})))
-    {:slug slug, :display_name name, :path path, :allowed_hosts allowed-hosts}))
+    {:slug slug, :display_name name, :description description, :path path, :allowed_hosts allowed-hosts}))

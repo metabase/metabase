@@ -26,8 +26,23 @@
 (def ^:private embedding-model
   {:provider "ai-service", :model-name "test-model", :vector-dimensions 3})
 
+(def ^:private space-id
+  "The embedding space the active index was built in. Health compares this, not the settings keys."
+  "emb:v1:sha256:test")
+
+(def ^:private other-space-id
+  "A space the same settings could resolve to after a provider upgrade."
+  "emb:v1:sha256:old")
+
+(def ^:private active-index-embedding-model
+  "The active index's :embedding-model, as produced by index-metadata/row->index: it carries bookkeeping
+  keys (:embedding-space-id, :embedding-spi-version) that get-configured-embedding-model never returns."
+  (assoc embedding-model
+         :embedding-space-id space-id
+         :embedding-spi-version 1))
+
 (def ^:private active-state
-  {:index {:table-name "index_test_table", :embedding-model embedding-model}
+  {:index {:table-name "index_test_table", :embedding-model active-index-embedding-model}
    :metadata-row {:id 1
                   :indexer_stalled_at nil
                   :repair_orphan_count nil
@@ -42,6 +57,7 @@
      semantic.env/get-pgvector-datasource! (constantly ::pgvector)
      semantic.env/get-index-metadata       (constantly ::index-metadata)
      semantic.env/get-configured-embedding-model (constantly embedding-model)
+     semantic.embedding/resolve-model      (constantly active-index-embedding-model)
      semantic.settings/semantic-search-vector-strategy (constantly :brute-force)
      embedding-health/request-circuit-recovery! (constantly nil)]
     (thunk)))
@@ -132,13 +148,21 @@
           embedding-health/embedding-service-reachable?        (constantly {:reachable? true :error nil})]
          (is (=? {:health 0 :message #".*required HNSW index is missing.*"}
                  (semantic.health/index-health-check)))))
-     (testing "an active index for a different embedding model degrades without probing the wrong model"
+     (testing "an index built in another embedding space degrades without probing the wrong model"
        (mt/with-dynamic-fn-redefs
          [semantic.index-metadata/get-active-index-state
-          (constantly (assoc-in active-state [:index :embedding-model :model-name] "old-model"))
+          (constantly (assoc-in active-state [:index :embedding-model :embedding-space-id] other-space-id))
           semantic.health/active-index-queryable? (constantly true)
           embedding-health/embedding-problem      #(throw (ex-info "must not probe configured model" {}))]
          (is (=? {:health 0 :message #".*active index embedding model does not match configured model.*"}
+                 (semantic.health/index-health-check)))))
+     (testing "a configured model the provider cannot resolve degrades, and is not read as a mismatch"
+       (mt/with-dynamic-fn-redefs
+         [semantic.index-metadata/get-active-index-state (constantly active-state)
+          semantic.health/active-index-queryable?        (constantly true)
+          semantic.embedding/resolve-model               (fn [_] (throw (ex-info "no provider" {})))
+          embedding-health/embedding-problem             #(throw (ex-info "must not probe" {}))]
+         (is (=? {:health 0 :message #".*cannot be resolved: no provider.*"}
                  (semantic.health/index-health-check)))))
      (testing "a non-closed breaker (open or half-open) still probes (so a recovered-but-idle embedder is
               detectable) and degrades identically in both states"
@@ -171,9 +195,9 @@
 
 ;; Tests the raw probe (`embedding-service-reachable?` is TTL-memoized, so calling it across cases would
 ;; return a stale cached result).
-;; ^:sequential: redefs the process-global `get-configured-model` / `get-embedding` via with-redefs, so it
+;; ^:synchronized: redefs the process-global `get-configured-model` / `get-embedding` via with-redefs, so it
 ;; must not run concurrently with other tests (e.g. entity-retrieval-available? reads get-configured-model).
-(deftest ^:sequential probe-embedding-service-test
+(deftest ^:synchronized probe-embedding-service-test
   (testing "a successful embed reads as reachable; the probe bypasses the breaker and silences snowplow"
     (let [seen (atom nil)]
       ;; get-embedding is a multimethod; with-dynamic-fn-redefs can't patch those, so with-redefs is required.
@@ -191,7 +215,7 @@
       (is (=? {:reachable? false :error "connection refused"}
               (#'embedding-health/probe-embedding-service))))))
 
-(deftest ^:sequential breaker-transition-probe-cache-test
+(deftest ^:synchronized breaker-transition-probe-cache-test
   (testing "open and half-open transitions reuse the probe; recovery clears it"
     (let [probes (atom 0)]
       ;; get-embedding is a multimethod; with-dynamic-fn-redefs can't patch those, so with-redefs is required.
@@ -210,7 +234,7 @@
           (is (= 2 @probes) "recovery busts the cache so the persisted row can't be a stale 'unreachable'")
           (memoize/memo-clear! @#'embedding-health/embedding-service-reachable?*))))))
 
-(deftest ^:sequential circuit-recovery-probe-test
+(deftest ^:synchronized circuit-recovery-probe-test
   (testing "recovery runs off-thread and supplies enough successful trials to close an untrusted circuit"
     (let [calls     (atom 0)
           completed (CountDownLatch. 1)
@@ -377,7 +401,7 @@
              :message "Index staleness unavailable: database clock precedes a pending change."}
             (#'semantic.health/semantic-staleness)))))
 
-(deftest ^:sequential report-repair-metrics!-test
+(deftest ^:synchronized report-repair-metrics!-test
   (mt/with-dynamic-fn-redefs [health-inspector/enabled? (constantly false)]
     (testing "a stored snapshot refreshes the garbage gauge immediately"
       (let [calls  (atom [])
@@ -457,7 +481,7 @@
     (is (thrown? InterruptedException
                  (semantic.health/report-repair-metrics! {:orphan-count 3})))))
 
-(deftest ^:sequential refresh-clears-garbage-when-inactive-test
+(deftest ^:synchronized refresh-clears-garbage-when-inactive-test
   (testing "refresh NaNs a previously-emitted semantic garbage series when there's no active index, since no
            repair push will clear it (the collector reads N/A)"
     (let [calls (atom [])]

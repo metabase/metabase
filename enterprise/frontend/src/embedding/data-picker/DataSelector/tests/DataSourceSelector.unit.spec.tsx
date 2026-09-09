@@ -6,14 +6,11 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Database, SearchModel, Table } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -247,6 +244,21 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Our analytics")).toBeInTheDocument();
       expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+    });
+
+    it("should return to the bucket step when closing the saved entity picker via its back button", async () => {
+      setup(setupOpts);
+
+      await userEvent.click(await screen.findByText("Saved Questions"));
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId("saved-entity-back-navigation"));
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("saved-entity-back-navigation"),
+      ).not.toBeInTheDocument();
     });
   });
 

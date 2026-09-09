@@ -14,6 +14,7 @@ import type {
   ParameterId,
   ParameterTarget,
   ParameterValueOrArray,
+  SingleSeries,
   Table,
   UserId,
   UserInfo,
@@ -397,3 +398,32 @@ export type GetValidDashboardFilterFieldsRequest = {
   filtered: FieldId[];
   filtering: FieldId[];
 };
+
+export type DashCardSeriesItem = {
+  card: Card | VirtualCard;
+  isSlow: boolean;
+  isUsuallyFast: boolean;
+} & Partial<Dataset>;
+
+export type DashCardSeries = DashCardSeriesItem[];
+
+export type DashCardDataSeriesItem = SingleSeries<Card> &
+  Dataset & {
+    isSlow: boolean;
+    isUsuallyFast: boolean;
+  };
+
+export type DashCardDataSeries = DashCardDataSeriesItem[];
+
+export type VisualizerSeriesItem = Pick<SingleSeries, "card"> &
+  Partial<Omit<SingleSeries, "card">> & {
+    _isVisualizer: true;
+  };
+
+export type VisualizerSeries = VisualizerSeriesItem[];
+
+export type VisualizerDataSeriesItem = SingleSeries & {
+  _isVisualizer: true;
+};
+
+export type VisualizerDataSeries = VisualizerDataSeriesItem[];

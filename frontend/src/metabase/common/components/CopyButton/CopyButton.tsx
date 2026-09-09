@@ -3,9 +3,9 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { isPlainKey } from "metabase/common/utils/keyboard";
 import Styles from "metabase/css/core/index.css";
 import { Icon, Text, Tooltip } from "metabase/ui";
+import { isPlainKey } from "metabase/utils/keyboard";
 
 import CopyButtonStyles from "./CopyButton.module.css";
 

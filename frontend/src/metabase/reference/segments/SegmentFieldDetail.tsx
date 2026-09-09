@@ -1,11 +1,16 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import {
+  type MetadataProviderFactory,
+  getShallowFields,
+  selectMetadataProviderFactory,
+} from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
@@ -14,23 +19,22 @@ import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import { getMetadata } from "metabase/selectors/metadata";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { FieldId, User } from "metabase-types/api";
+import { updateField } from "metabase/reference/update-actions";
+import type { NormalizedField, User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
-  getError,
   getFieldBySegment,
+  getFieldId,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getTable,
   getUser,
 } from "../selectors";
 import type {
   BaseDetailFormFields,
   FieldFormFieldsValues,
+  ReferenceLoadingProps,
   StubbedField,
   StubbedTable,
 } from "../types";
@@ -44,7 +48,8 @@ interface SegmentFieldDetailFormFields
 const interestingQuestions = (
   table: StubbedTable,
   field: StubbedField,
-  metadata: Metadata,
+  getMetadataProvider: MetadataProviderFactory,
+  breakoutField: NormalizedField | undefined,
 ) => {
   return [
     {
@@ -53,23 +58,19 @@ const interestingQuestions = (
       }`,
       icon: "number" as const,
       link: getQuestionUrl({
-        dbId: table.db_id!,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
+        breakoutField,
         getCount: true,
-        metadata,
+        metadataProvider: getMetadataProvider(table.db_id ?? null),
       }),
     },
     {
       text: t`All distinct values of ${field.display_name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: table.db_id!,
         tableId: table.id,
-        // Unjustified type cast. FIXME
-        fieldId: field.id as FieldId,
-        metadata,
+        breakoutField,
+        metadataProvider: getMetadataProvider(table.db_id ?? null),
       }),
     },
   ];
@@ -84,18 +85,18 @@ const mapStateToProps = (
   return {
     entity,
     table: getTable(state, props),
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
-    metadata: getMetadata(state),
+    getMetadataProvider: selectMetadataProviderFactory(state),
+    // `getFieldBySegment` falls back to a stub with only an id, which cannot
+    // describe a column, so the breakout takes the loaded field or nothing
+    breakoutField: getShallowFields(state)?.[getFieldId(state, props)],
   };
 };
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  updateField,
   ...actions,
   onSubmit: actions.rUpdateSegmentFieldDetail,
 };
@@ -110,9 +111,10 @@ interface SegmentFieldDetailProps {
   endEditing: () => void;
   loading?: boolean;
   loadingError?: unknown;
-  metadata: Metadata;
+  getMetadataProvider: MetadataProviderFactory;
+  breakoutField: NormalizedField | undefined;
 
-  onSubmit: (fields: SegmentFieldDetailFormFields, props: any) => void;
+  onSubmit: (fields: SegmentFieldDetailFormFields, props: any) => Promise<void>;
 }
 
 const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
@@ -120,7 +122,8 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
     style,
     entity,
     table,
-    metadata,
+    getMetadataProvider,
+    breakoutField,
     loadingError,
     loading,
     user,
@@ -130,6 +133,8 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
     onSubmit,
   } = props;
 
+  const [saveError, setSaveError] = useState<unknown>(null);
+
   const {
     isSubmitting,
     getFieldProps,
@@ -138,8 +143,14 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
     handleReset,
   } = useFormik<SegmentFieldDetailFormFields>({
     initialValues: {},
-    onSubmit: (fields): void => {
-      onSubmit(fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit(fields, { ...props, resetForm: handleReset });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -174,8 +185,8 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
         nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() => (
           <div className={CS.wrapper}>
@@ -241,7 +252,12 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
                 {!isEditing && (
                   <li className={CS.relative}>
                     <UsefulQuestions
-                      questions={interestingQuestions(table, entity, metadata)}
+                      questions={interestingQuestions(
+                        table,
+                        entity,
+                        getMetadataProvider,
+                        breakoutField,
+                      )}
                     />
                   </li>
                 )}
@@ -259,4 +275,11 @@ export default connect(
   mapStateToProps,
   mapDispatchToProps,
   // Unjustified type cast. FIXME
-)(SegmentFieldDetail as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  SegmentFieldDetail as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

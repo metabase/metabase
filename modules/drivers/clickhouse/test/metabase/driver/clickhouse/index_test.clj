@@ -100,7 +100,7 @@
 ;;; --------------------------------------- Live execute path ----------------------------------------
 
 ;; All tables here land in the connection's default database (created unqualified), so the catalog lookups filter on
-;; database = "default". Tests are :synchronized, not :parallel: they create and drop tables in that shared database.
+;; database = "default". Tests use `^:synchronized`: they create and drop tables in that shared database.
 
 (defn- sorting-key
   "The MergeTree sorting key of `db`.`table` as ClickHouse reports it, e.g. \"a, b\" (or \"\" for an unsorted table)."

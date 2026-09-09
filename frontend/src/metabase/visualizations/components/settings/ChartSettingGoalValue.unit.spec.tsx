@@ -17,21 +17,18 @@ const DATA = createMockDatasetData({
 
 const DYNAMIC_TRIGGER = { name: "Pick a dynamic value" };
 
-function setup({
-  isDynamic,
-  withData = true,
-  showSelfColumns,
-  value = 5,
-}: {
+type SetupOpts = {
   isDynamic?: boolean;
-  withData?: boolean;
   showSelfColumns?: boolean;
   value?: GoalValue | null;
-}) {
+};
+
+function setup({ isDynamic, showSelfColumns, value = 5 }: SetupOpts) {
   const onChange = jest.fn();
+
   renderWithProviders(
     <ChartSettingGoalValue
-      data={withData ? DATA : undefined}
+      data={DATA}
       datasetQuery={createMockStructuredDatasetQuery()}
       id="goal"
       isDynamic={isDynamic}
@@ -40,6 +37,7 @@ function setup({
       onChange={onChange}
     />,
   );
+
   return { onChange, input: screen.getByRole("textbox") };
 }
 
@@ -74,27 +72,43 @@ describe("ChartSettingGoalValue", () => {
       expect(onChange).toHaveBeenLastCalledWith(undefined);
     });
 
-    it("shows a reference as an empty input", () => {
-      const { input } = setup({
+    it("shows a reference as an empty input and keeps it when the input is left untouched", () => {
+      const { input, onChange } = setup({
         isDynamic: false,
         value: { type: "card", id: 1, column: "sum" },
       });
 
       expect(input).toHaveDisplayValue("");
+
+      fireEvent.focus(input);
+      fireEvent.blur(input);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("replaces a reference when a number is typed over it", async () => {
+      const { input, onChange } = setup({
+        isDynamic: false,
+        value: { type: "card", id: 1, column: "sum" },
+      });
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+
+      await user.type(input, "3");
+      act(() => jest.runAllTimers());
+
+      expect(onChange).toHaveBeenLastCalledWith(3);
     });
   });
 
   describe("with dynamic goals", () => {
-    it("falls back to a static input when there is no data", () => {
-      const { input, onChange } = setup({ isDynamic: true, withData: false });
+    it("unsets the goal when the input is cleared", () => {
+      const { input, onChange } = setup({ isDynamic: true });
 
-      expect(
-        screen.queryByRole("button", DYNAMIC_TRIGGER),
-      ).not.toBeInTheDocument();
-
-      fireEvent.change(input, { target: { value: "12.5" } });
+      fireEvent.change(input, { target: { value: "" } });
       fireEvent.blur(input);
-      expect(onChange).toHaveBeenCalledWith(12.5);
+
+      expect(onChange).toHaveBeenLastCalledWith(undefined);
     });
 
     it("offers dynamic values", async () => {
