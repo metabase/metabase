@@ -2,7 +2,6 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
-   [malli.core :as mc]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
