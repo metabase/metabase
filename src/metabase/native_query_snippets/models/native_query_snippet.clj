@@ -122,8 +122,7 @@
    (and (remote-sync/worktree-accessible? instance)
         (snippet.perms/can-read? instance)))
   ([_model pk]
-   (when-let [snippet (native-query-snippets.db/snippet pk)]
-     (mi/can-read? snippet))))
+   (mi/can-read? (api/check-404 (native-query-snippets.db/snippet pk)))))
 
 (defmethod mi/can-write? :model/NativeQuerySnippet
   [& args]

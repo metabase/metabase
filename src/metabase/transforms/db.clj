@@ -169,7 +169,7 @@
 (mu/defn insert-transform-tag-links!
   "Insert the TransformTransformTag `rows`."
   [rows :- [:sequential
-            (mut/select-keys ::transforms.schema/transform-transform-tag.update [:transform_id :tag_id :entity_id :position])]]
+            (mut/select-keys ::transforms.schema/transform-transform-tag.update [:transform_id :tag_id :entity_id :position :worktree_id])]]
   (t2/insert! :model/TransformTransformTag rows))
 
 (mu/defn set-transform-tag-position!
