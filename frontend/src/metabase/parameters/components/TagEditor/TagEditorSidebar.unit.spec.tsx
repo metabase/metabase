@@ -3,10 +3,10 @@ import {
   setupParameterValuesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type { TemplateTag } from "metabase-types/api";

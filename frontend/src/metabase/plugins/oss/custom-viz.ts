@@ -4,6 +4,7 @@ import type { ToastArgs } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { Dispatch } from "metabase/redux/store";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
@@ -84,11 +85,13 @@ const getDefaultPluginCustomViz = () => ({
   /**
    *  Always false in OSS as there is no plugin to produce a mount handle.
    */
-  isWidgetMount: (_value: unknown): _value is WidgetMount => false,
+  isWidgetMount: (
+    _value: unknown,
+  ): _value is WidgetMount<CustomVizSettingWidgetProps> => false,
 
   CustomVizSettingWidget: PluginPlaceholder<{
-    mount: WidgetMount;
-    widgetProps: Record<string, unknown>;
+    mount: WidgetMount<CustomVizSettingWidgetProps>;
+    widgetProps: CustomVizSettingWidgetProps;
   }>,
 });
 

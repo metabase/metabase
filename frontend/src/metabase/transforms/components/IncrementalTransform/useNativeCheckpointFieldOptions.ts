@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
 import { isConcreteTableId } from "metabase-types/api/table";
 
@@ -10,7 +9,7 @@ import type { CheckpointFieldOption } from "./useClearUnsupportedLookback";
 import { useTableQueryMetadataResults } from "./useTableQueryMetadataResults";
 
 export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
-  const metadata = useSelector(getMetadata);
+  const getMetadataProvider = useMetadataProviderFactory();
 
   const tableIds = useMemo(() => {
     if (!query) {
@@ -41,7 +40,7 @@ export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
       const showTablePrefix = tables.length > 1;
 
       for (const table of tables) {
-        const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
+        const metadataProvider = getMetadataProvider(table.db_id);
         const tableMetadata = Lib.tableOrCardMetadata(
           metadataProvider,
           table.id,
@@ -73,7 +72,7 @@ export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
       );
       return [];
     }
-  }, [tables, metadata]);
+  }, [tables, getMetadataProvider]);
 
   return {
     fieldOptions,

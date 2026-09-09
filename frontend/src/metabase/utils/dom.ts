@@ -1,12 +1,7 @@
-import _ from "underscore";
-
 import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
 
-// check whether scrollbars are visible to the user,
-// this is off by default on Macs, but can be changed
-// Always on on most other non mobile platforms
-export const getScrollBarSize = _.memoize((): number => {
+function measureScrollBarSize(): number {
   const scrollableElem = document.createElement("div"),
     innerElem = document.createElement("div");
   scrollableElem.style.width = "30px";
@@ -20,7 +15,17 @@ export const getScrollBarSize = _.memoize((): number => {
   const diff = scrollableElem.offsetWidth - scrollableElem.clientWidth;
   document.body.removeChild(scrollableElem);
   return diff;
-});
+}
+
+let scrollBarSize: number | undefined;
+
+// check whether scrollbars are visible to the user,
+// this is off by default on Macs, but can be changed
+// Always on on most other non mobile platforms
+export function getScrollBarSize(): number {
+  scrollBarSize ??= measureScrollBarSize();
+  return scrollBarSize;
+}
 
 // check if we have access to localStorage to avoid handling "access denied"
 // exceptions
