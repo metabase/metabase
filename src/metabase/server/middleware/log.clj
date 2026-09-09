@@ -3,7 +3,9 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [metabase.api-keys.usage :as api-keys.usage]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.request.core :as request]
@@ -27,7 +29,7 @@
 ;; To simplify passing large amounts of arguments around most functions in this namespace take an "info" map that
 ;; looks like
 ;;
-;;     {:request ..., :response ..., :start-time ..., :call-count-fn ...}
+;;     {:request ..., :response ..., :start-time ..., :call-count-fn ..., :route-template-carrier ...}
 ;;
 ;; This map is created in `log-api-call` at the bottom of this namespace.
 
@@ -193,6 +195,64 @@
   response)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             API Key Usage Analytics                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- api-key-request?
+  "Whether `request` authenticated with an API key — the only kind of request that gets recorded. Resolved well
+  outside this middleware by `metabase.server.middleware.session/wrap-current-user-info`, so it is already on the
+  request we closed over. Everything else pays this one keyword lookup and nothing more."
+  [request]
+  (= "api-key" (:embedding/auth-method request)))
+
+(defn- record-api-key-usage!
+  "Record API-key usage analytics for a completed request, then return `info` unchanged so this can sit in the
+  `respond` chain next to the logging.
+
+  Every value comes from the request this middleware closed over, from the response, or from the route-template
+  carrier — never from a dynamic binding, which an async `respond` on another thread would not have. The template is
+  nil for a request that matched no endpoint and for raw-Compojure handlers that bypass `defendpoint`
+  (`metabase.api.docs`, `metabase.mcp.api`); the recorder drops those rows, since `route_template` is NOT NULL.
+
+  For streaming and core.async responses `respond` is called when the response object is created rather than when the
+  last byte is written, so `duration-ms` is time-to-response, as it is for the CLI usage log.
+
+  Best-effort throughout: the recorders swallow their own failures, and this catches anything else, so usage
+  analytics can never fail a request or alter its response.
+
+  Only the fields below are recorded. The raw URI, the query string, and the request and response bodies are
+  deliberately never passed on — see `metabase.api-keys.usage`.
+
+  `embedding-client` is the raw `X-Metabase-Client` header, supplementary to `client_name` (classified
+  from `user-agent` by the recorder itself, not here) — see `metabase.api-keys.usage`."
+  [{:keys [request response start-time route-template-carrier] :as info}]
+  (when (api-key-request? request)
+    (try
+      (let [api-key-id (:api-key-id request)]
+        (api-keys.usage/record-api-key-last-used! api-key-id)
+        (api-keys.usage/record-api-key-request!
+         {:api-key-id     api-key-id
+          :user-id        (:metabase-user-id request)
+          ;; the API-key auth query already joined `core_user`, so the tenant rode along on the request. Reading it
+          ;; here rather than from `api/*current-user*` keeps this off dynamic bindings, and rather than from a fresh
+          ;; `SELECT` keeps a per-request DB call out of a path whose writes are batched precisely to avoid them.
+          :tenant-id      (:tenant-id request)
+          :route-template (some-> route-template-carrier deref)
+          :http-method    (some-> (:request-method request) name u/upper-case-en)
+          :status         (:status response)
+          :duration-ms    (long (u/since-ms start-time))
+          :user-agent     (get-in request [:headers "user-agent"])
+          :ip-address     (request/ip-address request)
+          ;; supplementary to client_name (the primary classification axis) — a plain header read, no
+          ;; carrier needed like route-template, since it's already on the pre-routing request we closed
+          ;; over. Almost always nil for API-key traffic: the SDK/embed.js clients that set it
+          ;; authenticate via JWT/SSO, not API keys.
+          :embedding-client (get-in request [:headers "x-metabase-client"])}))
+      (catch Throwable e
+        (log/warn e "Error recording API key usage"))))
+  info)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -215,7 +275,9 @@
        (not ((logging-disabled-uris) uri))))
 
 (defn log-api-call
-  "Logs info about request such as status code, number of DB calls, and time taken to complete."
+  "Logs info about request such as status code, number of DB calls, and time taken to complete. Also the write point
+  for API-key usage analytics — see [[record-api-key-usage!]]; requests that didn't authenticate with an API key are
+  unaffected."
   [handler]
   (fn [request respond raise]
     (if-not (should-log-request? request)
@@ -224,14 +286,20 @@
       ;; API call, log info about it
       (t2/with-call-count [call-count-fn]
         (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
-          (let [info           {:request       request
-                                :start-time    (u/start-timer)
-                                :call-count-fn call-count-fn
-                                :diag-info-fn  diag-info-fn}
+          (let [;; only API-key requests need to know which route matched, and only they pay for finding out
+                carrier        (when (api-key-request? request)
+                                 (volatile! nil))
+                request        (cond-> request
+                                 carrier (assoc api.macros/route-template-carrier-key carrier))
+                info           {:request                request
+                                :route-template-carrier carrier
+                                :start-time             (u/start-timer)
+                                :call-count-fn          call-count-fn
+                                :diag-info-fn           diag-info-fn}
                 response->info (fn [response]
                                  (assoc info
                                         :response response
                                         :log-context {:metabase-user-id (or (:metabase-user-id (meta response))
                                                                             api/*current-user-id*)}))
-                respond        (comp respond logged-response response->info)]
+                respond        (comp respond logged-response record-api-key-usage! response->info)]
             (handler request respond raise)))))))
