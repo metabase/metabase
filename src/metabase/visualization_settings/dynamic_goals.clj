@@ -51,8 +51,22 @@
 
 (defn- unresolved!
   [reason {:keys [id type column]}]
-  (throw (ex-info (format "Unresolved dynamic goal (%s): %s %s, column %s" (name reason) type id column)
+  (throw (ex-info (if type
+                    (format "Unresolved dynamic goal (%s): %s %s, column %s" (name reason) type id column)
+                    (format "Unresolved dynamic goal (%s): column %s" (name reason) column))
                   {:type ::unresolved-goal, :reason reason, :entity-type type, :entity-id id, :column column})))
+
+(defn- first-row-value
+  "The first-row value of the column named `column` in `data`. Throws `::unresolved-goal` about `ref` when the
+  column is missing or its value isn't a finite number."
+  [{:keys [cols rows]} column ref]
+  (let [idx (first (keep-indexed (fn [i col] (when (= column (:name col)) i)) cols))]
+    (when-not idx
+      (unresolved! :column-not-found ref))
+    (let [value (nth (vec (first rows)) idx nil)]
+      (if (and (number? value) (Double/isFinite (double value)))
+        value
+        (unresolved! :not-a-number ref)))))
 
 (defn resolve-goal-value
   "Resolve `goal-value` against `referenced-entities` (a query result's `[:data :referenced_entities]`,
@@ -69,14 +83,21 @@
         (unresolved! :never-ran ref))
       (when-not (and data (some-> status name (= "completed")))
         (unresolved! :query-failed ref))
-      (let [idx (first (keep-indexed (fn [i col] (when (= column (:name col)) i)) (:cols data)))]
-        (when-not idx
-          (unresolved! :column-not-found ref))
-        (let [value (nth (vec (first (:rows data))) idx nil)]
-          (if (and (number? value) (Double/isFinite (double value)))
-            value
-            (unresolved! :not-a-number ref)))))
+      (first-row-value data column ref))
     goal-value))
+
+(defn resolve-self-column-value
+  "Resolve `goal-value` against the chart's own query result `data`: a column name becomes that column's first-row
+  value, while literal numbers and nil pass through. For renderers without a JS side, which otherwise leave column
+  names for the frontend to resolve. Throws `::unresolved-goal` with `:reason` `:column-not-found`/`:not-a-number`
+  when the column can't produce a finite number, and `:never-ran` for an entity reference, which
+  [[resolve-dynamic-goals]] must have substituted already."
+  [goal-value data]
+  (if-let [ref (goal-source goal-value)]
+    (unresolved! :never-ran ref)
+    (if (string? goal-value)
+      (first-row-value data goal-value {:column goal-value})
+      goal-value)))
 
 (defn resolve-dynamic-goals
   "Substitute every goal value in `viz-settings` with its [[resolve-goal-value]] resolution. No-op

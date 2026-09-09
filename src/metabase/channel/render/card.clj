@@ -214,15 +214,16 @@
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
-    ;; resolve dynamic goals up front so every render path below sees plain numbers in the settings;
-    ;; an unresolvable goal throws into the catch below and renders as the standard error box
-    (let [resolve-goals (fn [m]
+    ;; resolve dynamic goals up front so every render path below sees plain numbers in the settings, whether it
+    ;; reads them off the card, the dashcard, or the query result; an unresolvable goal throws into the catch
+    ;; below and renders as the standard error box
+    (let [resolve-goals (fn [m k]
                           (cond-> m
-                            (:visualization_settings m)
-                            (update :visualization_settings
-                                    dynamic-goals/resolve-dynamic-goals (:referenced_entities data))))
-          card          (resolve-goals card)
-          dashcard      (some-> dashcard resolve-goals)
+                            (k m)
+                            (update k dynamic-goals/resolve-dynamic-goals (:referenced_entities data))))
+          card          (resolve-goals card :visualization_settings)
+          dashcard      (some-> dashcard (resolve-goals :visualization_settings))
+          data          (some-> data (resolve-goals :viz-settings))
           chart-type    (or (detect-pulse-chart-type card dashcard data)
                             (when (is-attached? card)
                               :attached)

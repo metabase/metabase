@@ -359,6 +359,51 @@
                                          :semantic_type nil}]
                                  :rows [["2014-04-01T08:30:00.0000"]]})))))
 
+(defn- scalar-style [results]
+  (-> (body/render :scalar nil pacific-tz nil nil results)
+      :content
+      second
+      :style))
+
+(def ^:private segment-color "#84BB4C")
+
+(defn- scalar-results
+  ([segments] (scalar-results segments 42))
+  ([segments value]
+   {:cols         [{:name "count" :display_name "Count" :base_type :type/Integer}
+                   {:name "target" :display_name "Target" :base_type :type/Integer}]
+    :rows         [[value 80]]
+    :viz-settings {:scalar.segments segments}}))
+
+(deftest ^:parallel scalar-segment-color-test
+  (testing "the value takes the color of the first segment whose range contains it"
+    (are [segments] (str/includes? (scalar-style (scalar-results segments)) segment-color)
+      [{:min 0 :max 100 :color segment-color}]
+      [{:min 0 :max 10 :color "#FF0000"} {:min 10 :max 100 :color segment-color}]
+      [{:min 40 :color segment-color}]
+      [{:max 50 :color segment-color}]
+      [{:min nil :max 50 :color segment-color}]))
+  (testing "a bound naming another column of the same result resolves to that column's value"
+    (are [segments] (str/includes? (scalar-style (scalar-results segments)) segment-color)
+      [{:min 0 :max "target" :color segment-color}]
+      [{:min "count" :max "target" :color segment-color}])
+    (is (not (str/includes? (scalar-style (scalar-results [{:min "target" :color segment-color}])) segment-color))))
+  (testing "no matching segment falls back to the default color"
+    (are [segments] (not (str/includes? (scalar-style (scalar-results segments)) segment-color))
+      nil
+      []
+      [{:min 0 :max 10 :color segment-color}]
+      [{:min 50 :color segment-color}]
+      ;; a segment with neither bound set colors nothing
+      [{:min nil :max nil :color segment-color}]))
+  (testing "a non-numeric value is never colored"
+    (is (not (str/includes? (scalar-style (scalar-results [{:min 0 :color segment-color}] "foo")) segment-color))))
+  (testing "a bound that can't resolve fails the render"
+    (are [segments] (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
+                                      (scalar-style (scalar-results segments)))
+      [{:min 0 :max "nope" :color segment-color}]
+      [{:min 0 :max {:id 1 :type "card" :column "count"} :color segment-color}])))
+
 (deftest ^:parallel scalar-test-5
   (testing "Includes raw text"
     (testing "for scalars"
@@ -667,6 +712,33 @@
           (is (some #{"#84BB4C"} arc-fills))
           (is (every? #(re-matches #"#[0-9A-Fa-f]{6}" %) arc-fills)
               "the colorless segment gets a resolved hex fill"))))))
+
+(deftest render-scalar-with-self-column-segment-test
+  (testing "Static-viz Scalar colors its value by a segment whose bound names another column of the same query"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id} {:display                :scalar
+                                                :dataset_query          (mt/mbql-query venues
+                                                                          {:aggregation [[:count] [:sum $price]]})
+                                                :visualization_settings {:scalar.field    "count"
+                                                                         :scalar.segments [{:min 0 :max "sum" :color "#84BB4C"}]}}]
+        (let [doc        (render.tu/render-card-as-hickory! card-id)
+              pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+              colored    (hik.s/select (hik.s/attr :style #(str/includes? % "#84BB4C")) doc)]
+          (is (not (render-error? pulse-body)))
+          (is (= ["100"] (mapcat :content colored))))))))
+
+(deftest render-scalar-with-referenced-segment-test
+  (testing "Static-viz Scalar colors its value by a segment whose bound is another card's value"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                   :model/Card card          {:display                :scalar
+                                              :dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                              :visualization_settings {:scalar.segments
+                                                                       [{:max   {:id goal-id :type "card" :column "count"}
+                                                                         :color "#84BB4C"}]}}]
+      (let [result  (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))
+            content (:content (channel.render/render-pulse-card :inline "UTC" card nil result))]
+        (is (= 1000 (get-in result [:data :referenced_entities "card" (str goal-id) :data :rows 0 0])))
+        (is (str/includes? (html content) "#84BB4C"))))))
 
 (def ^:private funnel-rows
   [["cart" 1500]

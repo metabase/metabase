@@ -344,10 +344,12 @@ describe("Scalar conditional colors", () => {
     renderWithProviders(
       <Scalar
         {...mockedProps}
+        showTitle
         series={series}
         rawSeries={series}
         settings={{ ...settings, "scalar.segments": segments }}
         visualizationIsClickable={() => false}
+        actionButtons={<button>Download</button>}
         height={200}
         width={230}
       />,
@@ -401,6 +403,12 @@ describe("Scalar conditional colors", () => {
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+    expect(screen.getByTestId("scalar-title")).toHaveTextContent(
+      "Scalar Title",
+    );
+    expect(
+      screen.getByRole("button", { name: "Download" }),
+    ).toBeInTheDocument();
 
     expect(await screen.findByText("12,345")).toBeInTheDocument();
     expect(getValueColor()).toBe("green");
@@ -422,6 +430,12 @@ describe("Scalar conditional colors", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+    expect(screen.getByTestId("scalar-title")).toHaveTextContent(
+      "Scalar Title",
+    );
+    expect(
+      screen.getByRole("button", { name: "Download" }),
+    ).toBeInTheDocument();
   });
 
   function createScalarSeries(data: Partial<DatasetData> = {}): Series {

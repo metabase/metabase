@@ -30,7 +30,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.visualization-settings.core :as mb.viz])
+   [metabase.visualization-settings.core :as mb.viz]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -85,14 +86,25 @@
     :else
     (str value)))
 
-(defn get-color-from-segment
-  "Returns the color of the first segment who's max is higher than value and min is lower than value"
-  [viz-settings value]
-  (let [{segments :scalar.segments} viz-settings
-        ->min (fn [min] (if (number? min) min Double/NEGATIVE_INFINITY))
-        ->max (fn [max] (if (number? max) max Double/POSITIVE_INFINITY))]
+(defn- scalar-segments
+  "The `:scalar.segments` of `viz-settings` with a bound naming a column of `data` resolved to that column's value.
+  Entity references were resolved upstream, in `metabase.channel.render.card`. A segment with neither bound set
+  colors nothing, so it's dropped."
+  [viz-settings data]
+  (->> (:scalar.segments viz-settings)
+       (map (fn [segment]
+              (-> segment
+                  (update :min dynamic-goals/resolve-self-column-value data)
+                  (update :max dynamic-goals/resolve-self-column-value data))))
+       (filter (fn [{:keys [min max]}]
+                 (or (some? min) (some? max))))))
+
+(defn- scalar-color
+  "Color of the first segment whose (possibly open-ended) range contains `value`; nil for a non-numeric value."
+  [segments value]
+  (when (number? value)
     (some (fn [{:keys [min max color]}]
-            (when (<= (->min min) value (->max max))
+            (when (<= (or min Double/NEGATIVE_INFINITY) value (or max Double/POSITIVE_INFINITY))
               color))
           segments)))
 
@@ -423,7 +435,7 @@
       (dissoc :result)))
 
 (mu/defmethod render :scalar :- ::RenderedPartCard
-  [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
+  [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings] :as data}]
   (let [field-name    (:scalar.field viz-settings)
         [row-idx col] (or (when field-name
                             (get-col-by-name cols field-name))
@@ -431,7 +443,7 @@
         row           (first rows)
         raw-value     (get row row-idx)
         value         (format-scalar-value timezone-id raw-value col viz-settings)
-        color         (get-color-from-segment viz-settings raw-value)]
+        color         (scalar-color (scalar-segments viz-settings data) raw-value)]
     {:attachments
      nil
 

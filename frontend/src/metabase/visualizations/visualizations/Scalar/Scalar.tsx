@@ -46,8 +46,6 @@ function ScalarComponent(
   const scalarRef = useRef<HTMLDivElement>(null);
 
   const {
-    className,
-    height,
     series: [{ card, data }],
     settings,
     visualizationIsClickable,
@@ -89,12 +87,16 @@ function ScalarComponent(
 
   if (goalSegments.status !== "resolved") {
     return (
-      <GoalResolutionState
-        className={className}
-        height={height}
-        kind="segments"
-        status={goalSegments.status}
-      />
+      <ScalarCardShell
+        tier={tier}
+        title={title}
+        showsTitleTooltip={showsTitleTooltip}
+        actionButtons={actionButtons}
+        innerTooltipHoverHandlers={innerTooltipHoverHandlers}
+      >
+        <GoalResolutionState kind="segments" status={goalSegments.status} />
+        {titleElement}
+      </ScalarCardShell>
     );
   }
 
