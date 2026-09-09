@@ -11,7 +11,9 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.upload.db :as upload.db]
    [metabase.upload.impl :as upload.impl]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -20,15 +22,7 @@
   (encryption-tu/with-encrypted-app-db-fixture tu/test-encryption-key))
 
 (defn- with-upload-mocks!
-  "Helper to set up common mocks for CSV upload tests.
-   Options:
-   - :uploads-enabled? - Whether uploads are enabled (default false)
-   - :can-create-upload? - Whether user can create uploads (default true)
-   - :upload-result - Result from create-csv-upload! (default success with id 123)
-   - :download-content - Content returned by `download-file-stream` (default valid CSV)
-
-   Calls body-fn with a map containing tracking atoms:
-   {:upload-calls, :download-calls}"
+  "Run `body-fn` with configurable upload mocks and atoms that track upload and download calls."
   [{:keys [uploads-enabled? can-create-upload? upload-result download-content db-id]
     :or   {uploads-enabled?   false
            can-create-upload? true
@@ -47,9 +41,9 @@
        upload.impl/create-csv-upload! (fn [params]
                                         (swap! upload-calls conj params)
                                         upload-result)
-       slackbot.client/download-file-stream  (fn [_client url]
-                                               (swap! download-calls conj url)
-                                               (io/input-stream download-content))]
+       slackbot.client/download-file-stream (fn [_client url]
+                                              (swap! download-calls conj url)
+                                              (io/input-stream download-content))]
       (body-fn {:upload-calls   upload-calls
                 :download-calls download-calls}))))
 
@@ -64,7 +58,7 @@
           {:uploads-enabled? false}
           (fn [{:keys [upload-calls]}]
             (tu/with-slackbot-mocks
-              {:ai-text "CSV uploads are not enabled on this Metabase instance."}
+              {:ai-text "Uploads aren't configured yet. Ask your Metabase admin to choose an upload database in Admin > Settings > Uploads."}
               (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "metabot/slack/events"
                                           (tu/slack-request-options event-body)
@@ -76,7 +70,7 @@
                   (testing "no upload was attempted"
                     (is (= 0 (count @upload-calls))))
                   (testing "AI responds with error message"
-                    (is (some #(= "CSV uploads are not enabled on this Metabase instance." %)
+                    (is (some #(= "Uploads aren't configured yet. Ask your Metabase admin to choose an upload database in Admin > Settings > Uploads." %)
                               @append-text-calls))))))))))))
 
 (deftest ^:synchronized csv-upload-success-test
@@ -89,11 +83,11 @@
         (with-upload-mocks!
           {:uploads-enabled? true
            :can-create-upload? true
-           :upload-result {:id 456 :name "Data"}}
+           :upload-result {:id 456, :name "Data"}}
           (fn [{:keys [upload-calls download-calls]}]
             (tu/with-slackbot-mocks
               {:ai-text "Your CSV has been uploaded successfully as a model."}
-              (fn [{:keys [stop-stream-calls append-text-calls]}]
+              (fn [{:keys [stop-stream-calls append-text-calls ai-request-calls]}]
                 (let [response (mt/client :post 200 "metabot/slack/events"
                                           (tu/slack-request-options event-body)
                                           event-body)]
@@ -110,10 +104,39 @@
                       (is (= (:name tu/slack-csv-file) (:filename call)))))
                   (testing "AI responds with success message"
                     (is (some #(= "Your CSV has been uploaded successfully as a model." %)
-                              @append-text-calls))))))))))))
+                              @append-text-calls)))
+                  (testing "AI receives the upload details"
+                    (is (some #(= {:role    :assistant
+                                   :content "I uploaded data.csv as the Metabase model Data (ID 456). I can help you query it."}
+                                  %)
+                              (:messages (first @ai-request-calls))))))))))))))
 
-(deftest ^:synchronized csv-upload-non-csv-skipped-test
-  (testing "POST /events with non-CSV file is skipped"
+(deftest ^:synchronized csv-upload-no-text-test
+  (testing "POST /events with a CSV file and no text responds directly without AI"
+    (tu/with-slackbot-setup
+      (let [event-body (-> tu/base-dm-event
+                           (update :event merge {:subtype "file_share", :files [tu/slack-csv-file]})
+                           (update :event dissoc :text))]
+        (with-upload-mocks!
+          {:uploads-enabled? true
+           :upload-result    {:id 456, :name "Data"}}
+          (fn [_]
+            (tu/with-slackbot-mocks
+              {}
+              (fn [{:keys [post-calls ai-request-calls]}]
+                (let [response (mt/client :post 200 "metabot/slack/events"
+                                          (tu/slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk #(= 1 (count @post-calls))
+                           :done? true?
+                           :timeout-ms 5000})
+                  (is (empty? @ai-request-calls))
+                  (is (= "I uploaded data.csv as the Metabase model Data (ID 456). I can help you query it."
+                         (:text (first @post-calls)))))))))))))
+
+(deftest ^:synchronized unsupported-file-skipped-test
+  (testing "POST /events skips an unsupported file"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
                                {:subtype "file_share"
@@ -127,7 +150,7 @@
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
             (tu/with-slackbot-mocks
-              {:ai-text "Only CSV files can be uploaded."}
+              {:ai-text "I can only upload CSV and TSV files, so I skipped document.pdf."}
               (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "metabot/slack/events"
                                           (tu/slack-request-options event-body)
@@ -141,13 +164,13 @@
                   (testing "no upload was attempted"
                     (is (= 0 (count @upload-calls))))
                   (testing "AI responds explaining PDF not supported"
-                    (is (some #(= "Only CSV files can be uploaded." %)
+                    (is (some #(= "I can only upload CSV and TSV files, so I skipped document.pdf." %)
                               @append-text-calls))))))))))))
 
-(deftest ^:synchronized csv-upload-non-csv-no-text-test
-  (testing "POST /events with non-CSV file and no text responds directly without AI"
+(deftest ^:synchronized unsupported-file-no-text-test
+  (testing "POST /events with an unsupported file and no text responds directly without AI"
     (tu/with-slackbot-setup
-      ;; No :text field - user uploaded file without typing anything
+      ;; No `:text` field because the user uploaded a file without typing anything.
       (let [event-body (-> tu/base-dm-event
                            (update :event merge
                                    {:subtype "file_share"
@@ -162,7 +185,7 @@
           (fn [{:keys [upload-calls download-calls]}]
             (tu/with-slackbot-mocks
               {:ai-text "This should not be called"}
-              (fn [{:keys [post-calls delete-calls]}]
+              (fn [{:keys [post-calls ai-request-calls]}]
                 (let [response (mt/client :post 200 "metabot/slack/events"
                                           (tu/slack-request-options event-body)
                                           event-body)]
@@ -170,22 +193,18 @@
                   (u/poll {:thunk #(>= (count @post-calls) 1)
                            :done? true?
                            :timeout-ms 5000})
-                  ;; When AI is called, there are 2 posts (Thinking... then response) and 1 delete.
-                  ;; When AI is skipped, there is just 1 post and no deletes.
-                  (testing "AI was not called (only 1 post, no deletes)"
-                    (is (= 1 (count @post-calls)))
-                    (is (= 0 (count @delete-calls))))
+                  (testing "AI was not called"
+                    (is (empty? @ai-request-calls)))
                   (testing "no download was attempted"
                     (is (= 0 (count @download-calls))))
                   (testing "no upload was attempted"
                     (is (= 0 (count @upload-calls))))
                   (testing "responds directly with skip message"
-                    (let [message-text (:text (first @post-calls))]
-                      (is (str/includes? message-text "can only process CSV and TSV"))
-                      (is (str/includes? message-text "query_result.xlsx")))))))))))))
+                    (is (= "I can only upload CSV and TSV files, so I skipped the following: query_result.xlsx."
+                           (:text (first @post-calls))))))))))))))
 
-(deftest ^:synchronized csv-upload-mixed-files-test
-  (testing "POST /events with mix of CSV and non-CSV files"
+(deftest ^:synchronized mixed-file-upload-test
+  (testing "POST /events with supported and unsupported files"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
                                {:subtype "file_share"
@@ -203,10 +222,10 @@
                                            :size        150}]})]
         (with-upload-mocks!
           {:uploads-enabled? true
-           :upload-result {:id 789 :name "Uploaded Data"}}
+           :upload-result {:id 789, :name "Uploaded Data"}}
           (fn [{:keys [upload-calls download-calls]}]
             (tu/with-slackbot-mocks
-              {:ai-text "Uploaded 2 files, skipped 1 non-CSV file."}
+              {:ai-text "I uploaded data.csv and more_data.tsv, and skipped report.pdf because I can only upload CSV and TSV files."}
               (fn [{:keys [stop-stream-calls]}]
                 (let [response (mt/client :post 200 "metabot/slack/events"
                                           (tu/slack-request-options event-body)
@@ -226,7 +245,7 @@
 (deftest ^:synchronized csv-upload-file-too-large-test
   (testing "POST /events with file exceeding size limit"
     (tu/with-slackbot-setup
-      (let [too-large-size (inc (* 200 1024 1024)) ;; Just over 200MB
+      (let [too-large-size (inc (* 200 1024 1024)) ;; Just over 200 MB.
             event-body    (update tu/base-dm-event :event merge
                                   {:subtype "file_share"
                                    :text    "Here's my huge file"
@@ -238,7 +257,7 @@
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
             (tu/with-slackbot-mocks
-              {:ai-text "The file exceeds the 200MB size limit."}
+              {:ai-text "I couldn't upload huge_data.csv because it is larger than the 200 MB limit."}
               (fn [{:keys [stop-stream-calls]}]
                 (let [response (mt/client :post 200 "metabot/slack/events"
                                           (tu/slack-request-options event-body)
@@ -264,7 +283,7 @@
            :can-create-upload? false}
           (fn [{:keys [upload-calls]}]
             (tu/with-slackbot-mocks
-              {:ai-text "You don't have permission to upload files."}
+              {:ai-text "I can't upload files to the configured database. Ask your Metabase admin to check the upload settings and your permissions."}
               (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "metabot/slack/events"
                                           (tu/slack-request-options event-body)
@@ -276,77 +295,115 @@
                   (testing "no upload was attempted"
                     (is (= 0 (count @upload-calls))))
                   (testing "AI responds with permission error"
-                    (is (some #(= "You don't have permission to upload files." %)
+                    (is (some #(= "I can't upload files to the configured database. Ask your Metabase admin to check the upload settings and your permissions." %)
                               @append-text-calls))))))))))))
 
-(def ^:private test-client
-  {:token "xoxb-fake"})
+(def ^:private test-client {:token "xoxb-fake"})
 
 (def ^:private test-target
-  {:db {:id 1} :schema-name nil :table-prefix nil})
+  {:db {:id 1}, :schema-name nil, :table-prefix nil})
 
-(deftest process-csv-file-streams-to-temp-file-test
-  (testing "process-csv-file streams download content through a temp file to the upload fn"
+(deftest upload-file-streams-to-temp-file-test
+  (testing "upload-file! closes the download before uploading and removes the temporary file"
     (let [csv-content   "col1,col2\nfoo,bar\nbaz,qux"
           uploaded-file (atom nil)
-          temp-file     (atom nil)]
+          temp-file     (atom nil)
+          stream-closed (atom false)]
       (mt/with-dynamic-fn-redefs
-        [slackbot.client/download-file-stream (fn [_client _url]
-                                                (io/input-stream (.getBytes csv-content)))
+        [slackbot.client/download-file-stream (fn [client _url]
+                                                (is (= test-client client))
+                                                (proxy [ByteArrayInputStream] [(.getBytes csv-content)]
+                                                  (close []
+                                                    (reset! stream-closed true))))
          upload.impl/create-csv-upload!       (fn [{:keys [file] :as _params}]
+                                                (is @stream-closed)
                                                 (reset! temp-file file)
                                                 (reset! uploaded-file (slurp file))
-                                                {:id 1 :name "test"})]
+                                                {:id 1, :name "test"})]
         (is (=? {:filename   "test.csv"
                  :model-id   1
                  :model-name "test"}
-                (#'slackbot.uploads/process-csv-file
+                (#'slackbot.uploads/upload-file!
                  test-client
                  test-target
-                 {:name "test.csv" :url_private "https://example.com/test.csv" :size 100})))
+                 {:name "test.csv", :filetype "csv", :url_private "https://example.com/test.csv", :size 100})))
         (testing "file content was streamed correctly through temp file"
           (is (= csv-content @uploaded-file)))
+        (testing "the validated file type is used as the suffix"
+          (is (str/ends-with? (.getName ^java.io.File @temp-file) ".csv")))
         (testing "the temp file is cleaned up"
           (is (false? (.exists ^java.io.File @temp-file))))))))
 
-(deftest process-csv-file-temp-file-failure-test
+(deftest upload-file-temp-file-failure-test
   (testing "a file that cannot be staged on disk is reported as a failed file, not thrown"
     (mt/with-dynamic-fn-redefs
-      [slackbot.client/download-file-stream (fn [_client _url]
-                                              (io/input-stream (.getBytes "col1,col2\nval1,val2")))]
-      ;; `File/createTempFile` refuses a suffix containing a path separator, and Slack's `name` is whatever the
-      ;; uploader called the file.
-      (is (=? {:filename "nested/data.csv"
-               :error    #"Unable to create temporary file.*"}
-              (#'slackbot.uploads/process-csv-file
-               test-client
-               test-target
-               {:name "nested/data.csv" :url_private "https://example.com/x.csv" :size 100}))))))
+      [slackbot.uploads/create-temp-file!      (fn [_filetype]
+                                                 (throw (ex-info "sensitive filesystem details" {})))
+       slackbot.client/download-file-stream    (fn [_client _url]
+                                                 (throw (ex-info "download should not start" {})))]
+      (is (= {:filename "data.csv"
+              :error    "I couldn't upload data.csv because something went wrong. Please try again."}
+             (#'slackbot.uploads/upload-file!
+              test-client
+              test-target
+              {:name "data.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100}))))))
 
-(deftest handle-file-uploads-nothing-attempted-test
+(deftest upload-file-cleans-up-after-upload-failure-test
+  (testing "the temporary file is removed and the backend error is not returned"
+    (let [temp-file (atom nil)]
+      (mt/with-dynamic-fn-redefs
+        [slackbot.client/download-file-stream (fn [_client _url]
+                                                (io/input-stream (.getBytes "col1,col2\nval1,val2")))
+         upload.impl/create-csv-upload!       (fn [{:keys [file]}]
+                                                (reset! temp-file file)
+                                                (throw (ex-info "sensitive database details" {})))]
+        (is (= {:filename "data.csv"
+                :error    "I couldn't upload data.csv because something went wrong. Please try again."}
+               (#'slackbot.uploads/upload-file!
+                test-client
+                test-target
+                {:name "data.csv", :filetype "csv", :url_private "https://example.com/x.csv", :size 100})))
+        (is (false? (.exists ^java.io.File @temp-file)))))))
+
+(deftest build-upload-history-test
+  (is (= [{:role    :assistant
+           :content "I uploaded these files as Metabase models: data.csv as Data (ID 1), data.tsv as More Data (ID 2). I can help you query them."}
+          {:role    :assistant
+           :content "I couldn't upload broken.csv because something went wrong. Please try again."}
+          {:role    :assistant
+           :content "I can only upload CSV and TSV files, so I skipped the following: notes.txt."}]
+         (#'slackbot.uploads/build-upload-history
+          {:results [{:filename "data.csv", :model-id 1, :model-name "Data"}
+                     {:filename "data.tsv", :model-id 2, :model-name "More Data"}
+                     {:filename "broken.csv", :error "I couldn't upload broken.csv because something went wrong. Please try again."}]
+           :skipped ["notes.txt"]}))))
+
+(deftest handle-file-uploads!-nothing-attempted-test
   (testing "no files at all"
-    (is (nil? (slackbot.uploads/handle-file-uploads test-client []))))
+    (is (nil? (slackbot.uploads/handle-file-uploads! test-client []))))
   (testing "no database is configured for uploads"
     (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly nil)]
-      (is (=? {:system-messages [{:role    :assistant
-                                  :content #"CSV uploads are not enabled\..*"}]}
-              (slackbot.uploads/handle-file-uploads test-client [tu/slack-csv-file])))))
-  (testing "the user cannot upload to the configured database"
+      (is (= {:extra-history [{:role    :assistant
+                               :content "Uploads aren't configured yet. Ask your Metabase admin to choose an upload database in Admin > Settings > Uploads."}]}
+             (slackbot.uploads/handle-file-uploads! test-client [tu/slack-csv-file])))))
+  (testing "the configured upload target is unavailable"
     (mt/with-dynamic-fn-redefs [upload.db/current-database     (constantly {:id 1})
                                 upload.impl/can-create-upload? (constantly false)]
-      (is (=? {:system-messages [{:role    :assistant
-                                  :content #"You don't have permission to upload files\..*"}]}
-              (slackbot.uploads/handle-file-uploads test-client [tu/slack-csv-file]))))))
+      (is (= {:extra-history [{:role    :assistant
+                               :content "I can't upload files to the configured database. Ask your Metabase admin to check the upload settings and your permissions."}]}
+             (slackbot.uploads/handle-file-uploads! test-client [tu/slack-csv-file]))))))
 
-(deftest ^:parallel csv-file-detection-test
-  (testing "csv-file? correctly identifies CSV/TSV files"
-    (is (true? (#'slackbot.uploads/csv-file? {:filetype "csv"})))
-    (is (true? (#'slackbot.uploads/csv-file? {:filetype "tsv"})))
-    (is (false? (#'slackbot.uploads/csv-file? {:filetype "pdf"})))
-    (is (false? (#'slackbot.uploads/csv-file? {:filetype "xlsx"})))
-    (is (false? (#'slackbot.uploads/csv-file? {:filetype "txt"})))
-    (is (false? (#'slackbot.uploads/csv-file? {:filetype nil})))
-    (is (false? (#'slackbot.uploads/csv-file? {}))))
+(deftest ^:parallel supported-file?-test
+  (testing "only CSV and TSV files are supported"
+    (is (true? (#'slackbot.uploads/supported-file? {:filetype "csv"})))
+    (is (true? (#'slackbot.uploads/supported-file? {:filetype "tsv"})))
+    (is (false? (#'slackbot.uploads/supported-file? {:filetype "pdf"})))
+    (is (false? (#'slackbot.uploads/supported-file? {:filetype "xlsx"})))
+    (is (false? (#'slackbot.uploads/supported-file? {:filetype "txt"})))
+    (is (false? (#'slackbot.uploads/supported-file? {:filetype nil})))
+    (is (false? (#'slackbot.uploads/supported-file? {})))))
+
+(deftest ^:parallel remote-file?-test
   (testing "a file stored outside Slack is refused whatever filetype it claims, ordinary upload modes are kept"
     (is (true? (#'slackbot.uploads/remote-file? {:filetype "csv" :mode "external"})))
     (is (false? (#'slackbot.uploads/remote-file? {:filetype "csv" :mode "snippet"})))
@@ -355,23 +412,22 @@
 
 (deftest ^:parallel remote-files-are-reported-separately-test
   (testing "a remote CSV is refused for being remote, not reported as an unsupported filetype"
-    (let [{:keys [skipped remote results]}
-          (#'slackbot.uploads/process-file-uploads
-           nil
-           {:db {:id 1}}
-           [{:name "evil.csv" :filetype "csv" :mode "external" :url_private "https://evil.test/x.csv" :size 0}
-            {:name "notes.pdf" :filetype "pdf" :mode "hosted" :url_private "https://files.slack.com/notes.pdf" :size 10}])]
-      (is (= ["evil.csv"] remote))
-      (is (= ["notes.pdf"] skipped))
-      (is (empty? results)))))
+    (is (=? {:remote  ["evil.csv"]
+             :skipped ["notes.pdf"]
+             :results empty?}
+            (#'slackbot.uploads/upload-files!
+             nil
+             {:db {:id 1}}
+             [{:name "evil.csv", :filetype "csv", :mode "external", :url_private "https://evil.test/x.csv", :size 0}
+              {:name "notes.pdf", :filetype "pdf", :mode "hosted", :url_private "https://files.slack.com/notes.pdf", :size 10}])))))
 
 (deftest copy-to-file!-enforces-the-size-limit-test
   (testing "a stream longer than the limit is refused, since the event only carries the size the sender declared"
     (let [file (java.io.File/createTempFile "slackbot-cap-" ".csv")]
       (try
-        (with-redefs-fn {#'slackbot.uploads/max-file-size-bytes 8}
+        (with-redefs-fn {#'slackbot.uploads/max-slack-upload-size-bytes 8}
           (fn []
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"exceeds"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"larger than"
                                   (#'slackbot.uploads/copy-to-file!
                                    (io/input-stream (.getBytes "0123456789abcdefghij"))
                                    file
