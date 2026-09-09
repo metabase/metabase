@@ -12,6 +12,7 @@
   https://docs.ollama.com/api/openai-compatibility"
   (:require
    [clojure.string :as str]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
@@ -34,9 +35,14 @@
             :error-code :proxy-unsupported}))
 
 (defn- missing-base-url-ex []
+  ;; `:status-code` matters: `provider-client-error?` needs a numeric status to render this under the
+  ;; base URL field, and without one the admin gets a 500. vLLM never reaches here because its base
+  ;; URL is `:required?`; Ollama's is conditional, so the adapter owns the error.
   (ex-info (tru "No Ollama base URL is set. Give the address of your server, or switch this connection to Ollama Cloud.")
-           {:api-error  true
-            :error-code :base-url-missing}))
+           {:api-error   true
+            :status-code 400
+            :field       :base-url
+            :error-code  :base-url-missing}))
 
 (defn- missing-model-ex []
   (ex-info (tru "No Ollama model is set")
@@ -72,40 +78,33 @@
   wherever the operator put it, but the hosted service is always here."
   "https://ollama.com/v1")
 
-(defn- cloud-url?
-  "Whether `url` is Ollama Cloud, for the diagnoses that differ between the two deployments —
-  `ollama serve` is advice only a self-hoster can act on."
-  [url]
-  (= cloud-base-url url))
+(defn- cloud?
+  "Whether a connection is Ollama Cloud."
+  [credentials]
+  (= llm.provider/ollama-cloud (:hosting credentials)))
 
 (defn- resolve-base-url
   "The address to call, from a connection's `:hosting` mode and `:base-url`.
 
   Cloud has one address, so it is not configurable and any stored `:base-url` is ignored. A
   self-hosted connection is wherever the operator put it, and one carrying no address throws rather
-  than quietly falling through to Cloud, which would send their data somewhere they did not choose.
+  than quietly falling through to Cloud, which would send their data somewhere they did not choose."
 
-  `:hosting` is always present: it declares a registry `:default`, and every caller resolves
-  credentials through [[metabase.llm.provider/with-field-defaults]] first. An environment-configured
-  connection names its deployment with `MB_LLM_OLLAMA_HOSTING`."
-  [{:keys [hosting base-url]}]
-  (if (= hosting "cloud")
+  [credentials]
+  (if (cloud? credentials)
     cloud-base-url
-    (or (not-empty base-url) (throw (missing-base-url-ex)))))
+    (or (not-empty (:base-url credentials)) (throw (missing-base-url-ex)))))
 
 (defn- ollama-auth
   "Auth map for an Ollama request. The map is never nil, so `core/resolve-auth` cannot reach its
   `missing-api-key-ex` branch — a keyless self-hosted server is a complete configuration, and is in
   fact the normal one."
   [credentials ai-proxy?]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (let [url   (resolve-base-url credentials)
-        token (not-empty (:api-key credentials))]
-    (core/resolve-auth "ollama" "Ollama"
-                       (cond-> {:url url}
-                         token (assoc :headers {"Authorization" (str "Bearer " token)}))
-                       ai-proxy?)))
+  (when ai-proxy? (throw (ai-proxy-unsupported-ex)))
+  (let [token (not-empty (:api-key credentials))
+        auth  (merge {:url (resolve-base-url credentials)}
+                     (when token {:headers {"Authorization" (str "Bearer " token)}}))]
+    (core/resolve-auth "ollama" "Ollama" auth ai-proxy?)))
 
 (defn- inference-timeouts
   "Timeouts for a generation request."
@@ -133,16 +132,10 @@
 ;;; ----------------------------------------------- Transport errors ---------------------------------------------
 
 (defn- unreachable-ex
-  "The Ollama error for a non-timeout transport failure. `extra` is the caller's own ex-data tags.
-
-  The advice splits by deployment: `ollama serve` is something only a self-hoster can act on, and
-  telling a Cloud user to start a server sends them nowhere."
-  [^IOException e base-url extra]
-  (ex-info (if (cloud-url? base-url)
-             (tru "Could not reach Ollama Cloud at {0}. Check that the Metabase server can reach it — an outbound proxy or firewall is the usual cause."
-                  (str base-url))
-             (tru "Could not reach the Ollama server at {0}. Check that it is running, and that the address is reachable from the Metabase server rather than only from your own machine."
-                  (str base-url)))
+  "The Ollama error for a non-timeout transport failure. `extra` is the caller's own ex-data tags."
+  [^IOException e {:keys [url]} extra]
+  (ex-info (tru "Could not reach Ollama at {0}. Check that it is reachable from the Metabase server."
+                (str url))
            (merge {:api-error true :error-code :ollama-unreachable} extra)
            e))
 
@@ -150,15 +143,15 @@
   "The Ollama error for a transport failure while fetching the model catalog — the request behind the
   admin Connect button. Tagged `:status-code 400` so a mistyped base URL surfaces the message rather
   than the 500 `core/rethrow-api-error!`'s untagged no-response branch would produce."
-  [^IOException e base-url]
+  [^IOException e {:keys [url] :as auth}]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The Ollama server at {0} did not respond within {1}ms. Check that it is running and not loading a model."
-                  (str base-url) (str (llm/llm-request-timeout-ms)))
+                  (str url) (str (llm/llm-request-timeout-ms)))
              {:api-error   true
               :status-code 400
               :error-code  :ollama-timeout}
              e)
-    (unreachable-ex e base-url {:status-code 400})))
+    (unreachable-ex e auth {:status-code 400})))
 
 ;;; ------------------------------------------------ Model listing -----------------------------------------------
 
@@ -184,7 +177,7 @@
     ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
     ;; `:as :json` also lands a 2xx whose body is not JSON here, via Jackson's `JsonParseException`.
     (catch IOException e
-      (throw (list-models-io-ex e (:url auth))))
+      (throw (list-models-io-ex e auth)))
     (catch Exception e
       (core/rethrow-api-error! "ollama" ollama-error-msg e))))
 
@@ -279,7 +272,7 @@
                     (catch Exception _ false))
           (throw (preflight-ex
                   (if truncated?
-                    (tru "{0} reached the {1} token connection-test ceiling partway through a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
+                    (tru "{0} reached the {1} token connection-test ceiling before completing a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
                          (str model) (str probe-max-tokens))
                     (tru "{0} returned a tool call whose arguments are not valid JSON. Pull a larger or more capable model — Metabot needs reliable tool calling."
                          (str model))))))
@@ -297,13 +290,8 @@
 
       :else
       (throw (preflight-ex
-              ;; One `{0}`: `validate-number-of-args` counts placeholder occurrences against distinct
-              ;; argument indices, so repeating `{0}` fails the i18n check at macroexpansion.
-              (if (cloud-url? (:url auth))
-                (tru "{0} answered with text instead of calling a tool. Metabot needs a model that supports tool calling — pick a different one."
-                     (str model))
-                (tru "{0} answered with text instead of calling a tool. Run `ollama show` on it and check that `tools` is listed under Capabilities; if it is not, pull a model that supports them."
-                     (str model))))))))
+              (tru "{0} answered with text instead of calling a tool. Metabot needs a model that supports tool calling — pick a different one."
+                   (str model)))))))
 
 (defn- check-structured-output!
   "Check that the model honors a forced tool call. A different failure from [[check-tool-calling!]]: a
@@ -319,10 +307,8 @@
                 (tru "{0} did not honor a forced tool call. Metabot needs structured output support for conversation titles and SQL generation — pull a larger or more capable model."
                      (str model))))))))
 
-(defn- no-models-ex [auth]
-  (preflight-ex (if (cloud-url? (:url auth))
-                  (tru "Ollama Cloud is reachable but is offering no models to this API key.")
-                  (tru "The Ollama server is reachable but has no models pulled. Run `ollama pull` first."))))
+(defn- no-models-ex []
+  (preflight-ex (tru "Ollama is reachable but is offering no models.")))
 
 (defn- probe-target
   "The catalog entry [[preflight!]] will probe.
@@ -331,15 +317,15 @@
   every check and then persist a provider string naming a model the server does not have. The
   fallback is for the connect path, which supplies no model because the pulled name is knowable only
   from this catalog."
-  [auth entries requested-model]
+  [entries requested-model]
   (if requested-model
     (or (u/seek #(= requested-model (:id %)) entries)
         (throw (if (seq entries)
                  (preflight-ex (tru "{0} is not available. Models on offer: {1}."
                                     (str requested-model) (str/join ", " (map :id entries))))
-                 (no-models-ex auth))))
+                 (no-models-ex))))
     (or (first entries)
-        (throw (no-models-ex auth)))))
+        (throw (no-models-ex)))))
 
 (defn- run-probes!
   "Run both contract probes against `model` and return whether it streamed reasoning.
@@ -354,7 +340,7 @@
   (try
     (let [reasoning? (check-tool-calling! auth model)]
       (check-structured-output! auth model)
-      (boolean reasoning?))
+      reasoning?)
     (catch SocketTimeoutException _
       (throw (preflight-ex
               (tru "Ollama did not answer the connection test within {0}ms. On a self-hosted server the first request also loads the model into memory — if it is large, retry once it is warm, otherwise it is too slow to drive Metabot."
@@ -376,7 +362,7 @@
   and the answer drives which renderer the frontend picks, so the connection records it (see
   [[reasoning-config-key]])."
   [auth entries requested-model]
-  (let [entry (probe-target auth entries requested-model)
+  (let [entry (probe-target entries requested-model)
         model (:id entry)]
     {:model      model
      :reasoning? (run-probes! auth model)}))
@@ -398,12 +384,14 @@
          proposed (when (some #(= proposed-model (:id %)) entries)
                     proposed-model)
          probed   (when probe?
-                    (preflight! auth entries (or model proposed)))]
-     (cond-> {:models (mapv (fn [{:keys [id] :as entry}]
-                              {:id id :display_name (or (:name entry) id)})
-                            entries)}
-       probed (assoc :learned-config {reasoning-config-key (str (:reasoning? probed))
-                                      :probed-model        (:model probed)})))))
+                    (preflight! auth entries (or model proposed)))
+         models   (mapv (fn [{:keys [id] :as entry}]
+                          {:id id :display_name (or (:name entry) id)})
+                        entries)]
+     (merge {:models models}
+            (when probed
+              {:learned-config {reasoning-config-key (str (:reasoning? probed))
+                                :probed-model        (:model probed)}})))))
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 
@@ -450,7 +438,7 @@
 
   Tagged `:retryable? false` for the same reason as [[stream-io-ex]], and more importantly: nothing
   has been emitted yet, so `call-llm`'s own \"nothing emitted\" predicate would not stop a replay."
-  [^IOException e base-url timeout-ms]
+  [^IOException e auth timeout-ms]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The Ollama server did not respond within {0}ms. A cold model load happens on the first request — retry once it is warm, or raise the Ollama request timeout."
                   (str timeout-ms))
@@ -458,7 +446,7 @@
               :error-code :ollama-timeout
               :retryable? false}
              e)
-    (unreachable-ex e base-url {:retryable? false})))
+    (unreachable-ex e auth {:retryable? false})))
 
 (defn- io-guarded
   "Wrap a stream reducible so a transport failure while consuming it surfaces as [[stream-io-ex]]
@@ -481,15 +469,12 @@
   those into the address to call, and throws when a self-hosted connection names none.
   `:ai-proxy?` is not supported for Ollama and throws when true."
   [{:keys [model tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (when (str/blank? model)
-    (throw (missing-model-ex)))
+  (when ai-proxy? (throw (ai-proxy-unsupported-ex)))
+  (when (str/blank? model) (throw (missing-model-ex)))
   (let [req        (ollama-request-body opts)
         timeout-ms (llm/llm-ollama-request-timeout-ms)
-        ;; resolved before the `try` so the IO handler can name the address actually called: for a
-        ;; Cloud connection `:base-url` is empty, and reporting that gives a blank URL and the
-        ;; self-hosted branch of `unreachable-ex` — advice a Cloud user cannot act on.
+        ;; resolved before the `try` so the IO handler has the address actually called and the
+        ;; deployment it belongs to; a Cloud connection carries no `:base-url` of its own.
         auth       (ollama-auth credentials ai-proxy?)]
     (log/debug "Ollama request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
     (with-span :info {:name       :metabot.ollama/request
@@ -514,7 +499,7 @@
         ;; Ordered: clj-http raises an `IOException` only when there is no response at all, so this
         ;; cannot swallow one `ollama-error-msg` would have translated.
         (catch IOException e
-          (throw (request-io-ex e (:url auth) timeout-ms)))
+          (throw (request-io-ex e auth timeout-ms)))
         (catch Exception e
           (core/rethrow-api-error! "ollama" ollama-error-msg e))))))
 

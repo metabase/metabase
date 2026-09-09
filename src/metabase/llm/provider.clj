@@ -40,6 +40,16 @@
   (mapv (fn [region] {:value region :label region})
         (sort llm.settings/known-aws-regions)))
 
+(def ollama-self-hosted
+  "The `:hosting` value for an Ollama server the operator runs. Named because the adapter has to
+  recognize it too, and a literal on each side could drift apart silently: a renamed value would stop
+  matching and a Cloud connection would quietly start demanding a base URL."
+  "self-hosted")
+
+(def ollama-cloud
+  "The `:hosting` value for Ollama Cloud. See [[ollama-self-hosted]]."
+  "cloud")
+
 (def ^:private provider-type-registry
   "Every provider type Metabase can connect to, in the order the admin UI offers them.
 
@@ -342,6 +352,7 @@
     ;; starts on comes from the catalog that connecting fetches (see
     ;; [[metabase.metabot.self.ollama/list-models]]).
     :default-model nil
+    :stored-config-fields [:model-reasoning]
     ;; Ollama comes in two deployments that need opposite things. Cloud is the one Ollama endpoint whose address we know, and it
     ;; needs a key; a self-hosted server is at an address only the admin knows, and might need no
     ;; key at all.
@@ -350,16 +361,19 @@
                      :label     (deferred-tru "Where Ollama runs")
                      :type      :segmented
                      :required? true
-                     :options   [{:value "self-hosted" :label (deferred-tru "Self-hosted")}
-                                 {:value "cloud" :label (deferred-tru "Cloud")}]
-                     :default   "self-hosted"}
+                     :options   [{:value ollama-self-hosted :label (deferred-tru "Self-hosted")}
+                                 {:value ollama-cloud :label (deferred-tru "Cloud")}]
+                     :default   ollama-self-hosted}
                     {:key         :base-url
                      :normalize   strip-trailing-slashes
+                     :validate    llm.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
-                     :show-when   {:field :hosting :value "self-hosted"}
+                     :show-when   {:field :hosting :value ollama-self-hosted}
                      :placeholder "http://ollama.your.company:11434/v1"
-                     :help        (deferred-tru "Where Ollama is listening, ending in /v1. It has to be reachable from the Metabase server, not from your browser.")}
+                     :help        (deferred-tru (str "Where Ollama is listening, ending in /v1. Metabase must be able "
+                                                     "to reach it: a server on your private network or on this machine "
+                                                     "needs MB_LLM_ALLOWED_NETWORKS."))}
                     {:key   :api-key
                      :label (deferred-tru "API key")
                      :type  :password
@@ -649,7 +663,7 @@
    "ollama"     {:type     "ollama"
                  ;; both are credentials, because either deployment can be configured on its own: a base
                  ;; URL alone is a self-hosted server, which needs no key. Cloud additionally requires an
-                 ;; API key, but using Cloud also requires `:hosting` to be set to "cloud".
+                 ;; API key, but using Cloud also requires `:hosting` to be [[ollama-cloud]].
                  ;; `:hosting` is not a credential — on its own it configures nothing — but it has to be
                  ;; settable, or an env-configured Cloud connection could not say that is what it is.
                  :settings {:base-url {:setting :llm-ollama-api-base-url :credential? true}
