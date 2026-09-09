@@ -1,30 +1,19 @@
 (ns mage.nav-links
-  "Checks that every url in docs/util/data/nav.yml points at a page (and anchor) under docs/.
-
-  The heavy lifting is done by lychee, the same link checker CI runs over the docs body.
-  `docs/util/nav_links.clj` renders the nav as a markdown list of links, lychee checks that file,
-  and this namespace maps each failure back to its nav entry and suggests replacements from
-  `redirect_from` frontmatter."
+  "`./bin/mage docs-check-nav-links`: runs lychee over the markdown that `docs/util/nav_links.clj`
+  renders from the nav, maps each failure back to its nav entry, and suggests replacements."
   (:require
    [babashka.fs :as fs]
    [babashka.json :as json]
    [clojure.string :as str]
    [mage.color :as c]
    [mage.shell :as shell]
-   [mage.util :as u]))
+   [mage.util :as u]
+   ;; docs/util is on the bb.edn classpath so the script CI runs standalone is also a namespace here.
+   [nav-links :as nav]))
 
 (set! *warn-on-reflection* true)
 
-;; Load the standalone script so CI (which runs it directly, without bb.edn) and this task share
-;; one implementation. It defines the `nav-links` namespace, which is resolved here at load time
-;; because it is not on the classpath.
-(load-file (str u/project-root-directory "/docs/util/nav_links.clj"))
-
-(def ^:private read-nav        (resolve 'nav-links/read-nav))
-(def ^:private markdown        (resolve 'nav-links/markdown))
-(def ^:private redirect-index  (resolve 'nav-links/redirect-index))
-(def ^:private suggestions     (resolve 'nav-links/suggestions))
-(def ^:private case-mismatches (resolve 'nav-links/case-mismatches))
+;;; ------------------------------------------------ lychee --------------------------------------------------------
 
 (def ^:private lychee-args
   ["--offline"
@@ -33,8 +22,17 @@
    "--include-fragments"
    "--no-progress"])
 
+(defn- lychee-failure
+  "One entry of lychee's JSON `error_map` as `{:line :url :text :anchor?}`. `:anchor?` is true when
+  the page exists but its `#fragment` does not."
+  [{:keys [url status span]}]
+  {:line    (:line span)
+   :url     url
+   :text    (:text status)
+   :anchor? (str/includes? (str/lower-case (str (:text status))) "fragment")})
+
 (defn- run-lychee
-  "Runs lychee on `markdown-file` and returns its failures as `[{:line :url :text}]`."
+  "Runs lychee on `markdown-file` and returns its failures, see [[lychee-failure]]."
   [markdown-file]
   (let [{:keys [exit out err]} (apply shell/sh* {:quiet? true}
                                       "lychee" (concat lychee-args ["--format" "json" (str markdown-file)]))
@@ -43,67 +41,99 @@
                  (json/read-str (str/join "\n" out))
                  (catch Exception _ nil))]
     (when-not report
-      (u/exit (str/join "\n" (concat ["lychee did not produce a JSON report:"] out err)) (if (zero? exit) 1 exit)))
+      (u/exit (str/join "\n" (concat ["lychee did not produce a JSON report:"] out err))
+              (if (zero? exit) 1 exit)))
     (for [[_ failures] (:error_map report)
-          {:keys [url status span]} failures]
-      {:line (:line span) :url url :text (:text status)})))
+          failure      failures]
+      (lychee-failure failure))))
+
+(defn- lychee-failures
+  "Renders `links` as markdown in a temp file, runs lychee on it, and returns the failures by line."
+  [links]
+  (let [markdown-file (fs/create-temp-file {:prefix "nav-links" :suffix ".md"})]
+    (try
+      (spit (str markdown-file) (nav/markdown links))
+      (sort-by :line (run-lychee markdown-file))
+      (finally
+        (fs/delete-if-exists markdown-file)))))
+
+;;; ------------------------------------------------ report --------------------------------------------------------
 
 (defn- location
-  "Where the entry lives, as `docs/util/data/nav.yml:LINE  Trail > Of > Names`."
-  [{:keys [trail nav-line]}]
-  (str "docs/util/data/nav.yml" (when nav-line (str ":" nav-line)) "  " trail))
+  "Where the entry lives in the nav file, as `docs/util/data/nav.yml:LINE`."
+  [{:keys [nav-line]}]
+  (str "docs/util/data/nav.yml" (when nav-line (str ":" nav-line))))
 
-(defn- print-failure [{:keys [url] :as link} text index]
-  (let [anchor? (str/includes? (str/lower-case (str text)) "fragment")]
-    (println (c/red (if anchor? "ANCHOR   " "MISSING  ")) url)
-    (println "         at:" (location link))
-    (println "        " text)
-    (when-not anchor?
-      (let [replacements (suggestions index url)]
-        (if (seq replacements)
-          (doseq [{:keys [url file]} replacements]
-            (println "         suggestion: url:" (c/green (pr-str url)) " (redirect_from in" (str file ")")))
-          (println "         no redirect_from matches" (str "/docs/latest/" (first (str/split url #"#")))
-                   "so the page may have been deleted; remove the entry or point it elsewhere"))))
-    (println)))
+(defn- print-location
+  "Prints the entry's file location and, on its own line, its breadcrumb trail of nav names."
+  [{:keys [trail] :as link}]
+  (println "         at:" (location link))
+  (println "         in:" trail))
+
+(defn- print-structure-problem [{:keys [trail message]}]
+  (println (c/red "STRUCTURE") trail)
+  (println "        " message)
+  (println))
+
+(defn- print-suggestions
+  "Prints the replacement urls for a missing `url` from the redirect `index`, or a hint when there are none."
+  [index url]
+  (let [replacements (nav/suggestions index url)]
+    (if (seq replacements)
+      (doseq [{:keys [url file]} replacements]
+        (println "         suggestion: url:" (c/green (pr-str url)) " (redirect_from in" (str file ")")))
+      (println "         no redirect_from matches" (str "/docs/latest/" (nav/page-path url))
+               "so the page may have been deleted; remove the entry or point it elsewhere"))))
+
+(defn- print-failure
+  "Prints one lychee `failure` for its nav `link`. `index` is a delay of [[nav/redirect-index]], only
+  forced for missing pages since anchors have no replacement to suggest."
+  [{:keys [url] :as link} {:keys [text anchor?]} index]
+  (println (c/red (if anchor? "ANCHOR   " "MISSING  ")) url)
+  (print-location link)
+  (println "        " text)
+  (when-not anchor?
+    (print-suggestions @index url))
+  (println))
 
 (defn- print-case-mismatch [{:keys [url actual] :as link}]
   (println (c/red "CASE     ") url)
-  (println "         at:" (location link))
+  (print-location link)
   (println "         the page exists but with different capitalization; this passes on a case-insensitive"
            "filesystem and fails on the docs site")
   (println "         suggestion: url:" (c/green (pr-str actual)))
   (println))
 
-(defn check-nav-links
-  "Entry point for `./bin/mage docs-check-nav-links`."
-  [_parsed]
+(defn- summary
+  "The closing `Checked N nav urls: N ok, N problems` line."
+  [n-links n-failures n-mismatches n-structure]
+  (let [n-bad-links (+ n-failures n-mismatches)
+        n-problems  (+ n-structure n-bad-links)]
+    (format "Checked %d nav urls: %d ok, %d problem%s"
+            n-links (- n-links n-bad-links) n-problems (if (= n-problems 1) "" "s"))))
+
+;;; ------------------------------------------------ task ----------------------------------------------------------
+
+(defn- require-lychee! []
   (when-not (binding [u/*skip-warning* true] (u/can-run? "lychee"))
     (u/exit (str (c/red "lychee is not installed.") " Install it with " (c/green "brew install lychee")
                  " (or see https://lychee.cli.rs/installation/).")
-            1))
-  (let [{:keys [links problems]} (read-nav)]
-    (doseq [{:keys [trail message]} problems]
-      (println (c/red "STRUCTURE") trail)
-      (println "        " message)
-      (println))
-    (let [markdown-file (fs/create-temp-file {:prefix "nav-links" :suffix ".md"})
-          failures      (try
-                          (spit (str markdown-file) (markdown links))
-                          (run-lychee markdown-file)
-                          (finally
-                            (fs/delete-if-exists markdown-file)))
-          ;; lychee resolves paths through the filesystem, so on macOS it cannot see wrong-case urls.
-          mismatches    (case-mismatches links)
-          index         (delay (redirect-index))]
-      (doseq [{:keys [line text]} (sort-by :line failures)]
-        ;; Line N of the generated markdown is link N.
-        (print-failure (nth links (dec line)) text @index))
-      (doseq [mismatch mismatches]
-        (print-case-mismatch mismatch))
-      (let [n-bad-links (+ (count failures) (count mismatches))
-            n-problems  (+ (count problems) n-bad-links)]
-        (println (format "Checked %d nav urls: %d ok, %d problem%s"
-                         (count links) (- (count links) n-bad-links) n-problems (if (= n-problems 1) "" "s")))
-        (when (pos? n-problems)
-          (u/exit 1))))))
+            1)))
+
+(defn check-nav-links
+  "Entry point for `./bin/mage docs-check-nav-links`."
+  [_parsed]
+  (require-lychee!)
+  (let [{:keys [links problems]} (nav/read-nav)
+        failures   (lychee-failures links)
+        ;; lychee resolves paths through the filesystem, so on macOS it cannot see wrong-case urls.
+        mismatches (nav/case-mismatches links)
+        index      (delay (nav/redirect-index))]
+    (run! print-structure-problem problems)
+    (doseq [{:keys [line] :as failure} failures]
+      ;; Line N of the generated markdown is link N.
+      (print-failure (nth links (dec line)) failure index))
+    (run! print-case-mismatch mismatches)
+    (println (summary (count links) (count failures) (count mismatches) (count problems)))
+    (when (pos? (+ (count problems) (count failures) (count mismatches)))
+      (u/exit 1))))
