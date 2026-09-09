@@ -8,41 +8,31 @@
    [metabase.appearance.core :as appearance]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
+   [metabase.embedding-hub.db :as embedding-hub.db]
    [metabase.embedding.settings :as embedding.settings]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [toucan2.core :as t2]))
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]))
 
 (defn- has-user-added-database? []
   ;; `boolean`, because the trailing `when-let` yields nil on an instance with no sample database,
   ;; and the response schema requires a boolean.
   (boolean
-   (or (t2/exists? :model/Database {:where [:and
-                                            [:= :is_sample false]
-                                            [:= :is_audit false]]})
+   (or (embedding-hub.db/user-added-database?)
        ;; check for CSV uploads to sample db
        ;; as the sample db is excluded from the above query
-       (when-let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)]
-         (t2/exists? :model/Table {:where [:and
-                                           [:= :active true]
-                                           [:= :is_upload true]
-                                           [:= :db_id sample-db-id]]})))))
+       (when-let [sample-db-id (embedding-hub.db/sample-database-id)]
+         (embedding-hub.db/uploaded-table? sample-db-id)))))
 
 (defn- has-user-created-dashboard? []
   (let [example-dashboard-id (appearance/example-dashboard-id)
         audit-collection-ids (filter some? [(when-let [audit-coll (audit/default-audit-collection)] (:id audit-coll))
                                             (when-let [custom-coll (audit/default-custom-reports-collection)] (:id custom-coll))])]
-    (t2/exists? :model/Dashboard {:where (cond-> [:and
-                                                  [:= :archived false]]
-                                           example-dashboard-id (conj [:not= :id example-dashboard-id])
-                                           (seq audit-collection-ids) (conj [:or
-                                                                             [:is :collection_id nil]
-                                                                             [:not-in :collection_id audit-collection-ids]]))})))
+    (embedding-hub.db/user-created-dashboard? example-dashboard-id audit-collection-ids)))
 
 (defn- has-configured-sandboxes? []
   (and (premium-features/has-feature? :sandboxes)
-       (t2/exists? :model/Sandbox)))
+       (embedding-hub.db/sandbox?)))
 
 (defenterprise has-configured-sso?
   "Whether JWT or SAML is licensed, enabled and configured. The JWT and SAML settings are enterprise-only, so a
@@ -52,63 +42,45 @@
   false)
 
 (defn- has-user-created-models? []
-  (t2/exists? :model/Card {:where [:and
-                                   [:= :type "model"]
-                                   [:= :archived false]
-                                   [:or
-                                    [:and
-                                     [:!= :collection_id (:id (audit/default-audit-collection))]
-                                     [:not [:exists ^:allow-subquery
-                                            {:select [1]
-                                             :from   [[(t2/table-name :model/Collection) :sample_coll]]
-                                             :where  [:and
-                                                      [:= :sample_coll.is_sample true]
-                                                      [:= :sample_coll.id :report_card.collection_id]]}]]]
-                                    [:is :collection_id nil]]]}))
+  (embedding-hub.db/user-created-model? (:id (audit/default-audit-collection))))
 
 (defn- has-user-created-tenants? []
   ;; config/ee-available? guards the enterprise-only models below: resolving one requires a
   ;; namespace a community build does not ship
   (and config/ee-available?
-       (t2/exists? :model/Tenant :is_active true)))
+       (embedding-hub.db/active-tenant?)))
 
 (defn- has-shared-tenant-collections? []
-  (t2/exists? :model/Collection {:where [:and
-                                         [:= :namespace "shared-tenant-collection"]
-                                         [:= :archived false]]}))
+  (embedding-hub.db/shared-tenant-collection?))
 
 (defn- shared-collection-has-dashboards? []
-  (when-let [shared-coll-id (t2/select-one-pk :model/Collection {:where [:and
-                                                                         [:= :namespace "shared-tenant-collection"]
-                                                                         [:= :archived false]]})]
-    (t2/exists? :model/Dashboard {:where [:and
-                                          [:= :collection_id shared-coll-id]
-                                          [:= :archived false]]})))
+  (when-let [shared-coll-id (embedding-hub.db/shared-tenant-collection-id)]
+    (embedding-hub.db/dashboard-in-collection? shared-coll-id)))
 
 (defn- has-configured-data-segregation-strategy? []
   ;; Any data segregation strategy: row and column level security (sandboxing), connection
   ;; impersonation, or database routing.
   (or (has-configured-sandboxes?)
-      (and config/ee-available? (t2/exists? :model/ConnectionImpersonation))
-      (and config/ee-available? (t2/exists? :model/DatabaseRouter))))
+      (and config/ee-available? (embedding-hub.db/connection-impersonation?))
+      (and config/ee-available? (embedding-hub.db/database-router?))))
 
 (defn- active-data-segregation-strategy []
   (cond
     (has-configured-sandboxes?)                                              "row-column-level-security"
-    (and config/ee-available? (t2/exists? :model/ConnectionImpersonation))   "connection-impersonation"
-    (and config/ee-available? (t2/exists? :model/DatabaseRouter))            "database-routing"
+    (and config/ee-available? (embedding-hub.db/connection-impersonation?))  "connection-impersonation"
+    (and config/ee-available? (embedding-hub.db/database-router?))           "database-routing"
     :else                                                                    nil))
 
 (defn- has-published-guest-embed? []
   ;; Check if at least one card or dashboard has embedding enabled (is published as a guest embed)
-  (or (t2/exists? :model/Card :enable_embedding true)
-      (t2/exists? :model/Dashboard :enable_embedding true)))
+  (or (embedding-hub.db/embedding-enabled-card?)
+      (embedding-hub.db/embedding-enabled-dashboard?)))
 
 (defn- has-created-custom-theme? []
   ;; `is_default` marks the Light/Dark themes Metabase seeds; anything else is
   ;; the admin's own. Themes seeded before the flag existed are unmarked, so they read as custom --
   ;; accepted rather than backfilled, since nothing can identify them retroactively.
-  (t2/exists? :model/EmbeddingTheme :is_default false))
+  (embedding-hub.db/custom-embedding-theme?))
 
 (defn- has-configured-ai? []
   ;; Both halves: credentials for the chosen provider, and embedded Metabot
