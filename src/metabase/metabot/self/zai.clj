@@ -36,8 +36,11 @@
 
 (def supported-models
   "Z.AI models offered in the Metabot model picker, keyed by model id.
-  `list-models` returns the intersection of this map with the `/models` catalog."
-  {"glm-5.3" {:display-name "GLM-5.3" :context-window 1048576}
+  `list-models` returns the intersection of this map with the `/models` catalog.
+
+  `:thinking-only?` marks a model that rejects `thinking {:type \"disabled\"}` — see
+  [[thinking-only-model?]]."
+  {"glm-5.3" {:display-name "GLM-5.3" :context-window 1048576 :thinking-only? true}
    "glm-5.2" {:display-name "GLM-5.2" :context-window 1048576}})
 
 (defn context-window-tokens
@@ -58,13 +61,15 @@
   [model]
   (contains? supported-models (str model)))
 
-(def ^:private thinking-only-models
-  "Models that reject `thinking {:type \"disabled\"}` outright.
+(defn- thinking-only-model?
+  "Whether `model` rejects `thinking {:type \"disabled\"}` outright.
 
-  glm-5.3 thinking cannot be turned off (error 1210 \"always engages in thinking\", probed
-  2026-09-03); it accepts `reasoning_effort` low|high|max instead. `glm-5.3-flash`
-  remains outside the [[supported-models]] whitelist."
-  #{"glm-5.3" "glm-5.3-flash"})
+  Z.AI answers error 1210 \"always engages in thinking\" for these and takes `reasoning_effort`
+  low|high|max instead (https://docs.z.ai/api-reference/llm/chat-completion, probed on glm-5.3
+  2026-09-03). Reading the flag off a [[supported-models]] row keeps it from ever disagreeing with
+  [[reasoning-model?]]: a model can only be thinking-only if we serve it."
+  [model]
+  (boolean (get-in supported-models [(str model) :thinking-only?])))
 
 (defn- list-all-models
   "Fetch the full Z.AI model catalog (`GET /models`).
@@ -119,8 +124,8 @@
 
   Z.AI's Chat Completions dialect matches what [[chat-completions/request-body]] emits, so this delegates to it,
   adding Z.AI's `thinking` directive: enabled only where a whitelisted model's reasoning renders, disabled
-  otherwise. [[thinking-only-models]] reject the directive and get `reasoning_effort` instead — \"max\" where
-  reasoning renders, \"low\" otherwise — plus a `max_tokens` floor on forced tool calls (see
+  otherwise. A [[thinking-only-model?]] rejects the directive and gets `reasoning_effort` instead — \"max\"
+  where reasoning renders, \"low\" otherwise — plus a `max_tokens` floor on forced tool calls (see
   [[forced-tool-call-token-floor]]). Z.AI documents only `tool_choice \"auto\"`, but `\"required\"` — which the
   structured-output path relies on — is accepted and honored in practice, with thinking on."
   [{:keys [model reasoning? schema tool_choice] :as opts
@@ -132,11 +137,11 @@
   ;; stream matching the settings gate answering false: glm-4.7 "will think compulsorily" by
   ;; default and the xf forwards reasoning unconditionally. Probed 2026-09-03: the disable is
   ;; accepted and honored on glm-4.7, tolerated by pre-4.5 models (which do not think), and
-  ;; rejected only by [[thinking-only-models]]. Those take `reasoning_effort` low|high|max only
+  ;; rejected only by a [[thinking-only-model?]]. Those take `reasoning_effort` low|high|max only
   ;; (same docs page), so "low" is a best-effort floor on their spend, not an off switch — the
   ;; docs say thinking cannot be turned off, though probed 2026-09-08 a title-shaped call at "low"
   ;; streamed no reasoning at all (16 completion tokens, the tool call only) against 102–173 at "max".
-  (let [thinking-only? (contains? thinking-only-models (str model))
+  (let [thinking-only? (thinking-only-model? model)
         forced?        (or (some? schema) (= "required" (some-> tool_choice name)))
         thinking?      (and (reasoning-model? model) reasoning? (not schema))
         body           (chat-completions/request-body (assoc opts :model model))]

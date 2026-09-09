@@ -100,7 +100,7 @@
            (:thinking (zai/zai-request-body {:model "glm-4-32b-0414-128k"
                                              :input [{:role :user :content "hi"}]}))))))
 
-(deftest ^:parallel request-body-thinking-only-models-test
+(deftest ^:parallel request-body-thinking-only-model-test
   (let [input [{:role :user :content "hi"}]]
     (testing "thinking-only models reject the disable (error 1210): no directive, reasoning_effort instead"
       (let [body (zai/zai-request-body {:model "glm-5.3" :input input})]
@@ -153,7 +153,7 @@
         (is (true? (zai/reasoning-model? model)))
         ;; thinking-only models reject the directive and get none — their thinking is on
         ;; server-side regardless, so the gate still holds
-        (is (= (if (@#'zai/thinking-only-models model) nil {:type "enabled"})
+        (is (= (if (@#'zai/thinking-only-model? model) nil {:type "enabled"})
                (:thinking (zai/zai-request-body {:model model
                                                  :input [{:role :user :content "hi"}]})))))))
   (testing "a non-whitelisted model gates false and its thinking is explicitly disabled"
@@ -161,6 +161,14 @@
     (is (= {:type "disabled"}
            (:thinking (zai/zai-request-body {:model "glm-4.7"
                                              :input [{:role :user :content "hi"}]}))))))
+
+(deftest ^:parallel thinking-only-implies-supported-test
+  (testing "thinking-only is read off a supported-models row, so it cannot name a model the gate disavows"
+    (doseq [[model {:keys [thinking-only?]}] @#'zai/supported-models
+            :when                            thinking-only?]
+      (testing model
+        (is (true? (zai/reasoning-model? model)))))
+    (is (false? (@#'zai/thinking-only-model? "a-model-we-do-not-serve")))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
