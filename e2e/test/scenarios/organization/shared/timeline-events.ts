@@ -6,6 +6,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const TIMELINE_API = /^\/api\/timeline/;
 
 export function createQuestionAndDashboardWithEvents() {
+  interceptTimelineRequests();
   cy.intercept({ method: "GET", pathname: TIMELINE_API }).as("getTimelines");
   cy.intercept({ method: /POST|PUT|DELETE/, pathname: TIMELINE_API }).as(
     "mutateTimelineEvents",
@@ -45,7 +46,10 @@ export function createQuestionAndDashboardWithEvents() {
             },
             enable_embedding: true,
           },
-          dashboardDetails: { enable_embedding: true },
+          dashboardDetails: {
+            name: "Dashboard with events",
+            enable_embedding: true,
+          },
         }),
       ),
     )
@@ -66,11 +70,30 @@ export function createQuestionAndDashboardWithEvents() {
   });
 }
 
-export function expectChartWithoutEvents() {
+export function interceptTimelineRequests(requestAlias = "timelineRequests") {
+  cy.intercept(/\/api\/(?:timeline|timeline-event)(?:\/|\?|$)/).as(
+    requestAlias,
+  );
+}
+
+export function expectChartWithoutEvents({
+  requestAlias = "timelineRequests",
+  isInteractive = true,
+} = {}) {
   H.echartsContainer().findByText("Created At: Month").should("be.visible");
-  H.timelineEventChip("RC1").should("not.exist");
-  cy.findAllByTestId("timeline-event-chip").should("have.length", 0);
-  cy.get("@getTimelines.all").should("have.length", 0);
+  cy.findByTestId("timeline-event-chip").should("not.exist");
+  if (isInteractive) {
+    H.echartsContainer().trigger("mousemove", "bottom");
+  }
+  cy.findByTestId("timeline-event-popover").should("not.exist");
+  cy.findByLabelText("Timeline event card").should("not.exist");
+  cy.findByRole("button", { name: "Events", exact: true }).should("not.exist");
+  cy.findByRole("menuitem", { name: "Events", exact: true }).should(
+    "not.exist",
+  );
+  cy.findByRole("button", { name: "New event" }).should("not.exist");
+  cy.icon("calendar").should("not.exist");
+  cy.get(`@${requestAlias}.all`).should("have.length", 0);
 }
 
 export function expectReadOnlyDashboardEvents() {
