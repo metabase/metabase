@@ -1,16 +1,23 @@
 import type {
+  CreateDefineSetting,
   CustomVisualization,
   CustomVisualizationMount,
-  CustomVisualizationSettingDefinition,
   ReservedVisualizationSettingId,
   Widgets,
 } from "custom-viz";
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
-import type { CustomVizPluginRuntime } from "metabase-types/api";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/viz-core";
+import type { CustomVizPluginRuntime, Series } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
+import { copyPluginValue } from "./copy-plugin-value";
+import { toPluginSeries, toPluginSettings } from "./plugin-view";
 import { wrapPluginWidget } from "./widget-mount";
 
 const RESERVED_SETTING_IDS: ReadonlySet<string> = new Set(
@@ -20,60 +27,172 @@ const RESERVED_SETTING_IDS: ReadonlySet<string> = new Set(
   } satisfies Record<ReservedVisualizationSettingId, true>),
 );
 
+type PluginSettingDefinitions = CustomVisualization<
+  Record<string, unknown>
+>["settings"];
+
+type PluginSettingDefinition = Parameters<
+  ReturnType<CreateDefineSetting<Record<string, unknown>>>
+>[0];
+
+export type HostContext = {
+  prefix: string;
+  mount: CustomVisualizationMount;
+  plugin: CustomVizPluginRuntime;
+};
+
 /**
- * Walk a plugin's `vizDef.settings` and rewrite every Component-shaped
- * `widget` into a host-trusted `WidgetMount` whose body delegates to the
- * plugin's shared `mount` function (i.e., its sandbox-side `createRoot`
- * render path). Built-in `WidgetName` strings pass through unchanged.
+ * Turns plugin's `vizDef.settings` into host definitions. Setting ids and
+ * dependency ids get the plugin's namespace, every callback sees the plugin's
+ * view of the series and settings, the values `getDefault` and `getValue` return
+ * are copied into the host, and custom setting widgets are rewrapped into
+ * host-side `WidgetMount`s.
  */
 export function sanitizePluginSettings(
-  settings:
-    | CustomVisualization<Record<string, unknown>>["settings"]
-    | undefined,
-  mount: CustomVisualizationMount,
-  plugin: CustomVizPluginRuntime,
-): CustomVisualization<Record<string, unknown>>["settings"] {
+  settings: PluginSettingDefinitions | undefined,
+  context: HostContext,
+): VisualizationSettingsDefinitions {
   if (!settings) {
-    return settings;
+    return {};
   }
 
-  assertValidSettingWidgets(settings);
+  const objectDefinitions = Object.entries(settings).flatMap(
+    ([settingId, definition]): [string, PluginSettingDefinition][] => {
+      if (!isObject(definition)) {
+        return [];
+      }
+      // Definitions leave the sandbox as opaque branded values.
+      return [[settingId, definition as unknown as PluginSettingDefinition]];
+    },
+  );
 
-  const sanitizedSettings: CustomVisualization<
-    Record<string, unknown>
-  >["settings"] = {};
+  assertValidSettingWidgets(objectDefinitions);
 
-  for (const [settingId, value] of Object.entries(settings)) {
-    if (RESERVED_SETTING_IDS.has(settingId)) {
-      console.warn(
-        `Custom viz setting "${settingId}" uses a reserved id and was ignored.`,
-      );
-      continue;
-    }
+  const definitions = objectDefinitions.flatMap(
+    ([settingId, definition]): [string, PluginSettingDefinition][] => {
+      if (RESERVED_SETTING_IDS.has(settingId)) {
+        console.warn(
+          `Custom viz setting "${settingId}" uses a reserved id and was ignored.`,
+        );
+        return [];
+      }
+      return [[settingId, definition]];
+    },
+  );
 
-    if (!isObject(value)) {
-      // settings definitions should be objects
-      continue;
-    }
+  const declaredIds = new Set(definitions.map(([settingId]) => settingId));
 
-    if ("widget" in value && typeof value.widget === "function") {
-      // Unjustified type cast. FIXME
-      const Widget = value.widget as ComponentType<Record<string, unknown>>;
-      // Unjustified type cast. FIXME
-      sanitizedSettings[settingId] = {
-        ...value,
-        widget: wrapPluginWidget(
-          (container, initialProps) => mount(Widget, container, initialProps),
+  return Object.fromEntries(
+    definitions.map(([settingId, definition]) => [
+      `${context.prefix}${settingId}`,
+      toHostDefinition(definition, context, declaredIds),
+    ]),
+  );
+}
+
+function toHostDefinition(
+  definition: PluginSettingDefinition,
+  { prefix, mount, plugin }: HostContext,
+  declaredIds: ReadonlySet<string>,
+): VisualizationSettingDefinition<Series> {
+  const {
+    title,
+    group,
+    index,
+    inline,
+    persistDefault,
+    getSection,
+    widget,
+    readDependencies,
+    writeDependencies,
+    eraseDependencies,
+    isValid,
+    getDefault,
+    getProps,
+    getValue,
+  } = definition;
+  const pluginArgs = (
+    series: Series,
+    settings: ComputedVisualizationSettings,
+  ) =>
+    [
+      toPluginSeries(series, prefix),
+      toPluginSettings(settings, prefix),
+    ] as const;
+
+  return {
+    title: asString(title),
+    group: asString(group),
+    index,
+    inline,
+    persistDefault,
+    getSection: getSection && (() => asString(getSection())),
+    readDependencies: prefixSettingIds(readDependencies, prefix, declaredIds),
+    writeDependencies: prefixSettingIds(writeDependencies, prefix, declaredIds),
+    eraseDependencies: prefixSettingIds(eraseDependencies, prefix, declaredIds),
+    isValid:
+      isValid &&
+      ((series, settings) => isValid(...pluginArgs(series, settings))),
+    getDefault:
+      getDefault &&
+      ((series, settings) =>
+        copyPluginValue(getDefault(...pluginArgs(series, settings)))),
+    getValue:
+      getValue &&
+      ((series, settings) =>
+        copyPluginValue(getValue(...pluginArgs(series, settings)))),
+    getProps:
+      getProps &&
+      ((series, settings) => {
+        const props = getProps(...pluginArgs(series, settings));
+        // A built-in widget renders these in the host, so no sandbox object may reach it.
+        return isComponentWidget(widget) ? props : copyPluginProps(props);
+      }),
+    widget: isComponentWidget(widget)
+      ? wrapPluginWidget(
+          (container, initialProps) => mount(widget, container, initialProps),
           plugin,
-        ),
-      } as unknown as CustomVisualizationSettingDefinition<
-        Record<string, unknown>
-      >;
-    } else {
-      sanitizedSettings[settingId] = value;
-    }
+          prefix,
+        )
+      : widget,
+  };
+}
+
+function prefixSettingIds(
+  ids: string[] | undefined,
+  prefix: string,
+  declaredIds: ReadonlySet<string>,
+): string[] | undefined {
+  if (!Array.isArray(ids)) {
+    return undefined;
   }
-  return sanitizedSettings;
+
+  // Dependencies may only reference the plugin's own settings - drop anything else.
+  return ids.flatMap((id) => {
+    return typeof id === "string" && declaredIds.has(id)
+      ? [`${prefix}${id}`]
+      : [];
+  });
+}
+
+// Labels end up as React children, so anything but a string is dropped.
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function copyPluginProps(props: unknown): Record<string, unknown> {
+  try {
+    return isObject(props) ? copyPluginValue(props) : {};
+  } catch (error) {
+    console.warn("Custom viz widget props were ignored", error);
+    return {};
+  }
+}
+
+function isComponentWidget(
+  widget: unknown,
+): widget is ComponentType<Record<string, unknown>> {
+  return typeof widget === "function";
 }
 
 const ALLOWED_WIDGET_NAMES: Array<keyof Widgets> = [
@@ -90,20 +209,18 @@ const ALLOWED_WIDGET_NAMES: Array<keyof Widgets> = [
 ] as const;
 
 function assertValidSettingWidgets(
-  settings: CustomVisualization<Record<string, unknown>>["settings"],
+  definitions: [string, PluginSettingDefinition][],
 ): void {
-  if (!settings) {
-    return;
-  }
-  for (const [settingId, def] of Object.entries(settings)) {
-    // Unjustified type cast. FIXME
-    const widget = (def as { widget?: unknown }).widget;
-    if (
-      typeof widget === "string" &&
-      !ALLOWED_WIDGET_NAMES.some((w) => w === widget)
-    ) {
+  for (const [settingId, { widget }] of definitions) {
+    if (typeof widget === "string") {
+      if (!ALLOWED_WIDGET_NAMES.some((name) => name === widget)) {
+        throw new Error(
+          t`Setting "${settingId}" has unsupported widget ${widget}. Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,
+        );
+      }
+    } else if (widget && !isComponentWidget(widget)) {
       throw new Error(
-        t`Setting "${settingId}" has unsupported widget ${widget}. Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,
+        t`Setting "${settingId}" has an unsupported widget. Use a component or one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,
       );
     }
   }

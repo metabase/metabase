@@ -36,7 +36,7 @@ Like with all generative AI, you'll always need to double-check results.
 There are multiple ways to start a chat with Metabot:
 
 - Type cmd+e on Mac, ctrl+e on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
-- Click the Metabot icon in top right.
+- Click the Metabot icon in the top right.
 
 You can chat with Metabot (though predictably, it's only interested in helping you answer questions about your data).
 

@@ -103,7 +103,7 @@ To archive a timeline:
 To view (and resurrect) archived timelines and events:
 
 1. Click on the **Calendar** icon in the relevant collection.
-2. Click on the three-dot menu **...** menu.
+2. Click on the three-dot **...** menu.
 3. Select **View archived timelines**. Metabase will display archived events or timelines.
 4. If you want to unarchive an item, click on the three-dot menu **...** next to the event or timeline and select the **Unarchive** option.
 

@@ -292,6 +292,14 @@
   "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
   [:sequential [:or RemappedFieldValue NonRemappedFieldValue]])
 
+(def FieldValue
+  "One stored value of a Field, as kept in the `field_values.values` and `human_readable_values` columns."
+  [:maybe [:or :string number? :boolean]])
+
+(def FieldValues
+  "The stored values of a Field: the decoded `field_values.values` or `human_readable_values` column."
+  [:sequential FieldValue])
+
 (def FieldValuesResult
   "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."
   [:map

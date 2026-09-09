@@ -896,12 +896,10 @@ export const fetchDashboard = createAsyncThunk(
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
-      const metadata = getMetadata(getState());
       const parameters = getSavedDashboardUiParameters(
         result.dashcards,
         result.parameters,
         result.param_fields,
-        metadata,
       );
 
       const parameterValuesById = preserveParameters

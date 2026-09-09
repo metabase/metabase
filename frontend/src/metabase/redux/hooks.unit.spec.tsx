@@ -1,6 +1,6 @@
+import { createMockAppState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import { createMockAppState } from "metabase/redux/store/mocks";
 
 import { useDispatch, useSelector } from "./hooks";
 

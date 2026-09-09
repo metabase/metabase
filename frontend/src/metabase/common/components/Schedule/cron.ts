@@ -1,5 +1,3 @@
-import { memoize } from "underscore";
-
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -109,7 +107,7 @@ export const scheduleValueToCron = (
   return formatCron(value);
 };
 
-export const cronToBuilderValue_unmemoized = (
+export const cronToBuilderValue = (
   cron: string | null | undefined,
 ): ScheduleBuilderValue | null => {
   if (!cron) {
@@ -194,7 +192,6 @@ export const cronToBuilderValue_unmemoized = (
     schedule_frame,
   };
 };
-export const cronToBuilderValue = memoize(cronToBuilderValue_unmemoized);
 
 export const toScheduleBuilderValue = (
   value: ScheduleValue,

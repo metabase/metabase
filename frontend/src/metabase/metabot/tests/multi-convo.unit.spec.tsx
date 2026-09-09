@@ -123,12 +123,12 @@ describe("multi-convo support", () => {
 
     // ASSERT
     expect(convoForAgent(store, "test_1").messages).toMatchObject([
-      { message: "test1", role: "user", type: "text" },
-      { message: "Test 1 response", role: "agent", type: "text" },
+      { role: "user", parts: [{ type: "text", message: "test1" }] },
+      { role: "agent", parts: [{ type: "text", message: "Test 1 response" }] },
     ]);
     expect(convoForAgent(store, "test_2").messages).toMatchObject([
-      { message: "test2", role: "user", type: "text" },
-      { message: "Test 2 response", role: "agent", type: "text" },
+      { role: "user", parts: [{ type: "text", message: "test2" }] },
+      { role: "agent", parts: [{ type: "text", message: "Test 2 response" }] },
     ]);
   });
 

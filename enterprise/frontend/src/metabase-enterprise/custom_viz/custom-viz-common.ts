@@ -8,13 +8,14 @@ import type {
 } from "metabase/visualizations/types/visualization";
 import { columnSettings } from "metabase/viz-core";
 import type {
+  CustomVizDisplayType,
   CustomVizPluginRuntime,
   Series,
-  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
+import { toPluginSeries, toPluginSettings } from "./plugin-view";
 
 /**
  * Assign properties derived from a vizDef onto a Visualization component
@@ -32,22 +33,30 @@ export function applyDefaultVisualizationProps(
   Component: ComponentType<VisualizationProps & VisualizationPassThroughProps>,
   vizDef: CustomVisualization<Record<string, unknown>>,
   settings: {
-    identifier: VisualizationDisplay;
+    identifier: CustomVizDisplayType;
     plugin: CustomVizPluginRuntime;
+    prefix: string;
     iconUrl?: string | undefined;
     isDev?: boolean;
   },
 ): Visualization {
-  const { plugin, ...componentSettings } = settings;
+  const { plugin, prefix, ...componentSettings } = settings;
   const uiName = resolveUiName(vizDef, plugin);
   return Object.assign(Component, {
     settings: {
       ...columnSettings({ getHidden: () => true }),
-      ...sanitizePluginSettings(vizDef.settings, vizDef.mount, plugin),
+      ...sanitizePluginSettings(vizDef.settings, {
+        prefix,
+        mount: vizDef.mount,
+        plugin,
+      }),
     },
     checkRenderable: (series: Series, vizSettings: VisualizationSettings) => {
       if (typeof vizDef.checkRenderable === "function") {
-        vizDef.checkRenderable(series, vizSettings);
+        vizDef.checkRenderable(
+          toPluginSeries(series, prefix),
+          toPluginSettings(vizSettings, prefix),
+        );
       }
     },
     noHeader: vizDef.noHeader ?? false,

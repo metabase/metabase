@@ -23,7 +23,7 @@ You can find Trash at the bottom of the left navigation sidebar below all the co
 
 You can think of Trash as a special type of collection. In **Trash**, you can see deleted items from the collections that you have [Curate permissions](../permissions/collections.md#collection-permission-levels) on. You can order deleted items by type (questions, dashboards, etc), time it was deleted, and who deleted it.
 
-You;'ll be able to see the contents of deleted dashboards, questions, and models in Trash, but you won't be able to modify them.
+You'll be able to see the contents of deleted dashboards, questions, and models in Trash, but you won't be able to modify them.
 
 ## Search in Trash
 
