@@ -9,26 +9,36 @@ allowed-tools: Read, Grep, Bash, Glob, Skill
 @./../_shared/typescript-commands.md
 @./../_shared/react-redux-patterns.md
 
-## Main Focus
+## Standards
 
-**Primary standard: the [`typescript-write`](../typescript-write/SKILL.md) skill.** Load it first — it defines the authoring rules this review enforces, alongside `frontend/CLAUDE.md` and `docs/developers-guide/frontend.md`.
+Read [typescript-write](../typescript-write/SKILL.md) for authoring requirements and modelling guidance.
+Also apply `frontend/CLAUDE.md` and `docs/developers-guide/frontend.md`.
 
-Adherence to `typescript-write` is the **highest-priority** review dimension: rank any violation of its provisions above all other findings. Treat its **no-`any` hard rule** (no explicit *or* implicit `any` in new code) as **blocking**. Use TypeScript LSP tools to inspect inferred types when available; otherwise rely on type-checking and linting.
+- Treat explicit requirements as requirements, including the prohibition on new explicit or inferred `any`.
+- Apply modelling preferences under their stated conditions. A valid generic factory, intentional mutation, or optional API field is not a defect merely because a different pattern is often preferred.
+- Use TypeScript LSP tools to inspect inferred types when available; otherwise use type checking and linting.
 
-Review in this priority order:
+## Prioritise by impact
 
-1. **Violations of [`typescript-write`](../typescript-write/SKILL.md) provisions** — no-`any`, type tightening, type modeling, function signatures, null/undefined handling, naming, structure, comments. Highest priority; block on the no-`any` rule. Apply conditional guidance in context: explain the unsupported type guarantee or concrete readability problem, rather than treating every preference as a blanket ban.
-2. Compliance with `frontend/CLAUDE.md`.
-3. Readability and maintainability.
-4. Appropriate test coverage. For internal typed callers, avoid requesting tests solely for inputs the type system excludes. External API data, deserialised values, storage and JavaScript callers can violate annotations: test runtime validation and nontrivial assumptions at those boundaries. Types do not replace behavioural, security or data-integrity tests.
+1. Security issues, data loss, and incorrect runtime behaviour.
+2. Unsupported type guarantees and violations of explicit authoring requirements. The no-`any` rule remains blocking.
+3. Maintainability, readability and consistency issues with a concrete consequence.
 
-## Blind spots — act as the missing reviewer
+For each finding, identify the code, its consequence, and the requirement or condition that applies.
+Do not raise a finding solely because an alternative style is possible.
 
-These rarely surface in team reviews, so this skill should raise them. They are **additive** — raise them, but rank them below `typescript-write` violations:
+## Assess verification
 
-- **Accessibility.** Interactive elements need keyboard support, focus management, and accessible names. Flag missing `aria-label`/`aria-labelledby`, non-semantic click targets, modals without focus trap, icon-only buttons without labels, and form inputs without a linked label.
-- **Performance.** Flag areas that scale poorly and aren't memoized; inline object/array literals passed to memoized children; effects that fire on every batch of a progressive load; and new dependencies added to hot paths.
-- **Security.** Evaluate potential security issues in new code.
-- **Bundle size.** Flag new large dependencies, default imports from icon or util libs, and heavy modules imported at route-load time.
-- **Analytics.** User-facing flows should emit tracking events. If a PR adds a new flow (button, modal, navigation) without a tracking event, ask whether one is expected.
-- **Public API surface** (embedding SDK). Consumers should be able to use public signatures and name types they need to import. Export those types deliberately and document public behaviour, including `@deprecated` for deprecated APIs; a referenced structural type does not automatically need its own named export.
+- For internal typed callers, do not request tests solely for inputs the type system excludes.
+- External API data, deserialised values, storage and JavaScript callers can violate annotations. Check runtime validation and nontrivial assumptions at those boundaries.
+- Assess behavioural, security and data-integrity coverage independently of whether the code type-checks.
+
+## Additional review areas
+
+Apply these when the change affects the relevant behaviour. Rank findings by their actual impact.
+
+- **Accessibility:** keyboard support, focus management and accessible names for interactive elements, including modal focus trapping and icon-only controls.
+- **Performance:** scaling, render cost, unstable references and missing memoisation where it matters.
+- **Bundle size:** large dependencies, heavy modules loaded with a route, and unnecessarily broad imports.
+- **Analytics:** for new user-facing flows, check whether an expected tracking event is missing and clarify the expectation when uncertain.
+- **Embedding SDK:** consumers must be able to use public signatures and name types they need to import. Export those types deliberately, document public behaviour, and mark deprecated APIs with `@deprecated`. A referenced structural type does not automatically need its own named export.
