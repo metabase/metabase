@@ -304,12 +304,14 @@
 (deftest features-batched-falls-back-when-budget-blown-test
   (testing "a blown batch budget falls back to the per-feature path instead of throwing or truncating"
     (let [db (#'driver.u/ensure-lib-database (mt/db))]
-      (with-redefs [driver.u/supports?-timeout-ms 20
-                    driver/database-supports? (fn [_ _ _] (Thread/sleep 50) true)]
-        ;; every per-feature check times out too and degrades to false, which is exactly what the unbatched
-        ;; path returns under the same stall
-        (is (= (#'driver.u/features* :h2 db)
-               (#'driver.u/features-batched* :h2 db)))))))
+      ;; Each check is slow enough that the whole scan overruns the batch budget, but far short of the
+      ;; per-feature timeout, so the fallback path answers every feature rather than degrading to false.
+      (with-redefs [driver.u/features-timeout-ms (constantly 5)
+                    driver/database-supports? (fn [_ _ _] (Thread/sleep 1) true)]
+        (let [expected (#'driver.u/features* :h2 db)]
+          (is (seq expected) "the fallback has to return a real feature set for this comparison to mean anything")
+          (is (= expected
+                 (#'driver.u/features-batched* :h2 db))))))))
 
 (deftest sqlite-in-available-drivers
   (with-redefs [driver.impl/hierarchy (->  (derive (make-hierarchy) :sqlite :metabase.driver/driver)

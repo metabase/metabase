@@ -357,3 +357,54 @@
         (is (= {:cycle-str "transform_table_2 -> transform_table_1 -> transform_table_3",
                 :cycle [t1 t3 t2]}
                (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1))))))))
+
+(deftest get-transform-cycle-live-target-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "the transform under test resolves its target live from its current target"
+      (mt/with-temp [:model/Table {table1 :id} {:schema "public"
+                                                :name "table_1"}
+                     :model/Field _ {:table_id table1
+                                     :name "foo"}
+                     :model/Table _ {:schema "public"
+                                     :name "table_2"}
+                     :model/Transform {t1 :id} (make-transform
+                                                {:database (mt/id),
+                                                 :type "query",
+                                                 :query {:source-table table1}}
+                                                "table_2")]
+        (let [transform (t2/select-one :model/Transform :id t1)]
+          (is (nil? (ordering/get-transform-cycle transform)))
+          (testing "retargeting onto its own source table is a self-cycle"
+            (is (= {:cycle-str "transform_table_2"
+                    :cycle [t1]}
+                   (ordering/get-transform-cycle (assoc-in transform [:target :name] "table_1"))))))))))
+
+(deftest get-transform-cycle-target-collision-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "retargeting onto another transform's output table that we also read from is a self-cycle"
+      (mt/with-temp [:model/Table {table1 :id} {:schema "public"
+                                                :name "table_1"}
+                     :model/Field _ {:table_id table1
+                                     :name "foo"}
+                     :model/Table {table2 :id} {:schema "public"
+                                                :name "table_2"}
+                     :model/Field _ {:table_id table2
+                                     :name "foo"}
+                     :model/Table _ {:schema "public"
+                                     :name "table_3"}
+                     :model/Transform _ (make-transform
+                                         {:database (mt/id),
+                                          :type "query",
+                                          :query {:source-table table1}}
+                                         "table_2")
+                     :model/Transform {t2 :id} (make-transform
+                                                {:database (mt/id),
+                                                 :type "query",
+                                                 :query {:source-table table2}}
+                                                "table_3")]
+        (let [transform (t2/select-one :model/Transform :id t2)]
+          (is (nil? (ordering/get-transform-cycle transform)))
+          ;; both transforms now resolve to table_2; the one under test must win regardless of select order
+          (is (= {:cycle-str "transform_table_3"
+                  :cycle [t2]}
+                 (ordering/get-transform-cycle (assoc-in transform [:target :name] "table_2")))))))))

@@ -4,7 +4,10 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.test :as mt]))
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest compile-transform-contract-test
   (testing "compile-transform should return [sql params] format"
@@ -155,3 +158,27 @@
             (let [sql (first result)]
               (is (re-find #"my_schema" sql) "Schema name should be present")
               (is (re-find #"my_table" sql) "Table name should be present"))))))))
+
+(defn- warehouse-row-count
+  "Row count read straight off the warehouse, bypassing Metabase sync."
+  [schema table]
+  (let [sql (format "SELECT count(*) AS c FROM %s" (sql.u/quote-name driver/*driver* :table schema table))]
+    (-> (qp/process-query {:database (mt/id) :type :native :native {:query sql}})
+        mt/rows ffirst long)))
+
+(deftest rename-table-special-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :rename)
+    ;; the dash is the case a user actually hits: an unquoted identifier silently becomes
+    ;; `rnq_a_b`, so the rename lands on a different table instead of failing
+    (doseq [dst ["rnq_a`b\\" "rnq-a-b"]]
+      (testing (str "renaming a table to " (pr-str dst) " keeps it as a single queryable table")
+        (let [schema (t2/select-one-fn :schema :model/Table (mt/id :venues))
+              src    (str "rnq_src_" (subs (str (random-uuid)) 0 8))]
+          (try
+            (driver/create-table! driver/*driver* (mt/id) (keyword schema src)
+                                  {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})
+            (driver/rename-table! driver/*driver* (mt/id) (keyword schema src) (keyword schema dst))
+            (is (= 0 (warehouse-row-count schema dst)))
+            (finally
+              (driver/drop-table! driver/*driver* (mt/id) (keyword schema dst))
+              (driver/drop-table! driver/*driver* (mt/id) (keyword schema src)))))))))

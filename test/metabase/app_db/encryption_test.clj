@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -35,7 +36,11 @@
             enc-before (raw-settings enc-id)]
         (is (not (encryption/decryptable-string? (raw-settings plain-id)))
             "plaintext at rest, as an old build leaves it")
-        (mdb/encrypt-plaintext-columns!)
+        (mt/with-log-messages-for-level [messages :warn]
+          (mdb/encrypt-plaintext-columns!)
+          (is (=? [{:level :warn, :message "Encrypting legacy values in metabase_database.settings that a previous version of Metabase stored unencrypted."}]
+                  (filter #(re-find #"metabase_database\.settings" (:message %)) (messages)))
+              "the heal warns about the column it had to encrypt"))
         (testing "a plaintext value is encrypted at rest and decrypts back"
           (is (encryption/decryptable-string? (raw-settings plain-id)))
           (is (= "{\"a\":1}" (encryption/decrypt (raw-settings plain-id)))))
@@ -46,7 +51,19 @@
         (testing "idempotent: a second run changes nothing"
           (let [snapshot (t2/select-fn->fn :id :settings :metabase_database)]
             (mdb/encrypt-plaintext-columns!)
-            (is (= snapshot (t2/select-fn->fn :id :settings :metabase_database))))))))
+            (is (= snapshot (t2/select-fn->fn :id :settings :metabase_database)))))
+        (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION the heal refuses instead, leaving the rows as they are"
+          (let [late-id (database-row! "{\"d\":4}")]
+            (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+              (is (mdb.encryption/legacy-startup-encryption-disabled?))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"Found legacy values in metabase_database\.details .* MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is set"
+                                    (mdb/encrypt-plaintext-columns!)))
+              (is (= "{\"d\":4}" (raw-settings late-id)) "nothing was encrypted"))
+            (testing "unset again, the heal runs"
+              (is (not (mdb.encryption/legacy-startup-encryption-disabled?)))
+              (mdb/encrypt-plaintext-columns!)
+              (is (= "{\"d\":4}" (encryption/decrypt (raw-settings late-id))))))))))
   (testing "without an encryption key nothing happens"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)

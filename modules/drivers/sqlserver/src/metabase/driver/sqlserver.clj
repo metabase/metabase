@@ -977,6 +977,13 @@
         (.close stmt)
         (throw e)))))
 
+(defmethod sql-jdbc.execute/cancelation-poisons-connection? :sqlserver
+  [_driver]
+  ;; `.cancel` sends an out-of-band TDS attention packet. Its acknowledgement is not drained before the Connection is
+  ;; checked back into the pool, and it surfaces later as `The result set is closed.` while an unrelated query is
+  ;; reading rows on the recycled Connection.
+  true)
+
 (defmethod sql.qp/inline-value [:sqlserver LocalDate]
   [_ ^LocalDate t]
   ;; datefromparts(year, month, day)
