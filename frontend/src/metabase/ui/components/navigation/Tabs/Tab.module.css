@@ -1,28 +1,28 @@
+.root {
+  --tab-height: 2rem;
+  --tab-padding-inline: var(--mantine-spacing-lg);
+  --tab-section-gap: var(--mantine-spacing-xs);
+  --tab-font-size: var(--mantine-font-size-md);
+  --tab-font-weight: 400;
+
+  &[data-variant="default"] {
+    --tabs-list-border-width: 1px;
+  }
+
+  &[data-size="sm"] {
+    --tab-height: 1.5rem;
+    --tab-padding-inline: var(--mantine-spacing-md);
+    --tab-section-gap: var(--mantine-spacing-xxs);
+    --tab-font-size: var(--mantine-font-size-sm);
+    --tab-font-weight: 500;
+  }
+}
+
 .list {
   --tab-border-color: var(--mb-color-border-neutral);
 
-  [data-orientation="horizontal"] {
-    padding: 0.6875rem 0.5rem;
-  }
-
-  [data-orientation="vertical"] {
-    padding: 0.6875rem 0.9375rem 0.6875rem 0.5rem;
-  }
-
-  &[data-orientation="vertical"] {
-    .tabLabel {
-      text-align: left; /* "start" for some reason doesn't work properly */
-    }
-  }
-
-  &[data-variant="pills"] .tab {
-    border-radius: 999px;
-    padding: 0.6rem 1rem;
-
-    &[data-active="true"] {
-      background-color: var(--mb-color-background_surface-selected);
-      color: var(--mb-color-core-brand);
-    }
+  &[data-orientation="vertical"] .tabLabel {
+    text-align: left;
   }
 }
 
@@ -31,18 +31,28 @@
 }
 
 .tab {
-  color: var(--mb-color-text-primary);
+  height: var(--tab-height);
   max-width: 100%;
+  padding: 0 var(--tab-padding-inline);
   justify-content: start;
-  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-lg);
+  color: var(--mb-color-text-primary);
+  border-radius: 0;
 
   &:hover {
-    border-color: var(--mb-color-background_surface-hover);
-    background-color: var(--mb-color-background_surface-hover);
+    background-color: var(--mb-color-background_surface-primary-hover);
+    border-color: transparent;
+  }
+
+  &:active {
+    background-color: var(--mb-color-background_surface-primary-pressed);
   }
 
   &:focus-visible {
     outline: 2px solid var(--mb-color-input-focus);
+  }
+
+  &[data-active="true"] {
+    border-color: var(--mb-color-background_surface-brand-strong);
   }
 
   &:disabled {
@@ -50,22 +60,88 @@
     opacity: 1;
   }
 
+  &[data-closable] {
+    --tab-padding-inline: var(--mantine-spacing-sm);
+  }
+}
+
+.list[data-variant="pills"] .tab {
+  border-radius: var(--mantine-radius-lg);
+
   &[data-active="true"] {
-    color: var(--mb-color-text-brand);
-    border-color: var(--mb-color-core-brand);
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-background_surface-brand-strong);
+
+    &:hover {
+      background-color: var(--mb-color-background_surface-brand-strong-hover);
+    }
+
+    &:active {
+      background-color: var(--mb-color-background_surface-brand-strong-pressed);
+    }
+  }
+
+  &:disabled,
+  &:disabled:hover {
+    background-color: var(--mb-color-background_surface-disabled);
   }
 }
 
 .tabLabel {
-  font-size: var(--mantine-font-size-md);
-  font-weight: bold;
-  line-height: 1.15; /* consistent w/ mantine v6 spacing */
+  font-size: var(--tab-font-size);
+  font-weight: var(--tab-font-weight);
+  line-height: var(--mantine-line-height-md);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
   text-align: center;
 }
 
-.tabSection[data-position="left"] {
-  margin-inline-end: 0.375rem;
+.tabSection {
+  &[data-position="left"] {
+    margin-inline-end: var(--tab-section-gap);
+  }
+
+  &[data-position="right"] {
+    margin-inline-start: var(--tab-section-gap);
+  }
+}
+
+.tab[data-closable] .tabSection[data-position="right"] {
+  margin-inline-start: 0;
+}
+
+/* Revealed on hover / press / focus, but keeps its space so the tab doesn't
+ * jump. A disabled tab never shows it. */
+.tabClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: var(--mantine-radius-xxs);
+  cursor: pointer;
+  visibility: hidden;
+
+  &:not(:first-child) {
+    margin-inline-start: var(--mantine-spacing-xxs);
+  }
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary-hover);
+  }
+}
+
+.tab:hover .tabClose,
+.tab:active .tabClose,
+.tab:focus-visible .tabClose {
+  visibility: visible;
+}
+
+.tab:disabled .tabClose {
+  visibility: hidden;
+}
+
+.list[data-variant="pills"] .tab[data-active="true"] .tabClose:hover {
+  background-color: var(--mb-color-background_surface-primary-inverse-hover);
 }

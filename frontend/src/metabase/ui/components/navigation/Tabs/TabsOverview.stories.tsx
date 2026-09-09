@@ -1,5 +1,5 @@
 import { action } from "@storybook/addon-actions";
-import { Fragment, type ReactNode } from "react";
+import { Fragment, type ReactNode, useState } from "react";
 
 import {
   Badge,
@@ -22,7 +22,7 @@ const TAB_ICON: IconName = "model";
 const COLUMNS = [
   { tabsProps: { variant: "default", size: "md" }, width: "22rem" },
   { tabsProps: { variant: "pills", size: "md" }, width: "22rem" },
-  { tabsProps: { variant: "pills", size: "sm" }, width: "22rem" },
+  { tabsProps: { variant: "pills", size: "sm" }, width: "18rem" },
 ] as const satisfies readonly {
   tabsProps: Pick<TabsProps, "variant" | "size">;
   width: string;
@@ -82,14 +82,16 @@ type ExampleTab = {
   content: ContentKind;
   rightSection?: ReactNode;
   disabled?: boolean;
+  closable?: boolean;
   stateRow?: string;
 };
 
-type ExampleTabsProps = Pick<TabsProps, "orientation"> & {
+type ExampleTabsProps = Pick<TabsProps, "orientation" | "onChange"> & {
   column: TabsColumn;
   tabs: ExampleTab[];
   selected: string | null;
   listBorder?: boolean;
+  onClose?: (value: string) => void;
 };
 
 function ExampleTabs({
@@ -98,13 +100,15 @@ function ExampleTabs({
   tabs,
   selected,
   listBorder = true,
+  onChange = action("onChange"),
+  onClose = action("onClose"),
 }: ExampleTabsProps) {
   return (
     <Tabs
       {...column.tabsProps}
       orientation={orientation}
       value={selected}
-      onChange={action("onChange")}
+      onChange={onChange}
       listBorder={listBorder}
     >
       <Tabs.List>
@@ -117,6 +121,8 @@ function ExampleTabs({
               key={tab.value}
               value={tab.value}
               disabled={tab.disabled}
+              closable={tab.closable}
+              onClose={onClose}
               data-state-row={tab.stateRow}
               leftSection={leftSection}
               rightSection={tab.rightSection}
@@ -196,6 +202,41 @@ function getListOfTabs(tab: Omit<ExampleTab, "value">): ExampleTab[] {
   ];
 }
 
+function ClosableTabs({
+  column,
+  content,
+}: {
+  column: TabsColumn;
+  content: ContentKind;
+}) {
+  // The first tab is forced into its hover state so the close control, which
+  // is only revealed on hover, shows up in the static showcase.
+  const [tabs, setTabs] = useState(() =>
+    getListOfTabs({ content, closable: true }).map((tab, index) =>
+      index === 0 ? { ...tab, stateRow: "hover" } : tab,
+    ),
+  );
+  const [selected, setSelected] = useState<string | null>("two");
+
+  const handleClose = (value: string) => {
+    const remaining = tabs.filter((tab) => tab.value !== value);
+    setTabs(remaining);
+    if (selected === value) {
+      setSelected(remaining[0]?.value ?? null);
+    }
+  };
+
+  return (
+    <ExampleTabs
+      column={column}
+      tabs={tabs}
+      selected={selected}
+      onChange={setSelected}
+      onClose={handleClose}
+    />
+  );
+}
+
 function OverviewTemplate() {
   return (
     <StoryShowcase title="Tabs">
@@ -244,6 +285,22 @@ function OverviewTemplate() {
               )}
             />
           ))}
+        </VariantGrid>
+      </StorySection>
+
+      <StorySection title="Closable">
+        <VariantGrid>
+          {CONTENT_KINDS.filter(({ kind }) => kind !== "icon").map(
+            ({ kind, label }) => (
+              <VariantRow
+                key={kind}
+                label={label}
+                render={(column) => (
+                  <ClosableTabs column={column} content={kind} />
+                )}
+              />
+            ),
+          )}
         </VariantGrid>
       </StorySection>
 

@@ -35,6 +35,33 @@ Use the `pills` variant for a compact, toggle-like set of tabs.
 
 <Canvas of={TabsStories.PillsIcons} />
 
+### Sizes
+
+`size` is `md` by default. `sm` exists only for the `pills` variant — passing it
+with any other variant is a type error.
+
+```tsx
+<Tabs variant="pills" size="sm">
+```
+
+### Closable tabs
+
+`closable` renders a close control on a `Tabs.Tab`; `onClose` receives the
+tab's value. The component doesn't remove anything itself: drop the tab from
+your list, and if it was the selected one, pick a new selection.
+
+Keyboard users close the focused tab with `Delete` or `Backspace`.
+
+```tsx
+<Tabs.Tab value="one" closable onClose={handleClose}>
+  One
+</Tabs.Tab>
+```
+
+<Canvas of={TabsStories.Closable} />
+
+<Canvas of={TabsStories.ClosablePills} />
+
 ### List border
 
 The `listBorder` prop (default variant only) controls the divider rendered under

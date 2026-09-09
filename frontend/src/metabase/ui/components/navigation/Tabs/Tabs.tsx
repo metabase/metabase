@@ -3,6 +3,8 @@ import {
   type TabsProps as MantineTabsProps,
 } from "@mantine/core";
 
+import { TabsTab } from "./TabsTab";
+
 export type TabsSize = "sm" | "md";
 
 const DEFAULT_SIZE: TabsSize = "md";
@@ -61,6 +63,6 @@ function TabsRoot<T extends string = string>({
 
 export const Tabs = Object.assign(TabsRoot, {
   List: MantineTabs.List,
-  Tab: MantineTabs.Tab,
+  Tab: TabsTab,
   Panel: MantineTabs.Panel,
 });
