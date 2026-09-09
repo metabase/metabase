@@ -4,10 +4,10 @@ import {
   setupCollectionsEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import { WorktreeProvider } from "metabase/common/worktrees";
 import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryEditor/use-notebook-screen-size";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { WorktreeId } from "metabase-types/api";
 
 import { NativeQueryEditor } from "./NativeQueryEditor";

@@ -51,7 +51,7 @@ export function NewMeasurePage({
     }
   }, [table, metadata]);
 
-  const { query, aggregations } = useMeasureQuery(definition, metadata);
+  const { query, aggregations } = useMeasureQuery(definition);
 
   const isDirty =
     !savedMeasure &&

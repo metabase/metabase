@@ -3,67 +3,75 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn table-database-ids
+(mu/defn table-database-ids
   "The set of Database IDs of the Tables with `table-ids`."
-  [table-ids]
+  [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids]))
 
-(defn table-database-id
+(mu/defn table-database-id
   "The Database ID of the raw table row with `table-id`."
-  [table-id]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id))
 
-(defn database
+(mu/defn database
   "The Database with `database-id`, or nil."
-  [database-id]
+  [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database database-id))
 
-(defn database-engine
+(mu/defn database-engine
   "The engine of the Database with `database-id`."
-  [database-id]
+  [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :engine :model/Database database-id))
 
-(defn update-run-message!
+(mu/defn update-run-message!
   "Set the message of the TransformRun with `run-id`."
-  [run-id message]
+  [run-id  :- ms/PositiveInt
+   message :- [:maybe :string]]
   (t2/update! :model/TransformRun :id run-id {:message message}))
 
-(defn python-library
+(mu/defn python-library
   "The PythonLibrary with `library-id`, or nil."
-  [library-id]
+  [library-id :- ms/PositiveInt]
   (t2/select-one :model/PythonLibrary library-id))
 
-(defn python-library-by-path
+(mu/defn python-library-by-path
   "The PythonLibrary at `path`, or nil; the 2-arity looks in `worktree-id` (nil is the main app)."
-  ([path]
+  ([path :- :string]
    (t2/select-one :model/PythonLibrary :path path))
-  ([path worktree-id]
+  ([path        :- :string
+    worktree-id :- [:maybe ::lib.schema.id/worktree]]
    (t2/select-one :model/PythonLibrary :path path :worktree_id worktree-id)))
 
-(defn upsert-python-library-source!
+(mu/defn upsert-python-library-source!
   "Insert or update the PythonLibrary at `path`, setting its source to `source`. The 3-arity does so within
   `worktree-id` (nil is the main app). Returns the ID of the row."
-  ([path source]
+  ([path   :- :string
+    source :- :string]
    (mdb/update-or-insert! :model/PythonLibrary
                           {:path path}
                           (constantly {:path path :source source})))
-  ([path source worktree-id]
+  ([path        :- :string
+    source      :- :string
+    worktree-id :- [:maybe ::lib.schema.id/worktree]]
    (mdb/update-or-insert! :model/PythonLibrary
                           {:path path :worktree_id worktree-id}
                           (constantly {:path path :source source :worktree_id worktree-id}))))
 
-(defn library-sources-by-path
+(mu/defn library-sources-by-path
   "A map of path to source for every PythonLibrary, or for those of `worktree-id` (nil is the main app)."
   ([]
    (t2/select-fn->fn :path :source :model/PythonLibrary))
-  ([worktree-id]
+  ([worktree-id :- [:maybe ::lib.schema.id/worktree]]
    (t2/select-fn->fn :path :source :model/PythonLibrary :worktree_id worktree-id)))
 
-(defn top-level-fields-metadata
+(mu/defn top-level-fields-metadata
   "The export metadata columns of the active top-level Fields of the Table with `table-id`, in database order."
-  [table-id]
+  [table-id :- ::lib.schema.id/table]
   (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
              :table_id table-id
              :active true

@@ -2,10 +2,7 @@ import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 

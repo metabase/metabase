@@ -1,5 +1,9 @@
 (ns metabase-enterprise.remote-sync.schema
-  "Malli schemas for remote sync API request and response bodies.")
+  "Malli schemas for remote sync API request and response bodies."
+  (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ------------------------------------------- Task Schemas -------------------------------------------
 
@@ -178,3 +182,107 @@
   "Schema for POST /test-connection response."
   [:map
    [:status [:= :success]]])
+
+(mr/def ::remote-sync-object
+  "A RemoteSyncObject as selected from the app DB: every column of `:remote_sync_object`."
+  [:map {:closed true}
+   [:id                  ms/PositiveInt]
+   [:model_type          [:or :keyword :string]]
+   [:model_id            [:maybe :int]]
+   [:status              [:or :keyword :string]]
+   [:status_changed_at   ms/TemporalInstant]
+   [:model_name          :string]
+   [:model_collection_id [:maybe ::lib.schema.id/collection]]
+   [:model_display       [:maybe [:or :keyword :string]]]
+   [:model_table_id      [:maybe ::lib.schema.id/table]]
+   [:model_table_name    [:maybe :string]]
+   [:file_path           [:maybe :string]]
+   [:content_hash        [:maybe :string]]
+   [:worktree_id         [:maybe ::lib.schema.id/worktree]]])
+
+(mr/def ::remote-sync-object.update
+  "What an update (or insert) of a RemoteSyncObject accepts: every column of `:remote_sync_object` except `id`, all optional."
+  [:map {:closed true}
+   [:model_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:model_id            {:optional true} [:maybe :int]]
+   [:status              {:optional true} [:maybe [:or :keyword :string]]]
+   [:status_changed_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:model_name          {:optional true} [:maybe :string]]
+   [:model_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:model_display       {:optional true} [:maybe [:or :keyword :string]]]
+   [:model_table_id      {:optional true} [:maybe ::lib.schema.id/table]]
+   [:model_table_name    {:optional true} [:maybe :string]]
+   [:file_path           {:optional true} [:maybe :string]]
+   [:content_hash        {:optional true} [:maybe :string]]
+   [:worktree_id         {:optional true} [:maybe ::lib.schema.id/worktree]]])
+
+(mr/def ::remote-sync-task.outcome
+  "The `:outcome` column of a RemoteSyncTask, decoded."
+  :map)
+
+(mr/def ::remote-sync-task
+  "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."
+  [:map {:closed true}
+   [:id                      ms/PositiveInt]
+   [:sync_task_type          [:or :keyword :string]]
+   [:progress                [:maybe number?]]
+   [:cancelled               :boolean]
+   [:started_at              ms/TemporalInstant]
+   [:ended_at                [:maybe ms/TemporalInstant]]
+   [:last_progress_report_at ms/TemporalInstant]
+   [:initiated_by            [:maybe ::lib.schema.id/user]]
+   [:error_message           [:maybe :string]]
+   [:version                 [:maybe :string]]
+   [:conflicts               [:maybe [:sequential :string]]]
+   [:outcome                 [:maybe ::remote-sync-task.outcome]]
+   [:worktree_id             [:maybe ::lib.schema.id/worktree]]])
+
+(mr/def ::remote-sync-task.update
+  "What an update (or insert) of a RemoteSyncTask accepts: every column of `:remote_sync_task` except `id`, all optional."
+  [:map {:closed true}
+   [:sync_task_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:progress                {:optional true} [:maybe number?]]
+   [:cancelled               {:optional true} [:maybe :boolean]]
+   [:started_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:ended_at                {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_progress_report_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:initiated_by            {:optional true} [:maybe ::lib.schema.id/user]]
+   [:error_message           {:optional true} [:maybe :string]]
+   [:version                 {:optional true} [:maybe :string]]
+   [:conflicts               {:optional true} [:maybe [:sequential :string]]]
+   [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]
+   [:worktree_id             {:optional true} [:maybe ::lib.schema.id/worktree]]])
+
+(mr/def ::worktree
+  "A Worktree as selected from the app DB: every column of `:worktree`."
+  [:map {:closed true}
+   [:id         ::lib.schema.id/worktree]
+   [:branch     :string]
+   [:creator_id [:maybe ::lib.schema.id/user]]
+   [:created_at ms/TemporalInstant]
+   [:updated_at ms/TemporalInstant]])
+
+(mr/def ::worktree.update
+  "The columns of `:worktree` an insert or update may set: every column except `id`, all optional."
+  [:map {:closed true}
+   [:branch     {:optional true} :string]
+   [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]
+   [:created_at {:optional true} ms/TemporalInstant]
+   [:updated_at {:optional true} ms/TemporalInstant]])
+
+(mr/def ::worktree-remapping
+  "A WorktreeRemapping as selected from the app DB: every column of `:worktree_remapping`."
+  [:map {:closed true}
+   [:id               ms/PositiveInt]
+   [:worktree_id      ::lib.schema.id/worktree]
+   [:type             :string]
+   [:source_entity_id :string]
+   [:local_entity_id  :string]])
+
+(mr/def ::worktree-remapping.update
+  "The columns of `:worktree_remapping` an insert or update may set: every column except `id`, all optional."
+  [:map {:closed true}
+   [:worktree_id      {:optional true} ::lib.schema.id/worktree]
+   [:type             {:optional true} :string]
+   [:source_entity_id {:optional true} :string]
+   [:local_entity_id  {:optional true} :string]])

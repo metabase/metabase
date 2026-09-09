@@ -2,14 +2,25 @@
   "Application database queries for the measures module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.measures.schema :as measures.schema]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(defn insert-measure!
+(mu/defn insert-measure!
   "Insert a Measure and return the inserted instance. `worktree-id` (nil for the main app) is the remote-sync
   worktree the Measure belongs to."
-  ([creator-id measure-name description definition]
+  ([creator-id   :- ::lib.schema.id/user
+    measure-name :- :string
+    description  :- [:maybe :string]
+    definition   :- [:maybe ::measures.schema/measure.definition]]
    (insert-measure! creator-id measure-name description definition nil))
-  ([creator-id measure-name description definition worktree-id]
+  ([creator-id   :- ::lib.schema.id/user
+    measure-name :- :string
+    description  :- [:maybe :string]
+    definition   :- [:maybe ::measures.schema/measure.definition]
+    worktree-id  :- [:maybe ::lib.schema.id/worktree]]
    (t2/insert-returning-instance! :model/Measure
                                   :creator_id  creator-id
                                   :name        measure-name
@@ -17,45 +28,48 @@
                                   :definition  definition
                                   :worktree_id worktree-id)))
 
-(defn measure
+(mu/defn measure
   "The Measure with `id`, or nil."
-  [id]
+  [id :- ::lib.schema.id/measure]
   (t2/select-one :model/Measure :id id))
 
-(defn unarchived-measures
+(mu/defn unarchived-measures
   "The unarchived Measures in the remote-sync worktree `worktree-id` (nil for the main app), in case-insensitive
   name order."
   ([]
    (unarchived-measures nil))
-  ([worktree-id]
+  ([worktree-id :- [:maybe ::lib.schema.id/worktree]]
    (t2/select :model/Measure, :archived false, :worktree_id worktree-id, {:order-by [[:%lower.name :asc]]})))
 
-(defn table-database-ids
+(mu/defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."
-  [table-ids]
+  [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
 
-(defn update-measure!
+(mu/defn update-measure!
   "Apply `changes` to the Measure with `id`."
-  [id changes]
+  [id      :- ::lib.schema.id/measure
+   changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
   (t2/update! :model/Measure id changes))
 
-(defn table
+(mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
 
-(defn table-perms-columns
+(mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
-  [table-id]
+  [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :db_id :schema :id] :id table-id))
 
-(defn collections
+(mu/defn collections
   "The Collections with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection :id [:in collection-ids]))
 
-(defn set-measure-dimensions!
+(mu/defn set-measure-dimensions!
   "Set the dimensions and dimension mappings of the Measure with `id`."
-  [id dimensions dimension-mappings]
+  [id                 :- ::lib.schema.id/measure
+   dimensions         :- [:maybe sequential?]
+   dimension-mappings :- [:maybe [:sequential :map]]]
   (t2/update! :model/Measure id {:dimensions dimensions, :dimension_mappings dimension-mappings}))

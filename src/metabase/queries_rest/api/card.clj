@@ -452,7 +452,7 @@
 
 (mu/defn- check-if-card-can-be-saved
   [dataset-query :- [:maybe ::lib-be.schema/maybe-legacy-query]
-   card-type     :- [:maybe ::queries.schema/card-type]]
+   card-type     :- [:maybe ::queries.schema/card.type]]
   (when (and (seq dataset-query) (= card-type :metric))
     (when-not (lib/can-save? dataset-query card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
@@ -490,7 +490,7 @@
   "Schema for creating a new card"
   [:map
    [:name                   ms/NonBlankString]
-   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
    [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
@@ -612,7 +612,7 @@
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
-   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:visualization_settings {:optional true} [:maybe ms/Map]]

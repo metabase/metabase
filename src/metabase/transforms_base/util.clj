@@ -506,8 +506,9 @@
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."
   [database-id target & kv-args]
-  (some-> (apply transforms-base.db/target-table database-id (:schema target) (:name target) kv-args)
-          (t2/hydrate :db)))
+  (when database-id
+    (some-> (apply transforms-base.db/target-table database-id (:schema target) (:name target) kv-args)
+            (t2/hydrate :db))))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
@@ -677,8 +678,7 @@
     (if (= :delete-row status)
       (transforms-base.db/delete-table-indexes! (map :id rows))
       (transforms-base.db/update-table-indexes! (map :id rows)
-                                                (cond-> {:status           status
-                                                         :last_executed_at :%now}
+                                                (cond-> {:status status}
                                                   (= status :succeeded)
                                                   (assoc :error_message nil)
                                                   (= status :failed)

@@ -414,7 +414,7 @@
             {}
             cards-to-copy)))
 
-(api.macros/defendpoint :post "/:from-document-id/copy" :- ::documents.schema/document
+(api.macros/defendpoint :post "/:from-document-id/copy" :- [:map [:id ::documents.schema/document.id]]
   "Copy a Document."
   [{:keys [from-document-id]} :- [:map
                                   [:from-document-id ms/PositiveInt]]

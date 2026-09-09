@@ -3,67 +3,81 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [malli.util :as mut]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
+   [metabase.native-query-snippets.schema :as native-query-snippets.schema]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(defn snippets-by-archived
+(mu/defn snippets-by-archived
   "The NativeQuerySnippets whose archived flag is `archived` in the remote-sync worktree `worktree-id` (nil for the
   main app), in case-insensitive name order."
-  ([archived]
+  ([archived :- :boolean]
    (snippets-by-archived archived nil))
-  ([archived worktree-id]
+  ([archived    :- :boolean
+    worktree-id :- [:maybe ::lib.schema.id/worktree]]
    (t2/select :model/NativeQuerySnippet :archived archived :worktree_id worktree-id {:order-by [[:%lower.name :asc]]})))
 
-(defn snippet
+(mu/defn snippet
   "The NativeQuerySnippet with `id`, or nil."
-  [id]
+  [id :- ::lib.schema.id/native-query-snippet]
   (t2/select-one :model/NativeQuerySnippet :id id))
 
-(defn snippet-name-exists?
+(mu/defn snippet-name-exists?
   "Whether a NativeQuerySnippet named `snippet-name` exists in the remote-sync worktree `worktree-id` (nil for the
   main app). Snippet names are unique per worktree, not globally."
-  ([snippet-name]
+  ([snippet-name :- :string]
    (snippet-name-exists? snippet-name nil))
-  ([snippet-name worktree-id]
+  ([snippet-name :- :string
+    worktree-id  :- [:maybe ::lib.schema.id/worktree]]
    (t2/exists? :model/NativeQuerySnippet :name snippet-name :worktree_id worktree-id)))
 
-(defn other-snippet-with-name-exists?
+(mu/defn other-snippet-with-name-exists?
   "Whether a NativeQuerySnippet named `snippet-name` with an entity id other than `entity-id` exists in the
   remote-sync worktree `worktree-id` (nil for the main app)."
-  ([snippet-name entity-id]
+  ([snippet-name :- :string
+    entity-id    :- :string]
    (other-snippet-with-name-exists? snippet-name entity-id nil))
-  ([snippet-name entity-id worktree-id]
+  ([snippet-name :- :string
+    entity-id    :- :string
+    worktree-id  :- [:maybe ::lib.schema.id/worktree]]
    (t2/exists? :model/NativeQuerySnippet :name snippet-name :entity_id [:!= entity-id] :worktree_id worktree-id)))
 
-(defn insert-snippet!
+(mu/defn insert-snippet!
   "Insert the NativeQuerySnippet `row` and return the inserted instance."
-  [row]
+  [row :- ::native-query-snippets.schema/native-query-snippet.update]
   (t2/insert-returning-instance! :model/NativeQuerySnippet row))
 
-(defn update-snippet!
+(mu/defn update-snippet!
   "Apply `changes` to the NativeQuerySnippet with `id`."
-  [id changes]
+  [id :- ::lib.schema.id/native-query-snippet
+   changes :- (mut/select-keys ::native-query-snippets.schema/native-query-snippet.update [:description :collection_id :archived :content :name])]
   (t2/update! :model/NativeQuerySnippet id changes))
 
-(defn snippet-id-by-name
+(mu/defn snippet-id-by-name
   "The id of the NativeQuerySnippet named `snippet-name` in the remote-sync worktree `worktree-id` (nil for the main
   app), or nil."
-  ([snippet-name]
+  ([snippet-name :- :string]
    (snippet-id-by-name snippet-name nil))
-  ([snippet-name worktree-id]
+  ([snippet-name :- :string
+    worktree-id  :- [:maybe ::lib.schema.id/worktree]]
    (t2/select-one-fn :id :model/NativeQuerySnippet :name snippet-name :worktree_id worktree-id)))
 
-(defn snippet-collection-id
+(mu/defn snippet-collection-id
   "The Collection id of the NativeQuerySnippet with `id`, or nil."
-  [id]
+  [id :- ::lib.schema.id/native-query-snippet]
   (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id))
 
-(defn exportable-snippets
+(mu/defn exportable-snippets
   "A reducible of the NativeQuerySnippets to export via serdes: unarchived when `skip-archived?`, and either
   in one of `collection-ids`, uncollected when `include-root?`, or matching the serdes-supplied
   `extra-condition` — an additional condition the caller widens the export scope with (e.g. also export as
   a Card dependency, regardless of collection), or nil — in stable export order."
-  [collection-ids include-root? skip-archived? extra-condition]
+  [collection-ids :- [:maybe [:sequential ::lib.schema.id/collection]]
+   include-root? :- :boolean
+   skip-archived? :- [:maybe :boolean]
+   extra-condition :- [:maybe vector?]]
   (t2/reducible-select :model/NativeQuerySnippet
                        (cond-> {:where    [:and
                                            (when skip-archived? [:not :archived])

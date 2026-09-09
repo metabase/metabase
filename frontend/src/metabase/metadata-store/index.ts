@@ -3,6 +3,7 @@ export {
   getMetadata,
   getMetadataUnfiltered,
   getMetadataWithHiddenTables,
+  getRemappedFieldValue,
   getShallowDatabases,
   getShallowFields,
   getShallowSegments,
@@ -16,13 +17,20 @@ export {
   selectMetadataProviderUnfiltered,
   selectMetricMetadataProvider,
   selectQuestionFromCard,
+  selectQuestionFromCardBuilder,
   selectQuestionFromOpts,
+  selectQuestionFromOptsBuilder,
   useMetadataProvider,
   useMetadataProviderFactory,
   useMetadataProviderUnfiltered,
   useMetricMetadataProvider,
   useQuestionFromCard,
   useQuestionFromOpts,
+} from "./provider";
+export type {
+  CardQuestionBuilder,
+  DraftQuestionBuilder,
+  MetadataProviderFactory,
 } from "./provider";
 
 export { entitiesReducer } from "./reducer";

@@ -202,7 +202,7 @@
 
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  [card-type :- ::queries.schema/card-type
+  [card-type :- ::queries.schema/card.type
    & {:keys [collection-scope xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
@@ -216,20 +216,20 @@
 
 (mu/defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
-  [card-type :- ::queries.schema/card-type]
+  [card-type :- ::queries.schema/card.type]
   (seq (source-query-cards card-type :xform (take 1))))
 
 (mu/defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [card-type :- ::queries.schema/card-type
+  [card-type :- ::queries.schema/card.type
    & {:keys [include-fields?]}]
   (schema.table/cards->virtual-tables (source-query-cards card-type)
                                       :include-fields? include-fields?))
 
 (mu/defn- saved-cards-virtual-db-metadata
-  [card-type :- ::queries.schema/card-type
+  [card-type :- ::queries.schema/card.type
    & {:keys [include-tables? include-fields?]}]
   (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
@@ -304,10 +304,8 @@
         filter-by-data-access? (not (or include-editable-data-model?
                                         exclude-uneditable-details?
                                         filter-on-router-database-id))
-        user-info {:user-id api/*current-user-id*
-                   :is-superuser? (mi/superuser?)
-                   :is-data-analyst? api/*is-data-analyst?*}
-        dbs (warehouses-rest.db/databases-where user-info filter-by-data-access? filter-on-router-database-id
+        dbs (warehouses-rest.db/databases-where api/*current-user-id* (mi/superuser?) api/*is-data-analyst?*
+                                                filter-by-data-access? filter-on-router-database-id
                                                 include-analytics?)
         ;; everything below walks the list one database at a time
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
