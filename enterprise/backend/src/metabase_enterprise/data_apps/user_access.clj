@@ -1,24 +1,14 @@
 (ns metabase-enterprise.data-apps.user-access
   (:require
    [clojure.string :as str]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.data-apps.db :as data-apps.db]))
 
 (set! *warn-on-reflection* true)
 
 (defn- table-details
   [table-ids]
   (if (seq table-ids)
-    (t2/select :model/Table
-               {:select [:t.id
-                         [:t.display_name :name]
-                         :t.schema
-                         [:t.db_id :database_id]
-                         [:d.name :database_name]]
-                :from [[:metabase_table :t]]
-                :join [[:metabase_database :d] [:= :d.id :t.db_id]]
-                :where [:in :t.id table-ids]
-                :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]})
+    (data-apps.db/table-details table-ids)
     []))
 
 (defn- sandboxed-user-table-pairs
@@ -26,15 +16,7 @@
   (if (and (seq user-ids) (seq table-ids))
     (into #{}
           (map (juxt :user_id :table_id))
-          (t2/query {:select-distinct [[:pgm.user_id :user_id]
-                                       [:s.table_id :table_id]]
-                     :from [[:permissions_group_membership :pgm]]
-                     :join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]
-                            [:permissions_group :pg] [:= :pg.id :pgm.group_id]]
-                     :where [:and
-                             [:in :pgm.user_id user-ids]
-                             [:in :s.table_id table-ids]
-                             [:not :pg.is_data_app_group]]}))
+          (data-apps.db/sandboxed-user-table-access user-ids table-ids))
     #{}))
 
 (defn- unrestricted-user-table-pairs
@@ -42,22 +24,7 @@
   (if (and (seq user-ids) (seq table-ids))
     (into #{}
           (map (juxt :user_id :table_id))
-          (t2/query {:select-distinct [[:pgm.user_id :user_id]
-                                       [:t.id :table_id]]
-                     :from [[:permissions_group_membership :pgm]]
-                     :join [[:data_permissions :dp] [:= :dp.group_id :pgm.group_id]
-                            [:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                            [:metabase_table :t] [:and
-                                                  [:= :t.db_id :dp.db_id]
-                                                  [:or
-                                                   [:= :dp.table_id nil]
-                                                   [:= :dp.table_id :t.id]]]]
-                     :where [:and
-                             [:in :pgm.user_id user-ids]
-                             [:in :t.id table-ids]
-                             [:not :pg.is_data_app_group]
-                             [:= :dp.perm_type (u/qualified-name :perms/view-data)]
-                             [:= :dp.perm_value "unrestricted"]]}))
+          (data-apps.db/unrestricted-user-table-access user-ids table-ids))
     #{}))
 
 (defn- user-warning
@@ -87,15 +54,7 @@
 (defn- active-group-members
   [group-ids]
   (if (seq group-ids)
-    (->> (t2/query {:select [[:pgm.group_id :group_id]
-                             [:u.id :id]
-                             :u.is_superuser
-                             :u.email]
-                    :from [[:permissions_group_membership :pgm]]
-                    :join [[:core_user :u] [:= :u.id :pgm.user_id]]
-                    :where [:and
-                            [:in :pgm.group_id group-ids]
-                            [:= :u.is_active true]]})
+    (->> (data-apps.db/active-group-members group-ids)
          (remove #(str/ends-with? (:email %) "@api-key.invalid")))
     []))
 

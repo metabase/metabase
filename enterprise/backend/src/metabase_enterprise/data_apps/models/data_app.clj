@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.models.data-app
   (:require
+   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
@@ -91,4 +92,4 @@
    their membership, and newly-synced tables default to `:blocked` for them."
   :feature :none
   []
-  (t2/select-pks-set :model/PermissionsGroup :is_data_app_group true))
+  (data-apps.db/data-app-group-ids))

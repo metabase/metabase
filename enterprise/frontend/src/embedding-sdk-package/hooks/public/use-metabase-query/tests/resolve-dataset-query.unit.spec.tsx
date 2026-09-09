@@ -12,7 +12,7 @@ import { TEST_METADATA, TEST_SCHEMA } from "./fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { cardApi } from "metabase/api";
-import type { getMetadataUnfiltered } from "metabase/metadata-store";
+import * as Lib from "metabase-lib";
 
 import { avg, breakout, count, filter, orderBy, sum } from "..";
 
@@ -445,11 +445,13 @@ describe("resolveDatasetQuery", () => {
       questions: TEST_METADATA.questions,
     };
 
-    mockGetMetadataUnfiltered.mockReturnValue(
-      // `Metadata` is a class; the fixture is the plain shape read out of it.
-      metadataWithoutDatabases as unknown as ReturnType<
-        typeof getMetadataUnfiltered
-      >,
+    mockSelectMetadataProviderUnfiltered.mockImplementation(
+      (_state, databaseId) =>
+        Lib.metadataProvider(
+          databaseId,
+          // The fixture supplies the plain metadata shape instead of the Metadata class.
+          metadataWithoutDatabases as unknown as Lib.Metadata,
+        ),
     );
 
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({

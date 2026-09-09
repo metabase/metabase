@@ -4,8 +4,7 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase.collections.core :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.request.core :as request]
-   [toucan2.core :as t2]))
+   [metabase.request.core :as request]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,15 +12,14 @@
   (format "Data App: %s" (:name app)))
 
 (defn- create-permission-group! [app]
-  (let [group (t2/insert-returning-instance! :model/PermissionsGroup
-                                             :name (resource-name app)
-                                             :is_data_app_group true)]
-    (t2/update! :model/DataApp :id (:id app) {:permission_group_id (:id group)})
+  (let [group (data-apps.db/insert-permission-group! {:name (resource-name app)
+                                                      :is_data_app_group true})]
+    (data-apps.db/update-data-app! (:id app) {:permission_group_id (:id group)})
     group))
 
 (defn- permission-group! [app]
   (or (some->> (:permission_group_id app)
-               (t2/select-one :model/PermissionsGroup :id))
+               (data-apps.db/permission-group))
       (create-permission-group! app)))
 
 (defn- database-level-permission?
@@ -39,7 +37,7 @@
    `view-data :blocked` cascades `download-results`/`transforms` to `:no`; we reassert whenever any of
    that has drifted, so a manual grant can't survive a sync."
   [group]
-  (let [database-ids (t2/select-pks-set :model/Database :router_database_id nil)
+  (let [database-ids (data-apps.db/non-router-database-ids)
         permissions  (or (perms/index-database-permissions [(:id group)] database-ids) {})
         db-level?    (fn [database-id perm-type value]
                        (database-level-permission? (get permissions [(:id group) database-id perm-type]) value))]
@@ -72,9 +70,8 @@
   (let [read-path (perms/collection-read-path collection)
         write-path (perms/collection-readwrite-path collection)
         permissions-by-group (group-by :group_id
-                                       (t2/select [:model/Permissions :group_id :object]
-                                                  :object [:in ["/" read-path write-path]]
-                                                  :group_id [:not= (:id (perms/admin-group))]))
+                                       (data-apps.db/permissions-for-paths-excluding-group
+                                        ["/" read-path write-path] (:id (perms/admin-group))))
         app-read-only? (= #{read-path} (set (map :object (get permissions-by-group (:id group)))))]
     ;; Remove write grants and access from other groups
     (doseq [group-id (keys permissions-by-group)
@@ -89,15 +86,14 @@
   (apply-collection-permissions! group collection))
 
 (defn- create-resource-collection! [app]
-  (let [collection (t2/insert-returning-instance! :model/Collection
-                                                  :name (resource-name app)
-                                                  :location "/")]
-    (t2/update! :model/DataApp :id (:id app) {:resource_collection_id (:id collection)})
+  (let [collection (data-apps.db/insert-resource-collection! {:name (resource-name app)
+                                                              :location "/"})]
+    (data-apps.db/update-data-app! (:id app) {:resource_collection_id (:id collection)})
     collection))
 
 (defn- resource-collection! [app]
   (or (some->> (:resource_collection_id app)
-               (t2/select-one :model/Collection :id))
+               (data-apps.db/resource-collection))
       (create-resource-collection! app)))
 
 (defn ensure-resources!
@@ -107,10 +103,10 @@
     (let [app        (data-apps.db/non-blob-data-app (:id app))
           group      (permission-group! app)
           collection (resource-collection! app)]
-      (t2/update! :model/PermissionsGroup :id (:id group)
-                  {:name (resource-name app)})
-      (t2/update! :model/Collection :id (:id collection)
-                  {:name (resource-name app)})
+      (data-apps.db/update-permission-group! (:id group)
+                                             {:name (resource-name app)})
+      (data-apps.db/update-resource-collection! (:id collection)
+                                                {:name (resource-name app)})
       (restore-trashed-collection! collection)
       (apply-resource-permissions! group collection)
       {:permission_group_id    (:id group)
@@ -120,6 +116,6 @@
   "Delete the generated collection and permission group referenced by `app`."
   [{:keys [permission_group_id resource_collection_id]}]
   (when resource_collection_id
-    (t2/delete! :model/Collection :id resource_collection_id))
+    (data-apps.db/delete-resource-collection! resource_collection_id))
   (when permission_group_id
-    (t2/delete! :model/PermissionsGroup :id permission_group_id)))
+    (data-apps.db/delete-permission-group! permission_group_id)))
