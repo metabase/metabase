@@ -52,6 +52,15 @@
   `no-cache, must-revalidate` and has to be revalidated on every load."
   "app/assets/img/browserconfig.xml")
 
+(defn- body-text
+  "The response body as text. A static resource is served as a `File` from a source
+  checkout and as an `InputStream` from a jar, and is absent altogether on a 304."
+  [body]
+  (cond
+    (nil? body)    ""
+    (string? body) body
+    :else          (slurp body)))
+
 (defn- get-static-asset
   "Fetches a file under `/app` through the real server, so the security middleware,
   gzip and the not-modified handling all take part."
@@ -75,8 +84,8 @@
           (testing "so a client that already holds it gets a body-less 304"
             (let [not-modified (get-static-asset 304 modified)]
               (is (= 304 (:status not-modified)))
-              (is (str/blank? (:body not-modified)))))
+              (is (str/blank? (body-text (:body not-modified))))))
           (testing "while a client holding an older copy is sent the file"
             (let [stale (get-static-asset 200 "Tue, 03 Jul 2001 06:00:00 GMT")]
               (is (= 200 (:status stale)))
-              (is (not (str/blank? (:body stale)))))))))))
+              (is (not (str/blank? (body-text (:body stale))))))))))))
