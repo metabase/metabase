@@ -1,7 +1,7 @@
 import { setupTableEndpoints } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 

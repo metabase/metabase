@@ -58,6 +58,25 @@
   There is also a `cloud-platform.read-only` scope, but inference calls made with the read-only scope are rejected."
   "https://www.googleapis.com/auth/cloud-platform")
 
+(def ^:private google-token-uris
+  "The complete `token_uri` values a service account key may carry: Google's current OAuth token endpoint and the
+  legacy one older keys still name. Whole URIs rather than hosts, because the transport posts whatever the key
+  says: a port, a query string, or another path on the same origin is not one of these endpoints."
+  #{"https://oauth2.googleapis.com/token"
+    "https://accounts.google.com/o/oauth2/token"})
+
+(defn- check-token-uri!
+  "Refuse a key whose `token_uri` is not one of Google's.
+  The credential library posts to that URL to mint an access token, before any request our own network policy
+  guards, so an admin-supplied key could otherwise point it at an internal host."
+  [^ServiceAccountCredentials creds]
+  (let [uri (.getTokenServerUri creds)]
+    (when-not (contains? google-token-uris (u/lower-case-en (str uri)))
+      (throw (ex-info (tru "Invalid Google service account key: token_uri must be a Google OAuth endpoint.")
+                      {:api-error   true
+                       :status-code 400
+                       :error-code  :invalid-service-account-key})))))
+
 (defn- parse-service-account-credentials
   "Parses a service account key JSON string into scoped `ServiceAccountCredentials`."
   ^ServiceAccountCredentials [^String sa-key]
@@ -76,6 +95,7 @@
                       {:api-error   true
                        :status-code 400
                        :error-code  :not-a-service-account-key})))
+    (check-token-uri! creds)
     (.createScoped ^ServiceAccountCredentials creds (Collections/singletonList cloud-platform-scope))))
 
 (def ^:private cached-service-account-credentials
