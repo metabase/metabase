@@ -293,6 +293,7 @@ const elements = [
     "frontend/src/metabase/embedding-hub/routes.tsx",
     "frontend/src/metabase/embedding-hub/routes.unit.spec.tsx",
     "frontend/src/metabase/embedding-hub/pages/EmbeddingHubThemeEditorPage.tsx",
+    "frontend/src/metabase/embedding-hub/pages/EmbeddingHubThemeEditorPage.unit.spec.tsx",
   ].map((pattern) =>
     createElement({
       type: "app",

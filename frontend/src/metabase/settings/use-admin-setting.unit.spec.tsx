@@ -8,12 +8,11 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useGetSetupGuideChecklistQuery } from "metabase/embedding/setup-guide/api/setup-guide";
 import {
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
-
-import { useGetSetupGuideChecklistQuery } from "metabase/embedding/setup-guide/api/setup-guide";
 
 import { useAdminSetting, useAdminSettings } from "./use-admin-setting";
 
@@ -54,7 +53,9 @@ const TestChecklistComponent = () => {
 
   return (
     <button
-      onClick={() => updateSetting({ key: "site-name", value: "New Site Name" })}
+      onClick={() =>
+        updateSetting({ key: "site-name", value: "New Site Name" })
+      }
     >
       change site name
     </button>
