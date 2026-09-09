@@ -30,6 +30,5 @@ export const TYPE_FILTER_MODELS = [
   "card",
   "metric",
   "document",
-  "exploration",
   "table",
 ] as const satisfies readonly CollectionItemModel[];
