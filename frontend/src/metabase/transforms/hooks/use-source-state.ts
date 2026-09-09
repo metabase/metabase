@@ -1,10 +1,11 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { useMemo, useState } from "react";
 
 import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
 } from "metabase/metabot/state";
-import { selectQuestionFromOpts } from "metabase/metadata-store";
+import { selectQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
@@ -34,47 +35,53 @@ type UseSourceStateResult = {
 
 /**
  * Normalizes a transform source by ensuring template tags are properly parsed.
- * Necessary for model references in a SQL transform to work correctly.
+ * Necessary for model references in a SQL transform to work correctly, which is
+ * why it re-runs when the metadata behind those references arrives.
  */
-function normalizeSource(
-  state: State,
-  source: DraftTransformSource,
-): DraftTransformSource {
-  if (source.type !== "query") {
+const normalizeSource = createSelector(
+  [
+    selectQuestionFromOptsBuilder,
+    (_state: State, source: DraftTransformSource) => source,
+  ],
+  (buildQuestion, source): DraftTransformSource => {
+    if (source.type !== "query") {
+      return source;
+    }
+    // Orphan: the source database has been deleted (e.g. a serdes-imported
+    // transform whose source database is missing). The body is preserved as a
+    // breadcrumb but cannot be normalized through MLv2 without a database.
+    if (source.query?.database == null) {
+      return source;
+    }
+
+    const question = buildQuestion({ dataset_query: source.query });
+    const query = question.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+
+    if (isNative) {
+      const updatedQuery = Lib.withNativeQuery(
+        query,
+        Lib.rawNativeQuery(query),
+      );
+      return {
+        type: "query",
+        // question.setQuery ensures template tags get processed
+        query: question.setQuery(updatedQuery).datasetQuery(),
+      };
+    }
+
     return source;
-  }
-  // Orphan: the source database has been deleted (e.g. a serdes-imported
-  // transform whose source database is missing). The body is preserved as a
-  // breadcrumb but cannot be normalized through MLv2 without a database.
-  if (source.query?.database == null) {
-    return source;
-  }
-
-  const question = selectQuestionFromOpts(state, {
-    dataset_query: source.query,
-  });
-  const query = question.query();
-  const { isNative } = Lib.queryDisplayInfo(query);
-
-  if (isNative) {
-    const updatedQuery = Lib.withNativeQuery(query, Lib.rawNativeQuery(query));
-    return {
-      type: "query",
-      // question.setQuery ensures template tags get processed
-      query: question.setQuery(updatedQuery).datasetQuery(),
-    };
-  }
-
-  return source;
-}
+  },
+);
 
 export function useSourceState({
   transformId,
   initialSource,
 }: UseSourceStateProps): UseSourceStateResult {
   const dispatch = useDispatch();
-  // Read at call time: this normalizes on mount and in callbacks, never as a
-  // subscribed value.
+  // Only the mount and callback paths read the store directly; they cannot
+  // subscribe. The proposed source below is selected so it re-normalizes when
+  // the metadata its template tags reference arrives.
   const store = useStore();
 
   const suggestedTransform = useSelector((state) =>
@@ -89,15 +96,15 @@ export function useSourceState({
     return normalizeSource(store.getState(), rawSource);
   });
 
-  const proposedSource = useMemo(() => {
+  const proposedSource = useSelector((state) => {
     if (
       suggestedTransform != null &&
       !isSameSource(suggestedTransform.source, source)
     ) {
-      return normalizeSource(store.getState(), suggestedTransform.source);
+      return normalizeSource(state, suggestedTransform.source);
     }
     return undefined;
-  }, [source, suggestedTransform, store]);
+  });
 
   const isDirty = useMemo(() => {
     return (
