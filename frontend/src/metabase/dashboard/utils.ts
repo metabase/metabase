@@ -208,7 +208,7 @@ export function getAllDashboardCards(dashboard: Dashboard) {
 }
 
 export const isDashCardOnTab = (
-  dashcard: DashboardCard,
+  dashcard: BaseDashboardCard,
   tabId: SelectedTabId,
 ) => (dashcard.dashboard_tab_id ?? null) === tabId;
 
