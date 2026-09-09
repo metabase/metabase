@@ -47,6 +47,12 @@
 (def ^:private metadata-type->schema
   {:metadata/card ::lib.schema.metadata/card})
 
+;; TODO (Cam 2026-08-27) Consider whether we should just have this be the normal behavior for normalizing
+;; application-database-style metadata to Lib-style metadata, e.g. why can't we just use
+;;
+;;    (metabase.lib.core/normalize :metabase.lib.schema.metadata/table table-metadata)
+;;
+;; to do this? Seems like these rules can be rolled into the schemas themselves
 (mu/defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
   metadata instance with `:lib/type` and `kebab-case` keys."
