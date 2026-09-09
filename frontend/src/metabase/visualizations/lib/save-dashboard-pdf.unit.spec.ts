@@ -1,4 +1,8 @@
-import { findPageBreakCandidates, getPageBreaks } from "./save-dashboard-pdf";
+import {
+  findPageBreakCandidates,
+  getLinkAnnotationsForPage,
+  getPageBreaks,
+} from "./save-dashboard-pdf";
 
 describe("save-dashboard-pdf", () => {
   describe("findPageBreakCandidates", () => {
@@ -167,6 +171,158 @@ describe("save-dashboard-pdf", () => {
       // of only 150px height, which is less than minimum, so no breaks should occur
       const breaks = getPageBreaks(cards, 250, 400, 200);
       expect(breaks).toEqual([]);
+    });
+  });
+
+  describe("getLinkAnnotationsForPage (metabase#35742)", () => {
+    const verticalOffset = 50;
+    const pagePadding = 16;
+
+    it("places a link on the first page when it falls within the page slice", () => {
+      const links = [
+        { url: "https://example.com", x: 10, y: 100, width: 80, height: 20 },
+      ];
+
+      const annotations = getLinkAnnotationsForPage(
+        links,
+        0,
+        300,
+        verticalOffset,
+        pagePadding,
+      );
+
+      // Canvas-space top = link.y + verticalOffset = 150
+      // PDF y = pagePadding + (canvasTop - pageStart) = 16 + 150 = 166
+      expect(annotations).toEqual([
+        {
+          url: "https://example.com",
+          x: 16 + 10,
+          y: 16 + 150,
+          width: 80,
+          height: 20,
+        },
+      ]);
+    });
+
+    it("translates link coordinates relative to the page slice on later pages", () => {
+      const links = [
+        { url: "https://example.com", x: 5, y: 350, width: 60, height: 18 },
+      ];
+
+      // Page starts at canvas y=400 (after vertical offset, link sits at 400)
+      const annotations = getLinkAnnotationsForPage(
+        links,
+        400,
+        300,
+        verticalOffset,
+        pagePadding,
+      );
+
+      // canvasTop = 350 + 50 = 400, pageStart = 400 → relative y = 0
+      expect(annotations).toEqual([
+        {
+          url: "https://example.com",
+          x: 16 + 5,
+          y: 16 + 0,
+          width: 60,
+          height: 18,
+        },
+      ]);
+    });
+
+    it("excludes links above the current page slice", () => {
+      const links = [
+        { url: "https://example.com", x: 0, y: 10, width: 50, height: 15 },
+      ];
+
+      // canvasTop = 60 — sits in page 1, not page 2
+      const annotations = getLinkAnnotationsForPage(
+        links,
+        200,
+        300,
+        verticalOffset,
+        pagePadding,
+      );
+
+      expect(annotations).toEqual([]);
+    });
+
+    it("excludes links below the current page slice", () => {
+      const links = [
+        { url: "https://example.com", x: 0, y: 500, width: 50, height: 15 },
+      ];
+
+      // canvasTop = 550 — sits in a later page, not page 1
+      const annotations = getLinkAnnotationsForPage(
+        links,
+        0,
+        300,
+        verticalOffset,
+        pagePadding,
+      );
+
+      expect(annotations).toEqual([]);
+    });
+
+    it("excludes links that straddle a page break", () => {
+      const links = [
+        { url: "https://example.com", x: 0, y: 240, width: 100, height: 40 },
+      ];
+
+      // canvasTop = 290, canvasBottom = 330, pageEnd = 300 → straddles, skip
+      const annotations = getLinkAnnotationsForPage(
+        links,
+        0,
+        300,
+        verticalOffset,
+        pagePadding,
+      );
+
+      expect(annotations).toEqual([]);
+    });
+
+    it("returns an empty list when there are no links", () => {
+      const annotations = getLinkAnnotationsForPage(
+        [],
+        0,
+        300,
+        verticalOffset,
+        pagePadding,
+      );
+
+      expect(annotations).toEqual([]);
+    });
+
+    it("includes multiple links on the same page", () => {
+      const links = [
+        { url: "https://a.example", x: 0, y: 10, width: 50, height: 15 },
+        { url: "https://b.example", x: 60, y: 30, width: 70, height: 18 },
+      ];
+
+      const annotations = getLinkAnnotationsForPage(
+        links,
+        0,
+        500,
+        verticalOffset,
+        pagePadding,
+      );
+
+      expect(annotations).toEqual([
+        {
+          url: "https://a.example",
+          x: 16,
+          y: 16 + 60,
+          width: 50,
+          height: 15,
+        },
+        {
+          url: "https://b.example",
+          x: 16 + 60,
+          y: 16 + 80,
+          width: 70,
+          height: 18,
+        },
+      ]);
     });
   });
 });
