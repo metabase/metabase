@@ -200,7 +200,7 @@
   "The `:id`, name, table id, collection id, and table name of the `model-key` (Segment or Measure) instances with
   `entity-ids`."
   [model-key  :- :keyword
-   entity-ids :- [:sequential :string]]
+   entity-ids :- [:or [:set :string] [:sequential :string]]]
   (let [{:keys [alias select from join]} (tracking-select-parts model-key)
         id-column (keyword alias "id")]
     (t2/query {:select (into [id-column] select)
@@ -223,7 +223,7 @@
 (mu/defn existing-entity-ids
   "The subset of `entity-ids` that instances of `model` have."
   [model      :- :keyword
-   entity-ids :- [:sequential :string]]
+   entity-ids :- [:or [:set :string] [:sequential :string]]]
   (t2/select-fn-set :entity_id model :entity_id [:in entity-ids]))
 
 (mu/defn ids-by-entity-ids
@@ -587,8 +587,8 @@
   (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
 
 (mu/defn delete-rsos-of-keys!
-  "Delete the RemoteSyncObjects of the `[{:model_type :model_id}]` `rows`."
-  [rows :- [:sequential [:map {:closed true} [:model_type :string] [:model_id ms/PositiveInt]]]]
+  "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows` (other keys are ignored)."
+  [rows :- [:sequential [:map [:model_type :string] [:model_id ms/PositiveInt]]]]
   (t2/delete! :model/RemoteSyncObject {:where (rso-keys-expr rows)}))
 
 (mu/defn delete-all-rsos!
