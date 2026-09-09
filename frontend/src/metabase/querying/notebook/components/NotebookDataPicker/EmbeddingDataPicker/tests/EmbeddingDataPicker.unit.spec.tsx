@@ -95,16 +95,14 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.getByText("Raw Data")).toBeInTheDocument();
       });
 
-      it('should show metrics when `entity_types=["metric"]`', async () => {
+      it('should not show metrics when `entity_types=["table"]`', async () => {
         setup({
           hasMetrics: true,
-          entityTypes: ["metric"],
+          entityTypes: ["table"],
         });
 
-        expect(await screen.findByText("Metrics")).toBeInTheDocument();
-
-        expect(screen.queryByText("Models")).not.toBeInTheDocument();
-        expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
       });
 
       it('should not show metrics when `entity_types=["model", "table"]`', async () => {
@@ -118,13 +116,32 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
       });
 
-      it('should not show metrics when the instance has none, even when `entity_types=["metric", "table"]`', async () => {
+      it('should show metrics only when the context includes "metric"', async () => {
         setup({
-          hasMetrics: false,
-          entityTypes: ["metric", "table"],
+          hasMetrics: true,
+          contextEntityTypes: ["metric"],
         });
 
-        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(await screen.findByText("Metrics")).toBeInTheDocument();
+        expect(screen.queryByText("Models")).not.toBeInTheDocument();
+        expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      });
+
+      it('should not show metrics when the context leaves out "metric"', async () => {
+        setup({
+          hasMetrics: true,
+          contextEntityTypes: ["model", "table"],
+        });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+        expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+      });
+
+      it("should not show metrics when the instance has none", async () => {
+        setup({ hasMetrics: false });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
         expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
       });
 

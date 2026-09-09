@@ -22,11 +22,13 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
+import { EmbeddingDataPickerContextProvider } from "../context";
 
 interface SetupOpts {
   hasModels?: boolean;
   hasMetrics?: boolean;
   entityTypes?: EmbeddingEntityType[];
+  contextEntityTypes?: EmbeddingEntityType[];
 }
 
 const DEFAULT_OPTS: Partial<SetupOpts> = {
@@ -37,6 +39,7 @@ export function setup({
   hasModels = DEFAULT_OPTS.hasModels,
   hasMetrics = false,
   entityTypes,
+  contextEntityTypes,
 }: SetupOpts = {}) {
   const query = createEmptyQuery();
 
@@ -48,7 +51,7 @@ export function setup({
   ]);
   setupDatabasesEndpoints([createDatabase()]);
 
-  renderWithProviders(
+  const picker = (
     <EmbeddingDataPicker
       query={query}
       stageIndex={0}
@@ -59,7 +62,20 @@ export function setup({
       title="Pick your starting data"
       placeholder="Pick your starting data"
       table={undefined}
-    />,
+    />
+  );
+
+  renderWithProviders(
+    contextEntityTypes ? (
+      <EmbeddingDataPickerContextProvider
+        entityTypes={contextEntityTypes}
+        dataPicker="staged"
+      >
+        {picker}
+      </EmbeddingDataPickerContextProvider>
+    ) : (
+      picker
+    ),
     entityTypes
       ? {
           storeInitialState: createMockState({
