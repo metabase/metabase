@@ -160,6 +160,37 @@
           (is (= 3 returned))
           (is (true? has_more_values)))))))
 
+(deftest constraints-value-must-not-name-a-column-test
+  (testing "a constraints value shaped like a field reference is refused, not compiled into one"
+    ;; `*param-values-query*` deliberately lets a caller who can only READ the dashboard look up its
+    ;; filter values without query permission on the table underneath. That elevation is what makes a
+    ;; smuggled MBQL clause dangerous: `[["field" <id> nil]]` is compiled as a field reference rather
+    ;; than bound as a literal, so the server compares one column against another and hands back the
+    ;; matching rows — data the caller may not query, including from a column marked `sensitive`.
+    (with-fixtures [{:keys [dashboard]}]
+      (mt/with-test-user :rasta
+        (let [category-id (mt/id :venues :category_id)
+              base        {:target "dashboard" :id (:id dashboard) :parameter_id "_CATEGORY_NAME_"
+                           :limit 1000}
+              unconstrained (:values (params-result base))]
+          (testing "anti-vacuity control: the call shape reaches the warehouse and a literal narrows it"
+            (is (seq unconstrained))
+            (let [literal (:values (params-result (assoc base :constraints {:_PRICE_ 2})))]
+              (is (seq literal))
+              (is (< (count literal) (count unconstrained)))))
+          (testing "an id-shaped field reference is refused"
+            (is (string? (params-error (assoc base :constraints
+                                              {:_PRICE_ [["field" category-id nil]]})))))
+          (testing "a name-shaped field reference is refused"
+            (is (string? (params-error (assoc base :constraints
+                                              {:_PRICE_ [["field" {"base-type" "type/Integer"} "CATEGORY_ID"]]})))))
+          (testing "an arithmetic expression over a column is refused"
+            (is (string? (params-error (assoc base :constraints
+                                              {:_PRICE_ [["+" ["field" category-id nil] 1]]})))))
+          (testing "a :value clause is refused"
+            (is (string? (params-error (assoc base :constraints
+                                              {:_PRICE_ [["value" 2 {"base-type" "type/Integer"}]]}))))))))))
+
 (deftest dashboard-values-entity-id-test
   (testing "GHY-4141: id accepts a 21-char entity_id as well as a numeric id"
     (with-fixtures [{:keys [dashboard]}]
