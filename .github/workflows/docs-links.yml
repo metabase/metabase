@@ -33,22 +33,8 @@ jobs:
           args: docs --config ./.lychee/config.toml --offline
           format: markdown
 
-      # The nav sidebar is a YAML tree, not markdown, so lychee cannot extract its links directly.
-      # Render it as a markdown list of links (one per nav url) and check that with lychee.
-      - name: Set up Babashka
-        if: ${{ !cancelled() }}
-        uses: turtlequeue/setup-babashka@d78ec6570aea3b614bc695cafcceb82eb45c2af9 # v1.8.0
-        with:
-          babashka-version: 1.12.197
-
-      - name: Render nav.yml as markdown links
-        if: ${{ !cancelled() }}
-        run: bb --config /dev/null docs/util/nav_links.clj "$RUNNER_TEMP/nav-links.md"
-
+      # The nav sidebar is a YAML tree, not markdown, so lychee cannot read it directly. The script
+      # renders it as markdown, runs lychee (on PATH after the step above), and reports nav.yml lines.
       - name: Check nav.yml links
         if: ${{ !cancelled() }}
-        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
-        with:
-          fail: true
-          args: ${{ runner.temp }}/nav-links.md --offline --root-dir ./docs --fallback-extensions md,html --include-fragments --no-progress
-          format: markdown
+        run: docs/util/check-nav-links.sh

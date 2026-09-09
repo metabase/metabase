@@ -2,8 +2,7 @@
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  ;; dev/src is here for tasks whose logic is shared with JVM tests (e.g. dev.kondo-ratchet)
- ;; docs/util is here so `docs/util/nav_links.clj`, which CI also runs standalone, is a namespace for mage
- :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src" "dev/src" "docs/util"]
+ :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src" "dev/src"]
  ;; use Git version of dep temporarily until a new release > 0.16.4 is cut
  :deps {dev.weavejester/cljfmt {:git/sha "075eae26e3c8dad433b88f05927bcd50e3571328"
                                 :git/url "https://github.com/weavejester/cljfmt"} ;; run cljfmt from bb
@@ -115,12 +114,6 @@
    :examples [["./bin/mage codespell-interactive"]]
    :requires [[mage.codespell]]
    :task (task! (mage.codespell/codespell-interactive (:arguments parsed)))}
-
-  docs-check-nav-links
-  {:doc "Check that every url in docs/util/data/nav.yml points at a page (and anchor) under docs/. Needs lychee."
-   :examples [["./bin/mage docs-check-nav-links"]]
-   :requires [[mage.nav-links]]
-   :task (task! (mage.nav-links/check-nav-links parsed))}
 
   start-maildev
   {:doc "Start Maildev"
