@@ -80,6 +80,8 @@
   "enterprise/frontend/src/metabase-enterprise/api/support-access-grants.ts:listSupportAccessGrants:request.query": "mismatch",
   "enterprise/frontend/src/metabase-enterprise/api/support-access-grants.ts:listSupportAccessGrants:response.2XX": "unverified",
   "enterprise/frontend/src/metabase-enterprise/api/support-access-grants.ts:revokeSupportAccessGrant:response.2XX": "unverified",
+  "enterprise/frontend/src/metabase-enterprise/api/table.ts:getTablePublishingInfo:request.body": "unverified",
+  "enterprise/frontend/src/metabase-enterprise/api/table.ts:getTablePublishingInfo:request.path.0": "mismatch",
   "enterprise/frontend/src/metabase-enterprise/api/table.ts:publishTables:request.body": "mismatch",
   "enterprise/frontend/src/metabase-enterprise/api/table.ts:publishTables:response.2XX": "unverified",
   "enterprise/frontend/src/metabase-enterprise/api/table.ts:unpublishTables:request.body": "mismatch",
