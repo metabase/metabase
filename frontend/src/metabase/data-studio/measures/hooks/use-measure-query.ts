@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatasetQuery } from "metabase-types/api";
 
 type UseMeasureQueryResult = {
@@ -11,18 +11,15 @@ type UseMeasureQueryResult = {
 
 export function useMeasureQuery(
   definition: DatasetQuery | null,
-  metadata: Metadata,
 ): UseMeasureQueryResult {
+  const getMetadataProvider = useMetadataProviderFactory();
   const query = useMemo(() => {
     if (!definition?.database) {
       return undefined;
     }
-    const metadataProvider = Lib.metadataProvider(
-      definition.database,
-      metadata,
-    );
+    const metadataProvider = getMetadataProvider(definition.database);
     return Lib.fromJsQuery(metadataProvider, definition);
-  }, [metadata, definition]);
+  }, [getMetadataProvider, definition]);
 
   const aggregations = useMemo(
     () => (query ? Lib.aggregations(query, -1) : []),

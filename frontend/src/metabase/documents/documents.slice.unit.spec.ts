@@ -45,12 +45,12 @@ describe("documents slice", () => {
         createStateWithDraftCard({ "card.title": "Title", threshold: 42 }),
         replaceVizSettings({
           cardId: DRAFT_CARD_ID,
-          settings: { "custom-viz:plugin:threshold": 43 },
+          settings: { "custom:plugin:threshold": 43 },
         }),
       );
 
       expect(getDraftCardSettings(state)).toEqual({
-        "custom-viz:plugin:threshold": 43,
+        "custom:plugin:threshold": 43,
       });
     });
 

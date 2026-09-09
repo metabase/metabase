@@ -375,6 +375,12 @@ export const cardApi = Api.injectEndpoints({
   },
 });
 
+/**
+ * Reads an already-fetched card out of the RTK cache. Use it after awaiting the
+ * fetch, where a hook is not an option.
+ */
+export const selectCard = cardApi.endpoints.getCard.select;
+
 export const {
   useListCardsQuery,
   useGetCardQuery,

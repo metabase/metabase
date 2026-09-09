@@ -9,8 +9,8 @@ import {
   setupAIControlsInstanceLimitEndpoint,
   setupUpdateAIControlsInstanceLimitEndpoint,
 } from "__support__/server-mocks/metabot";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 

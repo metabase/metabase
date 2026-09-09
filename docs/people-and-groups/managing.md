@@ -28,7 +28,7 @@ Admins can add people to their Metabase. To add a new person manually, click on 
 
 Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a Pro or Enterprise Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](https://www.metabase.com/how-billing-works)).
 
-If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
+If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet set up email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
 
 Admins can also create an account for someone and point them to a specific dashboard or question. On a dashboard or question, click the **Sharing** icon and select **Invite someone to view this**. Enter the person's email, choose their groups, and click **Send invitation**. Once they sign up, Metabase directs them to that dashboard or question.
 

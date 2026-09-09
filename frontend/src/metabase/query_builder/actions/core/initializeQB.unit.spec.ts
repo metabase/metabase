@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { createMockLocation, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
@@ -8,10 +9,6 @@ import { getMetadata } from "metabase/metadata-store";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
-import {
-  createMockLocation,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";

@@ -333,7 +333,6 @@
   (let [runs       (notification.db/terminal-alert-runs run-type-alert
                                                         notification-id
                                                         terminal-statuses
-                                                        (notification.db/admin-lookback-cutoff)
                                                         result-limit)
         failed-ids (into #{} (keep (fn [{:keys [id status]}]
                                      (when (#{:failed :abandoned} status) id))
@@ -363,8 +362,7 @@
                         :channels channel-entries}))))
         (notification.db/channel-send-history-reducible run-type-alert
                                                         notification-id
-                                                        task-channel-send
-                                                        (notification.db/admin-lookback-cutoff))))
+                                                        task-channel-send)))
 
 (defn- get-notification-detail
   "Fetch a single card-type notification with `:last_check`, `:last_send`, `:check_history`, and
