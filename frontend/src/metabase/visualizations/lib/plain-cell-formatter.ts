@@ -15,14 +15,13 @@ export function createPlainCellFormatter<TValue = unknown>({
   getClicked?: (rowIndex: number, columnId: string) => ClickObject | undefined;
   copyLinkUrl?: boolean;
 }): PlainCellFormatter<TValue> {
-  const baseOptions = { ...columnSettings, type: "cell", copyLinkUrl };
-  return (untranslatedValue, rowIndex, columnId) => {
-    const clicked = getClicked?.(rowIndex, columnId);
-    return String(
-      formatValue(
-        translate(untranslatedValue),
-        clicked ? { ...baseOptions, clicked } : baseOptions,
-      ),
+  return (untranslatedValue, rowIndex, columnId) =>
+    String(
+      formatValue(translate(untranslatedValue), {
+        ...columnSettings,
+        type: "cell",
+        copyLinkUrl,
+        clicked: getClicked?.(rowIndex, columnId),
+      }),
     );
-  };
 }
