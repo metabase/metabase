@@ -102,12 +102,12 @@ export const GoalValueInput = ({
     },
   );
 
-  const resolved = useAnsweredGoalValue(
-    datasetQuery,
+  const resolved = useAnsweredGoalValue({
     data,
-    value,
+    datasetQuery,
     referencedEntities,
-  );
+    value,
+  });
   const selfColumnLabel = isSelfRef
     ? (selfColumns.find((column) => column.name === value)?.label ??
       String(value))

@@ -10,7 +10,7 @@ export function useResolvedGoalValue(
   data: DatasetData,
   value: GoalValue | null | undefined,
 ): GoalValueResolution {
-  const resolved = useAnsweredGoalValue(datasetQuery, data, value);
+  const resolved = useAnsweredGoalValue({ data, datasetQuery, value });
 
   if (resolved.isUnanswered === true) {
     return { status: "resolving" };
