@@ -293,3 +293,77 @@
         (is (= (* page-size n-pages) (count ids)))
         (is (apply < ids) "strictly increasing => no boundary repeats and no rows skipped backwards")
         (is (= (count ids) (count (distinct ids))))))))
+
+(deftest with-total-order-preserves-parameters-test
+  ;; GHY-4363: `:parameters` are a real filter on an MBQL query — the QP's parameter middleware ANDs
+  ;; them on — but `lib/prepare-for-serialization` strips them as runtime-only. Both rewrite paths
+  ;; round-trip through serialization, so both have to put them back or the rewritten query asks a
+  ;; wider question than the caller did.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [params    [{:type   :number/=
+                      :value  [2]
+                      :target [:dimension [:field (mt/id :orders :quantity) nil]]}]
+          ;; deliberately unordered so `with-total-order` actually rewrites — the pre-existing
+          ;; coverage used an already-PK-ordered query, which only exercises the short-circuit
+          unordered (-> (orders-query)
+                        (lib/limit 5)
+                        lib/prepare-for-serialization
+                        (assoc :parameters params))
+          ordered   (q/with-total-order unordered)]
+      (is (not= (:stages unordered) (:stages ordered))
+          "the rewrite must actually fire, or this test proves nothing")
+      (testing "with-total-order keeps :parameters"
+        (is (= params (:parameters ordered))))
+      (testing "and the parameter is still enforced against the warehouse"
+        (let [[rows cols] (run-rows+cols (lib/query (mp) ordered))
+              idx         (col-index cols "QUANTITY")]
+          (is (seq rows))
+          (is (every? #(= 2 (nth % idx)) rows)
+              "every row must satisfy the parameter filter the caller supplied")))
+      (testing "next-page-query keeps :parameters too, so the cursor stays as narrow as page 1"
+        (let [[rows cols] (run-rows+cols (lib/query (mp) ordered))]
+          (when-let [nxt (#'q/next-page-query ordered cols (last rows))]
+            (is (= params (:parameters nxt)))))))))
+
+(deftest caller-cannot-forge-the-keyset-marker-test
+  ;; GHY-4363: the keyset marker means "this namespace minted this predicate". A tool's `:query` is
+  ;; an open [:map] and a namespaced option key rides through JSON decode and serialization intact,
+  ;; so without stripping, a caller could stamp its own filter and have it silently dropped from the
+  ;; saved handle (and from every later page) while the visible first page still looked narrow.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [total-col (lib.metadata/field (mp) (mt/id :orders :total))
+          forged    (-> (orders-query)
+                        (lib/filter (-> (lib/> total-col 50)
+                                        (assoc-in [1 :metabase.mcp.v2.query/keyset] true)))
+                        lib/prepare-for-serialization)
+          cleaned   (q/strip-caller-keyset-markers forged)]
+      (testing "the forged marker survives serialization untouched (this is the hazard)"
+        (is (some #(get-in % [1 :metabase.mcp.v2.query/keyset])
+                  (last-stage-filters forged))))
+      (testing "stripping removes it"
+        (is (not-any? #(get-in % [1 :metabase.mcp.v2.query/keyset])
+                      (last-stage-filters cleaned))))
+      (testing "so the caller's filter now survives into the handle instead of vanishing"
+        (is (= 0 (count (last-stage-filters (q/without-page-boundary forged))))
+            "unstripped: without-page-boundary eats the caller's own filter")
+        (is (= 1 (count (last-stage-filters (q/without-page-boundary cleaned))))
+            "stripped: the caller's filter is part of the question and stays")))))
+
+(deftest no-cursor-for-a-nullable-key-column-test
+  ;; GHY-4363: a keyset predicate is all comparisons, and under three-valued logic every term is
+  ;; NULL — never true — for a row whose key column is NULL. Those rows are never served, and the
+  ;; response still says truncated:false. ORDERS.DISCOUNT is NULL for 16845 of 18760 rows, so a
+  ;; DISCOUNT-keyed cursor would silently serve about a tenth of the table and call it complete.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [disc     (lib.metadata/field (mp) (mt/id :orders :discount))
+          nullable (-> (orders-query)
+                       (lib/order-by disc :desc)
+                       lib/prepare-for-serialization
+                       q/with-total-order)
+          [rows cols] (run-rows+cols (lib/query (mp) (lib/limit (lib/query (mp) nullable) 5)))]
+      (testing "a nullable key column gets no cursor at all, rather than one with silent gaps"
+        (is (nil? (#'q/next-page-query nullable cols (last rows)))))
+      (testing "while a NOT NULL key (the PK) still pages normally"
+        (let [pk-q (q/with-total-order (lib/prepare-for-serialization (orders-query)))
+              [pk-rows pk-cols] (run-rows+cols (lib/query (mp) (lib/limit (lib/query (mp) pk-q) 5)))]
+          (is (some? (#'q/next-page-query pk-q pk-cols (last pk-rows)))))))))

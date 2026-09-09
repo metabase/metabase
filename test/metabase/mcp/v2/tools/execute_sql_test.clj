@@ -300,7 +300,21 @@
       (is (false? (expressible? "SELECT status, count(*) FROM orders GROUP BY status UNION SELECT 'x', 0")))
       (is (false? (expressible? "SELECT status, count(*) FROM (SELECT * FROM orders) o GROUP BY status")))
       (is (false? (expressible? "SELECT status, count(*) FROM orders WHERE {{status}} GROUP BY status")))
-      (is (false? (expressible? "SELECT status, count(*) FROM orders GROUP BY status; DROP TABLE x"))))))
+      (is (false? (expressible? "SELECT status, count(*) FROM orders GROUP BY status; DROP TABLE x"))))
+    (testing "GHY-4363: a long literal or an unbalanced quote must not blow the stack"
+      ;; the literal-blanking regex used to be `'(?:[^']|'')*'`, an alternation under a quantifier,
+      ;; which java.util.regex compiles to one stack frame per character consumed. A single
+      ;; unterminated quote — an ordinary agent typo — made it backtrack across the whole query and
+      ;; throw StackOverflowError, which is an Error and so escapes the tool's Exception handler.
+      ;; the point of each of these is that it RETURNS rather than throwing; the particular
+      ;; verdict is incidental
+      (is (true? (expressible? (str "select x from t where note = '" (apply str (repeat 8000 \x))
+                                    "' group by x"))))
+      (is (false? (expressible? (str "select * from t where a = 'abc and b = "
+                                     (apply str (repeat 8000 \y))))))
+      (is (true? (expressible? (str "SELECT status, count(*) FROM orders WHERE note = '"
+                                    (apply str (repeat 8000 \z))
+                                    "' GROUP BY status")))))))
 
 ;;; ---------------------------------------------------- Gates -----------------------------------------------------
 

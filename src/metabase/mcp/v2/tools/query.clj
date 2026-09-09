@@ -75,7 +75,11 @@
    serializes the resolved query. The handle and cursor paths resolve through the handle store,
    which re-runs the native/shape/permission guards — a stored handle never grants access the
    caller has since lost. A cursor is an ordinary handle whose stored query already embeds the
-   next-page keyset boundary, so the two resolve identically."
+   next-page keyset boundary, so the two resolve identically.
+
+   The fresh path strips the private keyset marker (see [[v2.query/strip-caller-keyset-markers]]):
+   it means \"this namespace minted this predicate\", so a caller must not be able to supply one. The
+   handle and cursor paths must NOT strip it — a cursor's own boundary carries it."
   [input {:keys [query query_handle cursor prompt]} session-id]
   (case input
     :query
@@ -83,7 +87,8 @@
       (query-guards/reject-native-query! query)
       {:query  (-> (v2.queries/execute-representations-query query)
                    (get-in [:structured-output :query])
-                   lib/prepare-for-serialization)
+                   lib/prepare-for-serialization
+                   v2.query/strip-caller-keyset-markers)
        :prompt prompt})
 
     (:query_handle :cursor)
@@ -91,6 +96,11 @@
           (v2.queries/resolve-query-handle! session-id api/*current-user-id* (or query_handle cursor))]
       ;; Prompts ride handle chains: a cursor page minted without an explicit `prompt` keeps
       ;; the original request for the visualization feedback flow.
+      ;;
+      ;; Deliberately NOT stripped here: a cursor's stored query carries the marker this namespace
+      ;; minted, and [[metabase.mcp.v2.query/next-page-query]] needs it to supersede the previous
+      ;; page's predicate rather than stack a dead one beside it. Caller-supplied queries are
+      ;; stripped where they enter instead — the `:query` branch above and the `/drills` callback.
       {:query stored :prompt (or prompt stored-prompt)})))
 
 ;;; ------------------------------------------------- Execution ----------------------------------------------------
@@ -364,10 +374,17 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
 
 (defn- strip-sql-noise
   "Lower-cased `sql` with string literals, double-quoted identifiers, and comments blanked, so the
-   keyword probes in [[mbql-expressible-sql?]] never match inside one."
+   keyword probes in [[mbql-expressible-sql?]] never match inside one.
+
+   The literal pattern is an unrolled loop (`[^']*(?:''[^']*)*`) rather than the equivalent-looking
+   alternation `(?:[^']|'')*`. `java.util.regex` compiles an alternation under a quantifier to a
+   recursive match chain — one stack frame per character consumed — so the alternation form throws
+   a `StackOverflowError` on a long literal, and on an *unterminated* quote it backtracks across the
+   whole remaining query, which a single typo in an ordinary query is enough to trigger. The
+   unrolled form consumes each run iteratively and recurses only once per escaped quote."
   [sql]
   (-> sql
-      (str/replace #"'(?:[^']|'')*'" "''")
+      (str/replace #"'[^']*(?:''[^']*)*'" "''")
       (str/replace #"\"[^\"]*\"" "\"\"")
       (str/replace #"--[^\n]*" " ")
       (str/replace #"(?s)/\*.*?\*/" " ")

@@ -4,12 +4,14 @@
    and a keyset predicate past the last returned row — so paging is just another query on the
    existing handle store: no page-state column, no content-addressing, no schema change."
   (:require
+   [clojure.walk :as walk]
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.queries :as v2.queries]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -139,6 +141,17 @@
   (when-let [key-specs (unique-key-specs resolved-query query ret-cols)]
     (into [] (remove (comp ordered-idxs :idx)) key-specs)))
 
+(defn- serialize-preserving-parameters
+  "`query` serialized, with `:parameters` carried over from `serialized-query`.
+
+   [[lib/prepare-for-serialization]] strips `:parameters` as runtime-only, but for an MBQL query
+   they are a real filter: the QP's parameter middleware ANDs them onto the query. Any rewrite that
+   round-trips through serialization must put them back, or the rewritten query asks a wider
+   question than the caller did. `execute_sql` re-attaches them the same way for the same reason."
+  [serialized-query query]
+  (cond-> (lib/prepare-for-serialization query)
+    (seq (:parameters serialized-query)) (assoc :parameters (:parameters serialized-query))))
+
 (defn- keyset-filter-clause
   "Lexicographic strictly-past-the-boundary predicate over the key columns:
    `(k₀ cmp v₀) OR (k₀ = v₀ AND k₁ cmp v₁) OR …`, where `cmp` is `>` for `:asc` keys and `<` for
@@ -182,6 +195,26 @@
   (if-let [kept (not-empty (into [] (remove minted-keyset?) (:filters stage)))]
     (assoc stage :filters kept)
     (dissoc stage :filters)))
+
+(defn strip-caller-keyset-markers
+  "`serialized-query` with [[keyset-marker]] removed from every clause's options, everywhere in the
+   map.
+
+   The marker identifies a predicate *this namespace* minted, and two behaviours depend on that:
+   [[without-page-boundary]] drops marked filters from the query a handle stores, and
+   [[supersede-previous-keyset]] drops them from the query the next page runs. Neither is safe if a
+   caller can mint the mark itself — and it can, since a tool's `:query` is an open `[:map]` and a
+   namespaced option key rides through JSON decode and serialization untouched. A caller that
+   stamps its own filter gets that filter silently dropped from the saved handle and from every
+   later page, so the tool reports a narrow question while serving wide rows.
+
+   Run every caller-supplied query through this so only server-minted clauses can carry the mark."
+  [serialized-query]
+  (walk/postwalk (fn [x]
+                   (if (and (map? x) (contains? x keyset-marker))
+                     (dissoc x keyset-marker)
+                     x))
+                 serialized-query))
 
 (defn- supersede-previous-keyset
   "`query`'s last stage with the keyset predicates this namespace minted removed, so the caller can
@@ -230,6 +263,47 @@
   (and (isa? (:effective-type col) :type/Temporal)
        (not (isa? (:effective-type col) :type/Date))
        (not (contains? exact-temporal-units (:unit (lib/temporal-bucket col))))))
+
+(defn- nullable-key-cols?
+  "True when any column in `cols` can hold NULL — the condition that makes a keyset cursor lose rows.
+
+   A keyset predicate is built purely from comparisons (`k > v`, `k = v`), and under SQL's
+   three-valued logic every one of those is NULL — never true — for a row whose key column is NULL.
+   Such a row fails the next-page predicate and is never served, even though it sorted after the
+   boundary in the order that actually ran. The `(every? some? values)` guard on the boundary row
+   does not catch this: it fires only when a page boundary happens to land inside the NULL run,
+   while the rows lost are the whole run.
+
+   Refusing is the honest answer rather than a fix. Where the NULL block sorts is driver-dependent
+   (the SQL QP emits no explicit `NULLS FIRST`/`LAST`), and MBQL cannot express a null-aware
+   comparison, so there is no predicate this namespace could build that is correct on every driver.
+   This joins the remap and lossy-value checks in [[next-page-query]]: an unusable key means no
+   cursor, not a cursor with gaps.
+
+   Two signals, both read from the app DB because lib column metadata carries neither. A column is
+   unsafe only when it is BOTH declared nullable AND has been observed to hold NULLs
+   (`fingerprint.global.nil%`). Declared nullability alone is far too blunt to gate on — in a
+   typical warehouse only primary keys are NOT NULL, so refusing on it would cost the cursor for
+   nearly every query that orders by anything else, trading a silent-rows bug for a broad loss of
+   paging. The fingerprint is what distinguishes a column that merely permits NULLs from one that
+   actually contains them.
+
+   The fingerprint is a sync-time sample, so `nil% = 0.0` is strong evidence rather than proof: a
+   column that gains its first NULL after the last sync stays cursorable until the next one. That
+   residual is bounded by sync frequency and is the price of keeping paging usable at all.
+
+   Columns that are not plain field refs (expression and aggregation outputs) have no `:id`, so
+   nothing is known about them and they are treated as safe on the same reasoning — refusing on
+   every aggregate would disable the aggregated cursor path wholesale."
+  [cols]
+  (let [field-ids (into #{} (keep :id) cols)]
+    (boolean
+     (when (seq field-ids)
+       (->> (t2/select [:model/Field :id :database_is_nullable :fingerprint]
+                       :id [:in field-ids]
+                       :database_is_nullable true)
+            (some (fn [field]
+                    (pos? (or (get-in (:fingerprint field) [:global :nil%]) 0)))))))))
 
 (defn- row-positions
   "Positions in the result row of the query's projected columns, in projection order. The remap
@@ -302,12 +376,15 @@
                         ;; order-by on it to sort by the display value, so the executed order and the
                         ;; keyset predicate — which compares raw values — would disagree: a gap), and
                         ;; neither can a column whose boundary value doesn't round-trip exactly.
-                        unsafe-key? (some (fn [{:keys [idx]}]
-                                            (let [col (nth ret-cols idx)]
-                                              (or (:lib/external-remap col)
-                                                  (:lib/internal-remap col)
-                                                  (lossy-boundary-col? col))))
-                                          specs)]
+                        key-cols    (mapv #(nth ret-cols (:idx %)) specs)
+                        unsafe-key? (or (some (fn [col]
+                                                (or (:lib/external-remap col)
+                                                    (:lib/internal-remap col)
+                                                    (lossy-boundary-col? col)))
+                                              key-cols)
+                                        ;; a NULL in any key column makes every comparison term
+                                        ;; NULL, so the row is silently never served
+                                        (nullable-key-cols? key-cols))]
                     (when (and (seq specs) (not unsafe-key?) (every? some? values))
                       (let [base        (if aggregated? (lib/append-stage query) query)
                             target-cols (if aggregated? (vec (lib/returned-columns base)) ret-cols)
@@ -319,11 +396,11 @@
                                                   base
                                                   specs)
                                           base)]
-                        (-> with-order
-                            supersede-previous-keyset
-                            (lib/filter (-> (keyset-filter-clause target-cols specs values)
-                                            (assoc-in [1 keyset-marker] true)))
-                            lib/prepare-for-serialization)))))))))))))
+                        (->> (-> with-order
+                                 supersede-previous-keyset
+                                 (lib/filter (-> (keyset-filter-clause target-cols specs values)
+                                                 (assoc-in [1 keyset-marker] true))))
+                             (serialize-preserving-parameters resolved-query))))))))))))))
 
 (defn with-total-order
   "`serialized-query` with the tiebreakers that make its row order total appended to the last
@@ -352,11 +429,11 @@
                 (when-let [ordered (order-by-specs query ret-cols)]
                   (when-let [tiebreakers (seq (tiebreaker-specs serialized-query query ret-cols
                                                                 (into #{} (map :idx) ordered)))]
-                    (-> (reduce (fn [q {:keys [idx dir]}]
-                                  (lib/order-by q (nth ret-cols idx) dir))
-                                query
-                                tiebreakers)
-                        lib/prepare-for-serialization))))))
+                    (->> (reduce (fn [q {:keys [idx dir]}]
+                                   (lib/order-by q (nth ret-cols idx) dir))
+                                 query
+                                 tiebreakers)
+                         (serialize-preserving-parameters serialized-query)))))))
           (catch Exception e
             (log/warn e "Failed to impose a total order on the query")
             nil)))
@@ -385,8 +462,8 @@
    sourced saved question, or a sourced question whose stored query can't be read (a fan-out
    defeats every tiebreaker — see [[next-page-query]]), an order-by outside the projection, a
    row that can't be aligned with the projection, a nil boundary value, a key column that is
-   remapped or whose values don't round-trip exactly (raw datetimes), a projection with no
-   provable unique key — an unaggregated stage whose `:fields` drops the source-table PK, whose
+   remapped, nullable in the warehouse (see [[nullable-key-cols?]]), or whose values don't
+   round-trip exactly (raw datetimes), a projection with no provable unique key — an unaggregated stage whose `:fields` drops the source-table PK, whose
    repeating tuple no order can break ties on (see [[unique-key-specs]]) — an aggregated stage
    carrying its own limit, or any failure to rehydrate or manipulate the query."
   ([mcp-session-id user-id resolved-query last-row]
