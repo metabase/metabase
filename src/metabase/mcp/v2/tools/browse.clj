@@ -329,12 +329,22 @@
 
 (defn- attach-inline-values
   "Inline cached sample `:values` (as `[value human-readable?]` pairs, the REST field/values
-   shape) onto list-type fields, for the detailed projection. One current-user-aware batched
-   FieldValues fetch across all `tables` — sandboxed/impersonated fields resolve through their
-   per-user cache, never the shared one."
+   shape) onto the list-type fields of every table in `tables` the current user can query, for
+   the detailed projection. Tables they can only read come back unchanged — full field metadata,
+   no `:values`. One current-user-aware batched FieldValues fetch across the queryable tables —
+   sandboxed/impersonated fields resolve through their per-user cache, never the shared one."
   [tables]
-  (let [field-ids  (into []
-                         (comp (mapcat :fields)
+  ;; Read permission is not enough: values are rows of the table, not metadata about it. REST draws
+  ;; the same line — `/api/field/:id/summary` gates on `read-check`, `/api/field/:id/values` on
+  ;; `query-check` — so a metadata-only caller who is refused there must be refused here too.
+  (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
+                                  :table-ids (into #{} (keep :id) tables)})
+  (let [queryable  (into #{} (comp (filter mi/can-query?) (keep :id)) tables)
+        ;; Field ids are unique across tables, so restricting the fetch to queryable tables is the
+        ;; whole gate — nothing withheld here can be looked up again below.
+        field-ids  (into []
+                         (comp (filter (comp queryable :id))
+                               (mapcat :fields)
                                (filter list-type-field?)
                                (keep :id))
                          tables)
@@ -525,7 +535,7 @@
    [:offset {:optional true}
     [:maybe [:int {:min 0 :description "list_* actions: rows to skip, for paging. For get_fields it pages the fields of a single oversized table, as directed by the continuation message."}]]]
    [:response_format {:optional true}
-    [:maybe [:enum {:description "concise (default) returns the essential columns; detailed adds the full projection (for get_fields: effective_type, coercion_strategy, database_type, fingerprint, has_field_values, and inline values for list-type fields)."}
+    [:maybe [:enum {:description "concise (default) returns the essential columns; detailed adds the full projection (for get_fields: effective_type, coercion_strategy, database_type, fingerprint, has_field_values, and inline values for list-type fields). Values and fingerprints are permission-dependent, and absent rather than empty when withheld: values need permission to query the table, not just to read its metadata, and fingerprints are withheld entirely when your row access to the table is narrowed."}
              "concise" "detailed"]]]
    [:fields {:optional true}
     [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from the detailed row shape, item-relative (e.g. \"fields.name\"). Mutually exclusive with response_format. Not supported for list_schemas."}]]]]])

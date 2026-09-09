@@ -955,3 +955,109 @@
                      (tools.browse/browse-data {:action "list_schemas" :database_id id} {}))
             db-id
             Integer/MAX_VALUE))))))
+
+;;; ------------------------------ get_fields values require query permission ---------------------------------------
+
+(defn- get-fields-as
+  "Call `browse_data` as `user` and return the parsed JSON envelope (first line of the text block)."
+  [user args]
+  (mt/with-test-user user
+    (let [text (-> (tools.browse/browse-data args {}) :content first :text)]
+      (json/decode+kw (first (str/split-lines text))))))
+
+(defn- values-for
+  "The `:values` attached to the field with `field-id` in `envelope`, or nil if it carries none."
+  [envelope field-id]
+  (->> (:tables envelope) (mapcat :fields) (filter #(= field-id (:id %))) first :values))
+
+(defn- field-in
+  "The projected field map with `field-id` in `envelope`, or nil."
+  [envelope field-id]
+  (->> (:tables envelope) (mapcat :fields) (filter #(= field-id (:id %))) first))
+
+(deftest get-fields-values-require-query-permission-test
+  (testing "get_fields must not serve a column's values to a metadata-only caller"
+    (mt/with-temp [:model/Database    {db-id :id} {}
+                   :model/Table       {t-id :id}  {:db_id db-id :schema "public"
+                                                   :name "orders" :active true}
+                   :model/Field       {f-id :id}  {:table_id t-id :name "status"
+                                                   :base_type :type/Text
+                                                   :effective_type :type/Text
+                                                   :has_field_values :list :active true}
+                   :model/FieldValues _           {:field_id f-id :type :full
+                                                   :values ["shipped" "pending" "cancelled"]}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-table-permission! (perms-group/all-users) t-id
+                                          :perms/manage-table-metadata :yes)
+        (testing "precondition — the fixture built the actor, not some other user"
+          (mt/with-test-user :rasta
+            (let [table (t2/select-one :model/Table :id t-id)]
+              (is (mi/can-read? table) "metadata permission alone satisfies can-read?")
+              (is (not (mi/can-query? table)) "...and does not satisfy can-query?"))))
+        (testing "the REST endpoint that serves these values refuses this caller"
+          (mt/user-http-request :rasta :get 403 (format "field/%d/values" f-id)))
+        (testing "so get_fields must refuse them too"
+          (let [envelope (get-fields-as :rasta {:action "get_fields" :table_ids [t-id]
+                                                :response_format "detailed"})]
+            (is (nil? (values-for envelope f-id))
+                "column values reached a caller who cannot query the table")))
+        (testing "only :values is withheld — the field's other detailed metadata still comes through"
+          (let [envelope (get-fields-as :rasta {:action "get_fields" :table_ids [t-id]
+                                                :response_format "detailed"})
+                field    (field-in envelope f-id)]
+            (is (= [t-id] (map :id (:tables envelope)))
+                "the table itself is still readable and still listed")
+            (is (= #{:base_type :effective_type :database_type :has_field_values}
+                   (set (keys (select-keys field [:base_type :effective_type
+                                                  :database_type :has_field_values]))))
+                "the detailed field keys other than :values survive")))
+        (testing "a fields projection cannot route around the gate"
+          (let [envelope (get-fields-as :rasta {:action "get_fields" :table_ids [t-id]
+                                                :fields ["fields.name" "fields.values"]})]
+            (is (= ["status"] (mapcat #(map :name (:fields %)) (:tables envelope)))
+                "the projection still names the column")
+            (is (empty? (keep :values (mapcat :fields (:tables envelope))))
+                "column values reached a metadata-only caller through a fields projection")))
+        (testing "control — the probe can produce a positive, so the assertion above is not vacuous"
+          (data-perms/set-database-permission! (perms-group/all-users) db-id
+                                               :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) t-id
+                                            :perms/create-queries :query-builder)
+          (mt/user-http-request :rasta :get 200 (format "field/%d/values" f-id))
+          (let [envelope (get-fields-as :rasta {:action "get_fields" :table_ids [t-id]
+                                                :response_format "detailed"})]
+            (is (some? (values-for envelope f-id))
+                "with query permission the same call does return values")))))))
+
+(deftest get-fields-values-gate-is-per-table-test
+  (testing "a batch mixing a queryable table with a metadata-only one gates each table on its own"
+    (mt/with-temp [:model/Database    {db-id :id}    {}
+                   :model/Table       {open-id :id}  {:db_id db-id :schema "public"
+                                                      :name "orders" :active true}
+                   :model/Field       {open-f :id}   {:table_id open-id :name "status"
+                                                      :base_type :type/Text
+                                                      :has_field_values :list :active true}
+                   :model/FieldValues _              {:field_id open-f :type :full
+                                                      :values ["shipped" "pending"]}
+                   :model/Table       {meta-id :id}  {:db_id db-id :schema "public"
+                                                      :name "salaries" :active true}
+                   :model/Field       {meta-f :id}   {:table_id meta-id :name "band"
+                                                      :base_type :type/Text
+                                                      :has_field_values :list :active true}
+                   :model/FieldValues _              {:field_id meta-f :type :full
+                                                      :values ["junior" "senior"]}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) db-id
+                                             :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) open-id
+                                          :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! (perms-group/all-users) meta-id
+                                          :perms/manage-table-metadata :yes)
+        (let [envelope (get-fields-as :rasta {:action "get_fields" :table_ids [open-id meta-id]
+                                              :response_format "detailed"})]
+          (is (= #{open-id meta-id} (set (map :id (:tables envelope))))
+              "both tables are readable, so both are listed")
+          (is (some? (values-for envelope open-f))
+              "the queryable table keeps its values")
+          (is (nil? (values-for envelope meta-f))
+              "column values reached a caller who cannot query that table"))))))
