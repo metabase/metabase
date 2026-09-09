@@ -225,10 +225,10 @@ describe("ProfileLink", () => {
 
       const appOrder = [
         "Main app",
-        "Data studio",
-        "Embedding hub",
-        "Monitor",
         "Admin",
+        "Data studio",
+        "Monitor",
+        "Embedding hub",
       ];
       const menuItems = await screen.findAllByRole("menuitem");
       const appMenuItems = menuItems.filter((menuItem) =>

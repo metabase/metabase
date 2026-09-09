@@ -104,6 +104,21 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
       </Menu.Item>,
     ];
 
+    if (showAdminSettingsItem) {
+      items.push(
+        <Menu.Item
+          key="admin-app-link"
+          component={ForwardRefLink}
+          to={"/admin"}
+          leftSection={
+            <Icon
+              name="io"
+              {...(currentApp === "admin" ? CURRENT_APP_ICON_OVERRIDES : null)}
+            />
+          }
+        >{t`Admin`}</Menu.Item>,
+      );
+    }
     if (canAccessDataStudio) {
       items.push(
         <Menu.Item
@@ -122,25 +137,6 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
           }
         >
           {t`Data studio`}
-        </Menu.Item>,
-      );
-    }
-    if (canAccessEmbeddingHub) {
-      items.push(
-        <Menu.Item
-          key="embedding-hub-link"
-          component={ForwardRefLink}
-          to={Urls.embeddingHub()}
-          leftSection={
-            <Icon
-              name="embed"
-              {...(currentApp === "embedding-hub"
-                ? CURRENT_APP_ICON_OVERRIDES
-                : null)}
-            />
-          }
-        >
-          {t`Embedding hub`}
         </Menu.Item>,
       );
     }
@@ -165,19 +161,23 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         </Menu.Item>,
       );
     }
-    if (showAdminSettingsItem) {
+    if (canAccessEmbeddingHub) {
       items.push(
         <Menu.Item
-          key="admin-app-link"
+          key="embedding-hub-link"
           component={ForwardRefLink}
-          to={"/admin"}
+          to={Urls.embeddingHub()}
           leftSection={
             <Icon
-              name="io"
-              {...(currentApp === "admin" ? CURRENT_APP_ICON_OVERRIDES : null)}
+              name="embed"
+              {...(currentApp === "embedding-hub"
+                ? CURRENT_APP_ICON_OVERRIDES
+                : null)}
             />
           }
-        >{t`Admin`}</Menu.Item>,
+        >
+          {t`Embedding hub`}
+        </Menu.Item>,
       );
     }
 
