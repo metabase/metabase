@@ -10,7 +10,7 @@
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(mu/defn insert-measure! :- (mut/optional-keys ::measures.schema/measure)
+(mu/defn insert-measure! :- ::measures.schema/measure
   "Insert a Measure and return the inserted instance."
   [creator-id   :- ::lib.schema.id/user
    measure-name :- :string
@@ -48,7 +48,11 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn table-perms-columns :- [:maybe (mut/select-keys ::warehouse-schema.schema/table [:db_id :schema :id])]
+(def ^:private TablePermsColumn
+  "Rows returned by [[table-perms-columns]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:db_id :schema :id]))
+
+(mu/defn table-perms-columns :- [:maybe TablePermsColumn]
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :db_id :schema :id] :id table-id))

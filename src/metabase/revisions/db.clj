@@ -2,7 +2,6 @@
   "Application database queries for the revisions module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
@@ -175,7 +174,7 @@
   [row :- RevisionRow]
   (t2/insert! :model/Revision row))
 
-(mu/defn insert-revision-returning! :- (mut/optional-keys ::revisions.schema/revision)
+(mu/defn insert-revision-returning! :- ::revisions.schema/revision
   "Insert the Revision `row` and return the inserted instance."
   [row :- RevisionRow]
   (t2/insert-returning-instance! :model/Revision row))

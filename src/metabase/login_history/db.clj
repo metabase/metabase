@@ -11,7 +11,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn login-history-for-user :- [:sequential (mut/select-keys ::login-history.schema/login-history [:timestamp :session_id :device_description :ip_address])]
+(def ^:private LoginHistoryForUser
+  "Rows returned by [[login-history-for-user]]."
+  (mut/select-keys ::login-history.schema/login-history [:timestamp :session_id :device_description :ip_address]))
+
+(mu/defn login-history-for-user :- [:sequential LoginHistoryForUser]
   "The timestamp, session id, device description, and IP address of the LoginHistory of the User with `user-id`,
   newest first."
   [user-id :- ::lib.schema.id/user]
@@ -24,13 +28,21 @@
   [row :- (mut/select-keys ::login-history.schema/login-history.update [:user_id :session_id :device_id :device_description :ip_address])]
   (t2/insert! :model/LoginHistory row))
 
-(mu/defn login-history-ids-for-user :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
+(def ^:private LoginHistoryIdsForUser
+  "Rows returned by [[login-history-ids-for-user]]."
+  (mut/select-keys ::login-history.schema/login-history [:id]))
+
+(mu/defn login-history-ids-for-user :- [:sequential LoginHistoryIdsForUser]
   "Up to `limit` LoginHistory ids of the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    limit   :- ms/PositiveInt]
   (t2/select [:model/LoginHistory :id] :user_id user-id {:limit limit}))
 
-(mu/defn login-history-ids-for-user-device :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
+(def ^:private LoginHistoryIdsForUserDevice
+  "Rows returned by [[login-history-ids-for-user-device]]."
+  (mut/select-keys ::login-history.schema/login-history [:id]))
+
+(mu/defn login-history-ids-for-user-device :- [:sequential LoginHistoryIdsForUserDevice]
   "Up to `limit` LoginHistory ids of the User with `user-id` on the device with `device-id`."
   [user-id   :- ::lib.schema.id/user
    device-id :- :string

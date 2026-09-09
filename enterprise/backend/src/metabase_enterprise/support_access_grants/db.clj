@@ -64,7 +64,7 @@
               (cond-> {}
                 where (assoc :where where)))))
 
-(mu/defn insert-grant! :- (mut/optional-keys ::support-access-grants.schema/support-access-grant-log)
+(mu/defn insert-grant! :- ::support-access-grants.schema/support-access-grant-log
   "Insert `grant` and return the new instance."
   [grant :- (mut/select-keys ::support-access-grants.schema/support-access-grant-log.update [:user_id :ticket_number :notes :grant_start_timestamp :grant_end_timestamp])]
   (t2/insert-returning-instance! :model/SupportAccessGrantLog grant))
@@ -85,7 +85,11 @@
   [email :- :string]
   (t2/select-one :model/User :email email))
 
-(mu/defn user-superuser-flag-by-email :- [:maybe (mut/select-keys ::users.schema/user [:id :is_superuser])]
+(def ^:private UserSuperuserFlagByEmail
+  "Rows returned by [[user-superuser-flag-by-email]]."
+  (mut/select-keys ::users.schema/user [:id :is_superuser]))
+
+(mu/defn user-superuser-flag-by-email :- [:maybe UserSuperuserFlagByEmail]
   "The `:id` and `:is_superuser` of the User with `email`, or nil."
   [email :- :string]
   (t2/select-one [:model/User :id :is_superuser] :email email))
@@ -102,7 +106,7 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
 
-(mu/defn insert-user! :- (mut/optional-keys ::users.schema/user)
+(mu/defn insert-user! :- ::users.schema/user
   "Insert `user` and return the new instance."
   [user :- (mut/select-keys ::users.schema/user.update [:email :first_name :last_name :is_superuser])]
   (t2/insert-returning-instance! :model/User user))

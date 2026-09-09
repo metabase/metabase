@@ -2,7 +2,6 @@
   "Application database queries for the settings module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.settings.schema :as settings.schema]
@@ -19,7 +18,7 @@
   []
   (t2/select-fn->fn :key :value :model/Setting))
 
-(mu/defn insert-setting! :- (mut/optional-keys ::settings.schema/setting)
+(mu/defn insert-setting! :- [:sequential ::settings.schema/setting]
   "Insert a Setting row for `setting-key` holding `value` and return it."
   [setting-key :- [:or :keyword :string]
    value       :- :string]

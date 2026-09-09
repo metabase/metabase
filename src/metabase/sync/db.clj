@@ -201,7 +201,7 @@
                         :where     [:and sync-tables-clause [:= :t.db_id database-id]]
                         :order-by  [[:sub.earliest_last_analyzed :asc]]}))
 
-(mu/defn insert-table! :- (mut/optional-keys ::warehouse-schema.schema/table)
+(mu/defn insert-table! :- ::warehouse-schema.schema/table
   "Insert `table` and return the new instance."
   [table :- ::warehouse-schema.schema/table.update]
   (t2/insert-returning-instance! :model/Table table))
@@ -244,7 +244,11 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(mu/defn fields-for-field-values :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type :table_id :has_field_values])]
+(def ^:private FieldsForFieldValue
+  "Rows returned by [[fields-for-field-values]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type :table_id :has_field_values]))
+
+(mu/defn fields-for-field-values :- [:sequential FieldsForFieldValue]
   "The columns needed to scan FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type
@@ -315,7 +319,11 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :fingerprint :model/Field :id field-id))
 
-(mu/defn active-fields-metadata-for-table :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:name :database_type :base_type :effective_type :coercion_strategy :semantic_type :parent_id :id :description :database_position :nfc_path :database_is_auto_increment :database_required :database_default :database_is_generated :database_is_nullable :database_is_pk :database_partitioned :json_unfolding :position :preview_display])]
+(def ^:private ActiveFieldsMetadataForTable
+  "Rows returned by [[active-fields-metadata-for-table]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:name :database_type :base_type :effective_type :coercion_strategy :semantic_type :parent_id :id :description :database_position :nfc_path :database_is_auto_increment :database_required :database_default :database_is_generated :database_is_nullable :database_is_pk :database_partitioned :json_unfolding :position :preview_display]))
+
+(mu/defn active-fields-metadata-for-table :- [:sequential ActiveFieldsMetadataForTable]
   "The sync metadata columns of the active Fields of the Table with `table-id`, in field order."
   [table-id :- ::lib.schema.id/table]
   (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type

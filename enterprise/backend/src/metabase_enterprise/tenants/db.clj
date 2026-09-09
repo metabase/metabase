@@ -75,7 +75,7 @@
    tenant-id   :- ms/PositiveInt]
   (t2/exists? :model/Tenant :name tenant-name :id [:not= tenant-id]))
 
-(mu/defn insert-tenant! :- (mut/optional-keys ::tenants.schema/tenant)
+(mu/defn insert-tenant! :- ::tenants.schema/tenant
   "Insert `tenant` and return the new instance."
   [tenant :- (mut/select-keys ::tenants.schema/tenant.update [:name :slug :attributes])]
   (t2/insert-returning-instance! :model/Tenant tenant))

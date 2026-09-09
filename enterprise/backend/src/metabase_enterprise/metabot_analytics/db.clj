@@ -10,7 +10,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -154,13 +153,21 @@
   [conversation-id :- ms/PositiveInt]
   (t2/select :model/MetabotMessage :conversation_id conversation-id {:order-by [[:created_at :asc] [:id :asc]]}))
 
-(mu/defn message-data-for-conversations :- [:sequential (mut/select-keys ::metabot.schema/metabot-message [:conversation_id :data :data_version])]
+(def ^:private MessageDataForConversation
+  "Rows returned by [[message-data-for-conversations]]."
+  (mut/select-keys ::metabot.schema/metabot-message [:conversation_id :data :data_version]))
+
+(mu/defn message-data-for-conversations :- [:sequential MessageDataForConversation]
   "The conversation, data, and data version of the MetabotMessages of the MetabotConversations with
   `conversation-ids`."
   [conversation-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in conversation-ids]))
 
-(mu/defn feedback-for-conversation :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::metabot.schema/metabot-feedback)))]
+(def ^:private FeedbackForConversation
+  "Rows returned by [[feedback-for-conversation]]."
+  (mut/merge (mut/select-keys ::metabot.schema/metabot-feedback [:id :message_id :user_id :positive :issue_type :freeform_feedback :created_at :updated_at]) [:map [:external_id [:maybe :string]]]))
+
+(mu/defn feedback-for-conversation :- [:sequential FeedbackForConversation]
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."
   [conversation-id :- ms/PositiveInt]
   (t2/select :model/MetabotFeedback

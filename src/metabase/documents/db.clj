@@ -59,7 +59,11 @@
   [id :- ms/PositiveInt]
   (t2/select-one-fn :exploration_id :model/Document :id id))
 
-(mu/defn public-documents :- [:sequential (mut/select-keys ::documents.schema/document [:name :id :public_uuid])]
+(def ^:private PublicDocument
+  "Rows returned by [[public-documents]]."
+  (mut/select-keys ::documents.schema/document [:name :id :public_uuid]))
+
+(mu/defn public-documents :- [:sequential PublicDocument]
   "The name, id, and public uuid of the unarchived Documents that are publicly shared."
   []
   (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
@@ -110,7 +114,11 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :archived false))
 
-(mu/defn user-columns :- [:sequential (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name])]
+(def ^:private UserColumn
+  "Rows returned by [[user-columns]]."
+  (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name]))
+
+(mu/defn user-columns :- [:sequential UserColumn]
   "The id, email, and name of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select [:model/User :id :email :first_name :last_name] :id [:in user-ids]))

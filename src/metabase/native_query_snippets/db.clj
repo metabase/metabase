@@ -31,7 +31,7 @@
    entity-id :- :string]
   (t2/exists? :model/NativeQuerySnippet :name snippet-name :entity_id [:!= entity-id]))
 
-(mu/defn insert-snippet! :- (mut/optional-keys ::native-query-snippets.schema/native-query-snippet)
+(mu/defn insert-snippet! :- ::native-query-snippets.schema/native-query-snippet
   "Insert the NativeQuerySnippet `row` and return the inserted instance."
   [row :- ::native-query-snippets.schema/native-query-snippet.update]
   (t2/insert-returning-instance! :model/NativeQuerySnippet row))

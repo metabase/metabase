@@ -8,7 +8,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -26,10 +25,10 @@
 
 (mu/defn insert-database! :- :int
   "Insert the Database `row`."
-  [row :- (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge ::warehouses.schema/database.update [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]])]
+  [row :- (mut/merge ::warehouses.schema/database.update [:map [:id {:optional true} ::lib.schema.id/database]])]
   (t2/insert! :model/Database row))
 
-(mu/defn insert-returning-database! :- (mut/optional-keys ::warehouses.schema/database)
+(mu/defn insert-returning-database! :- ::warehouses.schema/database
   "Insert the Database `row` and return the new instance."
   [row :- ::warehouses.schema/database.update]
   (t2/insert-returning-instance! :model/Database row))
@@ -61,7 +60,11 @@
    table-names :- [:sequential :string]]
   (t2/select :model/Table :db_id database-id :name [:in table-names]))
 
-(mu/defn tables-of-database-in-id-order :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :name :schema :active])]
+(def ^:private TablesOfDatabaseInIdOrder
+  "Rows returned by [[tables-of-database-in-id-order]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :name :schema :active]))
+
+(mu/defn tables-of-database-in-id-order :- [:sequential TablesOfDatabaseInIdOrder]
   "The `:id`, `:name`, `:schema`, and `:active` of the Tables of the Database with `database-id`, in ID order."
   [database-id :- ::lib.schema.id/database]
   (t2/select [:model/Table :id :name :schema :active] :db_id database-id {:order-by [[:id :asc]]}))
@@ -161,7 +164,11 @@
   [table-id :- ::lib.schema.id/table]
   (t2/delete! :model/Table table-id))
 
-(mu/defn field-names-of-table :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :name])]
+(def ^:private FieldNamesOfTable
+  "Rows returned by [[field-names-of-table]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:id :name]))
+
+(mu/defn field-names-of-table :- [:sequential FieldNamesOfTable]
   "The `:id` and `:name` of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select [:model/Field :id :name] :table_id table-id))
@@ -176,7 +183,7 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Card :table_id table-id))
 
-(mu/defn table-ids-referenced-by-cards :- [:sequential [:map {:closed true} [:table_id [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/table)))]]]]
+(mu/defn table-ids-referenced-by-cards :- [:sequential [:map {:closed true} [:table_id [:maybe ::lib.schema.id/table]]]]
   "The distinct `:table_id` rows of the Cards on the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/query {:select-distinct [:table_id]
@@ -189,7 +196,11 @@
    changes :- (mut/select-keys ::queries.schema/card.update [:dataset_query :result_metadata])]
   (t2/update! :model/Card card-id changes))
 
-(mu/defn first-superuser :- [:maybe (mut/select-keys ::users.schema/user [:id :email])]
+(def ^:private FirstSuperuser
+  "Rows returned by [[first-superuser]]."
+  (mut/select-keys ::users.schema/user [:id :email]))
+
+(mu/defn first-superuser :- [:maybe FirstSuperuser]
   "The `:id` and `:email` of the oldest superuser, or nil."
   []
   (t2/select-one [:model/User :id :email] :is_superuser true {:order-by [[:id :asc]]}))

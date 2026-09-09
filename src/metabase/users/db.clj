@@ -11,7 +11,6 @@
    [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -154,13 +153,21 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
 
-(mu/defn group-memberships-for-users :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::permissions.schema/permissions-group-membership)))]
+(def ^:private GroupMembershipsForUser
+  "Rows returned by [[group-memberships-for-users]]."
+  (mu/rename-keys (mut/select-keys ::permissions.schema/permissions-group-membership [:user_id :group_id :is_group_manager]) {:group_id :id}))
+
+(mu/defn group-memberships-for-users :- [:sequential GroupMembershipsForUser]
   "The user id, group id (as `:id`), and group manager flag of the PermissionsGroupMemberships of the Users with
   `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager] :user_id [:in user-ids]))
 
-(mu/defn user-group-ids-for-users :- [:sequential (mut/select-keys ::permissions.schema/permissions-group-membership [:user_id :group_id])]
+(def ^:private UserGroupIdsForUser
+  "Rows returned by [[user-group-ids-for-users]]."
+  (mut/select-keys ::permissions.schema/permissions-group-membership [:user_id :group_id]))
+
+(mu/defn user-group-ids-for-users :- [:sequential UserGroupIdsForUser]
   "The user id and group id of the PermissionsGroupMemberships of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select [:model/PermissionsGroupMembership :user_id :group_id] :user_id [:in user-ids]))
@@ -175,7 +182,7 @@
   [tenant-ids :- [:set ms/PositiveInt]]
   (t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in tenant-ids]))
 
-(mu/defn insert-user! :- (mut/optional-keys ::users.schema/user)
+(mu/defn insert-user! :- ::users.schema/user
   "Insert the User `row` and return the inserted instance."
   [row :- ::users.schema/user.update]
   (t2/insert-returning-instance! :model/User row))

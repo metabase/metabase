@@ -16,7 +16,11 @@
   [where :- [:maybe vector?]]
   (t2/count :model/Card {:where where}))
 
-(mu/defn metric-cards-page :- [:sequential (mut/select-keys ::queries.schema/card [:id :name :description :collection_id])]
+(def ^:private MetricCardsPage
+  "Rows returned by [[metric-cards-page]]."
+  (mut/select-keys ::queries.schema/card [:id :name :description :collection_id]))
+
+(mu/defn metric-cards-page :- [:sequential MetricCardsPage]
   "Up to `limit` id, name, description, and Collection id rows from `offset` of the Cards matching the Honey SQL
   `where` clause, in name order."
   [where  :- [:maybe vector?]
@@ -38,12 +42,16 @@
   [id :- ::lib.schema.id/measure]
   (t2/select-one :model/Measure :id id))
 
-(mu/defn metric-cards-for-database :- [:sequential (mut/select-keys ::queries.schema/card [:id :dimensions])]
+(def ^:private MetricCardsForDatabase
+  "Rows returned by [[metric-cards-for-database]]."
+  (mut/select-keys ::queries.schema/card [:id :dimensions]))
+
+(mu/defn metric-cards-for-database :- [:sequential MetricCardsForDatabase]
   "The id and dimensions of the metric Cards of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/select [:model/Card :id :dimensions] :type "metric" :database_id database-id))
 
-(mu/defn fields-with-columns :- [:sequential ::warehouse-schema.schema/field]
+(mu/defn fields-with-columns :- [:sequential (mut/optional-keys ::warehouse-schema.schema/field)]
   "The id and `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]

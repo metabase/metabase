@@ -13,7 +13,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -30,7 +29,11 @@
   [card-ids :- [:maybe [:or [:set [:maybe ::lib.schema.id/card]] [:sequential [:maybe ::lib.schema.id/card]]]]]
   (t2/select :model/Card :id [:in card-ids]))
 
-(mu/defn card-query-info :- [:maybe (mut/select-keys ::queries.schema/card [:dataset_query :type :result_metadata :card_schema])]
+(def ^:private CardQueryInfo
+  "Rows returned by [[card-query-info]]."
+  (mut/select-keys ::queries.schema/card [:dataset_query :type :result_metadata :card_schema]))
+
+(mu/defn card-query-info :- [:maybe CardQueryInfo]
   "The query, type, result metadata, and schema of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :dataset_query :type :result_metadata :card_schema] :id card-id))
@@ -57,17 +60,29 @@
                  :from   [:report_card]
                  :where  [:= :id card-id]}))
 
-(mu/defn card-database-and-table-ids :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
+(def ^:private CardDatabaseAndTableId
+  "Rows returned by [[card-database-and-table-ids]]."
+  (mut/merge ::queries.schema/card [:map [:database-id [:maybe ::lib.schema.id/database]] [:table-id [:maybe ::lib.schema.id/table]]]))
+
+(mu/defn card-database-and-table-ids :- [:maybe CardDatabaseAndTableId]
   "The database and primary table IDs of the Card with `card-id`, as `:database-id` and `:table-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id card-id))
 
-(mu/defn card-queries :- [:sequential (mut/select-keys ::queries.schema/card [:id :dataset_query :card_schema])]
+(def ^:private CardQuery
+  "Rows returned by [[card-queries]]."
+  (mut/select-keys ::queries.schema/card [:id :dataset_query :card_schema]))
+
+(mu/defn card-queries :- [:sequential CardQuery]
   "The IDs and queries of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :dataset_query :card_schema] :id [:in card-ids]))
 
-(mu/defn source-card-dependents :- [:sequential (mut/select-keys ::queries.schema/card [:id :source_card_id :card_schema])]
+(def ^:private SourceCardDependent
+  "Rows returned by [[source-card-dependents]]."
+  (mut/select-keys ::queries.schema/card [:id :source_card_id :card_schema]))
+
+(mu/defn source-card-dependents :- [:sequential SourceCardDependent]
   "The IDs and source Card IDs of the Cards whose source Card is one of `source-card-ids`."
   [source-card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
   (t2/select [:model/Card :id :source_card_id :card_schema] :source_card_id [:in source-card-ids]))
@@ -86,7 +101,7 @@
   [document-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Card :document_id document-id))
 
-(mu/defn insert-card! :- (mut/optional-keys ::queries.schema/card)
+(mu/defn insert-card! :- ::queries.schema/card
   "Insert `card` and return the new instance."
   [card :- ::queries.schema/card.update]
   (t2/insert-returning-instance! :model/Card card))
@@ -99,7 +114,7 @@
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
-(mu/defn dashcard-counts-by-card :- [:sequential [:map {:closed true} [:count :int] [:card_id (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]]]
+(mu/defn dashcard-counts-by-card :- [:sequential [:map {:closed true} [:count :int] [:card_id ::lib.schema.id/card]]]
   "Rows of `:card_id` and `:count` of DashboardCards for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%count.* :count] :card_id]
@@ -107,7 +122,7 @@
              :where    [:in :card_id card-ids]
              :group-by [:card_id]}))
 
-(mu/defn parameter-card-counts-by-card :- [:sequential [:map {:closed true} [:count :int] [:card_id (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]]]
+(mu/defn parameter-card-counts-by-card :- [:sequential [:map {:closed true} [:count :int] [:card_id ::lib.schema.id/card]]]
   "Rows of `:card_id` and `:count` of ParameterCards for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%count.* :count] :card_id]
@@ -115,7 +130,7 @@
              :where    [:in :card_id card-ids]
              :group-by [:card_id]}))
 
-(mu/defn average-running-times-by-card :- [:sequential [:map {:closed true} [:running_time [:maybe :int]] [:card_id (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]]]
+(mu/defn average-running-times-by-card :- [:sequential [:map {:closed true} [:running_time [:maybe :int]] [:card_id ::lib.schema.id/card]]]
   "Rows of `:card_id` and average `:running_time` of uncached executions for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%avg.running_time :running_time] :card_id]
@@ -126,7 +141,7 @@
                         [:in :card_id card-ids]]
              :group-by [:card_id]}))
 
-(mu/defn last-query-starts-by-card :- [:sequential [:map {:closed true} [:started_at [:maybe ms/TemporalInstant]] [:card_id (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]]]
+(mu/defn last-query-starts-by-card :- [:sequential [:map {:closed true} [:started_at [:maybe ms/TemporalInstant]] [:card_id ::lib.schema.id/card]]]
   "Rows of `:card_id` and latest `:started_at` of uncached executions for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%max.started_at :started_at] :card_id]
@@ -498,7 +513,7 @@
   (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id
                                       :card_id          card-id}))
 
-(mu/defn stored-results-for-card :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/stored-result)))]
+(mu/defn stored-results-for-card :- [:sequential ::queries.schema/stored-result]
   "The StoredResults used by the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/StoredResult

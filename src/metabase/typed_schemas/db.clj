@@ -45,22 +45,38 @@
                          (scope-filter-clause collection-ids :collection_id)]
               :order-by [[:name :asc] [:id :asc]]}))
 
-(mu/defn field-ids-and-table-ids :- [:sequential [:or (mut/select-keys ::warehouse-schema.schema/field [:id :table_id]) :map]]
+(def ^:private FieldIdsAndTableId
+  "Rows returned by [[field-ids-and-table-ids]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:id :table_id]))
+
+(mu/defn field-ids-and-table-ids :- [:sequential FieldIdsAndTableId]
   "The id and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
 
-(mu/defn card-dimensions :- [:maybe (mut/select-keys ::queries.schema/card [:dimensions :dimension_mappings])]
+(def ^:private CardDimension
+  "Rows returned by [[card-dimensions]]."
+  (mut/select-keys ::queries.schema/card [:dimensions :dimension_mappings]))
+
+(mu/defn card-dimensions :- [:maybe CardDimension]
   "The dimensions and dimension mappings of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :dimensions :dimension_mappings] :id card-id))
 
-(mu/defn table-names :- [:sequential [:or (mut/select-keys ::warehouse-schema.schema/table [:id :name :display_name]) :map]]
+(def ^:private TableName
+  "Rows returned by [[table-names]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :name :display_name]))
+
+(mu/defn table-names :- [:sequential TableName]
   "The id, name, and display name of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :name :display_name] :id [:in table-ids]))
 
-(mu/defn model-actions :- [:sequential (mut/select-keys ::actions.schema/action [:id :model_id :name :type])]
+(def ^:private ModelAction
+  "Rows returned by [[model-actions]]."
+  (mut/select-keys ::actions.schema/action [:id :model_id :name :type]))
+
+(mu/defn model-actions :- [:sequential ModelAction]
   "The id, model id, name, and type of the unarchived non-HTTP Actions of the model Cards with `model-ids`."
   [model-ids :- [:set ms/PositiveInt]]
   (t2/select [:model/Action :id :model_id :name :type]
@@ -98,7 +114,11 @@
   [measure-id :- ::lib.schema.id/measure]
   (t2/select-one-fn :definition :model/Measure :id measure-id))
 
-(mu/defn measure-definitions :- [:sequential [:or (mut/select-keys ::measures.schema/measure [:id :definition]) :map]]
+(def ^:private MeasureDefinition
+  "Rows returned by [[measure-definitions]]."
+  (mut/select-keys ::measures.schema/measure [:id :definition]))
+
+(mu/defn measure-definitions :- [:sequential MeasureDefinition]
   "The id and definition of the Measures with `measure-ids`."
   [measure-ids :- [:sequential ::lib.schema.id/measure]]
   (t2/select [:model/Measure :id :definition] :id [:in measure-ids]))

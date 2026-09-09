@@ -5,13 +5,10 @@
   (:require
    [malli.util :as mut]
    [metabase.collections.schema :as collections.schema]
-   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
-   [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -33,9 +30,7 @@
 
 (def ^:private CollectionIdAndNamespace
   "Rows returned by [[collection-id-and-namespace]]."
-  [:map {:closed true}
-   [:id        ::lib.schema.id/collection]
-   [:namespace [:maybe [:or :keyword :string]]]])
+  (mut/select-keys ::collections.schema/collection [:id :namespace]))
 
 (mu/defn collection-id-and-namespace :- [:maybe CollectionIdAndNamespace]
   "The ID and namespace of the ::collections.schema/collection with `collection-id`, or nil."
@@ -101,28 +96,12 @@
 
 ;;; ---------------------------------------------- ::collections.schema/collection sets ----------------------------------------------
 
-(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection [:map {:closed true}
-                                                                   [:id                   ::lib.schema.id/collection]
-                                                                   [:name                 [:or :string :map sequential?]]
-                                                                   [:description          [:maybe [:or :string :map sequential?]]]
-                                                                   [:archived             :boolean]
-                                                                   [:location             :string]
-                                                                   [:personal_owner_id    [:maybe ::lib.schema.id/user]]
-                                                                   [:slug                 :string]
-                                                                   [:namespace            [:maybe [:or :keyword :string]]]
-                                                                   [:authority_level      [:maybe [:or :keyword :string]]]
-                                                                   [:entity_id            :string]
-                                                                   [:created_at           ms/TemporalInstant]
-                                                                   [:type                 [:maybe [:or :keyword :string]]]
-                                                                   [:is_sample            :boolean]
-                                                                   [:archive_operation_id [:maybe :string]]
-                                                                   [:archived_directly    [:maybe :boolean]]
-                                                                   [:is_remote_synced     [:maybe :boolean]]]]
+(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection ::collections.schema/collection]
   "A map of ID to ::collections.schema/collection for `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
 
-(mu/defn collection-columns-by-id :- [:map-of ms/PositiveInt ::collections.schema/collection]
+(mu/defn collection-columns-by-id :- [:map-of ::lib.schema.id/collection (mut/optional-keys ::collections.schema/collection)]
   "A map of ID to the `columns` of the Collections with `collection-ids`."
   [columns        :- [:sequential :keyword]
    collection-ids :- [:sequential ::lib.schema.id/collection]]
@@ -143,12 +122,20 @@
   [archive-operation-ids :- [:sequential :string]]
   (t2/select :model/Collection :archive_operation_id [:in archive-operation-ids] :archived true))
 
-(mu/defn ancestor-summaries :- [:sequential (mut/select-keys ::collections.schema/collection [:name :id :personal_owner_id])]
+(def ^:private AncestorSummary
+  "Rows returned by [[ancestor-summaries]]."
+  (mut/select-keys ::collections.schema/collection [:name :id :personal_owner_id]))
+
+(mu/defn ancestor-summaries :- [:sequential AncestorSummary]
   "The name, ID, and owner of the Collections with `collection-ids`, ordered by location."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:model/Collection :name :id :personal_owner_id] :id [:in collection-ids] {:order-by [:location]}))
 
-(mu/defn descendant-summaries :- [:sequential (mut/select-keys ::collections.schema/collection [:name :id :location :description])]
+(def ^:private DescendantSummary
+  "Rows returned by [[descendant-summaries]]."
+  (mut/select-keys ::collections.schema/collection [:name :id :location :description]))
+
+(mu/defn descendant-summaries :- [:sequential DescendantSummary]
   "The name, ID, location, and description of the descendant Collections of the ::collections.schema/collection at
   `children-location-prefix` (see `metabase.collections.models.collection/children-location`), excluding other
   users' Personal Collections (Personal Collections owned by `current-user-id` are still included). When
@@ -171,7 +158,11 @@
                               [:= :archived archived?])]
                            additional-where-clauses)}))
 
-(mu/defn descendant-summaries-with-type :- [:sequential (mut/select-keys ::collections.schema/collection [:name :id :location :description :type])]
+(def ^:private DescendantSummariesWithType
+  "Rows returned by [[descendant-summaries-with-type]]."
+  (mut/select-keys ::collections.schema/collection [:name :id :location :description :type]))
+
+(mu/defn descendant-summaries-with-type :- [:sequential DescendantSummariesWithType]
   "The name, ID, location, description, and type of the Collections directly under any of `location-prefixes`
   (compared with SQL `LIKE`), excluding personal Collections that don't belong to `current-user-id`."
   [location-prefixes :- [:sequential :string]
@@ -181,7 +172,11 @@
                       (into [:or] (map (fn [prefix] [:like :location prefix])) location-prefixes)
                       [:or [:= :personal_owner_id nil] [:= :personal_owner_id current-user-id]]]}))
 
-(mu/defn effective-children-where :- [:sequential (mut/select-keys ::queries.schema/card [:id :name :description :type])]
+(def ^:private EffectiveChildrenWhere
+  "Rows returned by [[effective-children-where]]."
+  (mut/select-keys ::collections.schema/collection [:id :name :description :type]))
+
+(mu/defn effective-children-where :- [:sequential EffectiveChildrenWhere]
   "The ID, name, description, and type of the Collections matching the Honey SQL `where`."
   [where :- [:maybe vector?]]
   (t2/select [:model/Collection :id :name :description :type] {:where where}))
@@ -270,23 +265,7 @@
 
 ;;; ---------------------------------------------- ::collections.schema/collection writes ----------------------------------------------
 
-(mu/defn insert-collection! :- (mut/optional-keys [:map {:closed true}
-                                                   [:id                   ::lib.schema.id/collection]
-                                                   [:name                 [:or :string :map sequential?]]
-                                                   [:description          [:maybe [:or :string :map sequential?]]]
-                                                   [:archived             :boolean]
-                                                   [:location             :string]
-                                                   [:personal_owner_id    [:maybe ::lib.schema.id/user]]
-                                                   [:slug                 :string]
-                                                   [:namespace            [:maybe [:or :keyword :string]]]
-                                                   [:authority_level      [:maybe [:or :keyword :string]]]
-                                                   [:entity_id            :string]
-                                                   [:created_at           ms/TemporalInstant]
-                                                   [:type                 [:maybe [:or :keyword :string]]]
-                                                   [:is_sample            :boolean]
-                                                   [:archive_operation_id [:maybe :string]]
-                                                   [:archived_directly    [:maybe :boolean]]
-                                                   [:is_remote_synced     [:maybe :boolean]]])
+(mu/defn insert-collection! :- ::collections.schema/collection
   "Insert `collection` and return the new instance."
   [collection :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
   (t2/insert-returning-instance! :model/Collection collection))
@@ -510,7 +489,7 @@
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
   (t2/update! :model/Table {:collection_id [:in collection-ids]} {:collection_id nil, :is_published false}))
 
-(mu/defn dashboard-ids-with-cards :- [:sequential [:map {:closed true} [:dashboard_id (mut/optional-keys (mut/open-schema (mr/schema ::dashboards.schema/dashboard)))]]]
+(mu/defn dashboard-ids-with-cards :- [:sequential [:map {:closed true} [:dashboard_id ::lib.schema.id/dashboard]]]
   "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` holding an unarchived dashboard question."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/query {:select-distinct [:dashboard_id]
@@ -567,7 +546,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :type :model/User user-id))
 
-(mu/defn user-name-parts-by-id :- [:map-of ::lib.schema.id/user (mut/select-keys ::users.schema/user [:first_name :last_name :email :id :common_name])]
+(def ^:private UserNamePartsById
+  "Rows returned by [[user-name-parts-by-id]]."
+  (mut/select-keys ::users.schema/user [:first_name :last_name :email :id :common_name]))
+
+(mu/defn user-name-parts-by-id :- [:map-of ::lib.schema.id/user UserNamePartsById]
   "A map of ID to the first name, last name, and email of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :first_name :last_name :email :id] :id [:in user-ids]))

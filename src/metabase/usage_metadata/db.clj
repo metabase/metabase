@@ -8,12 +8,15 @@
    [metabase.segments.schema :as segments.schema]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(mu/defn query-execution-hash-counts :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/query-execution)))]
+(def ^:private QueryExecutionHashCount
+  "Rows returned by [[query-execution-hash-counts]]."
+  (mut/merge (mut/select-keys ::queries.schema/query-execution [:hash]) [:map [:n [:maybe :int]]]))
+
+(mu/defn query-execution-hash-counts :- [:sequential QueryExecutionHashCount]
   "The `:hash` and execution count `:n` of the QueryExecutions started at or after `started-at` and before
   `started-before`, grouped by hash."
   [started-at     :- ms/TemporalInstant
@@ -115,22 +118,38 @@
             ::usage-metadata.schema/source-dimension-profile-daily.update]]
   (t2/insert! :model/SourceDimensionProfileDaily rows))
 
-(mu/defn field-names :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :name :display_name])]
+(def ^:private FieldName
+  "Rows returned by [[field-names]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:id :name :display_name]))
+
+(mu/defn field-names :- [:sequential FieldName]
   "The id, name, and display name of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :name :display_name] :id [:in field-ids]))
 
-(mu/defn table-names :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :name :display_name :db_id :schema])]
+(def ^:private TableName
+  "Rows returned by [[table-names]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :name :display_name :db_id :schema]))
+
+(mu/defn table-names :- [:sequential TableName]
   "The id, name, display name, Database id, and schema of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in table-ids]))
 
-(mu/defn table-database-ids :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :db_id])]
+(def ^:private TableDatabaseId
+  "Rows returned by [[table-database-ids]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id]))
+
+(mu/defn table-database-ids :- [:sequential TableDatabaseId]
   "The id and Database id of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id] :id [:in table-ids]))
 
-(mu/defn card-names :- [:sequential (mut/select-keys ::queries.schema/card [:id :name])]
+(def ^:private CardName
+  "Rows returned by [[card-names]]."
+  (mut/select-keys ::queries.schema/card [:id :name]))
+
+(mu/defn card-names :- [:sequential CardName]
   "The id and name of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name] :id [:in card-ids]))
@@ -143,7 +162,11 @@
     bucket-start (conj [:>= :bucket_date bucket-start])
     bucket-end   (conj [:<= :bucket_date bucket-end])))
 
-(mu/defn grouped-segment-rows :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::usage-metadata.schema/source-segment-daily)))]
+(def ^:private GroupedSegment
+  "Rows returned by [[grouped-segment-rows]]."
+  (mut/merge (mut/select-keys ::usage-metadata.schema/source-segment-daily [:source_type :source_id :field_id :predicate]) [:map [:total_count [:maybe number?]]]))
+
+(mu/defn grouped-segment-rows :- [:sequential GroupedSegment]
   "The summed `source_segment_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
   `bucket-start` and `bucket-end`, grouped by source, field, and predicate, largest first."
   [source-type  :- [:maybe :keyword]
@@ -160,7 +183,11 @@
               :group-by [:source_type :source_id :field_id :predicate]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-metric-rows :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::usage-metadata.schema/source-metric-daily)))]
+(def ^:private GroupedMetric
+  "Rows returned by [[grouped-metric-rows]]."
+  (mut/merge (mut/select-keys ::usage-metadata.schema/source-metric-daily [:source_type :source_id :agg_type :agg_field_id :temporal_field_id :temporal_unit]) [:map [:total_count [:maybe number?]]]))
+
+(mu/defn grouped-metric-rows :- [:sequential GroupedMetric]
   "The summed `source_metric_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
   `bucket-start` and `bucket-end`, grouped by source and aggregation, largest first."
   [source-type  :- [:maybe :keyword]
@@ -179,7 +206,11 @@
               :group-by [:source_type :source_id :agg_type :agg_field_id :temporal_field_id :temporal_unit]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-dimension-rows :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::usage-metadata.schema/source-dimension-daily)))]
+(def ^:private GroupedDimension
+  "Rows returned by [[grouped-dimension-rows]]."
+  (mut/merge (mut/select-keys ::usage-metadata.schema/source-dimension-daily [:source_type :source_id :field_id :temporal_unit :binning]) [:map [:total_count [:maybe number?]]]))
+
+(mu/defn grouped-dimension-rows :- [:sequential GroupedDimension]
   "The summed `source_dimension_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed
   between `bucket-start` and `bucket-end`, grouped by source, field, unit, and binning, largest first."
   [source-type  :- [:maybe :keyword]
@@ -197,7 +228,11 @@
               :group-by [:source_type :source_id :field_id :temporal_unit :binning]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-composite-rows :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::usage-metadata.schema/source-segment-composite-daily)))]
+(def ^:private GroupedComposite
+  "Rows returned by [[grouped-composite-rows]]."
+  (mut/merge (mut/select-keys ::usage-metadata.schema/source-segment-composite-daily [:source_type :source_id :clause :atom_fingerprints :atom_count]) [:map [:total_count [:maybe number?]]]))
+
+(mu/defn grouped-composite-rows :- [:sequential GroupedComposite]
   "The summed `source_segment_composite_daily` counts optionally narrowed to `source-type`, `source-id`, and
   bucketed between `bucket-start` and `bucket-end`, grouped by source and clause, largest first."
   [source-type  :- [:maybe :keyword]
@@ -215,7 +250,11 @@
               :group-by [:source_type :source_id :clause :atom_fingerprints :atom_count]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-profile-rows :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::usage-metadata.schema/source-dimension-profile-daily)))]
+(def ^:private GroupedProfile
+  "Rows returned by [[grouped-profile-rows]]."
+  (mut/merge (mut/select-keys ::usage-metadata.schema/source-dimension-profile-daily [:source_type :source_id :field_id :source_basis :observation_type :observation_value]) [:map [:total_count [:maybe number?]]]))
+
+(mu/defn grouped-profile-rows :- [:sequential GroupedProfile]
   "The summed `source_dimension_profile_daily` counts optionally narrowed to `source-type`, `source-id`, and
   bucketed between `bucket-start` and `bucket-end`, grouped by source, field, and observation, largest first."
   [source-type  :- [:maybe :keyword]
@@ -238,14 +277,22 @@
               :group-by [:source_type :source_id :field_id :source_basis :observation_type :observation_value]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn unarchived-segments :- [:sequential (mut/select-keys ::segments.schema/segment [:id :table_id :definition])]
+(def ^:private UnarchivedSegment
+  "Rows returned by [[unarchived-segments]]."
+  (mut/select-keys ::segments.schema/segment [:id :table_id :definition]))
+
+(mu/defn unarchived-segments :- [:sequential UnarchivedSegment]
   "The id, Table id, and definition of the unarchived Segments, optionally narrowed to `table-id`."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select [:model/Segment :id :table_id :definition]
              {:where (cond-> [:and [:= :archived false]]
                        table-id (conj [:= :table_id table-id]))}))
 
-(mu/defn unarchived-metric-cards :- [:sequential (mut/select-keys ::queries.schema/card [:id :database_id :dataset_query :card_schema])]
+(def ^:private UnarchivedMetricCard
+  "Rows returned by [[unarchived-metric-cards]]."
+  (mut/select-keys ::queries.schema/card [:id :database_id :dataset_query :card_schema]))
+
+(mu/defn unarchived-metric-cards :- [:sequential UnarchivedMetricCard]
   "The id, Database id, query, and schema of the unarchived metric Cards."
   []
   (t2/select [:model/Card :id :database_id :dataset_query :card_schema] :type "metric" :archived false))

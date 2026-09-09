@@ -2,12 +2,10 @@
   "Application database queries for the task history module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.task-history.schema :as task-history.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -170,7 +168,7 @@
       task   (conj [:= :task_history.task task])
       status (conj [:= :task_history.status (name status)]))))
 
-(mu/defn task-histories :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::task-history.schema/task-history)))]
+(mu/defn task-histories :- [:sequential ::task-history.schema/task-history]
   "Up to `limit` (offset by `offset`) TaskHistory rows, optionally narrowed to `status` and/or `task`, sorted by
   `sort-column` (an allow-listed column, joining to Database for `:db_name`/`:db_engine`) and `sort-direction`, with
   `:id desc` as a stable tiebreaker."

@@ -236,7 +236,11 @@
    index-name :- :string]
   (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :index_name index-name))
 
-(mu/defn index-metadata :- [:sequential (mut/select-keys ::search.schema/search-index-metadata [:index_name :status :created_at])]
+(def ^:private IndexMetadata
+  "Rows returned by [[index-metadata]]."
+  (mut/select-keys ::search.schema/search-index-metadata [:index_name :status :created_at]))
+
+(mu/defn index-metadata :- [:sequential IndexMetadata]
   "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and
   `lang-code`."
   [engine    :- :keyword
@@ -332,7 +336,7 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
 
-(mu/defn card-result-metadata :- [:map-of ::lib.schema.id/card [:maybe ::queries.schema/card.result-metadata]]
+(mu/defn card-result-metadata :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/card.result-metadata]]
   "A map of Card id to result metadata for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))

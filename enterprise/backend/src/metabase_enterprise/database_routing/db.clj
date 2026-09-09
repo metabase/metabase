@@ -2,7 +2,6 @@
   "Application database queries for the database-routing module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -37,7 +36,7 @@
    names              :- [:sequential :string]]
   (t2/exists? :model/Database :router_database_id router-database-id :name [:in names]))
 
-(mu/defn insert-databases! :- [:sequential (mut/optional-keys ::warehouses.schema/database)]
+(mu/defn insert-databases! :- [:sequential ::warehouses.schema/database]
   "Insert the Database `rows` and return the new instances."
   [rows :- [:sequential
             ::warehouses.schema/database.update]]

@@ -10,7 +10,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -38,12 +37,16 @@
    table-id  :- ::lib.schema.id/table]
   (t2/select :model/Sandbox :group_id [:in group-ids] :table_id table-id))
 
-(mu/defn sandboxes-using-card :- [:sequential (mut/select-keys ::sandbox.schema/sandbox [:id :table_id])]
+(def ^:private SandboxesUsingCard
+  "Rows returned by [[sandboxes-using-card]]."
+  (mut/select-keys ::sandbox.schema/sandbox [:id :table_id]))
+
+(mu/defn sandboxes-using-card :- [:sequential SandboxesUsingCard]
   "The `:id` and `:table_id` of the Sandboxes built on the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select [:model/Sandbox :id :table_id] :card_id card-id))
 
-(mu/defn user-sandboxes-with-group-ids :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::sandbox.schema/sandbox)))]
+(mu/defn user-sandboxes-with-group-ids :- [:sequential ::sandbox.schema/sandbox]
   "The Sandboxes of the groups of the User with `user-id`, each with the `:group_id` of the membership."
   [user-id :- ::lib.schema.id/user]
   (t2/select :model/Sandbox
@@ -54,7 +57,11 @@
               :where     [:and
                           [:= :pgm.user_id user-id]]}))
 
-(mu/defn sandboxes-with-table-info :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::sandbox.schema/sandbox)))]
+(def ^:private SandboxesWithTableInfo
+  "Rows returned by [[sandboxes-with-table-info]]."
+  (mut/merge (mut/select-keys ::sandbox.schema/sandbox [:group_id :table_id]) [:map [:db_id [:maybe ::lib.schema.id/database]] [:schema [:maybe :string]]]))
+
+(mu/defn sandboxes-with-table-info :- [:sequential SandboxesWithTableInfo]
   "The group, Table, Database, and schema of the Sandboxes of the optional `group-id` or `group-ids` in the optional
   Database `db-id`, excluding the Database `excluded-db-id` when given."
   [group-id       :- [:maybe ms/PositiveInt]
@@ -99,7 +106,7 @@
                 [:in :sandboxes.group_id group-ids]
                 [:in :table.db_id db-ids]]}))
 
-(mu/defn insert-sandbox! :- (mut/optional-keys ::sandbox.schema/sandbox)
+(mu/defn insert-sandbox! :- [:sequential ::sandbox.schema/sandbox]
   "Insert `sandbox` and return the new instance."
   [sandbox :- [:map {:closed true}
                [:id                   {:optional true} ms/PositiveInt]
@@ -165,7 +172,11 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn tables-of-database :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema])]
+(def ^:private TablesOfDatabase
+  "Rows returned by [[tables-of-database]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
+
+(mu/defn tables-of-database :- [:sequential TablesOfDatabase]
   "The `:id`, `:db_id`, and `:schema` of the Tables of the Database with `db-id`, restricted to `schema` when
   `schema-only?`."
   [db-id        :- ::lib.schema.id/database
@@ -177,7 +188,11 @@
                       (when schema-only?
                         [:= :schema schema])]}))
 
-(mu/defn database-of-table :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::warehouses.schema/database)))]
+(def ^:private DatabaseOfTable
+  "Rows returned by [[database-of-table]]."
+  (mut/merge ::warehouses.schema/database [:map [:db_id [:maybe ::lib.schema.id/database]]]))
+
+(mu/defn database-of-table :- [:maybe DatabaseOfTable]
   "The Database of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Database
@@ -185,28 +200,44 @@
                                        :from   [[(t2/table-name :model/Table) :t]]
                                        :where  [:= :t.id table-id]}))
 
-(mu/defn fields-of-table-named :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :name])]
+(def ^:private FieldsOfTableNamed
+  "Rows returned by [[fields-of-table-named]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:id :name]))
+
+(mu/defn fields-of-table-named :- [:sequential FieldsOfTableNamed]
   "The `:id` and `:name` of the Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:set :string]]
   (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names]))
 
-(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::lib.schema.id/card]
+(def ^:private CardsById
+  "Rows returned by [[cards-by-id]]."
+  (mut/select-keys ::queries.schema/card [:id :dataset_query :result_metadata :card_schema]))
+
+(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card CardsById]
   "A map of Card ID to the query, result metadata, and schema of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn identity [:model/Card :id :dataset_query :result_metadata :card_schema] :id [:in card-ids]))
 
-(mu/defn cards-result-metadata :- [:sequential (mut/select-keys ::queries.schema/card [:id :result_metadata :card_schema])]
+(def ^:private CardsResultMetadata
+  "Rows returned by [[cards-result-metadata]]."
+  (mut/select-keys ::queries.schema/card [:id :result_metadata :card_schema]))
+
+(mu/defn cards-result-metadata :- [:sequential CardsResultMetadata]
   "The `:id`, `:result_metadata`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card :id :result_metadata :card_schema] :id [:in card-ids]))
 
-(mu/defn card-result-metadata :- [:maybe ::queries.schema/card.result-metadata]
+(mu/defn card-result-metadata :- [:maybe ::lib.schema.id/card.result-metadata]
   "The result metadata of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :result_metadata :model/Card :id card-id))
 
-(mu/defn sandboxing-cards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
+(def ^:private SandboxingCard
+  "Rows returned by [[sandboxing-cards]]."
+  (mut/select-keys ::queries.schema/card [:id :dataset_query :database_id :card_schema]))
+
+(mu/defn sandboxing-cards :- [:sequential SandboxingCard]
   "The `:id`, `:dataset_query`, `:database_id`, and `:card_schema` of the Cards Sandboxes are built on."
   []
   (t2/select :model/Card

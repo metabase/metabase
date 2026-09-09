@@ -15,7 +15,6 @@
    [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -35,17 +34,29 @@
   []
   (t2/select-one-pk :model/Database :is_sample true))
 
-(mu/defn personal-user-stats-columns :- [:sequential (mut/select-keys ::users.schema/user [:is_active :is_superuser :last_login :sso_source])]
+(def ^:private PersonalUserStatsColumn
+  "Rows returned by [[personal-user-stats-columns]]."
+  (mut/select-keys ::users.schema/user.full [:is_active :is_superuser :last_login :sso_source]))
+
+(mu/defn personal-user-stats-columns :- [:sequential PersonalUserStatsColumn]
   "The active, superuser, last login, and SSO source of every personal User."
   []
   (t2/select [:model/User :is_active :is_superuser :last_login :sso_source] :type :personal))
 
-(mu/defn document-archived-flags :- [:sequential (mut/select-keys ::documents.schema/document [:archived])]
+(def ^:private DocumentArchivedFlag
+  "Rows returned by [[document-archived-flags]]."
+  (mut/select-keys ::documents.schema/document [:archived]))
+
+(mu/defn document-archived-flags :- [:sequential DocumentArchivedFlag]
   "The archived flag of every Document."
   []
   (t2/select [:model/Document :archived]))
 
-(mu/defn collection-by-type :- [:maybe (mut/select-keys ::collections.schema/collection [:id :location])]
+(def ^:private CollectionByType
+  "Rows returned by [[collection-by-type]]."
+  (mut/select-keys ::collections.schema/collection [:id :location]))
+
+(mu/defn collection-by-type :- [:maybe CollectionByType]
   "The id and location of a Collection of `collection-type`, or nil."
   [collection-type :- :string]
   (t2/select-one [:model/Collection :id :location] :type collection-type))
@@ -75,7 +86,11 @@
   []
   (t2/count :model/PermissionsGroup))
 
-(mu/defn dashboard-stats-columns :- [:sequential (mut/select-keys ::dashboards.schema/dashboard [:creator_id :public_uuid :parameters :enable_embedding :embedding_params])]
+(def ^:private DashboardStatsColumn
+  "Rows returned by [[dashboard-stats-columns]]."
+  (mut/select-keys ::dashboards.schema/dashboard [:creator_id :public_uuid :parameters :enable_embedding :embedding_params]))
+
+(mu/defn dashboard-stats-columns :- [:sequential DashboardStatsColumn]
   "The creator, public uuid, parameters, and embedding columns of the non-internal Dashboards."
   []
   (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
@@ -155,12 +170,20 @@
   []
   (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)}))
 
-(mu/defn card-collection-ids :- [:sequential (mut/select-keys ::queries.schema/card [:collection_id :card_schema])]
+(def ^:private CardCollectionId
+  "Rows returned by [[card-collection-ids]]."
+  (mut/select-keys ::queries.schema/card [:collection_id :card_schema]))
+
+(mu/defn card-collection-ids :- [:sequential CardCollectionId]
   "The Collection id and schema of the non-internal Cards."
   []
   (t2/select [:model/Card :collection_id :card_schema] {:where [:and (mi/exclude-internal-content-hsql :model/Card)]}))
 
-(mu/defn database-stats-columns :- [:sequential (mut/select-keys ::warehouses.schema/database [:is_full_sync :engine :dbms_version])]
+(def ^:private DatabaseStatsColumn
+  "Rows returned by [[database-stats-columns]]."
+  (mut/select-keys ::warehouses.schema/database [:is_full_sync :engine :dbms_version]))
+
+(mu/defn database-stats-columns :- [:sequential DatabaseStatsColumn]
   "The sync, engine, and DBMS version of the non-internal Databases."
   []
   (t2/select [:model/Database :is_full_sync :engine :dbms_version]
@@ -286,7 +309,11 @@
   []
   (first (t2/query (execution-metrics-sql))))
 
-(mu/defn query-cache-stats :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::cache.schema/query-cache)))]
+(def ^:private QueryCacheStat
+  "Rows returned by [[query-cache-stats]]."
+  (mut/merge ::cache.schema/query-cache [:map [:length [:maybe number?]] [:count [:maybe :int]]]))
+
+(mu/defn query-cache-stats :- [:maybe QueryCacheStat]
   "The average result `:length` and `:count` of the QueryCache entries."
   []
   (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]]))

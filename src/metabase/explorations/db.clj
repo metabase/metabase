@@ -13,8 +13,8 @@
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -93,7 +93,7 @@
                     {:join  [:exploration_thread [:= :exploration_thread.exploration_id :exploration.id]]
                      :where [:= :exploration_thread.id thread-id]}))
 
-(mu/defn insert-exploration! :- (mut/optional-keys ::explorations.schema/exploration)
+(mu/defn insert-exploration! :- [:sequential ::explorations.schema/exploration]
   "Insert `exploration` and return the new instance."
   [exploration :- ::explorations.schema/exploration.update]
   (first (t2/insert-returning-instances! :model/Exploration exploration)))
@@ -116,17 +116,29 @@
   [thread-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationThread :id thread-id))
 
-(mu/defn thread-exploration-id-row :- [:maybe (mut/select-keys ::explorations.schema/exploration-thread [:exploration_id])]
+(def ^:private ThreadExplorationId
+  "Rows returned by [[thread-exploration-id-row]]."
+  (mut/select-keys ::explorations.schema/exploration-thread [:exploration_id]))
+
+(mu/defn thread-exploration-id-row :- [:maybe ThreadExplorationId]
   "The `:exploration_id` row of the ExplorationThread with `thread-id`, or nil."
   [thread-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationThread :exploration_id] :id thread-id))
 
-(mu/defn thread-terminal-state :- [:maybe (mut/select-keys ::explorations.schema/exploration-thread [:id :canceled_at :completed_at])]
+(def ^:private ThreadTerminalState
+  "Rows returned by [[thread-terminal-state]]."
+  (mut/select-keys ::explorations.schema/exploration-thread [:id :canceled_at :completed_at]))
+
+(mu/defn thread-terminal-state :- [:maybe ThreadTerminalState]
   "The ID, cancel time, and completion time of the ExplorationThread with `thread-id`."
   [thread-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationThread :id :canceled_at :completed_at] :id thread-id))
 
-(mu/defn thread-planning-state :- [:maybe (mut/select-keys ::explorations.schema/exploration-thread [:id :canceled_at :analysis_started_at])]
+(def ^:private ThreadPlanningState
+  "Rows returned by [[thread-planning-state]]."
+  (mut/select-keys ::explorations.schema/exploration-thread [:id :canceled_at :analysis_started_at]))
+
+(mu/defn thread-planning-state :- [:maybe ThreadPlanningState]
   "The ID, cancel time, and analysis start time of the ExplorationThread with `thread-id`, or nil."
   [thread-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationThread :id :canceled_at :analysis_started_at] :id thread-id))
@@ -169,7 +181,11 @@
   [exploration-id :- ms/PositiveInt]
   (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id))
 
-(mu/defn lens-stamped-threads :- [:sequential (mut/select-keys ::explorations.schema/exploration-thread [:id :data_access_token])]
+(def ^:private LensStampedThread
+  "Rows returned by [[lens-stamped-threads]]."
+  (mut/select-keys ::explorations.schema/exploration-thread [:id :data_access_token]))
+
+(mu/defn lens-stamped-threads :- [:sequential LensStampedThread]
   "The ID and data-access token of the ExplorationThreads among `thread-ids` that carry a token."
   [thread-ids :- [:set ms/PositiveInt]]
   (t2/select [:model/ExplorationThread :id :data_access_token]
@@ -191,7 +207,7 @@
              :where  [:= :id thread-id]
              :for    [:update]}))
 
-(mu/defn insert-thread! :- (mut/optional-keys ::explorations.schema/exploration-thread)
+(mu/defn insert-thread! :- [:sequential ::explorations.schema/exploration-thread]
   "Insert `thread` and return the new instance."
   [thread :- ::explorations.schema/exploration-thread.update]
   (first (t2/insert-returning-instances! :model/ExplorationThread thread)))
@@ -259,7 +275,11 @@
   [block-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationBlock :id block-id))
 
-(mu/defn block-thread-id-row :- [:maybe (mut/select-keys ::explorations.schema/exploration-block [:exploration_thread_id])]
+(def ^:private BlockThreadId
+  "Rows returned by [[block-thread-id-row]]."
+  (mut/select-keys ::explorations.schema/exploration-block [:exploration_thread_id]))
+
+(mu/defn block-thread-id-row :- [:maybe BlockThreadId]
   "The `:exploration_thread_id` row of the ExplorationBlock with `block-id`, or nil."
   [block-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id block-id))
@@ -269,7 +289,7 @@
   [block-id :- ms/PositiveInt]
   (t2/select-one-fn :metrics :model/ExplorationBlock :id block-id))
 
-(mu/defn block-for-page :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::explorations.schema/exploration-block)))]
+(mu/defn block-for-page :- [:maybe ::explorations.schema/exploration-block]
   "The ExplorationBlock owning the ExplorationPage with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationBlock
@@ -288,7 +308,11 @@
              :exploration_thread_id [:in thread-ids]
              {:order-by [[:position :asc] [:id :asc]]}))
 
-(mu/defn block-metrics-for-threads-newest-first :- [:sequential (mut/select-keys ::explorations.schema/exploration-block [:exploration_thread_id :metrics])]
+(def ^:private BlockMetricsForThreadsNewestFirst
+  "Rows returned by [[block-metrics-for-threads-newest-first]]."
+  (mut/select-keys ::explorations.schema/exploration-block [:exploration_thread_id :metrics]))
+
+(mu/defn block-metrics-for-threads-newest-first :- [:sequential BlockMetricsForThreadsNewestFirst]
   "The thread ID and metric selections of the ExplorationBlocks of the ExplorationThreads with `thread-ids`, in
   reverse position order."
   [thread-ids :- [:sequential ms/PositiveInt]]
@@ -321,7 +345,11 @@
   [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationPage :id page-id))
 
-(mu/defn page-block-id-row :- [:maybe (mut/select-keys ::explorations.schema/exploration-page [:exploration_block_id])]
+(def ^:private PageBlockId
+  "Rows returned by [[page-block-id-row]]."
+  (mut/select-keys ::explorations.schema/exploration-page [:exploration_block_id]))
+
+(mu/defn page-block-id-row :- [:maybe PageBlockId]
   "The `:exploration_block_id` row of the ExplorationPage with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationPage :exploration_block_id] :id page-id))
@@ -395,7 +423,11 @@
   [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQuery :id query-id))
 
-(mu/defn query-thread-id-row :- [:maybe (mut/select-keys ::explorations.schema/exploration-query [:exploration_thread_id])]
+(def ^:private QueryThreadId
+  "Rows returned by [[query-thread-id-row]]."
+  (mut/select-keys ::explorations.schema/exploration-query [:exploration_thread_id]))
+
+(mu/defn query-thread-id-row :- [:maybe QueryThreadId]
   "The `:exploration_thread_id` row of the ExplorationQuery with `query-id`, or nil."
   [query-id :- ms/PositiveInt]
   (t2/select-one [:model/ExplorationQuery :exploration_thread_id] :id query-id))
@@ -411,7 +443,7 @@
   (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery
                     :id query-id :status [:in ["done" "error" "canceled"]]))
 
-(mu/defn runnable-query :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::explorations.schema/exploration-query)))]
+(mu/defn runnable-query :- [:maybe ::explorations.schema/exploration-query]
   "The pending ExplorationQuery with `query-id` on an uncanceled thread, or nil."
   [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQuery
@@ -430,7 +462,11 @@
              :exploration_thread_id [:in thread-ids]
              {:order-by [[:position :asc] [:id :asc]]}))
 
-(mu/defn lens-stamped-queries :- [:sequential (mut/select-keys ::explorations.schema/exploration-query [:id :exploration_thread_id :database_id :dataset_query :data_access_token])]
+(def ^:private LensStampedQuery
+  "Rows returned by [[lens-stamped-queries]]."
+  (mut/select-keys ::explorations.schema/exploration-query [:id :exploration_thread_id :database_id :dataset_query :data_access_token]))
+
+(mu/defn lens-stamped-queries :- [:sequential LensStampedQuery]
   "The ID, thread, Database, query, and data-access token of the ExplorationQueries with a query on the
   ExplorationThreads with `thread-ids`, in ID order."
   [thread-ids :- [:set ms/PositiveInt]]
@@ -550,14 +586,18 @@
   [query-id :- ms/PositiveInt]
   (t2/exists? :model/ExplorationQueryResult :exploration_query_id query-id))
 
-(mu/defn query-result-scores :- [:sequential ::explorations.schema/exploration-query-result]
+(mu/defn query-result-scores :- [:sequential (mut/optional-keys ::explorations.schema/exploration-query-result)]
   "The query ID and `score-column` of the ExplorationQueryResults of the ExplorationQueries with `query-ids`."
   [score-column :- :keyword
    query-ids    :- [:sequential ms/PositiveInt]]
   (t2/select [:model/ExplorationQueryResult :exploration_query_id score-column]
              :exploration_query_id [:in query-ids]))
 
-(mu/defn query-result-row-counts :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::explorations.schema/exploration-query-result)))]
+(def ^:private QueryResultRowCount
+  "Rows returned by [[query-result-row-counts]]."
+  (mut/merge (mut/select-keys ::explorations.schema/exploration-query-result [:exploration_query_id]) [:map [:row_count [:maybe :int]]]))
+
+(mu/defn query-result-row-counts :- [:sequential QueryResultRowCount]
   "The query ID and stored row count of the ExplorationQueryResults of the ExplorationQueries with `query-ids`."
   [query-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/ExplorationQueryResult
@@ -706,7 +746,11 @@
 
 ;;; ------------------------------------------------ Documents ------------------------------------------------
 
-(mu/defn summary-document-columns :- [:maybe (mut/select-keys ::documents.schema/document [:id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder])]
+(def ^:private SummaryDocumentColumn
+  "Rows returned by [[summary-document-columns]]."
+  (mut/select-keys ::documents.schema/document [:id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder]))
+
+(mu/defn summary-document-columns :- [:maybe SummaryDocumentColumn]
   "The wire-shape columns of the Document with `document-id`, or nil."
   [document-id :- ms/PositiveInt]
   (t2/select-one [:model/Document
@@ -714,7 +758,11 @@
                   :created_at :updated_at :archived :is_placeholder]
                  :id document-id))
 
-(mu/defn summary-documents-for-explorations :- [:sequential (mut/select-keys ::documents.schema/document [:id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder])]
+(def ^:private SummaryDocumentsForExploration
+  "Rows returned by [[summary-documents-for-explorations]]."
+  (mut/select-keys ::documents.schema/document [:id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder]))
+
+(mu/defn summary-documents-for-explorations :- [:sequential SummaryDocumentsForExploration]
   "The wire-shape columns of the Summary Documents of the Explorations with `exploration-ids`, oldest first."
   [exploration-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Document
@@ -768,7 +816,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn card-names :- [:sequential (mut/select-keys ::queries.schema/card [:id :name])]
+(def ^:private CardName
+  "Rows returned by [[card-names]]."
+  (mut/select-keys ::queries.schema/card [:id :name]))
+
+(mu/defn card-names :- [:sequential CardName]
   "The ID and name of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name] :id [:in card-ids]))
@@ -778,17 +830,29 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :description :model/Card :id card-id))
 
-(mu/defn card-presentation :- [:maybe (mut/select-keys ::queries.schema/card [:name :description :display :visualization_settings])]
+(def ^:private CardPresentation
+  "Rows returned by [[card-presentation]]."
+  (mut/select-keys ::queries.schema/card [:name :description :display :visualization_settings]))
+
+(mu/defn card-presentation :- [:maybe CardPresentation]
   "The name, description, display, and visualization settings of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :name :description :display :visualization_settings] :id card-id))
 
-(mu/defn card-queries :- [:sequential (mut/select-keys ::queries.schema/card [:id :card_schema :database_id :dataset_query])]
+(def ^:private CardQuery
+  "Rows returned by [[card-queries]]."
+  (mut/select-keys ::queries.schema/card [:id :card_schema :database_id :dataset_query]))
+
+(mu/defn card-queries :- [:sequential CardQuery]
   "The ID, schema, Database, and query of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :card_schema :database_id :dataset_query] :id [:in card-ids]))
 
-(mu/defn metric-cards-by-id :- [:map-of ::lib.schema.id/card ::lib.schema.id/card]
+(def ^:private MetricCardsById
+  "Rows returned by [[metric-cards-by-id]]."
+  (mut/select-keys ::queries.schema/card [:id :name :description :database_id :dataset_query :card_schema :dimensions :dimension_mappings]))
+
+(mu/defn metric-cards-by-id :- [:map-of ::lib.schema.id/card MetricCardsById]
   "A map of ID to the planner columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn identity
@@ -796,7 +860,11 @@
                      :dimension_mappings]
                     :id [:in card-ids]))
 
-(mu/defn metric-card-ids :- [:sequential (mut/select-keys ::queries.schema/card [:id])]
+(def ^:private MetricCardId
+  "Rows returned by [[metric-card-ids]]."
+  (mut/select-keys ::queries.schema/card [:id]))
+
+(mu/defn metric-card-ids :- [:sequential MetricCardId]
   "The `:id`s of the Cards visible to the current user as metrics, restricted to `metric-ids` when
   non-empty, with those in `library-collection-ids` sorted first and then alphabetically by name."
   [metric-ids             :- [:maybe [:sequential ::lib.schema.id/metric]]
@@ -816,17 +884,21 @@
   [:id :name :description :collection_id :database_id :table_id :type :entity_id
    :card_schema :dataset_query :dimensions :dimension_mappings])
 
-(mu/defn metric-cards-for-explorations :- [:sequential ::queries.schema/card]
+(mu/defn metric-cards-for-explorations :- [:sequential (mut/optional-keys ::queries.schema/card)]
   "The exploration-relevant columns of the metric Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids] :type "metric"))
 
-(mu/defn cards-for-explorations :- [:sequential ::queries.schema/card]
+(mu/defn cards-for-explorations :- [:sequential (mut/optional-keys ::queries.schema/card)]
   "The exploration-relevant columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids]))
 
-(mu/defn library-metrics-root-collection :- [:maybe (mut/select-keys ::collections.schema/collection [:id :location])]
+(def ^:private LibraryMetricsRootCollection
+  "Rows returned by [[library-metrics-root-collection]]."
+  (mut/select-keys ::collections.schema/collection [:id :location]))
+
+(mu/defn library-metrics-root-collection :- [:maybe LibraryMetricsRootCollection]
   "The ID and location of the library metrics Collection of `type`, or nil."
   [type :- :string]
   (t2/select-one [:model/Collection :id :location] :type type))
@@ -841,7 +913,11 @@
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one-fn :name :model/Segment :id segment-id))
 
-(mu/defn user-summaries-by-id :- [:map-of ::lib.schema.id/user ::lib.schema.id/user]
+(def ^:private UserSummariesById
+  "Rows returned by [[user-summaries-by-id]]."
+  (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name]))
+
+(mu/defn user-summaries-by-id :- [:map-of ::lib.schema.id/user UserSummariesById]
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))

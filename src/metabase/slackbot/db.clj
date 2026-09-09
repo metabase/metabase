@@ -3,16 +3,19 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [malli.util :as mut]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.queries.schema :as queries.schema]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn active-slack-connect-identity :- [:maybe [:map {:closed true} [:user_id (mut/optional-keys (mut/open-schema (mr/schema ::users.schema/user)))] [:metadata [:maybe [:or :string :map sequential?]]]]]
+(def ^:private ActiveSlackConnectIdentity
+  "Rows returned by [[active-slack-connect-identity]]."
+  (mut/select-keys ::auth-identity.schema/auth-identity [:user_id :metadata]))
+
+(mu/defn active-slack-connect-identity :- [:maybe ActiveSlackConnectIdentity]
   "The user id and metadata of the newest Slack Connect AuthIdentity of an active User for `slack-user-id`, or nil."
   [slack-user-id :- :string]
   (t2/select-one [:model/AuthIdentity :user_id :metadata]
@@ -49,7 +52,11 @@
                     :deleted_at [:not= nil]
                     :slack_msg_id [:in slack-msg-ids]))
 
-(mu/defn assistant-state-messages :- [:sequential (mut/select-keys ::metabot.schema/metabot-message [:id :role :state :error :finished])]
+(def ^:private AssistantStateMessage
+  "Rows returned by [[assistant-state-messages]]."
+  (mut/select-keys ::metabot.schema/metabot-message [:id :role :state :error :finished]))
+
+(mu/defn assistant-state-messages :- [:sequential AssistantStateMessage]
   "The id, role, state, error, and finished flag of the non-deleted assistant MetabotMessages of `conversation-id`,
   oldest first."
   [conversation-id :- :string]

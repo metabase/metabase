@@ -12,7 +12,6 @@
    [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -48,17 +47,29 @@
                                           (when database-id [:= :source_database_id database-id])]
                                :order-by [[:id :asc]]}))
 
-(mu/defn transform-dependency-rows :- [:sequential (mut/select-keys ::transforms.schema/transform [:id :target :target_table_id :created_at :table_dependencies])]
+(def ^:private TransformDependency
+  "Rows returned by [[transform-dependency-rows]]."
+  (mut/select-keys ::transforms.schema/transform [:id :target :target_table_id :created_at :table_dependencies]))
+
+(mu/defn transform-dependency-rows :- [:sequential TransformDependency]
   "The ID, target, target Table ID, creation time, and table dependencies of every Transform."
   []
   (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
 
-(mu/defn transform-snapshot :- [:maybe (mut/select-keys ::transforms.schema/transform [:name :entity_id :source_type])]
+(def ^:private TransformSnapshot
+  "Rows returned by [[transform-snapshot]]."
+  (mut/select-keys ::transforms.schema/transform [:name :entity_id :source_type]))
+
+(mu/defn transform-snapshot :- [:maybe TransformSnapshot]
   "The name, entity ID, and source type of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one [:model/Transform :name :entity_id :source_type] :id transform-id))
 
-(mu/defn transform-summaries-by-id :- [:map-of ::lib.schema.id/transform ::lib.schema.id/transform]
+(def ^:private TransformSummariesById
+  "Rows returned by [[transform-summaries-by-id]]."
+  (mut/select-keys ::transforms.schema/transform [:id :name :collection_id]))
+
+(mu/defn transform-summaries-by-id :- [:map-of ::lib.schema.id/transform TransformSummariesById]
   "A map of ID to the ID, name, and Collection ID of the Transforms with `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select-pk->fn identity [:model/Transform :id :name :collection_id] :id [:in transform-ids]))
@@ -78,7 +89,7 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one-fn :collection_id :model/Transform :id transform-id))
 
-(mu/defn insert-transform! :- (mut/optional-keys ::transforms.schema/transform)
+(mu/defn insert-transform! :- ::transforms.schema/transform
   "Insert `transform` and return the new instance."
   [transform :- ::transforms.schema/transform.update]
   (t2/insert-returning-instance! :model/Transform transform))
@@ -122,7 +133,11 @@
   [transform-ids :- [:or [:set [:maybe ::lib.schema.id/transform]] [:sequential [:maybe ::lib.schema.id/transform]]]]
   (t2/select :model/TransformTransformTag :transform_id [:in transform-ids] {:order-by [[:position :asc]]}))
 
-(mu/defn transform-tag-links-for-tags :- [:sequential (mut/select-keys ::transforms.schema/transform-transform-tag [:tag_id :transform_id])]
+(def ^:private TransformTagLinksForTag
+  "Rows returned by [[transform-tag-links-for-tags]]."
+  (mut/select-keys ::transforms.schema/transform-transform-tag [:tag_id :transform_id]))
+
+(mu/defn transform-tag-links-for-tags :- [:sequential TransformTagLinksForTag]
   "The tag ID and Transform ID of the tag links of the TransformTags with `tag-ids`."
   [tag-ids :- [:set ms/PositiveInt]]
   (t2/select [:model/TransformTransformTag :tag_id :transform_id] :tag_id [:in tag-ids]))
@@ -132,7 +147,11 @@
   [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
   (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
 
-(mu/defn active-job-schedules-for-transforms :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::transforms.schema/transform-transform-tag)))]
+(def ^:private ActiveJobSchedulesForTransform
+  "Rows returned by [[active-job-schedules-for-transforms]]."
+  (mut/merge (mut/select-keys ::transforms.schema/transform-transform-tag [:transform_id]) [:map [:schedule [:maybe [:or :string :map sequential?]]]]))
+
+(mu/defn active-job-schedules-for-transforms :- [:sequential ActiveJobSchedulesForTransform]
   "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag."
   [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select :model/TransformTransformTag
@@ -175,7 +194,11 @@
   []
   (t2/select :model/TransformJob :active true))
 
-(mu/defn job-snapshot :- [:maybe (mut/select-keys ::transforms.schema/transform-job [:name :entity_id :built_in_type])]
+(def ^:private JobSnapshot
+  "Rows returned by [[job-snapshot]]."
+  (mut/select-keys ::transforms.schema/transform-job [:name :entity_id :built_in_type]))
+
+(mu/defn job-snapshot :- [:maybe JobSnapshot]
   "The name, entity ID, and built-in type of the TransformJob with `job-id`."
   [job-id :- ms/PositiveInt]
   (t2/select-one [:model/TransformJob :name :entity_id :built_in_type] :id job-id))
@@ -360,7 +383,7 @@
    [:statuses          [:maybe [:sequential :string]]]
    [:user-id           [:maybe ::lib.schema.id/user]]])
 
-(mu/defn paged-runs :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::transforms.schema/transform-run)))]
+(mu/defn paged-runs :- [:sequential ::transforms.schema/transform-run]
   "Up to `limit` (offset by `offset`) TransformRuns matching `filters` (see [[paged-runs-where]] for the supported
   keys), sorted by `sort-column`/`sort-direction` (translating `status`, `run-method`, and `transform-tags` sort
   columns per `status-labels`/`run-method-labels`/`tag-name-labels`)."
@@ -422,7 +445,11 @@
   (t2/select :model/TransformRun {:where [:and [:= :is_active true] [:in :id run-ids]]
                                   :for   :update}))
 
-(mu/defn last-success-times :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::transforms.schema/transform-run)))]
+(def ^:private LastSuccessTime
+  "Rows returned by [[last-success-times]]."
+  (mut/merge (mut/select-keys ::transforms.schema/transform-run [:transform_id]) [:map [:last_success [:maybe ms/TemporalInstant]]]))
+
+(mu/defn last-success-times :- [:sequential LastSuccessTime]
   "Rows of Transform ID and the latest `end_time` of its succeeded runs for `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select :model/TransformRun
@@ -432,7 +459,7 @@
                          [:= :status "succeeded"]]
               :group-by [:transform_id]}))
 
-(mu/defn insert-run! :- (mut/optional-keys ::transforms.schema/transform-run)
+(mu/defn insert-run! :- ::transforms.schema/transform-run
   "Insert `run` and return the new instance."
   [run :- ::transforms.schema/transform-run.update]
   (t2/insert-returning-instance! :model/TransformRun run))
@@ -477,7 +504,11 @@
   []
   (t2/reducible-select :model/TransformRunCancelation))
 
-(mu/defn cancelations-requested-before :- [:sequential (mut/select-keys ::transforms.schema/transform-run-cancelation [:run_id :time])]
+(def ^:private CancelationsRequestedBefore
+  "Rows returned by [[cancelations-requested-before]]."
+  (mut/select-keys ::transforms.schema/transform-run-cancelation [:run_id :time]))
+
+(mu/defn cancelations-requested-before :- [:sequential CancelationsRequestedBefore]
   "The run ID and request time of the TransformRunCancelations requested before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (t2/select [:model/TransformRunCancelation :run_id :time] :time [:< cutoff]))
@@ -594,7 +625,11 @@
   [job-id :- ms/PositiveInt]
   (t2/select-one :model/TransformJobRun :job_id job-id :is_active true))
 
-(mu/defn failed-cron-job-runs-between :- [:sequential (mut/select-keys ::transforms.schema/transform-job-run [:job_id :start_time :message])]
+(def ^:private FailedCronJobRunsBetween
+  "Rows returned by [[failed-cron-job-runs-between]]."
+  (mut/select-keys ::transforms.schema/transform-job-run [:job_id :start_time :message]))
+
+(mu/defn failed-cron-job-runs-between :- [:sequential FailedCronJobRunsBetween]
   "The job ID, start time, and message of the cron TransformJobRuns that failed or timed out in `[start, end)`,
   oldest first."
   [start :- ms/TemporalInstant
@@ -607,7 +642,7 @@
                          [:< :start_time end]]
               :order-by [[:start_time :asc]]}))
 
-(mu/defn insert-job-run! :- (mut/optional-keys ::transforms.schema/transform-job-run)
+(mu/defn insert-job-run! :- ::transforms.schema/transform-job-run
   "Insert `job-run` and return the new instance."
   [job-run :- ::transforms.schema/transform-job-run.update]
   (t2/insert-returning-instance! :model/TransformJobRun job-run))
@@ -617,7 +652,7 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/TransformDagRun :source_transform_id transform-id :is_active true))
 
-(mu/defn insert-dag-run! :- (mut/optional-keys ::transforms.schema/transform-dag-run)
+(mu/defn insert-dag-run! :- ::transforms.schema/transform-dag-run
   "Insert `dag-run` and return the new instance."
   [dag-run :- ::transforms.schema/transform-dag-run.update]
   (t2/insert-returning-instance! :model/TransformDagRun dag-run))
@@ -827,7 +862,11 @@
   []
   (t2/select :model/User :is_superuser true :is_active true))
 
-(mu/defn user-summaries-by-id :- [:map-of ::lib.schema.id/user ::lib.schema.id/user]
+(def ^:private UserSummariesById
+  "Rows returned by [[user-summaries-by-id]]."
+  (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name]))
+
+(mu/defn user-summaries-by-id :- [:map-of ::lib.schema.id/user UserSummariesById]
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))

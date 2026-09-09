@@ -22,7 +22,7 @@
 
 (mu/defn users :- [:sequential ::users.schema/user]
   "The Users with `user-ids`."
-  [user-ids :- [:maybe [:sequential ::lib.schema.id/user]]]
+  [user-ids :- [:maybe [:sequential [:maybe ::lib.schema.id/user]]]]
   (t2/select :model/User :id [:in user-ids]))
 
 (mu/defn moderation-review-ids-for-item :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
@@ -36,7 +36,11 @@
                             [:= :moderated_item_type item-type]]
                  :order-by [[:id :desc]]}))
 
-(mu/defn most-recent-moderation-review-statuses :- [:sequential (mut/select-keys ::content-verification.schema/moderation-review [:moderated_item_id :moderated_item_type :status])]
+(def ^:private MostRecentModerationReviewStatuse
+  "Rows returned by [[most-recent-moderation-review-statuses]]."
+  (mut/select-keys ::content-verification.schema/moderation-review [:moderated_item_id :moderated_item_type :status]))
+
+(mu/defn most-recent-moderation-review-statuses :- [:sequential MostRecentModerationReviewStatuse]
   "The item id, item type, and status of the most recent ModerationReviews of the items with `item-types` and
   `item-ids`, newest first."
   [item-types :- [:set :keyword]
@@ -60,7 +64,7 @@
               {:moderated_item_id item-id, :moderated_item_type item-type}
               {:most_recent false}))
 
-(mu/defn insert-moderation-review! :- (mut/optional-keys ::content-verification.schema/moderation-review)
+(mu/defn insert-moderation-review! :- ::content-verification.schema/moderation-review
   "Insert the ModerationReview `row` and return the inserted instance."
   [row :- (mut/select-keys ::content-verification.schema/moderation-review.update [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]
   (t2/insert-returning-instance! :model/ModerationReview row))

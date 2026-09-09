@@ -2,7 +2,6 @@
   "Application database queries for the metabot module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.metabot.schema :as ee-metabot.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
@@ -11,7 +10,6 @@
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -38,7 +36,7 @@
   []
   (t2/select :model/MetabotPermissions {:order-by [[:group_id :asc] [:perm_type :asc]]}))
 
-(mu/defn visible-permissions-for-user :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::ee-metabot.schema/metabot-permissions)))]
+(mu/defn visible-permissions-for-user :- [:sequential ::ee-metabot.schema/metabot-permissions]
   "The MetabotPermissions rows of the groups of the User with `user-id` that the mode selected by `advanced?` shows."
   [user-id   :- ::lib.schema.id/user
    advanced? :- :boolean]

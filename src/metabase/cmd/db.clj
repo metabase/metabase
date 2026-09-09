@@ -8,7 +8,11 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn user-id-and-active-by-email :- [:maybe (mut/select-keys ::users.schema/user [:id :is_active])]
+(def ^:private UserIdAndActiveByEmail
+  "Rows returned by [[user-id-and-active-by-email]]."
+  (mut/select-keys ::users.schema/user.full [:id :is_active]))
+
+(mu/defn user-id-and-active-by-email :- [:maybe UserIdAndActiveByEmail]
   "The `:id` and `:is_active` of the User whose email matches `email` case-insensitively, or nil."
   [email :- :string]
   (t2/select-one [:model/User :id :is_active] :%lower.email (u/lower-case-en email)))

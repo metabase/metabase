@@ -2,7 +2,6 @@
   "Application database queries for the testing API module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
@@ -27,7 +26,7 @@
   []
   (t2/delete! :model/SecurityAdvisory))
 
-(mu/defn insert-security-advisories! :- [:sequential (mut/optional-keys ::security-center.schema/security-advisory)]
+(mu/defn insert-security-advisories! :- [:sequential ::security-center.schema/security-advisory]
   "Insert `advisories` and return the inserted SecurityAdvisory instances."
   [advisories :- [:sequential
                   ::security-center.schema/security-advisory.update]]

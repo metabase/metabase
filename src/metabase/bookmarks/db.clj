@@ -42,34 +42,34 @@
    user-id        :- ::lib.schema.id/user]
   (t2/exists? :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
 
-(mu/defn insert-card-bookmark! :- (mut/optional-keys ::bookmarks.schema/card-bookmark)
+(mu/defn insert-card-bookmark! :- ::bookmarks.schema/card-bookmark
   "Insert a CardBookmark for the Card with `card-id` and the User with `user-id`, returning the inserted instance."
   [card-id :- ::lib.schema.id/card
    user-id :- ::lib.schema.id/user]
   (t2/insert-returning-instance! :model/CardBookmark {:card_id card-id :user_id user-id}))
 
-(mu/defn insert-dashboard-bookmark! :- (mut/optional-keys ::bookmarks.schema/dashboard-bookmark)
+(mu/defn insert-dashboard-bookmark! :- ::bookmarks.schema/dashboard-bookmark
   "Insert a DashboardBookmark for the Dashboard with `dashboard-id` and the User with `user-id`, returning the
   inserted instance."
   [dashboard-id :- ::lib.schema.id/dashboard
    user-id      :- ::lib.schema.id/user]
   (t2/insert-returning-instance! :model/DashboardBookmark {:dashboard_id dashboard-id :user_id user-id}))
 
-(mu/defn insert-collection-bookmark! :- (mut/optional-keys ::bookmarks.schema/collection-bookmark)
+(mu/defn insert-collection-bookmark! :- ::bookmarks.schema/collection-bookmark
   "Insert a CollectionBookmark for the Collection with `collection-id` and the User with `user-id`, returning the
   inserted instance."
   [collection-id :- ::lib.schema.id/collection
    user-id       :- ::lib.schema.id/user]
   (t2/insert-returning-instance! :model/CollectionBookmark {:collection_id collection-id :user_id user-id}))
 
-(mu/defn insert-document-bookmark! :- (mut/optional-keys ::bookmarks.schema/document-bookmark)
+(mu/defn insert-document-bookmark! :- ::bookmarks.schema/document-bookmark
   "Insert a DocumentBookmark for the Document with `document-id` and the User with `user-id`, returning the inserted
   instance."
   [document-id :- ms/PositiveInt
    user-id     :- ::lib.schema.id/user]
   (t2/insert-returning-instance! :model/DocumentBookmark {:document_id document-id :user_id user-id}))
 
-(mu/defn insert-exploration-bookmark! :- (mut/optional-keys ::bookmarks.schema/exploration-bookmark)
+(mu/defn insert-exploration-bookmark! :- ::bookmarks.schema/exploration-bookmark
   "Insert an ExplorationBookmark for the Exploration with `exploration-id` and the User with `user-id`, returning the
   inserted instance."
   [exploration-id :- ms/PositiveInt

@@ -15,7 +15,11 @@
   ;; users, which calls an EE method that needs ... a token check :|
   (t2/count (t2/table-name :model/User) :is_active true, :type "personal"))
 
-(mu/defn token-status-cache :- [:maybe (mut/select-keys ::premium-features.schema/premium-features-cache [:token_status_hash :updated_at])]
+(def ^:private TokenStatusCache
+  "Rows returned by [[token-status-cache]]."
+  (mut/select-keys ::premium-features.schema/premium-features-cache [:token_status_hash :updated_at]))
+
+(mu/defn token-status-cache :- [:maybe TokenStatusCache]
   "The `:token_status_hash` and `:updated_at` cached for `token-hash`, or nil."
   [token-hash :- :string]
   (t2/select-one [:model/PremiumFeaturesCache :token_status_hash :updated_at] :token_hash token-hash))

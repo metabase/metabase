@@ -54,33 +54,48 @@
    [:name ms/NonBlankString]])
 
 (mr/def ::user
-  "A User as selected from the app DB: every column of `:core_user` (the non-default ones optional), plus `:common_name` added by the model's after-select hook."
+  "A User as selected from the app DB: every column of `:core_user` that the model selects by default, plus `:common_name` added by the model's after-select hook."
+  [:map {:closed true}
+   [:id              ::lib.schema.id/user]
+   [:email           :string]
+   [:first_name      [:maybe :string]]
+   [:last_name       [:maybe :string]]
+   [:date_joined     ms/TemporalInstant]
+   [:last_login      [:maybe ms/TemporalInstant]]
+   [:is_superuser    :boolean]
+   [:is_qbnewb       :boolean]
+   [:tenant_id       [:maybe ms/PositiveInt]]
+   [:is_data_analyst :boolean]
+   [:common_name     {:optional true} [:maybe :string]]])
+
+(mr/def ::user.full
+  "A User as selected from the app DB with every column of `:core_user`, not only the default ones, plus `:common_name` added by the model's after-select hook."
   [:map {:closed true}
    [:id                      ::lib.schema.id/user]
    [:email                   :string]
    [:first_name              [:maybe :string]]
    [:last_name               [:maybe :string]]
-   [:password                {:optional true} [:maybe :string]]
-   [:password_salt           {:optional true} [:maybe :string]]
+   [:password                [:maybe :string]]
+   [:password_salt           [:maybe :string]]
    [:date_joined             ms/TemporalInstant]
    [:last_login              [:maybe ms/TemporalInstant]]
    [:is_superuser            :boolean]
-   [:is_active               {:optional true} :boolean]
-   [:reset_token             {:optional true} [:maybe :string]]
-   [:reset_triggered         {:optional true} [:maybe :int]]
+   [:is_active               :boolean]
+   [:reset_token             [:maybe :string]]
+   [:reset_triggered         [:maybe :int]]
    [:is_qbnewb               :boolean]
-   [:login_attributes        {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:sso_source              {:optional true} [:maybe [:or :keyword :string]]]
-   [:locale                  {:optional true} [:maybe :string]]
-   [:is_datasetnewb          {:optional true} :boolean]
-   [:settings                {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:type                    {:optional true} [:or :keyword :string]]
-   [:entity_id               {:optional true} :string]
-   [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:login_attributes        [:maybe [:or :string :map sequential?]]]
+   [:updated_at              [:maybe ms/TemporalInstant]]
+   [:sso_source              [:maybe [:or :keyword :string]]]
+   [:locale                  [:maybe :string]]
+   [:is_datasetnewb          :boolean]
+   [:settings                [:maybe [:or :string :map sequential?]]]
+   [:type                    [:or :keyword :string]]
+   [:entity_id               :string]
+   [:deactivated_at          [:maybe ms/TemporalInstant]]
    [:tenant_id               [:maybe ms/PositiveInt]]
-   [:jwt_attributes          {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
+   [:jwt_attributes          [:maybe [:or :string :map sequential?]]]
+   [:deactivated_with_tenant [:maybe :boolean]]
    [:is_data_analyst         :boolean]
    [:common_name             {:optional true} [:maybe :string]]])
 

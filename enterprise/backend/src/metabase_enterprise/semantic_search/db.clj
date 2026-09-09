@@ -12,7 +12,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn library-root-collections :- [:sequential (mut/select-keys ::collections.schema/collection [:id :type])]
+(def ^:private LibraryRootCollection
+  "Rows returned by [[library-root-collections]]."
+  (mut/select-keys ::collections.schema/collection [:id :type]))
+
+(mu/defn library-root-collections :- [:sequential LibraryRootCollection]
   "The ID and type of the top-level Collections whose type is one of `types`."
   [types :- [:sequential :string]]
   (t2/select [:model/Collection :id :type] :type [:in types] :location "/"))
@@ -44,12 +48,20 @@
                        {:where [:and [:= :archived false]
                                 [:in :collection_id collection-ids]]}))
 
-(mu/defn collection-owners-and-locations :- [:sequential (mut/select-keys ::collections.schema/collection [:id :personal_owner_id :location])]
+(def ^:private CollectionOwnersAndLocation
+  "Rows returned by [[collection-owners-and-locations]]."
+  (mut/select-keys ::collections.schema/collection [:id :personal_owner_id :location]))
+
+(mu/defn collection-owners-and-locations :- [:sequential CollectionOwnersAndLocation]
   "The ID, owner, and location of the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :personal_owner_id :location] :id [:in collection-ids]))
 
-(mu/defn personal-collection-owners :- [:sequential (mut/select-keys ::collections.schema/collection [:id :personal_owner_id])]
+(def ^:private PersonalCollectionOwner
+  "Rows returned by [[personal-collection-owners]]."
+  (mut/select-keys ::collections.schema/collection [:id :personal_owner_id]))
+
+(mu/defn personal-collection-owners :- [:sequential PersonalCollectionOwner]
   "The ID and owner of the personal Collections among `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :personal_owner_id]

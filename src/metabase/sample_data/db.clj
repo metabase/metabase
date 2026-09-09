@@ -34,7 +34,7 @@
   [details :- :map]
   (t2/update-returning-pks! :model/Database :is_sample true {:details details}))
 
-(mu/defn insert-sample-database! :- (mut/optional-keys ::warehouses.schema/database)
+(mu/defn insert-sample-database! :- ::warehouses.schema/database
   "Insert the sample Database and return the inserted instance."
   [database-name :- :string
    details       :- :map

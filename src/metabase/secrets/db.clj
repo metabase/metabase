@@ -2,7 +2,6 @@
   "Application database queries for the secrets module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.secrets.schema :as secrets.schema]
    [metabase.util.malli :as mu]
@@ -14,7 +13,7 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Secret :id id {:order-by [[:version :desc]]}))
 
-(mu/defn insert-secret! :- (mut/optional-keys ::secrets.schema/secret)
+(mu/defn insert-secret! :- ::secrets.schema/secret
   "Insert the Secret `row` and return the inserted instance."
   [row :- [:map {:closed true}
            [:id         {:optional true} ms/PositiveInt]

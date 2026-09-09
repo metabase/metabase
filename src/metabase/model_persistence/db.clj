@@ -11,12 +11,11 @@
    [metabase.tracing.core :as tracing]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn persisted-info-listing :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::model-persistence.schema/persisted-info)))]
+(mu/defn persisted-info-listing :- [:sequential ::model-persistence.schema/persisted-info]
   "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window,
   table name, creator, card name/archived/type, database name, and collection id/name/authority level) for
   unarchived model Cards, optionally narrowed to `persisted-info-id`, `db-ids`, and/or `card-id`, newest
@@ -51,7 +50,7 @@
                limit             (sql.helpers/limit limit)
                offset            (sql.helpers/offset offset))))
 
-(mu/defn deletable-prunable-persisted-infos :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::model-persistence.schema/persisted-info)))]
+(mu/defn deletable-prunable-persisted-infos :- [:sequential ::model-persistence.schema/persisted-info]
   "The PersistedInfos in one of `states` for over an hour, or attached to an archived question, or whose
   Card has been deleted — the records [[metabase.model-persistence.task.persist-refresh]] may unpersist."
   [states :- [:set :string]]
@@ -72,7 +71,7 @@
     (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/select :model/PersistedInfo hsql))))
 
-(mu/defn refreshable-persisted-infos :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::model-persistence.schema/persisted-info)))]
+(mu/defn refreshable-persisted-infos :- [:sequential ::model-persistence.schema/persisted-info]
   "The PersistedInfos of the Database with `database-id` in one of `states` whose Card is an unarchived
   model, plus the Card's `:type`, `:archived`, and `:name`."
   [database-id :- ::lib.schema.id/database
@@ -135,7 +134,7 @@
                                           [:= :c.type "model"]
                                           [:not :c.archived]]}))
 
-(mu/defn insert-persisted-info! :- (mut/optional-keys ::model-persistence.schema/persisted-info)
+(mu/defn insert-persisted-info! :- ::model-persistence.schema/persisted-info
   "Insert the PersistedInfo `row`, with `refresh_begin` and `state_change_at` defaulting to the app DB's now, and
   return the inserted instance."
   [row :- ::model-persistence.schema/persisted-info.update]
@@ -228,7 +227,7 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/PersistedInfo :id id))
 
-(mu/defn unpersisted-models-for-database :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
+(mu/defn unpersisted-models-for-database :- [:sequential ::queries.schema/card]
   "The model Cards of the Database with `database-id` that have no PersistedInfo."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Card
@@ -247,10 +246,7 @@
 
 (def ^:private CardArchivedAndType
   "Rows returned by [[card-archived-and-type]]."
-  [:map {:closed true}
-   [:archived    :boolean]
-   [:type        :keyword]
-   [:card_schema :int]])
+  (mut/select-keys ::queries.schema/card [:archived :type :card_schema]))
 
 (mu/defn card-archived-and-type :- [:maybe CardArchivedAndType]
   "The archived flag and type of the Card with `card-id`, or nil."

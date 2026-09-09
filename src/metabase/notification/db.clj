@@ -8,16 +8,15 @@
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.explorations.schema :as explorations.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.notification.schema :as notification.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -100,7 +99,7 @@
   [internal-id :- :string]
   (t2/select-one :model/Notification :internal_id internal-id))
 
-(mu/defn notification-for-handler :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::notification.schema/notification)))]
+(mu/defn notification-for-handler :- [:maybe ::notification.schema/notification]
   "The Notification owning the NotificationHandler with `handler-id`, or nil."
   [handler-id :- ms/PositiveInt]
   (t2/select-one :model/Notification
@@ -181,7 +180,7 @@
   [notification-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Notification :id [:in notification-ids] :payload_type :notification/card))
 
-(mu/defn active-card-notifications-for-card :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::notification.schema/notification)))]
+(mu/defn active-card-notifications-for-card :- [:sequential ::notification.schema/notification]
   "The active card Notifications attached to the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/Notification
@@ -191,7 +190,7 @@
                                                 :from   [:notification_card]
                                                 :where  [:= :card_id card-id]}]))
 
-(mu/defn active-system-event-notifications :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::notification.schema/notification)))]
+(mu/defn active-system-event-notifications :- [:sequential ::notification.schema/notification]
   "The active Notifications subscribed to the system event named `event-name`."
   [event-name :- :string]
   (t2/select :model/Notification
@@ -203,7 +202,7 @@
                           [:= :ns.event_name event-name]
                           [:= :ns.type "notification-subscription/system-event"]]}))
 
-(mu/defn insert-notification! :- (mut/optional-keys ::notification.schema/notification)
+(mu/defn insert-notification! :- ::notification.schema/notification
   "Insert `notification` and return the new instance."
   [notification :- NotificationRow]
   (t2/insert-returning-instance! :model/Notification notification))
@@ -287,7 +286,7 @@
                      :notification_id notification-id
                      :type :notification-subscription/cron))
 
-(mu/defn active-cron-subscriptions-by-id :- [:map-of ms/PositiveInt ms/PositiveInt]
+(mu/defn active-cron-subscriptions-by-id :- [:map-of ms/PositiveInt ::notification.schema/notification-subscription]
   "A map of ID to cron NotificationSubscription for every active Notification."
   []
   (t2/select-pk->fn identity :model/NotificationSubscription
@@ -401,7 +400,11 @@
 
 ;;; ---------------------------------------------- Task runs ----------------------------------------------
 
-(mu/defn terminal-alert-runs :- [:sequential (mut/select-keys ::explorations.schema/exploration-query [:id :status :started_at])]
+(def ^:private TerminalAlertRun
+  "Rows returned by [[terminal-alert-runs]]."
+  (mut/select-keys ::task-history.schema/task-run [:id :status :started_at]))
+
+(mu/defn terminal-alert-runs :- [:sequential TerminalAlertRun]
   "Up to `limit` TaskRuns of `run-type` for the Notification with `notification-id` that reached one of `statuses`
   after `cutoff`, newest first."
   [run-type        :- :string
@@ -441,9 +444,7 @@
 
 (def ^:private LatestFailedTaskHistory
   "Rows returned by [[latest-failed-task-history]]."
-  [:map {:closed true}
-   [:run_id       ms/PositiveInt]
-   [:task_details [:maybe [:or :string :map sequential?]]]])
+  (mut/select-keys ::task-history.schema/task-history [:run_id :task_details]))
 
 (mu/defn latest-failed-task-history :- [:sequential LatestFailedTaskHistory]
   "The `:run_id` and `:task_details` of the single failed/abandoned TaskHistory row per run among `run-ids` (and, if
@@ -735,7 +736,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :email [:model/User :email] user-id))
 
-(mu/defn user-summary :- [:maybe (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name])]
+(def ^:private UserSummary
+  "Rows returned by [[user-summary]]."
+  (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name]))
+
+(mu/defn user-summary :- [:maybe UserSummary]
   "The ID, names, email, and derived common name of the User with `user-id`, or nil (also for a nil `user-id`, e.g.
   a system-created notification without a creator)."
   [user-id :- [:maybe ::lib.schema.id/user]]

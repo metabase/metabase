@@ -9,7 +9,6 @@
    [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -70,7 +69,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :email :model/User :id user-id))
 
-(mu/defn lock-user :- [:maybe (mut/select-keys ::users.schema/user [:id])]
+(def ^:private LockUser
+  "Rows returned by [[lock-user]]."
+  (mut/select-keys ::users.schema/user [:id]))
+
+(mu/defn lock-user :- [:maybe LockUser]
   "The `:id` row of the User with `user-id`, locked for update."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id] :id user-id {:for :update}))
@@ -127,7 +130,7 @@
   []
   (t2/count :model/User {:where unenrolled-user-where}))
 
-(mu/defn user-list :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::users.schema/user)))]
+(mu/defn user-list :- [:sequential ::users.schema/user]
   "The name-ordered admin list of enrolled (with their enrollment time) or unenrolled Users matching `search`, paged
   by the optional `limit` and `offset`."
   [enrolled? :- :boolean

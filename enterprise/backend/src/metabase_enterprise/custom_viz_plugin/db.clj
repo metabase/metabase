@@ -14,17 +14,29 @@
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
-(mu/defn non-blob-plugin :- [:maybe ::custom-viz-plugin.schema/custom-viz-plugin]
+(def ^:private NonBlobPluginRow
+  "Rows returned by [[non-blob-plugin]]."
+  (mut/select-keys ::custom-viz-plugin.schema/custom-viz-plugin [:id :identifier :display_name :icon :status :error_message :enabled :manifest :metabase_version :bundle_hash :dev_bundle_url :created_at :updated_at]))
+
+(mu/defn non-blob-plugin :- [:maybe NonBlobPluginRow]
   "The CustomVizPlugin with `plugin-id` without its bundle, or nil."
   [plugin-id :- ms/PositiveInt]
   (t2/select-one non-blob-columns :id plugin-id))
 
-(mu/defn non-blob-plugins :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin]
+(def ^:private NonBlobPlugin
+  "Rows returned by [[non-blob-plugins]]."
+  (mut/select-keys ::custom-viz-plugin.schema/custom-viz-plugin [:id :identifier :display_name :icon :status :error_message :enabled :manifest :metabase_version :bundle_hash :dev_bundle_url :created_at :updated_at]))
+
+(mu/defn non-blob-plugins :- [:sequential NonBlobPlugin]
   "Every CustomVizPlugin without its bundle, ordered by display name."
   []
   (t2/select non-blob-columns {:order-by [[:display_name :asc]]}))
 
-(mu/defn active-enabled-non-blob-plugins :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin]
+(def ^:private ActiveEnabledNonBlobPlugin
+  "Rows returned by [[active-enabled-non-blob-plugins]]."
+  (mut/select-keys ::custom-viz-plugin.schema/custom-viz-plugin [:id :identifier :display_name :icon :status :error_message :enabled :manifest :metabase_version :bundle_hash :dev_bundle_url :created_at :updated_at]))
+
+(mu/defn active-enabled-non-blob-plugins :- [:sequential ActiveEnabledNonBlobPlugin]
   "The active, enabled CustomVizPlugins without their bundle, ordered by display name."
   []
   (t2/select non-blob-columns :status :active :enabled true {:order-by [[:display_name :asc]]}))
@@ -49,7 +61,7 @@
   [plugin-id :- ms/PositiveInt]
   (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id plugin-id))
 
-(mu/defn insert-plugin! :- (mut/optional-keys ::custom-viz-plugin.schema/custom-viz-plugin)
+(mu/defn insert-plugin! :- ::custom-viz-plugin.schema/custom-viz-plugin
   "Insert `plugin` and return the new instance."
   [plugin :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
   (t2/insert-returning-instance! :model/CustomVizPlugin plugin))

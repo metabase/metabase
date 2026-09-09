@@ -9,7 +9,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
-(mu/defn databases :- [:sequential :map]
+(mu/defn databases :- [:sequential ::warehouses.schema/database]
   "Every Database."
   []
   (t2/select :model/Database))
@@ -19,7 +19,11 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-vec :name [:model/Field :name] :table_id table-id))
 
-(mu/defn database-connection-details :- [:maybe (mut/select-keys ::warehouses.schema/database [:id :engine :details :write_data_details :admin_details])]
+(def ^:private DatabaseConnectionDetail
+  "Rows returned by [[database-connection-details]]."
+  (mut/select-keys ::warehouses.schema/database [:id :engine :details :write_data_details :admin_details]))
+
+(mu/defn database-connection-details :- [:maybe DatabaseConnectionDetail]
   "The engine and connection details of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one [:model/Database :id :engine :details :write_data_details :admin_details] :id database-id))

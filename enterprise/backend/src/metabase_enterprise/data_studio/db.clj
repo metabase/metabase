@@ -93,7 +93,11 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection collection-id))
 
-(mu/defn latest-table-publishing-event :- [:maybe (mut/select-keys ::audit-app.schema/audit-log [:timestamp :topic :user_id])]
+(def ^:private LatestTablePublishingEvent
+  "Rows returned by [[latest-table-publishing-event]]."
+  (mut/select-keys ::audit-app.schema/audit-log [:timestamp :topic :user_id]))
+
+(mu/defn latest-table-publishing-event :- [:maybe LatestTablePublishingEvent]
   "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
@@ -102,7 +106,11 @@
                  :model_id table-id
                  {:order-by [[:timestamp :desc] [:id :desc]]}))
 
-(mu/defn user-name-and-email :- [:maybe (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name])]
+(def ^:private UserNameAndEmail
+  "Rows returned by [[user-name-and-email]]."
+  (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name]))
+
+(mu/defn user-name-and-email :- [:maybe UserNameAndEmail]
   "The id, first name, last name, and email of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :first_name :last_name :email] user-id))

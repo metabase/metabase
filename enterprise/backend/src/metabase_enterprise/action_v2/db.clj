@@ -2,12 +2,10 @@
   "Application database queries for the action-v2 module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.action-v2.schema :as action-v2.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -78,7 +76,7 @@
    (when scope [:= :scope scope])
    (when user-id [:= :user_id user-id])])
 
-(mu/defn next-undo-batch :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::action-v2.schema/undo)))]
+(mu/defn next-undo-batch :- [:sequential ::action-v2.schema/undo]
   "The Undo rows of the newest not-undone (when `undo?`) or oldest undone batch of `user-id` in `scope`."
   [undo?   :- :boolean
    user-id :- ::lib.schema.id/user

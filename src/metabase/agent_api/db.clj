@@ -13,7 +13,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn collection-breadcrumb-columns :- [:maybe (mut/select-keys ::collections.schema/collection [:id :name :location :personal_owner_id :namespace :archived_directly])]
+(def ^:private CollectionBreadcrumbColumn
+  "Rows returned by [[collection-breadcrumb-columns]]."
+  (mut/select-keys ::collections.schema/collection [:id :name :location :personal_owner_id :namespace :archived_directly]))
+
+(mu/defn collection-breadcrumb-columns :- [:maybe CollectionBreadcrumbColumn]
   "The id, name, location, owner, namespace, and archival of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :id :name :location :personal_owner_id :namespace :archived_directly]
@@ -31,9 +35,7 @@
 
 (def ^:private DashboardTabName
   "Rows returned by [[dashboard-tab-names]]."
-  [:map {:closed true}
-   [:id   ms/PositiveInt]
-   [:name :string]])
+  (mut/select-keys ::dashboards.schema/dashboard-tab [:id :name]))
 
 (mu/defn dashboard-tab-names :- [:sequential DashboardTabName]
   "The id and name of the DashboardTabs of the Dashboard with `dashboard-id`, in position order."
@@ -45,12 +47,12 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
 
-(mu/defn insert-dashboard! :- (mut/optional-keys ::dashboards.schema/dashboard)
+(mu/defn insert-dashboard! :- ::dashboards.schema/dashboard
   "Insert the Dashboard `row` and return the inserted instance."
   [row :- ::dashboards.schema/dashboard.update]
   (t2/insert-returning-instance! :model/Dashboard row))
 
-(mu/defn insert-dashcard! :- (mut/optional-keys ::dashboards.schema/dashboard-card)
+(mu/defn insert-dashcard! :- ::dashboards.schema/dashboard-card
   "Insert the DashboardCard `row` and return the inserted instance."
   [row :- ::dashboards.schema/dashboard-card.update]
   (t2/insert-returning-instance! :model/DashboardCard row))

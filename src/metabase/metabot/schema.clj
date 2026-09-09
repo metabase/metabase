@@ -246,7 +246,8 @@
    [:error                  [:maybe [:or :string :map sequential?]]]
    [:data_version           :int]
    [:state                  [:maybe [:or :string :map sequential?]]]
-   [:forked_from_message_id [:maybe ms/PositiveInt]]])
+   [:forked_from_message_id [:maybe ms/PositiveInt]]
+   [:context_tokens         [:maybe :int]]])
 
 (mr/def ::metabot-message.update
   "What an update (or insert) of a MetabotMessage accepts: every column of `:metabot_message` except `id`, all optional."
@@ -269,7 +270,8 @@
    [:error                  {:optional true} [:maybe [:or :string :map sequential?]]]
    [:data_version           {:optional true} [:maybe :int]]
    [:state                  {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]
+   [:context_tokens         {:optional true} [:maybe :int]]])
 
 (mr/def ::metabot-prompt
   "A MetabotPrompt as selected from the app DB: every column of `:metabot_prompt`."

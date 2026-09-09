@@ -2,7 +2,6 @@
   "Application database queries for the cloud migration module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.cloud-migration.schema :as cloud-migration.schema]
    [metabase.util.malli :as mu]
@@ -14,7 +13,7 @@
   [states :- [:set [:or :keyword :string]]]
   (t2/select-one :model/CloudMigration :state [:not-in states]))
 
-(mu/defn insert-cloud-migration! :- (mut/optional-keys ::cloud-migration.schema/cloud-migration)
+(mu/defn insert-cloud-migration! :- ::cloud-migration.schema/cloud-migration
   "Insert the CloudMigration `row` and return the inserted instance."
   [row :- [:map {:closed true}
            [:id          {:optional true} ms/PositiveInt]

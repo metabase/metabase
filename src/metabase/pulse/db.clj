@@ -12,7 +12,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -113,7 +112,7 @@
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one :model/Pulse, :id pulse-id, :alert_condition [:not= nil]))
 
-(mu/defn alerts :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::pulse.schema/pulse)))]
+(mu/defn alerts :- [:sequential ::pulse.schema/pulse]
   "The alert-type Pulses (unarchived unless `archived?`), optionally narrowed to those with a recipient or creator
   `user-id`, ordered by lower-cased name."
   [archived? :- :boolean
@@ -133,7 +132,11 @@
                       {:left-join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
                                    [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))))
 
-(mu/defn pulses :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::pulse.schema/pulse)))]
+(def ^:private Pulse
+  "Rows returned by [[pulses]]."
+  (mut/merge ::pulse.schema/pulse [:map [:lower-name [:maybe :string]]]))
+
+(mu/defn pulses :- [:sequential Pulse]
   "The dashboard-subscription Pulses (unarchived unless `archived?`), optionally narrowed to `dashboard-id` and/or
   those with a recipient or creator `user-id`, ordered by lower-cased name."
   [archived?    :- :boolean
@@ -163,7 +166,7 @@
                                     [:= :pcr.user_id user-id]]])]
               :order-by        [[:lower-name :asc]]}))
 
-(mu/defn alerts-for-card-and-user :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::pulse.schema/pulse)))]
+(mu/defn alerts-for-card-and-user :- [:sequential ::pulse.schema/pulse]
   "The alert-type Pulses (unarchived unless `archived?`) on the Card with `card-id` that the User with `user-id` is
   set to receive."
   [card-id   :- ::lib.schema.id/card
@@ -181,7 +184,7 @@
                        [:= :pcr.user_id user-id]
                        [:= :p.archived archived?]]}))
 
-(mu/defn alerts-for-cards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::pulse.schema/pulse)))]
+(mu/defn alerts-for-cards :- [:sequential ::pulse.schema/pulse]
   "The alert-type Pulses (unarchived unless `archived?`) on any of the Cards with `card-ids`."
   [card-ids  :- [:sequential ::lib.schema.id/card]
    archived? :- :boolean]
@@ -204,7 +207,7 @@
   []
   (t2/select :model/Pulse :dashboard_id nil :alert_condition nil :archived false))
 
-(mu/defn insert-pulse! :- (mut/optional-keys ::pulse.schema/pulse)
+(mu/defn insert-pulse! :- ::pulse.schema/pulse
   "Insert the Pulse `pulse` and return the inserted instance."
   [pulse :- ::pulse.schema/pulse.update]
   (t2/insert-returning-instance! :model/Pulse pulse))
@@ -216,12 +219,16 @@
   (t2/update! :model/Pulse pulse-id changes))
 
 (mu/defn update-pulses-for-dashboard! :- :int
-  "Apply `changes` to the Pulses of the Dashboard with `dashboard-id`."
+  "Apply `changes` to the Pulses of the Dashboard with `dashboard-id`, leaving `updated_at` untouched."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::pulse.schema/pulse.update]
-  (t2/update! :model/Pulse {:dashboard_id dashboard-id} changes))
+  (t2/update! :model/Pulse {:dashboard_id dashboard-id} (assoc changes :updated_at :updated_at)))
 
-(mu/defn pulse-cards-for-pulses :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
+(def ^:private PulseCardsForPulse
+  "Rows returned by [[pulse-cards-for-pulses]]."
+  (mut/merge (mut/select-keys ::queries.schema/card [:id :name :description :collection_id :display :dashboard_id]) [:map [:include_csv [:maybe :boolean]] [:include_xls [:maybe :boolean]] [:format_rows [:maybe :boolean]] [:pivot_results [:maybe :boolean]] [:dashboard_card_id [:maybe ::lib.schema.id/card]] [:parameter_mappings :nil] [:pulse_id [:maybe ::lib.schema.id/pulse]]]))
+
+(mu/defn pulse-cards-for-pulses :- [:sequential PulseCardsForPulse]
   "The Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order. Excludes
   archived Cards unless `include-archived?`."
   [pulse-ids         :- [:sequential ::lib.schema.id/pulse]
@@ -239,7 +246,11 @@
                 (when-not include-archived? [:= :c.archived false])]
     :order-by [[:pc.position :asc]]}))
 
-(mu/defn pulse-card-refs :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::pulse.schema/pulse-card)))]
+(def ^:private PulseCardRef
+  "Rows returned by [[pulse-card-refs]]."
+  (mu/rename-keys (mut/select-keys ::pulse.schema/pulse-card [:card_id :include_csv :include_xls :dashboard_card_id]) {:card_id :id}))
+
+(mu/defn pulse-card-refs :- [:sequential PulseCardRef]
   "The Card id (as `:id`), export options, and DashboardCard id of the PulseCards of the Pulse with `pulse-id`, in
   position order."
   [pulse-id :- ::lib.schema.id/pulse]
@@ -247,7 +258,11 @@
              :pulse_id pulse-id
              {:order-by [[:position :asc]]}))
 
-(mu/defn max-pulse-card-position :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::pulse.schema/pulse-card)))]
+(def ^:private MaxPulseCardPosition
+  "Rows returned by [[max-pulse-card-position]]."
+  (mut/merge ::pulse.schema/pulse-card [:map [:max [:maybe :int]]]))
+
+(mu/defn max-pulse-card-position :- [:maybe MaxPulseCardPosition]
   "The `:max` position of the PulseCards of the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one [:model/PulseCard [:%max.position :max]] :pulse_id pulse-id))
@@ -287,7 +302,11 @@
   [channel-id :- ms/PositiveInt]
   (t2/select-one-fn :details :model/PulseChannel :id channel-id))
 
-(mu/defn pulse-channels-without-recipients :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::pulse.schema/pulse-channel)))]
+(def ^:private PulseChannelsWithoutRecipient
+  "Rows returned by [[pulse-channels-without-recipients]]."
+  (mut/select-keys ::pulse.schema/pulse-channel [:id :details :channel_id :channel_type]))
+
+(mu/defn pulse-channels-without-recipients :- [:sequential PulseChannelsWithoutRecipient]
   "The id, details, Channel, and type of the PulseChannels of the Pulse with `pulse-id` that have no recipients."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
@@ -304,7 +323,7 @@
   [channel-ids :- [:set ms/PositiveInt]]
   (t2/select-pks-set :model/PulseChannel :id [:in channel-ids] :enabled true))
 
-(mu/defn active-dashboard-subscription-channels :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::pulse.schema/pulse-channel)))]
+(mu/defn active-dashboard-subscription-channels :- [:sequential ::pulse.schema/pulse-channel]
   "The enabled PulseChannels of dashboard subscriptions whose Dashboard is not archived."
   []
   (t2/select :model/PulseChannel
@@ -357,7 +376,11 @@
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/delete! :model/PulseChannel :pulse_id pulse-id))
 
-(mu/defn active-recipients-for-channels :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::users.schema/user)))]
+(def ^:private ActiveRecipientsForChannel
+  "Rows returned by [[active-recipients-for-channels]]."
+  (mut/merge (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name]) [:map [:pulse_channel_id [:maybe ms/PositiveInt]]]))
+
+(mu/defn active-recipients-for-channels :- [:sequential ActiveRecipientsForChannel]
   "The id, email, name, and PulseChannel id of the active User recipients of the PulseChannels with `channel-ids`, in
   User id order."
   [channel-ids :- [:sequential ms/PositiveInt]]

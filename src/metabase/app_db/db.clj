@@ -51,7 +51,7 @@
   [setting-key :- :string]
   (t2/select-one-fn :value :setting :key setting-key))
 
-(mu/defn settings :- [:sequential :map]
+(mu/defn settings :- [:sequential ::settings.schema/setting]
   "Every setting row, raw."
   []
   (t2/select :setting))

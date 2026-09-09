@@ -7,7 +7,7 @@
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private current-user-columns
@@ -19,7 +19,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one current-user-columns :id user-id))
 
-(mu/defn current-user-for-id :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::users.schema/user)))]
+(def ^:private CurrentUserForId
+  "Rows returned by [[current-user-for-id]]."
+  (mut/merge (mut/select-keys ::users.schema/user.full [:settings]) [:map [:metabase-user-id [:maybe ms/PositiveInt]] [:is-superuser? [:maybe :boolean]] [:is-data-analyst? [:maybe :boolean]] [:user-locale [:maybe :string]]]))
+
+(mu/defn current-user-for-id :- [:maybe CurrentUserForId]
   "The User with `user-id` as `{:metabase-user-id :is-superuser? :is-data-analyst? :user-locale :settings}`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User

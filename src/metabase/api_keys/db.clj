@@ -90,9 +90,9 @@
   [row :- ::users.schema/user.update]
   (t2/insert-returning-pk! :model/User row))
 
-(mu/defn insert-api-key! :- (mut/optional-keys ::api-keys.schema/api-key)
+(mu/defn insert-api-key! :- ::api-keys.schema/api-key
   "Insert the ApiKey `row` and return the inserted instance."
-  [row :- ::api-keys.schema/api-key.insert]
+  [row :- ::api-keys.schema/api-key.create]
   (t2/insert-returning-instance! :model/ApiKey row))
 
 (mu/defn update-api-key! :- :int

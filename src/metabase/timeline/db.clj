@@ -11,7 +11,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn insert-timeline! :- (mut/optional-keys ::timeline.schema/timeline)
+(mu/defn insert-timeline! :- ::timeline.schema/timeline
   "Insert the Timeline `row` and return the inserted instance."
   [row :- (mut/select-keys ::timeline.schema/timeline.update [:name :creator_id :default :description :icon :collection_id :archived])]
   (t2/insert-returning-instance! :model/Timeline row))
@@ -37,7 +37,7 @@
   [id :- ms/PositiveInt]
   (t2/select-one-fn :icon :model/Timeline :id id))
 
-(mu/defn timelines-by-id :- [:map-of ms/PositiveInt ms/PositiveInt]
+(mu/defn timelines-by-id :- [:map-of ms/PositiveInt ::timeline.schema/timeline]
   "A map of id to Timeline for the Timelines with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn identity :model/Timeline :id [:in ids]))
@@ -70,7 +70,7 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn insert-timeline-event! :- (mut/optional-keys ::timeline.schema/timeline-event)
+(mu/defn insert-timeline-event! :- ::timeline.schema/timeline-event
   "Insert the TimelineEvent `row` and return the inserted instance."
   [row :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :timestamp :timezone :timeline_id :creator_id :description :time_matters :icon :archived])]
   (t2/insert-returning-instance! :model/TimelineEvent row))

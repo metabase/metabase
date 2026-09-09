@@ -12,7 +12,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -28,7 +27,7 @@
              {:order-by [[:%lower.schema :asc]
                          [:%lower.display_name :asc]]}))
 
-(mu/defn active-visible-schemas-for-databases :- [:sequential [:map {:closed true} [:db_id (mut/optional-keys (mut/open-schema (mr/schema ::warehouses.schema/database)))] [:schema [:maybe :string]]]]
+(mu/defn active-visible-schemas-for-databases :- [:sequential [:map {:closed true} [:db_id ::lib.schema.id/database] [:schema [:maybe :string]]]]
   "The distinct Database id and schema of the active, visible Tables of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/query {:select-distinct [:db_id :schema]
@@ -38,7 +37,11 @@
                                [:= :active true]
                                [:= :visibility_type nil]]}))
 
-(mu/defn database-engines :- [:sequential (mut/select-keys ::warehouses.schema/database [:id :engine])]
+(def ^:private DatabaseEngine
+  "Rows returned by [[database-engines]]."
+  (mut/select-keys ::warehouses.schema/database [:id :engine]))
+
+(mu/defn database-engines :- [:sequential DatabaseEngine]
   "The id and engine of every Database."
   []
   (t2/select [:model/Database :id :engine]))
@@ -117,7 +120,11 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :router_database_id database-id))
 
-(mu/defn autocomplete-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema :name])]
+(def ^:private AutocompleteTable
+  "Rows returned by [[autocomplete-tables]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema :name]))
+
+(mu/defn autocomplete-tables :- [:sequential AutocompleteTable]
   "Up to `limit` id, Database id, schema, and name rows of the active, visible Tables of the Database with
   `database-id` whose lower-cased name matches the SQL LIKE `like-pattern` (a Honey SQL LIKE right-hand side, see
   `metabase.util.honey-sql-2/like-substring`/`like-prefix`), in name order."
@@ -165,7 +172,11 @@
       (and (empty? search-id) (not-empty search-name))
       [:like [:lower :report_card.name] (h2x/like-substring search-name)])))
 
-(mu/defn autocomplete-cards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
+(def ^:private AutocompleteCard
+  "Rows returned by [[autocomplete-cards]]."
+  (mut/merge (mut/select-keys ::queries.schema/card [:id :type :database_id :name :collection_id :card_schema]) [:map [:collection_name [:maybe [:or :string :map sequential?]]]]))
+
+(mu/defn autocomplete-cards :- [:sequential AutocompleteCard]
   "Up to 50 unarchived Cards of the Database with `database-id` matching `search-card-slug` (see
   [[autocomplete-cards-search-clause]]), with their Collection name, models first then newest first. Dashboard
   questions are excluded unless `include-dashboard-questions?`."
@@ -188,7 +199,11 @@
                          [:report_card.id :desc]] ; sort by most recently created after sorting by type
               :limit    50}))
 
-(mu/defn autocomplete-fields :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/field)))]
+(def ^:private AutocompleteField
+  "Rows returned by [[autocomplete-fields]]."
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/field [:name :base_type :semantic_type :id :table_id]) [:map [:table_name [:maybe :string]]]))
+
+(mu/defn autocomplete-fields :- [:sequential AutocompleteField]
   "Up to `limit` name, type, id, and Table of the active, non-sensitive Fields of active Tables of the Database with
   `database-id` whose lower-cased name matches the SQL LIKE `like-pattern` (a Honey SQL LIKE right-hand side, see
   `metabase.util.honey-sql-2/like-substring`/`like-prefix`), in field then table name order."
@@ -216,16 +231,20 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-fn-set :id :model/Table, :db_id database-id))
 
-(mu/defn non-sensitive-fields-for-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :name :display_name :table_id :base_type :semantic_type])]
+(def ^:private NonSensitiveFieldsForTable
+  "Rows returned by [[non-sensitive-fields-for-tables]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:id :name :display_name :table_id :base_type :semantic_type]))
+
+(mu/defn non-sensitive-fields-for-tables :- [:sequential NonSensitiveFieldsForTable]
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
              :table_id        [:in table-ids]
              :visibility_type [:not-in ["sensitive" "retired"]]))
 
-(mu/defn insert-database! :- (mut/optional-keys ::warehouses.schema/database)
+(mu/defn insert-database! :- ::warehouses.schema/database
   "Insert the Database `row` and return the inserted instance."
-  [row :- (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge ::warehouses.schema/database.update [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]])]
+  [row :- (mut/merge ::warehouses.schema/database.update [:map [:id {:optional true} ::lib.schema.id/database]])]
   (t2/insert-returning-instance! :model/Database row))
 
 (mu/defn sample-database :- [:maybe ::warehouses.schema/database]

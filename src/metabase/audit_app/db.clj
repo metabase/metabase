@@ -31,7 +31,11 @@
   [entity-id :- :string]
   (t2/select-one :model/Dashboard :entity_id entity-id))
 
-(mu/defn card-name-and-description :- [:maybe (mut/select-keys ::queries.schema/card [:name :description :card_schema])]
+(def ^:private CardNameAndDescription
+  "Rows returned by [[card-name-and-description]]."
+  (mut/select-keys ::queries.schema/card [:name :description :card_schema]))
+
+(mu/defn card-name-and-description :- [:maybe CardNameAndDescription]
   "The name and description of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :name :description :card_schema], :id card-id))

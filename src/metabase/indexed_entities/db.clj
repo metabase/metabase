@@ -79,7 +79,7 @@
   [rows :- [:sequential (mut/select-keys ::indexed-entities.schema/model-index-value.update [:model_index_id :model_pk :name])]]
   (t2/insert! :model/ModelIndexValue rows))
 
-(mu/defn insert-model-index! :- (mut/optional-keys ::indexed-entities.schema/model-index)
+(mu/defn insert-model-index! :- ::indexed-entities.schema/model-index
   "Insert the ModelIndex `row` and return the inserted instance."
   [row :- ::indexed-entities.schema/model-index.update]
   (t2/insert-returning-instance! :model/ModelIndex [row]))

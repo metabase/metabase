@@ -28,12 +28,20 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-one :model/Card :id [:in ids]))
 
-(mu/defn dashboard-collection-id :- [:maybe (mut/select-keys ::dashboards.schema/dashboard [:collection_id])]
+(def ^:private DashboardCollectionId
+  "Rows returned by [[dashboard-collection-id]]."
+  (mut/select-keys ::dashboards.schema/dashboard [:collection_id]))
+
+(mu/defn dashboard-collection-id :- [:maybe DashboardCollectionId]
   "The `:collection_id` of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one [:model/Dashboard :collection_id] :id dashboard-id))
 
-(mu/defn card-collection-id :- [:maybe (mut/select-keys ::queries.schema/card [:collection_id])]
+(def ^:private CardCollectionId
+  "Rows returned by [[card-collection-id]]."
+  (mut/select-keys ::queries.schema/card [:collection_id]))
+
+(mu/defn card-collection-id :- [:maybe CardCollectionId]
   "The `:collection_id` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :collection_id] :id card-id))

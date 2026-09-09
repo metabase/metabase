@@ -70,7 +70,11 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(mu/defn field-names-and-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :name :table_id])]
+(def ^:private FieldNamesAndTable
+  "Rows returned by [[field-names-and-tables]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:id :name :table_id]))
+
+(mu/defn field-names-and-tables :- [:sequential FieldNamesAndTable]
   "The id, name, and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]))

@@ -642,18 +642,15 @@
            app-db
            audit-app
            config
-           dashboards
            events
            lib
            models
            permissions
            premium-features
-           queries
            remote-sync
            search
            users
-           util
-           warehouse-schema}
+           util}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
                     :model/CollectionBookmark
@@ -1120,6 +1117,7 @@
            task-history
            timeline
            types
+           users
            util}
    :model-exports #{:model/Exploration}
    :model-imports #{:model/Card
@@ -1167,6 +1165,7 @@
            events
            lib
            models
+           users
            util}
    :model-exports #{:model/Glossary}
    :model-imports #{:model/User}}
@@ -1247,7 +1246,6 @@
    :uses #{app-db
            metabot
            models
-           queries
            util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
@@ -1663,7 +1661,6 @@
            driver
            embedding
            events
-           explorations
            lib
            models
            parameters
@@ -2426,6 +2423,7 @@
    :uses    #{analytics
               analytics-interface
               api
+              auth-identity
               channel
               formatter
               lib
@@ -2440,7 +2438,6 @@
               sso
               system
               upload
-              users
               util
               warehouses}
    :model-imports #{:model/AuthIdentity
@@ -2570,7 +2567,8 @@
   {:team "UX West"
    :api  #{metabase.task-history.api
            metabase.task-history.core
-           metabase.task-history.init}
+           metabase.task-history.init
+           metabase.task-history.schema}
    :uses #{api
            config
            lib
@@ -3594,9 +3592,12 @@
            entity-retrieval
            health-inspector
            lib
+           measures
+           osi
            premium-features
            queries
            search
+           segments
            task
            util
            warehouse-schema
@@ -3805,6 +3806,7 @@
            startup
            task
            task-history
+           users
            util
            enterprise/data-apps
            enterprise/serialization
@@ -3937,7 +3939,6 @@
            settings
            system
            task
-           users
            util}
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
@@ -4007,8 +4008,7 @@
   enterprise/snippet-collections
   {:team "Graphy"
    :api  #{}
-   :uses #{collections
-           lib
+   :uses #{lib
            models
            native-query-snippets
            permissions

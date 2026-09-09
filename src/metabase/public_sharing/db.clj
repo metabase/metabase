@@ -10,22 +10,38 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn unarchived-card-ids-and-public-uuids-by-prefix :- [:sequential (mut/select-keys ::queries.schema/card [:id :public_uuid])]
+(def ^:private UnarchivedCardIdsAndPublicUuidsByPrefix
+  "Rows returned by [[unarchived-card-ids-and-public-uuids-by-prefix]]."
+  (mut/select-keys ::queries.schema/card [:id :public_uuid]))
+
+(mu/defn unarchived-card-ids-and-public-uuids-by-prefix :- [:sequential UnarchivedCardIdsAndPublicUuidsByPrefix]
   "The `:id` and `:public_uuid` of the unarchived Cards whose public uuid prefix is `prefix`."
   [prefix :- :string]
   (t2/select [:model/Card :id :public_uuid] :public_uuid_prefix prefix :archived false))
 
-(mu/defn unarchived-dashboard-ids-and-public-uuids-by-prefix :- [:sequential (mut/select-keys ::dashboards.schema/dashboard [:id :public_uuid])]
+(def ^:private UnarchivedDashboardIdsAndPublicUuidsByPrefix
+  "Rows returned by [[unarchived-dashboard-ids-and-public-uuids-by-prefix]]."
+  (mut/select-keys ::dashboards.schema/dashboard [:id :public_uuid]))
+
+(mu/defn unarchived-dashboard-ids-and-public-uuids-by-prefix :- [:sequential UnarchivedDashboardIdsAndPublicUuidsByPrefix]
   "The `:id` and `:public_uuid` of the unarchived Dashboards whose public uuid prefix is `prefix`."
   [prefix :- :string]
   (t2/select [:model/Dashboard :id :public_uuid] :public_uuid_prefix prefix :archived false))
 
-(mu/defn unarchived-action-ids-and-public-uuids-by-prefix :- [:sequential (mut/select-keys ::actions.schema/action [:id :public_uuid])]
+(def ^:private UnarchivedActionIdsAndPublicUuidsByPrefix
+  "Rows returned by [[unarchived-action-ids-and-public-uuids-by-prefix]]."
+  (mut/select-keys ::actions.schema/action [:id :public_uuid]))
+
+(mu/defn unarchived-action-ids-and-public-uuids-by-prefix :- [:sequential UnarchivedActionIdsAndPublicUuidsByPrefix]
   "The `:id` and `:public_uuid` of the unarchived Actions whose public uuid prefix is `prefix`."
   [prefix :- :string]
   (t2/select [:model/Action :id :public_uuid] :public_uuid_prefix prefix :archived false))
 
-(mu/defn unarchived-document-ids-and-public-uuids-by-prefix :- [:sequential (mut/select-keys ::documents.schema/document [:id :public_uuid])]
+(def ^:private UnarchivedDocumentIdsAndPublicUuidsByPrefix
+  "Rows returned by [[unarchived-document-ids-and-public-uuids-by-prefix]]."
+  (mut/select-keys ::documents.schema/document [:id :public_uuid]))
+
+(mu/defn unarchived-document-ids-and-public-uuids-by-prefix :- [:sequential UnarchivedDocumentIdsAndPublicUuidsByPrefix]
   "The `:id` and `:public_uuid` of the unarchived Documents whose public uuid prefix is `prefix`."
   [prefix :- :string]
   (t2/select [:model/Document :id :public_uuid] :public_uuid_prefix prefix :archived false))

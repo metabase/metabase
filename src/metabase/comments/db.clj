@@ -65,7 +65,7 @@
                              (when (seq mention-ids)
                                [:in :id mention-ids])]}))
 
-(mu/defn insert-comment! :- (mut/optional-keys ::comments.schema/comment)
+(mu/defn insert-comment! :- ::comments.schema/comment
   "Insert the Comment `row` and return the inserted instance."
   [row :- ::comments.schema/comment.update]
   (t2/insert-returning-instance! :model/Comment row))
@@ -96,7 +96,11 @@
                                                                  (conj api/*current-user-id*))])
         :none  (sql.helpers/where clauses [:= :core_user.id api/*current-user-id*])))))
 
-(mu/defn mentionable-users :- [:sequential (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name])]
+(def ^:private MentionableUser
+  "Rows returned by [[mentionable-users]]."
+  (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name]))
+
+(mu/defn mentionable-users :- [:sequential MentionableUser]
   "The id, first name, last name, and email of the active Users the current user may @mention, ordered by name
   then id, limited to `limit` starting at `offset`."
   [limit  :- [:maybe ms/PositiveInt]
@@ -117,7 +121,11 @@
                            restrict-to-visible-users
                            users/filter-clauses-without-paging))))
 
-(mu/defn users-by-id :- [:map-of ::lib.schema.id/user ::lib.schema.id/user]
+(def ^:private UsersById
+  "Rows returned by [[users-by-id]]."
+  (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name]))
+
+(mu/defn users-by-id :- [:map-of ::lib.schema.id/user UsersById]
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))

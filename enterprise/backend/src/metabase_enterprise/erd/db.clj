@@ -2,10 +2,8 @@
   "Application database queries for the erd module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.table :as schema.table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
@@ -16,7 +14,7 @@
    [:table-ids {:optional true} [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
    [:schema    {:optional true} [:maybe :string]]])
 
-(mu/defn active-tables-in-database :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/table)))]
+(mu/defn active-tables-in-database :- [:sequential ::warehouse-schema.schema/table]
   "The `columns` of the active Tables in the Database with `database-id`. `opts` may restrict the result: a
   `:table-ids` key restricts to those IDs (even when its value is empty), and a `:schema` key restricts to that
   schema (`\"\"` matches both nil and empty-string schemas)."

@@ -600,7 +600,11 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in card-ids]))
 
-(mu/defn card-database-ids :- [:sequential (mut/select-keys ::queries.schema/card [:id :database_id :card_schema])]
+(def ^:private CardDatabaseId
+  "Rows returned by [[card-database-ids]]."
+  (mut/select-keys ::queries.schema/card [:id :database_id :card_schema]))
+
+(mu/defn card-database-ids :- [:sequential CardDatabaseId]
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
@@ -618,9 +622,7 @@
 
 (def ^:private TableDatabaseId
   "Rows returned by [[table-database-ids]]."
-  [:map {:closed true}
-   [:id    ms/PositiveInt]
-   [:db_id [:maybe ::lib.schema.id/database]]])
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id]))
 
 (mu/defn table-database-ids :- [:sequential TableDatabaseId]
   "The `:id` and `:db_id` of the Tables with `table-ids`."
@@ -636,9 +638,7 @@
 
 (def ^:private TransformSource
   "Rows returned by [[transform-sources]]."
-  [:map {:closed true}
-   [:id     ms/PositiveInt]
-   [:source [:maybe [:or :keyword :string :map sequential?]]]])
+  (mut/select-keys ::transforms.schema/transform [:id :source]))
 
 (mu/defn transform-sources :- [:sequential TransformSource]
   "The `:id` and `:source` of the Transforms with `transform-ids`."
@@ -652,7 +652,11 @@
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
-(mu/defn dependencies-from :- [:sequential (mut/select-keys ::dependencies.schema/dependency [:id :to_entity_type :to_entity_id])]
+(def ^:private DependenciesFrom
+  "Rows returned by [[dependencies-from]]."
+  (mut/select-keys ::dependencies.schema/dependency [:id :to_entity_type :to_entity_id]))
+
+(mu/defn dependencies-from :- [:sequential DependenciesFrom]
   "The `:id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entity `entity-type` `entity-id`."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]

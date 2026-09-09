@@ -14,7 +14,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
@@ -160,7 +159,11 @@
                                [:= :table_id table-id]
                                [:= :table_id nil]]]}))
 
-(mu/defn user-data-permissions :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::permissions.schema/data-permissions)))]
+(def ^:private UserDataPermission
+  "Rows returned by [[user-data-permissions]]."
+  (mut/merge ::permissions.schema/data-permissions [:map [:perm-type [:maybe [:or :keyword :string]]] [:group-id [:maybe ms/PositiveInt]] [:value [:maybe [:or :keyword :string :map sequential?]]] [:db-id [:maybe ::lib.schema.id/database]] [:table-id [:maybe ::lib.schema.id/table]]]))
+
+(mu/defn user-data-permissions :- [:sequential UserDataPermission]
   "The permission type, group, value, database, and table of every DataPermissions row of the groups the User with
   `user-id` belongs to, optionally narrowed to `database-id` and/or `perm-type`."
   [user-id     :- ::lib.schema.id/user
@@ -208,7 +211,11 @@
              {:where [:and [:= :db_id database-id] [:= :table_id nil]
                       [:in :group_id group-ids] [:in :perm_type perm-types]]}))
 
-(mu/defn distinct-table-level-permission-values :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::permissions.schema/data-permissions)))]
+(def ^:private DistinctTableLevelPermissionValue
+  "Rows returned by [[distinct-table-level-permission-values]]."
+  (mut/select-keys ::permissions.schema/data-permissions [:group_id :perm_type :schema_name :perm_value]))
+
+(mu/defn distinct-table-level-permission-values :- [:sequential DistinctTableLevelPermissionValue]
   "The distinct group, permission type, schema, and value combinations of the table-level DataPermissions rows of
   `perm-types` for `group-ids` on the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
@@ -219,7 +226,11 @@
               :where           [:and [:= :db_id database-id] [:not= :table_id nil]
                                 [:in :group_id group-ids] [:in :perm_type perm-types]]}))
 
-(mu/defn distinct-database-permission-values-for-group :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::permissions.schema/data-permissions)))]
+(def ^:private DistinctDatabasePermissionValuesForGroup
+  "Rows returned by [[distinct-database-permission-values-for-group]]."
+  (mut/select-keys ::permissions.schema/data-permissions [:db_id :perm_type :perm_value]))
+
+(mu/defn distinct-database-permission-values-for-group :- [:sequential DistinctDatabasePermissionValuesForGroup]
   "The distinct database, permission type, and value combinations of the DataPermissions rows of the group with
   `group-id`."
   [group-id :- ms/PositiveInt]
@@ -243,7 +254,11 @@
                                [:not= :table_id nil]
                                [:not [:in :table_id table-ids]]]}))
 
-(mu/defn table-permission-ids :- [:sequential (mut/select-keys ::permissions.schema/data-permissions [:id])]
+(def ^:private TablePermissionId
+  "Rows returned by [[table-permission-ids]]."
+  (mut/select-keys ::permissions.schema/data-permissions [:id]))
+
+(mu/defn table-permission-ids :- [:sequential TablePermissionId]
   "The IDs of the `perm-type` DataPermissions rows of the group with `group-id` on the Tables with `table-ids`."
   [perm-type :- [:or :keyword :string]
    group-id  :- ms/PositiveInt
@@ -336,7 +351,11 @@
 
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
 
-(mu/defn magic-group :- [:maybe (mut/select-keys ::permissions.schema/permissions-group [:id :name :magic_group_type])]
+(def ^:private MagicGroup
+  "Rows returned by [[magic-group]]."
+  (mut/select-keys ::permissions.schema/permissions-group [:id :name :magic_group_type]))
+
+(mu/defn magic-group :- [:maybe MagicGroup]
   "The ID, name, and type of the magic PermissionsGroup of `magic-group-type`, or nil."
   [magic-group-type :- :string]
   (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type magic-group-type))
@@ -386,7 +405,16 @@
   [pattern :- :string]
   (t2/select-fn-set :name :model/PermissionsGroup :name [:like pattern]))
 
-(mu/defn group-members :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::users.schema/user)))]
+(def ^:private GroupMember
+  "Rows returned by [[group-members]]."
+  (mut/merge (mut/select-keys ::users.schema/user.full [:id :first_name :last_name :email :is_superuser :type :common_name])
+             [:map
+              [:user_id          ::lib.schema.id/user]
+              [:group_id         ms/PositiveInt]
+              [:membership_id    ms/PositiveInt]
+              [:is_group_manager {:optional true} [:maybe :boolean]]]))
+
+(mu/defn group-members :- [:sequential GroupMember]
   "The active Users in the PermissionsGroups with `group-ids`, with the optional extra `group-manager-column`."
   [group-ids            :- [:sequential ms/PositiveInt]
    group-manager-column :- [:maybe vector?]]
@@ -408,7 +436,7 @@
                           :order-by  [[[:lower :u.first_name] :asc]
                                       [[:lower :u.last_name] :asc]]}))
 
-(mu/defn insert-group! :- (mut/optional-keys ::permissions.schema/permissions-group)
+(mu/defn insert-group! :- ::permissions.schema/permissions-group
   "Insert `group` and return the new instance."
   [group :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :magic_group_type :is_tenant_group])]
   (t2/insert-returning-instance! :model/PermissionsGroup group))
@@ -512,17 +540,29 @@
 
 ;;; ------------------------------------------------ Revisions ------------------------------------------------
 
-(mu/defn latest-permissions-revision-id :- [:maybe ms/PositiveInt]
+(def ^:private LatestPermissionsRevisionId
+  "Rows returned by [[latest-permissions-revision-id]]."
+  (mut/merge ::permissions.schema/permissions-revision [:map [:id [:maybe ms/PositiveInt]]]))
+
+(mu/defn latest-permissions-revision-id :- [:maybe LatestPermissionsRevisionId]
   "The highest ID of any PermissionsRevision, or nil."
   []
   (:id (t2/select-one [:model/PermissionsRevision [:%max.id :id]])))
 
-(mu/defn latest-collection-permission-graph-revision-id :- [:maybe ms/PositiveInt]
+(def ^:private LatestCollectionPermissionGraphRevisionId
+  "Rows returned by [[latest-collection-permission-graph-revision-id]]."
+  (mut/merge ::permissions.schema/collection-permission-graph-revision [:map [:id [:maybe ms/PositiveInt]]]))
+
+(mu/defn latest-collection-permission-graph-revision-id :- [:maybe LatestCollectionPermissionGraphRevisionId]
   "The highest ID of any CollectionPermissionGraphRevision, or nil."
   []
   (:id (t2/select-one [:model/CollectionPermissionGraphRevision [:%max.id :id]])))
 
-(mu/defn latest-application-permissions-revision-id :- [:maybe ms/PositiveInt]
+(def ^:private LatestApplicationPermissionsRevisionId
+  "Rows returned by [[latest-application-permissions-revision-id]]."
+  (mut/merge ::permissions.schema/application-permissions-revision [:map [:id [:maybe ms/PositiveInt]]]))
+
+(mu/defn latest-application-permissions-revision-id :- [:maybe LatestApplicationPermissionsRevisionId]
   "The highest ID of any ApplicationPermissionsRevision, or nil."
   []
   (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]])))
@@ -537,7 +577,7 @@
                 [:remark  {:optional true} [:maybe [:or :string :map sequential?]]]]]
   (t2/insert! :model/CollectionPermissionGraphRevision revision))
 
-(mu/defn insert-collection-permission-graph-revision-returning-instance! :- (mut/optional-keys ::permissions.schema/collection-permission-graph-revision)
+(mu/defn insert-collection-permission-graph-revision-returning-instance! :- [:sequential ::permissions.schema/collection-permission-graph-revision]
   "Insert `revision` into CollectionPermissionGraphRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
@@ -547,7 +587,7 @@
                 [:remark  {:optional true} [:maybe [:or :string :map sequential?]]]]]
   (first (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision revision)))
 
-(mu/defn insert-permissions-revision-returning-instance! :- (mut/optional-keys ::permissions.schema/permissions-revision)
+(mu/defn insert-permissions-revision-returning-instance! :- [:sequential ::permissions.schema/permissions-revision]
   "Insert `revision` into PermissionsRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
@@ -557,7 +597,7 @@
                 [:remark  {:optional true} [:maybe [:or :string :map sequential?]]]]]
   (first (t2/insert-returning-instances! :model/PermissionsRevision revision)))
 
-(mu/defn insert-application-permissions-revision-returning-instance! :- (mut/optional-keys ::permissions.schema/application-permissions-revision)
+(mu/defn insert-application-permissions-revision-returning-instance! :- [:sequential ::permissions.schema/application-permissions-revision]
   "Insert `revision` into ApplicationPermissionsRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
@@ -728,7 +768,11 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :tenant_id [:model/User :id :tenant_id] :id [:in user-ids]))
 
-(mu/defn earliest-user-join-date :- [:maybe ms/TemporalInstant]
+(def ^:private EarliestUserJoinDate
+  "Rows returned by [[earliest-user-join-date]]."
+  (mut/merge ::users.schema/user [:map [:min [:maybe ms/TemporalInstant]]]))
+
+(mu/defn earliest-user-join-date :- [:maybe EarliestUserJoinDate]
   "The earliest `date_joined` of any User, or nil."
   []
   (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
@@ -773,7 +817,11 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
 
-(mu/defn table-location :- [:maybe (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema])]
+(def ^:private TableLocation
+  "Rows returned by [[table-location]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
+
+(mu/defn table-location :- [:maybe TableLocation]
   "The ID, Database ID, and schema of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :id :db_id :schema] :id table-id))
@@ -783,17 +831,29 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table table-id))
 
-(mu/defn table-database-ids :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :db_id])]
+(def ^:private TableDatabaseId
+  "Rows returned by [[table-database-ids]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id]))
+
+(mu/defn table-database-ids :- [:sequential TableDatabaseId]
   "The ID and Database ID of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id] :id [:in table-ids]))
 
-(mu/defn active-table-locations-for-database :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema])]
+(def ^:private ActiveTableLocationsForDatabase
+  "Rows returned by [[active-table-locations-for-database]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
+
+(mu/defn active-table-locations-for-database :- [:sequential ActiveTableLocationsForDatabase]
   "The ID, Database ID, and schema of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/select [:model/Table :id :db_id :schema] :db_id database-id :active true))
 
-(mu/defn table-ids-and-schemas-excluding :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :schema])]
+(def ^:private TableIdsAndSchemasExcluding
+  "Rows returned by [[table-ids-and-schemas-excluding]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :schema]))
+
+(mu/defn table-ids-and-schemas-excluding :- [:sequential TableIdsAndSchemasExcluding]
   "The ID and schema of the Tables of the Database with `database-id` other than `excluded-table-ids`."
   [database-id        :- ::lib.schema.id/database
    excluded-table-ids :- [:sequential ::lib.schema.id/table]]
@@ -802,7 +862,11 @@
                       [:= :db_id database-id]
                       [:not [:in :id excluded-table-ids]]]}))
 
-(mu/defn field-visibility-info :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :visibility_type :table_id])]
+(def ^:private FieldVisibilityInfo
+  "Rows returned by [[field-visibility-info]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:id :visibility_type :table_id]))
+
+(mu/defn field-visibility-info :- [:sequential FieldVisibilityInfo]
   "The ID, visibility type, and Table ID of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :visibility_type :table_id] :id [:in field-ids]))

@@ -14,7 +14,11 @@
   [session-id :- :string]
   (t2/exists? :model/McpSessionLog :id session-id))
 
-(mu/defn session-client-identity :- [:maybe (mut/select-keys ::mcp.schema/mcp-session-log [:client_name :client_version])]
+(def ^:private SessionClientIdentity
+  "Rows returned by [[session-client-identity]]."
+  (mut/select-keys ::mcp.schema/mcp-session-log [:client_name :client_version]))
+
+(mu/defn session-client-identity :- [:maybe SessionClientIdentity]
   "The client name and version of the McpSessionLog with `session-id`, or nil."
   [session-id :- :string]
   (t2/select-one [:model/McpSessionLog :client_name :client_version] :id session-id))

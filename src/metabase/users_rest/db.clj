@@ -27,7 +27,7 @@
    collection-name :- :string]
   (t2/update! :model/Collection collection-id {:name collection-name}))
 
-(mu/defn users-with-columns :- [:sequential ::users.schema/user]
+(mu/defn users-with-columns :- [:sequential (mut/optional-keys ::users.schema/user.full)]
   "The `columns` of the Users selected by the Honey SQL `query`."
   [columns :- [:sequential :keyword]
    query   :- :map]
@@ -70,7 +70,11 @@
                        (collection/visible-collection-filter-clause)
                        (mi/exclude-internal-content-hsql :model/Dashboard)]}))
 
-(mu/defn first-login :- [:maybe (mut/select-keys ::login-history.schema/login-history [:timestamp])]
+(def ^:private FirstLogin
+  "Rows returned by [[first-login]]."
+  (mut/select-keys ::login-history.schema/login-history [:timestamp]))
+
+(mu/defn first-login :- [:maybe FirstLogin]
   "The timestamp of the earliest LoginHistory of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/LoginHistory :timestamp] :user_id user-id {:order-by [[:timestamp :asc]]}))
@@ -109,19 +113,31 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id))
 
-(mu/defn personal-user-columns :- [:maybe (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :is_active :sso_source :tenant_id :common_name])]
+(def ^:private PersonalUserColumn
+  "Rows returned by [[personal-user-columns]]."
+  (mut/select-keys ::users.schema/user.full [:id :email :first_name :last_name :is_active :sso_source :tenant_id :common_name]))
+
+(mu/defn personal-user-columns :- [:maybe PersonalUserColumn]
   "The id, email, name, active flag, SSO source, and tenant id of the personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
                  :type :personal
                  :id user-id))
 
-(mu/defn active-personal-user-login-columns :- [:maybe (mut/select-keys ::users.schema/user [:id :email :last_login])]
+(def ^:private ActivePersonalUserLoginColumn
+  "Rows returned by [[active-personal-user-login-columns]]."
+  (mut/select-keys ::users.schema/user [:id :email :last_login]))
+
+(mu/defn active-personal-user-login-columns :- [:maybe ActivePersonalUserLoginColumn]
   "The id, email, and last login of the active personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :email :last_login], :id user-id, :type :personal, :is_active true))
 
-(mu/defn user-active-and-type :- [:maybe (mut/select-keys ::users.schema/user [:id :is_active :type])]
+(def ^:private UserActiveAndType
+  "Rows returned by [[user-active-and-type]]."
+  (mut/select-keys ::users.schema/user.full [:id :is_active :type]))
+
+(mu/defn user-active-and-type :- [:maybe UserActiveAndType]
   "The id, active flag, and type of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :type] :id user-id))

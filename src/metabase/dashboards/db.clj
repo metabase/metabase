@@ -12,7 +12,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -21,7 +20,7 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
-(mu/defn insert-dashboard! :- (mut/optional-keys ::dashboards.schema/dashboard)
+(mu/defn insert-dashboard! :- ::dashboards.schema/dashboard
   "Insert the Dashboard `row` and return the inserted instance."
   [row :- ::dashboards.schema/dashboard.update]
   (t2/insert-returning-instance! :model/Dashboard row))
@@ -64,7 +63,11 @@
               :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
               :where     [:in :dashboard.id dashboard-ids]}))
 
-(mu/defn dashcards-with-visible-cards-for-dashboards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::dashboards.schema/dashboard-card)))]
+(def ^:private DashcardsWithVisibleCardsForDashboard
+  "Rows returned by [[dashcards-with-visible-cards-for-dashboards]]."
+  (mut/merge ::dashboards.schema/dashboard-card [:map [:collection_authority_level [:maybe [:or :keyword :string]]]]))
+
+(mu/defn dashcards-with-visible-cards-for-dashboards :- [:sequential DashcardsWithVisibleCardsForDashboard]
   "The DashboardCards of the Dashboards with `dashboard-ids` whose Card is visible (unarchived, a dashboard question
   not archived by itself, or absent), with their Card's Collection authority level, in dashboard then creation order."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
@@ -121,7 +124,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn card-query-columns :- [:maybe (mut/select-keys ::queries.schema/card [:dataset_query :card_schema])]
+(def ^:private CardQueryColumn
+  "Rows returned by [[card-query-columns]]."
+  (mut/select-keys ::queries.schema/card [:dataset_query :card_schema]))
+
+(mu/defn card-query-columns :- [:maybe CardQueryColumn]
   "The query and schema of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :dataset_query :card_schema] :id card-id))
@@ -136,24 +143,36 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids] :document_id [:<> nil]))
 
-(mu/defn insert-card! :- (mut/optional-keys ::queries.schema/card)
+(mu/defn insert-card! :- ::queries.schema/card
   "Insert the Card `row` and return the inserted instance."
   [row :- ::queries.schema/card.update]
   (t2/insert-returning-instance! :model/Card row))
 
-(mu/defn dashcard-serdes-columns :- [:sequential (mut/select-keys ::dashboards.schema/dashboard-card [:id :card_id :action_id :parameter_mappings :visualization_settings])]
+(def ^:private DashcardSerdesColumn
+  "Rows returned by [[dashcard-serdes-columns]]."
+  (mut/select-keys ::dashboards.schema/dashboard-card [:id :card_id :action_id :parameter_mappings :visualization_settings]))
+
+(mu/defn dashcard-serdes-columns :- [:sequential DashcardSerdesColumn]
   "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
   `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
              :dashboard_id dashboard-id))
 
-(mu/defn dashcard-series-columns :- [:sequential (mut/select-keys ::dashboards.schema/dashboard-card-series [:id :card_id :dashboardcard_id])]
+(def ^:private DashcardSeriesColumn
+  "Rows returned by [[dashcard-series-columns]]."
+  (mut/select-keys ::dashboards.schema/dashboard-card-series [:id :card_id :dashboardcard_id]))
+
+(mu/defn dashcard-series-columns :- [:sequential DashcardSeriesColumn]
   "The id, Card id, and DashboardCard id of the DashboardCardSeries of the DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id] :dashboardcard_id [:in dashcard-ids]))
 
-(mu/defn series-cards-for-dashcards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
+(def ^:private SeriesCardsForDashcard
+  "Rows returned by [[series-cards-for-dashcards]]."
+  (mut/merge (mut/select-keys ::queries.schema/card [:id :name :description :display :dataset_query :type :database_id :visualization_settings :collection_id :card_schema]) [:map [:dashboardcard_id [:maybe ::lib.schema.id/dashcard]]]))
+
+(mu/defn series-cards-for-dashcards :- [:sequential SeriesCardsForDashcard]
   "The series Cards of the DashboardCards with `dashcard-ids`, each with its `:dashboardcard_id`, in series order."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/select [:model/Card :id :name :description :display :dataset_query :type :database_id

@@ -9,7 +9,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -84,7 +83,7 @@
   [field-id :- ::lib.schema.id/field]
   (t2/delete! :model/Dimension :field_id field-id))
 
-(mu/defn matching-tables :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/table)))]
+(mu/defn matching-tables :- [:sequential ::warehouse-schema.schema/table]
   "The Tables (active, or with `transform_target` when `include-transform-targets?`) matching `term` (a glob pattern
   using `*` as a wildcard, matched against `:name` and `:display_name`), optionally narrowed to `visibility-type`,
   `data-layer`, `data-source`, `owner-user-id`, and/or `owner-email`; restricted to ownerless Tables when

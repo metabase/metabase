@@ -8,13 +8,12 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn database-for-action :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::warehouses.schema/database)))]
+(mu/defn database-for-action :- [:maybe ::warehouses.schema/database]
   "The Database of the model Card of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/Database {:select [:db.*]
@@ -43,7 +42,7 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids]))
 
-(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::lib.schema.id/card]
+(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card]
   "A map of Card id to Card for the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
@@ -89,7 +88,7 @@
   [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/DashboardCard :action_id action-id))
 
-(mu/defn insert-action! :- (mut/optional-keys ::actions.schema/action)
+(mu/defn insert-action! :- ::actions.schema/action
   "Insert the Action `row` and return the inserted instance."
   [row :- ::actions.schema/action.for-insert]
   (t2/insert-returning-instance! :model/Action row))
@@ -208,7 +207,11 @@
   [model-ids :- [:set ms/PositiveInt]]
   (t2/select :model/Action :model_id [:in model-ids] :archived false :type [:not= "http"]))
 
-(mu/defn fields-for-parameters :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :base_type :display_name :description])]
+(def ^:private FieldsForParameter
+  "Rows returned by [[fields-for-parameters]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:id :base_type :display_name :description]))
+
+(mu/defn fields-for-parameters :- [:sequential FieldsForParameter]
   "The id, base type, display name, and description of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids]))
@@ -222,7 +225,11 @@
                       [:metabase_database :db] [:= :db.id :card.database_id]]
              :where  [:in :action.id action-ids]}))
 
-(mu/defn card-scope-columns :- [:maybe (mut/select-keys ::queries.schema/card [:dataset_query :collection_id :database_id :display])]
+(def ^:private CardScopeColumn
+  "Rows returned by [[card-scope-columns]]."
+  (mut/select-keys ::queries.schema/card [:dataset_query :collection_id :database_id :display]))
+
+(mu/defn card-scope-columns :- [:maybe CardScopeColumn]
   "The query, Collection id, Database id, and display of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id))

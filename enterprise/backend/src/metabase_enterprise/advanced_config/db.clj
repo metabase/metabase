@@ -36,10 +36,10 @@
   [prefix :- :string]
   (t2/exists? :model/ApiKey :key_prefix prefix))
 
-(mu/defn insert-api-key! :- (mut/optional-keys ::api-keys.schema/api-key)
+(mu/defn insert-api-key! :- ::api-keys.schema/api-key
   "Insert `api-key` and return the new instance. `::api-keys/unhashed-key` has a special meaning to the ApiKey
   model's before-insert hook: it is hashed into `:key` and used to derive `:key_prefix`."
-  [api-key :- ::api-keys.schema/api-key.insert]
+  [api-key :- ::api-keys.schema/api-key.create]
   (t2/insert-returning-instance! :model/ApiKey api-key))
 
 (mu/defn user-by-email :- [:maybe ::users.schema/user]
@@ -47,13 +47,13 @@
   [email :- :string]
   (t2/select-one :model/User :email email))
 
-(mu/defn user-columns-by-email :- [:maybe ::users.schema/user]
+(mu/defn user-columns-by-email :- [:maybe (mut/optional-keys ::users.schema/user.full)]
   "The `columns` of the User with `email`, or nil."
   [columns :- [:sequential :keyword]
    email :- :string]
   (t2/select-one (into [:model/User] columns) :email email))
 
-(mu/defn insert-user! :- (mut/optional-keys ::users.schema/user)
+(mu/defn insert-user! :- ::users.schema/user
   "Insert `user` and return the new instance."
   [user :- ::users.schema/user.update]
   (t2/insert-returning-instance! :model/User user))
@@ -75,9 +75,9 @@
    database-name :- :string]
   (t2/select-one-pk :model/Database :engine engine :name database-name))
 
-(mu/defn insert-database! :- (mut/optional-keys ::warehouses.schema/database)
+(mu/defn insert-database! :- ::warehouses.schema/database
   "Insert `database` and return the new instance."
-  [database :- (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge (mut/merge ::warehouses.schema/database.update [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]]) [:map [:id {:optional true} ::lib.schema.id/database]])]
+  [database :- (mut/merge ::warehouses.schema/database.update [:map [:id {:optional true} ::lib.schema.id/database]])]
   (t2/insert-returning-instance! :model/Database database))
 
 (mu/defn update-database! :- :int

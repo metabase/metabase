@@ -32,12 +32,20 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
-(mu/defn dashboard-parameters :- [:maybe (mut/select-keys ::dashboards.schema/dashboard [:id :parameters])]
+(def ^:private DashboardParameter
+  "Rows returned by [[dashboard-parameters]]."
+  (mut/select-keys ::dashboards.schema/dashboard [:id :parameters]))
+
+(mu/defn dashboard-parameters :- [:maybe DashboardParameter]
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one [:model/Dashboard :id :parameters] dashboard-id))
 
-(mu/defn dashboard-name-columns :- [:maybe (mut/select-keys ::dashboards.schema/dashboard [:name :description :creator_id])]
+(def ^:private DashboardNameColumn
+  "Rows returned by [[dashboard-name-columns]]."
+  (mut/select-keys ::dashboards.schema/dashboard [:name :description :creator_id]))
+
+(mu/defn dashboard-name-columns :- [:maybe DashboardNameColumn]
   "The name, description, and creator of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id))
@@ -47,17 +55,25 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id))
 
-(mu/defn public-dashboards :- [:sequential (mut/select-keys ::dashboards.schema/dashboard [:name :id :public_uuid])]
+(def ^:private PublicDashboard
+  "Rows returned by [[public-dashboards]]."
+  (mut/select-keys ::dashboards.schema/dashboard [:name :id :public_uuid]))
+
+(mu/defn public-dashboards :- [:sequential PublicDashboard]
   "The name, id, and public uuid of the unarchived Dashboards that are publicly shared."
   []
   (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
-(mu/defn embeddable-dashboards :- [:sequential (mut/select-keys ::dashboards.schema/dashboard [:name :id])]
+(def ^:private EmbeddableDashboard
+  "Rows returned by [[embeddable-dashboards]]."
+  (mut/select-keys ::dashboards.schema/dashboard [:name :id]))
+
+(mu/defn embeddable-dashboards :- [:sequential EmbeddableDashboard]
   "The name and id of the unarchived Dashboards with embedding enabled."
   []
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
-(mu/defn insert-dashboard! :- (mut/optional-keys ::dashboards.schema/dashboard)
+(mu/defn insert-dashboard! :- ::dashboards.schema/dashboard
   "Insert the Dashboard `row` and return the inserted instance."
   [row :- ::dashboards.schema/dashboard.update]
   (t2/insert-returning-instance! :model/Dashboard row))
@@ -212,17 +228,29 @@
    dashcard-ids :- [:set ::lib.schema.id/dashcard]]
   (t2/select-pk->fn :card_id :model/DashboardCard :dashboard_id dashboard-id :id [:in dashcard-ids]))
 
-(mu/defn user-name-and-email :- [:maybe (mut/select-keys ::users.schema/user [:first_name :last_name :email :common_name])]
+(def ^:private UserNameAndEmail
+  "Rows returned by [[user-name-and-email]]."
+  (mut/select-keys ::users.schema/user [:first_name :last_name :email :common_name]))
+
+(mu/defn user-name-and-email :- [:maybe UserNameAndEmail]
   "The name and email of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :first_name :last_name :email] user-id))
 
-(mu/defn user-names-and-emails :- [:sequential (mut/select-keys ::users.schema/user [:first_name :last_name :email :common_name])]
+(def ^:private UserNamesAndEmail
+  "Rows returned by [[user-names-and-emails]]."
+  (mut/select-keys ::users.schema/user [:first_name :last_name :email :common_name]))
+
+(mu/defn user-names-and-emails :- [:sequential UserNamesAndEmail]
   "The names and emails of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids]))
 
-(mu/defn pulse-channels-for-pulse :- [:sequential (mut/select-keys ::pulse.schema/pulse-channel [:id :channel_type :details])]
+(def ^:private PulseChannelsForPulse
+  "Rows returned by [[pulse-channels-for-pulse]]."
+  (mut/select-keys ::pulse.schema/pulse-channel [:id :channel_type :details]))
+
+(mu/defn pulse-channels-for-pulse :- [:sequential PulseChannelsForPulse]
   "The id, type, and details of the PulseChannels of the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))

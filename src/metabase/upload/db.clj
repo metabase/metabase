@@ -84,7 +84,11 @@
    display-name :- :string]
   (t2/update! :model/Field field-id {:display_name display-name}))
 
-(mu/defn unarchived-models-for-table :- [:sequential (mut/select-keys ::queries.schema/card [:id :dataset_query :card_schema])]
+(def ^:private UnarchivedModelsForTable
+  "Rows returned by [[unarchived-models-for-table]]."
+  (mut/select-keys ::queries.schema/card [:id :dataset_query :card_schema]))
+
+(mu/defn unarchived-models-for-table :- [:sequential UnarchivedModelsForTable]
   "The id, query, and schema of the unarchived model Cards of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select [:model/Card :id :dataset_query :card_schema]
@@ -92,7 +96,11 @@
              :type     :model
              :archived false))
 
-(mu/defn card-query-and-metadata :- [:maybe (mut/select-keys ::queries.schema/card [:dataset_query :result_metadata :card_schema])]
+(def ^:private CardQueryAndMetadata
+  "Rows returned by [[card-query-and-metadata]]."
+  (mut/select-keys ::queries.schema/card [:dataset_query :result_metadata :card_schema]))
+
+(mu/defn card-query-and-metadata :- [:maybe CardQueryAndMetadata]
   "The query, result metadata, and schema of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :dataset_query :result_metadata :card_schema] card-id))

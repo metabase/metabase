@@ -19,7 +19,11 @@
                                   [:= :archived false]
                                   (collection/visible-collection-filter-clause)]}))
 
-(mu/defn public-actions :- [:sequential (mut/select-keys ::actions.schema/action [:name :id :public_uuid :model_id])]
+(def ^:private PublicAction
+  "Rows returned by [[public-actions]]."
+  (mut/select-keys ::actions.schema/action [:name :id :public_uuid :model_id]))
+
+(mu/defn public-actions :- [:sequential PublicAction]
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."
   []
   (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))

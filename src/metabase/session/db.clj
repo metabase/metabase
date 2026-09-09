@@ -44,7 +44,7 @@
     (tracing/with-span :tasks "task.session-cleanup.delete" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/query-one hsql))))
 
-(mu/defn auth-identity-for-provider :- [:maybe ms/PositiveInt]
+(mu/defn auth-identity-for-provider :- [:maybe ::auth-identity.schema/auth-identity]
   "The AuthIdentity of the User with `user-id` at `provider`, or nil. See `metabase.auth-identity.db/auth-identity`,
   which owns the AuthIdentity table."
   [user-id  :- ::lib.schema.id/user
@@ -63,12 +63,20 @@
    credentials      :- [:maybe :map]]
   (t2/update! :model/AuthIdentity auth-identity-id {:credentials credentials}))
 
-(mu/defn auth-identity-provider :- [:maybe (mut/select-keys ::auth-identity.schema/auth-identity [:provider])]
+(def ^:private AuthIdentityProvider
+  "Rows returned by [[auth-identity-provider]]."
+  (mut/select-keys ::auth-identity.schema/auth-identity [:provider]))
+
+(mu/defn auth-identity-provider :- [:maybe AuthIdentityProvider]
   "The `:provider` of the AuthIdentity with `auth-identity-id`, or nil."
   [auth-identity-id :- ms/PositiveInt]
   (t2/select-one [:model/AuthIdentity :provider] :id auth-identity-id))
 
-(mu/defn user-by-email :- [:maybe (mut/select-keys ::users.schema/user [:id :sso_source :is_active])]
+(def ^:private UserByEmail
+  "Rows returned by [[user-by-email]]."
+  (mut/select-keys ::users.schema/user.full [:id :sso_source :is_active]))
+
+(mu/defn user-by-email :- [:maybe UserByEmail]
   "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."
   [email :- :string]
   (t2/select-one [:model/User :id :sso_source :is_active] :%lower.email (u/lower-case-en email)))
@@ -78,7 +86,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id))
 
-(mu/defn user-login-status :- [:maybe (mut/select-keys ::users.schema/user [:id :is_active :last_login :tenant_id])]
+(def ^:private UserLoginStatus
+  "Rows returned by [[user-login-status]]."
+  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :tenant_id]))
+
+(mu/defn user-login-status :- [:maybe UserLoginStatus]
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))

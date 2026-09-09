@@ -8,7 +8,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -17,12 +16,21 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection collection-id))
 
-(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection ::lib.schema.id/collection]
+(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection ::collections.schema/collection]
   "A map of ID to Collection for `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
 
-(mu/defn stale-cards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
+(def ^:private StaleCard
+  "Rows returned by [[stale-cards]]."
+  (mut/merge (mut/select-keys ::queries.schema/card [:id :dashboard_id :description :collection_id :name :entity_id :archived
+                                                     :collection_position :display :collection_preview :database_id
+                                                     :dataset_query :card_schema :last_used_at])
+             [:map
+              [:location         :nil]
+              [:moderated_status [:maybe :string]]]))
+
+(mu/defn stale-cards :- [:sequential StaleCard]
   "The listing columns of the Cards with `card-ids`, with their latest moderation status."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card
@@ -55,7 +63,11 @@
                :moderated_status]]
              :id [:in card-ids]))
 
-(mu/defn stale-dashboards :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::dashboards.schema/dashboard)))]
+(def ^:private StaleDashboard
+  "Rows returned by [[stale-dashboards]]."
+  (mut/merge (mut/select-keys ::dashboards.schema/dashboard [:id :description :collection_id :name :entity_id :archived :collection_position]) [:map [:last_used_at [:maybe ms/TemporalInstant]] [:model [:= "dashboard"]] [:dashboard_id :nil] [:location :nil] [:database_id :nil]]))
+
+(mu/defn stale-dashboards :- [:sequential StaleDashboard]
   "The listing columns of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select [:model/Dashboard

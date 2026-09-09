@@ -11,7 +11,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.segments.schema :as segments.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -53,7 +52,14 @@
              :visibility_type nil
              :active          true))
 
-(mu/defn candidate-tables-with-field-stats :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/table)))]
+(def ^:private CandidateTableWithFieldStats
+  "Rows returned by [[candidate-tables-with-field-stats]]."
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/table [:id :schema :display_name :entity_type :db_id])
+             [:map
+              [:num-fields :int]
+              [:list-like? [:or :boolean :int]]]))
+
+(mu/defn candidate-tables-with-field-stats :- [:sequential CandidateTableWithFieldStats]
   "The id, schema, name, entity type, Database, field count, and list-likeness of the active, visible Tables of the
   Database with `database-id` (optionally narrowed to `schema`) that have at least one non-key Field."
   [database-id :- ::lib.schema.id/database
@@ -179,7 +185,7 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select :model/Card :table_id table-id :type :metric :archived false))
 
-(mu/defn insert-card! :- (mut/optional-keys ::queries.schema/card)
+(mu/defn insert-card! :- ::queries.schema/card
   "Insert the Card `card` and return the inserted instance."
   [card :- ::queries.schema/card.update]
   (t2/insert-returning-instance! :model/Card card))
@@ -207,9 +213,7 @@
 
 (def ^:private CollectionLocationColumn
   "Rows returned by [[collection-location-columns]]."
-  [:map {:closed true}
-   [:location [:maybe :string]]
-   [:id       ms/PositiveInt]])
+  (mut/select-keys ::collections.schema/collection [:location :id]))
 
 (mu/defn collection-location-columns :- [:maybe CollectionLocationColumn]
   "The location and id of the Collection with `collection-id`, or nil."
@@ -230,7 +234,7 @@
                  :archived false
                  :location location))
 
-(mu/defn insert-collection! :- (mut/optional-keys ::collections.schema/collection)
+(mu/defn insert-collection! :- ::collections.schema/collection
   "Insert the Collection `row` and return the inserted instance."
   [row :- ::collections.schema/collection.update]
   (t2/insert-returning-instance! :model/Collection row))

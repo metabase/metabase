@@ -12,7 +12,7 @@
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pks-set :model/Collection :id [:in collection-ids] :is_remote_synced true))
 
-(mu/defn is-remote-synced-by-id :- [:sequential [:map {:closed true} [:id ms/PositiveInt] [:is_remote_synced [:maybe :boolean]]]]
+(mu/defn is-remote-synced-by-id :- [:sequential [:map [:id ms/PositiveInt] [:is_remote_synced [:maybe :boolean]]]]
   "The `:id` and the containing Collection's `:is_remote_synced` of the `model` rows with `ids`."
   [model :- :keyword
    ids :- [:sequential ms/PositiveInt]]

@@ -61,7 +61,11 @@
   []
   (t2/select-fn->fn :path :source :model/PythonLibrary))
 
-(mu/defn top-level-fields-metadata :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :name :base_type :effective_type :semantic_type :database_type :database_position])]
+(def ^:private TopLevelFieldsMetadata
+  "Rows returned by [[top-level-fields-metadata]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:id :name :base_type :effective_type :semantic_type :database_type :database_position]))
+
+(mu/defn top-level-fields-metadata :- [:sequential TopLevelFieldsMetadata]
   "The export metadata columns of the active top-level Fields of the Table with `table-id`, in database order."
   [table-id :- ::lib.schema.id/table]
   (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]

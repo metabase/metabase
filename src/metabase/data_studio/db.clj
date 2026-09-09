@@ -103,14 +103,22 @@
    changes   :- (mut/select-keys ::warehouse-schema.schema/table.update [:data_authority :data_source :data_layer :entity_type :owner_email :owner_user_id])]
   (t2/update! :model/Table [:in table-ids] changes))
 
-(mu/defn selection-columns-for-selectors :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :name :display_name :schema :is_published])]
+(def ^:private SelectionColumnsForSelector
+  "Rows returned by [[selection-columns-for-selectors]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :name :display_name :schema :is_published]))
+
+(mu/defn selection-columns-for-selectors :- [:sequential SelectionColumnsForSelector]
   "Up to `limit` id, database, name, schema, and published flag of the Tables picked out by `selectors`."
   [selectors :- TableSelectors
    limit     :- ms/PositiveInt]
   (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published]
              {:where (table-selectors-where selectors), :limit limit}))
 
-(mu/defn selection-columns-for-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :name :display_name :schema :is_published])]
+(def ^:private SelectionColumnsForTable
+  "Rows returned by [[selection-columns-for-tables]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :name :display_name :schema :is_published]))
+
+(mu/defn selection-columns-for-tables :- [:sequential SelectionColumnsForTable]
   "The id, database, name, schema, and published flag of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published] :id [:in table-ids]))

@@ -91,7 +91,11 @@
   [id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-one :model/Collection :id id))
 
-(mu/defn collection-location-columns :- [:maybe (mut/select-keys ::collections.schema/collection [:location :id :type])]
+(def ^:private CollectionLocationColumn
+  "Rows returned by [[collection-location-columns]]."
+  (mut/select-keys ::collections.schema/collection [:location :id :type]))
+
+(mu/defn collection-location-columns :- [:maybe CollectionLocationColumn]
   "The location, id, and type of the Collection with `id`, or nil."
   [id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :location :id :type] :id id))

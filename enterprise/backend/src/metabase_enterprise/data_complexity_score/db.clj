@@ -32,7 +32,11 @@
                         [:in :table_id table-ids]]
              :group-by [:table_id]}))
 
-(mu/defn unarchived-measure-names :- [:sequential (mut/select-keys ::measures.schema/measure [:table_id :name])]
+(def ^:private UnarchivedMeasureName
+  "Rows returned by [[unarchived-measure-names]]."
+  (mut/select-keys ::measures.schema/measure [:table_id :name]))
+
+(mu/defn unarchived-measure-names :- [:sequential UnarchivedMeasureName]
   "The Table ID and name of the unarchived Measures on the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Measure :table_id :name] :archived false :table_id [:in table-ids]))
@@ -60,7 +64,11 @@
   []
   (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
 
-(mu/defn universe-cards :- [:sequential (mut/select-keys ::queries.schema/card [:id :name :type :collection_id :card_schema])]
+(def ^:private UniverseCard
+  "Rows returned by [[universe-cards]]."
+  (mut/select-keys ::queries.schema/card [:id :name :type :collection_id :card_schema]))
+
+(mu/defn universe-cards :- [:sequential UniverseCard]
   "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with
   `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
@@ -69,7 +77,11 @@
              :archived    false
              :database_id [:not= audit-database-id]))
 
-(mu/defn universe-tables :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority])]
+(def ^:private UniverseTable
+  "Rows returned by [[universe-tables]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]))
+
+(mu/defn universe-tables :- [:sequential UniverseTable]
   "The scoring columns of the active Tables outside the Database with `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
   (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]

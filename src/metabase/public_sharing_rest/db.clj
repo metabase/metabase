@@ -13,7 +13,11 @@
 
 ;;; ------------------------------------------------------ Cards -------------------------------------------------------
 
-(mu/defn public-card :- [:maybe (mut/select-keys ::queries.schema/card [:id :dataset_query :description :display :name :parameters :visualization_settings :card_schema])]
+(def ^:private PublicCard
+  "Rows returned by [[public-card]]."
+  (mut/select-keys ::queries.schema/card [:id :dataset_query :description :display :name :parameters :visualization_settings :card_schema]))
+
+(mu/defn public-card :- [:maybe PublicCard]
   "The non-archived Card with `card-id`, restricted to the columns safe to expose publicly, or nil. With
   `:enable-embedding? true`, additionally requires embedding to be enabled."
   [card-id :- ::lib.schema.id/card
@@ -38,7 +42,11 @@
 
 ;;; ---------------------------------------------------- Dashboards ----------------------------------------------------
 
-(mu/defn public-dashboard :- [:maybe (mut/select-keys ::dashboards.schema/dashboard [:name :description :id :parameters :auto_apply_filters :width])]
+(def ^:private PublicDashboard
+  "Rows returned by [[public-dashboard]]."
+  (mut/select-keys ::dashboards.schema/dashboard [:name :description :id :parameters :auto_apply_filters :width]))
+
+(mu/defn public-dashboard :- [:maybe PublicDashboard]
   "The non-archived Dashboard with `dashboard-id`, restricted to the columns safe to expose publicly, or nil. With
   `:enable-embedding? true`, additionally requires embedding to be enabled."
   [dashboard-id :- ::lib.schema.id/dashboard
@@ -62,13 +70,21 @@
 
 ;;; ----------------------------------------------------- Documents ----------------------------------------------------
 
-(mu/defn public-document :- [:maybe (mut/select-keys ::documents.schema/document [:id :name :document :content_type :created_at :updated_at])]
+(def ^:private PublicDocument
+  "Rows returned by [[public-document]]."
+  (mut/select-keys ::documents.schema/document [:id :name :document :content_type :created_at :updated_at]))
+
+(mu/defn public-document :- [:maybe PublicDocument]
   "The non-archived Document with `document-id`, restricted to the columns safe to expose publicly."
   [document-id :- ms/PositiveInt]
   (t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
                  :id document-id, :archived false))
 
-(mu/defn document-content :- [:maybe (mut/select-keys ::documents.schema/document [:id :document :content_type])]
+(def ^:private DocumentContent
+  "Rows returned by [[document-content]]."
+  (mut/select-keys ::documents.schema/document [:id :document :content_type]))
+
+(mu/defn document-content :- [:maybe DocumentContent]
   "The id, content, and content type of the Document with `document-id`, or nil."
   [document-id :- ms/PositiveInt]
   (t2/select-one [:model/Document :id :document :content_type] :id document-id))

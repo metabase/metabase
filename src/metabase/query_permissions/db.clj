@@ -9,7 +9,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn card-collection-id :- [:maybe (mut/select-keys ::queries.schema/card [:collection_id :card_schema])]
+(def ^:private CardCollectionId
+  "Rows returned by [[card-collection-id]]."
+  (mut/select-keys ::queries.schema/card [:collection_id :card_schema]))
+
+(mu/defn card-collection-id :- [:maybe CardCollectionId]
   "The `:collection_id` and `:card_schema` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :collection_id :card_schema] :id card-id))

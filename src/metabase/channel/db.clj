@@ -9,7 +9,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -38,7 +37,7 @@
   [channel-name :- :string]
   (t2/exists? :model/Channel :name channel-name))
 
-(mu/defn insert-channel! :- (mut/optional-keys ::channel.schema/channel)
+(mu/defn insert-channel! :- ::channel.schema/channel
   "Insert the Channel `row` and return the inserted instance."
   [row :- ChannelRow]
   (t2/insert-returning-instance! :model/Channel row))
@@ -66,12 +65,7 @@
 
 (def ^:private UserContactInfo
   "Rows returned by [[user-contact-info]]."
-  [:map {:closed true}
-   [:last_name   [:maybe :string]]
-   [:first_name  [:maybe :string]]
-   [:email       :string]
-   [:locale      [:maybe :string]]
-   [:common_name :string]])
+  (mut/select-keys ::users.schema/user.full [:last_name :first_name :email :locale :common_name]))
 
 (mu/defn user-contact-info :- [:maybe UserContactInfo]
   "The name, email, locale, and derived common name of the User with `user-id`, or nil."
@@ -85,7 +79,7 @@
                                                 [:= :is_active true]
                                                 [:in :id user-ids]]}))
 
-(mu/defn user-ids-with-permission :- [:sequential [:map {:closed true} [:user_id (mut/optional-keys (mut/open-schema (mr/schema ::users.schema/user)))]]]
+(mu/defn user-ids-with-permission :- [:sequential [:map {:closed true} [:user_id ::lib.schema.id/user]]]
   "The ids of the Users belonging to a PermissionsGroup that holds `permission-path`."
   [permission-path :- :string]
   (app-db/query {:select   [:pgm.user_id]

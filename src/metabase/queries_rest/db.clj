@@ -9,7 +9,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -45,12 +44,16 @@
   [pattern :- :string]
   (t2/select :model/Card (merge order-by-name {:where [:like :dataset_query pattern]})))
 
-(mu/defn card-bookmarks-for-user :- [:sequential (mut/select-keys ::bookmarks.schema/card-bookmark [:card_id])]
+(def ^:private CardBookmarksForUser
+  "Rows returned by [[card-bookmarks-for-user]]."
+  (mut/select-keys ::bookmarks.schema/card-bookmark [:card_id]))
+
+(mu/defn card-bookmarks-for-user :- [:sequential CardBookmarksForUser]
   "The Card ids bookmarked by the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
   (t2/select [:model/CardBookmark :card_id] :user_id user-id))
 
-(mu/defn cards-using-model :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
+(mu/defn cards-using-model :- [:sequential ::queries.schema/card]
   "The unarchived Cards of the same Database as the model Card with `model-id` whose query mentions it, in
   case-insensitive name order."
   [model-id :- ms/PositiveInt]
@@ -64,12 +67,20 @@
                           :where [:and [:= :m.id model-id] [:not :c.archived]]
                           :order-by [[[:lower :c.name] :asc]]}))
 
-(mu/defn public-cards :- [:sequential (mut/select-keys ::queries.schema/card [:name :id :public_uuid :card_schema])]
+(def ^:private PublicCard
+  "Rows returned by [[public-cards]]."
+  (mut/select-keys ::queries.schema/card [:name :id :public_uuid :card_schema]))
+
+(mu/defn public-cards :- [:sequential PublicCard]
   "The name, id, public uuid, and schema of the unarchived Cards that are publicly shared."
   []
   (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
 
-(mu/defn embeddable-cards :- [:sequential (mut/select-keys ::queries.schema/card [:name :id :card_schema])]
+(def ^:private EmbeddableCard
+  "Rows returned by [[embeddable-cards]]."
+  (mut/select-keys ::queries.schema/card [:name :id :card_schema]))
+
+(mu/defn embeddable-cards :- [:sequential EmbeddableCard]
   "The name, id, and schema of the unarchived Cards with embedding enabled."
   []
   (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
@@ -102,7 +113,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :dataset_query :model/Card :id card-id))
 
-(mu/defn card-public-uuid-columns :- [:maybe (mut/select-keys ::queries.schema/card [:public_uuid :card_schema])]
+(def ^:private CardPublicUuidColumn
+  "Rows returned by [[card-public-uuid-columns]]."
+  (mut/select-keys ::queries.schema/card [:public_uuid :card_schema]))
+
+(mu/defn card-public-uuid-columns :- [:maybe CardPublicUuidColumn]
   "The public uuid and schema of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id))
@@ -150,12 +165,20 @@
   [card-id :- ::lib.schema.id/card]
   (t2/delete! :model/Card :id card-id))
 
-(mu/defn max-collection-position :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
+(def ^:private MaxCollectionPosition
+  "Rows returned by [[max-collection-position]]."
+  (mut/merge ::queries.schema/card [:map [:max_position [:maybe :int]]]))
+
+(mu/defn max-collection-position :- [:maybe MaxCollectionPosition]
   "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-one [:model/Card [:%max.collection_position :max_position]] :collection_id collection-id))
 
-(mu/defn cards-to-move-to-collection :- [:sequential (mut/select-keys ::queries.schema/card [:id :collection_id :collection_position :dataset_query :card_schema])]
+(def ^:private CardsToMoveToCollection
+  "Rows returned by [[cards-to-move-to-collection]]."
+  (mut/select-keys ::queries.schema/card [:id :collection_id :collection_position :dataset_query :card_schema]))
+
+(mu/defn cards-to-move-to-collection :- [:sequential CardsToMoveToCollection]
   "The id, Collection, position, query, and schema of the Cards among `card-ids` not already in
   `new-collection-id-or-nil`."
   [card-ids :- [:set ::lib.schema.id/card]

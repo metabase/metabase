@@ -44,6 +44,14 @@
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
      :cljs :string))
 
+(core/defn rename-keys
+  "Like [[clojure.set/rename-keys]], but for a `:map` schema: renames the entries whose keys appear in `kmap`. Useful
+  for the schema of a query that selects a column under another name, e.g. `[:group_id :id]`."
+  [schema kmap]
+  (mut/transform-entries (mc/schema schema)
+                         (core/fn [entries]
+                           (mapv (core/fn [[k props s]] [(get kmap k k) props s]) entries))))
+
 (metabase.util.malli/defn with
   "Update a malli schema with an arbitrary map of properties"
   {:style/indent [:form]}

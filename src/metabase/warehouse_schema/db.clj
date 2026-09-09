@@ -13,7 +13,6 @@
    [metabase.segments.schema :as segments.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -42,16 +41,14 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(mu/defn fields-by-id :- [:map-of ms/PositiveInt ::warehouse-schema.schema/field]
+(mu/defn fields-by-id :- [:map-of ms/PositiveInt ::lib.schema.id/field]
   "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select-fn->fn :id identity :model/Field :id [:in field-ids]))
 
 (def ^:private FieldTableId
   "Rows returned by [[field-table-id-rows]]."
-  [:map {:closed true}
-   [:id       ::lib.schema.id/field]
-   [:table_id ::lib.schema.id/table]])
+  (mut/select-keys ::warehouse-schema.schema/field [:id :table_id]))
 
 (mu/defn field-table-id-rows :- [:sequential FieldTableId]
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
@@ -72,11 +69,7 @@
 
 (def ^:private FieldValuesEligibility
   "Rows returned by [[field-values-eligibility]]."
-  [:map {:closed true}
-   [:base_type        [:or :keyword :string :map sequential?]]
-   [:visibility_type  [:or :keyword :string]]
-   [:has_field_values [:maybe [:or :keyword :string :map sequential?]]]
-   [:preview_display  :boolean]])
+  (mut/select-keys ::warehouse-schema.schema/field [:base_type :visibility_type :has_field_values :preview_display]))
 
 (mu/defn field-values-eligibility :- [:maybe FieldValuesEligibility]
   "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
@@ -109,8 +102,7 @@
 
 (def ^:private FieldIdsForTableOrdered
   "Rows returned by [[field-ids-for-table-ordered]]."
-  [:map {:closed true}
-   [:id ::lib.schema.id/field]])
+  (mut/select-keys ::warehouse-schema.schema/field [:id]))
 
 (mu/defn field-ids-for-table-ordered :- [:sequential FieldIdsForTableOrdered]
   "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id`, ordered per `field-order` (`:custom`, `:smart`, `:database`,
@@ -222,16 +214,18 @@
 
 (def ^:private FullFieldValue
   "Rows returned by [[full-field-values-rows]]."
-  [:map {:closed true}
-   [:field_id ::lib.schema.id/field]
-   [:values   [:maybe [:or :string :map sequential?]]]])
+  (mut/select-keys ::warehouse-schema.schema/field-values [:field_id :values]))
 
 (mu/defn full-field-values-rows :- [:sequential FullFieldValue]
   "The ::warehouse-schema.schema/field ID and values of the full FieldValues of the ::warehouse-schema.schema/field with `field-id`."
   [field-id :- ::lib.schema.id/field]
   (t2/select [:model/FieldValues :field_id :values] :field_id field-id :type :full))
 
-(mu/defn full-field-values-for-tables :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::warehouse-schema.schema/field-values)))]
+(def ^:private FullFieldValuesForTable
+  "Rows returned by [[full-field-values-for-tables]]."
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/field-values [:field_id :values]) [:map [:table_id [:maybe ::lib.schema.id/table]]]))
+
+(mu/defn full-field-values-for-tables :- [:sequential FullFieldValuesForTable]
   "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/FieldValues :field_id :values :field.table_id]
@@ -243,9 +237,7 @@
 
 (def ^:private FullFieldValuesWithHumanReadableValue
   "Rows returned by [[full-field-values-with-human-readable-values]]."
-  [:map {:closed true}
-   [:values                [:maybe [:or :string :map sequential?]]]
-   [:human_readable_values [:maybe [:or :string :map sequential?]]]])
+  (mut/select-keys ::warehouse-schema.schema/field-values [:values :human_readable_values]))
 
 (mu/defn full-field-values-with-human-readable-values :- [:maybe FullFieldValuesWithHumanReadableValue]
   "The values and human-readable values of the full FieldValues of the ::warehouse-schema.schema/field with `field-id` if it has
@@ -344,9 +336,7 @@
 
 (def ^:private TableNameAndSchema
   "Rows returned by [[table-name-and-schema]]."
-  [:map {:closed true}
-   [:name   :string]
-   [:schema [:maybe :string]]])
+  (mut/select-keys ::warehouse-schema.schema/table [:name :schema]))
 
 (mu/defn table-name-and-schema :- [:maybe TableNameAndSchema]
   "The name and schema of the ::warehouse-schema.schema/table with `table-id`."
@@ -425,40 +415,7 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn databases-by-id :- [:map-of ::lib.schema.id/database [:map {:closed true}
-                                                               [:id                          ::lib.schema.id/database]
-                                                               [:created_at                  ms/TemporalInstant]
-                                                               [:updated_at                  ms/TemporalInstant]
-                                                               [:name                        :string]
-                                                               [:description                 [:maybe [:or :string :map sequential?]]]
-                                                               [:details                     [:or :string :map sequential?]]
-                                                               [:engine                      [:or :keyword :string]]
-                                                               [:is_sample                   :boolean]
-                                                               [:is_full_sync                :boolean]
-                                                               [:points_of_interest          [:maybe [:or :string :map sequential?]]]
-                                                               [:caveats                     [:maybe [:or :string :map sequential?]]]
-                                                               [:metadata_sync_schedule      :string]
-                                                               [:cache_field_values_schedule [:maybe :string]]
-                                                               [:timezone                    [:maybe :string]]
-                                                               [:is_on_demand                :boolean]
-                                                               [:auto_run_queries            :boolean]
-                                                               [:refingerprint               [:maybe :boolean]]
-                                                               [:cache_ttl                   [:maybe :int]]
-                                                               [:initial_sync_status         [:or :keyword :string]]
-                                                               [:creator_id                  [:maybe ::lib.schema.id/user]]
-                                                               [:settings                    [:maybe [:or :string :map sequential?]]]
-                                                               [:dbms_version                [:maybe [:or :string :map sequential?]]]
-                                                               [:is_audit                    :boolean]
-                                                               [:uploads_enabled             :boolean]
-                                                               [:uploads_schema_name         [:maybe [:or :string :map sequential?]]]
-                                                               [:uploads_table_prefix        [:maybe [:or :string :map sequential?]]]
-                                                               [:is_attached_dwh             :boolean]
-                                                               [:router_database_id          [:maybe ::lib.schema.id/database]]
-                                                               [:provider_name               [:maybe :string]]
-                                                               [:write_data_details          [:maybe [:or :string :map sequential?]]]
-                                                               [:admin_details               [:maybe [:or :string :map sequential?]]]
-                                                               [:is_stub                     :boolean]
-                                                               [:features                    [:maybe [:set :keyword]]]]]
+(mu/defn databases-by-id :- [:map-of ::lib.schema.id/database ::warehouses.schema/database]
   "A map of ID to ::warehouses.schema/database for `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
   (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
@@ -485,12 +442,20 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection :id [:in collection-ids]))
 
-(mu/defn user-summaries-by-id :- [:map-of ::lib.schema.id/user (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name])]
+(def ^:private UserSummariesById
+  "Rows returned by [[user-summaries-by-id]]."
+  (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name]))
+
+(mu/defn user-summaries-by-id :- [:map-of ::lib.schema.id/user UserSummariesById]
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn cards-with-moderated-status :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/card)))]
+(def ^:private CardsWithModeratedStatus
+  "Rows returned by [[cards-with-moderated-status]]."
+  (mut/merge (mut/select-keys ::queries.schema/card [:id :dataset_query :result_metadata :name :description :collection_id :database_id :type :source_card_id :created_at :entity_id :card_schema]) [:map [:moderated_status [:maybe [:or :keyword :string]]]]))
+
+(mu/defn cards-with-moderated-status :- [:sequential CardsWithModeratedStatus]
   "The query-metadata columns of the Cards with `card-ids`, with their latest moderation status."
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
   (t2/select :model/Card

@@ -36,7 +36,11 @@
    provider :- :string]
   (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider provider))
 
-(mu/defn auth-identity-expiry :- [:maybe (mut/select-keys ::auth-identity.schema/auth-identity [:id :expires_at])]
+(def ^:private AuthIdentityExpiry
+  "Rows returned by [[auth-identity-expiry]]."
+  (mut/select-keys ::auth-identity.schema/auth-identity [:id :expires_at]))
+
+(mu/defn auth-identity-expiry :- [:maybe AuthIdentityExpiry]
   "The id and expiry of the AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
@@ -88,18 +92,30 @@
   [email :- :string]
   (t2/select-one :model/User :%lower.email (u/lower-case-en email)))
 
-(mu/defn user-login-columns :- [:maybe (mut/select-keys ::users.schema/user [:id :is_active :last_login :tenant_id])]
+(def ^:private UserLoginColumn
+  "Rows returned by [[user-login-columns]]."
+  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :tenant_id]))
+
+(mu/defn user-login-columns :- [:maybe UserLoginColumn]
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
 
-(mu/defn user-login-columns-by-email :- [:maybe (mut/select-keys ::users.schema/user [:id :is_active :last_login :tenant_id])]
+(def ^:private UserLoginColumnsByEmail
+  "Rows returned by [[user-login-columns-by-email]]."
+  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :tenant_id]))
+
+(mu/defn user-login-columns-by-email :- [:maybe UserLoginColumnsByEmail]
   "The id, active flag, last login, and tenant id of the User whose email matches `email` case-insensitively, or
   nil."
   [email :- :string]
   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email)))
 
-(mu/defn user-login-status :- [:maybe (mut/select-keys ::users.schema/user [:id :is_active :last_login])]
+(def ^:private UserLoginStatus
+  "Rows returned by [[user-login-status]]."
+  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login]))
+
+(mu/defn user-login-status :- [:maybe UserLoginStatus]
   "The id, active flag, and last login of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :last_login] user-id))
@@ -115,12 +131,16 @@
    changes :- ::users.schema/user.update]
   (t2/update! :model/User user-id changes))
 
-(mu/defn insert-user-returning-login-columns! :- (mut/select-keys ::users.schema/user [:id :last_login :is_active :tenant_id])
+(def ^:private InsertUserReturningLoginColumn
+  "Rows returned by [[insert-user-returning-login-columns!]]."
+  (mut/select-keys ::users.schema/user.full [:id :last_login :is_active :tenant_id]))
+
+(mu/defn insert-user-returning-login-columns! :- InsertUserReturningLoginColumn
   "Insert the User `row` and return its id, last login, active flag, and tenant id."
   [row :- ::users.schema/user.update]
   (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id] row))
 
-(mu/defn insert-session! :- (mut/optional-keys ::session.schema/session)
+(mu/defn insert-session! :- ::session.schema/session
   "Insert a Session and return the inserted instance."
   [session-id        :- :string
    user-id           :- ::lib.schema.id/user

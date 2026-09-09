@@ -11,7 +11,7 @@
 
 ;;; ------------------------------------------------- Transforms -------------------------------------------------
 
-(mu/defn transforms-by-id :- [:map-of ::lib.schema.id/transform ::lib.schema.id/transform]
+(mu/defn transforms-by-id :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform]
   "A map of id to Transform, for every Transform."
   []
   (t2/select-pk->fn identity :model/Transform))
@@ -33,7 +33,7 @@
   [tag-id :- ms/PositiveInt]
   (t2/select-one :model/TransformTag :id tag-id))
 
-(mu/defn insert-tag! :- (mut/optional-keys ::transforms.schema/transform-tag)
+(mu/defn insert-tag! :- ::transforms.schema/transform-tag
   "Insert a TransformTag named `name` and return the inserted instance."
   [name :- :string]
   (t2/insert-returning-instance! :model/TransformTag {:name name}))
@@ -56,7 +56,7 @@
 
 ;;; ---------------------------------------------------- Jobs ------------------------------------------------------
 
-(mu/defn insert-job! :- (mut/optional-keys ::transforms.schema/transform-job)
+(mu/defn insert-job! :- ::transforms.schema/transform-job
   "Insert the TransformJob `job-data` and return the inserted instance."
   [job-data :- ::transforms.schema/transform-job.update]
   (t2/insert-returning-instance! :model/TransformJob job-data))

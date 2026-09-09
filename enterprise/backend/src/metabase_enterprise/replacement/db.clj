@@ -35,12 +35,16 @@
   []
   (t2/select-one :model/ReplacementRun :is_active true))
 
-(mu/defn run-active-flag :- [:maybe (mut/select-keys ::replacement.schema/replacement-run [:is_active])]
+(def ^:private RunActiveFlag
+  "Rows returned by [[run-active-flag]]."
+  (mut/select-keys ::replacement.schema/replacement-run [:is_active]))
+
+(mu/defn run-active-flag :- [:maybe RunActiveFlag]
   "The `:is_active` row of the ReplacementRun with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
   (t2/select-one [:model/ReplacementRun :is_active] :id run-id))
 
-(mu/defn insert-run! :- (mut/optional-keys ::replacement.schema/replacement-run)
+(mu/defn insert-run! :- ::replacement.schema/replacement-run
   "Insert `run` and return the new instance."
   [run :- ::replacement.schema/replacement-run.update]
   (t2/insert-returning-instance! :model/ReplacementRun run))
@@ -104,7 +108,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::lib.schema.id/card]
+(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card]
   "A map of Card ID to Card for `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))

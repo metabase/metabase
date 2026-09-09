@@ -7,7 +7,6 @@
    [metabase.permissions.schema :as permissions.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
@@ -62,7 +61,7 @@
   [id :- ms/PositiveInt]
   (t2/exists? :model/PermissionsGroup :id id))
 
-(mu/defn insert-permissions-group! :- (mut/optional-keys ::permissions.schema/permissions-group)
+(mu/defn insert-permissions-group! :- ::permissions.schema/permissions-group
   "Insert a PermissionsGroup and return the inserted instance."
   [group-name    :- :string
    tenant-group? :- :boolean]
@@ -79,7 +78,11 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/PermissionsGroup :id id))
 
-(mu/defn group-memberships :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::permissions.schema/permissions-group-membership)))]
+(def ^:private GroupMembership
+  "Rows returned by [[group-memberships]]."
+  (mut/merge (mut/select-keys ::permissions.schema/permissions-group-membership [:group_id :user_id :is_group_manager]) [:map [:membership_id [:maybe ms/PositiveInt]]]))
+
+(mu/defn group-memberships :- [:sequential GroupMembership]
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally
   restricted to the groups `manager-user-id` manages, excluding `excluded-group-id`, and excluding tenant groups
   when `exclude-tenant-groups?`."
@@ -155,7 +158,11 @@
                                                               [:= :router_db.id :db_id]]}]])
     :order-by [:group_id :db_id]}))
 
-(mu/defn tables-for-databases :- [:sequential (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema])]
+(def ^:private TablesForDatabase
+  "Rows returned by [[tables-for-databases]]."
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
+
+(mu/defn tables-for-databases :- [:sequential TablesForDatabase]
   "The id, Database id, and schema of the Tables of the Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
   (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]))

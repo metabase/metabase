@@ -7,10 +7,8 @@
    [metabase.permissions.schema :as permissions.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn table :- [:maybe ::warehouse-schema.schema/table]
@@ -41,7 +39,7 @@
    database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn-set :db_id :model/ConnectionImpersonation :group_id group-id :db_id [:in database-ids]))
 
-(mu/defn sandboxed-database-ids-for-group :- [:sequential [:map {:closed true} [:db_id (mut/optional-keys (mut/open-schema (mr/schema ::warehouses.schema/database)))]]]
+(mu/defn sandboxed-database-ids-for-group :- [:sequential [:map {:closed true} [:db_id ::lib.schema.id/database]]]
   "The `:db_id` rows of the Databases among `database-ids` the group with `group-id` has a sandbox on."
   [group-id     :- ms/PositiveInt
    database-ids :- [:sequential ::lib.schema.id/database]]
@@ -101,7 +99,11 @@
                       [:= :object "/"]
                       [:like :object (h2x/literal "/application/%")]]}))
 
-(mu/defn user-group-memberships :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::permissions.schema/permissions-group-membership)))]
+(def ^:private UserGroupMembership
+  "Rows returned by [[user-group-memberships]]."
+  (mu/rename-keys (mut/select-keys ::permissions.schema/permissions-group-membership [:group_id :is_group_manager]) {:group_id :id}))
+
+(mu/defn user-group-memberships :- [:sequential UserGroupMembership]
   "The group ID (as `:id`) and manager flag of the memberships of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
   (t2/select [:model/PermissionsGroupMembership [:group_id :id] :is_group_manager] :user_id user-id))

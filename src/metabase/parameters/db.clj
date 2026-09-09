@@ -78,7 +78,11 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(mu/defn fields-fk-info :- [:sequential (mut/select-keys ::warehouse-schema.schema/field [:id :fk_target_field_id :semantic_type])]
+(def ^:private FieldsFkInfo
+  "Rows returned by [[fields-fk-info]]."
+  (mut/select-keys ::warehouse-schema.schema/field [:id :fk_target_field_id :semantic_type]))
+
+(mu/defn fields-fk-info :- [:sequential FieldsFkInfo]
   "The id, FK target, and semantic type of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids]))
@@ -129,7 +133,7 @@
    hash-key :- :string]
   (t2/select-one :model/FieldValues :field_id field-id, :type :advanced, :hash_key hash-key))
 
-(mu/defn find-or-insert-advanced-field-values! :- (mut/optional-keys ::warehouse-schema.schema/field-values)
+(mu/defn find-or-insert-advanced-field-values! :- ::warehouse-schema.schema/field-values
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling
   `insert-fn` if none exists yet."
   [field-id  :- ::lib.schema.id/field
@@ -137,7 +141,7 @@
    insert-fn :- fn?]
   (mdb/select-or-insert! :model/FieldValues {:field_id field-id, :type :advanced, :hash_key hash-key} insert-fn))
 
-(mu/defn active-name-fields-for-tables :- [:sequential ::warehouse-schema.schema/field]
+(mu/defn active-name-fields-for-tables :- [:sequential (mut/optional-keys ::warehouse-schema.schema/field)]
   "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."
   [columns   :- [:sequential :keyword]
    table-ids :- [:sequential ::lib.schema.id/table]]
@@ -146,7 +150,7 @@
              :semantic_type (mdb/isa :type/Name)
              :active        true))
 
-(mu/defn fields-with-columns :- [:sequential ::warehouse-schema.schema/field]
+(mu/defn fields-with-columns :- [:sequential (mut/optional-keys ::warehouse-schema.schema/field)]
   "The `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]

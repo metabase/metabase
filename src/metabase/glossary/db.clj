@@ -5,6 +5,7 @@
    [malli.util :as mut]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -21,7 +22,7 @@
                                        [:like [:lower :term] pattern]
                                        [:like [:lower :definition] pattern]])))))
 
-(mu/defn insert-glossary-entry! :- (mut/optional-keys ::glossary.schema/glossary)
+(mu/defn insert-glossary-entry! :- ::glossary.schema/glossary
   "Insert the Glossary `row` and return the inserted instance."
   [row :- ::glossary.schema/glossary]
   (t2/insert-returning-instance! :model/Glossary row))
@@ -43,7 +44,11 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/Glossary :id id))
 
-(mu/defn users-by-id :- [:map-of ::lib.schema.id/user ::lib.schema.id/user]
+(def ^:private UsersById
+  "Rows returned by [[users-by-id]]."
+  (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name]))
+
+(mu/defn users-by-id :- [:map-of ::lib.schema.id/user UsersById]
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))

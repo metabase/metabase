@@ -2,18 +2,16 @@
   "Application database queries for the transforms-inspector module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (def ^:private TableSource
   "Rows returned by [[table-source-rows]]."
-  [:map {:closed true}
-   [:table-id   ::lib.schema.id/table]
-   [:table-name :string]
-   [:schema     [:maybe :string]]
-   [:db-id      ::lib.schema.id/database]])
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/table [:schema]) [:map [:table-id [:maybe ms/PositiveInt]] [:table-name [:maybe :string]] [:db-id [:maybe ::lib.schema.id/database]]]))
 
 (mu/defn table-source-rows :- [:sequential TableSource]
   "The ID, name, schema, and Database ID of the Tables with `table-ids`, as source info."

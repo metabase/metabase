@@ -8,7 +8,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -25,7 +24,11 @@
    [:next_run_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:invalidated_at {:optional true} ms/TemporalInstant]])
 
-(mu/defn card-cache-config :- [:maybe ::cache.schema/cache-config]
+(def ^:private CardCacheConfig
+  "Rows returned by [[card-cache-config]]."
+  (mut/select-keys ::cache.schema/cache-config [:id]))
+
+(mu/defn card-cache-config :- [:maybe CardCacheConfig]
   "The most specific CacheConfig applying to the Card with `card-id` on the Dashboard with `dashboard-id` in the
   Database with `database-id`, or nil."
   [card-id      :- ::lib.schema.id/card
@@ -49,7 +52,7 @@
                                          :order-by :ordering
                                          :limit    [:inline 1]})))
 
-(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::lib.schema.id/card]
+(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card]
   "A map of ID to Card for `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
@@ -64,7 +67,11 @@
   []
   (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true))
 
-(mu/defn duration-queries-to-rerun :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/query)))]
+(def ^:private DurationQueriesToRerun
+  "Rows returned by [[duration-queries-to-rerun]]."
+  (mut/merge (mut/select-keys ::queries.schema/query [:query]) [:map [:cache-hash [:maybe :string]] [:card-id [:maybe :string]] [:dashboard-id [:maybe :string]] [:count [:maybe :int]]]))
+
+(mu/defn duration-queries-to-rerun :- [:sequential DurationQueriesToRerun]
   "The query definitions to rerun for the duration cache `scopes`, each `{:model :model-id :rerun-cutoff}`, counting
   only executions started after `started-after`; `parameterized?` selects parameterized or plain queries."
   [scopes         :- [:sequential DurationScope]
@@ -107,7 +114,11 @@
                           :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}})}
               :u]]}))
 
-(mu/defn scheduled-base-query-to-rerun :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/query)))]
+(def ^:private ScheduledBaseQueryToRerun
+  "Rows returned by [[scheduled-base-query-to-rerun]]."
+  (mut/merge (mut/select-keys ::queries.schema/query [:query]) [:map [:card-id [:maybe ::lib.schema.id/card]]]))
+
+(mu/defn scheduled-base-query-to-rerun :- [:maybe ScheduledBaseQueryToRerun]
   "The unparameterized query definition of the Card with `card-id` executed most recently after `started-after`, or
   nil."
   [card-id       :- ::lib.schema.id/card
@@ -125,7 +136,11 @@
                   :order-by [[:qe.started_at :desc]]
                   :limit    1}))
 
-(mu/defn scheduled-parameterized-queries-to-rerun :- [:sequential (mut/optional-keys (mut/open-schema (mr/schema ::queries.schema/query)))]
+(def ^:private ScheduledParameterizedQueriesToRerun
+  "Rows returned by [[scheduled-parameterized-queries-to-rerun]]."
+  (mut/merge (mut/select-keys ::queries.schema/query [:query]) [:map [:card-id [:maybe ::lib.schema.id/card]]]))
+
+(mu/defn scheduled-parameterized-queries-to-rerun :- [:sequential ScheduledParameterizedQueriesToRerun]
   "The `limit` most common parameterized query definitions of the Card with `card-id` executed after `rerun-cutoff`."
   [card-id      :- ::lib.schema.id/card
    rerun-cutoff :- ms/TemporalInstant

@@ -21,7 +21,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :embedding_params :model/Card :id card-id))
 
-(mu/defn card-embedding-flags :- [:maybe (mut/select-keys ::queries.schema/card [:enable_embedding :archived])]
+(def ^:private CardEmbeddingFlag
+  "Rows returned by [[card-embedding-flags]]."
+  (mut/select-keys ::queries.schema/card [:enable_embedding :archived]))
+
+(mu/defn card-embedding-flags :- [:maybe CardEmbeddingFlag]
   "The embedding-enabled and archived flags of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :enable_embedding :archived] :id card-id))
@@ -36,7 +40,11 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
 
-(mu/defn dashboard-embedding-flags :- [:maybe (mut/select-keys ::dashboards.schema/dashboard [:enable_embedding :archived])]
+(def ^:private DashboardEmbeddingFlag
+  "Rows returned by [[dashboard-embedding-flags]]."
+  (mut/select-keys ::dashboards.schema/dashboard [:enable_embedding :archived]))
+
+(mu/defn dashboard-embedding-flags :- [:maybe DashboardEmbeddingFlag]
   "The embedding-enabled and archived flags of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one [:model/Dashboard :enable_embedding :archived] :id dashboard-id))
@@ -46,7 +54,11 @@
   [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one :model/DashboardCard dashcard-id))
 
-(mu/defn embedding-themes :- [:sequential ::embedding.schema/embedding-theme]
+(def ^:private EmbeddingTheme
+  "Rows returned by [[embedding-themes]]."
+  (mut/select-keys ::embedding.schema/embedding-theme [:id :entity_id :name :settings :created_at :updated_at]))
+
+(mu/defn embedding-themes :- [:sequential EmbeddingTheme]
   "The id, entity id, name, settings, and timestamps of every EmbeddingTheme, oldest first."
   []
   (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]
@@ -62,7 +74,7 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/EmbeddingTheme :id id))
 
-(mu/defn insert-embedding-theme! :- (mut/optional-keys ::embedding.schema/embedding-theme)
+(mu/defn insert-embedding-theme! :- ::embedding.schema/embedding-theme
   "Insert the EmbeddingTheme `row` and return the inserted instance."
   [row :- (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings])]
   (t2/insert-returning-instance! :model/EmbeddingTheme row))

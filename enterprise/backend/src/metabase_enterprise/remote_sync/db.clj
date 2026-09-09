@@ -9,8 +9,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -250,7 +250,7 @@
               (and has-field? field_name)
               (conj [:= :f.name field_name]))))))
 
-(mu/defn tables-at-paths :- [:sequential [:map {:closed true} [:id ms/PositiveInt] [:name :string] [:collection_id [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::collections.schema/collection)))]]]]
+(mu/defn tables-at-paths :- [:sequential [:map {:closed true} [:id ms/PositiveInt] [:name :string] [:collection_id [:maybe ::lib.schema.id/collection]]]]
   "The `:id`, `:name`, and `:collection_id` rows of the Tables at `paths` (`{:db_name :schema :table_name}`)."
   [paths :- [:sequential Path]]
   (t2/query {:select [:t.id :t.name :t.collection_id]
@@ -278,7 +278,11 @@
                       [:metabase_database :db] [:= :db.id :t.db_id]]
              :where  (path-expr paths true)}))
 
-(mu/defn card-types :- [:sequential (mut/select-keys ::queries.schema/card [:id :type :card_schema])]
+(def ^:private CardType
+  "Rows returned by [[card-types]]."
+  (mut/select-keys ::queries.schema/card [:id :type :card_schema]))
+
+(mu/defn card-types :- [:sequential CardType]
   "The `:id`, `:type`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :card_schema] :id [:in card-ids]))
@@ -288,7 +292,11 @@
   [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/FieldUserSettings :field_id field-id))
 
-(mu/defn snippets :- [:sequential (mut/select-keys ::native-query-snippets.schema/native-query-snippet [:id :name :collection_id])]
+(def ^:private Snippet
+  "Rows returned by [[snippets]]."
+  (mut/select-keys ::native-query-snippets.schema/native-query-snippet [:id :name :collection_id]))
+
+(mu/defn snippets :- [:sequential Snippet]
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
   []
   (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
@@ -305,17 +313,29 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection :id [:in collection-ids]))
 
-(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection ::lib.schema.id/collection]
+(def ^:private CollectionsById
+  "Rows returned by [[collections-by-id]]."
+  (mut/select-keys ::collections.schema/collection [:id :name :location :personal_owner_id]))
+
+(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection CollectionsById]
   "A map of ID to the ID, name, location, and personal owner of the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pk->fn identity [:model/Collection :id :name :location :personal_owner_id] :id [:in collection-ids]))
 
-(mu/defn collection-sync-states :- [:sequential (mut/select-keys ::collections.schema/collection [:id :is_remote_synced])]
+(def ^:private CollectionSyncState
+  "Rows returned by [[collection-sync-states]]."
+  (mut/select-keys ::collections.schema/collection [:id :is_remote_synced]))
+
+(mu/defn collection-sync-states :- [:sequential CollectionSyncState]
   "The `:id` and `:is_remote_synced` of the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :is_remote_synced] :id [:in collection-ids]))
 
-(mu/defn collection-name-and-id :- [:maybe (mut/optional-keys (mut/open-schema (mr/schema ::collections.schema/collection)))]
+(def ^:private CollectionNameAndId
+  "Rows returned by [[collection-name-and-id]]."
+  (mut/merge (mut/select-keys ::collections.schema/collection [:name]) [:map [:collection_id [:maybe ms/PositiveInt]]]))
+
+(mu/defn collection-name-and-id :- [:maybe CollectionNameAndId]
   "The `:name` and `:collection_id` (its own ID) of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
@@ -325,7 +345,11 @@
   [library-type :- :string]
   (t2/select-one :model/Collection :type library-type))
 
-(mu/defn snippet-collections :- [:sequential (mut/select-keys ::collections.schema/collection [:id :name])]
+(def ^:private SnippetCollection
+  "Rows returned by [[snippet-collections]]."
+  (mut/select-keys ::collections.schema/collection [:id :name]))
+
+(mu/defn snippet-collections :- [:sequential SnippetCollection]
   "The `:id` and `:name` of the Collections of the snippets namespace."
   []
   (t2/select [:model/Collection :id :name] :namespace "snippets"))
@@ -335,7 +359,11 @@
   []
   (t2/select-pks-set :model/Collection :namespace "snippets"))
 
-(mu/defn collections-in-namespace :- [:sequential (mut/select-keys ::collections.schema/collection [:id :entity_id])]
+(def ^:private CollectionsInNamespace
+  "Rows returned by [[collections-in-namespace]]."
+  (mut/select-keys ::collections.schema/collection [:id :entity_id]))
+
+(mu/defn collections-in-namespace :- [:sequential CollectionsInNamespace]
   "The `:id` and `:entity_id` of the Collections of `namespace-name`."
   [namespace-name :- :string]
   (t2/select [:model/Collection :id :entity_id] :namespace namespace-name))
@@ -446,12 +474,20 @@
   [model-type :- :string]
   (t2/count :model/RemoteSyncObject :model_type model-type))
 
-(mu/defn rso-keys :- [:sequential (mut/select-keys ::remote-sync.schema/remote-sync-object [:id :model_type :model_id])]
+(def ^:private RsoKey
+  "Rows returned by [[rso-keys]]."
+  (mut/select-keys ::remote-sync.schema/remote-sync-object [:id :model_type :model_id]))
+
+(mu/defn rso-keys :- [:sequential RsoKey]
   "The `:id`, `:model_type`, and `:model_id` of every RemoteSyncObject."
   []
   (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
 
-(mu/defn departed-rso-keys :- [:sequential (mut/select-keys ::remote-sync.schema/remote-sync-object [:id :model_type :model_id])]
+(def ^:private DepartedRsoKey
+  "Rows returned by [[departed-rso-keys]]."
+  (mut/select-keys ::remote-sync.schema/remote-sync-object [:id :model_type :model_id]))
+
+(mu/defn departed-rso-keys :- [:sequential DepartedRsoKey]
   "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
   []
   (t2/select [:model/RemoteSyncObject :id :model_type :model_id] :status [:in ["removed" "delete"]]))
@@ -504,7 +540,11 @@
              :model_table_id table-id
              :status [:not-in ["removed" "delete"]]))
 
-(mu/defn content-rso-statuses :- [:sequential (mut/select-keys ::remote-sync.schema/remote-sync-object [:id :status])]
+(def ^:private ContentRsoStatuse
+  "Rows returned by [[content-rso-statuses]]."
+  (mut/select-keys ::remote-sync.schema/remote-sync-object [:id :status]))
+
+(mu/defn content-rso-statuses :- [:sequential ContentRsoStatuse]
   "The `:id` and `:status` of the RemoteSyncObjects of the Collections with `collection-ids` and their contents."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-expr collection-ids)}))
@@ -660,7 +700,7 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(mu/defn insert-task! :- (mut/optional-keys ::remote-sync.schema/remote-sync-task)
+(mu/defn insert-task! :- ::remote-sync.schema/remote-sync-task
   "Insert `task` and return the new instance."
   [task :- ::remote-sync.schema/remote-sync-task.update]
   (t2/insert-returning-instance! :model/RemoteSyncTask task))
@@ -691,7 +731,7 @@
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/RemoteSyncTask {:where [:< :started_at cutoff]}))
 
-(mu/defn users-by-id :- [:map-of ::lib.schema.id/user ::lib.schema.id/user]
+(mu/defn users-by-id :- [:map-of ::lib.schema.id/user ::users.schema/user]
   "A map of User ID to User for `user-ids`."
   [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
   (t2/select-pk->fn identity :model/User :id [:in user-ids]))

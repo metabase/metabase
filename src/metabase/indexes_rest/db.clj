@@ -2,7 +2,6 @@
   "Application database queries for the indexes REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [malli.util :as mut]
    [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -20,7 +19,7 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/TableIndex :id id))
 
-(mu/defn insert-table-index! :- (mut/optional-keys ::indexes.schema/table-index)
+(mu/defn insert-table-index! :- ::indexes.schema/table-index
   "Insert the TableIndex `row` and return the inserted instance."
   [row :- ::indexes.schema/table-index.update]
   (t2/insert-returning-instance! :model/TableIndex row))
