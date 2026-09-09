@@ -988,7 +988,7 @@
                                (when (map? result) (:error result)))))))))))))))
 
 (deftest card-timeline-events-preserved-roundtrip-test
-  (testing "questions preserve selected timelines, hidden events, and unrecorded or empty choices after import"
+  (testing "questions preserve selected timelines and hidden events after import"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (ts/with-random-dump-dir [timeline-dir "serdesv2-timeline-"]
         (ts/with-dbs [source-db dest-db]
@@ -1004,15 +1004,7 @@
                            {:name "Sightings over time" :collection_id collection-id
                             :visualization_settings {:graph.show_values                    true
                                                      :timeline.selected_timeline_ids       [timeline-id]
-                                                     :timeline.excluded_timeline_event_ids [event-id]}}
-                           :model/Card {empty-card-eid :entity_id}
-                           {:name "Sightings without events" :collection_id collection-id
-                            :visualization_settings {:graph.show_values                    true
-                                                     :timeline.selected_timeline_ids       []
-                                                     :timeline.excluded_timeline_event_ids []}}
-                           :model/Card {unrecorded-card-eid :entity_id}
-                           {:name "Sightings with default events" :collection_id collection-id
-                            :visualization_settings {:graph.show_values true}}]
+                                                     :timeline.excluded_timeline_event_ids [event-id]}}]
               (-> (serdes/with-cache (into [] (extract/extract {:targets [["Collection" collection-id]]})))
                   (storage/store! (storage.files/file-writer dump-dir)))
               (-> (serdes/with-cache (into [] (extract/extract {:targets [["Timeline" timeline-eid]]})))
@@ -1044,15 +1036,32 @@
                                (t2/select-one-pk :model/TimelineEvent :timeline_id imported-timeline-id
                                                  :name "Swallows return")))
                         (is (= expected
-                               (t2/select-one-fn :visualization_settings :model/Card :entity_id card-eid))))
-                      (testing "an empty selection stays empty and an unrecorded selection stays unrecorded"
-                        (is (= {:graph.show_values                    true
-                                :timeline.selected_timeline_ids       []
-                                :timeline.excluded_timeline_event_ids []}
-                               (t2/select-one-fn :visualization_settings :model/Card :entity_id empty-card-eid)))
-                        (is (= {:graph.show_values true}
-                               (t2/select-one-fn :visualization_settings :model/Card
-                                                 :entity_id unrecorded-card-eid)))))))))))))))
+                               (t2/select-one-fn :visualization_settings :model/Card :entity_id card-eid)))))))))))))))
+
+(deftest card-timeline-events-empty-selection-roundtrip-test
+  (testing "an empty event selection stays empty and an unrecorded selection stays unrecorded after import"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (mt/with-temp [:model/Collection {collection-id :id} {:name "Bird sightings"}
+                         :model/Card {empty-card-eid :entity_id}
+                         {:name "Sightings without events" :collection_id collection-id
+                          :visualization_settings {:graph.show_values                    true
+                                                   :timeline.selected_timeline_ids       []
+                                                   :timeline.excluded_timeline_event_ids []}}
+                         :model/Card {unrecorded-card-eid :entity_id}
+                         {:name "Sightings with default events" :collection_id collection-id
+                          :visualization_settings {:graph.show_values true}}]
+            (-> (serdes/with-cache (into [] (extract/extract {:targets [["Collection" collection-id]]})))
+                (storage/store! (storage.files/file-writer dump-dir)))
+            (ts/with-db dest-db
+              (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+              (is (= {:graph.show_values                    true
+                      :timeline.selected_timeline_ids       []
+                      :timeline.excluded_timeline_event_ids []}
+                     (t2/select-one-fn :visualization_settings :model/Card :entity_id empty-card-eid)))
+              (is (= {:graph.show_values true}
+                     (t2/select-one-fn :visualization_settings :model/Card :entity_id unrecorded-card-eid))))))))))
 
 (deftest card-timeline-events-missing-timeline-roundtrip-test
   (testing "a question imports with an empty event selection when its timeline is absent"

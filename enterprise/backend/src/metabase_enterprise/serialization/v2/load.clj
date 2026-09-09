@@ -57,8 +57,7 @@
 
 (defn- elidable-missing-dep?
   "True when `e` reports `dep` itself as missing from both the archive and the destination, and `dep` names a
-  [[serdes.models/elidable-content-models]] entity. A missing transitive dependency always fails, even when `dep`
-  exists locally."
+  [[serdes.models/elidable-content-models]] entity."
   [dep e]
   (let [{:keys [model id]} (last dep)
         data               (ex-data e)]
