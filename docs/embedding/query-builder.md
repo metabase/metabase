@@ -38,7 +38,15 @@ With the SDK:
 {% include_file "{{ dirname }}/sdk/snippets/questions/new-question.tsx" %}
 ```
 
-To narrow down what people can start from, list the entity types you want in the data picker with the `entity-types` attribute (web component) or the `entityTypes` prop (SDK). For example, `entity-types="['table']"` limits the picker to raw tables. The attribute takes `"table"`, `"model"`, or both.
+### Choose what people can start from
+
+The visual query builder uses one of two data pickers. If people have access to fewer than 100 tables and models, they get the simple data picker, a dropdown list of tables and models. Otherwise, they get the staged data picker, which groups data into **Raw Data**, **Models**, and **Metrics**. With the SDK, you can always use the staged data picker by setting `dataPicker="staged"`.
+
+The staged data picker shows tables, models, and metrics by default. The simple data picker shows tables and models, but not metrics.
+
+To show fewer entity types, list the ones you want with the `entity-types` attribute (web component) or the `entityTypes` prop (SDK). For example, `entity-types="['table']"` limits the picker to raw tables. You can use `"table"`, `"model"`, and `"metric"`.
+
+There's no `<metabase-question>` attribute that picks the data picker, the way `data_picker` does in [full-app embedding](./full-app-ui-components.md#data_picker). With the web component, people with access to fewer than 100 tables and models always get the simple data picker, so they won't see metrics.
 
 ## Embed the SQL editor
 

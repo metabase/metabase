@@ -31,7 +31,7 @@ type SdkQuestionConfig = {
   entityTypes?: EmbeddingEntityType[];
 
   /**
-   * Controls the menu for selecting data sources in questions. You can opt for the full data picker by setting `dataPicker = "staged"`.
+   * Controls the menu for selecting data sources in questions. You can opt for the staged data picker by setting `dataPicker = "staged"`.
    */
   dataPicker?: EmbeddingDataPicker;
 
