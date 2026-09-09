@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.string :as u.str]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -744,6 +745,61 @@
           ;; accumulated twice and no partial entry can clobber a full one.
           (partition-all entity-retrieval.spec/hydration-query-chunk-size ids))))
 
+(def ^:private max-table-children
+  "Cap on the measures, and separately the segments, one table contributes to its prompt input and `basis`.
+  A library table carries a curated handful of each; the cap only bounds a pathological one."
+  50)
+
+(def ^:private max-child-description-len
+  "Cap on one measure's or segment's description within its table's prompt input and `basis`. Each of them
+  is its own library entity and sends its full description in its own prompt; here it is supporting
+  evidence for the parent table, so a long one must not crowd out the rest of the table's context."
+  500)
+
+(defn- table-children
+  "Batch `:measures`/`:segments` hydration for the Table `:osi-context` projection: map of
+  [[entity-retrieval.spec/hydration-key]] -> the table's unarchived `model` rows (`:model/Measure` or
+  `:model/Segment`) as `{:name s :description s}`, ordered by name, capped at [[max-table-children]]
+  with each description capped at [[max-child-description-len]].
+  Like every `:osi-context` hydration the value is deterministic and bounded, and nothing downstream
+  trims what it puts in the prompt or in the stored `osi_ai_context.basis`."
+  [model tables]
+  (when-let [ids (not-empty (into [] (keep :id) tables))]
+    (into {}
+          (mapcat (fn [id-chunk]
+                    (update-vals
+                     (group-by #(entity-retrieval.spec/hydration-key "table" (:table_id %))
+                               (warehouse-schema.db/table-child-summaries model (vec id-chunk)))
+                     (fn [rows]
+                       (into []
+                             (comp (map (fn [{child-name :name, description :description}]
+                                          {:name        child-name
+                                           :description (some-> description
+                                                                (u.str/limit-chars max-child-description-len))}))
+                                   (take max-table-children))
+                             ;; The order is part of the stored value: it goes into the basis and is diffed
+                             ;; against the previous run, so an order that shifts on its own reads as an
+                             ;; authored change and regenerates every library table for nothing. The query
+                             ;; cannot own it — it fetches a chunk of tables at once, so a per-table cap
+                             ;; there needs a window function, and which rows that cap keeps would then
+                             ;; rest on tie and NULL ordering that varies by dialect, and on the app db's
+                             ;; collation, which an H2-to-Postgres move changes. Ties sort on the whole
+                             ;; summary because two children of one table can share a name.
+                             (sort-by (juxt :name :description) rows))))))
+          ;; Chunked for the app db's bind-parameter limit, by table id so every child of a table lands in
+          ;; the one chunk holding its id and no partial entry can clobber a full one.
+          (partition-all entity-retrieval.spec/hydration-query-chunk-size ids))))
+
+(defn- table-measures
+  "Batch `:measures` hydration for the Table `:osi-context` projection. See [[table-children]]."
+  [tables]
+  (table-children :model/Measure tables))
+
+(defn- table-segments
+  "Batch `:segments` hydration for the Table `:osi-context` projection. See [[table-children]]."
+  [tables]
+  (table-children :model/Segment tables))
+
 (defn- table->llm-input
   "The `:osi-context` projection for a Table: the map handed to the generation prompt.
   Prompt-only additions (sampled content, fk summaries) belong here and must never move into `:basis`.
@@ -755,7 +811,9 @@
    :name         (:name table)
    :display-name (:display_name table)
    :description  (:description table)
-   :field-names  (:field-names table)})
+   :field-names  (:field-names table)
+   :measures     (:measures table)
+   :segments     (:segments table)})
 
 (def ^:private library-table-membership
   ;; shared by both projections — :osi-context membership is fixed to :library-index's for v1.
@@ -777,5 +835,7 @@
 (entity-retrieval.spec/define-projection :osi-context :model/Table
   {:membership library-table-membership
    :project    #'table->llm-input
-   :hydrate    {:field-names #'table-field-names}
-   :basis      [:name :display_name :description :field-names]})
+   :hydrate    {:field-names #'table-field-names
+                :measures    #'table-measures
+                :segments    #'table-segments}
+   :basis      [:name :display_name :description :field-names :measures :segments]})
