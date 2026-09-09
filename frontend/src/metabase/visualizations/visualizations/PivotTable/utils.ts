@@ -25,7 +25,7 @@ import {
   MIN_HEADER_CELL_WIDTH,
   ROW_TOGGLE_ICON_WIDTH,
 } from "./constants";
-import { partitions } from "./partitions";
+import { getPartitions } from "./partitions";
 import type { CustomColumnWidth, HeaderItem } from "./types";
 
 // adds or removes columns from the pivot settings based on the current query
@@ -63,7 +63,7 @@ export function updateValueWithCurrentColumns(
 
   // add toAdd to first partitions where it matches the filter
   for (const columnName of toAdd) {
-    for (const { columnFilter: filter, name } of partitions) {
+    for (const { columnFilter: filter, name } of getPartitions()) {
       const column = columns.find((c) => c.name === columnName);
       if (column != null && (filter == null || filter(column))) {
         value[name] = value[name] ?? [];
