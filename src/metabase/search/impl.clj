@@ -279,6 +279,7 @@
    [:is-impersonated-user?               {:optional true} :boolean]
    [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
+   [:can-access-worktrees?               {:optional true} :boolean]
    [:is-data-analyst?                    {:optional true} :boolean]
    [:current-user-perms                                   [:set perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
@@ -291,6 +292,7 @@
    [:limit                               {:optional true} [:maybe ms/Int]]
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
+   [:worktree-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
    [:vector-search-strategy              {:optional true} [:maybe string?]]
    [:vector-search-ef-search             {:optional true} [:maybe ms/PositiveInt]]
@@ -326,6 +328,7 @@
            include-dashboard-questions?
            include-metadata?
            is-superuser?
+           can-access-worktrees?
            is-data-analyst?
            last-edited-at
            last-edited-by
@@ -342,6 +345,7 @@
            search-native-query
            search-string
            table-db-id
+           worktree-id
            verified
            curated
            weights]} :- ::search-context.input]
@@ -366,6 +370,7 @@
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
                         :is-superuser?                       is-superuser?
+                        :can-access-worktrees?               (boolean can-access-worktrees?)
                         :is-data-analyst?                    (boolean is-data-analyst?)
                         :models                              models
                         :model-ancestors?                    (boolean model-ancestors?)
@@ -379,6 +384,7 @@
                  (some? last-edited-at)                      (assoc :last-edited-at last-edited-at)
                  (seq last-edited-by)                        (assoc :last-edited-by last-edited-by)
                  (some? table-db-id)                         (assoc :table-db-id table-db-id)
+                 (some? worktree-id)                         (assoc :worktree-id worktree-id)
                  (some? limit)                               (assoc :limit-int limit)
                  (some? offset)                              (assoc :offset-int offset)
                  (not (str/blank? vector-search-strategy))    (assoc :vector-search-strategy (keyword vector-search-strategy))

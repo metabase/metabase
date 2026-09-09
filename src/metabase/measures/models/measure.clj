@@ -52,15 +52,18 @@
 (doto :model/Measure
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-read? :model/Measure
   ([instance]
    (let [table (or (:table instance)
                    (measures.db/table (:table_id instance)))]
-     (mi/can-read? table)))
+     (and (remote-sync/worktree-accessible? instance)
+          (mi/can-read? table))))
   ([_model pk]
-   (mi/can-read? (measures.db/measure pk))))
+   (when-let [measure (measures.db/measure pk)]
+     (mi/can-read? measure))))
 
 ;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
 ;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).
@@ -68,7 +71,8 @@
   ([instance]
    (let [table (or (:table instance)
                    (measures.db/table (:table_id instance)))]
-     (and (or api/*is-superuser?*
+     (and (remote-sync/worktree-accessible? instance)
+          (or api/*is-superuser?*
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
                     api/*current-user-id*
@@ -78,7 +82,34 @@
                     (u/the-id table))))
           (remote-sync/table-editable? table))))
   ([_model pk]
-   (mi/can-write? (measures.db/measure pk))))
+   (when-let [measure (measures.db/measure pk)]
+     (mi/can-write? measure))))
+
+(defmethod mi/visible-filter-clause :model/Measure
+  [_model column-or-exp {:keys [is-superuser? can-access-worktrees?] :as user-info} _perm-type->perm-level
+   & [{:keys [include-archived-items worktree-id] :or {include-archived-items :exclude}}]]
+  {:clause [:in column-or-exp
+            ^:allow-subquery
+            {:select [:id]
+             :from   [:measure]
+             :where  [:and
+                      ;; the user has to be able to see the table this hangs off
+                      ;; TODO (ed 2025-12-16): support using CTEs in filters in the dependency graph, so this can
+                      ;; use `perms/visible-table-filter-with-cte` instead of wrapping a plain select
+                      [:in :measure.table_id
+                       ^:allow-subquery
+                       {:select [:metabase_table.id]
+                        :from   [:metabase_table]
+                        :where  [:in :metabase_table.id
+                                 (perms/visible-table-filter-select
+                                  :id user-info
+                                  {:perms/view-data      :unrestricted
+                                   :perms/create-queries :query-builder})]}]
+                      (case include-archived-items
+                        :exclude [:= :measure.archived false]
+                        :only    [:= :measure.archived true]
+                        :all     nil)
+                      [:= :measure.worktree_id (when (or is-superuser? can-access-worktrees?) worktree-id)]]}]})
 
 ;; Measures can be created by superusers, but only if the parent table is editable
 ;; (not in a remote-synced collection in read-only mode).
@@ -86,7 +117,8 @@
   [_model instance]
   (let [table (or (:table instance)
                   (measures.db/table (:table_id instance)))]
-    (and (or api/*is-superuser?*
+    (and (remote-sync/worktree-accessible? instance)
+         (or api/*is-superuser?*
              (and api/*is-data-analyst?*
                   (perms/user-has-permission-for-table?
                    api/*current-user-id*
@@ -211,7 +243,8 @@
    :skip [;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; always re-derived from definition by before-insert via lib/primary-source-table-id
-          :table_id]
+          :table_id
+          :worktree_id]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import import-measure-definition}}
@@ -225,6 +258,7 @@
            :collection-id false
            :creator-id true
            :database-id :table.db_id
+           :worktree-id true
            :created-at true
            :updated-at true}
    :search-terms [:name :description]

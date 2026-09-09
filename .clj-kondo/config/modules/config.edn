@@ -652,6 +652,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            revisions
            tracing
@@ -754,6 +755,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            search
            settings
            staleness
@@ -856,10 +858,12 @@
            lib-be
            models
            parameters
+           permissions
            public-sharing
            queries
            query-permissions
            query-processor
+           remote-sync
            revisions
            search
            util
@@ -1530,6 +1534,7 @@
            classloader
            legacy-mbql
            lib
+           permissions
            settings
            util}
    :model-imports #{:model/Card
@@ -1543,7 +1548,8 @@
                     :model/NativeQuerySnippet
                     :model/Segment
                     :model/Table
-                    :model/User}}
+                    :model/User
+                    :model/WorktreeRemapping}}
 
   mq
   {:team "UX West"
@@ -1896,6 +1902,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            settings
@@ -2546,6 +2553,8 @@
            events
            lib
            models
+           permissions
+           remote-sync
            util}
    :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
@@ -2601,7 +2610,8 @@
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
-                    :model/TransformTag}
+                    :model/TransformTag
+                    :model/TransformTransformTag}
    :model-imports #{:model/Collection
                     :model/Database
                     :model/Field
@@ -2649,6 +2659,8 @@
    :uses #{api
            lib
            models
+           permissions
+           remote-sync
            request
            transforms
            transforms-base
@@ -2909,7 +2921,8 @@
            util
            warehouse-schema
            xrays}
-   :model-imports #{:model/Collection
+   :model-imports #{:model/Card
+                    :model/Collection
                     :model/Database
                     :model/Dimension
                     :model/Field
@@ -3526,7 +3539,9 @@
    :uses #{api
            collections
            lib
+           permissions
            premium-features
+           remote-sync
            util}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
@@ -3648,6 +3663,7 @@
            events
            lib
            models
+           permissions
            premium-features
            search
            settings
@@ -3658,7 +3674,7 @@
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
-   :model-exports #{:model/RemoteSyncTask}
+   :model-exports #{:model/RemoteSyncTask :model/WorktreeRemapping}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3673,6 +3689,7 @@
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
+                    :model/TransformTransformTag
                     :model/User}}
 
   enterprise/replacement
@@ -3983,6 +4000,7 @@
            models
            permissions
            query-processor
+           remote-sync
            settings
            tracing
            transforms

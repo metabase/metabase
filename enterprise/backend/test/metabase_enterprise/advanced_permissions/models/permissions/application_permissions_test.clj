@@ -20,11 +20,13 @@
         (is (partial= {(:id (perms-group/admin))
                        {:monitoring   :yes
                         :setting      :yes
-                        :subscription :yes}
+                        :subscription :yes
+                        :remote-sync  :yes}
                        (:id (perms-group/all-users))
                        {:monitoring   :no
                         :setting      :no
-                        :subscription :yes}}
+                        :subscription :yes
+                        :remote-sync  :no}}
                       (:groups graph)))))
     (testing "group has no permissions will not be included in the graph"
       (is (not (contains? (-> (:groups (g-perms/graph)) keys set)
@@ -45,7 +47,8 @@
       (with-new-group-and-current-graph group-id current-graph
         (let [new-graph (assoc-in current-graph [:groups group-id] {:setting      :yes
                                                                     :monitoring   :no
-                                                                    :subscription :no})
+                                                                    :subscription :no
+                                                                    :remote-sync  :yes})
               _ (g-perms/update-graph! new-graph)
               updated-graph (g-perms/graph)]
           (is (partial= (:groups new-graph) (:groups updated-graph)))
@@ -88,7 +91,8 @@
       (let [current-graph         (g-perms/graph)
             new-graph             (assoc-in current-graph [:groups group-id] {:setting      :yes
                                                                               :subscription :yes
-                                                                              :monitoring   :no})
+                                                                              :monitoring   :no
+                                                                              :remote-sync  :no})
             _                     (g-perms/update-graph! new-graph)
             updated-graph         (g-perms/graph)]
         (is (= (:groups new-graph) (:groups updated-graph)))

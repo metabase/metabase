@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useGetSettingsQuery, useSetting } from "metabase/settings";
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";
@@ -20,6 +21,7 @@ import type {
   ForcePushCasualties,
   RemoteSyncConfigurationSettings,
   RemoteSyncConflictVariant,
+  WorktreeId,
 } from "metabase-types/api";
 
 import { ChangesLists } from "../ChangesLists";
@@ -57,6 +59,9 @@ interface UnsyncedWarningModalProps {
   forcePushCasualties?: ForcePushCasualties;
   /** Whether the remote history was rewritten (no merge base); adds context to the force-push warning. */
   historyRewritten?: boolean;
+  /** Resolve a worktree's conflict instead of the main app's (hides the new-branch option: a worktree
+   * can only ever sync with its own branch). */
+  worktreeId?: WorktreeId | null;
 }
 
 export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
@@ -69,6 +74,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     conflicts,
     forcePushCasualties,
     historyRewritten,
+    worktreeId = null,
   } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
@@ -76,7 +82,10 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const [commitMessage, setCommitMessage] = useState<string>("");
   const { sendErrorToast } = useMetadataToasts();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  // read-only mode freezes the main app's branch only; a worktree tracks its own and can always push
+  const isRemoteSyncReadOnly =
+    useSelector(getIsRemoteSyncReadOnly) && worktreeId == null;
+  const isAdmin = useSelector(getUserIsAdmin);
   const { data: settingValues } = useGetSettingsQuery();
   const { data: libraryCollection } = useGetLibraryCollection({
     skip: !isRemoteSyncEnabled,
@@ -88,13 +97,13 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   );
   const [updateRemoteSyncSettings, { isLoading: isUpdatingSettings }] =
     useUpdateRemoteSyncSettingsMutation();
-  const { pushChanges, isPushingChanges } = usePushChangesAction();
-  const { mergeChanges, isMerging } = useMergeChangesAction();
-  const { mergeImport, isMergingImport } = useMergeImportAction();
+  const { pushChanges, isPushingChanges } = usePushChangesAction(worktreeId);
+  const { mergeChanges, isMerging } = useMergeChangesAction(worktreeId);
+  const { mergeImport, isMergingImport } = useMergeImportAction(worktreeId);
   const { stashToNewBranch, isStashing } =
     useStashToNewBranchAction(existingBranches);
   const { discardChangesAndImport, isImporting } =
-    useDiscardChangesAndImportAction();
+    useDiscardChangesAndImportAction(worktreeId);
 
   const markLibraryAndTransformsAsSynced = useCallback(async () => {
     try {
@@ -202,7 +211,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
         ) : conflicts && conflicts.length > 0 ? (
           <ConflictingChangesList conflicts={conflicts} />
         ) : (
-          <ChangesLists />
+          <ChangesLists worktreeId={worktreeId} />
         )}
 
         <OutOfSyncOptions
@@ -212,6 +221,8 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           optionValue={optionValue}
           variant={variant}
           canMerge={canMerge}
+          isWorktree={worktreeId != null}
+          isAdmin={isAdmin}
         />
 
         {optionValue === "force-push" && forcePushCasualties && (

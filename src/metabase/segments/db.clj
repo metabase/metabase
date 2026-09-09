@@ -9,18 +9,27 @@
    [toucan2.core :as t2]))
 
 (mu/defn insert-segment!
-  "Insert a Segment and return the inserted instance."
-  [table-id :- ::lib.schema.id/table
-   creator-id :- ::lib.schema.id/user
-   segment-name :- :string
-   description :- [:maybe :string]
-   definition :- ::segments.schema/segment.definition]
-  (t2/insert-returning-instance! :model/Segment
-                                 :table_id    table-id
-                                 :creator_id  creator-id
-                                 :name        segment-name
-                                 :description description
-                                 :definition  definition))
+  "Insert a Segment and return the inserted instance. `worktree-id` (nil for the main app) is the remote-sync
+  worktree the Segment belongs to."
+  ([table-id     :- ::lib.schema.id/table
+    creator-id   :- ::lib.schema.id/user
+    segment-name :- :string
+    description  :- [:maybe :string]
+    definition   :- ::segments.schema/segment.definition]
+   (insert-segment! table-id creator-id segment-name description definition nil))
+  ([table-id     :- ::lib.schema.id/table
+    creator-id   :- ::lib.schema.id/user
+    segment-name :- :string
+    description  :- [:maybe :string]
+    definition   :- ::segments.schema/segment.definition
+    worktree-id  :- [:maybe ::lib.schema.id/worktree]]
+   (t2/insert-returning-instance! :model/Segment
+                                  :table_id    table-id
+                                  :creator_id  creator-id
+                                  :name        segment-name
+                                  :description description
+                                  :definition  definition
+                                  :worktree_id worktree-id)))
 
 (mu/defn segment
   "The Segment with `id`, or nil."
@@ -28,9 +37,12 @@
   (t2/select-one :model/Segment :id id))
 
 (mu/defn unarchived-segments
-  "The unarchived Segments, in case-insensitive name order."
-  []
-  (t2/select :model/Segment :archived false {:order-by [[:%lower.name :asc]]}))
+  "The unarchived Segments in the remote-sync worktree `worktree-id` (nil for the main app), in case-insensitive
+  name order."
+  ([]
+   (unarchived-segments nil))
+  ([worktree-id :- [:maybe ::lib.schema.id/worktree]]
+   (t2/select :model/Segment :archived false :worktree_id worktree-id {:order-by [[:%lower.name :asc]]})))
 
 (mu/defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."

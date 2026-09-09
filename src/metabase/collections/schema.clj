@@ -57,7 +57,7 @@
    [:effective_ancestors {:optional true} :map]
    [:here {:optional true} [:set ::CollectionItemModel]]
    [:below {:optional true} [:sequential ::CollectionItemModel]]
-   [:git_sync_enabled {:optional true} :boolean]])
+   [:worktree_id {:optional true} [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::LastEditInfo
   [:map
@@ -116,7 +116,8 @@
    [:is_sample            :boolean]
    [:archive_operation_id [:maybe :string]]
    [:archived_directly    [:maybe :boolean]]
-   [:is_remote_synced     [:maybe :boolean]]])
+   [:is_remote_synced     [:maybe :boolean]]
+   [:worktree_id          [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::collection.update
   "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional."
@@ -135,4 +136,5 @@
    [:is_sample            {:optional true} [:maybe :boolean]]
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]
-   [:is_remote_synced     {:optional true} [:maybe :boolean]]])
+   [:is_remote_synced     {:optional true} [:maybe :boolean]]
+   [:worktree_id          {:optional true} [:maybe ::lib.schema.id/worktree]]])

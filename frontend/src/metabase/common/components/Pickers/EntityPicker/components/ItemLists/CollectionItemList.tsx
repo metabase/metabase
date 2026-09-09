@@ -1,5 +1,8 @@
 import { useListCollectionItemsQuery } from "metabase/api";
-import { getCollectionItemsOptions } from "metabase/common/components/Pickers/utils";
+import {
+  getCollectionItemsOptions,
+  getWorktreeIdParam,
+} from "metabase/common/components/Pickers/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -15,19 +18,21 @@ export const CollectionItemList = ({
   parentItem: OmniPickerItem;
   pathIndex: number;
 }) => {
-  const { models } = useOmniPickerContext();
+  const { models, worktreeId } = useOmniPickerContext();
+  const parentId = getCollectionItemsParentId(parentItem);
 
   const {
     data: collectionItems,
     error,
     isLoading,
   } = useListCollectionItemsQuery({
-    id: getCollectionItemsParentId(parentItem),
+    id: parentId,
     namespace:
       "namespace" in parentItem && !!parentItem.namespace
         ? parentItem.namespace
         : undefined,
     ...getCollectionItemsOptions({ models }),
+    ...getWorktreeIdParam(parentId, worktreeId),
   });
 
   const items = getCollectionItems({

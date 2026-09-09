@@ -33,8 +33,10 @@
   "The Collections the User with `current-user-id` can read, for the listing endpoint: archived or unarchived ones
   (`archived`), only those around `collection-id` when `shallow`, only personal ones when `personal-only`, only the
   user's own personal ones when `exclude-other-user-collections`, library ones only when `include-library?`, and
-  those in `namespaces`; official and non-trash Collections first, then by name."
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}
+  those in `namespaces`; official and non-trash Collections first, then by name. `worktree-id` selects a remote-sync
+  worktree's Collections instead of the main app's; nil (the default) is the main app."
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           worktree-id]}
    :- [:map {:closed true}
        [:archived                       {:optional true} [:maybe :boolean]]
        [:exclude-other-user-collections {:optional true} [:maybe :boolean]]
@@ -43,10 +45,12 @@
        [:collection-id                  {:optional true} [:maybe ::lib.schema.id/collection]]
        [:personal-only                  {:optional true} [:maybe :boolean]]
        [:include-library?               {:optional true} [:maybe :boolean]]
-       [:permissions-set                {:optional true} [:maybe [:set :string]]]]
+       [:permissions-set                {:optional true} [:maybe [:set :string]]]
+       [:worktree-id                    {:optional true} [:maybe ::lib.schema.id/worktree]]]
    current-user-id :- ::lib.schema.id/user]
   (t2/select :model/Collection
              {:where [:and
+                      [:= :worktree_id worktree-id]
                       (case archived
                         nil nil
                         false [:and
@@ -78,6 +82,7 @@
                                                      :exclude)
                         :include-trash-collection? true
                         :permission-level          :read
+                        :worktree-id               worktree-id
                         :archive-operation-id      nil})]
               ;; Order NULL collection types first so that audit collections are last
               :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]

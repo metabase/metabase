@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
@@ -234,12 +235,15 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
-  "Gets existing `Documents`."
+  "Gets existing `Documents`. `worktree-id` lists the documents checked out into a remote-sync worktree instead
+  of the main app (needs the `:remote-sync` application permission)."
   [_route-params
-   _query-params]
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (perms/check-can-access-worktrees))
   ;; Documents attached to an exploration are internal to that exploration — every other listing surface (search,
   ;; recents, collection items) excludes them too.
-  {:items (as-> (documents.db/visible-unarchived-documents) docs
+  {:items (as-> (documents.db/visible-unarchived-documents worktree-id) docs
             (filter mi/can-read? docs)
             (t2/hydrate docs :creator :can_write :is_remote_synced))})
 

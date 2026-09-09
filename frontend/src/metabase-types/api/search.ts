@@ -17,6 +17,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
 import type { CardDisplayType } from "./visualization";
+import type { WorktreeId } from "./worktree";
 
 const ENABLED_SEARCH_MODELS = [
   "collection",
@@ -176,4 +177,5 @@ export type SearchRequest = {
   collection?: CollectionId;
   namespace?: CollectionNamespace;
   calculate_available_models?: true;
+  "worktree-id"?: WorktreeId | null;
 } & PaginationRequest;

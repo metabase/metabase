@@ -2,6 +2,7 @@ import { type MouseEvent, useState } from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useNavigate } from "metabase/router";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -114,10 +115,11 @@ function TransformModal({
 }: TransformModalProps) {
   const { sendSuccessToast } = useMetadataToasts();
   const navigate = useNavigate();
+  const worktreeId = useWorktreeId();
 
   const handleDelete = () => {
     sendSuccessToast(t`Transform deleted`);
-    navigate(Urls.transformList());
+    navigate(Urls.transformList({ worktreeId }));
     onClose();
   };
 

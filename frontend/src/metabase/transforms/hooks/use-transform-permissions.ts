@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 
 import { useListDatabasesQuery } from "metabase/api/database";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import { useIsRemoteSyncReadOnly } from "metabase/common/worktrees";
 import type { Database, Transform } from "metabase-types/api";
 
 import { sourceDatabaseId } from "../utils";
@@ -30,9 +29,7 @@ export const useTransformPermissions = ({
     return databases?.data.filter((d) => d.transforms_permissions === "write");
   }, [databases]);
 
-  const remoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const remoteSyncReadOnly = useIsRemoteSyncReadOnly();
 
   const permissionsReadOnly = useMemo(() => {
     if (!transformsDatabases || !transform) {

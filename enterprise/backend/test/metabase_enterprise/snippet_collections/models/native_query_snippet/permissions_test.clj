@@ -239,3 +239,99 @@
                   (testing "all snippets should have :can_write = true when library is not synced"
                     (is (every? :can_write hydrated)
                         "Snippets should be writable when library is NOT synced")))))))))))
+
+;;; ------------------------------------------- Bulk listings -------------------------------------------
+
+(defn- snippet-visible-filter-clause []
+  (:clause (mi/visible-filter-clause :model/NativeQuerySnippet :id
+                                     {:user-id       (mt/user->id :rasta)
+                                      :is-superuser? false}
+                                     nil)))
+
+(def ^:private matches-nothing [:= [:inline 0] [:inline 1]])
+
+(deftest visible-filter-clause-excludes-sandboxed-users-test
+  (testing "a bulk listing hides snippets from a sandboxed user, just as can-read? does"
+    (mt/with-premium-features #{:snippet-collections :sandboxes}
+      (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
+        (testing "an unsandboxed user gets a real filter"
+          (mt/with-test-user :rasta
+            (is (not= matches-nothing (snippet-visible-filter-clause)))))
+        (testing "a sandboxed one sees nothing"
+          (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
+            (mt/with-test-user :rasta
+              (is (= matches-nothing (snippet-visible-filter-clause))))))))
+    (testing "and a user with no native permissions never sees any"
+      (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
+        (mt/with-test-user :rasta
+          (is (= matches-nothing (snippet-visible-filter-clause))))))))
+
+;;; ------------------------------------------- Worktree content -------------------------------------------
+
+(deftest worktree-snippet-perms-require-remote-sync-permission-test
+  (testing "a snippet checked out into a worktree needs the remote-sync application permission to read or write"
+    ;; no :snippet-collections, so the OSS permission implementation -- which only asks for native perms -- decides
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Worktree                   {wt-id :id} {}
+                     :model/NativeQuerySnippet         snippet     {:name        (mt/random-name)
+                                                                    :content     "WHERE ID > 10"
+                                                                    :worktree_id wt-id}
+                     :model/PermissionsGroup           group {}
+                     :model/PermissionsGroupMembership _     {:user_id  (mt/user->id :rasta)
+                                                              :group_id (:id group)}]
+        (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
+          (testing "a non-admin with native permissions but without the remote-sync permission is refused"
+            (mt/with-test-user :rasta
+              (is (not (mi/can-read? snippet)))
+              (is (not (mi/can-read? :model/NativeQuerySnippet (:id snippet))))
+              (is (not (mi/can-write? snippet)))
+              (is (not (mi/can-write? :model/NativeQuerySnippet (:id snippet))))
+              (is (not (mi/can-create? :model/NativeQuerySnippet (dissoc snippet :id))))
+              (is (not (mi/can-update? snippet {:name "renamed in a worktree"})))))
+          (testing "a non-admin granted the remote-sync permission is not"
+            (mt/with-premium-features #{:advanced-permissions :remote-sync}
+              (perms/grant-application-permissions! group :remote-sync)
+              (mt/with-test-user :rasta
+                (is (mi/can-read? snippet))
+                (is (mi/can-read? :model/NativeQuerySnippet (:id snippet)))
+                (is (mi/can-write? snippet))
+                (is (mi/can-write? :model/NativeQuerySnippet (:id snippet)))
+                (is (mi/can-create? :model/NativeQuerySnippet (dissoc snippet :id)))
+                (is (mi/can-update? snippet {:name "renamed in a worktree"})))))
+          (testing "an admin is not"
+            (mt/with-test-user :crowberto
+              (is (mi/can-read? snippet))
+              (is (mi/can-write? snippet))
+              (is (mi/can-write? :model/NativeQuerySnippet (:id snippet)))
+              (is (mi/can-create? :model/NativeQuerySnippet (dissoc snippet :id)))
+              (is (mi/can-update? snippet {:name "renamed in a worktree"}))))
+          (testing "and a main-app snippet is unaffected"
+            (mt/with-temp [:model/NativeQuerySnippet main-snippet {:name    (mt/random-name)
+                                                                   :content "WHERE ID > 20"}]
+              (mt/with-test-user :rasta
+                (is (mi/can-read? main-snippet))
+                (is (mi/can-write? main-snippet))
+                (is (mi/can-update? main-snippet {:name "renamed"}))))))))))
+
+(deftest worktree-snippet-cannot-be-updated-through-the-api-test
+  (testing "PUT /api/native-query-snippet/:id refuses a worktree snippet for a non-admin without the remote-sync permission"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Worktree                   {wt-id :id}      {}
+                     :model/NativeQuerySnippet         {snippet-id :id} {:name        (mt/random-name)
+                                                                         :content     "WHERE ID > 10"
+                                                                         :worktree_id wt-id}
+                     :model/PermissionsGroup           group {}
+                     :model/PermissionsGroupMembership _     {:user_id  (mt/user->id :rasta)
+                                                              :group_id (:id group)}]
+        (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "native-query-snippet/" snippet-id)
+                                       {:name "renamed by a non-admin"})))
+          (is (=? {:name "renamed by an admin"}
+                  (mt/user-http-request :crowberto :put 200 (str "native-query-snippet/" snippet-id)
+                                        {:name "renamed by an admin"})))
+          (mt/with-premium-features #{:advanced-permissions :remote-sync}
+            (perms/grant-application-permissions! group :remote-sync)
+            (is (=? {:name "renamed by a permitted non-admin"}
+                    (mt/user-http-request :rasta :put 200 (str "native-query-snippet/" snippet-id)
+                                          {:name "renamed by a permitted non-admin"})))))))))

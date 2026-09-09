@@ -12,6 +12,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -482,8 +483,9 @@
   (let [{table-where-clause :clause table-cte :with}
         (mi/visible-filter-clause :model/Table
                                   :id
-                                  {:user-id       api/*current-user-id*
-                                   :is-superuser? api/*is-superuser?*}
+                                  {:user-id               api/*current-user-id*
+                                   :is-superuser?         api/*is-superuser?*
+                                   :can-access-worktrees? (perms/current-user-can-access-worktrees?)}
                                   {:perms/view-data      :unrestricted
                                    :perms/create-queries :query-builder-and-native})]
     (cond-> {:where table-where-clause}
@@ -912,16 +914,17 @@
   (t2/select :model/Document :id [:in document-ids] :archived false))
 
 (mu/defn transforms
-  "The Transforms with `transform-ids`."
+  "The main-app Transforms with `transform-ids`; worktree copies are excluded."
   [transform-ids :- [:set ::lib.schema.id/transform]]
-  (t2/select :model/Transform :id [:in transform-ids]))
+  (t2/select :model/Transform :id [:in transform-ids] :worktree_id nil))
 
 (mu/defn transforms-for-source-database
-  "The ID, name, description, source Database, and source of the Transforms reading from the Database with
-  `database-id`, ordered by name."
+  "The ID, name, description, source Database, and source of the main-app Transforms reading from the Database with
+  `database-id`, ordered by name. Worktree copies are excluded."
   [database-id :- ::lib.schema.id/database]
   (t2/select [:model/Transform :id :name :description :source_database_id :source]
              :source_database_id database-id
+             :worktree_id nil
              {:order-by [[:%lower.name :asc]]}))
 
 (mu/defn verified-item-ids

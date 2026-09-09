@@ -53,6 +53,7 @@ function CreateCollectionModal({
         ) {
           visitUrl = Urls.dataStudioLibrary({
             expandedIds: getCollectionPathAsArray(collection),
+            worktreeId: collection.worktree_id,
           });
         }
 

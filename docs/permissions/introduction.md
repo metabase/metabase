@@ -28,6 +28,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 - [Application permissions](application.md) - Control access to admin features (Pro and Enterprise plans only):
   - [Settings tab in Admin panel](application.md#settings-access)
   - [Monitoring tools and troubleshooting](application.md#monitoring-access)
+  - [Remote Sync worktrees and syncing](application.md#remote-sync-access)
   - [Dashboard subscriptions and alerts](application.md#subscriptions-and-alerts)
 - [Snippet folder permissions][snippet-folders] - Control access to SQL snippet folders (available on plans with snippet folders)
 

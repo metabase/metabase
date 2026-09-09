@@ -92,6 +92,7 @@
   collection-id-only-read-method
   collection-id-only-read-models
   collection-read-access-group-ids
+  current-user-can-access-worktrees?
   current-user-has-application-permissions?
   define-collection-based-visibility!
   grant-application-permissions!
@@ -143,6 +144,7 @@
   save-perms-revision!]
  [metabase.permissions.validation
   check-advanced-permissions-enabled
+  check-can-access-worktrees
   check-group-manager
   check-has-application-permission
   check-manager-of-group]

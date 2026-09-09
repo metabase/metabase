@@ -337,7 +337,10 @@
               :segment]
              [^:allow-subquery {:select [[:%count.* :transform]]
                                 :from   [:transform]
-                                :where  [:or
-                                         [:= :source_database_id database-id]
-                                         [:= :target_db_id database-id]]}
+                                :where  [:and
+                                         ;; only the main app's transforms; worktree copies never run
+                                         [:= :worktree_id nil]
+                                         [:or
+                                          [:= :source_database_id database-id]
+                                          [:= :target_db_id database-id]]]}
               :transform]]}))

@@ -4,6 +4,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
@@ -21,19 +23,23 @@
    [:created_at :any]
    [:updated_at :any]
    [:built_in_type {:optional true} [:maybe :string]]
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:can_run {:optional true} :boolean]])
 
 (api.macros/defendpoint :post "/" :- TransformTagResponse
-  "Create a new transform tag."
+  "Create a new transform tag. Pass `worktree_id` to create it inside a remote-sync worktree, which needs
+  the `:remote-sync` application permission; tag names are unique within a worktree rather than across the instance."
   [_route-params
    _query-params
-   {:keys [name]} :- [:map
-                      [:name ms/NonBlankString]]]
+   {:keys [name worktree_id]} :- [:map
+                                  [:name ms/NonBlankString]
+                                  [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
   (log/info "Creating transform tag")
-  (api/check-403 (mi/can-create? :model/TransformTag {:name name}))
-  (api/check-400 (not (transforms.core/tag-name-exists? name))
+  (remote-sync/check-worktree-exists! worktree_id)
+  (api/check-403 (mi/can-create? :model/TransformTag {:name name :worktree_id worktree_id}))
+  (api/check-400 (not (transforms.core/tag-name-exists? name worktree_id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
-  (transforms-rest.db/insert-tag! name))
+  (transforms-rest.db/insert-tag! name worktree_id))
 
 (api.macros/defendpoint :put "/:tag-id" :- TransformTagResponse
   "Update a transform tag."
@@ -59,12 +65,18 @@
   nil)
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformTagResponse]
-  "Get a list of all transform tags."
+  "Get a list of the transform tags the current user can read. Tags checked out into a remote-sync worktree are
+  left out unless a single worktree's tags are requested via `worktree-id`, which returns *only* that worktree's
+  tags and needs the `:remote-sync` application permission."
   [_route-params
-   _query-params]
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (log/info "Getting all transform tags")
   (api/check-data-analyst)
-  (t2/hydrate (transforms-rest.db/tags) :can_run))
+  (when worktree-id
+    (perms/check-can-access-worktrees))
+  (-> (transforms-rest.db/tags worktree-id)
+      (->> (filterv mi/can-read?))
+      (t2/hydrate :can_run)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform-tag` routes."

@@ -21,7 +21,9 @@
   check-remote-synced-dependents
   create-library-collection!
   descendant-ids
+  check-same-worktree
   ineligible-dependencies
+  inherit-worktree-id
   library-collection
   library-collection-type
   library-data-collection-type
@@ -35,6 +37,7 @@
   remote-synced-collection?
   remote-synced-dependents
   shared-tenant-collection?
-  transforms-ns]
+  transforms-ns
+  worktree-collection-counterpart-ids]
  [metabase.collections.util
   annotate-dashboards])

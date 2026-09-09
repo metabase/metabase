@@ -21,9 +21,9 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
 
   const handlePullChanges = useCallback(async () => {
     try {
-      // In admin settings the configured branch is the operational target and the assertion.
+      // In admin settings the configured branch is the assertion; import always pulls the current
+      // branch.
       await importChanges({
-        branch,
         force: forcePull,
         expected_branch: branch,
       }).unwrap();

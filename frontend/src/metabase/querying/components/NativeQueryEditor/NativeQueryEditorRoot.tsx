@@ -15,8 +15,11 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
 import { getMetabotVisible } from "metabase/metabot/state";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   CodeMirrorEditor,
   type CodeMirrorEditorProps,
@@ -178,12 +181,14 @@ export const NativeQueryEditorRoot = forwardRef<
     toggleTemplateTagsEditor,
   } = props;
 
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
-  const { data: snippets = [] } = useListSnippetsQuery();
+  const isRemoteSyncReadOnly = useIsRemoteSyncReadOnly();
+  const worktreeId = useWorktreeId();
+  const { data: snippets = [] } = useListSnippetsQuery({
+    ...(worktreeId !== undefined && { "worktree-id": worktreeId }),
+  });
   const { data: snippetCollections = [] } = useListCollectionsQuery({
     namespace: "snippets",
+    ...(worktreeId !== undefined && { "worktree-id": worktreeId }),
   });
 
   const editorRef = useRef<CodeMirrorEditorRef>(null);

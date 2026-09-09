@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -34,7 +35,12 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
+
+(defmethod mi/visible-filter-clause :model/Document
+  [_model column-or-exp user-info _perm-type->perm-level & [opts]]
+  {:clause [:in column-or-exp (collection/visible-collection-content-select :document user-info opts)]})
 
 (defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below
                  collection-read, for documents whose rendered body embeds data the viewer may not
@@ -110,17 +116,21 @@
 ;; narrower than collection access.
 (defmethod mi/can-read? :model/Document
   ([instance]
-   (and (mi/current-user-has-full-permissions? :read instance)
+   (and (remote-sync/worktree-accessible? instance)
+        (mi/current-user-has-full-permissions? :read instance)
         (content-visible? instance)))
   ([_model pk]
-   (mi/can-read? (documents.db/document pk))))
+   (when-let [document (documents.db/document pk)]
+     (mi/can-read? document))))
 
 (defmethod mi/can-write? :model/Document
   ([instance]
-   (and (mi/current-user-has-full-permissions? :write instance)
+   (and (remote-sync/worktree-accessible? instance)
+        (mi/current-user-has-full-permissions? :write instance)
         (content-visible? instance)))
   ([_model pk]
-   (mi/can-write? (documents.db/document pk))))
+   (when-let [document (documents.db/document pk)]
+     (mi/can-write? document))))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -233,6 +243,7 @@
    :attrs {:archived true
            :collection-id :collection_id
            :creator-id :creator_id
+           :worktree-id :worktree_id
            :exploration-id :exploration_id
            :view-count :view_count
            :created-at :created_at
@@ -333,7 +344,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder]
+   :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder :worktree_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
@@ -409,8 +420,10 @@
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  (public-sharing/add-public-uuid-prefix model))
+  (public-sharing/add-public-uuid-prefix (collection/inherit-worktree-id model)))
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  (public-sharing/add-public-uuid-prefix-if-changed model))
+  (public-sharing/add-public-uuid-prefix-if-changed
+   (cond-> model
+     (contains? (t2/changes model) :collection_id) collection/check-same-worktree)))

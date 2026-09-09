@@ -35,18 +35,35 @@
   (t2/select :model/Transform :id [:in transform-ids]))
 
 (mu/defn transforms-of-source-types
-  "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID."
+  "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID.
+  Scoped to the remote-sync worktree `worktree-id` (nil is the main app), so worktree copies never leak into the
+  main app's listing and vice versa."
   [source-types :- [:set :string]
-   database-id  :- [:maybe ::lib.schema.id/database]]
+   database-id  :- [:maybe ::lib.schema.id/database]
+   worktree-id  :- [:maybe ::lib.schema.id/worktree]]
   (t2/select :model/Transform {:where    [:and
                                           [:in :source_type source-types]
+                                          [:= :worktree_id worktree-id]
                                           (when database-id [:= :source_database_id database-id])]
                                :order-by [[:id :asc]]}))
 
 (mu/defn transform-dependency-rows
-  "The ID, target, target Table ID, creation time, and table dependencies of every Transform."
+  "The ID, target, target Table ID, creation time, and table dependencies of every main-app Transform. Transforms
+  checked out into a remote-sync worktree are left out: they never run, and a worktree's copy must never stand in
+  for the main app's transform when building a dependency graph."
   []
-  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
+  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]
+             :worktree_id nil))
+
+(mu/defn main-app-transform-ids
+  "The subset of `transform-ids` that belong to the main app rather than to a remote-sync worktree."
+  [transform-ids :- [:sequential ::lib.schema.id/transform]]
+  (t2/select-pks-set :model/Transform :id [:in transform-ids] :worktree_id nil))
+
+(mu/defn transform-worktree-id
+  "The remote-sync worktree ID of the Transform with `transform-id` (nil for the main app)."
+  [transform-id :- ::lib.schema.id/transform]
+  (t2/select-one-fn :worktree_id :model/Transform :id transform-id))
 
 (mu/defn transform-snapshot
   "The name, entity ID, and source type of the Transform with `transform-id`."
@@ -96,21 +113,31 @@
   [tag-id :- ms/PositiveInt]
   (t2/select-one :model/TransformTag :id tag-id))
 
+(mu/defn tag-worktree-id
+  "The remote-sync worktree id of the TransformTag with `tag-id` (nil for a main-app tag or a missing tag)."
+  [tag-id :- ms/PositiveInt]
+  (t2/select-one-fn :worktree_id :model/TransformTag :id tag-id))
+
 (mu/defn existing-tag-ids
   "The subset of `tag-ids` that exist."
   [tag-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
 
 (mu/defn tag-name-exists?
-  "Whether a TransformTag named `tag-name` exists."
-  [tag-name :- :string]
-  (t2/exists? :model/TransformTag :name tag-name))
+  "Whether a TransformTag named `tag-name` exists within the remote-sync worktree `worktree-id` (nil is the main
+  app). Tag names are unique per worktree, not across the instance."
+  [tag-name    :- :string
+   worktree-id :- [:maybe ::lib.schema.id/worktree]]
+  (t2/exists? :model/TransformTag :name tag-name :worktree_id worktree-id))
 
 (mu/defn tag-name-exists-excluding?
-  "Whether a TransformTag named `tag-name` other than `tag-id` exists."
+  "Whether a TransformTag named `tag-name` other than `tag-id` exists in the same remote-sync worktree as `tag-id`."
   [tag-name :- :string
    tag-id   :- ms/PositiveInt]
-  (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
+  (t2/exists? :model/TransformTag
+              :name tag-name
+              :id [:not= tag-id]
+              :worktree_id (t2/select-one-fn :worktree_id :model/TransformTag :id tag-id)))
 
 (mu/defn transform-tag-links
   "The tag links of the Transforms with `transform-ids`, ordered by position."
@@ -142,7 +169,7 @@
 (mu/defn insert-transform-tag-links!
   "Insert the TransformTransformTag `rows`."
   [rows :- [:sequential
-            (mut/select-keys ::transforms.schema/transform-transform-tag.update [:transform_id :tag_id :entity_id :position])]]
+            (mut/select-keys ::transforms.schema/transform-transform-tag.update [:transform_id :tag_id :entity_id :position :worktree_id])]]
   (t2/insert! :model/TransformTransformTag rows))
 
 (mu/defn set-transform-tag-position!

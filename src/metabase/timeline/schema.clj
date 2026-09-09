@@ -18,7 +18,8 @@
    [:created_at    ms/TemporalInstant]
    [:updated_at    ms/TemporalInstant]
    [:default       :boolean]
-   [:entity_id     :string]])
+   [:entity_id     :string]
+   [:worktree_id   [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::timeline.update
   "What an update (or insert) of a Timeline accepts: every column of `:timeline` except `id`, all optional."
@@ -32,7 +33,8 @@
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:default       {:optional true} [:maybe :boolean]]
-   [:entity_id     {:optional true} [:maybe :string]]])
+   [:entity_id     {:optional true} [:maybe :string]]
+   [:worktree_id   {:optional true} [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::timeline-event
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."

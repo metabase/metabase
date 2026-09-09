@@ -2,11 +2,15 @@ import { msgid, ngettext, t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { useToast } from "metabase/common/hooks";
-import { getUserIsAdmin } from "metabase/current-user";
+import { canAccessRemoteSync } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
 import { useCancelRemoteSyncCurrentTaskMutation } from "metabase-enterprise/api";
-import type { RemoteSyncOutcome, RemoteSyncTaskType } from "metabase-types/api";
+import type {
+  RemoteSyncOutcome,
+  RemoteSyncTaskType,
+  WorktreeId,
+} from "metabase-types/api";
 
 interface SyncProgressModalProps {
   taskType: RemoteSyncTaskType;
@@ -17,6 +21,8 @@ interface SyncProgressModalProps {
   errorMessage: string;
   isSuccess: boolean;
   outcome: RemoteSyncOutcome | null;
+  /** The worktree whose task this modal tracks; null for the main app's. */
+  worktreeId?: WorktreeId | null;
   onDismiss: () => void;
 }
 
@@ -29,9 +35,10 @@ export function SyncProgressModal({
   errorMessage,
   isSuccess,
   outcome,
+  worktreeId = null,
   onDismiss,
 }: SyncProgressModalProps) {
-  const canCancel = useSelector(getUserIsAdmin);
+  const canCancel = useSelector(canAccessRemoteSync);
 
   const [cancelRemoteSyncCurrentTask] =
     useCancelRemoteSyncCurrentTaskMutation();
@@ -39,7 +46,9 @@ export function SyncProgressModal({
 
   const onCancel = async () => {
     try {
-      await cancelRemoteSyncCurrentTask().unwrap();
+      await cancelRemoteSyncCurrentTask(
+        worktreeId != null ? { worktree_id: worktreeId } : undefined,
+      ).unwrap();
       onDismiss();
     } catch (error: any) {
       let message = t`Failed to cancel sync`;
@@ -109,6 +118,11 @@ export function SyncProgressModal({
       size="md"
       title={title}
       withCloseButton={false}
+      // Dismissing a task that is still running stops the status polling, so the task would stay
+      // "running" until a page reload — leaving push/pull disabled. The modal deliberately offers
+      // no close button, so don't let Escape or a click outside act as one either.
+      closeOnEscape={false}
+      closeOnClickOutside={false}
     >
       <Stack mt="lg" gap="lg">
         {isStalled ? (

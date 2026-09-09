@@ -18,7 +18,8 @@
    [:updated_at    ms/TemporalInstant]
    [:collection_id [:maybe ::lib.schema.id/collection]]
    [:entity_id     :string]
-   [:template_tags [:maybe ::lib.schema.template-tag/template-tag-map]]])
+   [:template_tags [:maybe ::lib.schema.template-tag/template-tag-map]]
+   [:worktree_id   [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::native-query-snippet.update
   "What an update (or insert) of a NativeQuerySnippet accepts: every column of `:native_query_snippet` except `id`, all optional."
@@ -32,4 +33,5 @@
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:entity_id     {:optional true} [:maybe :string]]
-   [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]])
+   [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]
+   [:worktree_id   {:optional true} [:maybe ::lib.schema.id/worktree]]])

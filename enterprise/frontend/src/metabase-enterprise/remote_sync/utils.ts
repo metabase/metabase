@@ -89,6 +89,21 @@ export const getSyncStatusColor = (
   }
 };
 
+export const getSyncStatusLabel = (status: RemoteSyncEntityStatus): string => {
+  switch (status) {
+    case "create":
+      return t`Added`;
+    case "removed":
+    case "delete":
+      return t`Removed`;
+    case "update":
+    case "touch":
+      return t`Modified`;
+    default:
+      return t`Changed`;
+  }
+};
+
 const isValidErrorData = (data: unknown): data is ErrorData =>
   typeof data === "object" && data !== null;
 
@@ -99,8 +114,8 @@ const getErrorMessage = (data: ErrorData): string | undefined =>
     ? data.message
     : undefined;
 
-export const parseSyncError = (exportError: SyncError | null): ParsedError => {
-  if (!exportError) {
+export const parseSyncError = (error: unknown): ParsedError => {
+  if (!error || typeof error !== "object") {
     return {
       errorMessage: null,
       hasConflict: false,
@@ -108,6 +123,9 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
       currentBranch: null,
     };
   }
+
+  // safe: SyncError's fields are all optional and every access below re-checks presence and type
+  const exportError = error as SyncError;
 
   if (
     "data" in exportError &&

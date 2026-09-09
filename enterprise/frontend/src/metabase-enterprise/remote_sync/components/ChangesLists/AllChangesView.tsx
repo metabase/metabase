@@ -1,8 +1,6 @@
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
-import { useSetting } from "metabase/settings";
 import {
   Box,
   Divider,
@@ -13,17 +11,9 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { getGroupIcon } from "metabase-enterprise/remote_sync/displayGroups";
+import { useCollectionGroups } from "metabase-enterprise/remote_sync/hooks/use-collection-groups";
 import {
-  type CollectionGroup,
-  TRANSFORMS_ROOT_ID,
-  buildNamespaceCollectionMap,
-  findLibraryCollectionId,
-  getGroupIcon,
-  groupEntitiesByCollection,
-} from "metabase-enterprise/remote_sync/displayGroups";
-import {
-  buildCollectionMap,
-  getCollectionPathSegments,
   getSyncStatusColor,
   getSyncStatusIcon,
 } from "metabase-enterprise/remote_sync/utils";
@@ -38,50 +28,7 @@ interface AllChangesViewProps {
 }
 
 export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
-  const isUsingTenants = useSetting("use-tenants");
-  const isTransformsSyncEnabled = useSetting("remote-sync-transforms");
-  const { data: collectionTree = [] } = useListCollectionsTreeQuery({
-    namespaces: [
-      "",
-      "analytics",
-      ...(isUsingTenants ? ["shared-tenant-collection"] : []),
-      ...(isTransformsSyncEnabled ? ["transforms"] : []),
-    ],
-    "include-library": true,
-  });
-
-  // Fetch snippets namespace collections separately
-  const { data: snippetCollectionTree = [] } = useListCollectionsTreeQuery({
-    namespace: "snippets",
-  });
-
-  // Build namespace-to-collection-ids map in a single pass
-  const namespaceCollectionMap = useMemo(
-    () =>
-      buildNamespaceCollectionMap([
-        ...collectionTree,
-        ...snippetCollectionTree,
-      ]),
-    [collectionTree, snippetCollectionTree],
-  );
-
-  // Find the Transforms root entity (id=-1) if it exists
-  const transformsRootEntity = useMemo(() => {
-    return entities.find(
-      (e) => e.model === "collection" && e.id === TRANSFORMS_ROOT_ID,
-    );
-  }, [entities]);
-
-  // Find the library collection ID for placing snippets without a collection_id
-  const libraryCollectionId = useMemo(
-    () => findLibraryCollectionId(collectionTree),
-    [collectionTree],
-  );
-
-  const collectionMap = useMemo(() => {
-    // Merge regular collections with snippet collections
-    return buildCollectionMap([...collectionTree, ...snippetCollectionTree]);
-  }, [collectionTree, snippetCollectionTree]);
+  const { groups: groupedData } = useCollectionGroups(entities);
 
   const hasRemovals = useMemo(() => {
     return (
@@ -90,25 +37,6 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
       ) >= 0
     );
   }, [entities]);
-
-  const groupedData: CollectionGroup[] = useMemo(
-    () =>
-      groupEntitiesByCollection({
-        entities,
-        transformsRootEntity,
-        namespaceCollectionMap,
-        collectionMap,
-        libraryCollectionId,
-        getCollectionPathSegments,
-      }),
-    [
-      entities,
-      collectionMap,
-      namespaceCollectionMap,
-      libraryCollectionId,
-      transformsRootEntity,
-    ],
-  );
 
   return (
     <Box>

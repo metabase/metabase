@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupListBreakingGraphNodesEndpoint,
@@ -11,6 +12,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { WorktreeProvider } from "metabase/common/worktrees";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Route } from "metabase/router";
 import type * as Urls from "metabase/urls";
@@ -19,6 +21,7 @@ import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/depe
 import type {
   DependencyDiagnosticsUserParams,
   DependencyNode,
+  WorktreeId,
 } from "metabase-types/api";
 import {
   createMockCardDependencyNode,
@@ -51,6 +54,7 @@ type SetupOpts = {
   total?: number;
   urlParams?: Urls.DependencyDiagnosticsParams;
   lastUsedParams?: DependencyDiagnosticsUserParams;
+  worktreeId?: WorktreeId;
 };
 
 function setup({
@@ -59,6 +63,7 @@ function setup({
   total,
   urlParams = {},
   lastUsedParams = {},
+  worktreeId,
 }: SetupOpts) {
   if (mode === "broken") {
     setupListBreakingGraphNodesEndpoint(
@@ -89,13 +94,21 @@ function setup({
       ? BrokenDependencyDiagnosticsPage
       : UnreferencedDependencyDiagnosticsPage;
 
+  const content = (
+    <MonitorContent>
+      <PageComponent />
+    </MonitorContent>
+  );
+
   const { router } = renderWithProviders(
     <Route
       path={getPageUrl(mode, {})}
       element={
-        <MonitorContent>
-          <PageComponent />
-        </MonitorContent>
+        worktreeId !== undefined ? (
+          <WorktreeProvider worktreeId={worktreeId}>{content}</WorktreeProvider>
+        ) : (
+          content
+        )
       }
     />,
     {
@@ -144,6 +157,44 @@ describe("DependencyDiagnosticsPage", () => {
 
       const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
       expect(sidebarRegion).toHaveTextContent("Question 1");
+    });
+  });
+
+  describe("worktree scoping", () => {
+    it("scopes the breaking nodes request to the worktree when rendered inside one", async () => {
+      setup({ mode: "broken", nodes: CARD_NODES, worktreeId: 7 });
+
+      await waitForListToLoad();
+
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/ee/dependencies/graph/breaking",
+      );
+      expect(calls).not.toHaveLength(0);
+      expect(calls[0].url).toContain("worktree-id=7");
+    });
+
+    it("scopes the unreferenced nodes request to the worktree when rendered inside one", async () => {
+      setup({ mode: "unreferenced", nodes: CARD_NODES, worktreeId: 7 });
+
+      await waitForListToLoad();
+
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/ee/dependencies/graph/unreferenced",
+      );
+      expect(calls).not.toHaveLength(0);
+      expect(calls[0].url).toContain("worktree-id=7");
+    });
+
+    it("does not send worktree-id outside a worktree", async () => {
+      setup({ mode: "broken", nodes: CARD_NODES });
+
+      await waitForListToLoad();
+
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/ee/dependencies/graph/breaking",
+      );
+      expect(calls).not.toHaveLength(0);
+      expect(calls[0].url).not.toContain("worktree-id");
     });
   });
 

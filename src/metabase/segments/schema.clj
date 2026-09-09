@@ -45,7 +45,8 @@
    [:points_of_interest      [:maybe :string]]
    [:caveats                 [:maybe :string]]
    [:show_in_getting_started :boolean]
-   [:entity_id               :string]])
+   [:entity_id               :string]
+   [:worktree_id             [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::segment.update
   "What an update (or insert) of a Segment accepts: every column of `:segment` except `id`, all optional."
@@ -61,4 +62,5 @@
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:entity_id               {:optional true} [:maybe :string]]])
+   [:entity_id               {:optional true} [:maybe :string]]
+   [:worktree_id             {:optional true} [:maybe ::lib.schema.id/worktree]]])

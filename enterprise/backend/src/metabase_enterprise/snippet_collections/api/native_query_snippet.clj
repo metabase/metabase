@@ -17,4 +17,5 @@
    :from   [[:native_query_snippet :nqs]]
    :where  [:and
             [:= :collection_id (:id collection)]
+            [:= :worktree_id (:worktree_id collection)]
             [:= :archived (boolean archived?)]]})

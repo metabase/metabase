@@ -249,14 +249,15 @@
   (let [db-id            (get-in to-check [:source :query :database])
         ;; Recompute the transform under test live — its source or target may have just changed, so the
         ;; stored deps and `target_table_id` are stale — and pin its source db. Every other transform
-        ;; uses its stored values.
+        ;; uses its stored values. Only transforms in the same remote-sync worktree (nil is the main app)
+        ;; take part: a worktree's copies never depend on, or stand in for, the main app's transforms.
         to-check         (-> to-check
                              (assoc :source_database_id db-id
                                     :target_table_id    (when-let [db-id (transforms-base.i/target-db-id to-check)]
                                                           (let [{:keys [schema name]} (:target to-check)]
                                                             (:id (transforms-base.db/target-table db-id schema name :active true)))))
                              (dissoc :table_dependencies))
-        transforms       (conj (vec (transforms-base.db/transforms-for-ordering transform-id))
+        transforms       (conj (vec (transforms-base.db/transforms-for-ordering transform-id (:worktree_id to-check)))
                                to-check)
         transforms-by-id (into {}
                                (map (juxt :id identity))

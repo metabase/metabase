@@ -32,11 +32,15 @@ const setup = ({ isSuperuser = true, remoteSyncType }: SetupOptions = {}) => {
     settings: mockSettings({
       "remote-sync-type": remoteSyncType,
       "remote-sync-enabled": !!remoteSyncType,
-      "token-features": createMockTokenFeatures({ snippet_collections: true }),
+      "token-features": createMockTokenFeatures({
+        snippet_collections: true,
+        remote_sync: true,
+      }),
     }),
     currentUser: createMockUser({ is_superuser: isSuperuser }),
   });
   setupEnterpriseOnlyPlugin("snippets");
+  setupEnterpriseOnlyPlugin("remote_sync");
   setupCollectionsEndpoints({ collections: [collection] });
   setupGroupsEndpoint([]);
   setupCollectionPermissionsGraphEndpoint({ revision: 1, groups: {} });

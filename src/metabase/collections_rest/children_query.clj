@@ -257,13 +257,15 @@
       (sql.helpers/where (pinned-state->clause pinned-state :p.collection_position))))
 
 (defenterprise snippets-collection-children-query
-  "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
-  collections are an EE feature."
+  "Collection children query for snippets on OSS. Returns all snippets in the collection's worktree scope regardless
+  of collection, because snippet collections are an EE feature."
   metabase-enterprise.snippet-collections.api.native-query-snippet
-  [_collection {:keys [archived?]}]
+  [collection {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
-   :where  [:= :archived (boolean archived?)]})
+   :where  [:and
+            [:= :archived (boolean archived?)]
+            [:= :worktree_id (:worktree_id collection)]]})
 
 (defmethod collection-children-query :snippet
   [_model collection options]
@@ -286,6 +288,7 @@
      :where  [:and
               (poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
+              [:= :worktree_id (:worktree_id collection)]
               (if (seq enabled-types)
                 [:in :source_type enabled-types]
                 [:=
@@ -459,10 +462,22 @@
   [_ collection options]
   (collection-query collection options))
 
+(defn- published-tables-collection-id
+  "The collection whose published tables `collection` presents. Its own, unless it is a worktree's copy of a
+  collection: tables are never checked out, so those live in the main-app collection it was copied from. `nil` when
+  the worktree collection has no main-app counterpart, i.e. it exists only on the branch."
+  [collection]
+  (if (:worktree_id collection)
+    (get (collection/worktree-collection-counterpart-ids [(:id collection)]) (:id collection))
+    (:id collection)))
+
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  (let [user-info {:user-id       api/*current-user-id*
-                   :is-superuser? api/*is-superuser?*}
+  (let [worktree-id (:worktree_id collection)
+        table-collection-id (published-tables-collection-id collection)
+        user-info {:user-id               api/*current-user-id*
+                   :is-superuser?         api/*is-superuser?*
+                   :can-access-worktrees? (perms/current-user-can-access-worktrees?)}
         published-clause (perms/published-table-visible-clause :t.id user-info)
         queryable-clause (cond-> [:or
                                   [:in :t.id (perms/visible-table-filter-select
@@ -488,9 +503,16 @@
      :where  [:and
               [:= :t.is_published true]
               (poison-when-pinned-clause pinned-state)
-              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+              ;; the visible-collection CTE holds this worktree's collections, but the tables hang off the main-app
+              ;; counterpart, so inside a worktree the main-app collection has to be visible on its own (a
+              ;; `:remote-sync` holder need not be able to read every main-app collection)
+              (if worktree-id
+                (collection/visible-collection-filter-clause :t.collection_id)
+                (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids}))
               queryable-clause
-              [:= :t.collection_id (:id collection)]
+              (if (and worktree-id (nil? table-collection-id))
+                always-false-hsql-expr
+                [:= :t.collection_id table-collection-id])
               (if archived?
                 [:!= :t.archived_at nil]
                 [:= :t.archived_at nil])]}))
@@ -613,12 +635,15 @@
          [[:id :asc]]]))
 
 (defn- visible-collections-config
-  "The visibility config of the `visible_collection_ids` CTE: archived listings need write access to the items."
-  [{:keys [archived?]}]
+  "The visibility config of the `visible_collection_ids` CTE for the children of `collection`: archived listings need
+  write access to the items."
+  [collection {:keys [archived?]}]
   {:include-archived-items    :all
    :archive-operation-id      nil
    :permission-level          (if archived? :write :read)
-   :include-trash-collection? archived?})
+   :include-trash-collection? archived?
+   ;; children always live in the same worktree as their parent (nil = the main app)
+   :worktree-id               (:worktree_id collection)})
 
 (defn children-rows-query
   "The query listing the children of `collection` for the item `models` (keywords, in the order to union them),
@@ -638,7 +663,7 @@
                             (update select-clause-type add-missing-columns all-select-columns)
                             (update select-clause-type add-model-ranking model)))
         search-clause (search-text-clause search-text)]
-    (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query (visible-collections-config options))]]
+    (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query (visible-collections-config collection options))]]
              :select   [:* [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
              :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
              :order-by sql-order}
@@ -650,7 +675,7 @@
   "The single-row query whose columns say, for each of the item `models`, whether `collection` has at least one visible
   child of that model under `options`."
   [collection models options]
-  {:with   [[:visible_collection_ids (collection/visible-collection-query (visible-collections-config options))]]
+  {:with   [[:visible_collection_ids (collection/visible-collection-query (visible-collections-config collection options))]]
    :select (vec
             (for [model models]
               [[:exists (collection-children-query model collection options)] model]))})

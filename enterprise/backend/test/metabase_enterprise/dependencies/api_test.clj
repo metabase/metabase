@@ -2195,7 +2195,7 @@
                       :source_entity_type   nil
                       :source_entity_id     nil
                       :error_type           "invalid-query"}])
-        (let [result      (#'deps.api/node-errors {:card [card-id]})
+        (let [result      (#'deps.api/node-errors {:card [card-id]} nil)
               card-errors (get result [:card card-id])]
           (testing "includes errors with visible source"
             (is (contains? card-errors {:type :missing-column :detail "col1"})))
@@ -2223,7 +2223,7 @@
                       :source_entity_type   "card"
                       :source_entity_id     source-card
                       :error_type           "missing-column"}])
-        (let [result      (#'deps.api/node-downstream-errors {:card [source-card]})
+        (let [result      (#'deps.api/node-downstream-errors {:card [source-card]} nil)
               card-errors (get result [:card source-card])]
           (testing "includes errors with visible analyzed entity"
             (is (= 1 (count card-errors))))
@@ -2770,3 +2770,115 @@
           (testing "graph with transform"
             (is (map? (mt/user-http-request analyst-id :get 200
                                             (str "ee/dependencies/graph?type=transform&id=" transform-id))))))))))
+
+(deftest unreferenced-excludes-worktree-transforms-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced leaves out transforms checked out into a worktree"
+    (mt/with-premium-features #{:dependencies :transforms-basic}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Transform {main-id :id} {:name "main transform"}
+                     :model/Transform {wt-tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
+        (deps.test/synchronously-run-backfill!)
+        (let [ids (into #{}
+                        (comp (filter #(= "transform" (:type %))) (map :id))
+                        (:data (mt/user-http-request :crowberto :get 200
+                                                     "ee/dependencies/graph/unreferenced"
+                                                     :types "transform")))]
+          (is (contains? ids main-id)
+              "the main app's transform is listed")
+          (is (not (contains? ids wt-tf-id))
+              "the worktree's transform is not"))))))
+
+(deftest unreferenced-worktree-id-scopes-the-list-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced :worktree-id lists that worktree's transforms instead"
+    (mt/with-premium-features #{:dependencies :transforms-basic}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Worktree  {wt-id :id}   {}
+                       :model/Transform {main-id :id} {:name "main transform"}
+                       :model/Transform {wt-tf-id :id} {:name        "worktree transform"
+                                                        :worktree_id wt-id
+                                                        :source      {:type  "query"
+                                                                      :query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}}]
+          (deps.test/synchronously-run-backfill!)
+          (let [ids-for (fn [user & kvs]
+                          (into #{}
+                                (comp (filter #(= "transform" (:type %))) (map :id))
+                                (:data (apply mt/user-http-request user :get 200
+                                              "ee/dependencies/graph/unreferenced" :types "transform" kvs))))]
+            (testing "the worktree's transforms, and only those"
+              (let [ids (ids-for :crowberto :worktree-id wt-id)]
+                (is (contains? ids wt-tf-id))
+                (is (not (contains? ids main-id)))))
+            (testing "worktree-id requires the remote-sync application permission"
+              (mt/with-temp [:model/PermissionsGroup           group {}
+                             :model/PermissionsGroupMembership _     {:user_id  (mt/user->id :rasta)
+                                                                      :group_id (:id group)}]
+                (testing "denied without the permission"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :get 403 "ee/dependencies/graph/unreferenced"
+                                               :types "transform" :worktree-id wt-id))))
+                (testing "allowed once a data analyst's group is granted `remote-sync`"
+                  (mt/with-data-analyst-role! (mt/user->id :rasta)
+                    (mt/with-premium-features #{:dependencies :transforms-basic :advanced-permissions}
+                      (perms/grant-application-permissions! group :remote-sync)
+                      (is (contains? (ids-for :rasta :worktree-id wt-id) wt-tf-id)))))))))))))
+
+(deftest graph-follows-the-starting-entitys-worktree-test
+  (testing "GET /api/ee/dependencies/graph takes its scope from the entity it was asked about"
+    (mt/with-premium-features #{:dependencies :transforms-basic}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Worktree                   {wt-id :id}   {}
+                         :model/Transform                  {wt-tf-id :id} {:name        "worktree transform"
+                                                                           :worktree_id wt-id
+                                                                           :source      {:type  "query"
+                                                                                         :query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}}
+                         :model/PermissionsGroup           group {}
+                         :model/PermissionsGroupMembership _     {:user_id  (mt/user->id :rasta)
+                                                                  :group_id (:id group)}]
+            (deps.test/synchronously-run-backfill!)
+            (testing "an admin gets the worktree transform's own graph"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                   :id wt-tf-id :type "transform")]
+                (is (contains? (into #{} (map :id) (:nodes response)) wt-tf-id))))
+            (testing "a non-admin cannot reach it without the remote-sync permission"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 "ee/dependencies/graph"
+                                           :id wt-tf-id :type "transform"))))
+            (testing "a data analyst granted the remote-sync permission can"
+              (mt/with-data-analyst-role! (mt/user->id :rasta)
+                (mt/with-premium-features #{:dependencies :transforms-basic :advanced-permissions}
+                  (perms/grant-application-permissions! group :remote-sync)
+                  (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                       :id wt-tf-id :type "transform")]
+                    (is (contains? (into #{} (map :id) (:nodes response)) wt-tf-id))))))))))))
+
+(deftest ^:synchronized unreferenced-worktree-id-lists-collection-content-test
+  (testing "GET .../unreferenced :worktree-id lists the cards a worktree holds in its own collections"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Worktree   {wt-id :id}      {}
+                       :model/Collection {wt-coll-id :id} {:name        "worktree collection"
+                                                           :worktree_id wt-id}
+                       :model/Card       {wt-card-id :id} {:name          "Worktree Card - wtdeps"
+                                                           :type          :question
+                                                           :collection_id wt-coll-id
+                                                           :worktree_id   wt-id
+                                                           :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                       :model/Card       {main-card-id :id} {:name          "Main Card - wtdeps"
+                                                             :type          :question
+                                                             :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}]
+          (deps.test/synchronously-run-backfill!)
+          (let [ids-for (fn [& kvs]
+                          (into #{}
+                                (comp (filter #(= "card" (:type %))) (map :id))
+                                (:data (apply mt/user-http-request :crowberto :get 200
+                                              "ee/dependencies/graph/unreferenced"
+                                              :types "card" :query "wtdeps" kvs))))]
+            (testing "the worktree's card is listed for its worktree"
+              (let [ids (ids-for :worktree-id wt-id)]
+                (is (contains? ids wt-card-id))
+                (is (not (contains? ids main-card-id)))))
+            (testing "and the main app's list is unchanged"
+              (let [ids (ids-for)]
+                (is (contains? ids main-card-id))
+                (is (not (contains? ids wt-card-id)))))))))))

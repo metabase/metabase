@@ -415,6 +415,7 @@
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
+   [:can-access-worktrees? {:optional true} :boolean]
    [:is-data-analyst?   :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
    [:context               {:optional true} [:maybe :keyword]]
@@ -455,6 +456,8 @@
    [:offset-int                          {:optional true} ms/Int]
    [:search-native-query                 {:optional true} :boolean]
    [:table-db-id                         {:optional true} ms/PositiveInt]
+   ;; the remote-sync worktree to search within; absent (nil) is the main app
+   [:worktree-id                         {:optional true} [:maybe ms/PositiveInt]]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
    ;; true to restrict to verified-or-curated content (precomputed `curated` index column)

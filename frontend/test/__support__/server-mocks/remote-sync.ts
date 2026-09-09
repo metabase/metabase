@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type { RemoteSyncEntity, Worktree } from "metabase-types/api";
+import { createMockWorktree } from "metabase-types/api/mocks";
 
 export interface RemoteSyncDirtyResponse {
   dirty: RemoteSyncEntity[];
@@ -19,6 +20,50 @@ export const setupRemoteSyncDirtyEndpoint = ({
     "path:/api/ee/remote-sync/dirty",
     { dirty, changedCollections },
     { name: "remote-sync-dirty" },
+  );
+};
+
+/**
+ * Setup the remote-sync is-dirty endpoint
+ */
+export const setupRemoteSyncIsDirtyEndpoint = (isDirty = false) => {
+  fetchMock.removeRoute("remote-sync-is-dirty");
+  fetchMock.get(
+    "path:/api/ee/remote-sync/is-dirty",
+    { is_dirty: isDirty },
+    { name: "remote-sync-is-dirty" },
+  );
+};
+
+/**
+ * Setup the remote-sync worktree list endpoint
+ */
+export const setupRemoteSyncWorktreesEndpoint = (
+  worktrees: Worktree[] = [],
+) => {
+  fetchMock.removeRoute("remote-sync-worktrees");
+  fetchMock.get("path:/api/ee/remote-sync/worktree", worktrees, {
+    name: "remote-sync-worktrees",
+  });
+};
+
+/**
+ * Setup the remote-sync worktree create POST endpoint
+ */
+export const setupRemoteSyncCreateWorktreeEndpoint = ({
+  worktree = createMockWorktree(),
+  error,
+}: {
+  worktree?: Worktree;
+  error?: { status: number; message: string };
+} = {}) => {
+  fetchMock.removeRoute("remote-sync-create-worktree");
+  fetchMock.post(
+    "path:/api/ee/remote-sync/worktree",
+    error
+      ? { status: error.status, body: { message: error.message } }
+      : worktree,
+    { name: "remote-sync-create-worktree" },
   );
 };
 
@@ -87,11 +132,18 @@ export const setupRemoteSyncSettingsEndpoint = ({
 export const setupRemoteSyncImportEndpoint = ({
   status = "running",
   task_id = 456,
-}: { status?: string; task_id?: number } = {}) => {
+  error,
+}: {
+  status?: string;
+  task_id?: number;
+  error?: { status: number; message: string };
+} = {}) => {
   fetchMock.removeRoute("remote-sync-import");
   fetchMock.post(
     "path:/api/ee/remote-sync/import",
-    { status, task_id },
+    error
+      ? { status: error.status, body: { message: error.message } }
+      : { status, task_id },
     { name: "remote-sync-import" },
   );
 };
@@ -107,6 +159,36 @@ export const setupRemoteSyncExportEndpoint = ({
     "path:/api/ee/remote-sync/export",
     { message: "Export task started", task_id },
     { name: "remote-sync-export" },
+  );
+};
+
+/**
+ * Setup the remote-sync switch-branch POST endpoint
+ */
+export const setupRemoteSyncSwitchBranchEndpoint = ({
+  status = "running",
+  task_id = 654,
+}: { status?: string; task_id?: number } = {}) => {
+  fetchMock.removeRoute("remote-sync-switch-branch");
+  fetchMock.post(
+    "path:/api/ee/remote-sync/switch-branch",
+    { status, task_id },
+    { name: "remote-sync-switch-branch" },
+  );
+};
+
+/**
+ * Setup the remote-sync stash POST endpoint
+ */
+export const setupRemoteSyncStashEndpoint = ({
+  status = "running",
+  task_id = 987,
+}: { status?: string; task_id?: number } = {}) => {
+  fetchMock.removeRoute("remote-sync-stash");
+  fetchMock.post(
+    "path:/api/ee/remote-sync/stash",
+    { status, message: "Stash task started", task_id },
+    { name: "remote-sync-stash" },
   );
 };
 
@@ -188,8 +270,10 @@ export const setupRemoteSyncTestConnectionEndpoint = ({
  */
 export const setupRemoteSyncEndpoints = ({
   branches = ["main", "develop"],
+  worktrees = [],
   dirty = [],
   changedCollections = {},
+  isDirty = false,
   hasRemoteChanges = false,
   hasRemoteChangesDelay = 0,
   hasRemoteChangesError = false,
@@ -198,8 +282,10 @@ export const setupRemoteSyncEndpoints = ({
   testConnectionError,
 }: {
   branches?: string[];
+  worktrees?: Worktree[];
   dirty?: RemoteSyncEntity[];
   changedCollections?: Record<number, boolean>;
+  isDirty?: boolean;
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
   hasRemoteChangesError?: boolean;
@@ -210,10 +296,14 @@ export const setupRemoteSyncEndpoints = ({
   testConnectionError?: { status: number; message: string };
 } = {}) => {
   setupRemoteSyncBranchesEndpoint(branches);
+  setupRemoteSyncWorktreesEndpoint(worktrees);
   setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
+  setupRemoteSyncIsDirtyEndpoint(isDirty);
   setupRemoteSyncCurrentTaskEndpoint("idle");
   setupRemoteSyncImportEndpoint();
   setupRemoteSyncExportEndpoint();
+  setupRemoteSyncSwitchBranchEndpoint();
+  setupRemoteSyncStashEndpoint();
   setupRemoteSyncExportPreflightEndpoint(exportPreflight);
   setupRemoteSyncSettingsEndpoint(settingsResponse);
   setupRemoteSyncTestConnectionEndpoint({ error: testConnectionError });

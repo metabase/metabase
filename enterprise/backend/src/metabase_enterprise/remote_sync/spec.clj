@@ -282,7 +282,10 @@
     :archived-key   nil  ; no archived field
     :tracking       {:select-fields  [:name]
                      :field-mappings {:model_name :name}}
-    :conditions     {:built_in_type nil}  ; exclude built-in tags from sync
+    ;; built-in tags are exported like any other tag -- their entity_ids are seeded identically on every
+    ;; instance, so an import matches them -- but a reconcile never deletes them: they are instance-seeded, and
+    ;; the built-in jobs' tag assignments cascade off them
+    :removal-conditions {:built_in_type nil}
     :removal        {:statuses #{"removed" "delete"}  ; no scope-key = global deletion
                      :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
@@ -307,14 +310,37 @@
 
 ;;; ------------------------------------------------- Helper Functions -------------------------------------------------
 
+(defn transforms-synced?
+  "Whether transform content syncs in the scope a sync is running in. `remote-sync-transforms` describes the main
+  app -- it is set from what the main branch contains -- but a worktree exists precisely to work on transform
+  content, so it always syncs it: gating a worktree on that setting would leave it unable to track or push
+  anything whenever the main branch happens to have no transforms.
+
+  This reads the ambient sync scope, so it only answers for a pull or push. Event-time tracking runs outside one
+  and takes the scope from the row instead (see [[transforms-synced-for-row?]])."
+  []
+  (or (some? serdes/*worktree-id*)
+      (rs-settings/remote-sync-transforms)))
+
+(defn transforms-synced-for-row?
+  "Whether transform content syncs for `row` -- the same question [[transforms-synced?]] answers for a running
+  sync, but decided by the row's own `worktree_id`. Event-time tracking runs outside any sync, so the ambient
+  scope is `nil` there and a worktree's own rows would otherwise be judged by the main app's setting."
+  [row]
+  (or (some? (:worktree_id row))
+      (transforms-synced?)))
+
 (defn spec-enabled?
-  "Returns true if the spec is currently enabled based on its :enabled? value."
+  "Returns true if the spec is currently enabled based on its :enabled? value.
+
+  Inside a worktree the transform family is always on -- see [[transforms-synced?]]."
   [{:keys [enabled?]}]
   (cond
-    (true? enabled?)            true
+    (true? enabled?)             true
     (= enabled? :library-synced) (rs-settings/library-is-remote-synced?)
-    (keyword? enabled?)         (boolean (setting/get-value-of-type :boolean enabled?))
-    :else                       false))
+    (= enabled? :remote-sync-transforms) (transforms-synced?)
+    (keyword? enabled?)          (boolean (setting/get-value-of-type :boolean enabled?))
+    :else                        false))
 
 (defn export-conditions
   "Returns conditions to apply when querying entities for export.
@@ -404,18 +430,47 @@
                               (into result ready))))))]
     (mapv (fn [k] [k (entity-id-specs k)]) sorted)))
 
+(defn exportable-in-scope?
+  "Whether `model-type` is serialized by the sync in the current scope. A worktree only checks out
+   worktree-scoped models -- exporting any other would push the main app's rows onto the worktree's branch."
+  [model-type]
+  (or (nil? serdes/*worktree-id*)
+      (serdes/worktree-scoped? model-type)))
+
+(defn reconcilable-in-scope?
+  "Whether an import reconcile in the current sync scope may delete rows of `spec`'s model. Inside a worktree
+   only worktree-scoped models are reconciled -- a worktree owns no copy of a model whose table has no
+   `worktree_id`, so e.g. PythonLibrary rows are never deleted by a worktree pull; the main app's own pull
+   reconciles them."
+  [spec]
+  (or (nil? serdes/*worktree-id*)
+      (serdes/worktree-scoped? (:model-type spec))))
+
+(defn local-imported-ids
+  "The imported (branch) `entity-ids` expressed as the current scope's local entity_ids: translated through the
+   worktree remapping table for worktree-scoped models, unchanged otherwise."
+  [spec entity-ids]
+  (if (serdes/worktree-scoped? (:model-type spec))
+    (serdes/local-entity-ids (:model-type spec) entity-ids)
+    entity-ids))
+
 (defn excluded-model-types
   "Returns a set of model type strings that should be excluded from dirty detection
    based on current settings. Models with a setting-based or library-synced :enabled?
-   that is currently false will be excluded."
-  []
-  (->> remote-sync-specs
-       (filter (fn [[_ spec]]
-                 (let [enabled? (:enabled? spec)]
-                   (and (keyword? enabled?)
-                        (not (spec-enabled? spec))))))
-       (map (fn [[_ spec]] (:model-type spec)))
-       set))
+   that is currently false will be excluded.
+
+   `worktree-id` is the scope being asked about; inside a worktree the transform family is always synced, so
+   nothing in it is excluded."
+  ([] (excluded-model-types nil))
+  ([worktree-id]
+   (binding [serdes/*worktree-id* (or worktree-id serdes/*worktree-id*)]
+     (->> remote-sync-specs
+          (filter (fn [[_ spec]]
+                    (let [enabled? (:enabled? spec)]
+                      (and (keyword? enabled?)
+                           (not (spec-enabled? spec))))))
+          (map (fn [[_ spec]] (:model-type spec)))
+          set))))
 
 (defn all-model-types
   "Returns a set of all model type strings."
@@ -501,16 +556,19 @@
 
 (defn- has-unsynced-entities-for-feature?
   "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
-   Excludes entities filtered by export-conditions (e.g., built-in TransformTags) from the count since
-   they are system-created and not user data. Namespace collections are not checked here because they are
+   Counts with removal-conditions, which is what excludes system-seeded entities -- built-in TransformTags,
+   the built-in PythonLibrary -- from the count: every instance has them by construction, so they are never
+   user data an import would destroy. Namespace collections are not checked here because they are
    organizational containers, not user data that would be lost on import."
   [specs-for-feature]
   (some (fn [[_ spec]]
           (let [model-key (:model-key spec)
                 model-type (:model-type spec)
-                conditions (export-conditions spec)
+                conditions (cond-> (removal-conditions spec)
+                             (serdes/worktree-scoped? model-type)
+                             (assoc :worktree_id serdes/*worktree-id*))
                 local-count (remote-sync.db/count-where model-key conditions)
-                synced-count (remote-sync.db/rso-count-of-type model-type)]
+                synced-count (remote-sync.db/rso-count-of-type model-type serdes/*worktree-id*)]
             (and (pos? local-count)
                  (> local-count synced-count))))
         specs-for-feature))
@@ -557,14 +615,14 @@
                                          (keyword? setting-kw) (boolean (setting/get-value-of-type :boolean setting-kw))
                                          :else false)]
                 :when (not setting-enabled?)
-                :let [local-ns-colls (remote-sync.db/collections-in-namespace ns-name)
+                :let [local-ns-colls (remote-sync.db/collections-in-namespace ns-name serdes/*worktree-id*)
                       import-eids (get import-ns-collection-entity-ids ns-name #{})
                       ;; Only consider local collections that are NOT in the import (truly local-only)
                       ;; and NOT tracked in RemoteSyncObject
                       unsynced-local (remove
                                       (fn [coll]
                                         (or (contains? import-eids (:entity_id coll))
-                                            (remote-sync.db/rso-exists? "Collection" (:id coll))))
+                                            (remote-sync.db/rso-exists? "Collection" (:id coll) serdes/*worktree-id*)))
                                       local-ns-colls)]
                 :when (seq unsynced-local)]
             {:type     (keyword (str (u/lower-case-en category) "-conflict"))
@@ -572,15 +630,20 @@
              :message  (format "Import contains %s but local instance has unsynced %s namespace collections"
                                category category)}))))
 
-(defn- removal-opts
+(defn removal-opts
   "The `metabase-enterprise.remote-sync.db` removal-opts (`:scope-key`, `:synced-collection-ids`, `:entity-ids`,
-  `:removal-conditions`) for removing the entity-id `spec`'s rows not in the import, scoped to
-  `synced-collection-ids` when the spec has a `:scope-key`, minus the imported `entity-ids`."
+  `:removal-conditions`, `:worktree-scoped?`, `:worktree-id`) for removing the entity-id `spec`'s rows not in the
+  import, scoped to `synced-collection-ids` when the spec has a `:scope-key`, minus the imported `entity-ids`,
+  within the worktree in scope ([[serdes/*worktree-id*]]; nil is the main app)."
   [spec synced-collection-ids entity-ids]
   {:scope-key              (get-in spec [:removal :scope-key])
    :synced-collection-ids  synced-collection-ids
    :entity-ids             entity-ids
-   :removal-conditions     (removal-conditions spec)})
+   :removal-conditions     (removal-conditions spec)
+   ;; a worktree-scoped model's rows are restricted to the worktree in scope (nil is the main app); the anti-join
+   ;; on RemoteSyncObject always is, since every tracking row carries its worktree
+   :worktree-scoped?       (boolean (some-> (:model-type spec) serdes/worktree-scoped?))
+   :worktree-id            serdes/*worktree-id*})
 
 (defn check-deletion-conflicts
   "Detects local entities of all-or-nothing models (specs with :all-on-setting-disable) that an import
@@ -595,9 +658,9 @@
   (into []
         (for [[model-key spec] (specs-for-deletion)
               :let [setting-kw (get-in spec [:removal :all-on-setting-disable])]
-              :when setting-kw
+              :when (and setting-kw (reconcilable-in-scope? spec))
               :let [model-type   (:model-type spec)
-                    imported-ids (get by-entity-id model-type #{})
+                    imported-ids (local-imported-ids spec (get by-entity-id model-type #{}))
                     ;; These models are unscoped (no :scope-key), so the removal-opts just carry the
                     ;; not-in-import + removal-condition restrictions; unsynced-instance-count adds the anti-join.
                     n-unsynced   (remote-sync.db/unsynced-instance-count
@@ -631,7 +694,7 @@
    or snippets-namespace with Library synced."
   [collection]
   (or (collections/remote-synced-collection? collection)
-      (and (rs-settings/remote-sync-transforms)
+      (and (transforms-synced-for-row? collection)
            (transforms-namespace-collection? collection))
       (and (rs-settings/library-is-remote-synced?)
            (snippets-namespace-collection? collection))))
@@ -647,11 +710,11 @@
   []
   (into []
         cat
-        [(remote-sync.db/remote-synced-collection-ids)
-         (when (rs-settings/remote-sync-transforms)
-           (remote-sync.db/collection-ids-in-namespace (name collections/transforms-ns)))
+        [(remote-sync.db/remote-synced-collection-ids serdes/*worktree-id*)
+         (when (transforms-synced?)
+           (remote-sync.db/collection-ids-in-namespace (name collections/transforms-ns) serdes/*worktree-id*))
          (when (rs-settings/library-is-remote-synced?)
-           (remote-sync.db/collection-ids-in-namespace "snippets"))]))
+           (remote-sync.db/collection-ids-in-namespace "snippets" serdes/*worktree-id*))]))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -676,9 +739,10 @@
       (seq synced-collection-ids)
       (into (for [[model-key spec] (specs-for-deletion)
                   :when (and (not (get-in spec [:removal :all-on-setting-disable]))
-                             (not= :model/Collection model-key))
+                             (not= :model/Collection model-key)
+                             (reconcilable-in-scope? spec))
                   :let [model-type   (:model-type spec)
-                        imported-ids (get by-entity-id model-type #{})
+                        imported-ids (local-imported-ids spec (get by-entity-id model-type #{}))
                         ;; Same base restriction remove-unsynced! deletes by, plus an anti-join keeping only the
                         ;; unsynced rows the import would delete. Done in SQL so we never materialize a whole
                         ;; collection's worth of rows just to count/sample them.
@@ -731,7 +795,7 @@
       (collections/remote-synced-collection? collection-id)
 
       :transforms-namespace
-      (and (rs-settings/remote-sync-transforms)
+      (and (transforms-synced-for-row? object)
            (transforms-namespace-collection? object))
 
       :snippets-namespace
@@ -740,7 +804,7 @@
 
       :any
       (or (collections/remote-synced-collection? (or collection-id object))
-          (and (rs-settings/remote-sync-transforms)
+          (and (transforms-synced-for-row? object)
                (transforms-namespace-collection? object))
           (and (rs-settings/library-is-remote-synced?)
                (snippets-namespace-collection? object)))
@@ -759,8 +823,12 @@
       (check-eligibility (spec-for-model-key parent-model) table))))
 
 (defmethod check-eligibility-by-type :setting
-  [{:keys [eligibility]} _object]
-  (setting/get-value-of-type :boolean (:setting eligibility)))
+  [{:keys [eligibility]} object]
+  ;; content already checked out into a worktree is tracked whatever the setting says: the setting describes the
+  ;; main app, and event-time tracking runs outside any sync, so the scope comes from the row rather than
+  ;; [[serdes/*worktree-id*]].
+  (boolean (or (:worktree_id object)
+               (setting/get-value-of-type :boolean (:setting eligibility)))))
 
 (defmethod check-eligibility-by-type :library-synced
   [_spec _object]
@@ -989,11 +1057,15 @@
   (fn [spec _data _timestamp] (:identity spec)))
 
 (defmethod query-entities-for-sync :entity-id
-  [{:keys [model-type model-key tracking]} entity-ids timestamp]
+  [{:keys [model-type model-key tracking] :as spec} entity-ids timestamp]
   (when (seq entity-ids)
     (let [;; Get select fields from spec, with :id always included
           select-fields (into [:id] (or (:select-fields tracking) [:name :collection_id]))
-          entities (remote-sync.db/instances-with-columns-by-entity-ids model-key select-fields entity-ids)]
+          entity-ids (local-imported-ids spec entity-ids)
+          entities (if (serdes/worktree-scoped? model-type)
+                     (remote-sync.db/instances-with-columns-by-entity-ids model-key select-fields entity-ids
+                                                                          serdes/*worktree-id*)
+                     (remote-sync.db/instances-with-columns-by-entity-ids model-key select-fields entity-ids))]
       (map (fn [entity]
              (let [;; Apply field mappings
                    field-mappings (:field-mappings tracking)
@@ -1099,20 +1171,24 @@
   (case (or export-scope :derived)
     :root-collections
     ;; Excludes archived collections - their files are handled by the removal logic
-    (let [collection-keys (fn [ids] (into #{} (map (fn [id] ["Collection" id])) ids))]
+    (let [collection-keys (fn [ids] (into #{} (map (fn [id] ["Collection" id])) ids))
+          worktree-id     serdes/*worktree-id*]
       (concat
-       (collection-keys (remote-sync.db/unarchived-remote-synced-root-collection-ids))
-       (when (rs-settings/remote-sync-transforms)
-         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace (name collections/transforms-ns))))
+       (collection-keys (remote-sync.db/unarchived-remote-synced-root-collection-ids worktree-id))
+       (when (transforms-synced?)
+         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace
+                           (name collections/transforms-ns) worktree-id)))
        (when (rs-settings/library-is-remote-synced?)
-         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace "snippets")))))
+         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace "snippets" worktree-id)))))
     :derived
     nil))
 
 (defmethod query-export-roots :setting
   [{:keys [export-scope model-key model-type] :as spec}]
-  (when (spec-enabled? spec)
-    (let [conditions (export-conditions spec)
+  (when (and (spec-enabled? spec) (exportable-in-scope? model-type))
+    (let [conditions (cond-> (export-conditions spec)
+                       (serdes/worktree-scoped? model-type)
+                       (assoc :worktree_id serdes/*worktree-id*))
           model-keys (fn [ids] (into #{} (map (fn [id] [model-type id])) ids))]
       (case export-scope
         :root-only
@@ -1126,12 +1202,14 @@
 
 (defmethod query-export-roots :library-synced
   [{:keys [export-scope model-key model-type archived-key] :as spec}]
-  (when (spec-enabled? spec)
+  (when (and (spec-enabled? spec) (exportable-in-scope? model-type))
     (case export-scope
       :all
       (into #{}
             (map (fn [id] [model-type id]))
-            (remote-sync.db/ids-where model-key (when archived-key {archived-key false})))
+            (remote-sync.db/ids-where model-key (cond-> (when archived-key {archived-key false})
+                                                  (serdes/worktree-scoped? model-type)
+                                                  (assoc :worktree_id serdes/*worktree-id*))))
       nil)))
 
 (defmethod query-export-roots :default [_] nil)
@@ -1172,7 +1250,8 @@
    2. Are currently enabled (based on :enabled? field)
    3. Are in one of the provided collections (or descendants)"
   []
-  (eduction (map (fn [[model ids]]
+  (eduction (filter (comp exportable-in-scope? key))
+            (map (fn [[model ids]]
                    (serdes/extract-all model {:filter-column (pk-col model)
                                               :filter-ids    (vec ids)
                                               :skip-archived true})))
@@ -1185,7 +1264,8 @@
    sequence of serialized entities."
   [rows]
   (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
-    (eduction (map (fn [[model ids]]
+    (eduction (filter (comp exportable-in-scope? key))
+              (map (fn [[model ids]]
                      (serdes/extract-all model {:filter-column (pk-col model)
                                                 :filter-ids    (vec ids)
                                                 :skip-archived true})))

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.transforms.test-dataset :as transforms-dataset]
@@ -87,6 +88,60 @@
             (is (= "Invalid library path. Only 'common' is currently supported."
                    (:message (mt/user-http-request :lucky :put 400 "ee/transforms-python/library/invalid-path"
                                                    {:source "def test(): pass"}))))))))))
+
+(deftest library-worktree-scope-test
+  (testing "GET/PUT /api/ee/transforms-python/library/:path scoped to a remote-sync worktree"
+    (mt/with-premium-features #{:transforms-python :transforms-basic}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}]
+        (t2/delete! :model/PythonLibrary)
+        (python-library/update-python-library-source! "common" "# main app")
+        (testing "the worktree params need the remote-sync application permission"
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (mt/with-temp [:model/PermissionsGroup           group {}
+                             :model/PermissionsGroupMembership _     {:user_id  (mt/user->id :lucky)
+                                                                      :group_id (:id group)}]
+                (testing "transforms perms alone are not enough"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :lucky :get 403 "ee/transforms-python/library/common"
+                                               :worktree-id wt-id)))
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :lucky :put 403 "ee/transforms-python/library/common"
+                                               {:source "# nope" :worktree_id wt-id}))))
+                (testing "granting the remote-sync permission allows the worktree params"
+                  (mt/with-premium-features #{:transforms-python :transforms-basic :advanced-permissions}
+                    (perms/grant-application-permissions! group :remote-sync)
+                    (is (= "Not found."
+                           (mt/user-http-request :lucky :get 404 "ee/transforms-python/library/common"
+                                                 :worktree-id wt-id)))
+                    (is (=? {:source "# lucky's worktree write" :worktree_id wt-id}
+                            (mt/user-http-request :lucky :put 200 "ee/transforms-python/library/common"
+                                                  {:source "# lucky's worktree write" :worktree_id wt-id})))
+                    (t2/delete! :model/PythonLibrary :worktree_id wt-id)))))))
+        (testing "an unknown worktree 404s"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :put 404 "ee/transforms-python/library/common"
+                                       {:source "# nope" :worktree_id 99999999}))))
+        (testing "a worktree has no library until one is written into it"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "ee/transforms-python/library/common"
+                                       :worktree-id wt-id))))
+        (testing "the worktree copy lives alongside the main app's row and neither shadows the other"
+          (is (=? {:source "# worktree copy" :path "common.py" :worktree_id wt-id}
+                  (mt/user-http-request :crowberto :put 200 "ee/transforms-python/library/common"
+                                        {:source "# worktree copy" :worktree_id wt-id})))
+          (is (=? {:source "# worktree copy"}
+                  (mt/user-http-request :crowberto :get 200 "ee/transforms-python/library/common"
+                                        :worktree-id wt-id)))
+          (is (=? {:source "# main app"}
+                  (mt/user-http-request :crowberto :get 200 "ee/transforms-python/library/common")))
+          (is (= 2 (t2/count :model/PythonLibrary :path "common.py"))))
+        (testing "updating the worktree copy touches only that row"
+          (mt/user-http-request :crowberto :put 200 "ee/transforms-python/library/common"
+                                {:source "# worktree v2" :worktree_id wt-id})
+          (is (= "# worktree v2" (t2/select-one-fn :source :model/PythonLibrary :worktree_id wt-id)))
+          (is (= "# main app" (t2/select-one-fn :source :model/PythonLibrary :worktree_id nil)))
+          (is (= 2 (t2/count :model/PythonLibrary :path "common.py"))))))))
 
 (deftest test-run-test
   (mt/with-premium-features #{:transforms-basic :transforms-python}

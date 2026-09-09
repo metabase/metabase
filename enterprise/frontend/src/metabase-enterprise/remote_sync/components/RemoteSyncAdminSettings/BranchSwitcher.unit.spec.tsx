@@ -97,7 +97,9 @@ describe("BranchSwitcher", () => {
     await openBranchPickerAndSelect("develop");
 
     await waitFor(() => {
-      expect(fetchMock.callHistory.called("remote-sync-import")).toBe(true);
+      expect(fetchMock.callHistory.called("remote-sync-switch-branch")).toBe(
+        true,
+      );
     });
     // no choose-what-to-do modal on a clean switch
     expect(

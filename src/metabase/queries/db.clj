@@ -225,9 +225,12 @@
   (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
 
 (mu/defn snippets
-  "The NativeQuerySnippets with `snippet-ids`."
-  [snippet-ids :- [:set ::lib.schema.id/native-query-snippet]]
-  (t2/select :model/NativeQuerySnippet :id [:in snippet-ids]))
+  "The NativeQuerySnippets with `snippet-ids` in the remote-sync worktree `worktree-id` (nil for the main app)."
+  ([snippet-ids :- [:set ::lib.schema.id/native-query-snippet]]
+   (snippets snippet-ids nil))
+  ([snippet-ids :- [:set ::lib.schema.id/native-query-snippet]
+    worktree-id :- [:maybe ::lib.schema.id/worktree]]
+   (t2/select :model/NativeQuerySnippet :id [:in snippet-ids] :worktree_id worktree-id)))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."

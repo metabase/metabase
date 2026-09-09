@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import { useIsRemoteSyncReadOnly } from "metabase/common/worktrees";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   isCollectionData,
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
-import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
   EntityNameCell,
@@ -15,7 +15,6 @@ import {
   Tooltip,
   type TreeTableColumnDef,
 } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionItem } from "metabase-types/api";
 
 type ColumnDefProps = {
@@ -23,7 +22,7 @@ type ColumnDefProps = {
 };
 
 export const useColumnDef = ({ handleUnarchiveClick }: ColumnDefProps) => {
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const remoteSyncReadOnly = useIsRemoteSyncReadOnly();
 
   return useMemo<TreeTableColumnDef<TreeItem>[]>(
     () => [

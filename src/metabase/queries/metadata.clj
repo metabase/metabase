@@ -54,12 +54,19 @@
     (queries.db/field-table-ids field-ids)
     #{}))
 
+(defn- readable-snippets
+  "The snippets among `ids` that live in `worktree-id` (nil is the main app) and the current user can read."
+  [ids worktree-id]
+  (into [] (filter mi/can-read?) (queries.db/snippets ids worktree-id)))
+
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
+   (collect-recursive-snippets initial-snippet-ids nil))
+  ([initial-snippet-ids worktree-id]
    (when (seq initial-snippet-ids)
-     (let [snippets (into [] (filter mi/can-read?) (queries.db/snippets initial-snippet-ids))]
-       (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids)))))
-  ([all-snippets snippets-to-recurse seen-ids]
+     (let [snippets (readable-snippets initial-snippet-ids worktree-id)]
+       (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids) worktree-id))))
+  ([all-snippets snippets-to-recurse seen-ids worktree-id]
    (let [->nested-snippet-ids (fn [snippet]
                                 (when snippet
                                   (for [tag   (vals (:template_tags snippet))
@@ -70,12 +77,13 @@
                                     snippet-id)))
          nested-snippet-ids   (into #{} (mapcat ->nested-snippet-ids) snippets-to-recurse)
          nested-snippets      (when (seq nested-snippet-ids)
-                                (into [] (filter mi/can-read?) (queries.db/snippets nested-snippet-ids)))]
+                                (readable-snippets nested-snippet-ids worktree-id))]
      (if-not (seq nested-snippet-ids)
        all-snippets
        (recur (into all-snippets nested-snippets)
               nested-snippets
-              (set/union seen-ids nested-snippet-ids))))))
+              (set/union seen-ids nested-snippet-ids)
+              worktree-id)))))
 
 (defn- collect-snippet-field-ids
   [snippets]
@@ -101,7 +109,9 @@
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   [queries :- [:maybe [:sequential ::lib.schema/query]]
-   opts    :- [:maybe [:map [:include-sensitive-fields? {:optional true} :boolean]]]]
+   opts    :- [:maybe [:map
+                       [:include-sensitive-fields? {:optional true} :boolean]
+                       [:worktree-id {:optional true} [:maybe :int]]]]]
   (let [source-table-ids       (into #{}
                                      (mapcat lib/all-source-table-ids)
                                      queries)
@@ -109,8 +119,10 @@
                                      (mapcat lib/all-source-card-ids)
                                      queries)
         source-tables          (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
-                                       (schema.table/batch-fetch-card-query-metadatas source-card-ids
-                                                                                      {:include-database? false}))
+                                       (schema.table/batch-fetch-card-query-metadatas
+                                        source-card-ids
+                                        {:include-database? false
+                                         :worktree-id       (:worktree-id opts)}))
         fk-target-field-ids    (into #{} (comp (mapcat :fields)
                                                (keep :fk_target_field_id))
                                      source-tables)
@@ -120,7 +132,7 @@
         tables                 (concat source-tables fk-target-tables)
         template-tag-field-ids (into #{} (mapcat lib/all-template-tag-field-ids) queries)
         direct-snippet-ids     (into #{} (mapcat lib/all-template-tag-snippet-ids) queries)
-        snippets               (collect-recursive-snippets direct-snippet-ids)
+        snippets               (collect-recursive-snippets direct-snippet-ids (:worktree-id opts))
         snippet-field-ids      (collect-snippet-field-ids snippets)
         ;; Combine all field IDs
         all-field-ids          (set/union template-tag-field-ids snippet-field-ids)
@@ -142,7 +154,8 @@
                              [Integer/MAX_VALUE (str id)]))
                          tables)
      :fields    (sort-by :id (schema.field/get-fields all-field-ids))
-     ;; Add snippets to the response
+     ;; the only source of snippets while a client initializes an unsaved native question, so a query whose
+     ;; template tags come from a snippet still resolves them
      :snippets  (sort-by :id snippets)}))
 
 (defn batch-fetch-query-metadata
@@ -174,7 +187,9 @@
                                    (let [mp (lib-be/application-database-metadata-provider database-id)]
                                      (lib/query mp (lib.metadata/card mp card-id))))))
                       cards)]
-    (batch-fetch-query-metadata (concat card-queries queries))))
+    (batch-fetch-query-metadata (concat card-queries queries)
+                                ;; a card only ever resolves source cards from its own worktree
+                                {:worktree-id (some :worktree_id cards)})))
 
 (defn- click-behavior->link-details
   [{:keys [linkType type targetId] :as _click-behavior}]

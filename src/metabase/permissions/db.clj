@@ -582,6 +582,11 @@
   []
   (t2/select-pks-set :model/Collection :type [:in ["library" "library-data" "library-metrics"]]))
 
+(mu/defn worktree-collection-ids
+  "The IDs of every Collection checked out into a remote-sync worktree."
+  []
+  (t2/select-pks-set :model/Collection :worktree_id [:not= nil]))
+
 (mu/defn namespace-clause
   "Honey SQL clause to filter `namespace-keyword` by `namespace-val`, also matching the audit-app and tenant
   namespaces when applicable."

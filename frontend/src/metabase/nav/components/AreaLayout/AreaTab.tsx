@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { Box, FixedSizeIcon, Flex, Text, Tooltip } from "metabase/ui";
+import { Box, Ellipsified, FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./AreaLayout.module.css";
@@ -15,17 +15,29 @@ type AreaTabProps = {
   to: string;
   isSelected?: boolean;
   showLabel: boolean;
+  /**
+   * Rendered before the icon, inside the row. Sits above the row's click target, so controls
+   * placed here (an expand toggle, say) can be used without following the link.
+   */
+  leftSection?: ReactNode;
+  /** Rendered at the end of the row; like `leftSection`, controls here do not follow the link. */
   rightSection?: ReactNode;
   isGated?: boolean;
   onClick?: () => void;
 };
 
+/**
+ * A sidebar row that is one link. The link itself only wraps the icon and label, but stretches
+ * its click target over the whole row, so any controls in the side sections remain separate
+ * interactive elements rather than being nested inside the anchor.
+ */
 export function AreaTab({
   label,
   icon,
   to,
   isSelected,
   showLabel,
+  leftSection,
   rightSection,
   isGated,
   onClick,
@@ -42,21 +54,42 @@ export function AreaTab({
     >
       <Flex
         className={cx(S.tab, { [S.selected]: isSelected })}
-        component={ForwardRefLink}
-        to={to}
-        onClick={onClick}
         p="sm"
         gap="sm"
         bdrs="sm"
-        aria-label={label}
-        aria-current={isSelected ? "page" : undefined}
-        justify={showLabel ? "start" : "center"}
+        align="center"
+        data-testid="area-tab"
       >
-        <FixedSizeIcon name={icon} display="block" className={S.icon} />
-        {showLabel && <Text lh="sm">{label}</Text>}
+        {leftSection && <Box className={S.tabSection}>{leftSection}</Box>}
+        <Flex
+          className={S.tabLink}
+          component={ForwardRefLink}
+          to={to}
+          onClick={onClick}
+          gap="sm"
+          align="center"
+          aria-label={label}
+          aria-current={isSelected ? "page" : undefined}
+          justify={showLabel ? "start" : "center"}
+        >
+          <FixedSizeIcon name={icon} display="block" className={S.icon} />
+          {showLabel && (
+            <Ellipsified
+              c="text-primary"
+              fz="md"
+              lh="sm"
+              tooltipProps={{
+                position: "right",
+                openDelay: TOOLTIP_OPEN_DELAY,
+              }}
+            >
+              {label}
+            </Ellipsified>
+          )}
+        </Flex>
         {effectiveRightSection && (
           <Box
-            className={showLabel ? undefined : S.badgeOverlay}
+            className={cx(S.tabSection, { [S.badgeOverlay]: !showLabel })}
             ml={showLabel ? "auto" : undefined}
           >
             {effectiveRightSection}

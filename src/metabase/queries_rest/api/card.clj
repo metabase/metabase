@@ -155,11 +155,17 @@
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_segment`, and
   `archived`. See corresponding implementation functions above for the specific behavior of each filter
-  option. :card_index:"
+  option. :card_index:
+
+  `worktree-id` lists the cards checked out into a remote-sync worktree instead of the main app (needs
+  the `:remote-sync` application permission)."
   [_route-params
-   {:keys [f], model-id :model_id} :- [:map
-                                       [:f        {:default :all}  (into [:enum] card-filter-options)]
-                                       [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [f worktree-id], model-id :model_id} :- [:map
+                                                   [:f           {:default :all}  (into [:enum] card-filter-options)]
+                                                   [:model_id    {:optional true} [:maybe ms/PositiveInt]]
+                                                   [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (perms/check-can-access-worktrees))
   (when (contains? #{:database :table :using_model :using_segment} f)
     (api/checkp (integer? model-id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                        (name f)))
@@ -168,7 +174,9 @@
       :table         (api/read-check :model/Database (queries-rest.db/table-database-id model-id))
       :using_model   (api/read-check :model/Card model-id)
       :using_segment (api/read-check :model/Database (queries-rest.db/segment-database-id model-id))))
-  (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
+  (let [cards          (->> (cards-for-filter-option f model-id)
+                            (filter #(= (:worktree_id %) worktree-id))
+                            (filter mi/can-read?))
         last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
     (into []
           (map (fn [{:keys [id] :as card}]

@@ -20,6 +20,7 @@
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -183,14 +184,28 @@
   "Get all of the required query metadata for an ad-hoc query.
 
   You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with
-  visibility_type :sensitive in the response."
+  visibility_type :sensitive in the response.
+
+  `worktree_id` describes the query as it would run inside a remote-sync worktree, resolving its source cards
+  from that worktree instead of the main app (needs the `:remote-sync` application permission)."
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-query]
-  (queries/batch-fetch-query-metadata
-   [query]
-   (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
-     {:include-sensitive-fields? include-sensitive-fields})))
+   ;; `worktree_id` rides along on the query body, so the body has to stay open: a declared map drops every key it
+   ;; doesn't name, and the query's own schema names none of ours. The query is normalized by hand below instead.
+   {:keys [worktree_id] :as body} :- [:map
+                                      {:closed false}
+                                      [:worktree_id {:optional true} [:maybe ::lib.schema.id/worktree]]]]
+  (when (some? worktree_id)
+    (perms/check-can-access-worktrees))
+  (let [query (lib-be/normalize-query (dissoc body :worktree_id))]
+    (queries/batch-fetch-query-metadata
+     [query]
+     (cond-> {}
+       (some? worktree_id)
+       (assoc :worktree-id worktree_id)
+
+       (some? (get-in query [:settings :include-sensitive-fields]))
+       (assoc :include-sensitive-fields? (get-in query [:settings :include-sensitive-fields]))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

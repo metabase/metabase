@@ -23,12 +23,18 @@
   (t2/select-one :model/Document :id id :archived false))
 
 (mu/defn visible-unarchived-documents
-  "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."
-  []
-  (t2/select :model/Document {:where [:and
-                                      (collection/visible-collection-filter-clause)
-                                      [:= :archived false]
-                                      [:= :exploration_id nil]]}))
+  "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user. `worktree-id`
+  selects the Documents checked out into that remote-sync worktree; nil selects the main app's."
+  ([]
+   (visible-unarchived-documents nil))
+  ([worktree-id :- [:maybe ::lib.schema.id/worktree]]
+   (t2/select :model/Document {:where [:and
+                                       (collection/visible-collection-filter-clause
+                                        :collection_id
+                                        {:worktree-id worktree-id})
+                                       [:= :archived false]
+                                       [:= :worktree_id worktree-id]
+                                       [:= :exploration_id nil]]})))
 
 (mu/defn documents-for-serdes-reducible
   "A reducible of the Documents to export via serdes: those whose `:collection_id` is in `collection-set` (nil in the

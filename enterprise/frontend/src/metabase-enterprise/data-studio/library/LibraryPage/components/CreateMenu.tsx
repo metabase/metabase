@@ -4,6 +4,10 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
+import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
@@ -13,7 +17,6 @@ import { setOpenModalWithProps } from "metabase/redux/ui";
 import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 import { PublishTableModal } from "./PublishTableModal";
@@ -38,7 +41,8 @@ export const CreateMenu = ({
 
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
-  const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const remoteSyncReadOnly = useIsRemoteSyncReadOnly();
+  const worktreeId = useWorktreeId();
 
   if (remoteSyncReadOnly) {
     return null;
@@ -84,6 +88,7 @@ export const CreateMenu = ({
         component={ForwardRefLink}
         to={Urls.newDataStudioMetric({
           collectionId: metricCollectionId,
+          worktreeId,
         })}
         leftSection={<FixedSizeIcon name="metric" />}
         onClickCapture={() => trackMetricCreateStarted("data_studio_library")}
@@ -95,7 +100,7 @@ export const CreateMenu = ({
       <Menu.Item
         key="snippet"
         component={ForwardRefLink}
-        to={Urls.newDataStudioSnippet()}
+        to={Urls.newDataStudioSnippet({ worktreeId })}
         leftSection={<FixedSizeIcon name="snippet" />}
         aria-label={t`Create new snippet`}
       >
@@ -116,6 +121,7 @@ export const CreateMenu = ({
                 pickerOptions: LIBRARY_COLLECTION_PICKER_OPTIONS,
                 showAuthorityLevelPicker: false,
                 inDataStudio: true,
+                worktreeId,
               },
             }),
           )
@@ -141,7 +147,9 @@ export const CreateMenu = ({
       <PublishTableModal
         opened={showPublishTableModal}
         onClose={closePublishTableModal}
-        onPublished={(table) => navigate(Urls.dataStudioTable(table.id))}
+        onPublished={(table) =>
+          navigate(Urls.dataStudioTable(table.id, { worktreeId }))
+        }
       />
     </>
   );

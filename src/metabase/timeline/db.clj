@@ -17,14 +17,18 @@
   (t2/insert-returning-instance! :model/Timeline row))
 
 (mu/defn timelines-in-visible-collections
-  "The Timelines whose archived flag is `archived` in the Collections visible to the current user, in
-  case-insensitive name order."
-  [archived :- :boolean]
-  (t2/select :model/Timeline
-             {:where    [:and
-                         [:= :archived archived]
-                         (collection/visible-collection-filter-clause)]
-              :order-by [[:%lower.name :asc]]}))
+  "The Timelines whose archived flag is `archived` in the Collections visible to the current user, in the remote-sync
+  worktree `worktree-id` (nil for the main app), in case-insensitive name order."
+  ([archived :- :boolean]
+   (timelines-in-visible-collections archived nil))
+  ([archived    :- :boolean
+    worktree-id :- [:maybe ::lib.schema.id/worktree]]
+   (t2/select :model/Timeline
+              {:where    [:and
+                          [:= :archived archived]
+                          [:= :worktree_id worktree-id]
+                          (collection/visible-collection-filter-clause :collection_id {:worktree-id worktree-id})]
+               :order-by [[:%lower.name :asc]]})))
 
 (mu/defn timeline
   "The Timeline with `id`, or nil."

@@ -64,6 +64,9 @@
           result (user-context/extract-sql-dialect context)]
       (is (nil? result)))))
 
+;; The viewing-context tests name entities by ids no test database row will ever carry, so the formatter takes its
+;; not-found path and renders the entity's own fields. A small id could collide with a row another test created,
+;; and a readable-check failure then omits the entity instead.
 (deftest ^:parallel format-viewing-context-test
   (let [mp meta/metadata-provider]
     (testing "formats adhoc notebook (MBQL) query context"
@@ -94,7 +97,7 @@
         (is (re-find #"Table 'invalid' not found" result))))
     (testing "formats transform context"
       (let [context {:user_is_viewing [{:type "transform"
-                                        :id 123
+                                        :id 2147483001
                                         :name "Daily Revenue"
                                         :source_type "sql"}]}
             result (user-context/format-viewing-context context)]
@@ -104,7 +107,7 @@
         (is (re-find #"sql" result))))
     (testing "formats transform context with error"
       (let [context {:user_is_viewing [{:type "transform"
-                                        :id 123
+                                        :id 2147483001
                                         :name "Broken Revenue"
                                         :source_type "native"
                                         :error "ERROR: relation \"missing_table\" does not exist"}]}
@@ -146,7 +149,7 @@
 (deftest ^:parallel format-viewing-context-test-2a
   (testing "formats table entity"
     (let [context {:user_is_viewing [{:type "table"
-                                      :id 123
+                                      :id 2147483001
                                       :name "users"
                                       :description "User accounts"}]}
           result (user-context/format-viewing-context context)]
@@ -158,7 +161,7 @@
 (deftest ^:parallel format-viewing-context-test-2b
   (testing "formats model entity"
     (let [context {:user_is_viewing [{:type "model"
-                                      :id 456
+                                      :id 2147483003
                                       :name "Revenue Model"
                                       :description "Daily revenue metrics"}]}
           result (user-context/format-viewing-context context)]
@@ -169,7 +172,7 @@
 (deftest ^:parallel format-viewing-context-test-2c
   (testing "formats question entity"
     (let [context {:user_is_viewing [{:type "question"
-                                      :id 789
+                                      :id 2147483004
                                       :name "Top Customers"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -179,7 +182,7 @@
 (deftest ^:parallel format-viewing-context-test-2d
   (testing "formats metric entity"
     (let [context {:user_is_viewing [{:type "metric"
-                                      :id 111
+                                      :id 2147483005
                                       :name "Total Revenue"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -189,7 +192,7 @@
 (deftest ^:parallel format-viewing-context-test-2e
   (testing "formats dashboard entity"
     (let [context {:user_is_viewing [{:type "dashboard"
-                                      :id 222
+                                      :id 2147483006
                                       :name "Executive Dashboard"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -199,7 +202,7 @@
 (deftest ^:parallel format-viewing-context-test-2f
   (testing "handles keyword types in viewing context"
     (let [context {:user_is_viewing [{:type :table
-                                      :id 321
+                                      :id 2147483002
                                       :name "orders"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -214,7 +217,7 @@
 
 (deftest ^:parallel format-viewing-context-test-2h
   (testing "handles multiple viewing items"
-    (let [context {:user_is_viewing [{:type "table" :id 321 :name "users"}
+    (let [context {:user_is_viewing [{:type "table" :id 2147483002 :name "users"}
                                      {:type "question" :id 2 :name "Top Users"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -224,11 +227,11 @@
 (deftest ^:parallel format-recent-views-test
   (testing "formats recent views"
     (let [context {:user_recently_viewed [{:type "question"
-                                           :id 123
+                                           :id 2147483001
                                            :name "Revenue Query"
                                            :description "Daily revenue"}
                                           {:type "dashboard"
-                                           :id 456
+                                           :id 2147483003
                                            :name "Sales Dashboard"}]}
           result (user-context/format-recent-views context)]
       (is (some? result))
@@ -276,7 +279,7 @@
                                         :sql_engine "PostgreSQL"
                                         :query (lib/native-query (mt/metadata-provider) "SELECT * FROM users")}]
                      :user_recently_viewed [{:type "table"
-                                             :id 123
+                                             :id 2147483001
                                              :name "users"}]}
             result (user-context/enrich-context-for-template context)]
         (is (contains? result :current_time))
@@ -296,7 +299,7 @@
                                       :sql_engine "PostgreSQL"
                                       :query      (lib/native-query (mt/metadata-provider) "SELECT * FROM users")}]
                    :user_recently_viewed [{:type "table"
-                                           :id 123
+                                           :id 2147483001
                                            :name "users"}]}
           result (user-context/enrich-context-for-template context)]
       (is (re-find #"SQL editor" (:viewing_context result)))

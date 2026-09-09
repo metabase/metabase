@@ -4,6 +4,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
    [metabase.util.i18n :as i18n]
@@ -15,27 +16,32 @@
 (doto :model/TransformTag
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-read? :model/TransformTag
-  ([_instance]
-   (api/is-data-analyst?))
-  ([_model _pk]
-   (api/is-data-analyst?)))
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (api/is-data-analyst?)))
+  ([_model pk]
+   (when-let [tag (transforms.db/tag pk)]
+     (mi/can-read? tag))))
 
 (defmethod mi/can-write? :model/TransformTag
   ([instance]
-   (or api/*is-superuser?*
-       (and api/*is-data-analyst?*
-            (let [transforms (transform/transforms-with-tags [(:id instance)])]
-              (every? mi/can-write? transforms)))))
+   (and (remote-sync/worktree-accessible? instance)
+        (or api/*is-superuser?*
+            (and api/*is-data-analyst?*
+                 (let [transforms (transform/transforms-with-tags [(:id instance)])]
+                   (every? mi/can-write? transforms))))))
   ([_model pk]
    (when-let [tag (transforms.db/tag pk)]
      (mi/can-write? tag))))
 
 (defmethod mi/can-create? :model/TransformTag
-  [_model _instance]
-  (api/is-data-analyst?))
+  [_model instance]
+  (and (remote-sync/worktree-accessible? instance)
+       (api/is-data-analyst?)))
 
 (defn schedules-for-transforms
   "Map each id in `transform-ids` to the cron schedules of the active jobs that run it via shared tags.
@@ -48,12 +54,14 @@
             (transforms.db/active-job-schedules-for-transforms transform-ids))))
 
 (defn tag-name-exists?
-  "Check if a tag with the given name already exists"
-  [tag-name]
-  (transforms.db/tag-name-exists? tag-name))
+  "Check if a tag with the given name already exists within `worktree-id` (nil is the main app). Names are unique
+  per worktree: a worktree checks out its own copy of a branch's tags, under the names the branch gave them."
+  ([tag-name] (tag-name-exists? tag-name nil))
+  ([tag-name worktree-id]
+   (transforms.db/tag-name-exists? tag-name worktree-id)))
 
 (defn tag-name-exists-excluding?
-  "Check if a tag with the given name exists, excluding the specified ID"
+  "Check if a tag with the given name exists in the same worktree as `tag-id`, excluding `tag-id` itself."
   [tag-name tag-id]
   (transforms.db/tag-name-exists-excluding? tag-name tag-id))
 
@@ -106,7 +114,8 @@
 
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]
-  {:copy [:entity_id :built_in_type]
+  {:skip [:worktree_id]
+   :copy [:entity_id :built_in_type]
    :transform {:name {:export str :import identity}
                :created_at (serdes/date)}})
 

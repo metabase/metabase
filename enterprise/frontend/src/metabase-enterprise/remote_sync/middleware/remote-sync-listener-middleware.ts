@@ -68,22 +68,39 @@ const ALL_INVALIDATION_TAGS = [
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.exportChanges.matchPending,
-  effect: async (_action, { dispatch }) => {
-    dispatch(taskStarted({ taskType: "export" }));
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskStarted({
+        taskType: "export",
+        worktreeId: action.meta.arg.originalArgs.worktree_id ?? null,
+      }),
+    );
   },
 });
 
+// A rejection clears only the task the mutation started: with a task already running in another
+// scope, `taskStarted` keeps tracking that one, and the rejection (400 "Remote sync in progress")
+// must leave it alone.
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.exportChanges.matchRejected,
-  effect: async (_action, { dispatch }) => {
-    dispatch(taskCleared());
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskCleared({
+        worktreeId: action.meta.arg.originalArgs.worktree_id ?? null,
+      }),
+    );
   },
 });
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchPending,
-  effect: async (_action, { dispatch }) => {
-    dispatch(taskStarted({ taskType: "import" }));
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskStarted({
+        taskType: "import",
+        worktreeId: action.meta.arg.originalArgs.worktree_id ?? null,
+      }),
+    );
   },
 });
 
@@ -100,8 +117,43 @@ remoteSyncListenerMiddleware.startListening({
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchRejected,
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskCleared({
+        worktreeId: action.meta.arg.originalArgs.worktree_id ?? null,
+      }),
+    );
+  },
+});
+
+// A branch switch always runs against the main app, and pulls the target branch, so it tracks the
+// same as an import.
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.switchBranch.matchPending,
   effect: async (_action, { dispatch }) => {
-    dispatch(taskCleared());
+    dispatch(taskStarted({ taskType: "import", worktreeId: null }));
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.switchBranch.matchRejected,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskCleared({ worktreeId: null }));
+  },
+});
+
+// Stashing pushes local changes to a new branch, so it tracks the same as an export.
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.stashChanges.matchPending,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskStarted({ taskType: "export", worktreeId: null }));
+  },
+});
+
+remoteSyncListenerMiddleware.startListening({
+  matcher: remoteSyncApi.endpoints.stashChanges.matchRejected,
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskCleared({ worktreeId: null }));
   },
 });
 
@@ -124,8 +176,9 @@ remoteSyncListenerMiddleware.startListening({
         dispatch(modalDismissed());
         // The first-import / setup flow surfaces conflicts as a task status. Export conflicts are
         // surfaced as a toast by GitSyncControls (which observes the task), not here — middleware can't
-        // use the useToast hook.
-        if (task.sync_task_type !== "export") {
+        // use the useToast hook. Worktree conflicts (any type) are likewise handled by the worktree's
+        // own sync controls observing the task.
+        if (task.sync_task_type !== "export" && task.worktree_id == null) {
           dispatch(syncConflictVariantUpdated("setup"));
         }
         return;

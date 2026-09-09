@@ -6,6 +6,10 @@ import {
   skipToken,
   useListCollectionItemsQuery,
 } from "metabase/api";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
 import type {
   LibrarySectionType,
   TreeItem,
@@ -15,8 +19,7 @@ import {
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useDispatch, useSelector } from "metabase/redux";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import { useDispatch } from "metabase/redux";
 import type {
   Collection,
   CollectionId,
@@ -30,6 +33,7 @@ export function useLibraryCollectionTree(
 ) {
   const dispatch = useDispatch();
   const getIcon = useGetIcon();
+  const worktreeId = useWorktreeId();
 
   // 1. Fetch top-level items
   const {
@@ -46,7 +50,7 @@ export function useLibraryCollectionTree(
       : skipToken,
   );
 
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const isRemoteSyncReadOnly = useIsRemoteSyncReadOnly();
 
   // 2. Lazy-loaded subcollection items
   const [loadedCollections, setLoadedCollections] = useState<
@@ -121,6 +125,7 @@ export function useLibraryCollectionTree(
                 sectionType,
                 metricCollectionId,
                 isRemoteSyncReadOnly,
+                worktreeId,
               ),
             ],
       },
@@ -134,6 +139,7 @@ export function useLibraryCollectionTree(
     sectionType,
     metricCollectionId,
     isRemoteSyncReadOnly,
+    worktreeId,
   ]);
 
   // 4. Watch rows for expanded-but-empty collections → trigger fetch

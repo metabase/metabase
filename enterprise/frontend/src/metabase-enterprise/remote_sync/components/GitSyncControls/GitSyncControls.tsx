@@ -34,7 +34,7 @@ import { trackPullChanges } from "../../analytics";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "../../hooks/use-sync-status";
-import { type SyncError, parseSyncError } from "../../utils";
+import { parseSyncError } from "../../utils";
 import { PushChangesModal } from "../PushChangesModal";
 import { SyncConflictModal } from "../SyncConflictModal";
 
@@ -51,7 +51,9 @@ export const GitSyncControls = () => {
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
   const [runExportPreflight] = useLazyGetExportPreflightQuery();
-  const { isRunning: isSyncTaskRunning } = useSyncStatus();
+  // The backend runs one sync task at a time instance-wide, so a worktree's task blocks the main
+  // app's push/pull just like the main app's own would.
+  const { isAnyTaskRunning } = useSyncStatus();
 
   // Set when a push or pull needs the conflict modal; carries whether a clean merge is available.
   const [conflictPreflight, setConflictPreflight] =
@@ -72,18 +74,20 @@ export const GitSyncControls = () => {
 
   // An export task that ends in conflict (the push lost the preflight->execute race, or fell through a
   // preflight error) is otherwise silent: the middleware can't toast (no hook), so surface it here, then
-  // clear the task so it doesn't re-fire on re-render/navigation.
+  // clear the task so it doesn't re-fire on re-render/navigation. Worktree tasks are surfaced by the
+  // worktree's own sync controls instead.
   const currentTask = useSelector(getCurrentTask);
   useEffect(() => {
     if (
       currentTask?.status === "conflict" &&
-      currentTask?.sync_task_type === "export"
+      currentTask?.sync_task_type === "export" &&
+      currentTask?.worktree_id == null
     ) {
       sendToast({
         icon: "warning",
         message: t`The remote branch changed before your push finished. Pull the latest changes, then push again.`,
       });
-      dispatch(taskCleared());
+      dispatch(taskCleared({ worktreeId: null }));
     }
   }, [currentTask, sendToast, dispatch]);
 
@@ -97,7 +101,7 @@ export const GitSyncControls = () => {
   });
   const { has_changes: hasRemoteChanges } = hasRemoteChangesData || {};
 
-  const isLoading = isSyncTaskRunning || isImporting || isCheckingPreflight;
+  const isLoading = isAnyTaskRunning || isImporting || isCheckingPreflight;
 
   // If `error` is a branch-mismatch rejection (another session switched branches), open the
   // out-of-date modal prompting a refresh and return true so the caller can stop. Returns false for
@@ -107,8 +111,7 @@ export const GitSyncControls = () => {
       hasBranchMismatch,
       errorMessage,
       currentBranch: serverBranch,
-      // Unjustified type cast. FIXME
-    } = parseSyncError(error as SyncError);
+    } = parseSyncError(error);
     if (hasBranchMismatch) {
       setBranchMismatch({
         message: errorMessage ?? t`The sync branch changed in another session.`,
@@ -193,7 +196,6 @@ export const GitSyncControls = () => {
 
     try {
       await importChanges({
-        branch: currentBranch,
         expected_branch: currentBranch,
       }).unwrap();
 
@@ -206,8 +208,7 @@ export const GitSyncControls = () => {
         return;
       }
 
-      // Unjustified type cast. FIXME
-      const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
+      const { hasConflict, errorMessage } = parseSyncError(error);
 
       if (hasConflict) {
         setConflictPreflight(null);
@@ -255,6 +256,7 @@ export const GitSyncControls = () => {
             size="compact-sm"
             bd="none"
             mr="xl"
+            classNames={{ inner: S.shrinkable, label: S.shrinkable }}
             disabled={isLoading}
             onClick={() => combobox.toggleDropdown()}
             leftSection={

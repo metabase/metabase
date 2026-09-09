@@ -59,10 +59,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- dashboards-list [filter-option]
+(defn- dashboards-list [filter-option worktree-id]
   (as-> (dashboards-rest.db/dashboards (= (keyword filter-option) :archived)
                                        (when (= (keyword filter-option) :mine)
-                                         api/*current-user-id*)) <>
+                                         api/*current-user-id*)
+                                       worktree-id) <>
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
@@ -77,12 +78,18 @@
   Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
   *  `all`      - Return all Dashboards.
   *  `mine`     - Return Dashboards created by the current user.
-  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
+  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)
+
+  `worktree-id` lists the dashboards checked out into a remote-sync worktree instead of the main app (needs
+  the `:remote-sync` application permission)."
   {:deprecated true}
   [_route-params
-   {:keys [f]} :- [:map
-                   [:f {:optional true} [:maybe [:enum "all" "mine" "archived"]]]]]
-  (let [dashboards (dashboards-list f)
+   {:keys [f worktree-id]} :- [:map
+                               [:f           {:optional true} [:maybe [:enum "all" "mine" "archived"]]]
+                               [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (perms/check-can-access-worktrees))
+  (let [dashboards (dashboards-list f worktree-id)
         edit-infos (:dashboard (revisions/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
     (into []
           (map (fn [{:keys [id] :as dashboard}]

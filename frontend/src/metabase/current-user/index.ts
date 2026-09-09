@@ -6,6 +6,7 @@ export {
   useLazyGetCurrentUserQuery,
 } from "./api/current-user";
 export {
+  canAccessRemoteSync,
   canAccessSettings,
   canManageSubscriptions,
   canUserCreateNativeQueries,

@@ -8,9 +8,12 @@ import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import {
+  useIsRemoteSyncReadOnly,
+  useWorktreeId,
+} from "metabase/common/worktrees";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
-import { useSelector } from "metabase/redux";
 import {
   Card,
   Flex,
@@ -20,7 +23,6 @@ import {
   TreeTable,
   TreeTableSkeleton,
 } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
@@ -44,7 +46,8 @@ export function LibraryPage() {
 }
 
 function LibraryPageContent() {
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const isRemoteSyncReadOnly = useIsRemoteSyncReadOnly();
+  const worktreeId = useWorktreeId();
   const [searchQuery, setSearchQuery] = useState("");
   const [
     showPublishTableModal,
@@ -55,6 +58,7 @@ function LibraryPageContent() {
       "exclude-other-user-collections": true,
       "exclude-archived": true,
       "include-library": true,
+      "worktree-id": worktreeId,
     });
   const {
     treeTableInstance,
@@ -132,7 +136,13 @@ function LibraryPageContent() {
           style={{ overflow: "hidden" }}
         >
           {!libraryCollection && !isLoadingCollections ? (
-            <LibraryEmptyState />
+            worktreeId != null ? (
+              <ListEmptyState
+                label={t`This worktree's branch doesn't include a Library`}
+              />
+            ) : (
+              <LibraryEmptyState />
+            )
           ) : (
             <>
               <Flex gap="lg">

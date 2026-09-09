@@ -3,6 +3,7 @@ import type { DimensionId, DimensionMapping, MetricDimension } from "./metric";
 import type { DatasetQuery, OpaqueDatasetQuery } from "./query";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
+import type { WorktreeId } from "./worktree";
 
 export type MeasureId = number;
 
@@ -23,12 +24,14 @@ export interface Measure {
   result_column_name?: string;
   dimensions?: MetricDimension[];
   dimension_mappings?: DimensionMapping[];
+  worktree_id?: WorktreeId | null;
 }
 
 export interface CreateMeasureRequest {
   name: string;
   definition: DatasetQuery;
   description?: string;
+  worktree_id?: WorktreeId | null;
 }
 
 export interface UpdateMeasureRequest {

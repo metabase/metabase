@@ -23,6 +23,7 @@ export const createMockCollection = (
   authority_level: null,
   namespace: null,
   entity_id: createMockEntityId(),
+  worktree_id: null,
   ...opts,
 });
 

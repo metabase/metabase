@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
+import { useWorktreeId } from "metabase/common/worktrees";
 import type { SnippetCollectionPickerModalProps } from "metabase/plugins";
 import type { CollectionId } from "metabase-types/api";
 
@@ -11,6 +12,7 @@ export function SnippetCollectionPickerModal({
   onSelect,
   onClose,
 }: SnippetCollectionPickerModalProps) {
+  const worktreeId = useWorktreeId();
   const handleChange = useCallback(
     (item: OmniPickerItem) => {
       const collectionId: CollectionId | null =
@@ -31,6 +33,7 @@ export function SnippetCollectionPickerModal({
       onClose={onClose}
       title={t`Select a folder for your snippet`}
       namespaces={["snippets"]}
+      worktreeId={worktreeId}
       options={{
         hasPersonalCollections: false,
         canCreateCollections: true,

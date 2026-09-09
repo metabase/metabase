@@ -1,5 +1,6 @@
 import type {
   Collection,
+  GetLibraryCollectionRequest,
   GetLibraryCollectionResponse,
 } from "metabase-types/api";
 
@@ -15,10 +16,14 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: [listTag("collection"), tag("library-collection")],
     }),
-    getLibraryCollection: builder.query<GetLibraryCollectionResponse, void>({
-      query: () => ({
+    getLibraryCollection: builder.query<
+      GetLibraryCollectionResponse,
+      GetLibraryCollectionRequest | void
+    >({
+      query: (params) => ({
         url: `/api/ee/library`,
         method: "GET",
+        params: params ?? undefined,
       }),
       providesTags: (collection) => [
         // TODO Alex P 12/05/2025 Fix the endpoint to return sensible data

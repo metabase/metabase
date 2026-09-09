@@ -5,7 +5,8 @@
    [metabase.revisions.models.revision :as revision]))
 
 (def ^:private excluded-columns-for-segment-revision
-  #{:created_at :updated_at})
+  ;; which worktree a segment belongs to is fixed at creation, so a revision can neither describe nor revert it
+  #{:created_at :updated_at :worktree_id})
 
 (defmethod revision/serialize-instance :model/Segment
   [_model _id instance]

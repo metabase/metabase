@@ -274,6 +274,7 @@ const getDefaultApplicationPermissions = () => ({
   tabs: [] as any,
   selectors: {
     canAccessSettings: (_state: any) => false,
+    canAccessRemoteSync: (_state: any) => false,
     canManageSubscriptions: (_state: any) => true,
   },
 });

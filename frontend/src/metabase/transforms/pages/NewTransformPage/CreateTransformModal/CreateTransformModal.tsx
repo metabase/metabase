@@ -11,6 +11,7 @@ import {
 } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { hasFeature } from "metabase/databases";
 import {
   Form,
@@ -164,6 +165,7 @@ function CreateTransformForm({
   showIncrementalSettings = true,
 }: CreateTransformFormFieldsProps) {
   const { values, setFieldValue } = useFormikContext<NewTransformValues>();
+  const worktreeId = useWorktreeId();
 
   const handleIncrementalChange = (value: boolean) => {
     setFieldValue("incremental", value);
@@ -189,7 +191,10 @@ function CreateTransformForm({
         <FormCollectionPicker
           name="collection_id"
           title={t`Collection`}
-          collectionPickerModalProps={{ namespaces: ["transforms"] }}
+          collectionPickerModalProps={{
+            namespaces: ["transforms"],
+            worktreeId,
+          }}
           style={{ marginBottom: 0 }}
         />
         {showIncrementalSettings && (

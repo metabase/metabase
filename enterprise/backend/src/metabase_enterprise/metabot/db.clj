@@ -184,9 +184,9 @@
   (t2/select-one :model/Transform :id transform-id))
 
 (mu/defn transforms
-  "The Transforms with `transform-ids`."
+  "The main-app Transforms with `transform-ids`; worktree copies are excluded."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (t2/select :model/Transform :id [:in transform-ids]))
+  (t2/select :model/Transform :id [:in transform-ids] :worktree_id nil))
 
 (mu/defn cards
   "The Cards with `card-ids`."

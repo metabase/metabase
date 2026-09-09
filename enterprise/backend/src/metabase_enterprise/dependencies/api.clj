@@ -15,6 +15,7 @@
    [metabase.graph.core :as graph]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
@@ -183,10 +184,25 @@
    :measure   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- current-user-visibility
-  "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`."
-  [{:keys [include-archived-items]}]
-  (cond-> {:user-id api/*current-user-id* :is-superuser? api/*is-superuser?* :is-data-analyst? api/*is-data-analyst?*}
+  "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`. Takes
+  `:include-archived-items` (:exclude, :all, :only; the db layer defaults to :exclude) and `:worktree-id`, the
+  remote-sync worktree to scope to (nil is the main app)."
+  [{:keys [include-archived-items worktree-id]}]
+  (cond-> {:user-id               api/*current-user-id*
+           :is-superuser?         api/*is-superuser?*
+           :can-access-worktrees? (perms/current-user-can-access-worktrees?)
+           :is-data-analyst?      api/*is-data-analyst?*
+           :worktree-id           worktree-id}
     include-archived-items (assoc :include-archived-items include-archived-items)))
+
+(defn- entity-worktree-id
+  "The remote-sync worktree the request's starting entity lives in; nil for the main app. A dependency graph never
+  spans two scopes, so the whole request follows the entity the caller named. `api/read-check` on that entity is
+  what keeps a worktree's graph to admins and holders of the remote-sync application permission."
+  [entity-type id]
+  (when id
+    ;; a model whose table carries no `worktree_id` -- a table, a sandbox -- simply has no such key
+    (:worktree_id (dependencies.db/instance entity-type id))))
 
 (defn- readable-graph-dependencies
   ([]
@@ -197,9 +213,10 @@
 (defn- readable-graph-dependents
   ([]
    (readable-graph-dependents nil))
-  ([{:keys [include-archived-items broken] :or {include-archived-items :exclude}}]
+  ([{:keys [include-archived-items broken worktree-id] :or {include-archived-items :exclude}}]
    (dependency/filtered-graph-dependents
-    (cond-> {:visible (current-user-visibility {:include-archived-items include-archived-items})}
+    (cond-> {:visible (current-user-visibility {:include-archived-items include-archived-items
+                                                :worktree-id            worktree-id})}
       broken (assoc :broken? true)))))
 
 (defn- node-usages
@@ -225,14 +242,14 @@
 
 (defn- node-downstream-errors
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
-   Filters out errors where the analyzed entity is not visible to the current user.
+   Filters out errors where the analyzed entity is not visible to the current user, in `worktree-id`'s scope.
    Unlike `node-errors` which fetches errors on an entity, this fetches errors that
    the entity is causing in other entities that depend on it."
-  [nodes-by-type]
+  [nodes-by-type worktree-id]
   (letfn [(errors-by-source-type-and-id [[source-type ids]]
             (when (seq ids)
               (let [finding-errors (dependencies.db/finding-errors-from-sources
-                                    source-type ids (current-user-visibility nil))]
+                                    source-type ids (current-user-visibility {:worktree-id worktree-id}))]
                 (u/group-by (juxt :source_entity_type :source_entity_id)
                             identity conj #{} finding-errors))))]
     (->> nodes-by-type
@@ -241,9 +258,9 @@
 
 (defn- node-errors
   "Fetches and normalizes AnalysisFindingErrors for the given entities.
-   Filters out errors where the source entity is not visible to the current user.
+   Filters out errors where the source entity is not visible to the current user, in `worktree-id`'s scope.
    Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
-  [nodes-by-type]
+  [nodes-by-type worktree-id]
   (letfn [(normalize-finding-error
             [{:keys [error_type error_detail]}]
             (cond-> {:type error_type}
@@ -251,7 +268,7 @@
           (errors-by-entity-type-and-id [[type ids]]
             (when (seq ids)
               (let [finding-errors (dependencies.db/finding-errors-for-entities-with-visible-sources
-                                    type ids (current-user-visibility nil))]
+                                    type ids (current-user-visibility {:worktree-id worktree-id}))]
                 (u/group-by (juxt :analyzed_entity_type :analyzed_entity_id)
                             normalize-finding-error conj #{} finding-errors))))]
     (->> nodes-by-type
@@ -295,12 +312,12 @@
                                   [[entity-type (:id entity)] entity])))))))
         nodes-by-type))
 
-(defn- expanded-nodes [downstream-graph nodes {:keys [include-errors?]}]
+(defn- expanded-nodes [downstream-graph nodes {:keys [include-errors? worktree-id]}]
   (let [usages (node-usages downstream-graph nodes)
         nodes-by-type (-> (group-by first nodes)
                           (update-vals #(map second %)))
         errors (when include-errors?
-                 (node-errors nodes-by-type))
+                 (node-errors nodes-by-type worktree-id))
         hydrated-entities (fetch-and-hydrate-nodes nodes-by-type)
         nodes-by-type-and-id
         (into {}
@@ -327,14 +344,18 @@
                          [:id {:optional true} ms/PositiveInt]
                          [:type {:optional true} ::deps.dependency-types/dependency-types]]]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
-  (let [starting-nodes [[type id]]
-        upstream-graph (readable-graph-dependencies {:include-archived-items :all})
-        downstream-graph (graph/cached-graph (readable-graph-dependents))
-        edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all}))
+  (let [worktree-id (entity-worktree-id type id)
+        starting-nodes [[type id]]
+        upstream-graph (readable-graph-dependencies {:include-archived-items :all
+                                                     :worktree-id            worktree-id})
+        downstream-graph (graph/cached-graph (readable-graph-dependents {:worktree-id worktree-id}))
+        edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all
+                                                                   :worktree-id            worktree-id}))
         nodes (into (set starting-nodes)
                     (graph/transitive upstream-graph starting-nodes))
         edges (graph/edges-between edge-graph nodes)]
-    {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false})
+    {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false
+                                                    :worktree-id     worktree-id})
      :edges edges}))
 
 (def ^:private sort-directions
@@ -439,7 +460,9 @@
          sort-column :name
          sort-direction :asc}} :- dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
-  (let [downstream-graph (graph/cached-graph (readable-graph-dependents {:broken broken}))
+  (let [worktree-id (entity-worktree-id type id)
+        downstream-graph (graph/cached-graph (readable-graph-dependents {:broken      broken
+                                                                         :worktree-id worktree-id}))
         nodes (-> (graph/children-of downstream-graph [[type id]])
                   (get [type id]))
         dep-types-set (cond
@@ -467,7 +490,8 @@
          (if query
            (filter #(entity-matches-query? % query))
            identity))]
-    (-> (into [] dependents-filter (expanded-nodes downstream-graph nodes {:include-errors? false}))
+    (-> (into [] dependents-filter (expanded-nodes downstream-graph nodes {:include-errors? false
+                                                                           :worktree-id     worktree-id}))
         (sort-dependents sort-column sort-direction))))
 
 (def ^:private breaking-items-sort-columns
@@ -485,7 +509,8 @@
    [:query {:optional true} :string]
    [:include-personal-collections {:optional true} :boolean]
    [:sort-column {:optional true} (ms/enum-decode-keyword breaking-items-sort-columns)]
-   [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
+   [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]
+   [:worktree-id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private dependency-items-response
   [:map
@@ -514,19 +539,21 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card-types query include-personal-collections sort-column sort-direction]
+   {:keys [types card-types query include-personal-collections sort-column sort-direction worktree-id]
     :or {types (vec deps.dependency-types/dependency-types)
          card-types (vec lib.schema.metadata/card-types)
          include-personal-collections false
          sort-column :name
          sort-direction :asc}} :- dependency-items-args]
+  (when worktree-id
+    (perms/check-can-access-worktrees))
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card-types) card-types [card-types])
-        item-params (merge (current-user-visibility nil)
+        item-params (merge (current-user-visibility {:worktree-id worktree-id})
                            {:query-type :unreferenced
                             :entity-types selected-types
                             :card-types card-types
@@ -565,19 +592,21 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card-types query include-personal-collections sort-column sort-direction]
+   {:keys [types card-types query include-personal-collections sort-column sort-direction worktree-id]
     :or {types [:card :table]
          card-types (vec lib.schema.metadata/card-types)
          include-personal-collections false
          sort-column :name
          sort-direction :asc}} :- dependency-items-args]
+  (when worktree-id
+    (perms/check-can-access-worktrees))
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card-types) card-types [card-types])
-        item-params (merge (current-user-visibility nil)
+        item-params (merge (current-user-visibility {:worktree-id worktree-id})
                            {:query-type :breaking
                             :entity-types selected-types
                             :card-types card-types
@@ -588,9 +617,9 @@
                             :offset offset
                             :limit limit})
         all-ids (dependencies.db/dependency-item-ids item-params)
-        downstream-graph (graph/cached-graph (readable-graph-dependents))
+        downstream-graph (graph/cached-graph (readable-graph-dependents {:worktree-id worktree-id}))
         nodes-by-type (u/group-by first second all-ids)
-        downstream-errors (node-downstream-errors nodes-by-type)
+        downstream-errors (node-downstream-errors nodes-by-type worktree-id)
         total (dependencies.db/dependency-item-count item-params)
         usages (node-usages downstream-graph all-ids)
         fetch-entity (fn [entity-type entity-id]
@@ -651,14 +680,15 @@
          sort-column :name
          sort-direction :asc}} :- broken-dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model entity-type) id)
-  (let [normalize-types (fn normalize-types [types]
+  (let [worktree-id (entity-worktree-id entity-type id)
+        normalize-types (fn normalize-types [types]
                           (if (keyword? types)
                             [(name types)]
                             (not-empty (map name types))))
         dep-types (normalize-types dependent-types)
         card-types (normalize-types dependent-card-types)
         broken-pairs (dependencies.db/broken-entity-pairs
-                      (merge (current-user-visibility nil)
+                      (merge (current-user-visibility {:worktree-id worktree-id})
                              {:source-entity-type entity-type
                               :source-entity-id id
                               :dependent-types dep-types

@@ -1,3 +1,4 @@
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -8,6 +9,7 @@ import { renderHookWithProviders, waitFor } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -15,12 +17,14 @@ import { useGitSyncVisible } from "./use-git-sync-visible";
 
 const setup = ({
   isAdmin = true,
+  hasRemoteSyncPermission = false,
   remoteSyncEnabled = true,
   currentBranch = "main",
   syncType = "read-write",
   isBranchEnvSetting = false,
 }: {
   isAdmin?: boolean;
+  hasRemoteSyncPermission?: boolean;
   remoteSyncEnabled?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
@@ -43,13 +47,23 @@ const setup = ({
   ]);
 
   const storeInitialState = createMockState({
-    currentUser: createMockUser({ is_superuser: isAdmin }),
+    currentUser: createMockUser({
+      is_superuser: isAdmin,
+      permissions: { can_access_remote_sync: hasRemoteSyncPermission },
+    }),
     settings: mockSettings({
       "remote-sync-enabled": remoteSyncEnabled,
       "remote-sync-branch": currentBranch,
       "remote-sync-type": syncType,
+      // Registers the real (EE) canAccessRemoteSync selector useGitSyncVisible reads, instead of
+      // the OSS plugin default.
+      "token-features": createMockTokenFeatures({ advanced_permissions: true }),
     }),
   });
+
+  // hasPremiumFeature reads the MetabaseSettings singleton synchronously, so it must be seeded
+  // (mockSettings, above) before the EE plugins register their selectors.
+  setupEnterprisePlugins();
 
   return renderHookWithProviders(() => useGitSyncVisible(), {
     storeInitialState,
@@ -81,13 +95,24 @@ describe("useGitSyncVisible", () => {
     });
   });
 
-  it("should return isVisible: false when user is not admin", async () => {
+  it("should return isVisible: false when user is not admin and lacks remote sync access", async () => {
     const { result } = setup({
       isAdmin: false,
     });
 
     await waitFor(() => {
       expect(result.current.isVisible).toBe(false);
+    });
+  });
+
+  it("should return isVisible: true for a non-admin with remote sync access", async () => {
+    const { result } = setup({
+      isAdmin: false,
+      hasRemoteSyncPermission: true,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isVisible).toBe(true);
     });
   });
 

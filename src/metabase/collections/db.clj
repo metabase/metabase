@@ -37,6 +37,19 @@
   [type :- :string]
   (t2/select-one :model/Collection :type type))
 
+(mu/defn collection-of-type-in-worktree
+  "The ::collections.schema/collection of `type` belonging to the remote-sync worktree with `worktree-id` (nil for the
+  main app), or nil."
+  [type        :- :string
+   worktree-id :- [:maybe ::lib.schema.id/worktree]]
+  (t2/select-one :model/Collection :type type :worktree_id worktree-id))
+
+(mu/defn collection-worktree-id
+  "The `:worktree_id` of the ::collections.schema/collection with `collection-id`: the remote-sync worktree it was
+  checked out into, or nil for the main app."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one-fn :worktree_id :model/Collection :id collection-id))
+
 (mu/defn root-remote-synced-collection
   "The top-level remote-synced ::collections.schema/collection, or nil."
   []
@@ -157,6 +170,21 @@
                       (into [:or] (map (fn [prefix] [:like :location prefix])) location-prefixes)
                       [:or [:= :personal_owner_id nil] [:= :personal_owner_id current-user-id]]]}))
 
+(mu/defn worktree-collection-counterpart-rows
+  "For each worktree Collection among `collection-ids`, a row of its `:worktree_collection_id` and the
+  `:main_collection_id` of the main-app Collection it is a copy of, resolved through the `worktree_remapping` table.
+  Queries the table rather than `:model/WorktreeRemapping`: the model is enterprise-only, while the table exists on
+  both editions."
+  [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
+  (t2/query {:select [[:wt.id :worktree_collection_id] [:mc.id :main_collection_id]]
+             :from   [[:collection :wt]]
+             :join   [[:worktree_remapping :wr] [:= :wr.local_entity_id :wt.entity_id]
+                      [:collection :mc]         [:= :mc.entity_id :wr.source_entity_id]]
+             :where  [:and
+                      [:= :wr.type "Collection"]
+                      [:= :mc.worktree_id nil]
+                      [:in :wt.id collection-ids]]}))
+
 (mu/defn effective-children
   "The ID, name, description, and type of the Collections matching `effective-children-clause`, a
   `metabase.collections.models.collection/effective-children-where-clause`.
@@ -171,11 +199,13 @@
   stable across exports, see GHY-3754). The Trash is never exported, nor are archived Collections when
   `skip-archived?`. When `collection-set` is non-empty only those Collections are exported (nil in the set counts as
   the root collection); otherwise every non-personal Collection is. `filter-column` and `filter-ids`, when given,
-  further restrict the export to the rows whose `filter-column` is one of `filter-ids`."
+  further restrict the export to the rows whose `filter-column` is one of `filter-ids`. Only the Collections in the
+  remote-sync worktree `worktree-id` are exported (nil for the main app)."
   [collection-set :- [:maybe [:or [:set [:maybe ::lib.schema.id/collection]] [:sequential [:maybe ::lib.schema.id/collection]]]]
    skip-archived? :- [:maybe :boolean]
    filter-column  :- [:maybe :keyword]
-   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
+   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   worktree-id    :- [:maybe ::lib.schema.id/worktree]]
   (t2/reducible-select :model/Collection
                        {:where    [:and
                                    (when skip-archived? [:not :archived])
@@ -189,7 +219,8 @@
                                     [:= :type nil]
                                     [:not= :type collections.schema/trash-collection-type]]
                                    (when filter-column
-                                     [:in filter-column filter-ids])]
+                                     [:in filter-column filter-ids])
+                                   [:= :worktree_id worktree-id]]
                         :order-by serdes/stable-storage-order}))
 
 (mu/defn collection-count-by-ids
@@ -204,9 +235,10 @@
   (t2/count :model/Collection :id collection-id :type [:in types]))
 
 (mu/defn remote-synced-collection-count
-  "The number of remote-synced Collections."
+  "The number of remote-synced main-app Collections. A worktree's collections are all remote-synced -- a worktree is
+  a checkout of a branch -- and say nothing about whether the main app syncs."
   []
-  (t2/count :model/Collection :is_remote_synced true))
+  (t2/count :model/Collection :is_remote_synced true :worktree_id nil))
 
 (mu/defn collection-ids-with-location-like
   "The IDs of the Collections whose location matches the SQL `pattern`."
@@ -273,19 +305,21 @@
 
 (mu/defn insert-collection!
   "Insert `collection` and return the new instance."
-  [collection :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
+  [collection :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced :worktree_id])]
   (t2/insert-returning-instance! :model/Collection collection))
 
 (mu/defn update-collection!
   "Apply `changes` to the ::collections.schema/collection with `collection-id`, returning the number updated."
   [collection-id :- ::lib.schema.id/collection
-   changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
+   changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced :worktree_id])]
   (t2/update! :model/Collection collection-id changes))
 
 (mu/defn clear-remote-synced-flags!
-  "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
+  "Mark every remote-synced main-app ::collections.schema/collection as not remote-synced, returning the number
+  updated. A worktree's collections keep the flag: they are a checkout of a branch, and turning the main app's
+  remote sync off does not un-check-them-out."
   []
-  (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false}))
+  (t2/update! :model/Collection :is_remote_synced true :worktree_id nil {:is_remote_synced false}))
 
 (mu/defn archive-descendant-collections!
   "Archive, as part of the archive operation with `archive-operation-id`, the unarchived Collections whose location

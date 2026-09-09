@@ -10,12 +10,9 @@ import {
 import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/common/collections/utils";
 import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
+import { useIsRemoteSyncReadOnly } from "metabase/common/worktrees";
 import { getUserIsAdmin } from "metabase/current-user";
-import {
-  PLUGIN_LIBRARY,
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_SNIPPET_FOLDERS,
-} from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -46,9 +43,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
 
   const isAdmin = useSelector(getUserIsAdmin);
   const [updateCollection] = useUpdateCollectionMutation();
-  const remoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const remoteSyncReadOnly = useIsRemoteSyncReadOnly();
   const { show, modalContent: confirmationModal } = useConfirmation();
   const [isEditModalOpen, { toggle: toggleEditModal }] = useDisclosure(false);
   const [isPermissionsModalOpen, { toggle: togglePermissionsModal }] =

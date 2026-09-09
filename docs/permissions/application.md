@@ -46,6 +46,16 @@ The following Monitor pages aren't included in Monitoring access:
 - [Dependency diagnostics](../monitor/dependency-diagnostics.md): Available to admins and people in the [Data Analysts](../people-and-groups/managing.md#data-analysts) group
 - [Alerts management](../monitor/alerts-management.md): Available to admins only
 
+## Remote sync access
+
+{% include plans-blockquote.html feature="Remote sync" %}
+
+People in groups with Remote sync access can create and use [Remote Sync](../installation-and-operation/remote-sync.md) worktrees, including creating branches for a worktree, and can pull and push changes on the current sync branch.
+
+Remote sync access doesn't let people configure Remote Sync itself (the repository, access token, or sync type) or switch the main sync branch. Those settings stay admin-only.
+
+Admins always have Remote sync access.
+
 ## Subscriptions and alerts
 
 This setting determines who can create:

@@ -4,6 +4,7 @@ import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useNavigate } from "metabase/router";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -19,6 +20,7 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
   const navigate = useNavigate();
   const [updateSnippet, { isLoading }] = useUpdateSnippetMutation();
   const [sendToast] = useToast();
+  const worktreeId = useWorktreeId();
 
   const handleArchive = async () => {
     const { error } = await updateSnippet({
@@ -40,7 +42,7 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
               c="inherit"
               component={Link}
               td="underline"
-              to={Urls.dataStudioArchivedSnippets()}
+              to={Urls.dataStudioArchivedSnippets({ worktreeId })}
             >
               {t`View archived snippets`}
             </Text>
@@ -48,7 +50,7 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
         ),
         icon: "check",
       });
-      navigate(Urls.dataStudioLibrary());
+      navigate(Urls.dataStudioLibrary({ worktreeId }));
       onClose();
     }
   };

@@ -73,6 +73,7 @@
             :can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
+            :can_access_remote_sync  (perms/set-has-application-permission-of-type? permissions-set :remote-sync)
             :can_access_data_model   can-access-data-model
             :can_access_db_details   (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
             :can_access_transforms   (or api/*is-superuser?* (and api/*is-data-analyst?*

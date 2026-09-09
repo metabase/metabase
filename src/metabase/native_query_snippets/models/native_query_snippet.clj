@@ -8,6 +8,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -23,7 +24,8 @@
 (doto :model/NativeQuerySnippet
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
@@ -66,7 +68,8 @@
                        (lib/recognize-template-tags (:content snippet)))
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
                          ;; Check for exact match in database:
-                         (if-let [snippet-id (native-query-snippets.db/snippet-id-by-name snippet-name)]
+                         (if-let [snippet-id (native-query-snippets.db/snippet-id-by-name snippet-name
+                                                                                          (:worktree_id snippet))]
                            (assoc tag :snippet-id snippet-id)
                            ;; Use previous reference if possible:
                            (or (name->old-tag snippet-name) tag)))]
@@ -80,9 +83,12 @@
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (u/prog1 (add-template-tags snippet)
+  (u/prog1 (add-template-tags (collection/inherit-worktree-id snippet))
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
+
+(t2/define-after-select :model/NativeQuerySnippet [snippet]
+  (dissoc snippet :worktree_id_helper))
 
 (t2/define-after-insert :model/NativeQuerySnippet
   [snippet]
@@ -93,7 +99,10 @@
   [snippet]
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
   (u/prog1 (cond-> snippet
-             (:content snippet) add-template-tags)
+             ;; only when moving into a real collection: a snippet is one of the two models that may sit at a
+             ;; worktree root, so a move to one is legal and has no collection to compare worktrees against
+             (some? (:collection_id (t2/changes snippet))) collection/check-same-worktree
+             (:content snippet)                            add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? (t2/changes <>) :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))
@@ -110,20 +119,36 @@
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
 (defmethod mi/can-read? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-read? args))
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (snippet.perms/can-read? instance)))
+  ([_model pk]
+   (mi/can-read? (api/check-404 (native-query-snippets.db/snippet pk)))))
 
 (defmethod mi/can-write? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-write? args))
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (snippet.perms/can-write? instance)))
+  ([_model pk]
+   (mi/can-write? (api/check-404 (native-query-snippets.db/snippet pk)))))
 
 (defmethod mi/can-create? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-create? args))
+  [model m]
+  (and (remote-sync/worktree-accessible? m)
+       (snippet.perms/can-create? model m)))
 
 (defmethod mi/can-update? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-update? args))
+  [instance changes]
+  (and (remote-sync/worktree-accessible? instance)
+       (snippet.perms/can-update? instance changes)))
+
+(defmethod mi/visible-filter-clause :model/NativeQuerySnippet
+  [_model column-or-exp user-info _perm-type->perm-level & [opts]]
+  ;; a sandboxed user, or one who cannot write native queries at all, sees no snippets whatever their collections say
+  {:clause (if (and (not (perms/sandboxed-user?))
+                    (snippet.perms/has-any-native-permissions?))
+             [:in column-or-exp (collection/visible-collection-content-select :native_query_snippet user-info opts)]
+             [:= [:inline 0] [:inline 1]])})
 
 (methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
   [_model k snippets]
@@ -169,7 +194,7 @@
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]
-   :skip      []
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
@@ -202,7 +227,9 @@
   ;; if we got local snippet in db and it has same name as incoming one, we can be sure
   ;; there will be no conflicts and skip the query to the db
   (if (and (not= (:name ingested) (:name maybe-local))
-           (native-query-snippets.db/other-snippet-with-name-exists? (:name ingested) (:entity_id ingested)))
+           (native-query-snippets.db/other-snippet-with-name-exists? (:name ingested)
+                                                                     (:entity_id ingested)
+                                                                     serdes/*worktree-id*))
     (recur (update ingested :name str " (copy)")
            maybe-local)
     (serdes/default-load-one! ingested maybe-local)))

@@ -424,8 +424,16 @@ describe("MonitorLayout", () => {
     expect(onRender).toHaveBeenCalledTimes(renderCount);
   });
 
-  const getTabGem = (name: string) =>
-    within(screen.getByRole("link", { name })).queryByTestId("upsell-gem");
+  // The gem sits next to the tab's link, inside the row that wraps both.
+  const getTabGem = (name: string) => {
+    const row = screen
+      .getAllByTestId("area-tab")
+      .find((tab) => within(tab).queryByRole("link", { name }) != null);
+    if (row == null) {
+      throw new Error(`No tab row found for "${name}"`);
+    }
+    return within(row).queryByTestId("upsell-gem");
+  };
 
   it("gates only Erroring questions when audit_app is unavailable", async () => {
     setup({ tokenFeatures: { dependencies: true, audit_app: false } });

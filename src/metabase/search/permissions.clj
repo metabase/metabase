@@ -31,15 +31,17 @@
 
 (mu/defn permitted-collections-clause
   "Build the WHERE clause corresponding to which collections the given user has access to."
-  [{:keys [archived current-user-id is-superuser?]} :- SearchContext collection-id-col :- :keyword]
+  [{:keys [archived current-user-id is-superuser? can-access-worktrees? worktree-id]} :- SearchContext collection-id-col :- :keyword]
   [:and
    (collection/visible-collection-filter-clause
     collection-id-col
     {:include-archived-items    :all
      :include-trash-collection? true
+     :worktree-id               worktree-id
      :permission-level          (if archived :write :read)}
-    {:current-user-id current-user-id
-     :is-superuser?   is-superuser?})
+    {:current-user-id       current-user-id
+     :is-superuser?         is-superuser?
+     :can-access-worktrees? (boolean can-access-worktrees?)})
    ;; This is to allow the set of namespaces indexed by the search spec for appdb-based search to also apply to
    ;; legacy search so it performs the same on MySQL
    ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
@@ -49,13 +51,14 @@
 (mu/defn permitted-tables-clause
   "Build the WHERE clause and optional CTEs for table permission filtering.
    Returns a map with :clause (WHERE clause fragment) and :with (optional CTE definitions)."
-  [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
+  [{:keys [current-user-id is-superuser? can-access-worktrees? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
   (mi/visible-filter-clause
    :model/Table
    table-id-col
-   {:user-id current-user-id
-    :is-superuser? is-superuser?
-    :is-data-analyst? is-data-analyst?}
+   {:user-id               current-user-id
+    :is-superuser?         is-superuser?
+    :can-access-worktrees? (boolean can-access-worktrees?)
+    :is-data-analyst?      is-data-analyst?}
    {:perms/view-data :unrestricted
     :perms/create-queries :query-builder}
    {:include-published-via-collection? true

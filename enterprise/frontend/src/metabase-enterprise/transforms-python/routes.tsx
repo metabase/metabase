@@ -32,10 +32,25 @@ const transformListPage = () =>
     /* webpackChunkName: "transforms-python" */ "metabase/transforms/pages/TransformListPage"
   ).then(({ TransformListPage }) => ({ Component: TransformListPage }));
 
+export function getPythonLibraryRoutes() {
+  return <Route path="library/:path" lazy={pythonLibraryEditorPage} />;
+}
+
+export function getPythonLibraryUpsellRoutes() {
+  return (
+    // Render upsell modal on the library route if the feature is not enabled
+    <Route path="" lazy={transformListPage}>
+      {modalRoute("library/:path", PythonTransformsUpsellModal, {
+        noWrap: true,
+      })}
+    </Route>
+  );
+}
+
 export function getPythonTransformsRoutes() {
   return (
     <>
-      <Route path="library/:path" lazy={pythonLibraryEditorPage} />
+      {getPythonLibraryRoutes()}
       <Route path="new/python" lazy={newPythonTransformPage} />
     </>
   );

@@ -1,6 +1,7 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Outlet, useParams } from "metabase/router";
 import { Card, Center } from "metabase/ui";
@@ -15,6 +16,7 @@ type TableDependenciesPageParams = {
 export function TableDependenciesPage() {
   const params = useParams<TableDependenciesPageParams>();
   const tableId = Urls.extractEntityId(params.tableId);
+  const worktreeId = useWorktreeId();
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
 
   if (isLoading || error != null || table == null) {
@@ -30,7 +32,7 @@ export function TableDependenciesPage() {
       <TableHeader table={table} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
-          baseUrl: Urls.dataStudioTableDependencies(table.id),
+          baseUrl: Urls.dataStudioTableDependencies(table.id, { worktreeId }),
           defaultEntry: { id: table.id, type: "table" },
         }}
       >

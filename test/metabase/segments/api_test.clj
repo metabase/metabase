@@ -4,10 +4,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -92,6 +94,7 @@
               :created_at              true
               :updated_at              true
               :archived                false
+              :worktree_id             nil
               :definition true}
              (-> (mt/user-http-request :crowberto :post 200 "segment"
                                        {:name                    "A Segment"
@@ -174,6 +177,7 @@
                   :created_at              true
                   :updated_at              true
                   :archived                false
+                  :worktree_id             nil
                   :definition              true}
                  (-> (mt/user-http-request
                       :crowberto :put 200 (format "segment/%d" id)
@@ -271,6 +275,7 @@
                  :updated_at              true
                  :entity_id               true
                  :archived                true
+                 :worktree_id             nil
                  :definition true}
                 (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
                     segment-response)))))))
@@ -306,6 +311,7 @@
                     :updated_at              true
                     :entity_id               true
                     :archived                false
+                    :worktree_id             nil
                     :definition              true}
                    (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
                        segment-response
@@ -375,3 +381,62 @@
                (-> (mt/user-http-request :crowberto :get 200 (format "segment/%s/related" segment-id))
                    keys
                    set)))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so this needs `:model/Worktree` on the classpath. The endpoint it
+;;; covers is OSS.
+
+(deftest worktree-content-is-excluded-from-the-list-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Segment {main-id :id} {:name "main segment" :table_id (mt/id :venues) :definition {}}
+                     :model/Segment {wt-content-id :id} {:name "worktree segment" :table_id (mt/id :venues) :definition {} :worktree_id wt-id}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (testing "the main-app list leaves worktree content out"
+          (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "segment"))]
+            (is (contains? ids main-id))
+            (is (not (contains? ids wt-content-id)))))
+        (testing "worktree-id returns only that worktree's content"
+          (is (= [wt-content-id]
+                 (mapv :id (mt/user-http-request :crowberto :get 200 "segment" :worktree-id wt-id)))))
+        (testing "worktree-id requires the remote-sync permission"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "segment" :worktree-id wt-id))))
+        (testing "a non-admin holding the remote-sync permission sees that worktree's content too"
+          (perms/grant-application-permissions! group-id :remote-sync)
+          (is (= [wt-content-id]
+                 (mapv :id (mt/user-http-request :rasta :get 200 "segment" :worktree-id wt-id)))))))))
+
+(deftest create-segment-in-a-worktree-requires-remote-sync-permission-test
+  ;; creating content indexes it for search; on H2 a missing index table means DDL, which would commit the
+  ;; rollback-only transaction `with-temp` runs in and leak the temporary rows and role into later tests
+  (search.tu/with-index-disabled
+    (when config/ee-available?
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Worktree {wt-id :id} {}
+                       :model/PermissionsGroup {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+          (mt/with-model-cleanup [:model/Segment]
+            (let [definition (mbql4-segment-definition (mt/id :users) (mt/id :users :id) 20)]
+              (testing "an admin can create a segment inside a worktree"
+                (let [created (mt/user-http-request :crowberto :post 200 "segment"
+                                                    {:name "worktree segment" :definition definition :worktree_id wt-id})]
+                  (is (= wt-id (:worktree_id created)))
+                  (is (= wt-id (t2/select-one-fn :worktree_id :model/Segment :id (:id created))))))
+              (testing "a non-admin without the remote-sync permission cannot"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 "segment"
+                                             {:name "nope" :definition definition :worktree_id wt-id}))))
+              (testing "an unknown worktree 404s rather than failing on the foreign key"
+                (is (= "Not found."
+                       (mt/user-http-request :crowberto :post 404 "segment"
+                                             {:name "nope" :definition definition :worktree_id 99999999}))))
+              (testing "a non-admin holding the remote-sync permission (and data-analyst access to the table) can"
+                (perms/grant-application-permissions! group-id :remote-sync)
+                (mt/with-data-analyst-role! (mt/user->id :rasta)
+                  (let [created (mt/user-http-request :rasta :post 200 "segment"
+                                                      {:name "worktree segment by rasta" :definition definition :worktree_id wt-id})]
+                    (is (= wt-id (:worktree_id created)))
+                    (is (= wt-id (t2/select-one-fn :worktree_id :model/Segment :id (:id created))))))))))))))

@@ -126,7 +126,8 @@
    [:dimension_mappings                        {:optional true} [:maybe [:sequential ::card.dimension-mapping]]]
    [:metabot_conversation_id                   {:optional true} [:maybe :string]]
    [:metabot_chart_id                          {:optional true} [:maybe :string]]
-   [:verified-result-metadata?                 {:optional true} :boolean]])
+   [:verified-result-metadata?                 {:optional true} :boolean]
+   [:worktree_id                               {:optional true} [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::parameter-card
   "A ParameterCard as selected from the app DB: every column of `:parameter_card`."

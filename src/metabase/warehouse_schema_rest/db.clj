@@ -130,6 +130,11 @@
                                                                    [:= :d.to_entity_type "table"]]}]))]
     (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
 
+(mu/defn card-worktree-id
+  "The remote-sync worktree id of the Card with `card-id` (nil for a main-app card or a missing card)."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :worktree_id :model/Card :id card-id))
+
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]

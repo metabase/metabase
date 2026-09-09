@@ -236,7 +236,8 @@
    [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
    [:calculate_available_models          {:optional true} [:maybe true?]]
    [:include_dashboard_questions         {:default false} [:maybe :boolean]]
-   [:include_metadata                    {:default false} [:maybe :boolean]]])
+   [:include_metadata                    {:default false} [:maybe :boolean]]
+   [:worktree-id                         {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private search-debug-request-schema
   (conj search-request-schema
@@ -264,6 +265,7 @@
     vector-search-explain               :vector_search_explain
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
+    worktree-id                         :worktree-id
     include-metadata                    :include_metadata}]
   (search/search-context
    {:archived                            archived
@@ -275,6 +277,7 @@
     :is-impersonated-user?               (perms/impersonated-user?)
     :is-sandboxed-user?                  (perms/sandboxed-user?)
     :is-superuser?                       api/*is-superuser?*
+    :can-access-worktrees?               (perms/current-user-can-access-worktrees?)
     :current-user-perms                  @api/*current-user-permissions-set*
     :filter-items-in-personal-collection filter-items-in-personal-collection
     :last-edited-at                      last-edited-at
@@ -291,6 +294,7 @@
     :search-native-query                 search-native-query
     :search-string                       (some-> q str/trim not-empty)
     :table-db-id                         table-db-id
+    :worktree-id                         worktree-id
     :verified                            verified
     :ids                                 (set ids)
     :calculate-available-models?         calculate-available-models
@@ -326,6 +330,8 @@
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
+  - `worktree-id`: search within a remote-sync worktree instead of the main app (requires the remote-sync
+    application permission, or admin)
 
   Note that not all item types support all filters, and the results will include only models that support the provided
   filters. For example:
@@ -343,6 +349,9 @@
             (:vector_search_max_scan_tuples query-params)
             (some? (:vector_search_explain query-params)))
     (api/check-superuser))
+  ;; worktree content needs the remote-sync application permission (or admin), everywhere it is returned
+  (when (:worktree-id query-params)
+    (perms/check-can-access-worktrees))
   (try
     (u/prog1 (search/search (params->search-context query-params))
       (analytics/inc! :metabase-search/response-ok)

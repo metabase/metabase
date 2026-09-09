@@ -12,6 +12,7 @@ import type { DatabaseId } from "./database";
 import type { SortDirection } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
+import type { WorktreeId } from "./worktree";
 export type CollectionNamespace =
   | null
   | "snippets"
@@ -83,7 +84,7 @@ export interface Collection {
   here?: CollectionContentModel[];
   below?: CollectionContentModel[];
 
-  git_sync_enabled?: boolean;
+  worktree_id?: WorktreeId | null;
 
   // Assigned on FE
   originalName?: string;
@@ -183,6 +184,8 @@ export type ListCollectionItemsRequest = {
   "include-library"?: boolean;
   "sort-column"?: ListCollectionItemsSortColumn;
   "sort-direction"?: SortDirection;
+  /** Only meaningful for the root listing; non-root listings scope to the collection's own worktree */
+  "worktree-id"?: WorktreeId;
 } & PaginationRequest;
 
 export type ListCollectionItemsResponse = {
@@ -223,6 +226,7 @@ export interface CreateCollectionRequest {
   namespace?: CollectionNamespace;
   authority_level?: CollectionAuthorityLevel;
   is_shared_tenant_collection?: boolean;
+  worktree_id?: WorktreeId | null;
 }
 
 export type ListCollectionsRequest = {
@@ -231,6 +235,7 @@ export type ListCollectionsRequest = {
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
   collection_type?: CollectionType;
+  "worktree-id"?: WorktreeId | null;
 };
 export type ListCollectionsTreeRequest = {
   "exclude-archived"?: boolean;
@@ -242,6 +247,7 @@ export type ListCollectionsTreeRequest = {
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
   "include-tenant-collections"?: boolean;
+  "worktree-id"?: WorktreeId | null;
 };
 
 export interface DeleteCollectionRequest {
@@ -285,6 +291,10 @@ type LibraryChild = {
 
 export type LibraryCollection = CollectionItem & {
   effective_children: LibraryChild[];
+};
+
+export type GetLibraryCollectionRequest = {
+  "worktree-id"?: WorktreeId | null;
 };
 
 export type GetLibraryCollectionResponse = LibraryCollection | { data: null };

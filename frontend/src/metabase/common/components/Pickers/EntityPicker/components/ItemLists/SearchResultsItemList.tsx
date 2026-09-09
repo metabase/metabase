@@ -10,6 +10,7 @@ import {
   type SearchModel,
   type SearchRequest,
   type SearchResult,
+  type WorktreeId,
 } from "metabase-types/api";
 
 import { useOmniPickerContext } from "../../context";
@@ -52,19 +53,24 @@ const useApiSearch = ({
   searchQuery,
   models,
   searchParams,
+  worktreeId,
 }: {
   models: OmniPickerItem["model"][];
   searchQuery?: string;
   searchParams?: Partial<SearchRequest>;
+  worktreeId?: WorktreeId;
 }) => {
   const searchScope = useCurrentSearchScope();
 
-  const { searchCollection, searchModels } = useMemo(() => {
+  const { searchCollection, searchModels, searchWorktreeId } = useMemo(() => {
     if (searchScope === "databases") {
-      // if we're searching the databases scope, only search for tables
+      // if we're searching the databases scope, only search for tables;
+      // the database tree is shared with the main app, so it is never
+      // worktree-scoped
       return {
         searchCollection: undefined,
         searchModels: ["table" as const],
+        searchWorktreeId: undefined,
       };
     }
     // Unjustified type cast. FIXME
@@ -76,13 +82,15 @@ const useApiSearch = ({
       return {
         searchCollection: undefined,
         searchModels,
+        searchWorktreeId: worktreeId,
       };
     }
     return {
       searchCollection: searchScope || undefined,
       searchModels,
+      searchWorktreeId: worktreeId,
     };
-  }, [searchScope, models]);
+  }, [searchScope, models, worktreeId]);
 
   const apiQuery: SearchRequest = useMemo(
     () => ({
@@ -92,9 +100,16 @@ const useApiSearch = ({
       context: "entity-picker",
       limit: 50,
       calculate_available_models: true,
+      ...(searchWorktreeId != null ? { "worktree-id": searchWorktreeId } : {}),
       ...(searchParams || {}),
     }),
-    [searchQuery, searchCollection, searchModels, searchParams],
+    [
+      searchQuery,
+      searchCollection,
+      searchModels,
+      searchWorktreeId,
+      searchParams,
+    ],
   );
 
   return useSearchQuery(apiQuery?.q?.length ? apiQuery : skipToken);
@@ -108,6 +123,7 @@ export const SearchResultsItemList = () => {
     isDisabledItem,
     isSelectableItem,
     searchParams,
+    worktreeId,
   } = useOmniPickerContext();
 
   const {
@@ -118,6 +134,7 @@ export const SearchResultsItemList = () => {
     models,
     searchQuery,
     searchParams,
+    worktreeId,
   });
 
   const filteredResults = useMemo(

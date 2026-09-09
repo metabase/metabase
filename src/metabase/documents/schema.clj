@@ -33,7 +33,8 @@
    [:made_public_by_id   [:maybe ms/PositiveInt]]
    [:public_uuid_prefix  [:maybe :string]]
    [:exploration_id      [:maybe ms/PositiveInt]]
-   [:is_placeholder      :boolean]])
+   [:is_placeholder      :boolean]
+   [:worktree_id         [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::document.update
   "What an update (or insert) of a Document accepts: every column of `:document` except `id`, all optional."
@@ -55,4 +56,5 @@
    [:made_public_by_id   {:optional true} [:maybe ms/PositiveInt]]
    [:public_uuid_prefix  {:optional true} [:maybe :string]]
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:is_placeholder      {:optional true} [:maybe :boolean]]])
+   [:is_placeholder      {:optional true} [:maybe :boolean]]
+   [:worktree_id         {:optional true} [:maybe ::lib.schema.id/worktree]]])

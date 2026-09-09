@@ -17,6 +17,7 @@ import {
   isInDbTree,
 } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import type { CollectionId, CollectionItem } from "metabase-types/api";
 
@@ -176,6 +177,10 @@ export const MoveModal = ({
     ? ["collection", "dashboard"]
     : ["collection"];
 
+  // Recents and personal collections always belong to the main app, so they
+  // are hidden when the move is scoped to a worktree.
+  const worktreeId = useWorktreeId();
+
   return (
     <EntityPickerModal
       title={title}
@@ -187,15 +192,16 @@ export const MoveModal = ({
       onChange={handleMove}
       models={models}
       namespaces={getValidNamespaces(movingItem)}
+      worktreeId={worktreeId}
       options={{
         hasSearch: true,
-        hasRecents: true,
+        hasRecents: worktreeId == null,
         hasLibrary: true,
         hasRootCollection: true,
         hasConfirmButtons: true,
         canCreateCollections: true,
         canCreateDashboards: canMoveToDashboard ?? false,
-        hasPersonalCollections: true,
+        hasPersonalCollections: worktreeId == null,
         confirmButtonText: t`Move`,
       }}
       isDisabledItem={shouldDisableItem}
