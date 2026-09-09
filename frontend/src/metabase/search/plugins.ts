@@ -2,7 +2,7 @@ import type { SearchFilterComponent } from "metabase/common/search/types";
 import { definePluginSlot } from "metabase/plugins";
 
 const getDefaultSearchFilters = () => ({
-  // The OSS filter has no type, and SearchSidebar renders nothing for a filter without one.
+  // Leaving type unset hides the filter.
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
 });
 
