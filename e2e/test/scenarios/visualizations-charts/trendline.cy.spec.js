@@ -66,21 +66,47 @@ describe("scenarios > question > trendline", () => {
       cy.findByText("Trend line").click();
     });
 
-    cy.log("the color setting is hidden when there are multiple trend lines");
+    cy.log("global customization is hidden when there are multiple series");
     H.leftSidebar().within(() => {
       cy.findByText("Trend line color").should("not.exist");
-      cy.findByText("Trend line style").should("be.visible");
+      cy.findByText("Trend line style").should("not.exist");
     });
     H.trendLine().should("have.length", 2);
 
+    cy.log("trend lines are customized in the series settings popover");
     H.leftSidebar().within(() => {
       cy.findByText("Data").click();
       cy.findByTestId("settings-avg").click();
     });
     H.popover().within(() => {
-      cy.findByText("Show trend line for this series").click();
+      cy.findByText("Trend line color").should("be.visible");
+      cy.findByText("Trend line style").should("be.visible");
+      cy.findByTestId("chart-settings-widget-trendline.style")
+        .icon("line_style_dashed")
+        .click();
     });
+    H.trendLine().filter("[stroke-dasharray]").should("have.length", 1);
+
+    cy.log("pick a custom color for this series trend line");
+    H.leftSidebar().findByTestId("settings-avg").click();
+    // #8A5EB0 is the default trend line color, the shade of the avg series
+    H.popover().findByLabelText("#8A5EB0").click();
+    cy.findByLabelText("#509EE3").click();
+    H.trendLine()
+      .filter("[stroke='#509EE3']")
+      .should("have.length", 1)
+      .and("have.attr", "stroke-dasharray");
+
+    cy.log("hiding the series trend line hides its customization settings");
+    H.leftSidebar().findByTestId("settings-avg").click();
+    H.popover().findByText("Show trend line for this series").click();
     H.trendLine().should("have.length", 1);
+    H.leftSidebar().findByTestId("settings-avg").click();
+    // hidden nested settings stay in the popover DOM with a hidden attribute
+    H.popover().within(() => {
+      cy.findByText("Trend line color").should("not.be.visible");
+      cy.findByText("Trend line style").should("not.be.visible");
+    });
   });
 
   it("should allow customizing the trend line color and style", () => {

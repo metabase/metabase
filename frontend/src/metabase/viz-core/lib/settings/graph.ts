@@ -457,12 +457,12 @@ const isTrendLineDisabled = (
   isTrendLineUnavailable(series, vizSettings) ||
   !vizSettings["graph.show_trendline"];
 
-const hasMultipleTrendLines = (series: Series) => {
-  const insightCount = series.reduce(
-    (count, single) => count + (single.data?.insights?.length ?? 0),
-    0,
-  );
-  return insightCount > 1;
+// With multiple series, trend lines are customized per series in the series
+// settings popover instead of the Display tab
+const hasMultipleSeries = (vizSettings: ComputedVisualizationSettings) => {
+  const seriesColors: Record<string, string> =
+    vizSettings[SERIES_COLORS_SETTING_KEY] ?? {};
+  return Object.keys(seriesColors).length > 1;
 };
 
 export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
@@ -496,12 +496,9 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
         ? deriveChartShadeColor(firstSeriesColor)
         : color("brand");
     },
-    /**
-     * Hidden with multiple trend lines because there is no UI to color them
-     * individually, so they keep the default shade of their series colors.
-     */
     getHidden: (series, vizSettings) =>
-      isTrendLineDisabled(series, vizSettings) || hasMultipleTrendLines(series),
+      isTrendLineDisabled(series, vizSettings) ||
+      hasMultipleSeries(vizSettings),
     useRawSeries: true,
     readDependencies: ["graph.show_trendline", SERIES_COLORS_SETTING_KEY],
   },
@@ -527,9 +524,11 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
       ],
     }),
     getDefault: () => "solid",
-    getHidden: isTrendLineDisabled,
+    getHidden: (series, vizSettings) =>
+      isTrendLineDisabled(series, vizSettings) ||
+      hasMultipleSeries(vizSettings),
     useRawSeries: true,
-    readDependencies: ["graph.show_trendline"],
+    readDependencies: ["graph.show_trendline", SERIES_COLORS_SETTING_KEY],
   },
 };
 

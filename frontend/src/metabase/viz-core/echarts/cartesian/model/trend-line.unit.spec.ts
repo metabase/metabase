@@ -1,6 +1,6 @@
 import { createMockSeriesModel } from "__support__/echarts";
 import { deriveChartShadeColor } from "metabase/ui/colors/accents";
-import type { RawSeries } from "metabase-types/api";
+import type { RawSeries, SeriesSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -38,8 +38,15 @@ const SERIES_COLORS: Record<string, string> = {
 
 const setup = ({
   trendlineColor,
+  trendlineStyle,
+  seriesSettings = {},
   metrics = ["count", "avg"],
-}: { trendlineColor?: string; metrics?: string[] } = {}) => {
+}: {
+  trendlineColor?: string;
+  trendlineStyle?: "solid" | "dashed" | "dotted";
+  seriesSettings?: Record<string, SeriesSettings>;
+  metrics?: string[];
+} = {}) => {
   const rawSeries: RawSeries = [
     createMockSingleSeries(
       {
@@ -79,8 +86,9 @@ const setup = ({
   const settings: ComputedVisualizationSettings = {
     "graph.show_trendline": true,
     "graph.trendline_color": trendlineColor,
+    "graph.trendline_style": trendlineStyle,
     "graph.y_axis.auto_range": true,
-    series: () => ({}),
+    series: (key) => seriesSettings[key.card._seriesKey ?? ""] ?? {},
   };
 
   return getTrendLines(
@@ -120,6 +128,45 @@ describe("getTrendLines", () => {
 
     expect(trendLinesModel?.seriesModels.map((series) => series.color)).toEqual(
       [deriveChartShadeColor("#509EE3"), deriveChartShadeColor("#88BF4D")],
+    );
+  });
+
+  it("should use the global style for a single series and default to solid", () => {
+    expect(
+      setup({ metrics: ["count"] })?.seriesModels.map((series) => series.style),
+    ).toEqual(["solid"]);
+    expect(
+      setup({ metrics: ["count"], trendlineStyle: "dashed" })?.seriesModels.map(
+        (series) => series.style,
+      ),
+    ).toEqual(["dashed"]);
+  });
+
+  it("should use per-series color and style with multiple series", () => {
+    const trendLinesModel = setup({
+      seriesSettings: {
+        count: { "trendline.color": "#ED6E6E", "trendline.style": "dotted" },
+      },
+    });
+
+    expect(trendLinesModel?.seriesModels.map((series) => series.color)).toEqual(
+      ["#ED6E6E", deriveChartShadeColor("#88BF4D")],
+    );
+    expect(trendLinesModel?.seriesModels.map((series) => series.style)).toEqual(
+      ["dotted", "solid"],
+    );
+  });
+
+  it("should fall back to the global style with multiple series", () => {
+    const trendLinesModel = setup({
+      trendlineStyle: "dashed",
+      seriesSettings: {
+        count: { "trendline.style": "dotted" },
+      },
+    });
+
+    expect(trendLinesModel?.seriesModels.map((series) => series.style)).toEqual(
+      ["dotted", "dashed"],
     );
   });
 });

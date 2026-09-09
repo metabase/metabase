@@ -1,6 +1,8 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
+import { color } from "metabase/ui/colors";
+import { deriveChartShadeColor } from "metabase/ui/colors/accents";
 import type {
   Series,
   SeriesCard,
@@ -23,10 +25,26 @@ import {
   getSeriesDefaultShowSeriesTrendline,
   getSeriesDefaultShowSeriesValues,
 } from "../../shared/settings/series";
-import type { VisualizationSettingsDefinitions } from "../../types";
+import type {
+  ComputedVisualizationSettings,
+  SettingsExtra,
+  VisualizationSettingsDefinitions,
+} from "../../types";
 import { getNameForCard } from "../series";
 
 import { type NestedSettingsOptions, nestedSettings } from "./nested";
+
+const isSeriesTrendLineCustomizationHidden = (
+  seriesSettings: ComputedVisualizationSettings,
+  extra?: SettingsExtra,
+) => {
+  const { series = [], settings = {} } = extra ?? {};
+  return (
+    series.length <= 1 || // with one series the trend line is customized in the Display tab
+    !settings["graph.show_trendline"] ||
+    !seriesSettings.show_series_trendline
+  );
+};
 
 export function keyForSingleSeries(single: SingleSeries): string {
   if (isLegacySeriesCard(single.card)) {
@@ -230,6 +248,51 @@ export function seriesSetting({
       getDefault: (_single, _seriesSettings, extra) =>
         getSeriesDefaultShowSeriesTrendline(extra?.settings ?? {}),
       readDependencies: ["graph.show_trendline"],
+    },
+    // With multiple series, trend lines are customized per series here instead
+    // of the Display tab, which only has room for a single color and style.
+    "trendline.color": {
+      widget: "color",
+      getProps: () => ({
+        title: t`Trend line color`,
+        bordered: true,
+        pillSize: "small" as const,
+      }),
+      getHidden: (_single, seriesSettings, extra) =>
+        isSeriesTrendLineCustomizationHidden(seriesSettings, extra),
+      getDefault: (_single, seriesSettings) =>
+        seriesSettings.color != null
+          ? deriveChartShadeColor(seriesSettings.color)
+          : color("brand"),
+      readDependencies: [
+        "color",
+        "show_series_trendline",
+        "graph.show_trendline",
+      ],
+    },
+    "trendline.style": {
+      title: t`Trend line style`,
+      widget: "segmentedControl",
+      getProps: () => ({
+        options: [
+          { name: t`Solid`, value: "solid", icon: "line_style_solid" as const },
+          {
+            name: t`Dashed`,
+            value: "dashed",
+            icon: "line_style_dashed" as const,
+          },
+          {
+            name: t`Dotted`,
+            value: "dotted",
+            icon: "line_style_dotted" as const,
+          },
+        ],
+      }),
+      getHidden: (_single, seriesSettings, extra) =>
+        isSeriesTrendLineCustomizationHidden(seriesSettings, extra),
+      getDefault: (_single, _seriesSettings, extra) =>
+        extra?.settings?.["graph.trendline_style"] ?? "solid",
+      readDependencies: ["show_series_trendline", "graph.show_trendline"],
     },
     show_series_values: {
       title: t`Show values for this series`,

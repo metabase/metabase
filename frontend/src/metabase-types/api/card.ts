@@ -152,6 +152,8 @@ export type SeriesSettings = {
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;
   show_series_trendline?: boolean;
+  "trendline.color"?: string;
+  "trendline.style"?: LineStyle;
 };
 
 export type SeriesOrderSetting = {
