@@ -11,15 +11,15 @@
  * that is fine: every number this harness reports lands before the first API
  * response matters.
  */
-const fs = require("fs");
-const http = require("http");
-const path = require("path");
+import fs from "node:fs";
+import http, { type ServerResponse } from "node:http";
+import path from "node:path";
 
 const root = process.argv[2];
 const port = Number(process.argv[3] || 8099);
 
 if (!root) {
-  console.error("usage: node serve.js <resources/frontend_client dir> [port]");
+  console.error("usage: bun serve.ts <resources/frontend_client dir> [port]");
   process.exit(1);
 }
 
@@ -58,7 +58,7 @@ const CONTENT_TYPES = {
 
 const IMMUTABLE = "public, max-age=31536000, immutable";
 
-function serveTemplate(file, res) {
+function serveTemplate(file: string, res: ServerResponse) {
   const html = Object.entries(TEMPLATE_VALUES).reduce(
     (result, [key, value]) => result.replaceAll(`{{{${key}}}}`, value),
     fs.readFileSync(file, "utf8"),
@@ -73,7 +73,7 @@ function serveTemplate(file, res) {
 
 http
   .createServer((req, res) => {
-    const url = req.url.split("?")[0];
+    const url = (req.url ?? "/").split("?")[0];
 
     if (url.startsWith("/api/")) {
       res.writeHead(200, { "content-type": "application/json" });
@@ -90,7 +90,9 @@ http
     }
 
     const contentType =
-      CONTENT_TYPES[path.extname(relative)] || "application/octet-stream";
+      // An unknown extension falls through to the default below.
+      CONTENT_TYPES[path.extname(relative) as keyof typeof CONTENT_TYPES] ||
+      "application/octet-stream";
     const acceptsBrotli = (req.headers["accept-encoding"] || "").includes("br");
 
     if (acceptsBrotli && fs.existsSync(`${file}.br`)) {

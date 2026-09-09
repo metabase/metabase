@@ -13,9 +13,9 @@
  * loads after that are the steady state a returning user sees. Both are
  * reported, because a chunk layout can help one and hurt the other.
  */
-const { spawn } = require("child_process");
-const fs = require("fs");
-const http = require("http");
+import { spawn } from "node:child_process";
+import fs from "node:fs";
+import http from "node:http";
 
 const CHROME =
   process.env.CHROME_PATH ||
@@ -33,20 +33,36 @@ const sessionCookie = process.env.SESSION_COOKIE || "";
 const port = 9222 + Number(process.env.PORT_OFFSET || 0);
 
 if (!url) {
-  console.error("usage: node measure.js <url> [runs]");
+  console.error("usage: bun measure.ts <url> [runs]");
   console.error(
     "env: CPU_THROTTLE NETWORK_MBPS NETWORK_LATENCY WARM PORT_OFFSET SESSION_COOKIE",
   );
   process.exit(1);
 }
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+/** What READ_METRICS evaluates to in the page. */
+interface Run {
+  href: string;
+  ttfb: number;
+  domContentLoaded: number;
+  load: number;
+  firstPaint: number;
+  firstContentfulPaint: number;
+  largestContentfulPaint: number;
+  appMounted: number;
+  pageReady: number;
+  lastScriptEnd: number;
+  scriptCount: number;
+  scriptBytes: number;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Cleared by the first load that shows the build records no performance
 // marks, so the rest of the series skips waiting for them.
 let buildRecordsMarks = true;
 
-function devtools(path, method = "GET") {
+function devtools(path: string, method = "GET"): Promise<any> {
   return new Promise((resolve, reject) => {
     http
       .request({ host: "127.0.0.1", port, path, method }, (res) => {
@@ -67,12 +83,16 @@ function devtools(path, method = "GET") {
 
 /** The slice of the DevTools protocol this needs, over the native WebSocket. */
 class Session {
-  constructor(socket) {
+  socket: WebSocket;
+  lastId: number;
+  pending: Map<number, (result: any) => void>;
+
+  constructor(socket: WebSocket) {
     this.socket = socket;
     this.lastId = 0;
     this.pending = new Map();
 
-    socket.addEventListener("message", (event) => {
+    socket.addEventListener("message", (event: MessageEvent) => {
       const message = JSON.parse(event.data);
       const resolve = this.pending.get(message.id);
       if (resolve) {
@@ -82,7 +102,7 @@ class Session {
     });
   }
 
-  send(method, params = {}) {
+  send(method: string, params: Record<string, unknown> = {}): Promise<any> {
     const id = ++this.lastId;
     this.socket.send(JSON.stringify({ id, method, params }));
     return new Promise((resolve) => this.pending.set(id, resolve));
@@ -261,7 +281,7 @@ async function loadOnce() {
  * before a reading that must precede it, such as a page-ready earlier than the
  * TTFB printed beside it.
  */
-function representative(results, from = 0) {
+function representative(results: Run[], from = 0): Run {
   const sorted = [...results.slice(from)].sort(
     (a, b) => a.domContentLoaded - b.domContentLoaded,
   );
@@ -269,8 +289,8 @@ function representative(results, from = 0) {
 }
 
 /** The readings one load produced, in the order a user meets them. */
-function timings(run) {
-  const ms = (value) => Number(value.toFixed(1));
+function timings(run: Run) {
+  const ms = (value: number) => Number(value.toFixed(1));
   return {
     ttfbMs: ms(run.ttfb),
     firstContentfulPaintMs: ms(run.firstContentfulPaint),

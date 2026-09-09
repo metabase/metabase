@@ -78,7 +78,7 @@ jobs:
         run: |
           # Waits for the instance to migrate and come up, then creates the
           # first user. Masked because the token authenticates as that user.
-          session=$(node frontend/build/bench/sign-in.js "$SITE")
+          session=$(bun frontend/test/bench/sign-in.ts "$SITE")
           echo "::add-mask::$session"
           echo "SESSION_COOKIE=$session" >> "$GITHUB_ENV"
       - name: Warm the backend
@@ -90,7 +90,7 @@ jobs:
         env:
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
-          node frontend/build/bench/matrix.js "$SITE/" "$RUNS" \
+          bun frontend/test/bench/matrix.ts "$SITE/" "$RUNS" \
             | tee artifacts/load-times.json
       - name: Show the Metabase log if something went wrong
         if: failure()

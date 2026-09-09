@@ -80,8 +80,8 @@ Start a build, sign in, and measure:
 
 ```
 MB_DB_FILE=/tmp/bench.db MB_JETTY_PORT=4000 java -jar target/uberjar/metabase.jar &
-SESSION_COOKIE=$(node frontend/build/bench/sign-in.js http://localhost:4000) \
-  node frontend/build/bench/matrix.js http://localhost:4000/ 8
+SESSION_COOKIE=$(bun frontend/test/bench/sign-in.ts http://localhost:4000) \
+  bun frontend/test/bench/matrix.ts http://localhost:4000/ 8
 ```
 
 `sign-in.js` creates the first user on a blank instance and signs that user in on
@@ -96,8 +96,8 @@ the cold reading, because the stub document is 2.7 kb rather than 136 kb.
 ```
 bun run build-release:js
 cp -R resources/frontend_client /tmp/bench-before
-node frontend/build/bench/serve.js /tmp/bench-before 8099 &
-node frontend/build/bench/matrix.js http://127.0.0.1:8099/ 8
+bun frontend/test/bench/serve.ts /tmp/bench-before 8099 &
+bun frontend/test/bench/matrix.ts http://127.0.0.1:8099/ 8
 ```
 
 `serve.js` fills in the index template, serves a `.br` beside a file when the
@@ -108,7 +108,7 @@ response would have been used.
 To measure one condition rather than the four, call `measure.js` directly:
 
 ```
-WARM=1 CPU_THROTTLE=4 node frontend/build/bench/measure.js http://127.0.0.1:8099/ 8
+WARM=1 CPU_THROTTLE=4 bun frontend/test/bench/measure.ts http://127.0.0.1:8099/ 8
 ```
 
 ## Options
@@ -128,8 +128,13 @@ WARM=1 CPU_THROTTLE=4 node frontend/build/bench/measure.js http://127.0.0.1:8099
 
 ## What CI records
 
-`.github/workflows/bundle-load-stats.yml` runs the matrix on every master merge
-and appends one row per condition to the `bundle_load_times` table.
+`.github/workflows/test.bundle-load-stats.yml` runs the matrix on every master
+merge and appends one row per condition to the `bundle_load_times` table.
+
+That table has to exist in eng-stats-importer before the first run. The importer
+does not create one on demand, and a push to a table it does not know returns a
+4xx. The upload treats any failure as a warning and leaves the run green, so a
+missing table shows up as an empty chart rather than a red build.
 
 The conditions are a fast and a slow network crossed with a fast and a slow CPU.
 The split matters: a slow network dominates the cold reading, because that is

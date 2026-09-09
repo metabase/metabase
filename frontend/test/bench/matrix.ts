@@ -18,14 +18,43 @@
  * measure a built tree without a backend. Set SESSION_COOKIE to load the page
  * signed in.
  */
-const { spawn } = require("child_process");
-const path = require("path");
+import { spawn } from "node:child_process";
+import path from "node:path";
+
+/** One reading, as `timings` in `measure.ts` builds it. */
+interface Timings {
+  ttfbMs: number;
+  firstContentfulPaintMs: number;
+  domContentLoadedMs: number;
+  appMountedMs: number;
+  largestContentfulPaintMs: number;
+  pageReadyMs: number;
+}
+
+/** What one `measure.ts` series prints. */
+interface Series {
+  runs: number;
+  scripts: number;
+  scriptKb: number;
+  median: Timings;
+  secondLoad: Timings | null;
+  steady: Timings | null;
+  everyRunMs: number[];
+}
+
+interface Conditions {
+  mbps: number;
+  latency: number;
+  throttle: number;
+  warm: boolean;
+  offset: number;
+}
 
 const url = process.argv[2];
 const runs = Number(process.argv[3] || 8);
 
 if (!url) {
-  console.error("usage: node matrix.js <url> [runs]");
+  console.error("usage: bun matrix.ts <url> [runs]");
   console.error("env: SESSION_COOKIE");
   process.exit(1);
 }
@@ -33,7 +62,7 @@ if (!url) {
 // The cache-kept series spends its first run filling an empty cache, its second
 // on the second visit, and the rest on the steady state.
 if (runs < 3) {
-  console.error("matrix.js needs at least 3 runs per condition");
+  console.error("matrix.ts needs at least 3 runs per condition");
   process.exit(1);
 }
 
@@ -46,11 +75,17 @@ const NETWORKS = {
 /** CPU slowdown, where 1 leaves the runner at its own speed. */
 const CPUS = { fast: 1, slow: 4 };
 
-function measure({ mbps, latency, throttle, warm, offset }) {
-  return new Promise((resolve, reject) => {
+function measure({
+  mbps,
+  latency,
+  throttle,
+  warm,
+  offset,
+}: Conditions): Promise<Series> {
+  return new Promise<Series>((resolve, reject) => {
     const child = spawn(
       process.execPath,
-      [path.join(__dirname, "measure.js"), url, String(runs)],
+      [path.join(import.meta.dirname, "measure.ts"), url, String(runs)],
       {
         stdio: ["ignore", "pipe", "inherit"],
         env: {
@@ -71,7 +106,7 @@ function measure({ mbps, latency, throttle, warm, offset }) {
     child.on("exit", (code) =>
       code === 0
         ? resolve(JSON.parse(output))
-        : reject(new Error(`measure.js exited with ${code}`)),
+        : reject(new Error(`measure.ts exited with ${code}`)),
     );
   });
 }
@@ -83,9 +118,21 @@ function measure({ mbps, latency, throttle, warm, offset }) {
  * noise moves. Recording the spread beside it is what tells a real change from
  * a busy machine.
  */
-function spreadPercent(values) {
+/**
+ * `measure.ts` leaves these empty for a series too short to hold them, which the
+ * run count above rules out. Fail loudly rather than report a zero if it ever
+ * stops filling one in.
+ */
+function required(timings: Timings | null, name: string): Timings {
+  if (!timings) {
+    throw new Error(`measure.ts reported no ${name}`);
+  }
+  return timings;
+}
+
+function spreadPercent(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);
-  const at = (fraction) => sorted[Math.floor(sorted.length * fraction)];
+  const at = (fraction: number) => sorted[Math.floor(sorted.length * fraction)];
   const middle = sorted[Math.floor(sorted.length / 2)];
   return Number((((at(0.75) - at(0.25)) / middle) * 100).toFixed(1));
 }
@@ -94,8 +141,11 @@ function spreadPercent(values) {
   const rows = [];
   let offset = 0;
 
-  for (const cpu of Object.keys(CPUS)) {
-    for (const network of Object.keys(NETWORKS)) {
+  // Object.keys widens to string, and these two objects are the only source of
+  // condition names.
+  for (const cpu of Object.keys(CPUS) as (keyof typeof CPUS)[]) {
+    // Object.keys widens to string, as above.
+    for (const network of Object.keys(NETWORKS) as (keyof typeof NETWORKS)[]) {
       const { mbps, latency } = NETWORKS[network];
       const throttle = CPUS[cpu];
 
@@ -125,8 +175,8 @@ function spreadPercent(values) {
         cpu,
         cpuThrottle: throttle,
         coldMs: cold.median.domContentLoadedMs,
-        warmMs: warm.secondLoad.domContentLoadedMs,
-        steadyMs: warm.steady.domContentLoadedMs,
+        warmMs: required(warm.secondLoad, "secondLoad").domContentLoadedMs,
+        steadyMs: required(warm.steady, "steady").domContentLoadedMs,
         coldSpreadPercent: spreadPercent(cold.everyRunMs),
         // The cold load broken up, in the order a user meets it: bytes start
         // arriving, something is drawn, the shell commits, the page has its
@@ -136,7 +186,7 @@ function spreadPercent(values) {
         coldAppMountedMs: cold.median.appMountedMs,
         coldLargestPaintMs: cold.median.largestContentfulPaintMs,
         coldPageReadyMs: cold.median.pageReadyMs,
-        warmPageReadyMs: warm.secondLoad.pageReadyMs,
+        warmPageReadyMs: required(warm.secondLoad, "secondLoad").pageReadyMs,
         scripts: cold.scripts,
         scriptKb: cold.scriptKb,
         runs: cold.runs,

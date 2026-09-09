@@ -18,7 +18,7 @@ const EMAIL = "bench@example.com";
 // The setup endpoint rejects a password that is short or common.
 const PASSWORD = "Benchmark-Passw0rd!";
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function waitUntilReady() {
   for (let attempt = 0; attempt < 300; attempt++) {
@@ -36,7 +36,7 @@ async function waitUntilReady() {
   throw new Error(`No instance came up on ${url}`);
 }
 
-async function post(path, body) {
+async function post(path: string, body: unknown) {
   const response = await fetch(`${url}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
