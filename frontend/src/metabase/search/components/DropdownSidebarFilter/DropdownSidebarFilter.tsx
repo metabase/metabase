@@ -134,7 +134,7 @@ export const DropdownSidebarFilter = ({
                 data-testid="sidebar-filter-dropdown-button"
                 size="sm"
                 c="inherit"
-                variant="light"
+                variant="subtle"
                 onClick={onClearFilter}
                 leftSection={<Icon size={16} name={getDropdownIcon()} />}
               />

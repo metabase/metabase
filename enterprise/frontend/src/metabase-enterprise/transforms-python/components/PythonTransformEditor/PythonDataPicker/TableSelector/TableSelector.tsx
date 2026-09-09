@@ -74,8 +74,10 @@ export function TableSelector({
           miw={0}
           onClick={open}
           disabled={disabled}
-          classNames={{ inner: S.tableSelectorButtonInner }}
-          px="sm"
+          classNames={{
+            root: S.tableSelectorButton,
+            inner: S.tableSelectorButtonInner,
+          }}
           py="sm"
           h="auto"
           variant="subtle"

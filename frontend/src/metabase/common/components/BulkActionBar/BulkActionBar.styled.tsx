@@ -17,8 +17,8 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
 
 // Unjustified type cast. FIXME
 export const ToastCard = styled(Card)`
-  background-color: var(--mb-color-background_page-primary-inverse);
-  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-tooltip-background);
+  color: var(--mb-color-tooltip-text);
   padding: 0.75rem var(--mantine-spacing-lg);
   display: flex;
   flex-direction: row;

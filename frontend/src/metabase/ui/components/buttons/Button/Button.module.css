@@ -50,6 +50,8 @@
     --mb-button-padding-x: 0px;
     --mb-button-section-gap: 4px;
     --mb-button-loader-size: 13.75px;
+
+    overflow: visible;
   }
 
   &[data-loading]::before {

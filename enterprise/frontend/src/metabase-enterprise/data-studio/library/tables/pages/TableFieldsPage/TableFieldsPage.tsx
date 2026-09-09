@@ -114,7 +114,7 @@ export function TableFieldsPage() {
                 to={Urls.dataStudioTableFields(table.id)}
                 onClick={closePreview}
                 leftSection={<Icon name="close" c="text-secondary" />}
-                variant="light"
+                variant="subtle"
                 size="sm"
               />
             </Group>

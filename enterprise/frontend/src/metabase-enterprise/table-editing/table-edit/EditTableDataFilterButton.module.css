@@ -31,7 +31,6 @@
     &:hover,
     &[data-expanded="true"] {
       .FilterCountChip {
-        color: var(--mb-color-text-selected);
         background-color: var(--mb-color-core-filter);
       }
     }
