@@ -118,16 +118,32 @@
       (log/errorf "Search %s failed: %s" operation (ex-message e))
       (analytics/inc! :metabase-search/index-error))))
 
+(defn- record-index-freshness!
+  "Stamp the per-engine freshness gauge that staleness alerting watches.
+
+  Absence of the series means this process never completed a rebuild for the engine; the gauge is
+  deliberately not pre-registered, since a zero would read as stale-since-1970 for inactive engines."
+  [engine]
+  (try
+    (analytics/set-gauge! :metabase-search/last-successful-reindex-timestamp-seconds
+                          {:engine (name engine)}
+                          (/ (System/currentTimeMillis) 1000.0))
+    (catch Throwable e
+      (log/warnf "Failed to record search index freshness for %s: %s" engine (ex-message e)))))
+
 (defn- with-engine-lease
   [engine operation thunk]
   ;; A forced-synchronous run is a single-process test scenario: there is no other node to coordinate with, and the
   ;; index writes should stay on the caller's connection (and roll back with a test's transaction). Leases refuse to
   ;; be acquired inside a transaction, so skipping acquisition here is what lets those tests exist at all.
   (if search.ingestion/*force-sync*
-    {:acquired? true, :result (thunk)}
+    (let [result (thunk)]
+      (record-index-freshness! engine)
+      {:acquired? true, :result result})
     (let [{:keys [acquired?] :as outcome}
           (search.lease/do-with-lease (search.lease/coordinates engine) thunk)]
-      (when-not acquired?
+      (if acquired?
+        (record-index-freshness! engine)
         (log/infof "Skipping search %s for %s; another node holds its lease" operation engine))
       outcome)))
 
