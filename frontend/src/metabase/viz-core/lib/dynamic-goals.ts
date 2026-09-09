@@ -73,6 +73,11 @@ export type GoalValueResult = {
   isUnanswered?: boolean;
 };
 
+export type GoalCard = {
+  display: Card["display"];
+  visualization_settings?: Card["visualization_settings"];
+};
+
 export function resolveGoalValue(
   data: GoalData,
   goalValue: GoalValue | null | undefined,
@@ -332,10 +337,6 @@ export function toReferencedEntity({
 }: GoalForeignEntityRef): ReferencedEntity {
   return { type, id };
 }
-
-// `Question.card()` hands back the stored card, which may not carry settings yet.
-export type GoalCard = Pick<Card, "display"> &
-  Partial<Pick<Card, "visualization_settings">>;
 
 export function getGoalForeignColumnRefs(
   card: GoalCard,
