@@ -55,10 +55,19 @@
                          :model  model
                          :error  ::no-known-references})))))
 
+(defn- elidable-missing-dep?
+  "True when `e` reports `dep` itself as missing from both the archive and the destination, and `dep` names a
+  [[serdes.models/elidable-content-models]] entity."
+  [dep e]
+  (let [{:keys [model id]} (last dep)
+        data               (ex-data e)]
+    (and (= ::not-found (:error data))
+         (= [model id] [(:model data) (:id data)])
+         (contains? serdes.models/elidable-content-models model))))
+
 (defn- load-deps!
-  "Given a list of `deps` (hierarchies), [[load-one]] them all.
-  If [[load-one]] throws because it can't find that entity in the filesystem, check if it's already loaded in
-  our database."
+  "Given a list of `deps` (hierarchies), [[load-one]] them all. A dependency absent from the archive must already exist
+  locally unless it is [[elidable-missing-dep?]]."
   [ctx deps]
   (if (empty? deps)
     ctx
@@ -66,13 +75,8 @@
               (try
                 (load-one! ctx dep)
                 (catch Exception e
-                  (cond
-                    ;; It was missing, but we found it locally, so just return the context.
-                    (and (= (:error (ex-data e)) ::not-found)
-                         (serdes/load-find-local dep))
+                  (if (elidable-missing-dep? dep e)
                     ctx
-
-                    :else
                     (throw e)))))]
       (reduce loader ctx deps))))
 
