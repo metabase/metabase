@@ -35,13 +35,18 @@
             discovery metadata rather than from what they registered with. A scope we advertise but
             do not register for is therefore not a narrower grant — it is an `invalid_scope`
             rejection at /authorize for any client that asks for everything advertised, which is
-            what Claude and ChatGPT both do."
+            what Claude and ChatGPT both do.
+
+            Iterated over every endpoint path rather than over the sets `default-grant-scopes` is
+            built from: asserting a set covers the sets it is defined as the union of cannot fail.
+            The per-path arities are the ones a client actually meets, and the v1 aliases are inside
+            the ceiling only incidentally today, because `all-scopes` also feeds `supported-scopes`."
     (let [ceiling (set (oauth-server/default-grant-scopes))]
-      (doseq [[metadata scopes] {"authorization-server" (oauth-server/supported-scopes)
-                                 "protected-resource"   (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))
-                                 "mcp-resource"          (oauth-server/mcp-resource-scopes (mcp/mcp-v2-path))}]
-        (testing metadata
-          (is (empty? (remove ceiling scopes))))))))
+      (doseq [path (mcp/mcp-endpoint-paths)]
+        (testing path
+          (is (empty? (remove ceiling (oauth-server/mcp-resource-scopes path))))))
+      (testing "and the authorization-server metadata set"
+        (is (empty? (remove ceiling (oauth-server/supported-scopes))))))))
 
 (deftest v2-default-ask-covers-the-surface-and-is-requestable-test
   (testing "the v2 401 challenge asks an uninstructed client for every scope the surface accepts, and
@@ -62,15 +67,22 @@
           (is (not (contains? (set @#'v2.api/default-ask-scopes) scope))))))))
 
 (deftest advertised-scopes-are-distinct-test
-  (testing "GHY-4151: scopes_supported is a set of scope strings (RFC 8414) — it unions the default
-            grant with the opt-in scopes, so a scope declared in both buckets would be advertised
-            twice. Duplicates also mean a mandatory scope was filed as opt-in."
-    (doseq [[metadata scopes] {"authorization-server" (oauth-server/supported-scopes)
-                               "protected-resource"   (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))}]
-      (testing metadata
-        (is (= (count (distinct scopes)) (count scopes))
-            (str "duplicate scopes: "
-                 (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec)))))))
+  (testing "GHY-4151: `scopes_supported` is a set of scope strings (RFC 8414), so no scope may be
+            advertised twice.
+
+            Asserted on the sources rather than on the output. Every advertised set is built through
+            a `sorted-set`, which makes the output distinct by construction no matter what goes in --
+            so counting the result can never fail. What can go wrong is upstream: the same scope
+            declared in both `v2-surface-scopes` and a v1 resource scope list, which the sorted-set
+            silently swallows."
+    (doseq [path (mcp/mcp-endpoint-paths)]
+      (testing path
+        (let [scopes (oauth-server/mcp-resource-scopes path)]
+          (is (= (count (distinct scopes)) (count scopes))
+              (str "duplicate scopes: "
+                   (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec))))))
+    (testing "the v2 surface literal has no duplicates of its own"
+      (is (= (count (distinct (mcp/v2-scopes))) (count (mcp/v2-scopes)))))))
 
 (deftest rationalized-scopes-are-in-the-default-grant-test
   (testing "GHY-4225: the five v2 scopes must all reach the default grant a dynamically-registered

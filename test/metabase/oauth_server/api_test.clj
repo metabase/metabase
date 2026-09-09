@@ -1243,3 +1243,24 @@
                                     :response_type "code"
                                     :resource      (str "http://localhost:3000" (mcp/mcp-v2-path))
                                     :state         "test-state")))))))
+
+(deftest mb-full-client-can-still-authorize-test
+  (testing "removing `mb:full` from the advertised sets must not break a first-party client that
+            registered with it explicitly. That works only because oidc-provider validates a
+            requested scope against the client's own registered `:scopes`, never against the
+            provider's `:scopes-supported` -- which feeds the discovery document alone. Pinning the
+            dependency here: if that ever changes, un-advertising a scope silently starts rejecting
+            the clients that legitimately hold it."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-id (:client_id (create-test-client! {:scopes [oauth-server/full-access-scope]}))]
+          (testing "the scope is advertised nowhere"
+            (is (not (contains? (set (oauth-server/supported-scopes)) oauth-server/full-access-scope)))
+            (is (not (contains? (set (oauth-server/default-grant-scopes)) oauth-server/full-access-scope))))
+          (testing "yet the consent screen still renders for a client registered with it"
+            (is (mt/user-http-request :crowberto :get 200 "oauth/authorize"
+                                      :client_id     client-id
+                                      :redirect_uri  "https://example.com/callback"
+                                      :response_type "code"
+                                      :scope         oauth-server/full-access-scope
+                                      :state         "test-state"))))))))

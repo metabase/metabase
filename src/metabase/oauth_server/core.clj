@@ -30,8 +30,9 @@
   "All OAuth scopes intended to be advertised in the server's discovery metadata (`scopes-supported`).
 
   `mb:full` is deliberately absent. Advertising it here puts a full-access grant in front of every client that reads
-  discovery metadata. A first-party client that needs it still registers with it explicitly; registration should not
-  consult this list."
+  discovery metadata, so keeping it out means no client is led toward it. Note this is not a gate: dynamic
+  registration is unauthenticated and passes a client-supplied `scope` through unchecked, so a client that names
+  `mb:full` itself still registers with it. Keeping it off this list narrows who finds it, not who may ask."
   []
   (vec (into (sorted-set) (mcp/all-scopes))))
 
@@ -124,10 +125,12 @@
   authorization into a rejected one.
 
   `mb:full` does not survive. The MCP resource metadata never advertised it, and a client naming the MCP resource is
-  asking for a token to use against that surface — which accepts none of the REST API that scope unlocks. A
-  first-party client that genuinely wants full access should not be naming the MCP resource. Note this only reaches
-  clients that send a resource indicator: one that omits it is not narrowed at all, so a register-time rule is still
-  the only way to keep `mb:full` off a dynamically-registered client entirely."
+  asking for a token to use against that surface — which accepts none of the REST API that scope unlocks.
+
+  This shapes the consent screen and the stored grant; it is not audience enforcement. `resolve-access-token` does
+  not read `:resource` from the token row, so a token narrowed against one MCP path is still accepted at another,
+  and a client that omits the indicator is not narrowed at all. Both gaps are inherited rather than introduced
+  here; closing them is BOT-2124."
   [resources scope]
   (let [scope    (some-> scope str str/trim not-empty)
         ;; A lone indicator may arrive as a bare string (the endpoint schema allows one). `keep` over a String
