@@ -36,6 +36,28 @@
   [field-id]
   (t2/select-one [:model/Field :base_type :effective_type] :id field-id))
 
+(defn collections-for-read-check
+  "The Collections with `ids`, carrying the columns [[metabase.models.interface/can-read?]] consults.
+  `:namespace` and `:type` are selected for that check, not for display."
+  [ids]
+  (t2/select [:model/Collection :id :name :namespace :type] :id [:in ids]))
+
+(defn collection-id->name+location
+  "Map of collection id -> `[name location]` for the Collections with `ids`."
+  [ids]
+  (t2/select-fn->fn :id (juxt :name :location)
+                    [:model/Collection :id :name :location]
+                    :id [:in ids]))
+
+(defn snippets-by-archived-state
+  "The NativeQuerySnippets in the given archived state, ordered by lower-cased name. Selects only the
+  returned columns plus `:collection_id`, which the caller's read check consults — never `:content`,
+  which holds the SQL body."
+  [archived?]
+  (t2/select [:model/NativeQuerySnippet :id :name :description :collection_id]
+             :archived (boolean archived?)
+             {:order-by [[:%lower.name :asc]]}))
+
 (defn insert-feedback!
   "Insert the McpFeedback `row`."
   [row]
