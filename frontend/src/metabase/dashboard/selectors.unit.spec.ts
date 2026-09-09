@@ -15,22 +15,26 @@ import {
   getIsEditingParameter,
   getIsSharing,
   getParameters,
+  getQuestionByCard,
   getSelectedTabId,
   getShowAddQuestionSidebar,
   getSidebar,
 } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
 import Field from "metabase-lib/v1/metadata/Field";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardTab,
+  createMockDatabase,
   createMockField,
   createMockHeadingDashboardCard,
   createMockNativeDatasetQuery,
   createMockParameter,
   createMockStructuredDatasetQuery,
+  createMockTable,
 } from "metabase-types/api/mocks";
 
 import { SIDEBAR_NAME } from "./constants";
@@ -517,5 +521,49 @@ describe("getSelectedTabId", () => {
     const state = createTabbedState("http://localhost:3000");
 
     expect(getSelectedTabId(state)).toBe(1);
+  });
+});
+
+describe("getQuestionByCard", () => {
+  function makeState(cards: Card[]): State {
+    const table = createMockTable({
+      id: 1,
+      db_id: 1,
+      fields: [createMockField({ id: 1, table_id: 1 })],
+    });
+
+    return createMockState({
+      settings: createMockSettingsState(),
+      entities: createMockEntitiesState({
+        databases: [createMockDatabase({ id: 1, tables: [table] })],
+        tables: [table],
+        questions: cards,
+      }),
+    });
+  }
+
+  it("returns the identical Question for the same card and state", () => {
+    const card = createMockCard({ id: 1 });
+    const state = makeState([card]);
+
+    // connect() shallow-compares mapped props, so a fresh Question here would
+    // re-render DashCardCardParameterMapper on every store change.
+    expect(getQuestionByCard(state, { card })).toBe(
+      getQuestionByCard(state, { card }),
+    );
+  });
+
+  it("holds an entry per card rather than only the most recent one", () => {
+    const cards = [1, 2, 3].map((id) => createMockCard({ id }));
+    const state = makeState(cards);
+
+    const first = cards.map((card) => getQuestionByCard(state, { card }));
+    // Reading the other cards in between must not evict the first. A one-entry
+    // cache would recompute here and re-render every mapped dashcard.
+    const second = cards.map((card) => getQuestionByCard(state, { card }));
+
+    first.forEach((question, index) => {
+      expect(question).toBe(second[index]);
+    });
   });
 });
