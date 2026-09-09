@@ -60,7 +60,7 @@ export const AgentDataPart = ({
       <AgentTodoListMessage todos={part.data} />
     ))
     .with({ part: { type: "data-transform_suggestion" } }, (dataPart) => (
-      <AgentSuggestionMessage message={dataPart} readonly={readonly} />
+      <AgentSuggestionMessage message={dataPart} />
     ))
     .with({ part: { type: "data-navigate_to" } }, ({ part }) => {
       const sourcePills = (

@@ -89,8 +89,6 @@ function setup({
       transform={transform}
       uiOptions={uiOptions}
       onChangeSource={jest.fn()}
-      onAcceptProposed={jest.fn()}
-      onRejectProposed={jest.fn()}
     />,
     {
       storeInitialState: createMockState(),

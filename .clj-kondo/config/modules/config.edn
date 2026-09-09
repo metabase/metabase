@@ -1489,7 +1489,6 @@
               task
               timeline
               transforms
-              transforms.base
               util
               util.config
               warehouse-schema-overlay
@@ -3707,10 +3706,7 @@
   enterprise/dependencies
   {:team "Graphy"
    :module-exports #{enterprise/dependencies.replacement}
-   :api  #{metabase-enterprise.dependencies.api
-           metabase-enterprise.dependencies.core
-           metabase-enterprise.dependencies.init
-           metabase-enterprise.dependencies.models.dependency}
+   :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{api
            app-db
            collections
@@ -3867,7 +3863,6 @@
                      metabase-enterprise.metabot.api.routes
                      metabase-enterprise.metabot.init}
    :uses           #{api
-                     lib.be
                      lib.schema
                      metabot
                      metabot.llm
@@ -3877,14 +3872,8 @@
                      settings
                      task
                      util
-                     enterprise/cloud.add-ons
-                     enterprise/dependencies
-                     enterprise/transforms.python}
-   :model-imports #{:model/AiUsageLog
-                    :model/Card
-                    :model/PermissionsGroup
-                    :model/PermissionsGroupMembership
-                    :model/Transform}}
+                     enterprise/cloud.add-ons}
+   :model-imports #{:model/AiUsageLog :model/PermissionsGroup :model/PermissionsGroupMembership}}
 
   enterprise/metabot.agent-api
   {:team "Metabot"

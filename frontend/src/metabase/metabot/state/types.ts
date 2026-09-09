@@ -8,7 +8,6 @@ import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
-  MetabotSuggestedTransform,
   MetabotTransformInfo,
 } from "metabase-types/api";
 
@@ -158,7 +157,6 @@ export type MetabotReactionsState = {
   suggestedCodeEdits: Partial<
     Record<MetabotCodeEdit["buffer_id"], MetabotCodeEdit>
   >;
-  suggestedTransforms: MetabotSuggestedTransform[];
 };
 
 export interface MetabotConversationState {

@@ -271,65 +271,6 @@
                                                (map format-entity)
                                                te/lines)))))
 
-(defn- transform-query-source-text
-  "Format a transform's `:query` source for the LLM; the rendering and fallback contract
-  lives in [[llm-shape/export-query-for-llm]]. The source arrives inline in the viewing context,
-  as client-supplied as the adhoc query above, so it gets the same audited gate and store."
-  [source]
-  (exported-query-text (:query source)))
-
-(defn- transform-source-type
-  [source]
-  (normalize-context-type (:type source)))
-
-(defmulti format-transform-source
-  "Format a transform source for LLM representation."
-  {:arglists '([source])}
-  transform-source-type)
-
-(defmethod format-transform-source :default
-  [source]
-  (log/warn "Unknown transform source type:" (:type source))
-  (te/lines "Transform source"
-            (te/field "Type" (transform-source-type source))
-            (te/field "Value" (u/pprint-to-str source))))
-
-(defmethod format-transform-source "query"
-  [source]
-  (let [source-text (transform-query-source-text source)]
-    (te/lines "Transform source"
-              (te/field "Type" (:type source))
-              (te/field "Query type" (:transform-source-type source))
-              (te/field "Source database ID" (or (:source-database source)
-                                                 (get-in source [:query :database])))
-              (te/field "Query" (te/code source-text (when (= "native" (normalize-context-type (:transform-source-type source)))
-                                                       "sql"))))))
-
-(defmethod format-transform-source "python"
-  [source]
-  (te/lines "Transform source"
-            (te/field "Type" (:type source))
-            (te/field "Source database ID" (:source-database source))
-            (te/field "Source tables" (some-> (:source-tables source) u/pprint-to-str))
-            (te/field "Source code" (te/code (:body source) "python"))))
-
-(defmethod format-entity "transform"
-  [item]
-  (te/lines "The user is currently viewing a Transform."
-            (te/field "Transform ID" (:id item))
-            (te/field "Transform name" (:name item))
-            (te/field "Transform description" (:description item))
-            (te/field "Source type" (:source_type item))
-            (te/field "Source" (some-> (:source item)
-                                       (assoc :transform-source-type (:source_type item))
-                                       format-transform-source))
-            (te/field "Transform error" (te/code (:error item)))
-            (te/field "Tables used" (some->> (:used_tables item)
-                                             (map format-entity)
-                                             te/lines))
-            (te/field "Created at" (:created_at item))
-            (te/field "Updated at" (:updated_at item))))
-
 (defmethod format-entity "code_editor"
   [{:keys [buffers]}]
   (if (empty? buffers)
@@ -352,7 +293,6 @@
   Handles different context types:
   - adhoc: Notebook query editor
   - native: SQL editor with schema context
-  - transform: Transform definition and code
   - code_editor: Code editor buffers with cursor position
   - table/model/question/metric/dashboard: Entity details
 
