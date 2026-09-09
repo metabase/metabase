@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { useListDatabasesQuery } from "metabase/api";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import {
   isQuestionDirty,
   isQuestionRunnable,
@@ -12,7 +12,7 @@ import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import { ScrollArea } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import { QueryEditorAndResults } from "./QueryEditorAndResults";
 
@@ -51,15 +51,15 @@ export const Editor = ({
     queryQuestion,
   } = useSdkQuestionContext();
 
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
 
   const question = useMemo(() => {
     if (!rawQuestion) {
       return rawQuestion;
     }
 
-    return new Question(rawQuestion?.card(), metadata);
-  }, [rawQuestion, metadata]);
+    return buildQuestion(rawQuestion?.card());
+  }, [rawQuestion, buildQuestion]);
 
   const isDirty = useMemo(() => {
     return isQuestionDirty(question, originalQuestion);

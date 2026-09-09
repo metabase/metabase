@@ -1,4 +1,3 @@
-import { createMockEntitiesState } from "__support__/store";
 import {
   createMockAdminState,
   createMockApiState,
@@ -6,7 +5,8 @@ import {
   createMockSettingsState,
   createMockState,
   seedApiQueryCache,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
 import type { GroupsPermissions } from "metabase-types/api";
 import {
   createMockDatabase,

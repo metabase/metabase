@@ -89,7 +89,7 @@ Depending on your organization’s setup, you may need to take additional config
 
 ## IP addresses to whitelist
 
-If you're hosting Metabase behind a firewall that blocks outgoing connections, **you must allow outbound stateful connections to port 443 on the all of the following IP addresses**:
+If you're hosting Metabase behind a firewall that blocks outgoing connections, **you must allow outbound stateful connections to port 443 on all of the following IP addresses**:
 
 ```
 23.23.111.13

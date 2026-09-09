@@ -416,7 +416,6 @@ function DatasetFieldMetadataSidebarInner({
                   name="should_index"
                   label={t`Surface individual records in search by matching against this column`}
                   mx="1.5rem"
-                  size="sm"
                   fw="bold"
                   maw="300px"
                   onChange={handleShouldIndexChange}

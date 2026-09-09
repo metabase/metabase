@@ -150,7 +150,6 @@
         (upsert-by-name! slug (assoc fields
                                      :bundle          bytes
                                      :last_synced_sha sha
-                                     :last_synced_at  :%now
                                      :sync_error      nil))
         (app-content-changed? existing fields)))
     (catch Throwable e
