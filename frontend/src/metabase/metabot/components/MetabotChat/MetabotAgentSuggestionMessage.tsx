@@ -140,20 +140,8 @@ export const AgentSuggestionMessage = ({
     };
   }, []);
 
-  const originalMetadataProvider = useMetadataProvider(
-    getSourceDatabaseId(originalTransform),
-  );
-  const suggestedMetadataProvider = useMetadataProvider(
-    getSourceDatabaseId(suggestedTransform),
-  );
-
-  const oldSource = originalTransform
-    ? getSourceCode(originalTransform, originalMetadataProvider)
-    : "";
-  const newSource = getSourceCode(
-    suggestedTransform,
-    suggestedMetadataProvider,
-  );
+  const oldSource = useSourceCode(originalTransform);
+  const newSource = useSourceCode(suggestedTransform);
 
   const handleApply = async () => {
     dispatch(activateSuggestedTransform(suggestedTransform));
@@ -294,10 +282,11 @@ function getSourceDatabaseId(
     : null;
 }
 
-function getSourceCode(
-  transform: Pick<MetabotTransformInfo, "source">,
-  metadataProvider: Lib.MetadataProvider,
+function useSourceCode(
+  transform: Pick<MetabotTransformInfo, "source"> | undefined,
 ): string {
+  const metadataProvider = useMetadataProvider(getSourceDatabaseId(transform));
+
   return match(transform)
     .with({ source: { type: "query" } }, (t) => {
       const query = Lib.fromJsQuery(metadataProvider, t.source.query);
