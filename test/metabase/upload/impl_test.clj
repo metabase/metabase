@@ -1352,6 +1352,21 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
+(deftest create-csv-upload!-malformed-csv-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "A row wider than the header fails with the message the user can act on"
+      (let [e (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"^Column count in data"
+                   (do-with-uploaded-example-csv! {:file (csv-file-with ["a,b" "1,2,3"])} identity)))]
+        (is (= 422 (:status-code (ex-data e))))))
+    (testing "A file no separator can parse fails the same way"
+      (let [e (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"^Unable to determine separator"
+                   (do-with-uploaded-example-csv! {:file (csv-file-with ["\"a" "1"])} identity)))]
+        (is (= 422 (:status-code (ex-data e))))))))
+
 (deftest create-csv-upload!-schema-does-not-sync-test
   ;; We only need to test this for a single driver, and the way this test has been written is coupled to Postgres
   (mt/test-driver :postgres

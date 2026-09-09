@@ -31,23 +31,23 @@
   (when (> size max-file-size-bytes)
     (format "File '%s' exceeds %dMB size limit" name (quot max-file-size-bytes (* 1024 1024)))))
 
+(def ^:private generic-upload-error
+  ;; Handed a bare internal-error note, the model told the user no file had been attached.
+  "Metabase hit an internal error while saving the file, so the upload didn't finish. Ask a Metabase admin to check the server logs.")
+
 (defn- upload-error-message
-  "Failure text safe to hand to the model. Deliberate upload errors, 4xx `ex-info`s
-   whose message was written for the user, pass through; raw driver and JDBC errors
-   can name hosts or accounts, so they get a generic line and stay in the logs. A 4xx
-   whose message contains its cause's text is a relabeled raw error, not an authored
-   one. A relabel that drops its cause entirely reads as authored and passes through.
-   The generic line has to say that this file was not saved: handed a bare internal-error
-   note, the model told the user no file had been attached."
+  "Returns failure text that is safe to hand to the model.
+   The upload layer's own 4xx errors carry a message written for the user and have no cause. Anything else,
+   including the 4xx that relays a raw driver error along with its cause, gets [[generic-upload-error]], since
+   driver and JDBC messages can name hosts or accounts."
   [e]
-  (let [{:keys [status-code]} (ex-data e)
-        cause-message         (some-> (ex-cause e) ex-message)]
-    (if (and status-code
+  (let [{:keys [status-code]} (ex-data e)]
+    (if (and (integer? status-code)
              (<= 400 status-code 499)
-             (not (and (seq cause-message)
-                       (str/includes? (str (ex-message e)) cause-message))))
+             (nil? (ex-cause e))
+             (some? (ex-message e)))
       (ex-message e)
-      "Metabase hit an internal error while saving the file, so nothing was uploaded. Ask a Metabase admin to check the server logs.")))
+      generic-upload-error)))
 
 (defn- upload-settings
   "Get upload settings map. Returns nil if uploads are not enabled."

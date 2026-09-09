@@ -223,9 +223,10 @@
             (throw (ex-info (format "Column count in data (%s) exceeds the number of in the header (%s)"
                                     (count rows)
                                     (count parsers))
-                            {:settings settings
+                            {:status-code      422
+                             :settings         settings
                              :col-upload-types rows
-                             :row row})))
+                             :row              row})))
           (when-not (str/blank? value)
             (parser value)))))))
 
@@ -319,7 +320,7 @@
         (InputStreamReader. charset))))
 
 (defn- assert-separator-chosen [s]
-  (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
+  (or s (throw (ex-info "Unable to determine separator" {:status-code 422}))))
 
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
@@ -439,7 +440,9 @@
                      :size-mb           (file-size-mb csv-file)}}
           (catch Throwable e
             (driver/drop-table! driver (:id db) table-name)
-            (throw (ex-info (ex-message e) {:status-code 400} e))))))))
+            (throw (if (:status-code (ex-data e))
+                     e
+                     (ex-info (ex-message e) {:status-code 400} e)))))))))
 
 ;;;; +------------------+
 ;;;; |  Create upload

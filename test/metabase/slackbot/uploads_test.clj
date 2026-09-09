@@ -73,27 +73,13 @@
                          "data.csv: Uploads are not enabled."))))
   (testing "a driver error rewrapped with its raw message is replaced with the generic line"
     (let [raw    "Connection to db.internal.example.com:5432 refused. Check that the hostname and port are correct."
-          result (failed-upload-result! (ex-info raw {:status-code 400} (java.sql.SQLException. raw)))
-          error  (get-in result [:upload-result :results 0 :error])]
-      (is (not (str/includes? error "db.internal")))
-      (is (str/includes? error "internal error"))))
+          result (failed-upload-result! (ex-info raw {:status-code 400} (java.sql.SQLException. raw)))]
+      (is (= @#'slackbot.uploads/generic-upload-error
+             (get-in result [:upload-result :results 0 :error])))))
   (testing "a raw driver exception is replaced with the generic line"
-    (let [result (failed-upload-result! (java.sql.SQLException. "FATAL: password authentication failed for user \"metabase\""))
-          error  (get-in result [:upload-result :results 0 :error])]
-      (is (not (str/includes? error "password")))
-      (is (str/includes? error "internal error"))))
-  (testing "a rewrap that embeds its cause's text under a prefix is still replaced"
-    (let [raw    "Access denied for user 'metabase'@'10.0.0.7'"
-          result (failed-upload-result! (ex-info (str "Failed to connect: " raw)
-                                                 {:status-code 400}
-                                                 (java.sql.SQLException. raw)))
-          error  (get-in result [:upload-result :results 0 :error])]
-      (is (not (str/includes? error "10.0.0.7")))
-      (is (str/includes? error "internal error"))))
-  (testing "a rewrap that drops its cause is indistinguishable from an authored message and passes through"
-    (let [raw    "ERROR: value too long for type character varying(255)"
-          result (failed-upload-result! (ex-info raw {:status-code 422}))]
-      (is (= raw (get-in result [:upload-result :results 0 :error]))))))
+    (let [result (failed-upload-result! (java.sql.SQLException. "FATAL: password authentication failed for user \"metabase\""))]
+      (is (= @#'slackbot.uploads/generic-upload-error
+             (get-in result [:upload-result :results 0 :error]))))))
 
 (deftest ^:synchronized csv-upload-disabled-test
   (testing "POST /events with file upload when uploads are disabled"
