@@ -13,10 +13,10 @@ import {
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
-import { getPermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
 import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";

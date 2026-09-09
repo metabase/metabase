@@ -1,4 +1,4 @@
-import { usePermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
+import { usePermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { Outlet } from "metabase/router";
 import * as Urls from "metabase/urls";
 
