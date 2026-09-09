@@ -45,9 +45,11 @@ const embeddingHubAppearancePage = () =>
   }));
 
 const embeddingHubThemeEditorPage = () =>
-  import("./pages").then(({ EmbeddingHubThemeEditorPage }) => ({
-    Component: EmbeddingHubThemeEditorPage,
-  }));
+  import("./pages/EmbeddingHubThemeEditorPage").then(
+    ({ EmbeddingHubThemeEditorPage }) => ({
+      Component: EmbeddingHubThemeEditorPage,
+    }),
+  );
 
 const embeddingHubLocalizationPage = () =>
   import("./pages").then(({ EmbeddingHubLocalizationPage }) => ({
