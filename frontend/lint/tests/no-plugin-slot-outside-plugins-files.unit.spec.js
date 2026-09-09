@@ -80,6 +80,39 @@ const VALID_CASES = [
     code: `export type PLUGIN_SEARCH = { isEnabled: () => boolean };`,
   },
   {
+    name: "re-exporting an imported slot through a local export",
+    filename: MODULE_INDEX,
+    code: `
+      import { PLUGIN_SEARCH } from "./plugins";
+      export { PLUGIN_SEARCH };
+    `,
+  },
+  {
+    name: "re-exporting an imported slot under an alias",
+    filename: MODULE_INDEX,
+    code: `
+      import { PLUGIN_SEARCH as search } from "./plugins";
+      export { search as PLUGIN_SEARCH };
+    `,
+  },
+  {
+    name: "exporting a local type separately",
+    filename: MODULE_FILE,
+    code: `
+      type PLUGIN_SEARCH = { isEnabled: () => boolean };
+      export { PLUGIN_SEARCH };
+    `,
+  },
+  {
+    name: "exporting only the type of a local binding",
+    filename: MODULE_FILE,
+    code: `
+      const PLUGIN_SEARCH = {};
+      export type { PLUGIN_SEARCH };
+      export { type PLUGIN_SEARCH as Search };
+    `,
+  },
+  {
     name: "a PLUGIN_* const that is not exported",
     filename: MODULE_FILE,
     code: `const PLUGIN_LOCAL = {};`,
@@ -103,6 +136,36 @@ const VALID_CASES = [
 ];
 
 const INVALID_CASES = [
+  {
+    name: "slot declared and exported separately",
+    filename: MODULE_FILE,
+    code: `const PLUGIN_SEARCH = {}; export { PLUGIN_SEARCH };`,
+    errors: [slotDeclaration],
+  },
+  {
+    name: "slot exported before its declaration",
+    filename: MODULE_FILE,
+    code: `export { PLUGIN_SEARCH }; const PLUGIN_SEARCH = {};`,
+    errors: [slotDeclaration],
+  },
+  {
+    name: "local binding exported as a slot",
+    filename: MODULE_FILE,
+    code: `const search = {}; export { search as PLUGIN_SEARCH };`,
+    errors: [slotDeclaration],
+  },
+  {
+    name: "slot exported under a different name",
+    filename: MODULE_FILE,
+    code: `const PLUGIN_SEARCH = {}; export { PLUGIN_SEARCH as search };`,
+    errors: [slotDeclaration],
+  },
+  {
+    name: "directly exported slot is only reported once",
+    filename: MODULE_FILE,
+    code: `export const PLUGIN_SEARCH = {}; export { PLUGIN_SEARCH as search };`,
+    errors: [slotDeclaration],
+  },
   // A slot exported outside a plugins file.
   {
     name: "slot exported from a module file",

@@ -37,6 +37,42 @@ module.exports = {
           });
         }
       },
+      ExportSpecifier(node) {
+        if (
+          node.parent.source ||
+          node.parent.exportKind === "type" ||
+          node.exportKind === "type"
+        ) {
+          return;
+        }
+
+        const exportedName = node.exported.name ?? node.exported.value;
+        const name = SLOT_NAME.test(exportedName)
+          ? exportedName
+          : node.local.name;
+        if (!SLOT_NAME.test(name)) {
+          return;
+        }
+
+        const variable = context.sourceCode
+          .getScope(node)
+          .set.get(node.local.name);
+        // Imported bindings are re-exports, and directly exported declarations
+        // are already checked by VariableDeclarator.
+        if (
+          variable?.defs.some(
+            (definition) =>
+              definition.type === "Variable" &&
+              !isSlotDeclaration(definition.node),
+          )
+        ) {
+          context.report({
+            node,
+            messageId: "slotDeclaration",
+            data: { name },
+          });
+        }
+      },
       ImportSpecifier(node) {
         if (isSlotFactoryImport(node)) {
           context.report({ node, messageId: "slotFactory" });
