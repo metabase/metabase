@@ -7,7 +7,10 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
-   [metabase.query-processor.preprocess :as qp.preprocess]))
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- resolve-joins
   ([query]

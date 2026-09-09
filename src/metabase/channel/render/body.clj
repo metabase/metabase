@@ -109,40 +109,31 @@
     (name (or (when-let [[_ id] (:field_ref col)]
                 (get-in col-settings [{::mb.viz/field-id id} ::mb.viz/column-title]))
               (get-in col-settings [{::mb.viz/column-name (:name col)} ::mb.viz/column-title])
-              (:display_name col)
+              (table-data/remapped-display-name col)
               (:name col)))))
 
 (defn- query-results->header-row
-  "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
-  [remapping-lookup card cols]
+  "Returns a row structure with header info from `visible-cols`. These values are strings that are ready to be
+  rendered as HTML"
+  [card visible-cols]
   {:row
-   (for [maybe-remapped-col cols
-         :when              (table-data/show-in-table? maybe-remapped-col)
-         :let               [col (if (:remapped_to maybe-remapped-col)
-                                   (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                   maybe-remapped-col)
-                             col-name (column-name card col)]
-         ;; If this column is remapped from another, it's already
-         ;; in the output and should be skipped
-         :when              (not (:remapped_from maybe-remapped-col))]
-     (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
+   (for [col      visible-cols
+         ;; a remapped column is aligned by its target's type
+         :let     [col-name  (column-name card col)
+                   value-col (or (:remapped_to_column col) col)]]
+     (if (isa? ((some-fn :effective_type :base_type) value-col) :type/Number)
        (formatter/map->NumericWrapper {:num-str col-name :num-value col-name})
        col-name))})
 
 (mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- [:maybe :string] remapping-lookup cols rows viz-settings]
-  (let [formatters (into [] (map #(formatter/create-formatter timezone-id % viz-settings)) cols)]
+  [timezone-id :- [:maybe :string] visible-cols rows viz-settings]
+  (let [formatters (mapv #(formatter/create-formatter timezone-id % viz-settings) visible-cols)]
     (for [row rows]
-      {:row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
-                  :when (and (not (:remapped_from maybe-remapped-col))
-                             (table-data/show-in-table? maybe-remapped-col))
-                  :let [[_formatter row-cell] (if (:remapped_to maybe-remapped-col)
-                                                (let [remapped-index (get remapping-lookup (:name maybe-remapped-col))]
-                                                  [(nth formatters remapped-index)
-                                                   (nth row remapped-index)])
-                                                [fmt-fn maybe-remapped-row-cell])]]
-              (fmt-fn row-cell))})))
+      {:row (mapv (fn [col fmt-fn]
+                    (fmt-fn (nth row (:source-idx col) nil)))
+                  visible-cols
+                  formatters)})))
 
 (mu/defn- prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
@@ -150,11 +141,11 @@
   ([timezone-id :- [:maybe :string]
     card
     {:keys [cols rows viz-settings], :as _data}]
-   (let [remapping-lookup (table-data/create-remapping-lookup cols)
-         row-limit        (min (channel.settings/attachment-table-row-limit) 100)]
+   (let [visible-cols (table-data/visible-columns cols)
+         row-limit    (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
-      (query-results->header-row remapping-lookup card cols)
-      (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
+      (query-results->header-row card visible-cols)
+      (query-results->row-seq timezone-id visible-cols (take row-limit rows) viz-settings)))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-scalar-number number))])
@@ -233,7 +224,9 @@
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
-        filtered-cols               (filter table-data/show-in-table? ordered-cols)
+        ;; the same columns as the header row, so `render-table` can index the two positionally (#71069)
+        filtered-cols               (mapv #(assoc % :display_name (table-data/remapped-display-name %))
+                                          (table-data/visible-columns ordered-cols))
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table

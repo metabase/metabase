@@ -7,8 +7,12 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json])
+  (:import
+   (software.amazon.awssdk.core.exception SdkClientException SdkException)
+   (software.amazon.awssdk.identity.spi AwsSessionCredentialsIdentity)))
 
 (set! *warn-on-reflection* true)
 
@@ -73,19 +77,100 @@
       (is (= {:models [{:id "anthropic.claude-sonnet-5" :display_name "Claude Sonnet 5"}]}
              (bedrock/list-models {:credentials credentials}))))))
 
-(deftest list-models-missing-credentials-test
-  (testing "a connection with no credentials fails rather than picking up the single-provider settings"
+(deftest list-models-missing-credentials-uses-default-chain-test
+  (testing "a connection with no credentials signs with the AWS default chain rather than picking up the single-provider settings"
     (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                        llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI"]
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                    (constantly (AwsSessionCredentialsIdentity/create
+                                                 "AKIACHAINCHAINCHAIN1" "chain-secret" "chain-token"))]
+          (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
+            (is (=? {:models [{:id "anthropic.claude-fable-5"}
+                              {:id "anthropic.claude-haiku-4-5"}
+                              {:id "anthropic.claude-opus-4-8"}
+                              {:id "openai.gpt-5.4"}
+                              {:id "openai.gpt-5.5"}]}
+                    (bedrock/list-models)))
+            (is (=? {:url     "https://bedrock-mantle.us-east-1.api.aws/v1/models"
+                     :headers {"Authorization"        #".*Credential=AKIACHAINCHAINCHAIN1/.*"
+                               "X-Amz-Security-Token" "chain-token"}}
+                    @captured))))))))
+
+(deftest list-models-empty-default-chain-test
+  (testing "no configured credentials and nothing in the default chain surface a provider-friendly error"
+    (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                (fn [] (throw (SdkClientException/create "Unable to load credentials")))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"AWS Bedrock credentials are not configured"
-           (bedrock/list-models)))))
-  (deftest list-models-requires-both-keys-test
+           #"got no credentials from the AWS default credentials chain"
+           (bedrock/list-models))))))
+
+(deftest list-models-chain-refresh-failure-test
+  (testing "a refresh that throws on its own, rather than through the chain's own report, is not called a missing
+            key pair, which would send an operator off to create long-lived keys"
+    (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                (fn [] (throw (-> (SdkException/builder)
+                                                  (.message "User: arn:aws:sts::123456789012:assumed-role/x is not authorized")
+                                                  (.build))))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"could not refresh its AWS credentials"
+           (bedrock/list-models)))
+      (is (= :credentials-unavailable
+             (try (bedrock/list-models)
+                  (catch clojure.lang.ExceptionInfo e (:error-code (ex-data e)))))))))
+
+(deftest list-models-session-token-without-pair-test
+  (testing "a session token without its key pair throws instead of silently signing as the ambient identity"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"AWS Bedrock credentials are not configured"
-         (bedrock/list-models)))))
+         #"session token without its access key pair"
+         (bedrock/list-models {:credentials {:session-token "FwoGZXIvYXdzEXAMPLE"}})))))
+
+(deftest list-models-hosted-keyless-rejected-test
+  (testing "a hosted deployment rejects a keyless connection before the credentials chain is touched"
+    (mt/with-premium-features #{:hosting}
+      (let [chain-calls (atom 0)
+            requests    (atom 0)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]
+          (with-redefs [http/request (fn [_] (swap! requests inc) {:body {:data fake-catalog}})]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Metabase Cloud requires an access key pair"
+                 (bedrock/list-models)))
+            (is (zero? @chain-calls))
+            (is (zero? @requests))))))))
+
+(deftest list-models-unconfirmed-hosting-keyless-rejected-test
+  (testing "a token status the token service could not confirm is treated as hosted, so a Cloud instance that
+            cannot reach it does not fall back to the operator identity"
+    (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly nil)]
+      (let [chain-calls (atom 0)
+            requests    (atom 0)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]
+          (with-redefs [http/request (fn [_] (swap! requests inc) {:body {:data fake-catalog}})]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Metabase Cloud requires an access key pair"
+                 (bedrock/list-models)))
+            (is (zero? @chain-calls))
+            (is (zero? @requests))))))))
+
+(deftest list-models-hosted-explicit-pair-works-test
+  (testing "a hosted deployment still signs with an explicit customer key pair"
+    (mt/with-premium-features #{:hosting}
+      (let [captured (atom nil)]
+        (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
+          (is (=? {:models [{:id "anthropic.claude-fable-5"}
+                            {:id "anthropic.claude-haiku-4-5"}
+                            {:id "anthropic.claude-opus-4-8"}
+                            {:id "openai.gpt-5.4"}
+                            {:id "openai.gpt-5.5"}]}
+                  (bedrock/list-models {:credentials {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                      :secret-access-key "wJalrXUtnFEMI"}})))
+          (is (=? {:headers {"Authorization" #".*Credential=AKIAIOSFODNN7EXAMPLE/.*"}}
+                  @captured)))))))
 
 (deftest list-models-accepts-credentials-override-test
   (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
@@ -108,10 +193,10 @@
                   @captured)))))))
 
 (deftest list-models-credentials-override-must-be-complete-test
-  (testing "an override missing the secret access key throws without falling back to saved settings"
+  (testing "an override missing the secret access key throws without falling back to saved settings or the chain"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"AWS Bedrock credentials are not configured"
+         #"AWS Bedrock needs both an access key ID and a secret access key"
          (bedrock/list-models {:credentials {:access-key-id "AKIAOVERRIDEOVERRID1"}})))))
 
 (deftest list-models-credentials-override-region-validated-test
@@ -229,23 +314,75 @@
   (testing "openai.* models omit the field entirely"
     (is (not (contains? (captured-body! {:model "openai.gpt-5.5"}) :max_output_tokens)))))
 
-(deftest reasoning-is-disabled-test
-  (testing "anthropic models get no thinking config and reasoning parts are stripped"
+(deftest reasoning-request-config-test
+  (testing "anthropic models request adaptive summarized thinking, and only that"
+    (let [body (captured-body! {:model "anthropic.claude-opus-4-8"})]
+      (is (=? {:thinking {:type "adaptive" :display "summarized"}} body))
+      (is (not (contains? body :reasoning)))
+      (is (not (contains? body :include)))))
+  (testing "openai models request reasoning summaries with encrypted-content replay, and only that"
+    (let [body (captured-body! {:model "openai.gpt-5.5"})]
+      (is (=? {:reasoning {:summary "auto"}
+               :include   ["reasoning.encrypted_content"]}
+              body))
+      (is (not (contains? body :thinking)))))
+  (testing "models that do not stream reasoning get no thinking config"
+    (is (not (contains? (captured-body! {:model "anthropic.claude-haiku-4-5"}) :thinking))))
+  (testing ":reasoning? false suppresses both families"
+    (is (not (contains? (captured-body! {:model "anthropic.claude-opus-4-8" :reasoning? false}) :thinking)))
+    (let [body (captured-body! {:model "openai.gpt-5.5" :reasoning? false})]
+      (is (not (contains? body :reasoning)))
+      (is (not (contains? body :include)))))
+  (testing "structured output suppresses thinking for the anthropic family only"
+    (is (not (contains? (captured-body! {:model  "anthropic.claude-opus-4-8"
+                                         :schema {:type "object"}})
+                        :thinking)))
+    (is (=? {:reasoning {:summary "auto"}
+             :include   ["reasoning.encrypted_content"]}
+            (captured-body! {:model "openai.gpt-5.5" :schema {:type "object"}})))))
+
+(deftest reasoning-replay-test
+  (testing "signed reasoning parts replay as a thinking block merged into the assistant turn"
     (let [body (json/decode+kw
                 (:body (captured-raw-request!
                         {:model "anthropic.claude-opus-4-8"
-                         :input [{:type :reasoning :id "r1" :text ""
+                         :input [{:type :reasoning :id "r1" :text "first "}
+                                 {:type :reasoning :id "r1" :text "second"}
+                                 {:type :reasoning :id "r1" :text ""
                                   :provider-metadata {:anthropic {:signature "abc"}}}
                                  {:type :tool-input :id "call-1" :function "search" :arguments {}}]})))]
-      (is (not (contains? body :thinking)))
-      (is (=? [{:role "assistant" :content [{:type "tool_use" :id "call-1"}]}]
-              (:messages body)))))
-  (testing "openai models get no reasoning summary or encrypted-content include"
-    (let [body (json/decode+kw
-                (:body (captured-raw-request! {:model "openai.gpt-5.5"
-                                               :input [{:role :user :content "hi"}]})))]
-      (is (not (contains? body :reasoning)))
-      (is (not (contains? body :include))))))
+      (is (=? [{:role    "assistant"
+                :content [{:type "thinking" :thinking "first second" :signature "abc"}
+                          {:type "tool_use" :id "call-1"}]}]
+              (:messages body))))))
+
+(deftest reasoning-gate-matches-request-config-test
+  (doseq [model (keys @#'bedrock/supported-models)]
+    (testing model
+      (let [body (captured-body! {:model model})]
+        ;; `case` so a model of an unknown family fails loudly here
+        (case (#'bedrock/model-family model)
+          :anthropic
+          (testing "the gate and the thinking request agree"
+            (is (= (bedrock/reasoning-model? model) (contains? body :thinking))))
+          ;; deliberately asymmetric: the request keeps its reasoning fields
+          ;; (encrypted-content replay works) while the gate answers false,
+          ;; because the mantle never streams summaries — nothing will render.
+          ;; See [[bedrock/reasoning-model?]].
+          :openai
+          (testing "reasoning is requested but the gate answers false"
+            (is (contains? body :reasoning))
+            (is (false? (bedrock/reasoning-model? model)))))))))
+
+(deftest ^:parallel reasoning-model?-test
+  (are [model expected] (= expected (bedrock/reasoning-model? model))
+    "anthropic.claude-opus-4-8"  true
+    "anthropic.claude-fable-5"   true
+    "anthropic.claude-haiku-4-5" false
+    "openai.gpt-5.5"             false
+    "openai.gpt-5.4-2026-03-05"  false
+    "deepseek.v3.2"              false
+    nil                          false))
 
 (deftest fast-mode-is-disabled-test
   (testing "a fast-mode request is stripped before the anthropic body is built"
@@ -310,6 +447,46 @@
           (aisdk-parts-for!
            "openai.gpt-5.5"
            [{:type "response.created" :response {:id "resp_1" :model "openai.gpt-5.5"}}
+            {:type "response.output_item.added" :item {:type "message" :id "item_1"} :id "item_1"}
+            {:type "response.output_text.delta" :delta "pong" :id "item_1"}
+            {:type "response.output_item.done" :item {:type "message" :id "item_1"} :id "item_1"}
+            {:type "response.completed"
+             :response {:id "resp_1" :usage {:input_tokens 3 :output_tokens 2}}}]))))
+
+(deftest anthropic-model-streams-reasoning-test
+  (is (=? [{:type :start :id "msg_1"}
+           {:type :reasoning :text "let me think" :provider-metadata {:anthropic {:signature "sig-1"}}}
+           {:type :text :text "pong"}
+           {:type :usage :usage {:promptTokens 3 :completionTokens 2}}]
+          (aisdk-parts-for!
+           "anthropic.claude-opus-4-8"
+           [{:type "message_start" :message {:id "msg_1" :model "claude-opus-4-8" :usage {:input_tokens 3}}}
+            {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
+            {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "let me think"}}
+            {:type "content_block_delta" :index 0 :delta {:type "signature_delta" :signature "sig-1"}}
+            {:type "content_block_stop" :index 0}
+            {:type "content_block_start" :index 1 :content_block {:type "text"}}
+            {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "pong"}}
+            {:type "content_block_stop" :index 1}
+            {:type "message_delta" :delta {:stop_reason "end_turn"} :usage {:input_tokens 3 :output_tokens 2}}
+            {:type "message_stop"}]))))
+
+;; The mantle has never been observed to emit reasoning_summary_* events (see
+;; [[bedrock/reasoning-model?]]) — this pins the translation wiring so only the
+;; gate needs flipping if it ever starts.
+(deftest openai-model-streams-reasoning-test
+  (is (=? [{:type :start :id "resp_1"}
+           {:type :reasoning :text "keeping it short"}
+           {:type :text :text "pong"}
+           {:type :usage :usage {:promptTokens 3 :completionTokens 2}}]
+          (aisdk-parts-for!
+           "openai.gpt-5.5"
+           [{:type "response.created" :response {:id "resp_1" :model "openai.gpt-5.5"}}
+            {:type "response.output_item.added" :item {:type "reasoning" :id "rs_1"}}
+            {:type "response.reasoning_summary_part.added" :item_id "rs_1"}
+            {:type "response.reasoning_summary_text.delta" :item_id "rs_1" :delta "keeping it short"}
+            {:type "response.reasoning_summary_text.done"  :item_id "rs_1"}
+            {:type "response.output_item.done" :item {:type "reasoning" :id "rs_1"}}
             {:type "response.output_item.added" :item {:type "message" :id "item_1"} :id "item_1"}
             {:type "response.output_text.delta" :delta "pong" :id "item_1"}
             {:type "response.output_item.done" :item {:type "message" :id "item_1"} :id "item_1"}

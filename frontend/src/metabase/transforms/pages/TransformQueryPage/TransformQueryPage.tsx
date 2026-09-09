@@ -15,11 +15,10 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { getMetadata } from "metabase/metadata-store";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { loadQueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -124,7 +123,7 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const navigate = useNavigate();
-  const metadata = useSelector(getMetadata);
+  const getMetadataProvider = useMetadataProviderFactory();
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
@@ -197,7 +196,7 @@ function TransformQueryPageBody({
     // Editing the SQL of an existing incremental transform to drop the table variable
     // would leave it in a broken state (and the backend rejects it). Warn first, and on
     // confirmation turn off incremental processing as part of the save.
-    if (isMissingIncrementalTableTag(transform, source, metadata)) {
+    if (isMissingIncrementalTableTag(transform, source, getMetadataProvider)) {
       openTurnOffIncremental();
       return;
     }

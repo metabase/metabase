@@ -1,9 +1,9 @@
 import Color from "color";
 import fetchMock from "fetch-mock";
 
+import { createMockState } from "__support__/state";
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { performUndo } from "metabase/redux/undo";
 import { suggestHarmonyColors } from "metabase/ui/colors/harmonies";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
