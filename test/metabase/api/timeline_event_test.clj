@@ -31,9 +31,9 @@
                                                     :time_matters false
                                                     :timeline_id  (u/the-id timeline)}]
       (testing "check that we get the timeline-event with `id`"
-        (is (= "Very Important Event"
-               (->> (mt/user-http-request :rasta :get 200 (str "timeline-event/" (u/the-id event)))
-                    :name)))))))
+        (is (= {:name "Very Important Event" :entity_id (:entity_id event)}
+               (select-keys (mt/user-http-request :rasta :get 200 (str "timeline-event/" (u/the-id event)))
+                            [:name :entity_id])))))))
 
 (deftest create-timeline-event-test
   (testing "POST /api/timeline-event"
@@ -41,12 +41,15 @@
                    :model/Timeline      timeline   {:name          "Important Events"
                                                     :collection_id (u/the-id collection)}]
       (testing "create a timeline event"
-        ;; make an API call to create a timeline
-        (mt/user-http-request :rasta :post 200 "timeline-event" {:name         "Rasta Migrates to Florida for the Winter"
-                                                                 :timestamp    (java.time.OffsetDateTime/now)
-                                                                 :timezone     "US/Pacific"
-                                                                 :time_matters false
-                                                                 :timeline_id  (u/the-id timeline)}))
+        (let [event (mt/user-http-request :rasta :post 200 "timeline-event"
+                                          {:name         "Rasta Migrates to Florida for the Winter"
+                                           :timestamp    (java.time.OffsetDateTime/now)
+                                           :timezone     "US/Pacific"
+                                           :time_matters false
+                                           :timeline_id  (u/the-id timeline)})]
+          (is (=? {:entity_id #(and (string? %) (= 21 (count %)))} event))
+          (is (= (:entity_id event)
+                 (t2/select-one-fn :entity_id :model/TimelineEvent :id (:id event))))))
       ;; check the Timeline to see if the event is there
       (is (= "Rasta Migrates to Florida for the Winter"
              (-> (t2/select-one :model/TimelineEvent :timeline_id (u/the-id timeline)) :name))))))
