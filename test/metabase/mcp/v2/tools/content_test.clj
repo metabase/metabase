@@ -1137,3 +1137,61 @@
                                            :query_type :native}]
             (is (=? {:min {:name "min" :type "number"}}
                     (:template_tags (content-one {:items [{:type "question" :id (:id card)}]}))))))))))
+
+(deftest get-content-not-found-parity-across-types-test
+  (testing "the not-found collapse holds for every type, not just question: a nonexistent id and an
+            existing-but-unreadable one are indistinguishable apart from the id. Each type has its
+            own fetch fn, so parity on one proves nothing about the others.
+
+            Snippet is not in the loop: snippets live in the `snippets` collection namespace rather
+            than under the restricted collection, so this fixture cannot make one unreadable."
+    (mt/with-temp [:model/Collection {coll-id :id}    {}
+                   :model/Card       {card-id :id}    {:collection_id coll-id :dataset_query (venues-query)}
+                   :model/Card       {model-id :id}   {:collection_id coll-id :type :model
+                                                       :dataset_query (venues-query)}
+                   :model/Dashboard  {dash-id :id}    {:collection_id coll-id}
+                   :model/Document   {doc-id :id}     {:collection_id coll-id
+                                                       :document      {:type "doc" :content []}}]
+      (mt/with-non-admin-groups-no-collection-perms coll-id
+        (mt/with-test-user :rasta
+          (doseq [[type existing-id] [["question"   card-id]
+                                      ["model"      model-id]
+                                      ["dashboard"  dash-id]
+                                      ["document"   doc-id]
+                                      ["collection" coll-id]]]
+            (testing type
+              (let [unreadable (:error (content-one {:items [{:type type :id existing-id}]}))
+                    missing    (:error (content-one {:items [{:type type :id 999999999}]}))]
+                (is (some? unreadable) "an unreadable entity is an error, not a silent success")
+                (is (some? missing) "a nonexistent id is an error")
+                (is (= (str/replace unreadable (str existing-id) "ID")
+                       (str/replace missing "999999999" "ID"))
+                    (str "the two messages must differ only by the id, or the error text tells the "
+                         "caller which ids exist. unreadable=" (pr-str unreadable)
+                         " missing=" (pr-str missing)))))))))))
+
+(deftest get-content-reads-archived-content-test
+  (testing "archived (trashed) content is readable rather than hidden — an agent asked to restore
+            something has to be able to read it first — and the read reports the archived state so
+            the agent is not misled into treating it as live."
+    (mt/with-temp [:model/Card       {card-id :id} {:name "Trashed Q" :archived true
+                                                    :dataset_query (venues-query)}
+                   :model/Collection {coll-id :id} {:name "Trashed Coll" :archived true}
+                   :model/Document   {doc-id :id}  {:name "Trashed Doc" :archived true
+                                                    :document {:type "doc" :content []}}]
+      (mt/with-test-user :crowberto
+        (doseq [[type id label] [["question"   card-id "Trashed Q"]
+                                 ["collection" coll-id "Trashed Coll"]
+                                 ["document"   doc-id  "Trashed Doc"]]]
+          (testing type
+            (let [row (content-one {:items [{:type type :id id}]})]
+              (is (nil? (:error row)) "archived content reads rather than 404ing")
+              (is (= label (:name row)) "and comes back identified")
+              (is (true? (:archived row))
+                  "the archived flag is reported — a read that omitted it would present trashed
+                   content as live"))))))
+    (testing "a live entity of the same type reports archived false, so the flag above is not
+              constant-true"
+      (mt/with-temp [:model/Card {card-id :id} {:name "Live Q" :dataset_query (venues-query)}]
+        (mt/with-test-user :crowberto
+          (is (false? (:archived (content-one {:items [{:type "question" :id card-id}]})))))))))
