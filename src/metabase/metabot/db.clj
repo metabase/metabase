@@ -857,10 +857,13 @@
              :exploration_id nil
              {:order-by [[:%lower.name :asc]]}))
 
-(defn unarchived-documents
-  "The unarchived Documents with `document-ids`."
-  [document-ids]
-  (t2/select :model/Document :id [:in document-ids] :archived false))
+(defn documents-in-archived-state
+  "The Documents with `document-ids` whose archived flag matches `archived?`. The flag is the
+  caller's search state, not a constant: an archived search validates its hits against the
+  archived set, and hardcoding `false` here drops every archived hit while the caller's total
+  still counts it."
+  [document-ids archived?]
+  (t2/select :model/Document :id [:in document-ids] :archived (boolean archived?)))
 
 (defn transforms
   "The Transforms with `transform-ids`."

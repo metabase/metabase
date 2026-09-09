@@ -11,6 +11,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -159,6 +160,70 @@
           (is (= [["African"] ["American"] ["Artisan"]] values))
           (is (= 3 returned))
           (is (true? has_more_values)))))))
+
+(deftest constraints-value-must-not-name-a-column-test
+  (testing "a constraints value shaped like a field reference is refused, not compiled into one"
+    ;; Reported by galdre on #81245; this is his repro. The caller below can READ the dashboard and may
+    ;; see the data, but holds `:perms/create-queries :no` — it can author no query at all, asserted
+    ;; before the attack. `*param-values-query*` deliberately relaxes that gate so filter values still
+    ;; load, which is exactly what made a smuggled clause dangerous: `[["field" <id> nil]]` was compiled
+    ;; as a field reference rather than bound as a literal, so the server evaluated
+    ;; `WHERE VENUES.PRICE = VENUES.CATEGORY_ID` and handed back the matching rows — data this caller
+    ;; cannot query, from a column it never named.
+    (mt/with-temp
+      [:model/Collection collection {}
+       :model/Dashboard {dash-id :id}
+       {:collection_id (:id collection)
+        :parameters    [{:name "Venue Name" :slug "venue_name" :id "_NAME_" :type "category"}
+                        {:name "Price" :slug "price" :id "_PRICE_" :type "category"}]}
+       :model/Card {card-id :id} {:collection_id (:id collection)
+                                  :database_id   (mt/id)
+                                  :table_id      (mt/id :venues)
+                                  :dataset_query (table-query (mt/id :venues))}
+       :model/DashboardCard _ {:card_id            card-id
+                               :dashboard_id       dash-id
+                               :parameter_mappings [{:parameter_id "_NAME_"
+                                                     :card_id      card-id
+                                                     :target       [:dimension (mt/$ids venues $name)]}
+                                                    {:parameter_id "_PRICE_"
+                                                     :card_id      card-id
+                                                     :target       [:dimension (mt/$ids venues $price)]}]}]
+      (perms.test-util/with-restored-data-perms!
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (mt/with-test-user :rasta
+          (let [category-id (mt/id :venues :category_id)
+                base        {:target "dashboard" :id dash-id :parameter_id "_NAME_" :limit 1000}]
+            (testing "precondition: the caller cannot run a query of its own against VENUES"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query (table-query (mt/id :venues))))))
+            (let [unconstrained (:values (params-result base))]
+              (testing "anti-vacuity control: the call reaches the warehouse and a literal narrows it"
+                (is (= 100 (count unconstrained)))
+                (let [literal (:values (params-result (assoc base :constraints {:_PRICE_ 2})))]
+                  (is (seq literal))
+                  (is (< (count literal) (count unconstrained)))))
+              (testing "an id-shaped field reference is refused"
+                (is (string? (params-error (assoc base :constraints
+                                                  {:_PRICE_ [["field" category-id nil]]})))))
+              (testing "a name-shaped field reference is refused, so no field id is needed to exploit it"
+                (is (string? (params-error (assoc base :constraints
+                                                  {:_PRICE_ [["field" {"base-type" "type/Integer"} "CATEGORY_ID"]]})))))
+              (testing "a reference to a column hidden as sensitive is refused"
+                (mt/with-temp-vals-in-db :model/Field category-id {:visibility_type :sensitive}
+                  (is (string? (params-error (assoc base :constraints
+                                                    {:_PRICE_ [["field" category-id nil]]}))))))
+              (testing "an arithmetic expression over a column is refused"
+                (is (string? (params-error (assoc base :constraints
+                                                  {:_PRICE_ [["+" ["field" category-id nil] 1]]})))))
+              (testing "a :value clause is refused"
+                (is (string? (params-error (assoc base :constraints
+                                                  {:_PRICE_ [["value" 2 {"base-type" "type/Integer"}]]})))))
+              (testing "a literal constraint still works, so the refusal is shape-based rather than blanket"
+                (is (seq (:values (params-result (assoc base :constraints {:_PRICE_ 2})))))))))))))
 
 (deftest dashboard-values-entity-id-test
   (testing "GHY-4141: id accepts a 21-char entity_id as well as a numeric id"

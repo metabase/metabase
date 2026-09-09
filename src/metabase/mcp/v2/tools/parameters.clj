@@ -19,7 +19,12 @@
    that the native-query source in `question_write` carries — deliberately. Fetching values does run
    warehouse queries under the hood, but only Metabase-generated MBQL over the object's own fields or
    the object's *stored* (already-read-checked) values-source card; it never executes caller-supplied
-   SQL, so there is no path here to run SQL the caller couldn't already run by viewing the object."
+   SQL.
+
+   That holds only while every caller-supplied value stays a value. `constraints` is compiled into
+   the chain-filter query, so a value shaped like an MBQL clause used to be compiled as one — which
+   let a caller with no query permission at all compare two columns and read the rows that matched.
+   [[::constraint-value]] is what keeps the claim above true; widening it reopens that path."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -37,6 +42,7 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -282,6 +288,28 @@
 
 ;;; --------------------------------------------------- The tool ---------------------------------------------------
 
+(mr/def ::constraint-scalar
+  "One filter selection: a literal the chain filter binds as a value."
+  [:or :string :int :double :boolean])
+
+(mr/def ::constraint-value
+  "A filter's current selection — one literal, or several for a multi-select.
+
+  Deliberately narrow, and the narrowness is the security boundary rather than tidiness. Chain
+  filtering compiles these into MBQL, so a value shaped like a clause is compiled as one:
+  `[[\"field\" 49 nil]]` becomes a reference to that column and the server compares one column
+  against another, handing back the rows where they match. That reads data the caller may hold no
+  query permission for — this tool runs its lookups under `*param-values-query*` precisely so a
+  caller who can only READ a dashboard can still see its filter values — and it reaches columns
+  marked `visibility_type: sensitive`, which exist to be unreachable. A name-shaped reference
+  (`[[\"field\" {\"base-type\" \"type/Integer\"} \"CATEGORY_ID\"]]`) does the same without needing a
+  field id.
+
+  Accepting only scalars and sequences of scalars refuses every clause shape at the boundary, before
+  anything is compiled — rather than blacklisting the clause forms known today.
+  `constraints-value-must-not-name-a-column-test` pins it."
+  [:or ::constraint-scalar [:sequential ::constraint-scalar]])
+
 (def ^:private get-parameter-values-args-schema
   [:map {:closed true}
    [:target [:enum {:description "Whether id names a dashboard or a card. \"question\" covers any card — question, model, or metric."}
@@ -295,7 +323,7 @@
     [:maybe [:string {:min 1 :description "Return only values matching this search string. Use it to narrow a large value list."}]]]
    [:constraints {:optional true}
     [:maybe [:map-of {:description "Chain filtering: the current selections of the dashboard's OTHER filters, keyed by their parameter ids, narrowing this filter to the values still valid alongside them. Dashboards only."}
-             :keyword :any]]]
+             :keyword ::constraint-value]]]
    [:limit {:optional true}
     [:maybe [:int {:min 1 :max max-limit :description "Maximum values to return in this call (default 100, max 1000)."}]]]
    [:offset {:optional true}
