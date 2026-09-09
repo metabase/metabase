@@ -86,7 +86,7 @@ export const EmptyState = ({
         {image && <LegacyImage image={image} {...rest} />}
       </div>
       {title && (
-        <Title order={2} aria-live="polite" c="text-secondary">
+        <Title order={2} role="status" aria-live="polite" c="text-secondary">
           {title}
         </Title>
       )}
