@@ -6,11 +6,13 @@ import {
   type ActiveStatus,
 } from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getTenantsBasePath } from "metabase/common/tenants";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
 import { SettingsSection } from "metabase/settings-components";
 import { Box, Group, Tabs, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButton";
@@ -52,6 +54,9 @@ export const TenantsListingApp = () => {
 
   const hasNoTenants = data?.data?.length === 0;
 
+  const isMountedInEmbeddingHub =
+    getTenantsBasePath() === Urls.embeddingHubTenancy();
+
   return (
     // Narrower when there are no tenants. 50rem matches the embedding hub's
     // content column, which mounts this same listing.
@@ -60,7 +65,9 @@ export const TenantsListingApp = () => {
         <Title order={1}>{t`Tenants`}</Title>
 
         <Group gap="sm">
-          <TenantsDocsButton />
+          {/* The embedding hub's Tenancy page links to the same docs above the
+              listing, so this would be the second link to one destination. */}
+          {!isMountedInEmbeddingHub && <TenantsDocsButton />}
           <EditUserStrategySettingsButton page="tenants" />
         </Group>
       </Group>
