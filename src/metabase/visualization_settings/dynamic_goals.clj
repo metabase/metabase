@@ -2,15 +2,15 @@
   "Dynamic goals: goal values in viz settings that reference another entity's value
   (`{:id 1, :type \"card\", :column \"total\"}`) instead of holding a literal number. Single source of
   truth for which settings carry goal values, so deriving the queries to run and substituting their
-  results can never disagree. Mirrors `frontend/src/metabase/visualizations/lib/dynamic-goals.ts`.")
+  results can never disagree. Mirrors `frontend/src/metabase/viz-core/lib/dynamic-goal-settings.ts`.")
 
 (set! *warn-on-reflection* true)
 
 (def ^:private goal-settings
-  "Viz settings that hold goal values: `:scalar` keys hold a single goal value, `:segments` keys hold
+  "Viz settings that hold goal values: `:value` keys hold a single goal value, `:segments` keys hold
   a sequence of segment maps with goal values at `:min`/`:max`."
-  {:graph.goal_value :scalar
-   :progress.goal    :scalar
+  {:graph.goal_value :value
+   :progress.goal    :value
    :gauge.segments   :segments
    :scalar.segments  :segments})
 
@@ -26,7 +26,7 @@
   (->> goal-settings
        (mapcat (fn [[setting kind]]
                  (case kind
-                   :scalar   [(get viz-settings setting)]
+                   :value    [(get viz-settings setting)]
                    :segments (mapcat (juxt :min :max) (get viz-settings setting)))))
        (remove nil?)))
 
@@ -39,7 +39,7 @@
      (if (nil? (get viz setting))
        viz
        (case kind
-         :scalar   (update viz setting f)
+         :value    (update viz setting f)
          :segments (update viz setting (fn [segments]
                                          (mapv (fn [segment]
                                                  (cond-> segment
