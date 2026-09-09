@@ -583,41 +583,24 @@
   [driver [_ _opts arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
-(defn- percentile->quantile
-  [x]
-  (loop [x     (double x)
-         power (int 0)]
-    (if (zero? (- x (Math/floor x)))
-      [(Math/round x) (Math/round (Math/pow 10 power))]
-      (recur (* 10 x) (inc power)))))
-
-(defn- format-approx-quantiles
-  [_tag [expr offset quantiles :as _args]]
-  (let [[expr-sql & expr-args]           (sql/format-expr expr {:nested true})
-        [offset-sql & offset-args]       (sql/format-expr offset {:nested true})
-        [quantiles-sql & quantiles-args] (sql/format-expr quantiles {:nested true})]
-    (into [(format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]" expr-sql quantiles-sql offset-sql)]
+(defn- format-percentile-cont
+  [_tag [expr p :as _args]]
+  (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})
+        [p-sql & p-args]       (sql/format-expr p {:nested true})]
+    (into [(format "(SELECT PERCENTILE_CONT(v, %s) OVER () FROM UNNEST(ARRAY_AGG(%s IGNORE NULLS)) AS v LIMIT 1)"
+                   p-sql
+                   expr-sql)]
           cat
-          [expr-args quantiles-args offset-args])))
+          [p-args expr-args])))
 
-(sql/register-fn! ::approx-quantiles #'format-approx-quantiles)
-
-(defn- approx-quantiles
-  "HoneySQL form for the APPROX_QUANTILES invocation. The [OFFSET(...)] part after the function call is odd and
-  needs special treatment."
-  [expr offset quantiles]
-  (let [offset    (if (number? offset)
-                    [:inline offset]
-                    offset)
-        quantiles (if (number? quantiles)
-                    [:inline quantiles]
-                    quantiles)]
-    [::approx-quantiles expr offset quantiles]))
+(sql/register-fn! ::percentile-cont #'format-percentile-cont)
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :percentile]
   [driver [_ _opts expr p]]
-  (let [[offset quantiles] (percentile->quantile p)]
-    (approx-quantiles (sql.qp/->honeysql driver expr) offset quantiles)))
+  ;; BigQuery only offers the exact, interpolating PERCENTILE_CONT as an analytic function, so aggregate the values
+  ;; into an array and apply it over that in a scalar subquery. APPROX_QUANTILES is an aggregate function but returns
+  ;; an observed value, which disagrees with other drivers on even-sized groups (#82198).
+  [::percentile-cont (sql.qp/->honeysql driver expr) [:inline p]])
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :median]
   [driver [_ _opts arg]]

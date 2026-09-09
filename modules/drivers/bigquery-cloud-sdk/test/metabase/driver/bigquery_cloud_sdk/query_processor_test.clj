@@ -1187,10 +1187,16 @@
                 :params     nil
                 :table-name "orders"
                 :query      (for [line ["SELECT"
-                                        "  APPROX_QUANTILES("
-                                        "    `v4_sample_dataset.orders`.`quantity`,"
-                                        "    10"
-                                        "  ) [OFFSET(5)] AS `CE`"
+                                        "  ("
+                                        "    SELECT"
+                                        "      PERCENTILE_CONT(v, 0.5) OVER ()"
+                                        "    FROM"
+                                        "      UNNEST("
+                                        "        ARRAY_AGG(`v4_sample_dataset.orders`.`quantity` IGNORE NULLS)"
+                                        "      ) AS v"
+                                        "    LIMIT"
+                                        "      1"
+                                        "  ) AS `CE`"
                                         "FROM"
                                         "  `v4_sample_dataset.orders`"
                                         "LIMIT"
@@ -1203,6 +1209,16 @@
                       :limit       10})
                    qp.compile/compile
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))))))
+
+(deftest ^:parallel percentile-interpolates-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Median and percentile interpolate between the two central values like other drivers do (#82198)"
+      (let [query (mt/mbql-query nil
+                    {:aggregation  [[:median [:field "x" {:base-type :type/Integer}]]
+                                    [:percentile [:field "x" {:base-type :type/Integer}] 0.25]]
+                     :source-query {:native "SELECT x FROM UNNEST([1, 2, 3, 10]) AS x"}})]
+        (is (= [[2.5 1.75]]
+               (mt/rows (qp/process-query query))))))))
 
 (deftest ^:parallel no-qualify-breakout-field-name-with-subquery-test
   (mt/test-driver :bigquery-cloud-sdk
