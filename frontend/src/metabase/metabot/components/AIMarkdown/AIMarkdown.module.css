@@ -8,9 +8,15 @@
 }
 
 .aiMarkdown {
-  line-height: 1.5;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
   min-width: 0;
   max-width: 100%;
+
+  .large & {
+    font-size: 1rem;
+    line-height: 1.75rem;
+  }
 }
 
 .aiMarkdown > :last-child {
@@ -125,7 +131,8 @@
   background: var(--mb-color-background_surface-secondary);
   color: var(--mb-color-text-primary);
   padding: 0.125rem 0.375rem;
-  border-color: var(--mb-color-border-neutral-strong);
+  border-color: var(--mb-color-border-neutral-subtle);
+  border-radius: 6px;
 }
 
 .aiMarkdown pre code {
@@ -151,11 +158,11 @@
 
 .aiMarkdown li {
   margin-bottom: 0.5rem;
-  line-height: 1.5;
+  line-height: inherit;
 }
 
 .aiMarkdown li p {
-  line-height: 1.5;
+  line-height: inherit;
 }
 
 .aiMarkdown li > ul,

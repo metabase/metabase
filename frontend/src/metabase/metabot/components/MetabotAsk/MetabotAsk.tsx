@@ -80,6 +80,7 @@ export const MetabotAsk = () => {
           <MetabotChat
             conversationId={conversationId}
             agentId="ask"
+            size="lg"
             onNewConversation={() =>
               navigate(Urls.newQuestion({ mode: "ask" }))
             }
