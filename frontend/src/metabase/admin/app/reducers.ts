@@ -59,29 +59,32 @@ export const getAdminPaths: () => AdminPath[] = () => {
   return items;
 };
 
-const paths = createReducer(() => getAdminPaths(), (builder) => {
-  builder.addMatcher(
-    currentUserApi.endpoints.getCurrentUser.matchFulfilled,
-    (state, { payload: user }) => {
-      if (user?.is_superuser) {
-        return state;
-      }
+const paths = createReducer(
+  () => getAdminPaths(),
+  (builder) => {
+    builder.addMatcher(
+      currentUserApi.endpoints.getCurrentUser.matchFulfilled,
+      (state, { payload: user }) => {
+        if (user?.is_superuser) {
+          return state;
+        }
 
-      const allowedPaths = PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.map((getter) => {
-        return getter(user);
-      })
-        .flat()
-        .reduce((acc, pathKey) => {
-          acc.add(pathKey);
-          return acc;
-        }, new Set<AdminPathKey>());
+        const allowedPaths = PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.map((getter) => {
+          return getter(user);
+        })
+          .flat()
+          .reduce((acc, pathKey) => {
+            acc.add(pathKey);
+            return acc;
+          }, new Set<AdminPathKey>());
 
-      return state
-        .filter((path) => (allowedPaths.has(path.key) ? path : null))
-        .filter(isNotNull);
-    },
-  );
-});
+        return state
+          .filter((path) => (allowedPaths.has(path.key) ? path : null))
+          .filter(isNotNull);
+      },
+    );
+  },
+);
 
 export const appReducer = combineReducers({
   paths,

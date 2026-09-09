@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { mergeLazily } from "metabase/utils/merge-lazily";
 import {
   type ComputedVisualizationSettings,
   GRAPH_DATA_SETTINGS,
@@ -39,22 +40,21 @@ export const ROW_CHART_DEFINITION: VisualizationDefinition = {
   hasEmptyState: true,
   minSize: getMinSize("row"),
   defaultSize: getDefaultSize("row"),
-  settings: {
-    ...ROW_CHART_SETTINGS,
-    ...GRAPH_DATA_SETTINGS,
-    ["graph.metrics"]: {
-      ...GRAPH_DATA_SETTINGS["graph.metrics"],
+  settings: mergeLazily(ROW_CHART_SETTINGS, GRAPH_DATA_SETTINGS, {
+    ["graph.metrics"]: mergeLazily(GRAPH_DATA_SETTINGS["graph.metrics"] ?? {}, {
       get title() {
         return t`X-axis`;
       },
-    },
-    ["graph.dimensions"]: {
-      ...GRAPH_DATA_SETTINGS["graph.dimensions"],
-      get title() {
-        return t`Y-axis`;
+    }),
+    ["graph.dimensions"]: mergeLazily(
+      GRAPH_DATA_SETTINGS["graph.dimensions"] ?? {},
+      {
+        get title() {
+          return t`Y-axis`;
+        },
       },
-    },
-  },
+    ),
+  }),
   isSensible: ({ cols, rows }: DatasetData) => {
     return (
       rows.length > 1 &&

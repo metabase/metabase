@@ -253,10 +253,8 @@ const graphDataSettings: VisualizationSettingsDefinitions = {
   },
 };
 
-export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = mergeLazily(
-  graphDataSettings,
-  seriesSetting(),
-);
+export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions =
+  mergeLazily(graphDataSettings, seriesSetting());
 
 export const GRAPH_BUBBLE_SETTINGS: VisualizationSettingsDefinitions = {
   "scatter.bubble": {
@@ -1183,12 +1181,10 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
-export const BOXPLOT_DATA_SETTINGS: VisualizationSettingsDefinitions = mergeLazily(
-  GRAPH_DATA_SETTINGS,
-  {
+export const BOXPLOT_DATA_SETTINGS: VisualizationSettingsDefinitions =
+  mergeLazily(GRAPH_DATA_SETTINGS, {
     "graph.dimensions": mergeLazily(
       GRAPH_DATA_SETTINGS["graph.dimensions"] ?? {},
       { getDefault: getDefaultBoxplotDimensions },
     ),
-  },
-);
+  });

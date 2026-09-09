@@ -60,10 +60,12 @@ export const getDateFilterOptions = () => [
   },
 ];
 
-export type DateFilter =
-  ReturnType<typeof getDateFilterOptions>[number]["value"];
-export type DateDurations =
-  ReturnType<typeof getDateFilterOptions>[number]["duration"];
+export type DateFilter = ReturnType<
+  typeof getDateFilterOptions
+>[number]["value"];
+export type DateDurations = ReturnType<
+  typeof getDateFilterOptions
+>[number]["duration"];
 export type DateFilterOption = {
   label: string;
   value: DateFilter;

@@ -1,7 +1,6 @@
 import _ from "underscore";
 
 import { mergeLazily, omitLazily } from "metabase/utils/merge-lazily";
-
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -88,6 +87,7 @@ export function fieldSetting(
   ]);
 
   return {
+    // mergeLazily returns the merged descriptors, which is this shape.
     [id]: mergeLazily(
       {
         widget: "field",

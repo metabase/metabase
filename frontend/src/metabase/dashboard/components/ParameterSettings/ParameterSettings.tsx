@@ -162,7 +162,7 @@ export const ParameterSettings = ({
       label: option.menuName ?? option.name,
       value: option.type,
     }));
-  }, [sectionId]);
+  }, [sectionId, parameterSections]);
 
   return (
     <Box p="1.5rem 1rem 0.5rem">

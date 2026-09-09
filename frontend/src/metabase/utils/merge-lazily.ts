@@ -20,6 +20,8 @@ export function mergeLazily<Sources extends object[]>(
   for (const source of sources) {
     Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
   }
+  // Object.defineProperties returns a plain object; the shape is what the
+  // descriptors carry.
   return target as UnionToIntersection<Sources[number]>;
 }
 
@@ -33,7 +35,25 @@ export function omitLazily<Result extends object>(
 ): Result {
   const descriptors = Object.getOwnPropertyDescriptors(source);
   for (const key of keys) {
+    // Descriptor maps are keyed by the source's own property names.
     delete descriptors[key as keyof typeof descriptors];
   }
+  // Object.defineProperties returns a plain object; the shape is what the
+  // descriptors carry.
   return Object.defineProperties({}, descriptors) as Result;
+}
+
+/**
+ * Copies properties onto an existing object without reading them.
+
+ * `Object.assign` evaluates getters; this keeps them.
+ */
+export function assignLazily<Target extends object, Source extends object>(
+  target: Target,
+  source: Source,
+): Target & Source {
+  Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
+  // Object.defineProperties returns a plain object; the shape is what the
+  // descriptors carry.
+  return target as Target & Source;
 }
