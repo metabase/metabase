@@ -30,7 +30,7 @@ Under the hood, Metabase Cloud Storage uses [ClickHouse](https://www.metabase.co
 
 ### Writing SQL queries on data stored in Metabase Cloud Storage
 
-For the SQL dialect supported by ClickHouse, check out [ClickHouse's SQL reference](https://clickhouse.com/docs/en/sql-reference).
+For the SQL dialect supported by ClickHouse, check out [ClickHouse's SQL reference](https://clickhouse.com/docs/reference/home).
 
 ## How to get Metabase Cloud Storage
 
@@ -54,7 +54,7 @@ To add storage to an existing instance, use the following steps.
 
 ## Metabase Cloud Storage pricing
 
-Pricing depends on how much data you need to store. See the Storage section on our [pricing page](https://www.metabase.com/pricing/).
+Pricing depends on how much data you need to store. See the Storage section on our [pricing page](https://www.metabase.com/pricing).
 
 ### Increase Metabase Cloud Storage
 

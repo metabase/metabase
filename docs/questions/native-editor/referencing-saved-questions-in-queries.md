@@ -63,7 +63,7 @@ FROM
 ## Further reading
 
 - [Models](../../data-modeling/models.md)
-- [Snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets)
+- [Snippets](./snippets.md)
 - [Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/organizing-sql)
 - [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).
 

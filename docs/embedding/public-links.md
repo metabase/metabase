@@ -194,7 +194,6 @@ Admins can see all publicly shared questions, dashboards, documents, and actions
 
 ## Further reading
 
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 - [Embedding introduction](../embedding/start.md).
 - [Custom visualizations in embeds](./custom-visualizations.md).

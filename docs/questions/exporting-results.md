@@ -45,7 +45,7 @@ By default, Metabase will export the pivoted results, but you'll have the option
 
 ![Pivoted results](./images/pivoted-results.png)
 
-The pivoted results will display as a flat table in Excel, not a native [Excel PivotTable](https://support.microsoft.com/en-us/office/overview-of-pivottables-and-pivotcharts-527c8fa3-02c0-445a-a2db-7794676bce96).
+The pivoted results will display as a flat table in Excel, not a native [Excel PivotTable](https://support.microsoft.com/en-us/excel/overview-of-pivottables-and-pivotcharts).
 
 If you want to use a native Excel PivotTable, you'll instead want to export the raw, unaggregated rows of data that you'll need. That is, you'll want to undo any of the summarizations and groupings in your question, _then_ export the results.
 
@@ -68,7 +68,7 @@ By default, Metabase will export first 1048575 rows of results.
 
 ### Cell character limit in Excel exports
 
-When exporting results to an Excel document (.xlsx), Metabase will limit the number of characters per cell to 32,767, which is the [character limit enforced by Excel](https://support.microsoft.com/en-us/office/excel-specifications-and-limit-1672b34d-7043-467e-8e27-269d656771c3). If you have a bonkers number of characters in a single cell, Metabase will truncate the content to fit within that limit.
+When exporting results to an Excel document (.xlsx), Metabase will limit the number of characters per cell to 32,767, which is the [character limit enforced by Excel](https://support.microsoft.com/en-us/excel/excel-specifications-and-limits). If you have a bonkers number of characters in a single cell, Metabase will truncate the content to fit within that limit.
 
 ## Exporting results from document cards
 
@@ -138,7 +138,7 @@ By default, data exports (PDFs, PNGs, alert and subscription emails, etc.) featu
 
 ![Question with Metabase logo](./images/question-with-metabase-logo.png)
 
-To remove the Metabase logo and branding on exports, you'll need to subscribe to a [Pro or Enterprise plan](https://www.metabase.com/pricing/).
+To remove the Metabase logo and branding on exports, you'll need to subscribe to a [Pro or Enterprise plan](https://www.metabase.com/pricing).
 
 ## Further reading
 

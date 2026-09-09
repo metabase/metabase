@@ -582,7 +582,7 @@ categories:
       - name: "Developer guide"
         url: "developers-guide/start"
       - name: "Pro and Enterprise features"
-        url: "/paid-features/"
+        url: "/paid-features"
       - name: "Accessibility"
         url: "installation-and-operation/accessibility"
       - name: "Supported browsers"

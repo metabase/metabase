@@ -7,7 +7,7 @@ redirect_from:
 
 # Activating your Metabase commercial license
 
-The [paid Pro and Enterprise editions](https://www.metabase.com/pricing/) of Metabase are distinct from the free [Open Source edition](../installation-and-operation/running-the-metabase-jar-file.md) and the [Starter version of Metabase Cloud](https://www.metabase.com/cloud/).
+The [paid Pro and Enterprise editions](https://www.metabase.com/pricing) of Metabase are distinct from the free [Open Source edition](../installation-and-operation/running-the-metabase-jar-file.md) and the [Starter version of Metabase Cloud](https://www.metabase.com/cloud).
 
 ## If you're running on Metabase Cloud
 
@@ -20,7 +20,7 @@ To use your Pro/Enterprise features, you’ll need to do two things:
 - Download Metabase Enterprise Edition
 - Enter your license.
 
-You can get a license by signing up for a free trial of the [Pro or Enterprise edition plans](https://www.metabase.com/pricing/), both of which can be self-hosted or hosted on Metabase Cloud.
+You can get a license by signing up for a free trial of the [Pro or Enterprise edition plans](https://www.metabase.com/pricing), both of which can be self-hosted or hosted on Metabase Cloud.
 
 ### Download the Enterprise edition
 
@@ -39,7 +39,7 @@ OR
 
 ## Upgrading from a self-hosted Metabase Open Source Edition to a Pro or Enterprise plan
 
-To get all the features available when upgrading to a _self-hosted_ [Pro or Enterprise plan](https://www.metabase.com/pricing/), you'll need to:
+To get all the features available when upgrading to a _self-hosted_ [Pro or Enterprise plan](https://www.metabase.com/pricing), you'll need to:
 
 1. Change to the Metabase Enterprise Edition (that goes for both the Pro and Enterprise plans).
 2. Activate your license.

@@ -7,7 +7,7 @@ redirect_from:
 
 # Community drivers
 
-> Community drivers are not supported on [Metabase Cloud](https://www.metabase.com/cloud/).
+> Community drivers are not supported on [Metabase Cloud](https://www.metabase.com/cloud).
 
 In addition to our [Officially supported drivers](../databases/connecting.md#connecting-to-supported-databases), many people build and maintain drivers for database integrations.
 
@@ -22,7 +22,7 @@ You can change the location of the plugins directory by setting the environment 
 
 ## Community drivers
 
-> You install these drivers at your own risk. The plugins run as part of your Metabase and will have access to anything your Metabase does. And since we can’t vet for them, we don’t make them available on [Metabase Cloud](https://www.metabase.com/cloud/).
+> You install these drivers at your own risk. The plugins run as part of your Metabase and will have access to anything your Metabase does. And since we can’t vet for them, we don’t make them available on [Metabase Cloud](https://www.metabase.com/cloud).
 
 Anyone can build a community driver. These are the currently known third-party database drivers for Metabase.
 
@@ -33,7 +33,7 @@ Anyone can build a community driver. These are the currently known third-party d
 | [DB2 for LUW](https://github.com/alisonrafael/metabase-db2-driver)                    | ![GitHub stars](https://img.shields.io/github/stars/alisonrafael/metabase-db2-driver)              | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/alisonrafael/metabase-db2-driver)              |
 | [IBM i](https://github.com/damienchambe/metabase-ibmi-driver)                         | ![GitHub stars](https://img.shields.io/github/stars/damienchambe/metabase-ibmi-driver)             | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/damienchambe/metabase-ibmi-driver)             |
 | [Dremio](https://github.com/Baoqi/metabase-dremio-driver)                             | ![GitHub stars](https://img.shields.io/github/stars/Baoqi/metabase-dremio-driver)                  | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/Baoqi/metabase-dremio-driver)                  |
-| [DuckDB](https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver)            | ![GitHub stars](https://img.shields.io/github/stars/MotherDuck-Open-Source/metabase_duckdb_driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/MotherDuck-Open-Source/metabase_duckdb_driver) |
+| [DuckDB](https://github.com/motherduckdb/metabase_duckdb_driver)            | ![GitHub stars](https://img.shields.io/github/stars/MotherDuck-Open-Source/metabase_duckdb_driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/MotherDuck-Open-Source/metabase_duckdb_driver) |
 | [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)                   | ![GitHub stars](https://img.shields.io/github/stars/firebolt-db/metabase-firebolt-driver)          | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/firebolt-db/metabase-firebolt-driver)          |
 | [Firebird](https://github.com/evosec/metabase-firebird-driver)                        | ![GitHub stars](https://img.shields.io/github/stars/evosec/metabase-firebird-driver)               | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/evosec/metabase-firebird-driver)               |
 | [GreptimeDB](https://github.com/greptimeteam/greptimedb-metabase-driver)              | ![GitHub stars](https://img.shields.io/github/stars/greptimeteam/greptimedb-metabase-driver)       | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/greptimeteam/greptimedb-metabase-driver)       |

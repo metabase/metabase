@@ -141,6 +141,6 @@ Save it to the "Admins collection" you created in the setup (or any collection t
 
 ## Further reading
 
-- [Setting row-level permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions)
-- [Custom views: limiting access to columns](https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions)
+- [Setting row-level permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions/row-permissions)
+- [Custom views: limiting access to columns](https://www.metabase.com/learn/metabase-basics/administration/permissions/column-permissions)
 - [Configuring permissions for embedding](../permissions/embedding.md)

@@ -166,7 +166,7 @@ The administrator can [create a new group][groups] to capture precisely who's al
 
 [authenticating-with-saml]: ../people-and-groups/authenticating-with-saml.md
 [cant-see-tables]: cant-see-tables.md
-[column-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
+[column-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/column-permissions
 [data-model]: ../data-modeling/metadata-editing.md
 [data-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-permissions
 [groups]: ../people-and-groups/managing.md#groups
@@ -174,7 +174,7 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [locked-parameters]: ../embedding/guest-embedding.md#locked-parameters
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-permissions
 [public-sharing]: ../embedding/public-links.md
-[row-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
+[row-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/row-permissions
 [row-and-column-security]: ../permissions/row-and-column-security.md
 [static-embedding]: ../embedding/guest-embedding.md
 [troubleshooting-permissions]: ./permissions.md

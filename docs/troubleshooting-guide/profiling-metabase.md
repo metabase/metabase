@@ -77,7 +77,7 @@ Connecting to a running Metabase with VisualVM makes a lot of runtime informatio
 
 ### Heap dump
 
-When running into memory-related issues, typically the first question to ask is: what is consuming extra memory? A heap dump will take a snapshot of everything in memory at that specific point of time. That memory snapshot can be analyzed later by tools like the [Eclipse Memory Analyzer Tool](https://www.eclipse.org/mat/). Create a heap dump from the "Monitor" tab:
+When running into memory-related issues, typically the first question to ask is: what is consuming extra memory? A heap dump will take a snapshot of everything in memory at that specific point of time. That memory snapshot can be analyzed later by tools like the [Eclipse Memory Analyzer Tool](https://eclipse.dev/mat/). Create a heap dump from the "Monitor" tab:
 
 ![heapdump](images/HeapDump.png)
 

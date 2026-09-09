@@ -65,7 +65,7 @@ For a summary of research on code reviews, check out [How code review works (and
 
 - Guide reviewers by commenting on the important sections of the code.
 - If you need someone's expertise/opinion, tag that person.
-- Enhance PR descriptions by using [Notes and Warnings](https://github.com/github-community/community/discussions/16925) - these can be effective tools if you want a certain piece of information to stand out.
+- Enhance PR descriptions by using [Notes and Warnings](https://github.com/orgs/community/discussions/16925) - these can be effective tools if you want a certain piece of information to stand out.
 
 ### What PR reviewers can do to give a better review
 

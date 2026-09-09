@@ -8,7 +8,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Google SAML authentication" %}
 
-1. Set up a [custom SAML app](https://support.google.com/a/answer/6087519) in your [Google admin console](https://admin.google.com).
+1. Set up a [custom SAML app](https://knowledge.workspace.google.com/admin/apps/set-up-your-own-custom-saml-app) in your [Google admin console](https://admin.google.com).
 2. As you follow Google's instructions, you'll need to:
 
 - [Save information about Google for Metabase](#saving-google-idp-info-for-metabase).
@@ -62,8 +62,8 @@ For example, to add the attribute "First name":
 ## Setting up synchronize group membership
 
 1. In Google Admin, you can EITHER:
-   - Set up a multi-value [custom user attribute](https://support.google.com/a/answer/6208725?hl=en) for your users. Recommended if you manage multiple SAML app permissions in Google or if you lack existing Google Groups that align with your desired Metabase groups.
-   - [Map to existing Google Groups](https://support.google.com/a/answer/11143403?hl=en).
+   - Set up a multi-value [custom user attribute](https://knowledge.workspace.google.com/admin/users/create-custom-attributes-for-user-profiles) for your users. Recommended if you manage multiple SAML app permissions in Google or if you lack existing Google Groups that align with your desired Metabase groups.
+   - [Map to existing Google Groups](https://knowledge.workspace.google.com/admin/apps/about-group-membership-mapping).
 2. Follow the instructions for [Configuring the group schema](./authenticating-with-saml.md#configuring-the-group-schema-in-metabase) using the `App attribute` that you used in Google as the Group attribute name in Metabase.
 
 ## Troubleshooting SAML issues

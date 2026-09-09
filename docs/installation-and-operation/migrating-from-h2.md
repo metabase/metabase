@@ -25,7 +25,7 @@ The migration process is a one-off process. You can execute the migration script
 
 One important thing here is that the version of Metabase you use during the migration process must be the same. Meaning, the Metabase you use to run the migration command must be the same one that was last used to create or update H2 file, which must be the same version you'll be using in production. Only _after_ completing the migration should you consider upgrading.
 
-You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](../cloud/migrate/guide.md).
+You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase.com/pricing) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](../cloud/migrate/guide.md).
 
 ## Supported databases for storing your Metabase application data
 
@@ -174,7 +174,7 @@ docker run -d -p 3000:3000 \
 
 ### 7. Remove the old container that was using the H2 database
 
-If you have your H2 file backed up somewhere safe, go ahead and remove the old container. See [Docker docs](https://docs.docker.com/engine/reference/commandline/rm/) for removing containers.
+If you have your H2 file backed up somewhere safe, go ahead and remove the old container. See [Docker docs](https://docs.docker.com/reference/cli/docker/container/rm/) for removing containers.
 
 ## Running Metabase application database migrations manually
 
