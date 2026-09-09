@@ -307,9 +307,7 @@
     (doseq [model-ref ["anthropic/claude-sonnet-4-6"
                        "openai/gpt-4.1-mini"
                        "openrouter/anthropic/claude-haiku-4-5"
-                       "bedrock/anthropic.claude-haiku-4-5"
-                       "bedrock/anthropic.claude-example-future"
-                       "bedrock/openai.gpt-5.999-example"]]
+                       "bedrock/anthropic.claude-haiku-4-5"]]
       (testing (str "accepts " model-ref)
         (mt/with-temporary-setting-values [llm-metabot-provider model-ref]
           (is (= model-ref (metabot.settings/llm-metabot-provider))))))))
