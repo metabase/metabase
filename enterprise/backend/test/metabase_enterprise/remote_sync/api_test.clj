@@ -558,7 +558,13 @@
                                              remote-sync-branch "main"]
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Exports are only allowed when remote-sync-type is set to 'read-write'"
-                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))))))
+                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"})))
+              (testing "but a worktree pushes its own branch, so the main app's mode does not apply"
+                (mt/with-temp [:model/Worktree {wt-id :id} {:branch "feature"}]
+                  (mt/with-dynamic-fn-redefs [impl/async-export! (fn [& _] {:id 1})]
+                    (is (=? {:task_id 1}
+                            (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
+                                                  {:branch "feature" :worktree_id wt-id})))))))))))))
 
 (deftest export-with-default-settings-test
   (testing "POST /api/ee/remote-sync/export succeeds with default settings"

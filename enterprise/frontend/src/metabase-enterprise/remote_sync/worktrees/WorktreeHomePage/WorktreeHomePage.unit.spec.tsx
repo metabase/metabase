@@ -233,12 +233,12 @@ describe("WorktreeHomePage", () => {
     expect(await screen.findByText("Push to Git")).toBeInTheDocument();
   });
 
-  it("hides the push action when remote sync is read-only", async () => {
+  it("keeps the push action when remote sync is read-only, since a worktree pushes its own branch", async () => {
     setup({ syncType: "read-only" });
 
     await screen.findByTestId("worktree-home-title");
     expect(
-      screen.queryByRole("button", { name: /Push changes/ }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /Push changes/ }),
+    ).toBeInTheDocument();
   });
 });

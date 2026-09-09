@@ -195,7 +195,10 @@
                                                         [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
   (perms/check-can-access-worktrees)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
+  ;; read-only mode means the main app never pushes its branch; a worktree tracks a branch of its own and exists to
+  ;; be pushed, so the mode says nothing about it
+  (api/check-400 (or worktree_id (= (settings/remote-sync-type) :read-write))
+                 "Exports are only allowed when remote-sync-type is set to 'read-write'")
   (let [worktree-id (check-worktree worktree_id)
         branch-name (check-branch-matches-setting! branch (effective-branch worktree-id))
         user-id     api/*current-user-id*

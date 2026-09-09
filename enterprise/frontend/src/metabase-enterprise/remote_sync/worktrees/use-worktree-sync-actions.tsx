@@ -20,7 +20,7 @@ import { trackPullChanges } from "../analytics";
 import { PushChangesModal } from "../components/PushChangesModal";
 import { SyncConflictModal } from "../components/SyncConflictModal";
 import { useSyncStatus } from "../hooks/use-sync-status";
-import { getCurrentTask, getIsRemoteSyncReadOnly } from "../selectors";
+import { getCurrentTask } from "../selectors";
 import { taskCleared } from "../sync-task-slice";
 import { parseSyncError } from "../utils";
 
@@ -67,8 +67,6 @@ export function useWorktreeSyncActions(
 
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const isReadOnly = useSelector(getIsRemoteSyncReadOnly);
-
   const { data: dirtyData } = useGetRemoteSyncHasChangesQuery(
     { "worktree-id": worktreeId },
     { skip: !enabled },
@@ -245,7 +243,6 @@ export function useWorktreeSyncActions(
     isDirty,
     hasRemoteChanges,
     isFetchingRemoteChanges,
-    isReadOnly,
     isSyncing,
     isPullDisabled: isSyncing || !hasRemoteChanges,
     isPushDisabled: isSyncing || !isDirty,

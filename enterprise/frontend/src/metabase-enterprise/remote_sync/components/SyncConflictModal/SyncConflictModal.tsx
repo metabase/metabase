@@ -82,7 +82,9 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const [commitMessage, setCommitMessage] = useState<string>("");
   const { sendErrorToast } = useMetadataToasts();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  // read-only mode freezes the main app's branch only; a worktree tracks its own and can always push
+  const isRemoteSyncReadOnly =
+    useSelector(getIsRemoteSyncReadOnly) && worktreeId == null;
   const isAdmin = useSelector(getUserIsAdmin);
   const { data: settingValues } = useGetSettingsQuery();
   const { data: libraryCollection } = useGetLibraryCollection({

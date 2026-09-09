@@ -60,7 +60,6 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
   const {
     hasRemoteChanges,
     isFetchingRemoteChanges,
-    isReadOnly,
     isSyncing,
     isPullDisabled,
     isPushDisabled,
@@ -94,16 +93,14 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
             >
               {t`Pull changes`}
             </Button>
-            {!isReadOnly && (
-              <Button
-                variant="filled"
-                leftSection={<Icon name="arrow_up" />}
-                disabled={isPushDisabled}
-                onClick={push}
-              >
-                {t`Push changes`}
-              </Button>
-            )}
+            <Button
+              variant="filled"
+              leftSection={<Icon name="arrow_up" />}
+              disabled={isPushDisabled}
+              onClick={push}
+            >
+              {t`Push changes`}
+            </Button>
           </Group>
         }
       />

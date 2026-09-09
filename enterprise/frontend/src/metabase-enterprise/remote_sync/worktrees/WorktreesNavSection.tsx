@@ -224,7 +224,6 @@ function WorktreeMenu({
     isDirty,
     hasRemoteChanges,
     isFetchingRemoteChanges,
-    isReadOnly,
     isPullDisabled,
     isPushDisabled,
     pull,
@@ -284,17 +283,15 @@ function WorktreeMenu({
               {t`Pull changes`}
             </Menu.Item>
           </Tooltip>
-          {!isReadOnly && (
-            <Tooltip label={isDirty ? t`Push changes` : t`No changes to push`}>
-              <Menu.Item
-                leftSection={<Icon name="arrow_up" />}
-                disabled={isPushDisabled}
-                onClick={push}
-              >
-                {t`Push changes`}
-              </Menu.Item>
-            </Tooltip>
-          )}
+          <Tooltip label={isDirty ? t`Push changes` : t`No changes to push`}>
+            <Menu.Item
+              leftSection={<Icon name="arrow_up" />}
+              disabled={isPushDisabled}
+              onClick={push}
+            >
+              {t`Push changes`}
+            </Menu.Item>
+          </Tooltip>
           <Menu.Divider />
           <Menu.Item
             leftSection={<Icon name="trash" />}

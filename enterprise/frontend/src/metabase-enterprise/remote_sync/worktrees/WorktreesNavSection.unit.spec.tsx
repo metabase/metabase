@@ -432,7 +432,7 @@ describe("WorktreesNavSection", () => {
     expect(screen.queryByTestId("remote-sync-status")).not.toBeInTheDocument();
   });
 
-  it("hides the push menu item when remote sync is read-only", async () => {
+  it("keeps the push menu item when remote sync is read-only, since a worktree pushes its own branch", async () => {
     setup({
       worktrees: [createMockWorktree()],
       isDirty: true,
@@ -444,8 +444,8 @@ describe("WorktreesNavSection", () => {
 
     await screen.findByRole("menuitem", { name: /Pull changes/ });
     expect(
-      screen.queryByRole("menuitem", { name: /Push changes/ }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("menuitem", { name: /Push changes/ }),
+    ).toBeEnabled();
   });
 
   it("renders nothing when remote sync is disabled", async () => {
