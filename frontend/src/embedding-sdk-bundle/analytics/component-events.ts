@@ -8,6 +8,7 @@ import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   getHostReactVersion,
   getSdkAuthMethod,
+  getSdkClient,
   getSdkLocaleUsed,
   trackSdkSimpleEvent,
 } from "./snowplow";
@@ -187,6 +188,7 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
           sdk_version: sdkVersion,
           locale_used: getSdkLocaleUsed(),
           react_version: getHostReactVersion(),
+          client: getSdkClient(),
         },
       }),
     });
