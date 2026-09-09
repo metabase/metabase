@@ -580,6 +580,40 @@
           (is (= "https://1.1.1.1" (semantic.settings/ee-embedding-service-base-url)))
           (is (= "replacement-key" (semantic.settings/ee-embedding-service-api-key))))))))
 
+(deftest embedding-environment-key-refuses-a-previously-stored-url-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url nil
+                                       ee-embedding-service-api-key  nil]
+      (mt/with-user-in-groups [group {:name "Embedding settings managers"}
+                               user [group]]
+        (perms/grant-application-permissions! group :setting)
+        (is (nil? (mt/user-http-request user :put 204 "setting/ee-embedding-service-base-url"
+                                        {:value "https://1.1.1.1"})))
+        (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "deployment-key"]
+          (let [requests (atom [])]
+            (mt/with-dynamic-fn-redefs [http/post (fn [& args] (swap! requests conj args))]
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo #"Set MB_EE_EMBEDDING_SERVICE_BASE_URL alongside MB_EE_EMBEDDING_SERVICE_API_KEY"
+                   (embedding/get-embedding {:provider "ai-service", :model-name "m", :vector-dimensions 3}
+                                            "text" {:record-tokens? false})))
+              (is (empty? @requests)))))))))
+
+(deftest embedding-credential-source-combinations-test
+  (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://8.8.8.8"
+                                     ee-embedding-service-api-key  "stored-key"]
+    (doseq [[env-url env-key expected-key expected-endpoint]
+            [[nil nil "stored-key" "https://8.8.8.8/v1/embeddings"]
+             ["https://1.1.1.1" nil "stored-key" "https://1.1.1.1/v1/embeddings"]
+             ["https://1.1.1.1" "deployment-key" "deployment-key" "https://1.1.1.1/v1/embeddings"]]]
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-base-url env-url
+                                    mb-ee-embedding-service-api-key  env-key]
+        (is (=? {:endpoint expected-endpoint, :api-key expected-key}
+                (#'embedding/embedding-service-resolve-config!)))))
+    (testing "a stored key cannot hide a newly supplied environment key"
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "deployment-key"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"an environment API key cannot use an embedding URL stored"
+                              (embedding/embedder-circuit-endpoint {:provider "ai-service"})))))))
+
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
