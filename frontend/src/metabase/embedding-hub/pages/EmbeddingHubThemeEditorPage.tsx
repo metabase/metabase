@@ -1,6 +1,6 @@
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { EmbeddingThemeEditorApp } from "metabase/embedding/themes/components/ThemeEditor";
-import { Navigate } from "metabase/router";
+import { Navigate, useSearchParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 /**
@@ -11,10 +11,22 @@ import * as Urls from "metabase/urls";
  */
 export function EmbeddingHubThemeEditorPage() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
+  const [searchParams] = useSearchParams();
 
   if (!hasSimpleEmbedding) {
     return <Navigate to={Urls.embeddingHubAppearance()} replace />;
   }
 
-  return <EmbeddingThemeEditorApp basePath={Urls.embeddingHubAppearance()} />;
+  // Only the setup guide is honored, so a crafted `return` cannot redirect elsewhere.
+  const returnPath =
+    searchParams.get("return") === "get-started"
+      ? Urls.embeddingHubGetStarted()
+      : undefined;
+
+  return (
+    <EmbeddingThemeEditorApp
+      basePath={Urls.embeddingHubAppearance()}
+      returnPath={returnPath}
+    />
+  );
 }

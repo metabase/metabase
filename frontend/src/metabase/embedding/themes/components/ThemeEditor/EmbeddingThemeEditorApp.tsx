@@ -14,10 +14,13 @@ import { PreviewPanel } from "./PreviewPanel";
 type EmbeddingThemeEditorAppProps = {
   /** Where the theme listing lives, so the editor knows where to return to. */
   basePath: string;
+  /** Overrides `basePath` on save or delete, to return to the page that linked here. */
+  returnPath?: string;
 };
 
 export function EmbeddingThemeEditorApp({
   basePath,
+  returnPath,
 }: EmbeddingThemeEditorAppProps) {
   const { themeId: themeIdParam } = useParams<{ themeId: string }>();
   const themeId =
@@ -29,7 +32,7 @@ export function EmbeddingThemeEditorApp({
   const isSavingRef = useRef(false);
 
   const goToThemeList = () => {
-    navigate(basePath);
+    navigate(returnPath ?? basePath);
   };
 
   const {

@@ -174,6 +174,17 @@ describe("EmbeddingHubGetStartedPage", () => {
       expect(isLocked(THEME_CARD)).toBe(false);
       expect(isLocked(SSO_CARD)).toBe(true);
     });
+
+    it("opens a new theme and tags it to return here", async () => {
+      setup({ hasSimpleEmbedding: true });
+
+      const card = await screen.findByRole("link", { name: THEME_CARD });
+
+      expect(card).toHaveAttribute(
+        "href",
+        expect.stringContaining("/theme/new?return=get-started"),
+      );
+    });
   });
 
   describe("the production-embed prerequisite", () => {

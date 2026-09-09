@@ -334,7 +334,9 @@ function ThemeCard({
       icon="palette"
       title={t`Create a custom theme`}
       description={t`Fine-tune the appearance of your embedded content with colors and fonts.`}
-      to={Urls.embeddingHubAppearance()}
+      // Straight into a new theme, tagged so the editor returns here on save
+      // rather than to the Appearance listing the user never passed through.
+      to={`${Urls.embeddingHubAppearance()}/theme/new?return=get-started`}
     />
   );
 }
