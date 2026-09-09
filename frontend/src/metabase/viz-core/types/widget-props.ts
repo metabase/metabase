@@ -24,6 +24,10 @@ export type ChartSettingWidgetProps<TValue> = {
   onChangeSettings: (settings: Partial<VisualizationSettings>) => void;
 };
 
+export type CustomVizSettingWidgetProps = ChartSettingWidgetProps<unknown> & {
+  id: string;
+} & Record<string, unknown>;
+
 export type ChartSettingEnumToggleProps<T extends string> = {
   value: T | undefined;
   onChange: (value: T) => void;
