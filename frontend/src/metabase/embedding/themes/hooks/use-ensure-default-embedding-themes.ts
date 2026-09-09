@@ -6,8 +6,8 @@ import { useSetting } from "metabase/settings";
 import { useDefaultEmbeddingThemes } from "./use-default-embedding-themes";
 
 /**
- * Lazily seeds the default `Light` and `Dark` embedding themes on first visit of the themes
- * listing page. Guarded by the `default-embedding-themes-seeded` setting so that subsequent
+ * Lazily seeds the default `Light` and `Dark` embedding themes on first visit to the embedding
+ * hub. Guarded by the `default-embedding-themes-seeded` setting so that subsequent
  * visits — including those after an admin has deleted the seeded themes — are no-ops.
  *
  * Safe to call unconditionally: the hook fires at most one POST per mount, and the backend
