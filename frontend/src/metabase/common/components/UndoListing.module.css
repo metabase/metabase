@@ -22,3 +22,15 @@
 .toast:hover .progress {
   animation-play-state: paused;
 }
+
+.contentSide {
+  overflow: hidden;
+}
+
+.dismissIcon {
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
