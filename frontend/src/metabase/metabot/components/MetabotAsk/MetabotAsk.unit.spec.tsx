@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { assocIn } from "icepick";
 
+import { createMockMetabotTextMessage } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import { getMetabotVisible } from "metabase/metabot/state";
 import {
@@ -110,12 +111,7 @@ describe("MetabotAsk", () => {
   it("shows the conversation history control in the chat header", async () => {
     setupMetabotAsk({
       metabotInitialState: askConversation("messages", [
-        {
-          id: "seed-message",
-          role: "user",
-          type: "text",
-          message: "Earlier question",
-        },
+        createMockMetabotTextMessage("user", "Earlier question"),
       ]),
     });
 

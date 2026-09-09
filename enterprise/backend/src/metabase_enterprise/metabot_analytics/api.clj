@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]))
@@ -100,11 +101,11 @@
    [:updated_at        ms/TemporalInstant]])
 
 (def ^:private ConversationMessage
-  [:map
-   [:id                :string]
-   [:parent_message_id [:maybe :string]]
-   [:role              [:enum "user" "agent"]]
-   [:type              :string]])
+  "A client message plus the parent pointer that threads the conversation — with
+  regenerated replies as siblings — into the tree the detail page walks."
+  [:merge
+   ::metabot.schema/client-message
+   [:map [:parent_message_id [:maybe :string]]]])
 
 (def ^:private ConversationDetail
   "Schema for full conversation detail response."

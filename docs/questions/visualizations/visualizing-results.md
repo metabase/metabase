@@ -116,7 +116,7 @@ A [sunburst chart](./pie-or-donut-chart.md) is a pie chart with more than one ri
 
 ## Pivot tables
 
-[Pivot tables](./pivot-table.md) allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
+[Pivot tables](./pivot-table.md) allow you to swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
 ![Pivot table options](../images/pivot-table-options.png)
 

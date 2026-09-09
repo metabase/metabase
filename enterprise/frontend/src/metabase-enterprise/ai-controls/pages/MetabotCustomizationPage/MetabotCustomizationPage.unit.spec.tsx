@@ -1,3 +1,6 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -75,5 +78,20 @@ describe("MetabotCustomizationPage", () => {
 
     const preview = await screen.findByAltText("Metabot icon");
     expect(preview).toHaveAttribute("src", "data:image/png;base64,abc123");
+  });
+
+  it("shows the illustrations toggle when illustrations are off, even with the default icon", async () => {
+    setup({ showIllustrations: false });
+
+    const toggle = await screen.findByRole("switch", {
+      name: /Show Metabot illustrations/,
+    });
+    await userEvent.click(toggle);
+
+    const call = fetchMock.callHistory.lastCall(
+      "path:/api/setting/metabot-show-illustrations",
+      { method: "PUT" },
+    );
+    expect(await call?.request?.json()).toEqual({ value: true });
   });
 });

@@ -9,7 +9,7 @@ module.exports = {
     "^app/embed",
     "^design system",
     "^Components/Overlays/Menu Hover state",
-    "^Components/Overlays/Popover Opened",
+    "^Components/Overlays/Popover (Opened|Overview)",
     "^Components/Overlays/Modal Opened",
     "^Components/Overlays/HoverCard Opened",
     "^Components/Utils/Paper Shadow matrix",

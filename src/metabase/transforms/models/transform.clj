@@ -13,7 +13,6 @@
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
-   [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -543,7 +542,7 @@
                      :python (:body source-data)
                      nil)]
     (when query-text
-      (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
+      (subs query-text 0 (min (count query-text) search.core/max-searchable-value-length)))))
 
 (defn transforms-with-tags
   "Returns all transforms associated with the given tag IDs.
