@@ -8,7 +8,6 @@ import {
   getTitleForColumn,
 } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   isAvatarURL,
   isEntityName,
@@ -195,14 +194,13 @@ export const getEntityIcon = (entityType?: Table["entity_type"]) => {
 };
 
 export function getTableQuery(
-  metadata: Metadata,
+  metadataProvider: Lib.MetadataProvider,
   table: Table | undefined,
 ): Lib.Query | undefined {
   if (!table) {
     return undefined;
   }
 
-  const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
   const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
   if (tableMetadata == null) {
     return undefined;

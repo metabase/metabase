@@ -2,7 +2,6 @@ import * as Urls from "metabase/urls";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ForeignKey, RowValue } from "metabase-types/api";
 
 const STAGE_INDEX = 0;
@@ -48,16 +47,12 @@ function getForeignKeyFilterClause(field: Lib.ColumnMetadata, rowId: RowValue) {
 export function getForeignKeyQuery(
   fk: ForeignKey,
   rowId: RowValue,
-  metadata: Metadata,
+  metadataProvider: Lib.MetadataProvider,
 ) {
   if (fk.origin == null || fk.origin.table == null) {
     return;
   }
 
-  const metadataProvider = Lib.metadataProvider(
-    fk.origin.table.db_id,
-    metadata,
-  );
   const table = Lib.tableOrCardMetadata(metadataProvider, fk.origin.table_id);
   const field = Lib.fieldMetadata(metadataProvider, fk.origin_id);
   if (table == null || field == null) {

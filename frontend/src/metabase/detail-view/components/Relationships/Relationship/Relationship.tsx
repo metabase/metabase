@@ -6,8 +6,7 @@ import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { Loader, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { ForeignKey } from "metabase-types/api";
@@ -26,11 +25,12 @@ interface Props {
 }
 
 export const Relationship = ({ fk, rowId, onClick }: Props) => {
-  const metadata = useSelector(getMetadata);
-  const metadataRef = useLatest(metadata);
+  const metadataProvider = useMetadataProvider(fk.origin?.table?.db_id ?? null);
+  // held in a ref on purpose: the query is not rebuilt when metadata changes
+  const metadataProviderRef = useLatest(metadataProvider);
   const fkQuery = useMemo(
-    () => getForeignKeyQuery(fk, rowId, metadataRef.current),
-    [fk, rowId, metadataRef],
+    () => getForeignKeyQuery(fk, rowId, metadataProviderRef.current),
+    [fk, rowId, metadataProviderRef],
   );
   const fkCountQuery = useMemo(
     () => (fkQuery != null ? getForeignKeyCountQuery(fkQuery) : undefined),
