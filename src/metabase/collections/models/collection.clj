@@ -1222,8 +1222,8 @@
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot]
   (set (collections.db/effective-children (effective-children-where-clause collection
-                                                                          (t2/table-name :model/Collection)
-                                                                          default-visibility-config))))
+                                                                           (t2/table-name :model/Collection)
+                                                                           default-visibility-config))))
 
 (mi/define-simple-hydration-method effective-children
   :effective_children
