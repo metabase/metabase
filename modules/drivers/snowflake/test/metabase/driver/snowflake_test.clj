@@ -395,8 +395,11 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [details (:details (mt/db))]
+      ;; TARGET_LAG = DOWNSTREAM instead of a time interval: nothing reads this table, so it never actually
+      ;; needs to refresh. With a time-based lag, a test DB that leaks (e.g. a cancelled CI job skips
+      ;; [[metabase.test.data.snowflake/after-run]]) keeps refreshing on that schedule forever.
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = DOWNSTREAM warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
                               (:db details) (:db details) (:db details))])
       (thunk))))
