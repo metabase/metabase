@@ -9,6 +9,8 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.classloader.core :as classloader]
+   [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
@@ -164,6 +166,8 @@
       (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
                             "an external name, or explicitly listed as excluded from serialization")
                        model)
+        ;; the property is registered by the model's own namespace, which nothing else here loads
+        (classloader/require (models.resolution/model->namespace model))
         (is (serdes.backfill/has-entity-id? model))))))
 
 (deftest ^:parallel comprehensive-identity-hash-test
