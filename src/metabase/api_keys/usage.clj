@@ -23,9 +23,43 @@
   error string here would drag request payloads into an analytics table behind nothing but a PII
   toggle. `api_key_usage_log` therefore has no error column at all: the non-PII `status` column (the
   HTTP status code) already separates success from failure, and there is nothing free-text left to
-  gate."
+  gate.
+
+  `client_name` is classified from the caller's self-reported `User-Agent` via [[detect-client]] —
+  analytics only, never used to gate access — mirroring `agent_api_call_log`'s `client_name`. Unlike
+  `user_agent` (raw, PII-gated), `client_name` is a canonical, low-cardinality value and is always
+  recorded."
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [clojure.string :as str]
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util :as u]))
+
+(def supported-client-keys
+  "Canonical client keys [[detect-client]] classifies callers into for analytics. Keep in sync with
+  the `client_name` CASE in the `v_api_key_usage` view SQL (the enum-<->-CASE sync footgun)."
+  #{"metabase-cli" "curl" "postman" "python-requests" "r" "node"})
+
+(def ^:private client-name-matchers
+  "Ordered `[substring canonical-key]` pairs matched against the lowercased `User-Agent`. First match
+  wins. `r-curl` is checked before the generic `curl` so R's httr (whose User-Agent embeds `r-curl`)
+  doesn't fall through to the plain curl classification. Covers the tools/languages the public API
+  docs demonstrate, plus the Metabase CLI, which authenticates exclusively via API key."
+  [["metabase-cli"    "metabase-cli"]
+   ["postmanruntime"  "postman"]
+   ["python-requests" "python-requests"]
+   ["r-curl"          "r"]
+   ["got (https"      "node"]
+   ["curl"            "curl"]])
+
+(defn detect-client
+  "Classify a caller's `User-Agent` into a canonical client key (one of [[supported-client-keys]]), or
+  `\"other\"` when nothing matches (or the header is absent). Identity is self-reported and used for
+  analytics only — never to gate access."
+  [user-agent]
+  (let [ua (some-> user-agent u/lower-case-en)]
+    (or (when ua
+          (some (fn [[needle k]] (when (str/includes? ua needle) k)) client-name-matchers))
+        "other")))
 
 (defenterprise record-api-key-request!
   "Write one `api_key_usage_log` row for a completed API-key-authenticated request. OSS no-op."

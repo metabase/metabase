@@ -61,7 +61,8 @@
               (is (= "POST" (:http_method row)))
               (is (= 201 (:status row)))
               (is (= 12 (:duration_ms row)))
-              (is (some? (:created_at row))))
+              (is (some? (:created_at row)))
+              (is (= "curl" (:client_name row))))
             (testing "PII columns populated when retention is on"
               (is (= "curl/8.4.0" (:user_agent row)))
               (is (= "203.0.113.7" (:ip_address row)))))
@@ -92,6 +93,30 @@
                 (is (nil? (:user_agent row)))
                 (is (nil? (:ip_address row))))
               (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))))
+
+(deftest record-api-key-request!-client-name-is-never-gated-test
+  (testing "client_name is classified from user-agent and recorded even when PII retention is off"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates       true
+                                         analytics-pii-retention-enabled false]
+        (let [route (unique-route)]
+          (try
+            (usage/record-api-key-request! (request-info route :user-agent "metabase-cli/1.2.3"))
+            (let [row (row-for route)]
+              (is (= "metabase-cli" (:client_name row)))
+              (testing "but the raw user_agent stays gated"
+                (is (nil? (:user_agent row)))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
+
+(deftest record-api-key-request!-unrecognized-user-agent-is-other-test
+  (testing "an unrecognized or absent User-Agent classifies as \"other\""
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (let [route (unique-route)]
+          (try
+            (usage/record-api-key-request! (request-info route :user-agent nil))
+            (is (= "other" (:client_name (row-for route))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
 (deftest record-api-key-request!-truncates-route-template-test
   (testing "an over-long route_template is truncated to the column width so the row still records"

@@ -328,7 +328,8 @@
    :api  #{metabase.api-keys.api
            metabase.api-keys.core
            metabase.api-keys.db
-           metabase.api-keys.schema}
+           metabase.api-keys.schema
+           metabase.api-keys.usage}
    :uses #{api
            app-db
            events

@@ -23,6 +23,7 @@
    [metabase-enterprise.api-keys.db :as ee.api-keys.db]
    [metabase.analytics.core :as analytics]
    [metabase.api-keys.db :as api-keys.db]
+   [metabase.api-keys.usage :as api-keys.usage]
    [metabase.batch-processing.core :as grouper]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -57,7 +58,7 @@
   "The `api_key_usage_log` columns declared NOT NULL. Rows are inserted in coalesced batches, so a row
   missing one of these would fail every row batched with it, not just itself — an incomplete row is
   dropped before it is queued instead."
-  [:api_key_id :route_template :http_method :status :duration_ms])
+  [:api_key_id :route_template :http_method :status :duration_ms :client_name])
 
 (defn- insert-usage-logs!*
   "Grouper batch handler: insert one coalesced batch of `api_key_usage_log` rows."
@@ -78,9 +79,11 @@
 (defenterprise record-api-key-request!
   "EE: queue one `api_key_usage_log` row for a completed API-key-authenticated request. The row is
   inserted by a Grouper batch, never synchronously on the request thread. `ip_address` and
-  `user_agent` are PII — stored only when `analytics-pii-retention-enabled` is on. `route_template`
-  and `http_method` are truncated to their column widths; a row missing a NOT NULL value is dropped
-  rather than queued, so it can't sink the batch it would land in."
+  `user_agent` are PII — stored only when `analytics-pii-retention-enabled` is on. `client_name` is
+  classified from `user-agent` via [[metabase.api-keys.usage/detect-client]] and always recorded —
+  non-PII, mirrors `agent_api_call_log`'s `client_name`. `route_template` and `http_method` are
+  truncated to their column widths; a row missing a NOT NULL value is dropped rather than queued, so
+  it can't sink the batch it would land in."
   :feature :none
   [{:keys [api-key-id user-id tenant-id route-template http-method status duration-ms
            user-agent ip-address]}]
@@ -98,7 +101,8 @@
                       :route_template (some-> route-template (u/truncate route-template-max-length))
                       :http_method    (some-> http-method (u/truncate http-method-max-length))
                       :status         status
-                      :duration_ms    duration-ms}
+                      :duration_ms    duration-ms
+                      :client_name    (api-keys.usage/detect-client user-agent)}
                      pii)]
       (if-let [missing (not-empty (remove #(some? (get row %)) not-null-columns))]
         (log/warnf "Not recording API key usage, row is missing %s" (pr-str missing))
