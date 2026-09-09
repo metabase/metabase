@@ -25,6 +25,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
@@ -124,7 +125,7 @@
    or nil when the stored definition can't be serialized."
   [kind row]
   (try
-    (let [table          (t2/select-one :model/Table :id (:table_id row))
+    (let [table          (mcp.db/table-by-id (:table_id row))
           mp             (lib-be/application-database-metadata-provider (:db_id table))
           metadata       (case kind
                            :measure (lib.metadata/measure mp (:id row))
@@ -147,7 +148,7 @@
                                 :metric  [:metadata/metric :model/Card]
                                 :measure [:metadata/measure :model/Measure])]
     (when-let [computed (metrics/compute-dimensions metadata-type (:id row))]
-      (let [fresh (-> (t2/select-one model :id (:id row))
+      (let [fresh (-> (mcp.db/select-one-by-id model (:id row))
                       (merge computed)
                       metrics/filter-dimensions-for-user
                       ;; Both endpoints drop orphaned dimensions unless asked for them; an agent
@@ -323,7 +324,7 @@
   (when-not (int? id-or-eid)
     (common/throw-teaching-error
      (format "%ss take a numeric id — they have no entity_id." (str/capitalize tool-type))))
-  (let [notification (t2/select-one :model/Notification :id id-or-eid :payload_type payload-type)]
+  (let [notification (mcp.db/notification-by-payload-type id-or-eid payload-type)]
     (when-not (and notification (mi/can-read? notification))
       (common/throw-not-found (keyword tool-type) id-or-eid))
     (projections/notification-row
@@ -349,15 +350,13 @@
    an unrelated notification that happens to share the numeric id."
   [id-or-eid]
   (let [pulse-id (subscription-pulse-id id-or-eid)]
-    (if (and pulse-id (t2/exists? :model/Pulse :id pulse-id :alert_condition nil))
+    (if (and pulse-id (mcp.db/subscription-pulse-exists? pulse-id))
       (let [pulse-row (pulse/retrieve-pulse pulse-id)]
         (if (and pulse-row (mi/can-read? pulse-row))
           (projections/subscription-row (redaction/redact-pulse pulse-row))
           (common/throw-not-found :subscription id-or-eid)))
       (or (when (int? id-or-eid)
-            (let [notification (t2/select-one :model/Notification
-                                              :id id-or-eid
-                                              :payload_type :notification/dashboard)]
+            (let [notification (mcp.db/notification-by-payload-type id-or-eid :notification/dashboard)]
               (when (and notification (mi/can-read? notification))
                 (projections/notification-row
                  (redaction/hydrate-and-redact-notification notification)))))

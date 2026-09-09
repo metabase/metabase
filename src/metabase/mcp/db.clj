@@ -31,6 +31,12 @@
   [where]
   (t2/select :model/User {:where where}))
 
+(defn table-by-id
+  "The Table with `table-id`, or nil. Unlike [[select-one-by-id]], a nil `table-id` is answered with nil
+  rather than refused — callers reach here with a column value, not with an id an agent supplied."
+  [table-id]
+  (t2/select-one :model/Table :id table-id))
+
 (defn field-types
   "The `base_type` and `effective_type` of the Field with `field-id`, or nil."
   [field-id]
@@ -132,6 +138,16 @@
   "`card` with `:moderation_reviews` hydrated, each review carrying its `:moderator_details`."
   [card]
   (t2/hydrate card [:moderation_reviews :moderator_details]))
+
+(defn notification-by-payload-type
+  "The Notification with `id` whose `payload_type` is `payload-type`, or nil."
+  [id payload-type]
+  (t2/select-one :model/Notification :id id :payload_type payload-type))
+
+(defn subscription-pulse-exists?
+  "Whether a Pulse with `pulse-id` exists and is a subscription — a nil `alert_condition` — rather than an alert."
+  [pulse-id]
+  (t2/exists? :model/Pulse :id pulse-id :alert_condition nil))
 
 (defn hydrate-notification
   "`notification` with its payload, subscriptions, and handler channels and recipients hydrated.
