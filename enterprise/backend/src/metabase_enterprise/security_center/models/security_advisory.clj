@@ -28,9 +28,6 @@
   [advisory]
   (let [changes (t2/changes advisory)]
     (cond-> advisory
-      (and (contains? changes :match_status) (not (contains? changes :last_evaluated_at)))
-      (assoc :last_evaluated_at (mi/now))
-
       (and (some? (:acknowledged_by changes)) (not (contains? changes :acknowledged_at)))
       (assoc :acknowledged_at (mi/now)))))
 

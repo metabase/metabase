@@ -149,8 +149,8 @@
   (let [end-time (OffsetDateTime/now ZoneOffset/UTC)
         reaped   (rt/reap-orphaned!
                   {:model    :model/TransformRun
-                   :active   [:= :is_active true]
-                   :stale    [:< stale-column (rt/cutoff age unit)]
+                   :active   [:is_active true]
+                   :stale    [{:column stale-column :age age :unit unit}]
                    :terminal {:status "timeout" :end_time :%now :is_active nil :message message}
                    :metrics  {:total-metric   :metabase-transforms/timeouts-total
                               :latency-metric :metabase-transforms/timeout-detection-latency-ms
@@ -175,7 +175,7 @@
 (defn heartbeat-runs!
   "Stamp `last_heartbeat = now` on the given still-active `run-ids`."
   [run-ids]
-  (rt/heartbeat-ids! :model/TransformRun [:= :is_active true] :last_heartbeat run-ids))
+  (rt/heartbeat-ids! :model/TransformRun [:is_active true] :last_heartbeat run-ids))
 
 (defn reap-orphaned-runs!
   "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their owning process is

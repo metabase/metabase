@@ -304,10 +304,8 @@
         filter-by-data-access? (not (or include-editable-data-model?
                                         exclude-uneditable-details?
                                         filter-on-router-database-id))
-        user-info {:user-id api/*current-user-id*
-                   :is-superuser? (mi/superuser?)
-                   :is-data-analyst? api/*is-data-analyst?*}
-        dbs (warehouses-rest.db/databases-where user-info filter-by-data-access? filter-on-router-database-id
+        dbs (warehouses-rest.db/databases-where api/*current-user-id* (mi/superuser?) api/*is-data-analyst?*
+                                                filter-by-data-access? filter-on-router-database-id
                                                 include-analytics?)
         ;; everything below walks the list one database at a time
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]

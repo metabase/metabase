@@ -287,7 +287,7 @@
     ;; metabot_message rows for chat-detail rendering must tiebreak on `:id`
     (t2/with-transaction [_conn]
       (when (seq delete-message-ids)
-        (soft-delete-messages! {:id [:in delete-message-ids]} originator-id))
+        (soft-delete-messages! {:id delete-message-ids} originator-id))
       (metabot.db/upsert-conversation!
        conversation-id
        (fn [existing]
@@ -349,7 +349,7 @@
                     {:profile-id (or profile-id "unknown")})
     (t2/with-transaction [_conn]
       (when (seq delete-message-ids)
-        (soft-delete-messages! {:id [:in delete-message-ids]} api/*current-user-id*))
+        (soft-delete-messages! {:id delete-message-ids} api/*current-user-id*))
       (let [pk (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?)]
         {:assistant-msg-id      pk
          :assistant-external-id assistant-external-id

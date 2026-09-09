@@ -57,6 +57,13 @@
    changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:match_status :last_evaluated_at :acknowledged_by :acknowledged_at :last_notified_at])]
   (t2/update! :model/SecurityAdvisory id changes))
 
+(mu/defn record-advisory-evaluation!
+  "Apply `changes` to the SecurityAdvisory with `id` and stamp `last_evaluated_at` with now, returning the number
+  updated."
+  [id      :- ms/PositiveInt
+   changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:match_status :acknowledged_by :acknowledged_at])]
+  (t2/update! :model/SecurityAdvisory id (assoc changes :last_evaluated_at :%now)))
+
 (mu/defn record-advisory-notification!
   "Set `last_notified_at` of the SecurityAdvisory with `id` to now, returning the number updated."
   [id :- ms/PositiveInt]

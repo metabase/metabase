@@ -44,9 +44,12 @@
   (t2/select-one-pk model field value))
 
 (mu/defn after-select-via-identity-query
-  "`row-map` run through the after-select machinery of `model`."
+  "`row-map` run through the after-select machinery of `model`.
+
+  `row-map` is a model instance row and so is generic across models; typed as a plain keyword-keyed map
+  rather than a closed schema."
   [model   :- [:or :keyword symbol?]
-   row-map :- :map]
+   row-map :- [:map-of :keyword [:maybe :some]]]
   (t2/select-one model (t2.identity-query/identity-query [row-map])))
 
 (mu/defn entities-reducible
@@ -88,10 +91,12 @@
   (t2/reducible-select [:model/Field :id :name :display_name]))
 
 (mu/defn update-entity!
-  "Apply `changes` to the `model` row with `id`, returning the number updated."
+  "Apply `changes` to the `model` row with `id`, returning the number updated.
+
+  Generic across models, so `changes` is typed as a plain keyword-keyed map rather than a closed schema."
   [model   :- [:or :keyword symbol?]
    id      :- [:or :int :string]
-   changes :- :map]
+   changes :- [:map-of :keyword [:maybe :some]]]
   (t2/update! model id changes))
 
 (mu/defn set-table-display-name!
@@ -107,15 +112,19 @@
   (t2/update! :model/Field id {:display_name display-name}))
 
 (mu/defn insert-entity!
-  "Insert the `model` `row` and return the inserted instance."
+  "Insert the `model` `row` and return the inserted instance.
+
+  Generic across models, so `row` is typed as a plain keyword-keyed map rather than a closed schema."
   [model :- [:or :keyword symbol?]
-   row   :- :map]
+   row   :- [:map-of :keyword [:maybe :some]]]
   (t2/insert-returning-instance! model row))
 
 (mu/defn insert-entity-returning-pk!
-  "Insert the `model` `row` and return its primary key."
+  "Insert the `model` `row` and return its primary key.
+
+  Generic across models, so `row` is typed as a plain keyword-keyed map rather than a closed schema."
   [model :- [:or :keyword symbol?]
-   row   :- :map]
+   row   :- [:map-of :keyword [:maybe :some]]]
   (t2/insert-returning-pk! model row))
 
 (mu/defn insert-entities!

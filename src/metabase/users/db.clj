@@ -68,35 +68,10 @@
   (apply sql.helpers/order-by honeysql-map (sort-order-by sort)))
 
 (mu/defn filter-clauses
-  "Honeysql clauses for filtering on users.
-
-  Options:
-    :status                  - filter by status (\"active\", \"deactivated\", \"all\")
-    :query                   - text search on first_name, last_name, email
-    :group-ids               - filter by permissions group membership
-    :user-ids                - filter to just these user ids
-    :include-deactivated     - legacy alias for status=all
-    :is-data-analyst?        - filter by data analyst status (true/false)
-    :can-access-data-studio? - filter by Data Studio access (analysts, superusers, or users with table metadata perms)
-    :tenant-filter           - restrict `:tenant_id`: a tenant id, `:all` (no restriction), `:external` (any
-                               non-nil tenant), or nil (no tenant); omit the key entirely for no restriction
-    :sort                    - `:first-name` or `:last-name`, adds an ORDER BY; omit for none
-    :limit                   - pagination limit
-    :offset                  - pagination offset"
+  "Honeysql clauses for filtering on users. See [[metabase.users.schema/user-filters]] for the accepted options."
   [{:keys [status query group-ids user-ids include-deactivated is-data-analyst? can-access-data-studio? sort
            limit offset]
-    :as   options} :- [:map {:closed true}
-                       [:status                  {:optional true} [:maybe [:or :keyword :string]]]
-                       [:query                   {:optional true} [:maybe :string]]
-                       [:group-ids               {:optional true} [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
-                       [:user-ids                {:optional true} [:maybe [:or [:set ::lib.schema.id/user] [:sequential ::lib.schema.id/user]]]]
-                       [:include-deactivated     {:optional true} [:maybe :boolean]]
-                       [:is-data-analyst?        {:optional true} [:maybe :boolean]]
-                       [:can-access-data-studio? {:optional true} [:maybe :boolean]]
-                       [:tenant-filter           {:optional true} [:maybe [:or ms/PositiveInt [:enum :all :external]]]]
-                       [:sort                    {:optional true} [:maybe [:enum :first-name :last-name]]]
-                       [:limit                   {:optional true} [:maybe ms/PositiveInt]]
-                       [:offset                  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
+    :as   options} :- ::users.schema/user-filters]
   (cond-> {}
     true                                    (sql.helpers/where [:= :core_user.type "personal"])
     true                                    (sql.helpers/where (status-clause status include-deactivated))

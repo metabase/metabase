@@ -65,7 +65,7 @@
   scope, optionally further restricted to Cards of `card-type` or the Card with `card-id`."
   [metabot-id card-type card-id]
   (cond-> {:join  [[^:allow-subquery {:select [:id :name :type]
-                                      :from   [[(metabot-metrics-and-models-query metabot-id) :scope]]}
+                                      :from   [[(metabot-metrics-and-models-query metabot-id nil) :scope]]}
                     :card]
                    [:and
                     [:= :card.id :metabot_prompt.card_id]]]
@@ -330,12 +330,22 @@
   (t2/update! :model/MetabotMessage message-id changes))
 
 (mu/defn soft-delete-messages-where!
-  "Soft-delete the MetabotMessages matching the Toucan `conditions` on behalf of `deleted-by-user-id`, returning the
-  number of rows updated."
-  [conditions :- :map
+  "Soft-delete the MetabotMessages matching `conditions` on behalf of `deleted-by-user-id`, returning the number of
+  rows updated. `conditions` must have at least one key -- an empty map would match every message. `:id` matches a
+  single MetabotMessage or, given a collection, any of several."
+  [conditions :- [:and
+                  [:map {:closed true}
+                   [:id           {:optional true} [:maybe [:or ms/PositiveInt [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
+                   [:channel_id   {:optional true} [:maybe :string]]
+                   [:slack_msg_id {:optional true} [:maybe :string]]
+                   [:role         {:optional true} [:maybe [:or :keyword :string]]]]
+                  [:fn {:error/message "must have at least one condition"} seq]]
    deleted-by-user-id :- ::lib.schema.id/user]
-  (t2/update! :model/MetabotMessage conditions {:deleted_at         [:now]
-                                                :deleted_by_user_id deleted-by-user-id}))
+  (let [{:keys [id]} conditions
+        conditions   (cond-> conditions
+                       (coll? id) (assoc :id [:in id]))]
+    (t2/update! :model/MetabotMessage conditions {:deleted_at         [:now]
+                                                  :deleted_by_user_id deleted-by-user-id})))
 
 (mu/defn insert-used-tables!
   "Insert the MetabotUsedTable `rows`."
@@ -659,12 +669,12 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :id :type :card_schema] :id card-id))
 
-(mu/defn metabot-metrics-and-models-query
+(defn- metabot-metrics-and-models-query
   "Honey SQL query selecting the metric and model Cards in scope of the Metabot with `metabot-id` that are visible to
   the current user, ignoring analytics content. If the Metabot has `:use_verified_content` enabled, restricts to
   verified-or-curated content (verified, official-collection, or library-published). `limit`, if given, caps the
   number of rows."
-  [metabot-id :- ms/PositiveInt & {:keys [limit]}]
+  [metabot-id limit]
   (let [metabot-instance       (metabot metabot-id)
         metabot-collection-id  (:collection_id metabot-instance)
         use-verified-content?  (:use_verified_content metabot-instance)
@@ -724,10 +734,14 @@
       (integer? limit)
       (assoc :limit limit))))
 
-(mu/defn cards-where
-  "The Cards matching the Honey SQL `query`."
-  [query :- :map]
-  (t2/select :model/Card query))
+(mu/defn metabot-metrics-and-models
+  "The metric and model Cards in scope of the Metabot with `metabot-id` that are visible to the current user (see
+  [[metabot-metrics-and-models-query]]), ordered to prioritize curated content and then by Card id. `limit`, if
+  given, caps the number of rows returned."
+  [metabot-id :- ms/PositiveInt
+   limit      :- [:maybe ms/PositiveInt]]
+  (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id limit)
+                             (update :order-by (fnil conj []) [:report_card.id]))))
 
 (mu/defn card-entity-ids
   "A map of Card ID to entity ID for `card-ids`."

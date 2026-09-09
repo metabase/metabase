@@ -72,16 +72,19 @@
                        :order-by [[:%lower.name :asc]]}))
 
 (mu/defn databases-where
-  "The Databases visible to the user described by `user-info` (a map of `:user-id`/`:is-superuser?`/
-  `:is-data-analyst?`), in name then engine order. Excludes stub Databases and, unless `include-analytics?`, the
-  audit Database. Restricted to Databases routed from `router-database-id` when given, otherwise to non-routed
-  Databases. When `filter-by-data-access?` is true, further restricted to Databases the user can query, manage, or
-  edit the metadata of."
-  [user-info               :- :map
-   filter-by-data-access?  :- :boolean
-   router-database-id      :- [:maybe ::lib.schema.id/database]
-   include-analytics?      :- :boolean]
-  (let [base-where [:and
+  "The Databases visible to the user with `user-id` (`is-superuser?`/`is-data-analyst?` further widen visibility), in
+  name then engine order. Excludes stub Databases and, unless `include-analytics?`, the audit Database. Restricted
+  to Databases routed from `router-database-id` when given, otherwise to non-routed Databases. When
+  `filter-by-data-access?` is true, further restricted to Databases the user can query, manage, or edit the
+  metadata of."
+  [user-id                :- ::lib.schema.id/user
+   is-superuser?          :- :boolean
+   is-data-analyst?       :- :boolean
+   filter-by-data-access? :- :boolean
+   router-database-id     :- [:maybe ::lib.schema.id/database]
+   include-analytics?     :- :boolean]
+  (let [user-info  {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?}
+        base-where [:and
                     [:= :is_stub false]
                     (when-not include-analytics?
                       [:= :is_audit false])

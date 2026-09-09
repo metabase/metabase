@@ -5,6 +5,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.users.core :as users]
+   [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -24,22 +26,24 @@
   (t2/update! :model/Collection collection-id {:name collection-name}))
 
 (mu/defn users-with-columns
-  "The `columns` of the Users selected by the Honey SQL `query`."
+  "The `columns` of the Users matching `filters` (see [[metabase.users.schema/user-filters]])."
   [columns :- [:sequential :keyword]
-   query   :- :map]
-  (t2/select (into [:model/User] columns) query))
+   filters :- ::users.schema/user-filters]
+  (t2/select (into [:model/User] columns) (user/filter-clauses filters)))
 
 (mu/defn user-count
-  "The number of Users matching the Honey SQL `query`."
-  [query :- :map]
-  (t2/count :model/User query))
+  "The number of Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any `:sort`,
+  `:limit`, or `:offset` in `filters`."
+  [filters :- ::users.schema/user-filters]
+  (t2/count :model/User (users/filter-clauses-without-paging (user/filter-clauses filters))))
 
 (mu/defn distinct-user-count
-  "The `:count` of distinct Users matching the Honey SQL `clauses`."
-  [clauses :- :map]
+  "The `:count` of distinct Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any
+  `:sort`, `:limit`, or `:offset` in `filters`."
+  [filters :- ::users.schema/user-filters]
   (t2/query (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                     :from   :core_user}
-                   clauses)))
+                   (users/filter-clauses-without-paging (user/filter-clauses filters)))))
 
 (mu/defn user-sso-source
   "The SSO source of the User with `user-id`, or nil."
