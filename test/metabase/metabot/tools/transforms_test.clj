@@ -76,5 +76,3 @@
               (let [{:keys [output status-code]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
                 (is (= 403 status-code))
                 (is (= "You don't have permissions to do that." output))))))))))
-
-;;; ----------------------------------- write tool integration tests --------------------------------------------------

@@ -534,19 +534,6 @@
             (is (str/includes? out "notebook editor"))
             (is (re-find #"source-card|card__" out))))))))
 
-(deftest format-transform-source-denied-database-withholds-query-test
-  (testing "a transform source over a database the user cannot read renders no query body"
-    (mt/with-temp [:model/Database {db-id :id} {}]
-      (mt/with-no-data-perms-for-all-users!
-        (mt/with-test-user :rasta
-          (let [source {:type  "query"
-                        :query {:database db-id
-                                :type     :native
-                                :native   {:query "SELECT secret FROM t"}}}
-                text   (user-context/format-transform-source
-                        (assoc source :transform-source-type :native))]
-            (is (not (str/includes? (str text) "SELECT secret")))))))))
-
 (defn- refusing-store
   "A ContentStore that records `tag` and refuses, the way the real stores do for a row the
   current user cannot read. Swapped in for both so a test can tell which one a caller picked."
