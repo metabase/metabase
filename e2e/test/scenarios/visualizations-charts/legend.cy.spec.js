@@ -145,7 +145,7 @@ describe("scenarios > visualizations > legend", () => {
           col: 0,
           row: 24,
           size_x: 24,
-          size_y: 6,
+          size_y: 5,
         },
       ],
     }).then(({ dashboard }) => H.visitDashboard(dashboard.id));

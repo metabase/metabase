@@ -13,7 +13,6 @@ export const PIVOT_TABLE_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Pivot Table`,
   identifier: "pivot",
   iconName: "pivot_table",
-  noSizeTier: true,
   minSize: getMinSize("pivot"),
   defaultSize: getDefaultSize("pivot"),
   canSavePng: false,

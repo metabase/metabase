@@ -5,10 +5,6 @@ import CS from "metabase/css/core/index.css";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import {
-  getSizeTierPadding,
-  getSizeTierTitleGap,
-} from "metabase/visualizations/lib/dashcard-sizing";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
@@ -34,7 +30,6 @@ function FunnelComponent(props: VisualizationProps) {
     isDashboard,
     isEditing,
     titleMenuItems,
-    sizeTier,
   } = props;
   const hasTitle = showTitle && settings["card.title"];
 
@@ -63,19 +58,7 @@ function FunnelComponent(props: VisualizationProps) {
     (!isVisualizerCard || React.Children.count(titleMenuItems) === 1);
 
   return (
-    <div
-      className={cx(className, CS.flex, CS.flexColumn, {
-        [CS.p1]: !sizeTier,
-      })}
-      style={
-        sizeTier
-          ? {
-              padding: getSizeTierPadding(sizeTier),
-              gap: getSizeTierTitleGap(sizeTier),
-            }
-          : undefined
-      }
-    >
+    <div className={cx(className, CS.flex, CS.flexColumn, CS.p1)}>
       {hasTitle && (
         <ChartCaption
           series={groupedRawSeries}
@@ -87,7 +70,6 @@ function FunnelComponent(props: VisualizationProps) {
           hasInfoTooltip={!isDashboard || !isEditing}
           onChangeCardAndRun={canSelectTitle ? onChangeCardAndRun : undefined}
           titleMenuItems={titleMenuItems}
-          sizeTier={sizeTier}
         />
       )}
       <FunnelNormal

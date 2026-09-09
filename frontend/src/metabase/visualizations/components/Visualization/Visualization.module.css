@@ -1,5 +1,3 @@
-/* Kept in a class so callers can override e.g. the height with an inline
-   style, like the notebook step preview does. */
 .root {
   display: flex;
   flex-direction: column;

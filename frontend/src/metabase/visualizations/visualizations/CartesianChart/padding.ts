@@ -1,14 +1,12 @@
-import {
-  type DashcardSizeTier,
-  getSizeTierPadding,
-  getSizeTierTitleGap,
-} from "metabase/visualizations/lib/dashcard-sizing";
+import type { CartesianCardSizeTier } from "./sizing";
 
 interface ChartLayoutProps {
   isQueryBuilder?: boolean;
-  sizeTier?: DashcardSizeTier;
+  sizeTier?: CartesianCardSizeTier;
   theme: { other: { cartesian: { padding?: string } } };
 }
+
+const pxToRem = (px: number) => `${px / 16}rem`;
 
 export const getChartPadding = ({
   theme,
@@ -28,7 +26,7 @@ export const getChartPadding = ({
   }
 
   if (sizeTier) {
-    return getSizeTierPadding(sizeTier);
+    return `${pxToRem(sizeTier.yPadding)} ${pxToRem(sizeTier.xPadding)}`;
   }
 
   return "0.5rem 1rem";
@@ -43,7 +41,7 @@ export const getChartGap = ({
   }
 
   if (sizeTier) {
-    return getSizeTierTitleGap(sizeTier);
+    return pxToRem(sizeTier.titleGap);
   }
 
   return "0.325rem";

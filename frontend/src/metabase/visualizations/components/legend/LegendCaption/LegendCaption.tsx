@@ -148,6 +148,8 @@ export const LegendCaption = ({
           <LegendDescriptionIcon
             name="info"
             className={cx(CS.hoverChild, CS.hoverChildSmooth)}
+            inCappedRow={titleSize != null}
+            mt={titleSize != null ? undefined : "3px"}
             mr="lg"
           />
         </Tooltip>

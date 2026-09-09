@@ -35,7 +35,6 @@ import {
   LEGEND_LABEL_FONT_SIZE,
   LEGEND_LABEL_FONT_WEIGHT,
 } from "metabase/visualizations/components/legend/LegendCaption";
-import type { DashcardSizeTier } from "metabase/visualizations/lib/dashcard-sizing";
 import type {
   CardSlownessStatus,
   ClickObject,
@@ -126,7 +125,6 @@ interface DashCardVisualizationProps {
   question: Question | null;
   metadata: Metadata;
   getHref?: () => string | undefined;
-  sizeTier: DashcardSizeTier;
 
   gridSize: {
     width: number;
@@ -168,7 +166,6 @@ export function DashCardVisualization({
   question,
   metadata,
   getHref,
-  sizeTier,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -604,7 +601,6 @@ export function DashCardVisualization({
           })}
           dashboard={dashboard ?? undefined}
           dashcard={dashcard}
-          sizeTier={sizeTier}
           rawSeries={series}
           visualizerRawSeries={
             isVisualizerDashboardCard(dashcard) &&

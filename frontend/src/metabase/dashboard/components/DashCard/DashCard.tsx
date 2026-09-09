@@ -24,7 +24,6 @@ import type { StoreDashcard } from "metabase/redux/store";
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { Box } from "metabase/ui";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
-import { useDashcardSizeTier } from "metabase/visualizations/hooks/use-dashcard-size-tier";
 import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   getInitialStateForCardDataSource,
@@ -132,7 +131,6 @@ function DashCardInner({
   );
   const [isPreviewingCard, setIsPreviewingCard] = useState(!dashcard.justAdded);
   const cardRootRef = useRef<HTMLDivElement>(null);
-  const sizeTier = useDashcardSizeTier(cardRootRef);
 
   const handlePreviewToggle = useCallback(() => {
     setIsPreviewingCard((wasPreviewingCard) => !wasPreviewingCard);
@@ -408,7 +406,6 @@ function DashCardInner({
           question={question}
           metadata={metadata}
           series={series}
-          sizeTier={sizeTier}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}
           totalNumGridCols={totalNumGridCols}

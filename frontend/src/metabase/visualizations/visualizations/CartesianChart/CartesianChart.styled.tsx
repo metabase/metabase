@@ -2,13 +2,13 @@
 import styled from "@emotion/styled";
 
 import { LegendLayout } from "metabase/visualizations/components/legend/LegendLayout";
-import type { DashcardSizeTier } from "metabase/visualizations/lib/dashcard-sizing";
 
 import { getChartGap, getChartPadding } from "./padding";
+import type { CartesianCardSizeTier } from "./sizing";
 
 type CartesianChartRootProps = {
   isQueryBuilder?: boolean;
-  sizeTier?: DashcardSizeTier;
+  sizeTier?: CartesianCardSizeTier;
 };
 
 export const CartesianChartRoot = styled.div<CartesianChartRootProps>`

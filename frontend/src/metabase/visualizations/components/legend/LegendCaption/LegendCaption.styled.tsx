@@ -44,10 +44,10 @@ export const LegendLabel = styled(BaseLegendLabel)<{
   font-weight: ${LEGEND_LABEL_FONT_WEIGHT};
 
   /* Doubled selector outranks the shared LegendLabel link line-height. */
-  && {
-    line-height: ${({ titleSize = "md" }) =>
-      LEGEND_LABEL_SIZES[titleSize].lineHeight};
-  }
+  ${({ titleSize }) =>
+    titleSize
+      ? `&& { line-height: ${LEGEND_LABEL_SIZES[titleSize].lineHeight}; }`
+      : ""}
 `;
 
 export const LegendLabelIcon = styled(Icon)`
@@ -58,8 +58,15 @@ export const LegendLabelIcon = styled(Icon)`
 export const LegendDescriptionIcon = styled(
   forwardRef<
     HTMLDivElement,
-    BoxProps & { name: IconProps["name"]; "data-testid"?: string }
-  >(function LegendDescriptionIcon({ name = "info", ...props }, ref) {
+    BoxProps & {
+      name: IconProps["name"];
+      inCappedRow?: boolean;
+      "data-testid"?: string;
+    }
+  >(function LegendDescriptionIcon(
+    { name = "info", inCappedRow: _inCappedRow, ...props },
+    ref,
+  ) {
     return (
       <Box component="span" ref={ref} {...props}>
         <Icon name={name} />
@@ -70,11 +77,11 @@ export const LegendDescriptionIcon = styled(
   color: var(--mb-color-text-disabled);
   margin: 0 0.25rem;
 
-  /* Zero-height box keeps the icon from stretching the caption row past the
-     title line-height; the icon still renders, centered on the row middle. */
-  display: flex;
-  align-items: center;
-  height: 0;
+  /* In a capped row a zero-height box keeps the icon from stretching the
+     caption past the title line-height; the icon still renders, centered on
+     the row middle. */
+  ${({ inCappedRow }) =>
+    inCappedRow ? "display: flex; align-items: center; height: 0;" : ""}
 
   &:hover {
     color: var(--mb-color-text-secondary);

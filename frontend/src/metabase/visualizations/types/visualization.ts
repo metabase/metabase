@@ -2,7 +2,6 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconProps } from "metabase/ui";
-import type { DashcardSizeTier } from "metabase/visualizations/lib/dashcard-sizing";
 import type {
   ComputedVisualizationSettings,
   HighlightedObject,
@@ -53,7 +52,6 @@ export interface VisualizationProps {
   series: Series;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
-  sizeTier?: DashcardSizeTier;
   card: SeriesCard;
   getHref?: () => string | undefined;
   data: DatasetData;

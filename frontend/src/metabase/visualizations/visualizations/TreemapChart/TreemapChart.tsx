@@ -43,7 +43,6 @@ const TreemapChartComponent = ({
   isDashboard,
   isDocument,
   gridSize,
-  sizeTier,
 }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -252,9 +251,6 @@ const TreemapChartComponent = ({
     return null;
   }
 
-  const breadcrumbPaddingX = isDashboard ? "lg" : "xxl";
-  const breadcrumbPaddingTop = isDashboard ? 12 : 24;
-
   return (
     <Stack
       w="100%"
@@ -264,10 +260,7 @@ const TreemapChartComponent = ({
       gap={isCompact ? "lg" : 28}
     >
       {breadcrumb && formatters && (
-        <Box
-          px={sizeTier ? 0 : breadcrumbPaddingX}
-          pt={sizeTier ? 0 : breadcrumbPaddingTop}
-        >
+        <Box px={isDashboard ? "lg" : "xxl"} pt={isDashboard ? 12 : 24}>
           <TreemapBreadcrumb
             groupLabel={breadcrumb.groupLabel}
             value={formatters.value(breadcrumb.value)}
@@ -277,7 +270,7 @@ const TreemapChartComponent = ({
       )}
       <Box
         className={S.root}
-        p={sizeTier ? 0 : getTreemapContainerPadding(isDashboard)}
+        p={getTreemapContainerPadding(isDashboard)}
         w="100%"
         style={{ flex: 1, minHeight: 0 }}
       >

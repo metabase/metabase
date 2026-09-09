@@ -3,15 +3,10 @@ import styled from "@emotion/styled";
 
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { LegendLayout } from "metabase/visualizations/components/legend/LegendLayout";
-import type { DashcardSizeTier } from "metabase/visualizations/lib/dashcard-sizing";
-import {
-  getChartGap,
-  getChartPadding,
-} from "metabase/visualizations/visualizations/CartesianChart/padding";
+import { getChartPadding } from "metabase/visualizations/visualizations/CartesianChart/padding";
 
 interface RowVisualizationRootProps {
   isQueryBuilder: boolean;
-  sizeTier?: DashcardSizeTier;
 }
 
 export const RowVisualizationRoot = styled.div<RowVisualizationRootProps>`
@@ -21,12 +16,9 @@ export const RowVisualizationRoot = styled.div<RowVisualizationRootProps>`
   overflow: hidden;
 `;
 
-export const RowLegendCaption = styled(LegendCaption)<{
-  sizeTier?: DashcardSizeTier;
-}>`
+export const RowLegendCaption = styled(LegendCaption)`
   flex: 0 0 auto;
-  margin-bottom: ${({ sizeTier }) =>
-    sizeTier ? getChartGap({ sizeTier }) : "0.5rem"};
+  margin-bottom: 0.5rem;
 `;
 
 export const RowChartContainer = styled.div`

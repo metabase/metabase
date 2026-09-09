@@ -1,13 +1,12 @@
-import { getDashcardSizeTier } from "metabase/visualizations/lib/dashcard-sizing";
-
 import { getChartGap, getChartPadding } from "./padding";
+import { getCartesianCardSizeTier } from "./sizing";
 
 const THEME = { other: { cartesian: {} } };
 const THEME_WITH_PADDING = { other: { cartesian: { padding: "3rem" } } };
 
-const SMALL_TIER = getDashcardSizeTier(0, 0);
-const MEDIUM_TIER = getDashcardSizeTier(300, 200);
-const LARGE_TIER = getDashcardSizeTier(640, 360);
+const SMALL_TIER = getCartesianCardSizeTier(0, 0);
+const MEDIUM_TIER = getCartesianCardSizeTier(300, 200);
+const LARGE_TIER = getCartesianCardSizeTier(640, 360);
 
 describe("getChartPadding", () => {
   it("prefers the theme padding override over any other option", () => {

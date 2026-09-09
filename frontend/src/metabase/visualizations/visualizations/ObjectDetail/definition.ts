@@ -15,7 +15,6 @@ export const OBJECT_DETAIL_DEFINITION: VisualizationDefinition = {
   },
   identifier: "object",
   iconName: "document",
-  noSizeTier: true,
   get noun() {
     return t`object`;
   },

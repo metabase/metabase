@@ -1,9 +1,8 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { useDashcardSizeTier } from "metabase/visualizations/hooks/use-dashcard-size-tier";
 
 import { ChartSettingsFooter } from "../ChartSettingsFooter";
 
@@ -24,13 +23,11 @@ export const ChartSettingsVisualization = ({
   ...stackProps
 }: ChartSettingsVisualizationProps) => {
   const [warnings, setWarnings] = useState<string[]>();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const sizeTier = useDashcardSizeTier(containerRef);
 
   return (
     <Stack pt="lg" {...stackProps}>
       <SectionWarnings warnings={warnings} size={20} />
-      <ChartSettingsVisualizationContainer ref={containerRef}>
+      <ChartSettingsVisualizationContainer>
         <Visualization
           className={CS.spread}
           rawSeries={rawSeries}
@@ -39,7 +36,6 @@ export const ChartSettingsVisualization = ({
           isDashboard
           dashboard={dashboard}
           dashcard={dashcard}
-          sizeTier={dashcard ? sizeTier : undefined}
           isSettings
           showWarnings
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}

@@ -56,6 +56,7 @@ function CartesianChartInner(props: VisualizationProps) {
     showTitle,
     headerIcon,
     actionButtons,
+    dashcard,
     isDashboard,
     isEditing,
     isVisualizer,
@@ -211,7 +212,13 @@ function CartesianChartInner(props: VisualizationProps) {
 
   useCloseTooltipOnScroll(chartRef);
 
-  const sizeTier = useCartesianSizeTier(props.sizeTier);
+  const sizeTier = useCartesianSizeTier({
+    width: outerWidth,
+    height: outerHeight,
+    isDashboard,
+    isQueryBuilder,
+    dashcard,
+  });
 
   return (
     <CartesianChartRoot

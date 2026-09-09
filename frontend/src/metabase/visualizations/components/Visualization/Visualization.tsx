@@ -35,11 +35,6 @@ import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
-import {
-  type DashcardSizeTier,
-  getSizeTierBodyPadding,
-  getSizeTierHeaderPadding,
-} from "metabase/visualizations/lib/dashcard-sizing";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   type CardSlownessStatus,
@@ -126,7 +121,6 @@ type VisualizationOwnProps = {
   className?: string;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
-  sizeTier?: DashcardSizeTier;
   error?: ReactNode;
   errorIcon?: IconName;
   errorMessageOverride?: string;
@@ -645,7 +639,6 @@ class Visualization extends PureComponent<
       className,
       dashboard,
       dashcard,
-      sizeTier: sizeTierProp,
       dispatch,
       errorIcon,
       errorMessageOverride,
@@ -836,13 +829,6 @@ class Visualization extends PureComponent<
           isHeaderEnabled)) ||
       (replacementContent && (dashcard?.size_y !== 1 || isMobile) && !isAction);
 
-    const sizeTier = visualization?.noSizeTier ? undefined : sizeTierProp;
-    // Visualizations that render their own caption apply the tier themselves.
-    const chartBodyPadding =
-      sizeTier && isHeaderEnabled
-        ? getSizeTierBodyPadding(sizeTier, !!hasHeader)
-        : undefined;
-
     // We can't navigate a user to a particular card from a visualizer viz,
     // so title selection is disabled in this case
     const canSelectTitle =
@@ -865,15 +851,7 @@ class Visualization extends PureComponent<
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
-            <Box
-              className={S.header}
-              flex="0 0 auto"
-              style={
-                sizeTier
-                  ? { padding: getSizeTierHeaderPadding(sizeTier) }
-                  : undefined
-              }
-            >
+            <Box className={S.header} flex="0 0 auto">
               <ChartCaption
                 series={series}
                 visualizerRawSeries={visualizerRawSeries}
@@ -884,7 +862,6 @@ class Visualization extends PureComponent<
                 titleMenuItems={titleMenuItems}
                 width={width}
                 getHref={getHref}
-                sizeTier={sizeTier}
                 onChangeCardAndRun={
                   canSelectTitle ? this.handleOnChangeCardAndRun : null
                 }
@@ -922,10 +899,7 @@ class Visualization extends PureComponent<
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
-                style={{
-                  position: hasDevWatermark ? "relative" : undefined,
-                  padding: chartBodyPadding,
-                }}
+                style={{ position: hasDevWatermark ? "relative" : undefined }}
               >
                 {/* The same view the card shows while its data loads, so a
                     chunk that arrives after the data does not swap one
@@ -950,7 +924,6 @@ class Visualization extends PureComponent<
                       data={series[0].data} // convenience for single-series visualizations
                       dashboard={dashboard}
                       dashcard={dashcard}
-                      sizeTier={sizeTier}
                       dispatch={dispatch}
                       errorIcon={errorIcon}
                       fontFamily={fontFamily}
