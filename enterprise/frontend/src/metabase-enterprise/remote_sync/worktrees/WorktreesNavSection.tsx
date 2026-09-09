@@ -18,6 +18,7 @@ import {
   Icon,
   Loader,
   Menu,
+  Stack,
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -67,13 +68,16 @@ export function WorktreesNavSection({
         </Tooltip>
       }
     >
-      {worktrees.map((worktree) => (
-        <WorktreeNavItem
-          key={worktree.id}
-          worktree={worktree}
-          isNavbarOpened={isNavbarOpened}
-        />
-      ))}
+      {/* an expanded worktree's pages would otherwise sit flush against the next worktree row */}
+      <Stack gap="xs">
+        {worktrees.map((worktree) => (
+          <WorktreeNavItem
+            key={worktree.id}
+            worktree={worktree}
+            isNavbarOpened={isNavbarOpened}
+          />
+        ))}
+      </Stack>
       {isNewModalOpened && <NewWorktreeModal onClose={closeNewModal} />}
     </AreaTabGroup>
   );
