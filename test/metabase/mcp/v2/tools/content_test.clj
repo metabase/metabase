@@ -728,12 +728,43 @@
       (mt/with-test-user :crowberto
         (let [row (content-one {:items [{:type "document" :id doc-id}] :include ["comments"]})]
           (is (nil? (:error row)))
-          (is (= "odd" (:content_markdown row)))
+          (testing "the body is omitted rather than degraded: content_markdown is the key
+                    document_write takes as a whole-body rewrite, so returning flattened prose
+                    under it makes a read-modify-write silently drop the unrenderable block"
+            (is (nil? (:content_markdown row)))
+            (is (string? (:content_markdown_unavailable row))))
           (is (= [{:child_target_id "m-1" :thread-texts ["still here"]}]
                  (mapv #(-> (select-keys % [:child_target_id :anchor])
                             (assoc :thread-texts (mapv :text (:thread %))))
                        (:comments row))))
           (is (nil? (:orphaned_comments row))))))))
+
+(deftest get-content-unrenderable-body-is-not-a-destructive-round-trip-test
+  (testing "a document whose body holds a block with no Markdown form never returns text under
+            content_markdown. document_write applies that key as a whole-body rewrite, and the
+            flattened prose prose-mirror/ast->text produces drops headings, card embeds and layout
+            containers — so echoing it back would replace a multi-block document with a single
+            paragraph and orphan every anchored thread, while reporting success."
+    (mt/with-temp [:model/Document {doc-id :id}
+                   {:document     {:type    "doc"
+                                   :content [{:type    "heading"
+                                              :attrs   {:level 1 :_id "h-1"}
+                                              :content [{:type "text" :text "Q3 revenue"}]}
+                                             {:type  "mysteryBlock"
+                                              :attrs {:_id "m-1"}}
+                                             {:type  "cardEmbed"
+                                              :attrs {:id 118 :_id "c-1"}}]}
+                    :content_type "application/json+vnd.prose-mirror"}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "document" :id doc-id}]})]
+          (is (nil? (:error row))
+              "the read still succeeds — an unrenderable body is not an error")
+          (is (nil? (:content_markdown row))
+              "the key document_write rewrites from must be absent, not degraded")
+          (is (string? (:content_markdown_unavailable row))
+              "and the caller is told why, rather than being handed a lossy body")
+          (testing "nothing in the response is the flattened prose under any key"
+            (is (not (contains? (set (vals row)) "Q3 revenue")))))))))
 
 (defn- deeply-nested-ast
   "A prose-mirror body nested `n` levels deep."

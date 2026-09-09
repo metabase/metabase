@@ -194,19 +194,32 @@
         ;; The Metabase-flavored Markdown body — the same text document_write's old_str edits
         ;; match against — plus the node-id -> character-offset spans the comments include
         ;; anchors threads with. A body the serializer can't render (e.g. an unrecognized node
-        ;; type) degrades to the flattened plain prose, with no spans, rather than failing the
-        ;; read.
+        ;; type) omits the key rather than failing the read.
+        ;;
+        ;; `content_markdown` is omitted rather than filled with a degraded rendering, matching
+        ;; `document_write`'s body-projection and for the same reason: `content_markdown` is the
+        ;; key document_write takes as a whole-body rewrite, and the flattened prose
+        ;; `prose-mirror/ast->text` produces drops headings, card embeds and layout containers.
+        ;; Writing it back replaces the stored AST with a single paragraph and orphans every
+        ;; anchored comment thread — and both tool descriptions route a read-modify-write through
+        ;; exactly this key, so a degraded value here is a destructive round trip the agent has no
+        ;; way to see. `Throwable`, again matching body-projection: an unrenderable body is exactly
+        ;; the input that finds a way to fail that isn't an `Exception`.
         ser (try
               (documents/serialize (:document doc))
-              (catch Exception e
-                (log/warn e "Falling back to flattened text for document" (:id doc))
+              (catch Throwable e
+                (log/warn e "document body has no Markdown rendering; omitting content_markdown"
+                          (:id doc))
                 nil))]
     (-> doc
-        (assoc :content_markdown (if ser
-                                   (:markdown ser)
-                                   (prose-mirror/ast->text (:document doc)))
-               ::document doc
-               ::spans (:spans ser)))))
+        (assoc ::document doc
+               ::spans (:spans ser))
+        (merge (if ser
+                 {:content_markdown (:markdown ser)}
+                 {:content_markdown_unavailable
+                  (str "This document's body contains a block that has no Markdown form, so "
+                       "content_markdown is omitted and edits cannot be applied to it. Writing "
+                       "this document back through content_markdown would discard that block.")})))))
 
 (defn- document-layout
   "Top-level node outline of the document's ProseMirror AST: one entry per block, with the
@@ -537,7 +550,7 @@
              "concise" "detailed"]]]])
 
 (registry/deftool get-content
-  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming; alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
+  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
   {:name         "get_content"
    :scope        metabot.scope/agent-content-read
    :annotations  {:readOnlyHint true :idempotentHint true}

@@ -178,8 +178,11 @@
 ;; Shared by `document_write`'s echo and `get_content`'s document reads — registered here, the
 ;; namespace both load, for the same reason as `:question` above: neither tool requires the other,
 ;; so a registration owned by either would leave the other depending on `api.clj`'s require order.
+;; `:content_markdown_unavailable` stands in for `:content_markdown` when the stored body holds a
+;; block with no Markdown form. Exactly one of the pair is ever present, and the projection is
+;; compact, so the absent one drops out.
 (def ^:private document-concise-keys
-  [:id :name :collection_id :archived :content_markdown])
+  [:id :name :collection_id :archived :content_markdown :content_markdown_unavailable])
 
 (def ^:private document-detailed-keys
   (into document-concise-keys
