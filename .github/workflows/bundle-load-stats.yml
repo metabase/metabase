@@ -35,7 +35,7 @@ jobs:
   bundle-load-stats:
     if: ${{ github.repository == 'metabase/metabase' && (inputs.commit != '' || github.event.workflow_run.conclusion == 'success') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 25
+    timeout-minutes: 10
     env:
       HEAD_SHA: ${{ inputs.commit || github.event.workflow_run.head_sha }}
       MB_JETTY_PORT: "4000"

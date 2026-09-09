@@ -35,6 +35,12 @@ the load.
 A jar built before these marks existed reports `0` for both, and still produces
 every other reading. The marks never gate a measurement.
 
+`largestContentfulPaint` needs a `PerformanceObserver`, because these entries
+never reach the performance timeline that every other reading comes from. The
+harness installs one before the document runs. The browser keeps revising the
+value until the user interacts, and the harness reads it once the page reports
+ready, so it is a lower bound rather than the final figure.
+
 The two marks come from the app, in
 `frontend/src/metabase/utils/performance-marks.ts`. `mb:app-mounted` is recorded
 in a layout effect inside the render tree, so every entry reports it.

@@ -102,10 +102,6 @@ const READ_METRICS = `JSON.stringify((() => {
     const entry = performance.getEntriesByName(name)[0];
     return entry ? entry.startTime : 0;
   };
-  const last = (type) => {
-    const entries = performance.getEntriesByType(type);
-    return entries.length ? entries[entries.length - 1].startTime : 0;
-  };
   return {
     href: location.href,
     ttfb: nav ? nav.responseStart : 0,
@@ -113,7 +109,7 @@ const READ_METRICS = `JSON.stringify((() => {
     load: nav ? nav.loadEventEnd : 0,
     firstPaint: paint("first-paint"),
     firstContentfulPaint: paint("first-contentful-paint"),
-    largestContentfulPaint: last("largest-contentful-paint"),
+    largestContentfulPaint: window.__benchLargestPaint || 0,
     appMounted: paint("mb:app-mounted"),
     pageReady: paint("mb:page-ready"),
     lastScriptEnd: Math.max(0, ...scripts.map((entry) => entry.responseEnd)),
@@ -121,6 +117,22 @@ const READ_METRICS = `JSON.stringify((() => {
     scriptBytes: scripts.reduce((total, entry) => total + entry.encodedBodySize, 0),
   };
 })())`;
+
+// Records the last largest-contentful-paint the page reports. The entries arrive
+// in increasing order, so the latest one is the largest so far. `buffered` covers
+// a paint that lands before the observer is registered.
+//
+// The browser keeps revising this until the user interacts, and the reading is
+// taken once the page reports ready. It is therefore a lower bound rather than
+// the final figure, which is what makes it comparable between commits.
+const OBSERVE_LARGEST_PAINT = `
+  window.__benchLargestPaint = 0;
+  new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      window.__benchLargestPaint = entry.startTime;
+    }
+  }).observe({ type: "largest-contentful-paint", buffered: true });
+`;
 
 async function launchChrome() {
   const chrome = spawn(CHROME, [
@@ -176,6 +188,14 @@ async function loadOnce() {
     });
   }
 
+  // Largest-contentful-paint entries never reach the performance timeline, so
+  // `getEntriesByType` cannot see them. An observer is the only way to read one,
+  // and it has to exist before the paint. Paint entries are buffered, which is
+  // why first-contentful-paint needs none of this.
+  await session.send("Page.addScriptToEvaluateOnNewDocument", {
+    source: OBSERVE_LARGEST_PAINT,
+  });
+
   await session.send("Page.navigate", { url });
 
   const read = async () => {
@@ -204,8 +224,9 @@ async function loadOnce() {
     await sleep(150);
   }
 
-  // The marks land after the entry scripts, and `mb:page-ready` only on a route
-  // that records it. Wait a bounded while rather than missing them.
+  // The marks land after the entry scripts, `mb:page-ready` only on a route that
+  // records it, and the largest paint later still. Wait a bounded while rather
+  // than missing them.
   //
   // They must not gate the reading itself. A jar built before the marks existed
   // never fires either one, and waiting on them there would turn each load into
@@ -213,7 +234,10 @@ async function loadOnce() {
   // whole series, so the rest do not pay the wait again.
   for (
     let attempt = 0;
-    buildRecordsMarks && metrics && !metrics.pageReady && attempt < 40;
+    buildRecordsMarks &&
+    metrics &&
+    (!metrics.pageReady || !metrics.largestContentfulPaint) &&
+    attempt < 40;
     attempt++
   ) {
     await sleep(150);
