@@ -16,6 +16,7 @@ import type {
   ContentDiagnosticsDuplicatedFinding,
 } from "metabase-types/api";
 
+import { trackContentDiagnosticsEntityOpened } from "../../analytics";
 import { DiagnosticsSidebar } from "../DiagnosticsSidebar";
 import {
   getDuplicateEntityName,
@@ -38,7 +39,7 @@ export function DuplicatedContentSidebar({
   onClose,
 }: DuplicatedContentSidebarProps) {
   return (
-    <DiagnosticsSidebar finding={finding} onClose={onClose}>
+    <DiagnosticsSidebar finding={finding} tab="duplicated" onClose={onClose}>
       <DuplicatesSection
         duplicateCount={finding.duplicate_count}
         duplicateEntities={finding.details.duplicate_entities}
@@ -99,6 +100,13 @@ type DuplicateEntityRowProps = {
 function DuplicateEntityRow({ entity }: DuplicateEntityRowProps) {
   const name = getDuplicateEntityName(entity);
   const typeLabel = getEntityTypeLabel(entity);
+
+  const trackEntityOpened = () =>
+    trackContentDiagnosticsEntityOpened({
+      tab: "duplicated",
+      entityId: entity.id,
+      entityType: entity.entity_type,
+    });
   const linkLabel = `${name}, ${typeLabel}`;
 
   return (
@@ -119,6 +127,7 @@ function DuplicateEntityRow({ entity }: DuplicateEntityRowProps) {
           to={getDuplicateEntityUrl(entity)}
           target="_blank"
           aria-label={linkLabel}
+          onClick={trackEntityOpened}
         >
           {name}
         </Anchor>

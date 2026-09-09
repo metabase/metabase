@@ -34,6 +34,8 @@ import {
 
 import { StaleContentPage } from "./StaleContentPage";
 
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+
 const FINDINGS: ContentDiagnosticsStaleFinding[] = [
   createMockContentDiagnosticsStaleFinding({
     id: 1,
@@ -130,6 +132,36 @@ async function waitForListToLoad() {
 }
 
 describe("StaleContentPage", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
+  describe("analytics", () => {
+    it("reports the tab as viewed", async () => {
+      setup({ findings: FINDINGS });
+      await waitForListToLoad();
+
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "content_diagnostics_tab_viewed",
+        event_detail: "stale",
+      });
+    });
+
+    it("reports the finding a user opens, and the entity behind it", async () => {
+      setup({ findings: FINDINGS });
+      await waitForListToLoad();
+
+      await userEvent.click(screen.getByText("Sales overview"));
+
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "content_diagnostics_finding_selected",
+        triggered_from: "stale",
+        target_id: FINDINGS[0].entity_id,
+        event_detail: "card",
+      });
+    });
+  });
+
   it("renders stale findings in the table", async () => {
     setup({ findings: FINDINGS });
 

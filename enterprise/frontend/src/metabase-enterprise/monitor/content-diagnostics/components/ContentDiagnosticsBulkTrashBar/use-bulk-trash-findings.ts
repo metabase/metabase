@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { useDeleteTransformMutation } from "metabase/api";
 import { archiveAndTrack } from "metabase/archive/analytics";
 import { useSetArchive } from "metabase/archive/hooks/use-set-archive";
+import { deleteTransformAndTrack } from "metabase/transforms/analytics";
 import type {
   ContentDiagnosticsBaseFinding,
   ContentDiagnosticsEntityType,
@@ -39,7 +40,11 @@ export function useBulkTrashFindings() {
       const trashFinding = (finding: ContentDiagnosticsBaseFinding) => {
         const model = getArchivableModel(finding);
         if (model === null) {
-          return deleteTransform(finding.entity_id).unwrap();
+          return deleteTransformAndTrack({
+            deleteTransform: () => deleteTransform(finding.entity_id).unwrap(),
+            transformId: finding.entity_id,
+            triggeredFrom: "content_diagnostics",
+          });
         }
         return archiveAndTrack({
           archive: () =>

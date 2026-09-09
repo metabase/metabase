@@ -27,6 +27,7 @@ function setup({
   renderWithProviders(
     <DiagnosticsSidebar
       finding={finding}
+      tab="stale"
       extraInfo={extraInfo}
       onClose={onClose}
     />,

@@ -13,6 +13,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { deleteTransformAndTrack } from "metabase/transforms/analytics";
 import {
   Box,
   Button,
@@ -82,10 +83,16 @@ function DeleteTransformForm({
     if (transform == null) {
       return;
     }
-    if (shouldDeleteTarget) {
-      await deleteTransformTarget(transform.id).unwrap();
-    }
-    await deleteTransform(transform.id).unwrap();
+    await deleteTransformAndTrack({
+      deleteTransform: async () => {
+        if (shouldDeleteTarget) {
+          await deleteTransformTarget(transform.id).unwrap();
+        }
+        await deleteTransform(transform.id).unwrap();
+      },
+      transformId: transform.id,
+      triggeredFrom: "transform_page",
+    });
     onDelete();
   };
 

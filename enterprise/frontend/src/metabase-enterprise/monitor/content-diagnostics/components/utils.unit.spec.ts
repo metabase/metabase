@@ -5,8 +5,14 @@ import {
   createMockContentDiagnosticsStaleFinding,
 } from "metabase-types/api/mocks";
 
+import type {
+  ImbalancedContentFilterOptions,
+  SlowContentFilterOptions,
+  StaleContentFilterOptions,
+} from "./types";
 import {
   getBreadcrumbLinks,
+  getChangedFilterDimension,
   getDuplicateEntityUrl,
   getEntityUrl,
 } from "./utils";
@@ -145,5 +151,100 @@ describe("getBreadcrumbLinks", () => {
       "/data-studio/transforms?collectionId=4",
     );
     expect(linkFor(null)).toMatch(/^\/collection\/4\b/);
+  });
+});
+
+const BASE_OPTIONS: ImbalancedContentFilterOptions = {
+  entityTypes: ["question", "dashboard"],
+  includePersonalCollections: false,
+};
+
+const STALE_OPTIONS: StaleContentFilterOptions = {
+  entityTypes: ["question", "dashboard"],
+  includePersonalCollections: false,
+  thresholdDays: 30,
+};
+
+const SLOW_OPTIONS: SlowContentFilterOptions = {
+  entityTypes: ["question", "dashboard"],
+  includePersonalCollections: false,
+  minDurationMs: 1000,
+};
+
+describe("getChangedFilterDimension", () => {
+  it("reports an entity type being dropped", () => {
+    expect(
+      getChangedFilterDimension(BASE_OPTIONS, {
+        ...BASE_OPTIONS,
+        entityTypes: ["question"],
+      }),
+    ).toBe("entity_type");
+  });
+
+  it("reports an entity type being added", () => {
+    expect(
+      getChangedFilterDimension(BASE_OPTIONS, {
+        ...BASE_OPTIONS,
+        entityTypes: ["question", "dashboard", "document"],
+      }),
+    ).toBe("entity_type");
+  });
+
+  it("reports the personal collections toggle", () => {
+    expect(
+      getChangedFilterDimension(BASE_OPTIONS, {
+        ...BASE_OPTIONS,
+        includePersonalCollections: true,
+      }),
+    ).toBe("personal_collections");
+  });
+
+  it("reports whichever numeric threshold the tab owns", () => {
+    expect(
+      getChangedFilterDimension(STALE_OPTIONS, {
+        ...STALE_OPTIONS,
+        thresholdDays: 90,
+      }),
+    ).toBe("threshold");
+
+    expect(
+      getChangedFilterDimension(SLOW_OPTIONS, {
+        ...SLOW_OPTIONS,
+        minDurationMs: 5000,
+      }),
+    ).toBe("threshold");
+  });
+
+  it("reports a threshold that was cleared", () => {
+    expect(
+      getChangedFilterDimension(STALE_OPTIONS, {
+        ...STALE_OPTIONS,
+        thresholdDays: undefined,
+      }),
+    ).toBe("threshold");
+  });
+
+  it("reports a threshold that was set where there was none", () => {
+    expect(
+      getChangedFilterDimension(
+        { ...STALE_OPTIONS, thresholdDays: undefined },
+        STALE_OPTIONS,
+      ),
+    ).toBe("threshold");
+  });
+
+  it("returns null when nothing changed, so no event is sent", () => {
+    expect(getChangedFilterDimension(STALE_OPTIONS, { ...STALE_OPTIONS })).toBe(
+      null,
+    );
+  });
+
+  it("does not mistake entity type order for a change", () => {
+    expect(
+      getChangedFilterDimension(BASE_OPTIONS, {
+        ...BASE_OPTIONS,
+        entityTypes: ["dashboard", "question"],
+      }),
+    ).toBeNull();
   });
 });

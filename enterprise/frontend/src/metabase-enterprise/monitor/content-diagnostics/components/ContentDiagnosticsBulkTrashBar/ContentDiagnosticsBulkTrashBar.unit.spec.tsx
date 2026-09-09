@@ -11,6 +11,8 @@ import {
 
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+
 function card(
   opts: { id?: number; entity_id?: number } = {},
 ): ContentDiagnosticsBaseFinding {
@@ -33,6 +35,7 @@ function setup(selectedFindings: ContentDiagnosticsBaseFinding[]) {
   const onSettled = jest.fn();
   const { store } = renderWithProviders(
     <ContentDiagnosticsBulkTrashBar
+      tab="stale"
       selectedFindings={selectedFindings}
       onSettled={onSettled}
     />,
@@ -45,6 +48,10 @@ function hasUndo(store: ReturnType<typeof setup>["store"], message: string) {
 }
 
 describe("ContentDiagnosticsBulkTrashBar", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("uses recoverable trash wording for archivable-only selections", async () => {
     setup([card({ id: 1, entity_id: 1 }), card({ id: 2, entity_id: 2 })]);
 
@@ -97,6 +104,33 @@ describe("ContentDiagnosticsBulkTrashBar", () => {
     ).toBeInTheDocument();
   });
 
+  it("hard-deletes a transform on confirm and reports it as a transform delete", async () => {
+    fetchMock.delete("path:/api/transform/7", 204);
+    const { onSettled } = setup([transform({ id: 1, entity_id: 7 })]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
+
+    await waitFor(() => {
+      expect(onSettled).toHaveBeenCalledWith([]);
+    });
+
+    expect(fetchMock.callHistory.calls("path:/api/transform/7")).toHaveLength(
+      1,
+    );
+    expect(trackSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "transform_deleted",
+        target_id: 7,
+        triggered_from: "content_diagnostics",
+        result: "success",
+      }),
+    );
+  });
+
   it("archives on confirm, reports success, and clears the selection", async () => {
     setupCardEndpoints(createMockCard({ id: 1 }));
     const { onSettled, store } = setup([card({ id: 1, entity_id: 1 })]);
@@ -140,5 +174,67 @@ describe("ContentDiagnosticsBulkTrashBar", () => {
       expect(onSettled).toHaveBeenCalledWith([2]);
     });
     expect(hasUndo(store, "Couldn't remove 1 item")).toBe(true);
+    expect(trackSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "content_diagnostics_findings_bulk_trashed",
+        triggered_from: "stale",
+        event_detail: "1/2",
+        result: "partial",
+      }),
+    );
+  });
+
+  it("tracks a fully trashed selection as a success", async () => {
+    setupCardEndpoints(createMockCard({ id: 1 }));
+    setupCardEndpoints(createMockCard({ id: 2 }));
+    const { onSettled } = setup([
+      card({ id: 1, entity_id: 1 }),
+      card({ id: 2, entity_id: 2 }),
+    ]);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move to trash" }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Move to trash",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(onSettled).toHaveBeenCalledWith([]);
+    });
+    expect(trackSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "content_diagnostics_findings_bulk_trashed",
+        event_detail: "2/2",
+        result: "success",
+      }),
+    );
+  });
+
+  it("tracks a selection where nothing could be trashed as a failure", async () => {
+    fetchMock.put("path:/api/card/1", { status: 500, body: {} });
+    const { onSettled } = setup([card({ id: 1, entity_id: 1 })]);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move to trash" }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Move to trash",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(onSettled).toHaveBeenCalledWith([1]);
+    });
+    expect(trackSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "content_diagnostics_findings_bulk_trashed",
+        event_detail: "0/1",
+        result: "failure",
+      }),
+    );
   });
 });

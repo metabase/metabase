@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from "react";
+import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
 import {
@@ -9,12 +10,18 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { List } from "metabase/ui";
-import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
+import type {
+  ContentDiagnosticsBaseFinding,
+  ContentDiagnosticsFindingType,
+} from "metabase-types/api";
+
+import { trackContentDiagnosticsFindingsBulkTrashed } from "../../analytics";
 
 import { useBulkTrashFindings } from "./use-bulk-trash-findings";
 
 type ContentDiagnosticsBulkTrashBarProps = {
   selectedFindings: ContentDiagnosticsBaseFinding[];
+  tab: ContentDiagnosticsFindingType;
   onSettled: (failedFindingIds: number[]) => void;
 };
 
@@ -99,6 +106,7 @@ function getResultMessage(count: number, transformCount: number): string {
 
 export function ContentDiagnosticsBulkTrashBar({
   selectedFindings,
+  tab,
   onSettled,
 }: ContentDiagnosticsBulkTrashBarProps) {
   const dispatch = useDispatch();
@@ -113,8 +121,21 @@ export function ContentDiagnosticsBulkTrashBar({
   const trashCopy = getTrashCopy(archivableCount, transformCount);
 
   const handleConfirm = async () => {
+    const startTime = performance.now();
     const { total, failedFindings } = await trashFindings(selectedFindings);
     setIsConfirmOpen(false);
+
+    const removedCount = total - failedFindings.length;
+    trackContentDiagnosticsFindingsBulkTrashed({
+      tab,
+      removedCount,
+      selectedCount: total,
+      durationMs: Math.trunc(performance.now() - startTime),
+      result: match({ removedCount, failedCount: failedFindings.length })
+        .with({ removedCount: 0 }, () => "failure" as const)
+        .with({ failedCount: 0 }, () => "success" as const)
+        .otherwise(() => "partial" as const),
+    });
 
     if (failedFindings.length > 0) {
       dispatch(

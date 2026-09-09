@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
 import * as Urls from "metabase/urls";
 import {
@@ -14,6 +15,11 @@ import {
   type ContentDiagnosticsUser,
   type IconName,
 } from "metabase-types/api";
+
+import type {
+  ContentDiagnosticsBaseFilterOptions,
+  ContentDiagnosticsFilterDimension,
+} from "./types";
 
 export const ALL_NON_COLLECTION_FILTER_TYPES: ContentDiagnosticsNonCollectionFilterType[] =
   [...CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES];
@@ -210,4 +216,45 @@ export function areEntityTypesEqual(
   }
   const setB = new Set(b);
   return a.every((type) => setB.has(type));
+}
+
+const BASE_FILTER_DIMENSIONS: Record<
+  keyof ContentDiagnosticsBaseFilterOptions<ContentDiagnosticsFilterType>,
+  ContentDiagnosticsFilterDimension
+> = {
+  entityTypes: "entity_type",
+  includePersonalCollections: "personal_collections",
+};
+
+function getThresholds<
+  T extends ContentDiagnosticsBaseFilterOptions<ContentDiagnosticsFilterType>,
+>({ entityTypes, includePersonalCollections, ...thresholds }: T) {
+  return thresholds;
+}
+
+export function getChangedFilterDimension<
+  T extends ContentDiagnosticsBaseFilterOptions<ContentDiagnosticsFilterType>,
+>(
+  previousOptions: T,
+  nextOptions: T,
+): ContentDiagnosticsFilterDimension | null {
+  if (
+    !areEntityTypesEqual(previousOptions.entityTypes, nextOptions.entityTypes)
+  ) {
+    return BASE_FILTER_DIMENSIONS.entityTypes;
+  }
+
+  if (
+    previousOptions.includePersonalCollections !==
+    nextOptions.includePersonalCollections
+  ) {
+    return BASE_FILTER_DIMENSIONS.includePersonalCollections;
+  }
+
+  const hasThresholdChange = !_.isEqual(
+    getThresholds(previousOptions),
+    getThresholds(nextOptions),
+  );
+
+  return hasThresholdChange ? "threshold" : null;
 }

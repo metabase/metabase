@@ -8,7 +8,11 @@ function setup(
   finding: ContentDiagnosticsImbalancedFinding = createMockContentDiagnosticsImbalancedFinding(),
 ) {
   renderWithProviders(
-    <ImbalancedContentSidebar finding={finding} onClose={jest.fn()} />,
+    <ImbalancedContentSidebar
+      finding={finding}
+      tab="empty"
+      onClose={jest.fn()}
+    />,
     { withRouter: true },
   );
 }

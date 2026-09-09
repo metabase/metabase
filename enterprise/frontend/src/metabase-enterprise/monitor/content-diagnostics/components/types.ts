@@ -30,3 +30,8 @@ export type ImbalancedContentFilterOptions =
 export type ContentDiagnosticsParamsOptions = {
   withSetLastUsedParams?: boolean;
 };
+
+export type ContentDiagnosticsFilterDimension =
+  | "entity_type"
+  | "personal_collections"
+  | "threshold";

@@ -1,6 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import type { RowSelectionState } from "@tanstack/react-table";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
@@ -11,6 +11,12 @@ import type { Sorting } from "metabase/utils/sorting";
 import { useListDuplicatedFindingsQuery } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { ContentDiagnosticsDuplicatedSortColumn } from "metabase-types/api";
+
+import {
+  trackContentDiagnosticsFiltersChanged,
+  trackContentDiagnosticsFindingSelected,
+  trackContentDiagnosticsTabViewed,
+} from "../analytics";
 
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
@@ -28,6 +34,7 @@ import type {
   ContentDiagnosticsParamsOptions,
   DuplicatedContentFilterOptions,
 } from "./types";
+import { getChangedFilterDimension } from "./utils";
 
 type DuplicatedContentProps = {
   params: Urls.DuplicatedContentParams;
@@ -87,6 +94,10 @@ export function DuplicatedContent({
     (finding) => rowSelection[String(finding.id)],
   );
 
+  useEffect(() => {
+    trackContentDiagnosticsTabViewed("duplicated");
+  }, []);
+
   const clearRowSelection = () => setRowSelection({});
 
   const handleTrashSettled = (failedFindingIds: number[]) =>
@@ -102,6 +113,14 @@ export function DuplicatedContent({
   const handleFilterOptionsChange = (
     newFilterOptions: DuplicatedContentFilterOptions,
   ) => {
+    const dimension = getChangedFilterDimension(
+      filterOptions,
+      newFilterOptions,
+    );
+    if (dimension !== null) {
+      trackContentDiagnosticsFiltersChanged({ tab: "duplicated", dimension });
+    }
+
     clearRowSelection();
     onParamsChange(
       {
@@ -166,7 +185,17 @@ export function DuplicatedContent({
               isFetching={isFetching}
               isLoading={isLoading}
               rowSelection={rowSelection}
-              onSelect={(finding) => setSelectedFindingId(finding.id)}
+              onSelect={(finding) => {
+                if (finding.id === selectedFindingId) {
+                  return;
+                }
+                trackContentDiagnosticsFindingSelected({
+                  tab: "duplicated",
+                  entityId: finding.entity_id,
+                  entityType: finding.entity_type,
+                });
+                setSelectedFindingId(finding.id);
+              }}
               onSortOptionsChange={handleSortOptionsChange}
               onRowSelectionChange={setRowSelection}
             />
@@ -190,6 +219,7 @@ export function DuplicatedContent({
         )}
       </Flex>
       <ContentDiagnosticsBulkTrashBar
+        tab="duplicated"
         selectedFindings={selectedFindings}
         onSettled={handleTrashSettled}
       />

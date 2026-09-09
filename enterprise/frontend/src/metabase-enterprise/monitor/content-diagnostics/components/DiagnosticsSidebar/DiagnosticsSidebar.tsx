@@ -15,8 +15,12 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
+import type {
+  ContentDiagnosticsBaseFinding,
+  ContentDiagnosticsFindingType,
+} from "metabase-types/api";
 
+import { trackContentDiagnosticsEntityOpened } from "../../analytics";
 import {
   getBreadcrumbLinks,
   getEntityIcon,
@@ -38,6 +42,7 @@ export type SidebarExtraInfo = {
 
 type DiagnosticsSidebarProps<T extends ContentDiagnosticsBaseFinding> = {
   finding: T;
+  tab: ContentDiagnosticsFindingType;
   extraInfo?: SidebarExtraInfo;
   children?: ReactNode;
   onClose: () => void;
@@ -45,6 +50,7 @@ type DiagnosticsSidebarProps<T extends ContentDiagnosticsBaseFinding> = {
 
 export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
   finding,
+  tab,
   extraInfo,
   children,
   onClose,
@@ -62,7 +68,7 @@ export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
       data-testid="content-diagnostics-sidebar"
     >
       <Stack gap="lg" flex="0 0 auto">
-        <SidebarHeader finding={finding} onClose={onClose} />
+        <SidebarHeader finding={finding} tab={tab} onClose={onClose} />
         <LocationSection finding={finding} />
         <InfoSection finding={finding} extraInfo={extraInfo} />
         {children}
@@ -73,10 +79,11 @@ export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
 
 type SidebarHeaderProps = {
   finding: ContentDiagnosticsBaseFinding;
+  tab: ContentDiagnosticsFindingType;
   onClose: () => void;
 };
 
-function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
+function SidebarHeader({ finding, tab, onClose }: SidebarHeaderProps) {
   const entityUrl = getEntityUrl(finding);
   const viewLabel = getEntityViewLabel(finding);
 
@@ -101,6 +108,13 @@ function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
             to={entityUrl}
             target="_blank"
             aria-label={viewLabel}
+            onClick={() =>
+              trackContentDiagnosticsEntityOpened({
+                tab,
+                entityId: finding.entity_id,
+                entityType: finding.entity_type,
+              })
+            }
           >
             <FixedSizeIcon name="external" />
           </ActionIcon>
