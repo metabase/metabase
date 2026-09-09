@@ -12,7 +12,7 @@
 
 (def ^:private UnarchivedCardIdsAndPublicUuidsByPrefix
   "Rows returned by [[unarchived-card-ids-and-public-uuids-by-prefix]]."
-  (mut/select-keys ::queries.schema/card [:id :public_uuid]))
+  (mut/select-keys ::queries.schema/card.row [:id :public_uuid]))
 
 (mu/defn unarchived-card-ids-and-public-uuids-by-prefix :- [:sequential UnarchivedCardIdsAndPublicUuidsByPrefix]
   "The `:id` and `:public_uuid` of the unarchived Cards whose public uuid prefix is `prefix`."
@@ -21,7 +21,7 @@
 
 (def ^:private UnarchivedDashboardIdsAndPublicUuidsByPrefix
   "Rows returned by [[unarchived-dashboard-ids-and-public-uuids-by-prefix]]."
-  (mut/select-keys ::dashboards.schema/dashboard [:id :public_uuid]))
+  (mut/select-keys ::dashboards.schema/dashboard.row [:id :public_uuid]))
 
 (mu/defn unarchived-dashboard-ids-and-public-uuids-by-prefix :- [:sequential UnarchivedDashboardIdsAndPublicUuidsByPrefix]
   "The `:id` and `:public_uuid` of the unarchived Dashboards whose public uuid prefix is `prefix`."
@@ -39,19 +39,19 @@
 
 (def ^:private UnarchivedDocumentIdsAndPublicUuidsByPrefix
   "Rows returned by [[unarchived-document-ids-and-public-uuids-by-prefix]]."
-  (mut/select-keys ::documents.schema/document [:id :public_uuid]))
+  (mut/select-keys ::documents.schema/document.row [:id :public_uuid]))
 
 (mu/defn unarchived-document-ids-and-public-uuids-by-prefix :- [:sequential UnarchivedDocumentIdsAndPublicUuidsByPrefix]
   "The `:id` and `:public_uuid` of the unarchived Documents whose public uuid prefix is `prefix`."
   [prefix :- :string]
   (t2/select [:model/Document :id :public_uuid] :public_uuid_prefix prefix :archived false))
 
-(mu/defn unarchived-cards-by-public-uuid-prefix :- [:sequential ::queries.schema/card]
+(mu/defn unarchived-cards-by-public-uuid-prefix :- [:sequential ::queries.schema/card.row]
   "The unarchived Cards whose public uuid prefix is `prefix`."
   [prefix :- :string]
   (t2/select :model/Card :public_uuid_prefix prefix :archived false))
 
-(mu/defn unarchived-dashboards-by-public-uuid-prefix :- [:sequential ::dashboards.schema/dashboard]
+(mu/defn unarchived-dashboards-by-public-uuid-prefix :- [:sequential ::dashboards.schema/dashboard.row]
   "The unarchived Dashboards whose public uuid prefix is `prefix`."
   [prefix :- :string]
   (t2/select :model/Dashboard :public_uuid_prefix prefix :archived false))
@@ -61,7 +61,7 @@
   [prefix :- :string]
   (t2/select :model/Action :public_uuid_prefix prefix :archived false))
 
-(mu/defn unarchived-documents-by-public-uuid-prefix :- [:sequential ::documents.schema/document]
+(mu/defn unarchived-documents-by-public-uuid-prefix :- [:sequential ::documents.schema/document.row]
   "The unarchived Documents whose public uuid prefix is `prefix`."
   [prefix :- :string]
   (t2/select :model/Document :public_uuid_prefix prefix :archived false))

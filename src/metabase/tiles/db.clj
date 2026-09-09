@@ -8,12 +8,12 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard dashboard-id))

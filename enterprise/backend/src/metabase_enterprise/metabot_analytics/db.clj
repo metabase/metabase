@@ -15,7 +15,7 @@
 
 (mu/defn conversation :- [:maybe ::metabot.schema/metabot-conversation]
   "The MetabotConversation with `conversation-id`, or nil."
-  [conversation-id :- ms/PositiveInt]
+  [conversation-id :- :string]
   (t2/select-one :model/MetabotConversation :id conversation-id))
 
 (defn- date-range-expr
@@ -109,7 +109,18 @@
                [:core_user :u]       [:= :u.id :c.user_id]]
    :group-by  [:c.id]})
 
-(mu/defn list-conversations :- [:sequential ::metabot.schema/metabot-conversation]
+(def ^:private ListedConversation
+  "Rows returned by [[list-conversations]]."
+  (mut/merge ::metabot.schema/metabot-conversation
+             [:map
+              [:message_count           :int]
+              [:user_message_count      :int]
+              [:assistant_message_count :int]
+              [:total_tokens            :int]
+              [:last_message_at         [:maybe ms/TemporalInstant]]
+              [:profile_id              [:maybe :string]]]))
+
+(mu/defn list-conversations :- [:sequential ListedConversation]
   "A page of conversation summary rows (see [[conversation-list-select]]), restricted to `user-id`, `group-id`,
   `tenant-id`, and `date` (each nil for no restriction), sorted by the allow-listed `sort-by` column name in
   `sort-direction` (`:asc` or `:desc`), skipping `offset` and returning up to `limit`."
@@ -150,7 +161,7 @@
 
 (mu/defn messages-for-conversation :- [:sequential ::metabot.schema/metabot-message]
   "The MetabotMessages of the MetabotConversation with `conversation-id`, oldest first."
-  [conversation-id :- ms/PositiveInt]
+  [conversation-id :- :string]
   (t2/select :model/MetabotMessage :conversation_id conversation-id {:order-by [[:created_at :asc] [:id :asc]]}))
 
 (def ^:private MessageDataForConversation
@@ -171,7 +182,7 @@
 
 (mu/defn feedback-for-conversation :- [:sequential FeedbackForConversation]
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."
-  [conversation-id :- ms/PositiveInt]
+  [conversation-id :- :string]
   (t2/select :model/MetabotFeedback
              {:select   [:metabot_feedback.id
                          :metabot_feedback.message_id

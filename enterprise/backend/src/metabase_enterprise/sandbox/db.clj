@@ -15,23 +15,23 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn sandbox :- [:maybe ::sandbox.schema/sandbox]
+(mu/defn sandbox :- [:maybe ::sandbox.schema/sandbox.row]
   "The Sandbox with `sandbox-id`, or nil."
   [sandbox-id :- ::lib.schema.id/sandbox]
   (t2/select-one :model/Sandbox :id sandbox-id))
 
-(mu/defn sandboxes :- [:sequential ::sandbox.schema/sandbox]
+(mu/defn sandboxes :- [:sequential ::sandbox.schema/sandbox.row]
   "Every Sandbox, in ID order."
   []
   (t2/select :model/Sandbox {:order-by [[:id :asc]]}))
 
-(mu/defn sandbox-for-group-and-table :- [:maybe ::sandbox.schema/sandbox]
+(mu/defn sandbox-for-group-and-table :- [:maybe ::sandbox.schema/sandbox.row]
   "The Sandbox of the group with `group-id` on the Table with `table-id`, or nil."
   [group-id :- ms/PositiveInt
    table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Sandbox :group_id group-id :table_id table-id))
 
-(mu/defn sandboxes-for-groups-and-table :- [:sequential ::sandbox.schema/sandbox]
+(mu/defn sandboxes-for-groups-and-table :- [:sequential ::sandbox.schema/sandbox.row]
   "The Sandboxes of the groups with `group-ids` on the Table with `table-id`."
   [group-ids :- [:set ms/PositiveInt]
    table-id  :- ::lib.schema.id/table]
@@ -39,7 +39,7 @@
 
 (def ^:private SandboxesUsingCard
   "Rows returned by [[sandboxes-using-card]]."
-  (mut/select-keys ::sandbox.schema/sandbox [:id :table_id]))
+  (mut/select-keys ::sandbox.schema/sandbox.row [:id :table_id]))
 
 (mu/defn sandboxes-using-card :- [:sequential SandboxesUsingCard]
   "The `:id` and `:table_id` of the Sandboxes built on the Card with `card-id`."
@@ -68,7 +68,7 @@
 
 (def ^:private SandboxesWithTableInfo
   "Rows returned by [[sandboxes-with-table-info]]."
-  (mut/merge (mut/select-keys ::sandbox.schema/sandbox [:group_id :table_id])
+  (mut/merge (mut/select-keys ::sandbox.schema/sandbox.row [:group_id :table_id])
              [:map [:db_id [:maybe ::lib.schema.id/database]] [:schema [:maybe :string]]]))
 
 (mu/defn sandboxes-with-table-info :- [:sequential SandboxesWithTableInfo]
@@ -116,7 +116,7 @@
                 [:in :sandboxes.group_id group-ids]
                 [:in :table.db_id db-ids]]}))
 
-(mu/defn insert-sandbox! :- ::sandbox.schema/sandbox
+(mu/defn insert-sandbox! :- ::sandbox.schema/sandbox.row
   "Insert `sandbox` and return the new instance."
   [sandbox :- [:map {:closed true}
                [:id                   {:optional true} ms/PositiveInt]
@@ -177,14 +177,14 @@
                                     [:not= :login_attributes nil]
                                     [:not= :login_attributes "{}"]]]}))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
 
 (def ^:private TablesOfDatabase
   "Rows returned by [[tables-of-database]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id :schema]))
 
 (mu/defn tables-of-database :- [:sequential TablesOfDatabase]
   "The `:id`, `:db_id`, and `:schema` of the Tables of the Database with `db-id`, restricted to `schema` when
@@ -218,7 +218,7 @@
 
 (def ^:private CardsById
   "Rows returned by [[cards-by-id]]."
-  (mut/select-keys ::queries.schema/card [:id :dataset_query :result_metadata :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:id :dataset_query :result_metadata :card_schema]))
 
 (mu/defn cards-by-id :- [:map-of ::lib.schema.id/card CardsById]
   "A map of Card ID to the query, result metadata, and schema of the Cards with `card-ids`."
@@ -227,21 +227,21 @@
 
 (def ^:private CardsResultMetadata
   "Rows returned by [[cards-result-metadata]]."
-  (mut/select-keys ::queries.schema/card [:id :result_metadata :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:id :result_metadata :card_schema]))
 
 (mu/defn cards-result-metadata :- [:sequential CardsResultMetadata]
   "The `:id`, `:result_metadata`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card :id :result_metadata :card_schema] :id [:in card-ids]))
 
-(mu/defn card-result-metadata :- [:maybe ::lib.schema.id/card.result-metadata]
+(mu/defn card-result-metadata :- [:maybe ::queries.schema/card.result-metadata]
   "The result metadata of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :result_metadata :model/Card :id card-id))
 
 (def ^:private SandboxingCard
   "Rows returned by [[sandboxing-cards]]."
-  (mut/select-keys ::queries.schema/card [:id :dataset_query :database_id :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:id :dataset_query :database_id :card_schema]))
 
 (mu/defn sandboxing-cards :- [:sequential SandboxingCard]
   "The `:id`, `:dataset_query`, `:database_id`, and `:card_schema` of the Cards Sandboxes are built on."

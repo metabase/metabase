@@ -2269,6 +2269,7 @@
                     :model/Table
                     :model/User}}
 
+
   secrets
   {:team "Graphy"
    :api  #{metabase.secrets.core}
@@ -2278,6 +2279,11 @@
            models
            premium-features
            util}}
+
+  security-center
+  {:team "Gadget"
+   :api  #{metabase.security-center.schema}
+   :uses #{util}}
 
   segments
   {:team "Graphy"
@@ -2605,9 +2611,9 @@
            permissions
            premium-features
            search
+           security-center
            session
-           util
-           enterprise/security-center}
+           util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
@@ -3921,7 +3927,7 @@
 
   enterprise/security-center
   {:team "Gadget"
-   :api  #{metabase-enterprise.security-center.api metabase-enterprise.security-center.init metabase-enterprise.security-center.schema}
+   :api  #{metabase-enterprise.security-center.api metabase-enterprise.security-center.init}
    :uses #{analytics
            analytics-interface
            api
@@ -3935,9 +3941,11 @@
            notification
            permissions
            premium-features
+           security-center
            settings
            system
            task
+           users
            util}
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}

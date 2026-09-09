@@ -7,6 +7,7 @@
    [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.channel.schema :as channel.schema]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.schema :as notification.schema]
@@ -372,12 +373,12 @@
 
 ;;; ---------------------------------------------- Channels ----------------------------------------------
 
-(mu/defn active-channels-by-id :- [:map-of ms/PositiveInt ms/PositiveInt]
+(mu/defn active-channels-by-id :- [:map-of ms/PositiveInt ::channel.schema/channel]
   "A map of ID to active Channel for `channel-ids`."
   [channel-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn->fn :id identity :model/Channel :id [:in channel-ids] :active true))
 
-(mu/defn channel-templates-by-id :- [:map-of ms/PositiveInt ms/PositiveInt]
+(mu/defn channel-templates-by-id :- [:map-of ms/PositiveInt ::channel.schema/channel-template]
   "A map of ID to ChannelTemplate for `template-ids`."
   [template-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in template-ids]))
@@ -688,12 +689,12 @@
    id    :- ms/PositiveInt]
   (t2/select-one model id))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
 
-(mu/defn unarchived-card :- [:maybe ::queries.schema/card]
+(mu/defn unarchived-card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id` if it is not archived, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id :archived false))
@@ -703,7 +704,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :name :model/Card card-id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard dashboard-id))
@@ -743,7 +744,7 @@
   [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
 
-(mu/defn active-users-by-id :- [:map-of ms/PositiveInt ::lib.schema.id/user]
+(mu/defn active-users-by-id :- [:map-of ms/PositiveInt ::users.schema/user]
   "A map of ID to active User for `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-fn->fn :id identity :model/User :id [:in user-ids] :is_active true))

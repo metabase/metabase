@@ -3,10 +3,10 @@
    and combines with version checks to determine match status."
   (:require
    [metabase-enterprise.security-center.db :as security-center.db]
-   [metabase-enterprise.security-center.schema :as schema]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.security-center.schema :as schema]
    [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

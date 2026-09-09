@@ -108,7 +108,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))

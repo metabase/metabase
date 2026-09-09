@@ -32,7 +32,7 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pks-set :model/User :id [:in user-ids] :is_active true))
 
-(mu/defn document :- [:maybe ::documents.schema/document]
+(mu/defn document :- [:maybe ::documents.schema/document.row]
   "The Document with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Document :id id))

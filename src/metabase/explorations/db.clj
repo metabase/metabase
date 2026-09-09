@@ -751,7 +751,7 @@
 
 (def ^:private SummaryDocumentColumn
   "Rows returned by [[summary-document-columns]]."
-  (mut/select-keys ::documents.schema/document
+  (mut/select-keys ::documents.schema/document.row
                    [:id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder]))
 
 (mu/defn summary-document-columns :- [:maybe SummaryDocumentColumn]
@@ -764,7 +764,7 @@
 
 (def ^:private SummaryDocumentsForExploration
   "Rows returned by [[summary-documents-for-explorations]]."
-  (mut/select-keys ::documents.schema/document
+  (mut/select-keys ::documents.schema/document.row
                    [:id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder]))
 
 (mu/defn summary-documents-for-explorations :- [:sequential SummaryDocumentsForExploration]
@@ -776,7 +776,7 @@
              :exploration_id [:in exploration-ids]
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
-(mu/defn unarchived-summary-document :- [:maybe ::documents.schema/document]
+(mu/defn unarchived-summary-document :- [:maybe ::documents.schema/document.row]
   "The unarchived Summary Document of the Exploration with `exploration-id`, or nil."
   [exploration-id :- ms/PositiveInt]
   (t2/select-one :model/Document :exploration_id exploration-id :archived false))
@@ -816,14 +816,14 @@
 
 ;;; ------------------------------------------------ Other models ------------------------------------------------
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
 (def ^:private CardName
   "Rows returned by [[card-names]]."
-  (mut/select-keys ::queries.schema/card [:id :name]))
+  (mut/select-keys ::queries.schema/card.row [:id :name]))
 
 (mu/defn card-names :- [:sequential CardName]
   "The ID and name of the Cards with `card-ids`."
@@ -837,7 +837,7 @@
 
 (def ^:private CardPresentation
   "Rows returned by [[card-presentation]]."
-  (mut/select-keys ::queries.schema/card [:name :description :display :visualization_settings]))
+  (mut/select-keys ::queries.schema/card.row [:name :description :display :visualization_settings]))
 
 (mu/defn card-presentation :- [:maybe CardPresentation]
   "The name, description, display, and visualization settings of the Card with `card-id`, or nil."
@@ -846,7 +846,7 @@
 
 (def ^:private CardQuery
   "Rows returned by [[card-queries]]."
-  (mut/select-keys ::queries.schema/card [:id :card_schema :database_id :dataset_query]))
+  (mut/select-keys ::queries.schema/card.row [:id :card_schema :database_id :dataset_query]))
 
 (mu/defn card-queries :- [:sequential CardQuery]
   "The ID, schema, Database, and query of the Cards with `card-ids`."
@@ -855,7 +855,7 @@
 
 (def ^:private MetricCardsById
   "Rows returned by [[metric-cards-by-id]]."
-  (mut/select-keys ::queries.schema/card
+  (mut/select-keys ::queries.schema/card.row
                    [:id :name :description :database_id :dataset_query :card_schema :dimensions :dimension_mappings]))
 
 (mu/defn metric-cards-by-id :- [:map-of ::lib.schema.id/card MetricCardsById]
@@ -868,7 +868,7 @@
 
 (def ^:private MetricCardId
   "Rows returned by [[metric-card-ids]]."
-  (mut/select-keys ::queries.schema/card [:id]))
+  (mut/select-keys ::queries.schema/card.row [:id]))
 
 (mu/defn metric-card-ids :- [:sequential MetricCardId]
   "The `:id`s of the Cards visible to the current user as metrics, restricted to `metric-ids` when
@@ -890,12 +890,12 @@
   [:id :name :description :collection_id :database_id :table_id :type :entity_id
    :card_schema :dataset_query :dimensions :dimension_mappings])
 
-(mu/defn metric-cards-for-explorations :- [:sequential (mut/optional-keys ::queries.schema/card)]
+(mu/defn metric-cards-for-explorations :- [:sequential (mut/optional-keys ::queries.schema/card.row)]
   "The exploration-relevant columns of the metric Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids] :type "metric"))
 
-(mu/defn cards-for-explorations :- [:sequential (mut/optional-keys ::queries.schema/card)]
+(mu/defn cards-for-explorations :- [:sequential (mut/optional-keys ::queries.schema/card.row)]
   "The exploration-relevant columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids]))

@@ -14,7 +14,7 @@
    [:table-ids {:optional true} [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
    [:schema    {:optional true} [:maybe :string]]])
 
-(mu/defn active-tables-in-database :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn active-tables-in-database :- [:sequential ::warehouse-schema.schema/table.row]
   "The `columns` of the active Tables in the Database with `database-id`. `opts` may restrict the result: a
   `:table-ids` key restricts to those IDs (even when its value is empty), and a `:schema` key restricts to that
   schema (`\"\"` matches both nil and empty-string schemas)."

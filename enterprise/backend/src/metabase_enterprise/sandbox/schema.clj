@@ -40,6 +40,15 @@
   "The `:attribute_remappings` column of a Sandbox, decoded."
   :map)
 
+(mr/def ::sandbox.row
+  "A Sandbox as selected from the app DB: every column of `:sandboxes`."
+  [:map {:closed true}
+   [:id                   ms/PositiveInt]
+   [:group_id             ms/PositiveInt]
+   [:table_id             ::lib.schema.id/table]
+   [:card_id              [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings [:maybe ::sandbox.attribute-remappings]]])
+
 (mr/def ::sandbox.update
   "What an update (or insert) of a Sandbox accepts: every column of `:sandboxes` except `id`, all optional."
   [:map {:closed true}

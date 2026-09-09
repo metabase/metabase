@@ -194,6 +194,12 @@
    [:response_handle {:optional true} [:maybe :string]]
    [:error_handle    {:optional true} [:maybe :string]]])
 
+(mr/def ::implicit-action.row
+  "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
+  [:map {:closed true}
+   [:action_id ::lib.schema.id/action]
+   [:kind      [:or :keyword :string]]])
+
 (mr/def ::implicit-action.update
   "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
   [:map {:closed true}
@@ -203,6 +209,14 @@
 (mr/def ::query-action.dataset-query
   "The `:dataset_query` column of a QueryAction, decoded."
   :map)
+
+(mr/def ::query-action.row
+  "A QueryAction as selected from the app DB: every column of `:query_action`."
+  [:map {:closed true}
+   [:action_id     ::lib.schema.id/action]
+   [:database_id   ::lib.schema.id/database]
+   [:dataset_query ::query-action.dataset-query]
+   [:legacy_query  [:maybe :string]]])
 
 (mr/def ::query-action.update
   "What an update (or insert) of a QueryAction accepts: every column of `:query_action` except `id`, all optional."

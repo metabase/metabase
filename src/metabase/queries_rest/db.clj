@@ -14,32 +14,32 @@
 
 (def ^:private order-by-name {:order-by [[:%lower.name :asc]]})
 
-(mu/defn unarchived-cards :- [:sequential ::queries.schema/card]
+(mu/defn unarchived-cards :- [:sequential ::queries.schema/card.row]
   "The unarchived Cards, in case-insensitive name order."
   []
   (t2/select :model/Card, :archived false, order-by-name))
 
-(mu/defn unarchived-cards-by-creator :- [:sequential ::queries.schema/card]
+(mu/defn unarchived-cards-by-creator :- [:sequential ::queries.schema/card.row]
   "The unarchived Cards created by the User with `creator-id`, in case-insensitive name order."
   [creator-id :- ::lib.schema.id/user]
   (t2/select :model/Card, :creator_id creator-id, :archived false, order-by-name))
 
-(mu/defn unarchived-cards-for-database :- [:sequential ::queries.schema/card]
+(mu/defn unarchived-cards-for-database :- [:sequential ::queries.schema/card.row]
   "The unarchived Cards of the Database with `database-id`, in case-insensitive name order."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Card, :database_id database-id, :archived false, order-by-name))
 
-(mu/defn unarchived-cards-for-table :- [:sequential ::queries.schema/card]
+(mu/defn unarchived-cards-for-table :- [:sequential ::queries.schema/card.row]
   "The unarchived Cards of the Table with `table-id`, in case-insensitive name order."
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Card, :table_id table-id, :archived false, order-by-name))
 
-(mu/defn archived-cards :- [:sequential ::queries.schema/card]
+(mu/defn archived-cards :- [:sequential ::queries.schema/card.row]
   "The archived Cards, in case-insensitive name order."
   []
   (t2/select :model/Card, :archived true, order-by-name))
 
-(mu/defn cards-with-query-like :- [:sequential ::queries.schema/card]
+(mu/defn cards-with-query-like :- [:sequential ::queries.schema/card.row]
   "The Cards whose query matches the SQL LIKE `pattern`, in case-insensitive name order."
   [pattern :- :string]
   (t2/select :model/Card (merge order-by-name {:where [:like :dataset_query pattern]})))
@@ -53,7 +53,7 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select [:model/CardBookmark :card_id] :user_id user-id))
 
-(mu/defn cards-using-model :- [:sequential ::queries.schema/card]
+(mu/defn cards-using-model :- [:sequential ::queries.schema/card.row]
   "The unarchived Cards of the same Database as the model Card with `model-id` whose query mentions it, in
   case-insensitive name order."
   [model-id :- ms/PositiveInt]
@@ -69,7 +69,7 @@
 
 (def ^:private PublicCard
   "Rows returned by [[public-cards]]."
-  (mut/select-keys ::queries.schema/card [:name :id :public_uuid :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:name :id :public_uuid :card_schema]))
 
 (mu/defn public-cards :- [:sequential PublicCard]
   "The name, id, public uuid, and schema of the unarchived Cards that are publicly shared."
@@ -78,7 +78,7 @@
 
 (def ^:private EmbeddableCard
   "Rows returned by [[embeddable-cards]]."
-  (mut/select-keys ::queries.schema/card [:name :id :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:name :id :card_schema]))
 
 (mu/defn embeddable-cards :- [:sequential EmbeddableCard]
   "The name, id, and schema of the unarchived Cards with embedding enabled."
@@ -98,12 +98,12 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table, :id table-id))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn cards-by-id :- [:map-of ms/PositiveInt ::lib.schema.id/card]
+(mu/defn cards-by-id :- [:map-of ms/PositiveInt ::queries.schema/card.row]
   "A map of Card id to Card for the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-fn->fn :id identity :model/Card :id [:in card-ids]))
@@ -115,14 +115,14 @@
 
 (def ^:private CardPublicUuidColumn
   "Rows returned by [[card-public-uuid-columns]]."
-  (mut/select-keys ::queries.schema/card [:public_uuid :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:public_uuid :card_schema]))
 
 (mu/defn card-public-uuid-columns :- [:maybe CardPublicUuidColumn]
   "The public uuid and schema of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id))
 
-(mu/defn compatible-series-cards :- [:sequential ::queries.schema/card]
+(mu/defn compatible-series-cards :- [:sequential ::queries.schema/card.row]
   "The unarchived Cards other than `excluded-card-id` displayed as one of `display-types`, newest first, whose id is
   less than `last-cursor` (when given), excluding `exclude-ids`, and whose lower-cased name matches the SQL LIKE
   `name-pattern` (when given). Up to `limit` results (when given)."
@@ -167,7 +167,7 @@
 
 (def ^:private MaxCollectionPosition
   "Rows returned by [[max-collection-position]]."
-  (mut/merge ::queries.schema/card
+  (mut/merge ::queries.schema/card.row
              [:map [:max_position [:maybe :int]]]))
 
 (mu/defn max-collection-position :- [:maybe MaxCollectionPosition]
@@ -177,7 +177,7 @@
 
 (def ^:private CardsToMoveToCollection
   "Rows returned by [[cards-to-move-to-collection]]."
-  (mut/select-keys ::queries.schema/card
+  (mut/select-keys ::queries.schema/card.row
                    [:id :collection_id :collection_position :dataset_query :card_schema]))
 
 (mu/defn cards-to-move-to-collection :- [:sequential CardsToMoveToCollection]

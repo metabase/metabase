@@ -15,7 +15,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
@@ -25,7 +25,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :dataset_query [:model/Card :dataset_query] card-id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. a legacy Pulse with no Dashboard), in
   which case the result is nil."
   [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
@@ -227,7 +227,7 @@
 
 (def ^:private PulseCardsForPulse
   "Rows returned by [[pulse-cards-for-pulses]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
+  (mut/merge (mut/select-keys ::queries.schema/card.row
                               [:id :name :description :collection_id :display :dashboard_id])
              [:map
               [:include_csv        [:maybe :boolean]]
@@ -270,11 +270,7 @@
              :pulse_id pulse-id
              {:order-by [[:position :asc]]}))
 
-(def ^:private MaxPulseCardPosition
-  "Rows returned by [[max-pulse-card-position]]."
-  (mut/merge ::pulse.schema/pulse-card [:map [:max [:maybe :int]]]))
-
-(mu/defn max-pulse-card-position :- [:maybe MaxPulseCardPosition]
+(mu/defn max-pulse-card-position :- [:maybe [:map {:closed true} [:max [:maybe :int]]]]
   "The `:max` position of the PulseCards of the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one [:model/PulseCard [:%max.position :max]] :pulse_id pulse-id))

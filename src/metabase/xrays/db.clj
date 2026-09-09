@@ -21,25 +21,25 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
   "The Table with `table-id`, or nil. `table-id` may be nil (some callers pass a Card's or Metric's possibly-absent
   table id), in which case this returns nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table.row]
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(mu/defn tables-in-schema :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables-in-schema :- [:sequential ::warehouse-schema.schema/table.row]
   "The Tables in `schema` of the Database with `database-id`. `schema` may be nil (some drivers have no
   schema concept)."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
   (t2/select :model/Table :db_id database-id :schema schema))
 
-(mu/defn sibling-tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn sibling-tables :- [:sequential ::warehouse-schema.schema/table.row]
   "The active, visible Tables in `schema` of the Database with `database-id` other than `table-id`. `schema`
   may be nil (some drivers have no schema concept)."
   [database-id :- ::lib.schema.id/database
@@ -54,7 +54,7 @@
 
 (def ^:private CandidateTableWithFieldStats
   "Rows returned by [[candidate-tables-with-field-stats]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/table [:id :schema :display_name :entity_type :db_id])
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/table.row [:id :schema :display_name :entity_type :db_id])
              [:map
               [:num-fields :int]
               [:list-like? [:or :boolean :int]]]))
@@ -157,35 +157,35 @@
              :visibility_type "normal"
              :active          true))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn model-card :- [:maybe ::queries.schema/card]
+(mu/defn model-card :- [:maybe ::queries.schema/card.row]
   "The model Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id :type :model))
 
-(mu/defn cards-in-collection :- [:sequential ::queries.schema/card]
+(mu/defn cards-in-collection :- [:sequential ::queries.schema/card.row]
   "The Cards in the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select :model/Card :collection_id collection-id))
 
-(mu/defn unarchived-cards-for-table-of-types :- [:sequential ::queries.schema/card]
+(mu/defn unarchived-cards-for-table-of-types :- [:sequential ::queries.schema/card.row]
   "The unarchived Cards of the Table with `table-id` whose type is one of `card-types`. `table-id` may be nil
   (a native-query or nested-query Card has no resolved table id)."
   [table-id   :- [:maybe ::lib.schema.id/table]
    card-types :- [:sequential :keyword]]
   (t2/select :model/Card :table_id table-id :type [:in card-types] :archived false))
 
-(mu/defn unarchived-metrics-for-table :- [:sequential ::queries.schema/card]
+(mu/defn unarchived-metrics-for-table :- [:sequential ::queries.schema/card.row]
   "The unarchived metric Cards of the Table with `table-id`. `table-id` may be nil (the caller's Table is
   itself sometimes absent)."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select :model/Card :table_id table-id :type :metric :archived false))
 
-(mu/defn insert-card! :- ::queries.schema/card
+(mu/defn insert-card! :- ::queries.schema/card.row
   "Insert the Card `card` and return the inserted instance."
   [card :- ::queries.schema/card.update]
   (t2/insert-returning-instance! :model/Card card))
@@ -244,7 +244,7 @@
   [row :- ::collections.schema/collection.update]
   (t2/insert-returning-pk! :model/Collection row))
 
-(mu/defn dashboards :- [:sequential ::dashboards.schema/dashboard]
+(mu/defn dashboards :- [:sequential ::dashboards.schema/dashboard.row]
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard :id [:in dashboard-ids]))

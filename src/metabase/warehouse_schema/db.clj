@@ -29,7 +29,7 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn field-in-path :- [:maybe ::lib.schema.id/field]
+(mu/defn field-in-path :- [:maybe ::warehouse-schema.schema/field]
   "The ::warehouse-schema.schema/field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
   `table-id`, or nil. See `metabase.models.db/field-in-path`, which owns the shared query."
   [table-id    :- [:maybe ::lib.schema.id/table]
@@ -41,7 +41,7 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(mu/defn fields-by-id :- [:map-of ms/PositiveInt ::lib.schema.id/field]
+(mu/defn fields-by-id :- [:map-of ms/PositiveInt ::warehouse-schema.schema/field]
   "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select-fn->fn :id identity :model/Field :id [:in field-ids]))
@@ -51,17 +51,17 @@
   (mut/select-keys ::warehouse-schema.schema/field [:id :table_id]))
 
 (mu/defn field-table-id-rows :- [:sequential FieldTableId]
-  "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
+  "The ID and ::warehouse-schema.schema/table.row ID of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
 
 (mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
-  "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
+  "The ::warehouse-schema.schema/table.row ID of the ::warehouse-schema.schema/field with `field-id`."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :table_id :model/Field :id field-id))
 
 (mu/defn field-id-by-name :- [:maybe ::lib.schema.id/field]
-  "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
+  "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table.row with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    parent-id  :- [:maybe ms/PositiveInt]
    field-name :- :string]
@@ -78,12 +78,12 @@
   (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id))
 
 (mu/defn field-ids-for-table :- [:maybe [:set ::lib.schema.id/field]]
-  "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
+  "The IDs of the Fields of the ::warehouse-schema.schema/table.row with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-pks-set :model/Field {:where [:= :table_id table-id]}))
 
 (mu/defn active-field-ids-for-table :- [:maybe [:set ::lib.schema.id/field]]
-  "The IDs of the active Fields of the ::warehouse-schema.schema/table with `table-id`."
+  "The IDs of the active Fields of the ::warehouse-schema.schema/table.row with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-pks-set :model/Field :table_id table-id :active true))
 
@@ -106,7 +106,7 @@
   (mut/select-keys ::warehouse-schema.schema/field [:id]))
 
 (mu/defn field-ids-for-table-ordered :- [:sequential FieldIdsForTableOrdered]
-  "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id`, ordered per `field-order` (`:custom`, `:smart`, `:database`,
+  "The ids of the Fields of the ::warehouse-schema.schema/table.row with `table-id`, ordered per `field-order` (`:custom`, `:smart`, `:database`,
   or `:alphabetical`)."
   [table-id    :- ::lib.schema.id/table
    field-order :- [:enum :custom :smart :database :alphabetical]]
@@ -122,7 +122,7 @@
              {:order-by field-order-rule}))
 
 (mu/defn pk-field-ids-by-table :- [:map-of ms/PositiveInt ms/PositiveInt]
-  "A map of ::warehouse-schema.schema/table ID to the ID of its visible primary key ::warehouse-schema.schema/field for `table-ids`."
+  "A map of ::warehouse-schema.schema/table.row ID to the ID of its visible primary key ::warehouse-schema.schema/field for `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select-fn->fn :table_id :id :model/Field
                     :table_id [:in table-ids]
@@ -158,7 +158,7 @@
   (t2/delete! :model/Field :parent_id parent-id))
 
 (mu/defn delete-fields-for-table! :- :int
-  "Delete the Fields of the ::warehouse-schema.schema/table with `table-id`, returning the number deleted."
+  "Delete the Fields of the ::warehouse-schema.schema/table.row with `table-id`, returning the number deleted."
   [table-id :- ::lib.schema.id/table]
   (t2/delete! :model/Field :table_id table-id))
 
@@ -176,7 +176,7 @@
   (t2/exists? :model/FieldUserSettings field-id))
 
 (mu/defn user-edited-field-ids-for-table :- [:maybe [:set [:maybe ::lib.schema.id/field]]]
-  "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id` that have a FieldUserSettings row."
+  "The IDs of the Fields of the ::warehouse-schema.schema/table.row with `table-id` that have a FieldUserSettings row."
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-set :field_id :model/FieldUserSettings
                     {:join  [[:metabase_field :f] [:= :f.id :field_id]]
@@ -228,7 +228,7 @@
              [:map [:table_id [:maybe ::lib.schema.id/table]]]))
 
 (mu/defn full-field-values-for-tables :- [:sequential FullFieldValuesForTable]
-  "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
+  "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table.row ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/FieldValues :field_id :values :field.table_id]
              {:join  [[:metabase_field :field] [:= :metabase_fieldvalues.field_id :field.id]]
@@ -317,20 +317,20 @@
    types    :- [:set :keyword]]
   (t2/delete! :model/FieldValues :field_id field-id :type [:in types]))
 
-;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
+;;; ------------------------------------------------- ::warehouse-schema.schema/table.row -------------------------------------------------
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
-  "The ::warehouse-schema.schema/table with `table-id`, or nil."
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
+  "The ::warehouse-schema.schema/table.row with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table.row]
   "The Tables with `table-ids`."
   [table-ids :- [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(mu/defn table-by-name :- [:maybe ::warehouse-schema.schema/table]
-  "The ::warehouse-schema.schema/table named `table-name` in `schema` of the ::warehouses.schema/database with `database-id`, or nil."
+(mu/defn table-by-name :- [:maybe ::warehouse-schema.schema/table.row]
+  "The ::warehouse-schema.schema/table.row named `table-name` in `schema` of the ::warehouses.schema/database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
@@ -338,20 +338,20 @@
 
 (def ^:private TableNameAndSchema
   "Rows returned by [[table-name-and-schema]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:name :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:name :schema]))
 
 (mu/defn table-name-and-schema :- [:maybe TableNameAndSchema]
-  "The name and schema of the ::warehouse-schema.schema/table with `table-id`."
+  "The name and schema of the ::warehouse-schema.schema/table.row with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :name :schema] :id table-id))
 
 (mu/defn table-database-id :- [:maybe ::lib.schema.id/database]
-  "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/table with `table-id`."
+  "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/table.row with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table table-id))
 
 (mu/defn update-table! :- :int
-  "Apply `changes` to the ::warehouse-schema.schema/table with `table-id`, returning the number updated."
+  "Apply `changes` to the ::warehouse-schema.schema/table.row with `table-id`, returning the number updated."
   [table-id :- ::lib.schema.id/table
    changes  :- (mut/select-keys ::warehouse-schema.schema/table.update [:field_order])]
   (t2/update! :model/Table table-id changes))
@@ -362,7 +362,7 @@
   (t2/select :model/Segment :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
 
 (mu/defn segment-ids-for-table :- [:maybe [:set ::lib.schema.id/segment]]
-  "The IDs of the Segments of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
+  "The IDs of the Segments of the ::warehouse-schema.schema/table.row with `table-id`, excluding archived ones when `skip-archived?`."
   [table-id       :- ::lib.schema.id/table
    skip-archived? :- [:maybe :boolean]]
   (t2/select-pks-set :model/Segment {:where [:and [:= :table_id table-id] (when skip-archived? [:not :archived])]}))
@@ -373,12 +373,12 @@
   (t2/select :model/Measure :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
 
 (mu/defn measure-ids-for-table :- [:maybe [:set ::lib.schema.id/measure]]
-  "The IDs of the Measures of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
+  "The IDs of the Measures of the ::warehouse-schema.schema/table.row with `table-id`, excluding archived ones when `skip-archived?`."
   [table-id       :- ::lib.schema.id/table
    skip-archived? :- [:maybe :boolean]]
   (t2/select-pks-set :model/Measure {:where [:and [:= :table_id table-id] (when skip-archived? [:not :archived])]}))
 
-(mu/defn unarchived-metric-cards-for-tables :- [:sequential ::queries.schema/card]
+(mu/defn unarchived-metric-cards-for-tables :- [:sequential ::queries.schema/card.row]
   "The unarchived metric Cards of the Tables with `table-ids`, ordered by name."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Card :table_id [:in table-ids] :archived false :type :metric {:order-by [[:name :asc]]}))
@@ -455,7 +455,7 @@
 
 (def ^:private CardsWithModeratedStatus
   "Rows returned by [[cards-with-moderated-status]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
+  (mut/merge (mut/select-keys ::queries.schema/card.row
                               [:id :dataset_query :result_metadata :name :description :collection_id :database_id :type :source_card_id :created_at :entity_id :card_schema])
              [:map [:moderated_status [:maybe [:or :keyword :string]]]]))
 

@@ -125,7 +125,7 @@
                 (update :where conj [:not= :p.table_id nil])
                 (cond-> (seq table-ids) (update :where conj [:in :p.table_id table-ids])))))
 
-(mu/defn schema-permission-rank-pair :- [:maybe [:map {:closed true} [:mn :int] [:mx :int]]]
+(mu/defn schema-permission-rank-pair :- [:maybe [:map {:closed true} [:mn [:maybe :int]] [:mx [:maybe :int]]]]
   "The `[min max]` value rank pair summarizing the DataPermissions rows of the User with `user-id`'s groups for
   `perm-type` on the Database with `database-id`, restricted to rows naming the schema `schema-name` or no schema at
   all (database-level rows), or nil when there are no matching rows."
@@ -810,7 +810,7 @@
 
 (def ^:private TableLocation
   "Rows returned by [[table-location]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id :schema]))
 
 (mu/defn table-location :- [:maybe TableLocation]
   "The ID, Database ID, and schema of the Table with `table-id`."
@@ -824,7 +824,7 @@
 
 (def ^:private TableDatabaseId
   "Rows returned by [[table-database-ids]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id]))
 
 (mu/defn table-database-ids :- [:sequential TableDatabaseId]
   "The ID and Database ID of the Tables with `table-ids`."
@@ -833,7 +833,7 @@
 
 (def ^:private ActiveTableLocationsForDatabase
   "Rows returned by [[active-table-locations-for-database]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id :schema]))
 
 (mu/defn active-table-locations-for-database :- [:sequential ActiveTableLocationsForDatabase]
   "The ID, Database ID, and schema of the active Tables of the Database with `database-id`."
@@ -842,7 +842,7 @@
 
 (def ^:private TableIdsAndSchemasExcluding
   "Rows returned by [[table-ids-and-schemas-excluding]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :schema]))
 
 (mu/defn table-ids-and-schemas-excluding :- [:sequential TableIdsAndSchemasExcluding]
   "The ID and schema of the Tables of the Database with `database-id` other than `excluded-table-ids`."

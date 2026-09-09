@@ -230,7 +230,7 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/PersistedInfo :id id))
 
-(mu/defn unpersisted-models-for-database :- [:sequential ::queries.schema/card]
+(mu/defn unpersisted-models-for-database :- [:sequential ::queries.schema/card.row]
   "The model Cards of the Database with `database-id` that have no PersistedInfo."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Card
@@ -242,14 +242,14 @@
                               :from [:persisted_info]
                               :where [:= :persisted_info.card_id :report_card.id]}]]]}))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
 (def ^:private CardArchivedAndType
   "Rows returned by [[card-archived-and-type]]."
-  (mut/select-keys ::queries.schema/card [:archived :type :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:archived :type :card_schema]))
 
 (mu/defn card-archived-and-type :- [:maybe CardArchivedAndType]
   "The archived flag and type of the Card with `card-id`, or nil."

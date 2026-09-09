@@ -55,7 +55,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" database-id "/%")]}))
 
-(mu/defn tables-of-database-named :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables-of-database-named :- [:sequential ::warehouse-schema.schema/table.row]
   "The Tables of the Database with `database-id` named one of `table-names`."
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential :string]]
@@ -63,7 +63,7 @@
 
 (def ^:private TablesOfDatabaseInIdOrder
   "Rows returned by [[tables-of-database-in-id-order]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :name :schema :active]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :name :schema :active]))
 
 (mu/defn tables-of-database-in-id-order :- [:sequential TablesOfDatabaseInIdOrder]
   "The `:id`, `:name`, `:schema`, and `:active` of the Tables of the Database with `database-id`, in ID order."
@@ -179,7 +179,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/reducible-select [(t2/table-name :model/Card) :id :result_metadata] :database_id database-id))
 
-(mu/defn cards-of-table :- [:sequential ::queries.schema/card]
+(mu/defn cards-of-table :- [:sequential ::queries.schema/card.row]
   "The Cards on the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Card :table_id table-id))

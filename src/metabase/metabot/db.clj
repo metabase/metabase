@@ -463,12 +463,12 @@
 
 ;;; ------------------------------------------------- Tables -------------------------------------------------
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn active-table-with-columns :- [:maybe (mut/optional-keys ::warehouse-schema.schema/table)]
+(mu/defn active-table-with-columns :- [:maybe (mut/optional-keys ::warehouse-schema.schema/table.row)]
   "The `columns` of the active Table with `table-id`, or nil."
   [columns :- [:sequential :keyword]
    table-id :- ::lib.schema.id/table]
@@ -479,14 +479,14 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table :id table-id))
 
-(mu/defn tables-by-id :- [:map-of ms/PositiveInt ::lib.schema.id/table]
+(mu/defn tables-by-id :- [:map-of ms/PositiveInt ::warehouse-schema.schema/table.row]
   "A map of ID to Table for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select-fn->fn :id identity :model/Table :id [:in table-ids]))
 
 (def ^:private TableSummary
   "Rows returned by [[table-summaries]]."
-  (mut/select-keys ::warehouse-schema.schema/table
+  (mut/select-keys ::warehouse-schema.schema/table.row
                    [:id :name :display_name :schema :db_id :description]))
 
 (mu/defn table-summaries :- [:sequential TableSummary]
@@ -496,7 +496,7 @@
 
 (def ^:private TableSchema
   "Rows returned by [[table-schema-rows]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :name :schema :db_id]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :name :schema :db_id]))
 
 (mu/defn table-schema-rows :- [:sequential TableSchema]
   "The ID, name, schema, and Database ID of the Tables with `table-ids`."
@@ -505,7 +505,7 @@
 
 (def ^:private TableCuration
   "Rows returned by [[table-curation-rows]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :is_published :data_layer :data_authority]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :is_published :data_layer :data_authority]))
 
 (mu/defn table-curation-rows :- [:sequential TableCuration]
   "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
@@ -514,7 +514,7 @@
 
 (def ^:private VisibleTableSummary
   "Rows returned by [[visible-table-summaries]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :name :schema :description]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :name :schema :description]))
 
 (mu/defn visible-table-summaries :- [:sequential VisibleTableSummary]
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -543,7 +543,7 @@
 
 (def ^:private VisibleTableSummariesForCurrentUser
   "Rows returned by [[visible-table-summaries-for-current-user]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :name :schema :description]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :name :schema :description]))
 
 (mu/defn visible-table-summaries-for-current-user :- [:sequential VisibleTableSummariesForCurrentUser]
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -579,7 +579,7 @@
 
 (def ^:private MostViewedTablesVisibleToCurrentUser
   "Rows returned by [[most-viewed-tables-visible-to-current-user]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :name :schema :description]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id :name :schema :description]))
 
 (mu/defn most-viewed-tables-visible-to-current-user :- [:sequential MostViewedTablesVisibleToCurrentUser]
   "The ID, Database ID, name, schema, and description of up to `limit` active, unhidden Tables in the Database with
@@ -595,7 +595,7 @@
 
 (def ^:private TableName
   "Rows returned by [[table-names]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :name :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :name :schema]))
 
 (mu/defn table-names :- [:sequential TableName]
   "Up to `limit` IDs, names, and schemas of the active, unhidden Tables in the Database with `database-id`."
@@ -609,7 +609,7 @@
 
 (def ^:private ActiveTablesForDatabase
   "Rows returned by [[active-tables-for-database]]."
-  (mut/select-keys ::warehouse-schema.schema/table
+  (mut/select-keys ::warehouse-schema.schema/table.row
                    [:id :name :display_name :schema :db_id :description]))
 
 (mu/defn active-tables-for-database :- [:sequential ActiveTablesForDatabase]
@@ -622,7 +622,7 @@
 
 (def ^:private ActiveTablesInSchema
   "Rows returned by [[active-tables-in-schema]]."
-  (mut/select-keys ::warehouse-schema.schema/table
+  (mut/select-keys ::warehouse-schema.schema/table.row
                    [:id :name :display_name :schema :db_id :description]))
 
 (mu/defn active-tables-in-schema :- [:sequential ActiveTablesInSchema]
@@ -732,17 +732,17 @@
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn card-by-entity-id :- [:maybe ::queries.schema/card]
+(mu/defn card-by-entity-id :- [:maybe ::queries.schema/card.row]
   "The Card with `entity-id`, or nil."
   [entity-id :- :string]
   (t2/select-one :model/Card :entity_id entity-id))
 
-(mu/defn card-of-type :- [:maybe ::queries.schema/card]
+(mu/defn card-of-type :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id` if it is of `type`, or nil."
   [card-id :- ::lib.schema.id/card
    type :- [:enum :model :metric :question]]
@@ -750,7 +750,7 @@
 
 (def ^:private CardType
   "Rows returned by [[card-type-row]]."
-  (mut/select-keys ::queries.schema/card [:id :type :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:id :type :card_schema]))
 
 (mu/defn card-type-row :- [:maybe CardType]
   "The ID, type, and schema of the Card with `card-id`, or nil."
@@ -822,7 +822,7 @@
       (integer? limit)
       (assoc :limit limit))))
 
-(mu/defn cards-where :- [:sequential ::queries.schema/card]
+(mu/defn cards-where :- [:sequential ::queries.schema/card.row]
   "The Cards matching the Honey SQL `query`."
   [query :- :map]
   (t2/select :model/Card query))
@@ -839,7 +839,7 @@
 
 (def ^:private CardSearch
   "Rows returned by [[card-search-rows]]."
-  (mut/select-keys ::queries.schema/card
+  (mut/select-keys ::queries.schema/card.row
                    [:id :name :description :database_id :collection_id :card_schema :type]))
 
 (mu/defn card-search-rows :- [:sequential CardSearch]
@@ -849,7 +849,7 @@
 
 (def ^:private UnarchivedCardSummary
   "Rows returned by [[unarchived-card-summaries]]."
-  (mut/select-keys ::queries.schema/card
+  (mut/select-keys ::queries.schema/card.row
                    [:id :name :type :description :card_schema :collection_id :database_id :table_id]))
 
 (mu/defn unarchived-card-summaries :- [:sequential UnarchivedCardSummary]
@@ -861,7 +861,7 @@
 
 (def ^:private CardsInCollection
   "Rows returned by [[cards-in-collection]]."
-  (mut/select-keys ::queries.schema/card
+  (mut/select-keys ::queries.schema/card.row
                    [:id :name :type :description :card_schema :collection_id :database_id :table_id]))
 
 (mu/defn cards-in-collection :- [:sequential CardsInCollection]
@@ -873,7 +873,7 @@
 
 (def ^:private CardsForTable
   "Rows returned by [[cards-for-table]]."
-  (mut/select-keys ::queries.schema/card
+  (mut/select-keys ::queries.schema/card.row
                    [:id :name :type :description :card_schema :collection_id :database_id :table_id]))
 
 (mu/defn cards-for-table :- [:sequential CardsForTable]
@@ -886,7 +886,7 @@
 
 (def ^:private ModelsForDatabase
   "Rows returned by [[models-for-database]]."
-  (mut/select-keys ::queries.schema/card
+  (mut/select-keys ::queries.schema/card.row
                    [:id :name :type :description :card_schema :collection_id :database_id :table_id]))
 
 (mu/defn models-for-database :- [:sequential ModelsForDatabase]
@@ -900,7 +900,7 @@
 
 (def ^:private SavedCardsForConversation
   "Rows returned by [[saved-cards-for-conversation]]."
-  (mut/select-keys ::queries.schema/card [:id :metabot_chart_id]))
+  (mut/select-keys ::queries.schema/card.row [:id :metabot_chart_id]))
 
 (mu/defn saved-cards-for-conversation :- [:sequential SavedCardsForConversation]
   "The ID and chart ID of the unarchived Cards saved from the MetabotConversation with `conversation-id`, in ID order."
@@ -990,14 +990,14 @@
 
 ;;; ---------------------------------------------- Other models ----------------------------------------------
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard dashboard-id))
 
 (def ^:private DashboardSummary
   "Rows returned by [[dashboard-summary]]."
-  (mut/select-keys ::dashboards.schema/dashboard [:id :description :name :collection_id]))
+  (mut/select-keys ::dashboards.schema/dashboard.row [:id :description :name :collection_id]))
 
 (mu/defn dashboard-summary :- [:maybe DashboardSummary]
   "The ID, description, name, and Collection ID of the Dashboard with `dashboard-id`, or nil."
@@ -1011,7 +1011,7 @@
 
 (def ^:private DashboardsInCollection
   "Rows returned by [[dashboards-in-collection]]."
-  (mut/select-keys ::dashboards.schema/dashboard [:id :name :description :collection_id]))
+  (mut/select-keys ::dashboards.schema/dashboard.row [:id :name :description :collection_id]))
 
 (mu/defn dashboards-in-collection :- [:sequential DashboardsInCollection]
   "The ID, name, description, and Collection ID of the unarchived Dashboards in the Collection with
@@ -1046,7 +1046,7 @@
 
 (def ^:private DocumentsInCollection
   "Rows returned by [[documents-in-collection]]."
-  (mut/select-keys ::documents.schema/document [:id :name :collection_id :exploration_id]))
+  (mut/select-keys ::documents.schema/document.row [:id :name :collection_id :exploration_id]))
 
 (mu/defn documents-in-collection :- [:sequential DocumentsInCollection]
   "The ID, name, Collection ID, and exploration of the unarchived, non-exploration Documents in the Collection with
@@ -1058,7 +1058,7 @@
              :exploration_id nil
              {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn unarchived-documents :- [:sequential ::documents.schema/document]
+(mu/defn unarchived-documents :- [:sequential ::documents.schema/document.row]
   "The unarchived Documents with `document-ids`."
   [document-ids :- [:set ms/PositiveInt]]
   (t2/select :model/Document :id [:in document-ids] :archived false))
@@ -1138,7 +1138,7 @@
 
 (def ^:private CardCollectionId
   "Rows returned by [[card-collection-ids]]."
-  (mut/select-keys ::queries.schema/card [:id :collection_id]))
+  (mut/select-keys ::queries.schema/card.row [:id :collection_id]))
 
 (mu/defn card-collection-ids :- [:sequential CardCollectionId]
   "The ID and Collection ID of the Cards with `ids`."
@@ -1147,7 +1147,7 @@
 
 (def ^:private DashboardCollectionId
   "Rows returned by [[dashboard-collection-ids]]."
-  (mut/select-keys ::dashboards.schema/dashboard [:id :collection_id]))
+  (mut/select-keys ::dashboards.schema/dashboard.row [:id :collection_id]))
 
 (mu/defn dashboard-collection-ids :- [:sequential DashboardCollectionId]
   "The ID and Collection ID of the Dashboards with `ids`."

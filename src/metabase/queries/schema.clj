@@ -86,6 +86,54 @@
   "One entry of the `:dimension_mappings` column of a Card, decoded."
   :map)
 
+(mr/def ::card.row
+  "A Card as selected from the app DB: every column of `:report_card`."
+  [:map {:closed true}
+   [:id                                        ::lib.schema.id/card]
+   [:created_at                                ms/TemporalInstant]
+   [:updated_at                                ms/TemporalInstant]
+   [:name                                      :string]
+   [:description                               [:maybe :string]]
+   [:display                                   [:or :keyword :string]]
+   [:dataset_query                             ::card.dataset-query]
+   [:visualization_settings                    ::card.visualization-settings]
+   [:creator_id                                ::lib.schema.id/user]
+   [:database_id                               ::lib.schema.id/database]
+   [:table_id                                  [:maybe ::lib.schema.id/table]]
+   [:query_type                                [:maybe [:or :keyword :string]]]
+   [:archived                                  :boolean]
+   [:collection_id                             [:maybe ::lib.schema.id/collection]]
+   [:public_uuid                               [:maybe :string]]
+   [:made_public_by_id                         [:maybe ms/PositiveInt]]
+   [:enable_embedding                          :boolean]
+   [:embedding_params                          [:maybe ms/EmbeddingParams]]
+   [:cache_ttl                                 [:maybe :int]]
+   [:result_metadata                           [:maybe ::card.result-metadata]]
+   [:collection_position                       [:maybe :int]]
+   [:entity_id                                 :string]
+   [:parameters                                [:maybe [:sequential :map]]]
+   [:parameter_mappings                        [:maybe [:sequential :map]]]
+   [:collection_preview                        :boolean]
+   [:metabase_version                          [:maybe :string]]
+   [:type                                      [:or :keyword :string]]
+   [:initially_published_at                    [:maybe ms/TemporalInstant]]
+   [:cache_invalidated_at                      [:maybe ms/TemporalInstant]]
+   [:last_used_at                              ms/TemporalInstant]
+   [:view_count                                :int]
+   [:archived_directly                         :boolean]
+   [:dataset_query_metrics_v2_migration_backup [:maybe :string]]
+   [:source_card_id                            [:maybe ::lib.schema.id/card]]
+   [:dashboard_id                              [:maybe ::lib.schema.id/dashboard]]
+   [:card_schema                               :int]
+   [:document_id                               [:maybe ms/PositiveInt]]
+   [:legacy_query                              [:maybe :string]]
+   [:embedding_type                            [:maybe [:or :keyword :string]]]
+   [:public_uuid_prefix                        [:maybe :string]]
+   [:dimensions                                [:maybe [:sequential :map]]]
+   [:dimension_mappings                        [:maybe [:sequential :map]]]
+   [:metabot_conversation_id                   [:maybe :string]]
+   [:metabot_chart_id                          [:maybe :string]]])
+
 (mr/def ::card.update
   "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
   [:map {:closed true}

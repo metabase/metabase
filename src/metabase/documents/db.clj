@@ -15,17 +15,17 @@
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(mu/defn document :- [:maybe ::documents.schema/document]
+(mu/defn document :- [:maybe ::documents.schema/document.row]
   "The Document with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Document :id id))
 
-(mu/defn unarchived-document :- [:maybe ::documents.schema/document]
+(mu/defn unarchived-document :- [:maybe ::documents.schema/document.row]
   "The Document with `id` if it is not archived, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Document :id id :archived false))
 
-(mu/defn visible-unarchived-documents :- [:sequential ::documents.schema/document]
+(mu/defn visible-unarchived-documents :- [:sequential ::documents.schema/document.row]
   "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."
   []
   (t2/select :model/Document {:where [:and
@@ -61,19 +61,19 @@
 
 (def ^:private PublicDocument
   "Rows returned by [[public-documents]]."
-  (mut/select-keys ::documents.schema/document [:name :id :public_uuid]))
+  (mut/select-keys ::documents.schema/document.row [:name :id :public_uuid]))
 
 (mu/defn public-documents :- [:sequential PublicDocument]
   "The name, id, and public uuid of the unarchived Documents that are publicly shared."
   []
   (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
 
-(mu/defn cards-not-in-document :- [:sequential ::queries.schema/card]
+(mu/defn cards-not-in-document :- [:sequential ::queries.schema/card.row]
   "The Cards with `card-ids` that do not belong to the Document with `document-id`."
   [card-ids    :- [:sequential ::lib.schema.id/card]
    document-id :- ms/PositiveInt]
@@ -81,12 +81,12 @@
                                   [:or [:<> :document_id document-id]
                                    [:= :document_id nil]]]}))
 
-(mu/defn cards-for-document :- [:sequential ::queries.schema/card]
+(mu/defn cards-for-document :- [:sequential ::queries.schema/card.row]
   "The Cards of the Document with `document-id`."
   [document-id :- ms/PositiveInt]
   (t2/select :model/Card :document_id document-id))
 
-(mu/defn unarchived-cards-for-documents :- [:sequential ::queries.schema/card]
+(mu/defn unarchived-cards-for-documents :- [:sequential ::queries.schema/card.row]
   "The unarchived Cards of the Documents with `document-ids`."
   [document-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Card :document_id [:in document-ids] :archived false))
@@ -123,12 +123,12 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
   "The Table with `id`, or nil."
   [id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `id`, or nil."
   [id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id id))

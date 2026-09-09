@@ -11,12 +11,12 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table table-id))
 
-(mu/defn active-table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn active-table :- [:maybe ::warehouse-schema.schema/table.row]
   "The active Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id :active true))

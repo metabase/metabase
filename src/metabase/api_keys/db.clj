@@ -25,9 +25,10 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/ApiKey id))
 
-(mu/defn save-api-key! :- ms/PositiveInt
-  "Save the changes made to the ApiKey instance `api-key`."
-  [api-key :- ::api-keys.schema/api-key]
+(mu/defn save-api-key! :- ::api-keys.schema/api-key
+  "Save the changes made to the ApiKey instance `api-key` (possibly carrying the `::api-keys/group-id` the
+  before-update hook consumes) and return it."
+  [api-key :- (mut/merge ::api-keys.schema/api-key [:map [:metabase.api-keys.core/group-id {:optional true} [:maybe ms/PositiveInt]]])]
   (t2/save! api-key))
 
 (mu/defn api-key-exists? :- :boolean

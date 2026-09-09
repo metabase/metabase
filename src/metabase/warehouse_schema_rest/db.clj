@@ -83,7 +83,7 @@
   [field-id :- ::lib.schema.id/field]
   (t2/delete! :model/Dimension :field_id field-id))
 
-(mu/defn matching-tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn matching-tables :- [:sequential ::warehouse-schema.schema/table.row]
   "The Tables (active, or with `transform_target` when `include-transform-targets?`) matching `term` (a glob pattern
   using `*` as a wildcard, matched against `:name` and `:display_name`), optionally narrowed to `visibility-type`,
   `data-layer`, `data-source`, `owner-user-id`, and/or `owner-email`; restricted to ownerless Tables when
@@ -138,12 +138,12 @@
                                                                    [:= :d.to_entity_type "table"]]}]))]
     (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
 
-(mu/defn tables-by-ids :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables-by-ids :- [:sequential ::warehouse-schema.schema/table.row]
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))

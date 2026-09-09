@@ -2,9 +2,9 @@
   "Application database queries for the testing API module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
+   [metabase.security-center.schema :as security-center.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))

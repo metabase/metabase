@@ -130,7 +130,7 @@
 
 (def ^:private TableName
   "Rows returned by [[table-names]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :name :display_name :db_id :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :name :display_name :db_id :schema]))
 
 (mu/defn table-names :- [:sequential TableName]
   "The id, name, display name, Database id, and schema of the Tables with `table-ids`."
@@ -139,7 +139,7 @@
 
 (def ^:private TableDatabaseId
   "Rows returned by [[table-database-ids]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id]))
 
 (mu/defn table-database-ids :- [:sequential TableDatabaseId]
   "The id and Database id of the Tables with `table-ids`."
@@ -148,7 +148,7 @@
 
 (def ^:private CardName
   "Rows returned by [[card-names]]."
-  (mut/select-keys ::queries.schema/card [:id :name]))
+  (mut/select-keys ::queries.schema/card.row [:id :name]))
 
 (mu/defn card-names :- [:sequential CardName]
   "The id and name of the Cards with `card-ids`."
@@ -301,7 +301,7 @@
 
 (def ^:private UnarchivedMetricCard
   "Rows returned by [[unarchived-metric-cards]]."
-  (mut/select-keys ::queries.schema/card [:id :database_id :dataset_query :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:id :database_id :dataset_query :card_schema]))
 
 (mu/defn unarchived-metric-cards :- [:sequential UnarchivedMetricCard]
   "The id, Database id, query, and schema of the unarchived metric Cards."

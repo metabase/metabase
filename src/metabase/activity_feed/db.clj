@@ -19,7 +19,7 @@
 
 (def ^:private RecentCard
   "Rows returned by [[recent-cards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
+  (mut/merge (mut/select-keys ::queries.schema/card.row
                               [:id :name :collection_id :description :display :dataset_query :type :archived :card_schema :dashboard_id])
              [:map
               [:authority_level [:maybe [:or :keyword :string]]]
@@ -40,7 +40,7 @@
 
 (def ^:private RecentDashboard
   "Rows returned by [[recent-dashboards]]."
-  (mut/merge (mut/select-keys ::dashboards.schema/dashboard
+  (mut/merge (mut/select-keys ::dashboards.schema/dashboard.row
                               [:id :name :collection_id :description :archived])
              [:map
               [:authority_level [:maybe [:or :keyword :string]]]
@@ -58,7 +58,7 @@
 
 (def ^:private RecentTable
   "Rows returned by [[recent-tables]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/table
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/table.row
                               [:id :name :db_id :active :display_name :visibility_type])
              [:map
               [:initial-sync-status [:maybe [:or :keyword :string]]]
@@ -109,12 +109,13 @@
 
 (def ^:private RecentCardRun
   "Rows returned by [[recent-card-runs]]."
-  (mut/merge ::queries.schema/query-execution
-             [:map
-              [:user_id  [:maybe ::lib.schema.id/user]]
-              [:model_id [:maybe ::lib.schema.id/card]]
-              [:cnt      [:maybe :int]]
-              [:max_ts   [:maybe ms/TemporalInstant]]]))
+  [:map {:closed true}
+   [:user_id   [:maybe ::lib.schema.id/user]]
+   [:model_id  [:maybe ::lib.schema.id/card]]
+   [:cnt       :int]
+   [:max_ts    [:maybe ms/TemporalInstant]]
+   ;; added by the model's after-select hook
+   [:row_count :int]])
 
 (mu/defn recent-card-runs :- [:sequential RecentCardRun]
   "Up to `limit` most recently run question Cards with their run counts and last runner."
@@ -155,12 +156,12 @@
   [id :- ms/PositiveInt]
   (t2/exists? :model/Document :id id))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `id`, or nil."
   [id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id id))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
   "The Table with `id`, or nil."
   [id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id id))
@@ -170,12 +171,12 @@
   [id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id id))
 
-(mu/defn document :- [:maybe ::documents.schema/document]
+(mu/defn document :- [:maybe ::documents.schema/document.row]
   "The Document with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Document :id id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
@@ -246,7 +247,7 @@
 
 (def ^:private CardsForRecentView
   "Rows returned by [[cards-for-recent-views]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
+  (mut/merge (mut/select-keys ::queries.schema/card.row
                               [:name :description :archived :id :database_id :display :card_schema :result_metadata :dataset_query :entity_id :visualization_settings :dashboard_id :collection_id])
              [:map
               [:dashboard_name             [:maybe :string]]
@@ -293,7 +294,7 @@
 
 (def ^:private DashboardsForRecentView
   "Rows returned by [[dashboards-for-recent-views]]."
-  (mut/merge (mut/select-keys ::dashboards.schema/dashboard
+  (mut/merge (mut/select-keys ::dashboards.schema/dashboard.row
                               [:id :name :description :archived :collection_id])
              [:map
               [:entity-coll-id             [:maybe ::lib.schema.id/collection]]
@@ -343,7 +344,7 @@
 
 (def ^:private VisibleTablesForRecentView
   "Rows returned by [[visible-tables-for-recent-views]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/table
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/table.row
                               [:id :name :description :display_name :active :visibility_type :schema :db_id])
              [:map
               [:database-name       [:maybe :string]]
@@ -426,7 +427,7 @@
 
 (def ^:private DocumentsForRecentView
   "Rows returned by [[documents-for-recent-views]]."
-  (mut/merge (mut/select-keys ::documents.schema/document [:id :name :archived :collection_id])
+  (mut/merge (mut/select-keys ::documents.schema/document.row [:id :name :archived :collection_id])
              [:map
               [:entity-coll-id             [:maybe ::lib.schema.id/collection]]
               [:collection_name            [:maybe :string]]

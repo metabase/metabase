@@ -40,7 +40,7 @@
 (mu/defn due-outbox-rows :- [:sequential DueOutbox]
   "Up to `limit` `queue_message_outbox` rows after `after-id`, in id order, that are due: never attempted and created
   before `created-before`, or scheduled to retry at or before `now`. Locked with the `for` clause `for-clause`.
-  `now` and `created-before` are `java.sql.Timestamp`s, not `java.time` instants."
+"
   [after-id       :- ms/IntGreaterThanOrEqualToZero
    now            :- ms/TemporalInstant
    created-before :- ms/TemporalInstant
@@ -59,7 +59,7 @@
 
 (mu/defn bump-outbox-row! :- :int
   "Increment the publish attempts of the `queue_message_outbox` row with `id` and schedule its next attempt,
-  returning the number updated. `next-attempt-at` is a `java.sql.Timestamp`, not a `java.time` instant."
+  returning the number updated."
   [id              :- ms/PositiveInt
    next-attempt-at :- ms/TemporalInstant]
   (t2/update! :queue_message_outbox :id id

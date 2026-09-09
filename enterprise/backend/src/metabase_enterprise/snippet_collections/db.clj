@@ -10,7 +10,7 @@
 
 (def ^:private SnippetWithCollectionId
   "Rows returned by [[snippet-with-collection-id]]."
-  (mut/select-keys ::native-query-snippets.schema/native-query-snippet [:collection_id]))
+  (mut/select-keys ::native-query-snippets.schema/native-query-snippet.row [:collection_id]))
 
 (mu/defn snippet-with-collection-id :- [:maybe SnippetWithCollectionId]
   "The `:collection_id` of the NativeQuerySnippet with `id`, or nil if no such NativeQuerySnippet exists. Unlike a

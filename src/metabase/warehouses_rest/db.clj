@@ -17,7 +17,7 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn active-visible-tables-for-databases :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn active-visible-tables-for-databases :- [:sequential ::warehouse-schema.schema/table.row]
   "The active, visible Tables of the Databases with `database-ids`, in schema then display name order."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select :model/Table
@@ -122,7 +122,7 @@
 
 (def ^:private AutocompleteTable
   "Rows returned by [[autocomplete-tables]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema :name]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id :schema :name]))
 
 (mu/defn autocomplete-tables :- [:sequential AutocompleteTable]
   "Up to `limit` id, Database id, schema, and name rows of the active, visible Tables of the Database with
@@ -174,7 +174,7 @@
 
 (def ^:private AutocompleteCard
   "Rows returned by [[autocomplete-cards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card
+  (mut/merge (mut/select-keys ::queries.schema/card.row
                               [:id :type :database_id :name :collection_id :card_schema])
              [:map [:collection_name [:maybe :string]]]))
 
@@ -293,7 +293,7 @@
                                                 :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
                                                 :where      [:= :t.db_id database-id]}]}))
 
-(mu/defn active-tables-for-database :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn active-tables-for-database :- [:sequential ::warehouse-schema.schema/table.row]
   "The active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Table :db_id database-id :active true))
@@ -311,7 +311,7 @@
                              (when clauses
                                {:where (into [:and] clauses)})))))
 
-(mu/defn active-tables-in-schema :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn active-tables-in-schema :- [:sequential ::warehouse-schema.schema/table.row]
   "The active Tables in `schema` of the Database with `database-id`, in display name order."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
@@ -321,7 +321,7 @@
              :active true
              {:order-by [[:display_name :asc]]}))
 
-(mu/defn active-visible-tables-in-schema :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn active-visible-tables-in-schema :- [:sequential ::warehouse-schema.schema/table.row]
   "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]

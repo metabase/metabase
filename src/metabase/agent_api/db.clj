@@ -24,12 +24,12 @@
   (t2/select-one [:model/Collection :id :name :location :personal_owner_id :namespace :archived_directly]
                  collection-id))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
@@ -48,7 +48,7 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
 
-(mu/defn insert-dashboard! :- ::dashboards.schema/dashboard
+(mu/defn insert-dashboard! :- ::dashboards.schema/dashboard.row
   "Insert the Dashboard `row` and return the inserted instance."
   [row :- ::dashboards.schema/dashboard.update]
   (t2/insert-returning-instance! :model/Dashboard row))

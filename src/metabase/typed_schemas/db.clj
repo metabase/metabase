@@ -30,7 +30,7 @@
       ;; no row has id -1: a resolved-but-empty scope matches no rows
       [:= column -1])))
 
-(mu/defn cards-ordered-by-name :- [:sequential ::queries.schema/card]
+(mu/defn cards-ordered-by-name :- [:sequential ::queries.schema/card.row]
   "The readable, non-archived Cards of `card-type` among `database-ids` and/or `collection-ids` (either nil for
   unscoped), in name then id order."
   [card-type      :- [:enum :model :question :metric]
@@ -56,7 +56,7 @@
 
 (def ^:private CardDimension
   "Rows returned by [[card-dimensions]]."
-  (mut/select-keys ::queries.schema/card [:dimensions :dimension_mappings]))
+  (mut/select-keys ::queries.schema/card.row [:dimensions :dimension_mappings]))
 
 (mu/defn card-dimensions :- [:maybe CardDimension]
   "The dimensions and dimension mappings of the Card with `card-id`, or nil."
@@ -65,7 +65,7 @@
 
 (def ^:private TableName
   "Rows returned by [[table-names]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :name :display_name]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :name :display_name]))
 
 (mu/defn table-names :- [:sequential TableName]
   "The id, name, and display name of the Tables with `table-ids`."
@@ -89,7 +89,7 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :table_id :model/Field :id field-id))
 
-(mu/defn active-tables-in-scope :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn active-tables-in-scope :- [:sequential ::warehouse-schema.schema/table.row]
   "The active Tables among `database-ids` and/or `table-ids` (either nil for unscoped), in name then id order."
   [database-ids :- [:maybe [:set ::lib.schema.id/database]]
    table-ids    :- [:maybe [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]]
@@ -99,7 +99,7 @@
                          (scope-filter-clause table-ids :id)]
               :order-by [[:name :asc] [:id :asc]]}))
 
-(mu/defn published-library-tables-in-collections :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn published-library-tables-in-collections :- [:sequential ::warehouse-schema.schema/table.row]
   "The active, published Tables in `collection-ids` (nil for unscoped), in name then id order."
   [collection-ids :- [:maybe [:set ::lib.schema.id/collection]]]
   (t2/select :model/Table

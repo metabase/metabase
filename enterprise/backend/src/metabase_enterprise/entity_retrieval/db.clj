@@ -15,7 +15,7 @@
 
 (def ^:private LibraryCardsInCollection
   "Rows returned by [[library-cards-in-collections]]."
-  (mut/select-keys ::queries.schema/card [:id :name :description :type :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:id :name :description :type :card_schema]))
 
 (mu/defn library-cards-in-collections :- [:sequential LibraryCardsInCollection]
   "The ID, name, description, and type of the unarchived metric and model Cards in the Collections with
@@ -31,7 +31,7 @@
 
 (def ^:private LibraryTablesInCollection
   "Rows returned by [[library-tables-in-collections]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :name :display_name :description]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :name :display_name :description]))
 
 (mu/defn library-tables-in-collections :- [:sequential LibraryTablesInCollection]
   "The ID, names, and description of the active published Tables in the Collections with `collection-ids`, optionally

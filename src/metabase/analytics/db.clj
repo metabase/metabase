@@ -45,7 +45,7 @@
 
 (def ^:private DocumentArchivedFlag
   "Rows returned by [[document-archived-flags]]."
-  (mut/select-keys ::documents.schema/document [:archived]))
+  (mut/select-keys ::documents.schema/document.row [:archived]))
 
 (mu/defn document-archived-flags :- [:sequential DocumentArchivedFlag]
   "The archived flag of every Document."
@@ -88,7 +88,7 @@
 
 (def ^:private DashboardStatsColumn
   "Rows returned by [[dashboard-stats-columns]]."
-  (mut/select-keys ::dashboards.schema/dashboard
+  (mut/select-keys ::dashboards.schema/dashboard.row
                    [:creator_id :public_uuid :parameters :enable_embedding :embedding_params]))
 
 (mu/defn dashboard-stats-columns :- [:sequential DashboardStatsColumn]
@@ -112,21 +112,27 @@
                       :where    [(if alerts? :not= :=) :pulse.alert_condition nil]}
                left-join? (assoc :left-join [:pulse [:= :pulse.id :pulse_id]]))))
 
-(mu/defn pulse-channel-frequencies-by-column :- [:sequential ms/PositiveInt]
+(def ^:private FrequencyByColumn
+  "Rows returned by the `*-frequencies-by-column` functions: a distinct column value and how often it occurs."
+  [:map {:closed true}
+   [:k     [:maybe [:or :string :keyword :int :boolean]]]
+   [:count :int]])
+
+(mu/defn pulse-channel-frequencies-by-column :- [:sequential FrequencyByColumn]
   "The distinct `column` values (as `:k`) and their `:count` among the PulseChannels of alerts when `alerts?`, or of
   pulses otherwise."
   [column  :- :keyword
    alerts? :- :boolean]
   (notification-frequencies-by-column* :model/PulseChannel column alerts? true))
 
-(mu/defn pulse-frequencies-by-column :- [:sequential ::lib.schema.id/pulse]
+(mu/defn pulse-frequencies-by-column :- [:sequential FrequencyByColumn]
   "The distinct `column` values (as `:k`) and their `:count` among the Pulses of alerts when `alerts?`, or of pulses
   otherwise."
   [column  :- :keyword
    alerts? :- :boolean]
   (notification-frequencies-by-column* :model/Pulse column alerts? false))
 
-(mu/defn pulse-card-frequencies-by-column :- [:sequential ms/PositiveInt]
+(mu/defn pulse-card-frequencies-by-column :- [:sequential FrequencyByColumn]
   "The distinct `column` values (as `:k`) and their `:count` among the PulseCards of alerts when `alerts?`, or of
   pulses otherwise."
   [column  :- :keyword
@@ -173,7 +179,7 @@
 
 (def ^:private CardCollectionId
   "Rows returned by [[card-collection-ids]]."
-  (mut/select-keys ::queries.schema/card [:collection_id :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:collection_id :card_schema]))
 
 (mu/defn card-collection-ids :- [:sequential CardCollectionId]
   "The Collection id and schema of the non-internal Cards."

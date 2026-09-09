@@ -117,7 +117,7 @@
               :field_id field-id, :values [:not= nil], :human_readable_values nil, :has_more_values false
               :type "advanced", :hash_key hash-key))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))

@@ -122,7 +122,7 @@
    id    :- ms/PositiveInt]
   (t2/exists? model :id id))
 
-(mu/defn any-card :- [:maybe ::queries.schema/card]
+(mu/defn any-card :- [:maybe ::queries.schema/card.row]
   "Some Card, or nil."
   []
   (t2/select-one :model/Card))
@@ -336,7 +336,7 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
 
-(mu/defn card-result-metadata :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/card.result-metadata]]
+(mu/defn card-result-metadata :- [:map-of ::lib.schema.id/card [:maybe ::queries.schema/card.result-metadata]]
   "A map of Card id to result metadata for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))

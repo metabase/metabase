@@ -17,6 +17,29 @@
   "The `:document` column of a Document, decoded."
   :map)
 
+(mr/def ::document.row
+  "A Document as selected from the app DB: every column of `:document`."
+  [:map {:closed true}
+   [:id                  ms/PositiveInt]
+   [:name                :string]
+   [:created_at          ms/TemporalInstant]
+   [:document            [:maybe ::document.document]]
+   [:content_type        [:or :keyword :string]]
+   [:creator_id          ::lib.schema.id/user]
+   [:updated_at          ms/TemporalInstant]
+   [:collection_id       [:maybe ::lib.schema.id/collection]]
+   [:archived            :boolean]
+   [:archived_directly   [:maybe :boolean]]
+   [:entity_id           :string]
+   [:last_viewed_at      ms/TemporalInstant]
+   [:view_count          :int]
+   [:collection_position [:maybe :int]]
+   [:public_uuid         [:maybe :string]]
+   [:made_public_by_id   [:maybe ms/PositiveInt]]
+   [:public_uuid_prefix  [:maybe :string]]
+   [:exploration_id      [:maybe ms/PositiveInt]]
+   [:is_placeholder      :boolean]])
+
 (mr/def ::document.update
   "What an update (or insert) of a Document accepts: every column of `:document` except `id`, all optional."
   [:map {:closed true}

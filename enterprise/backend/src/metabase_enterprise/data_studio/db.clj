@@ -83,7 +83,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table.row]
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))

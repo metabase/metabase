@@ -32,17 +32,17 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :dataset_query :model/Card :id card-id))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn cards :- [:sequential ::queries.schema/card]
+(mu/defn cards :- [:sequential ::queries.schema/card.row]
   "The Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids]))
 
-(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card]
+(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card.row]
   "A map of Card id to Card for the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
@@ -52,12 +52,12 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :type [:model/Card :type :card_schema] :id card-id))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table.row]
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
@@ -101,35 +101,35 @@
 
 (mu/defn insert-query-action! :- :int
   "Insert the QueryAction `action`, returning the number inserted."
-  [action :- ::actions.schema/query-action]
+  [action :- ::actions.schema/query-action.update]
   (t2/insert! :model/QueryAction action))
 
 (mu/defn insert-http-action! :- :int
   "Insert the HTTPAction `action`, returning the number inserted."
-  [action :- ::actions.schema/httpaction]
+  [action :- ::actions.schema/httpaction.update]
   (t2/insert! :model/HTTPAction action))
 
 (mu/defn insert-implicit-action! :- :int
   "Insert the ImplicitAction `action`, returning the number inserted."
-  [action :- ::actions.schema/implicit-action]
+  [action :- ::actions.schema/implicit-action.update]
   (t2/insert! :model/ImplicitAction action))
 
 (mu/defn update-query-action! :- :int
   "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/query-action]
+   changes   :- ::actions.schema/query-action.update]
   (t2/update! :model/QueryAction action-id changes))
 
 (mu/defn update-http-action! :- :int
   "Apply `changes` to the HTTPAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/httpaction]
+   changes   :- ::actions.schema/httpaction.update]
   (t2/update! :model/HTTPAction action-id changes))
 
 (mu/defn update-implicit-action! :- :int
   "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/implicit-action]
+   changes   :- ::actions.schema/implicit-action.update]
   (t2/update! :model/ImplicitAction action-id changes))
 
 (mu/defn delete-query-action! :- :int
@@ -147,12 +147,12 @@
   [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/ImplicitAction :action_id action-id))
 
-(mu/defn query-actions :- [:sequential ::actions.schema/query-action]
+(mu/defn query-actions :- [:sequential ::actions.schema/query-action.row]
   "The QueryActions of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select :model/QueryAction :action_id [:in action-ids]))
 
-(mu/defn query-action :- [:maybe ::actions.schema/query-action]
+(mu/defn query-action :- [:maybe ::actions.schema/query-action.row]
   "The QueryAction of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/QueryAction :action_id action-id))
@@ -162,7 +162,7 @@
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select :model/HTTPAction :action_id [:in action-ids]))
 
-(mu/defn implicit-actions :- [:sequential ::actions.schema/implicit-action]
+(mu/defn implicit-actions :- [:sequential ::actions.schema/implicit-action.row]
   "The ImplicitActions of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select :model/ImplicitAction :action_id [:in action-ids]))
@@ -227,7 +227,7 @@
 
 (def ^:private CardScopeColumn
   "Rows returned by [[card-scope-columns]]."
-  (mut/select-keys ::queries.schema/card [:dataset_query :collection_id :database_id :display]))
+  (mut/select-keys ::queries.schema/card.row [:dataset_query :collection_id :database_id :display]))
 
 (mu/defn card-scope-columns :- [:maybe CardScopeColumn]
   "The query, Collection id, Database id, and display of the Card with `card-id`, or nil."

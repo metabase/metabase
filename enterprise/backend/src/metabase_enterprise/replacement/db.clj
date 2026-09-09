@@ -73,17 +73,17 @@
                :end_time  :%now
                :message   "Timed out by metabase"}))
 
-(mu/defn cards-with-ids :- [:sequential ::queries.schema/card]
+(mu/defn cards-with-ids :- [:sequential ::queries.schema/card.row]
   "The Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Card :id [:in ids]))
 
-(mu/defn tables-with-ids :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables-with-ids :- [:sequential ::warehouse-schema.schema/table.row]
   "The Tables with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Table :id [:in ids]))
 
-(mu/defn dashboards-with-ids :- [:sequential ::dashboards.schema/dashboard]
+(mu/defn dashboards-with-ids :- [:sequential ::dashboards.schema/dashboard.row]
   "The Dashboards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Dashboard :id [:in ids]))
@@ -103,12 +103,12 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Measure :id [:in ids]))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card]
+(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card.row]
   "A map of Card ID to Card for `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
@@ -163,7 +163,7 @@
    changes    :- ::measures.schema/measure.update]
   (t2/update! :model/Measure measure-id changes))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))

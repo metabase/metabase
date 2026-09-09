@@ -11,7 +11,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn cards :- [:sequential ::queries.schema/card]
+(mu/defn cards :- [:sequential ::queries.schema/card.row]
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
   [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
   (t2/select :model/Card :id [:in card-ids]))
@@ -26,14 +26,14 @@
   [entity-id :- :string]
   (t2/select-one :model/Collection :entity_id entity-id))
 
-(mu/defn dashboard-with-entity-id :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard-with-entity-id :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `entity-id`, or nil."
   [entity-id :- :string]
   (t2/select-one :model/Dashboard :entity_id entity-id))
 
 (def ^:private CardNameAndDescription
   "Rows returned by [[card-name-and-description]]."
-  (mut/select-keys ::queries.schema/card [:name :description :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:name :description :card_schema]))
 
 (mu/defn card-name-and-description :- [:maybe CardNameAndDescription]
   "The name and description of the Card with `card-id`, or nil."

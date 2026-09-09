@@ -15,7 +15,7 @@
 
 (def ^:private PublicCard
   "Rows returned by [[public-card]]."
-  (mut/select-keys ::queries.schema/card
+  (mut/select-keys ::queries.schema/card.row
                    [:id :dataset_query :description :display :name :parameters :visualization_settings :card_schema]))
 
 (mu/defn public-card :- [:maybe PublicCard]
@@ -30,12 +30,12 @@
                           [:= :archived false]
                           (when enable-embedding? [:= :enable_embedding true])]}))
 
-(mu/defn active-card :- [:maybe ::queries.schema/card]
+(mu/defn active-card :- [:maybe ::queries.schema/card.row]
   "The non-archived Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id :archived false))
 
-(mu/defn active-card-in-document :- [:maybe ::queries.schema/card]
+(mu/defn active-card-in-document :- [:maybe ::queries.schema/card.row]
   "The non-archived Card with `card-id` that belongs to the Document with `document-id`, or nil."
   [card-id     :- ::lib.schema.id/card
    document-id :- ms/PositiveInt]
@@ -45,7 +45,7 @@
 
 (def ^:private PublicDashboard
   "Rows returned by [[public-dashboard]]."
-  (mut/select-keys ::dashboards.schema/dashboard
+  (mut/select-keys ::dashboards.schema/dashboard.row
                    [:name :description :id :parameters :auto_apply_filters :width]))
 
 (mu/defn public-dashboard :- [:maybe PublicDashboard]
@@ -74,7 +74,7 @@
 
 (def ^:private PublicDocument
   "Rows returned by [[public-document]]."
-  (mut/select-keys ::documents.schema/document
+  (mut/select-keys ::documents.schema/document.row
                    [:id :name :document :content_type :created_at :updated_at]))
 
 (mu/defn public-document :- [:maybe PublicDocument]
@@ -85,7 +85,7 @@
 
 (def ^:private DocumentContent
   "Rows returned by [[document-content]]."
-  (mut/select-keys ::documents.schema/document [:id :document :content_type]))
+  (mut/select-keys ::documents.schema/document.row [:id :document :content_type]))
 
 (mu/defn document-content :- [:maybe DocumentContent]
   "The id, content, and content type of the Document with `document-id`, or nil."

@@ -280,7 +280,7 @@
 
 (def ^:private CardType
   "Rows returned by [[card-types]]."
-  (mut/select-keys ::queries.schema/card [:id :type :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:id :type :card_schema]))
 
 (mu/defn card-types :- [:sequential CardType]
   "The `:id`, `:type`, and `:card_schema` of the Cards with `card-ids`."
@@ -294,7 +294,7 @@
 
 (def ^:private Snippet
   "Rows returned by [[snippets]]."
-  (mut/select-keys ::native-query-snippets.schema/native-query-snippet [:id :name :collection_id]))
+  (mut/select-keys ::native-query-snippets.schema/native-query-snippet.row [:id :name :collection_id]))
 
 (mu/defn snippets :- [:sequential Snippet]
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."

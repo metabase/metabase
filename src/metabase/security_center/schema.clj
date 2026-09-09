@@ -1,4 +1,4 @@
-(ns metabase-enterprise.security-center.schema
+(ns metabase.security-center.schema
   "Malli schemas for the Security Center module."
   (:require
    [metabase.util.malli.registry :as mr]

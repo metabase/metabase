@@ -19,19 +19,19 @@
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card :- [:maybe ::queries.schema/card.row]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn cards :- [:sequential ::queries.schema/card]
+(mu/defn cards :- [:sequential ::queries.schema/card.row]
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
   [card-ids :- [:maybe [:or [:set [:maybe ::lib.schema.id/card]] [:sequential [:maybe ::lib.schema.id/card]]]]]
   (t2/select :model/Card :id [:in card-ids]))
 
 (def ^:private CardQueryInfo
   "Rows returned by [[card-query-info]]."
-  (mut/select-keys ::queries.schema/card [:dataset_query :type :result_metadata :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:dataset_query :type :result_metadata :card_schema]))
 
 (mu/defn card-query-info :- [:maybe CardQueryInfo]
   "The query, type, result metadata, and schema of the Card with `card-id`."
@@ -62,7 +62,7 @@
 
 (def ^:private CardDatabaseAndTableId
   "Rows returned by [[card-database-and-table-ids]]."
-  (mut/merge ::queries.schema/card
+  (mut/merge ::queries.schema/card.row
              [:map
               [:database-id [:maybe ::lib.schema.id/database]]
               [:table-id    [:maybe ::lib.schema.id/table]]]))
@@ -74,7 +74,7 @@
 
 (def ^:private CardQuery
   "Rows returned by [[card-queries]]."
-  (mut/select-keys ::queries.schema/card [:id :dataset_query :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:id :dataset_query :card_schema]))
 
 (mu/defn card-queries :- [:sequential CardQuery]
   "The IDs and queries of the Cards with `card-ids`."
@@ -83,14 +83,14 @@
 
 (def ^:private SourceCardDependent
   "Rows returned by [[source-card-dependents]]."
-  (mut/select-keys ::queries.schema/card [:id :source_card_id :card_schema]))
+  (mut/select-keys ::queries.schema/card.row [:id :source_card_id :card_schema]))
 
 (mu/defn source-card-dependents :- [:sequential SourceCardDependent]
   "The IDs and source Card IDs of the Cards whose source Card is one of `source-card-ids`."
   [source-card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
   (t2/select [:model/Card :id :source_card_id :card_schema] :source_card_id [:in source-card-ids]))
 
-(mu/defn metric-cards-for-source-cards :- [:sequential ::queries.schema/card]
+(mu/defn metric-cards-for-source-cards :- [:sequential ::queries.schema/card.row]
   "The unarchived metric Cards built on one of `source-card-ids`, ordered by name."
   [source-card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select :model/Card
@@ -104,7 +104,7 @@
   [document-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Card :document_id document-id))
 
-(mu/defn insert-card! :- ::queries.schema/card
+(mu/defn insert-card! :- ::queries.schema/card.row
   "Insert `card` and return the new instance."
   [card :- ::queries.schema/card.update]
   (t2/insert-returning-instance! :model/Card card))
@@ -232,17 +232,17 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
 
-(mu/defn snippets :- [:sequential ::native-query-snippets.schema/native-query-snippet]
+(mu/defn snippets :- [:sequential ::native-query-snippets.schema/native-query-snippet.row]
   "The NativeQuerySnippets with `snippet-ids`."
   [snippet-ids :- [:set ::lib.schema.id/native-query-snippet]]
   (t2/select :model/NativeQuerySnippet :id [:in snippet-ids]))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
-(mu/defn dashboards :- [:sequential ::dashboards.schema/dashboard]
+(mu/defn dashboards :- [:sequential ::dashboards.schema/dashboard.row]
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard :id [:in dashboard-ids]))

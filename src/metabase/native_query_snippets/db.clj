@@ -10,12 +10,12 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn snippets-by-archived :- [:sequential ::native-query-snippets.schema/native-query-snippet]
+(mu/defn snippets-by-archived :- [:sequential ::native-query-snippets.schema/native-query-snippet.row]
   "The NativeQuerySnippets whose archived flag is `archived`, in case-insensitive name order."
   [archived :- :boolean]
   (t2/select :model/NativeQuerySnippet :archived archived {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn snippet :- [:maybe ::native-query-snippets.schema/native-query-snippet]
+(mu/defn snippet :- [:maybe ::native-query-snippets.schema/native-query-snippet.row]
   "The NativeQuerySnippet with `id`, or nil."
   [id :- ::lib.schema.id/native-query-snippet]
   (t2/select-one :model/NativeQuerySnippet :id id))
@@ -31,7 +31,7 @@
    entity-id :- :string]
   (t2/exists? :model/NativeQuerySnippet :name snippet-name :entity_id [:!= entity-id]))
 
-(mu/defn insert-snippet! :- ::native-query-snippets.schema/native-query-snippet
+(mu/defn insert-snippet! :- ::native-query-snippets.schema/native-query-snippet.row
   "Insert the NativeQuerySnippet `row` and return the inserted instance."
   [row :- ::native-query-snippets.schema/native-query-snippet.update]
   (t2/insert-returning-instance! :model/NativeQuerySnippet row))

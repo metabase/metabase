@@ -23,9 +23,9 @@
 
 (def ^:private StaleCard
   "Rows returned by [[stale-cards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card [:id :dashboard_id :description :collection_id :name :entity_id :archived
-                                                     :collection_position :display :collection_preview :database_id
-                                                     :dataset_query :card_schema :last_used_at])
+  (mut/merge (mut/select-keys ::queries.schema/card.row [:id :dashboard_id :description :collection_id :name :entity_id :archived
+                                                         :collection_position :display :collection_preview :database_id
+                                                         :dataset_query :card_schema :last_used_at])
              [:map
               [:location         :nil]
               [:moderated_status [:maybe :string]]]))
@@ -65,7 +65,7 @@
 
 (def ^:private StaleDashboard
   "Rows returned by [[stale-dashboards]]."
-  (mut/merge (mut/select-keys ::dashboards.schema/dashboard
+  (mut/merge (mut/select-keys ::dashboards.schema/dashboard.row
                               [:id :description :collection_id :name :entity_id :archived :collection_position])
              [:map
               [:last_used_at [:maybe ms/TemporalInstant]]

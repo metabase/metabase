@@ -815,7 +815,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database database-id))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table table-id))
@@ -830,7 +830,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table.row]
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))

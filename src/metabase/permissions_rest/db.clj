@@ -162,7 +162,7 @@
 
 (def ^:private TablesForDatabase
   "Rows returned by [[tables-for-databases]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id :schema]))
 
 (mu/defn tables-for-databases :- [:sequential TablesForDatabase]
   "The id, Database id, and schema of the Tables of the Databases with `database-ids`."

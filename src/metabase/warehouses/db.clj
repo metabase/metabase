@@ -114,12 +114,12 @@
   []
   (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
 
-(mu/defn active-tables-for-database :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn active-tables-for-database :- [:sequential ::warehouse-schema.schema/table.row]
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Table :db_id database-id :active true {:order-by [[:%lower.display_name :asc]]}))
 
-(mu/defn active-tables-for-databases :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn active-tables-for-databases :- [:sequential ::warehouse-schema.schema/table.row]
   "The active Tables of the Databases with `database-ids`, in database then display name order."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select :model/Table
