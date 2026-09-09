@@ -1,6 +1,8 @@
 ---
 title: Transform inspector
 summary: Analyze how your transforms process data by inspecting input and output shapes, join behavior, and column distributions.
+redirect_from:
+  - /docs/latest/data-studio/transforms/transform-inspector
 ---
 
 # Transform inspector
@@ -61,5 +63,5 @@ Inspector lenses run queries against your database, and some lenses can take lon
 ## Further reading
 
 - [Transforms overview](transforms-overview.md)
-- [Query-based transforms](query-transforms.md)
-- [Python transforms](python-transforms.md)
+- [Query-based transforms](query.md)
+- [Python transforms](python.md)

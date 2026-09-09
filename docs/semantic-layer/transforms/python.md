@@ -1,6 +1,8 @@
 ---
 title: Python transforms
 summary: Use Python to wrangle your data in Metabase and write the results back to your database.
+redirect_from:
+  - /docs/latest/data-studio/transforms/python-transforms
 ---
 
 # Python transforms
@@ -129,5 +131,5 @@ To make a Python transform incremental:
 - Transform preview only uses 100 input rows from each input table.
 - DataFrame indexes, including indexes created by `groupby()`, are ignored from writing back to the database. If you're using a custom index that you'd like to include in the target table, you'll need to [reset index](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reset_index.html) on your DataFrame inside the `transform()` function to make the index into a real column.
 - Only a [limited set of packages](#available-python-packages) are available for import. You can't install additional packages.
-- Because Python transforms use `pandas`, all data manipulation is done in memory. The available memory is determined by the Python execution add-on. For large datasets, consider using [query-based transforms](./query-transforms.md) that run in your database.
+- Because Python transforms use `pandas`, all data manipulation is done in memory. The available memory is determined by the Python execution add-on. For large datasets, consider using [query-based transforms](./query.md) that run in your database.
 - Only one Python transform can be run at any given time.

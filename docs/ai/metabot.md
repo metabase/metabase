@@ -23,7 +23,7 @@ Here's a non-exhaustive list of things Metabot can help with:
 - [Edit SQL directly in the native editor](#inline-sql-editing).
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
-- [Generate transforms](../data-studio/transforms/transforms-overview.md#use-metabot-to-generate-code-for-transforms)
+- [Generate transforms](../semantic-layer/transforms/transforms-overview.md#use-metabot-to-generate-code-for-transforms)
 - [Generate charts in documents](../documents/introduction.md)
 - [Answer questions from Slack](./metabot-slack.md).
 

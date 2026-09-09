@@ -1,6 +1,8 @@
 ---
 title: Workspaces
 summary: "Workspaces are isolation environments for AI agents. They let agents run data ransforms and develop analyses without touching the databases where the real data lives."
+redirect_from:
+  - /docs/latest/data-studio/workspaces
 ---
 
 # Workspaces

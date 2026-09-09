@@ -114,7 +114,7 @@ A personal collection works just like any other collection except that its permi
 
 ### Library collection
 
-See [Permissions for the Library and its subcollections](../data-studio/library.md#library-permissions).
+See [Permissions for the Library and its subcollections](../semantic-layer/library.md#library-permissions).
 
 Do not use collection permissions for **Library > Data** to control access to data in published tables. Use [Data permissions](data.md) instead.
 

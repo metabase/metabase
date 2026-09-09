@@ -1,6 +1,8 @@
 ---
 title: Python runner
 summary: Configure self-hosted Python execution environment to run Python transforms in Metabase.
+redirect_from:
+  - /docs/latest/data-studio/transforms/python-runner
 ---
 
 # Python runner
@@ -198,6 +200,6 @@ Then bring everything up and try a transform:
    docker compose up -d
    ```
 
-3. You'll need a Pro or Enterprise license with the [Advanced transforms add-on](addons.md). In Metabase, [enable transforms](transforms-overview.md#enable-transforms), then [create a Python transform](python-transforms.md#create-a-python-transform) and click **Run**.
+3. You'll need a Pro or Enterprise license with the [Advanced transforms add-on](addons.md). In Metabase, [enable transforms](transforms-overview.md#enable-transforms), then [create a Python transform](python.md#create-a-python-transform) and click **Run**.
 
 4. Open **Data Studio > Jobs > Runs** and find your run. If it failed, the run's logs will usually tell you whether Metabase couldn't reach the runner, or the runner couldn't reach MinIO.

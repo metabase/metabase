@@ -1,6 +1,8 @@
 ---
 title: Transform jobs
 summary: Run transforms on schedule.
+redirect_from:
+  - /docs/latest/data-studio/transforms/jobs-and-runs
 ---
 
 # Transform jobs

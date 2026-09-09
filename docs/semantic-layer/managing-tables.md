@@ -2,6 +2,7 @@
 title: Managing tables
 summary: See all the tables in your Metabase, edit and sync metadata, edit column types, set visibility, publish tables, and more.
 redirect_from:
+  - /docs/latest/data-studio/managing-tables
   - /docs/latest/data-studio/data-structure
 ---
 

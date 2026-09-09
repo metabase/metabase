@@ -39,8 +39,8 @@ We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-t
 
 You can sync:
 
-- Your [Library](../data-studio/library.md)
-- [Transforms](../data-studio/transforms/transforms-overview.md)
+- Your [Library](../semantic-layer/library.md)
+- [Transforms](../semantic-layer/transforms/transforms-overview.md)
 - Any top-level collection under Our Analytics.
 - If you use [tenants](../embedding/tenants.md), you can also sync [shared collections](../embedding/tenants.md#collection-types).
 
@@ -210,7 +210,7 @@ At this point, you should be all set up. Exit Admin, then reload your browser. Y
 
 ### 8. Configure transforms syncing (optional)
 
-To version your data transformation logic, you can sync your [Transforms](../data-studio/transforms/transforms-overview.md), including all your tags and jobs. Some things to keep in mind:
+To version your data transformation logic, you can sync your [Transforms](../semantic-layer/transforms/transforms-overview.md), including all your tags and jobs. Some things to keep in mind:
 
 - **Transform syncing is all or nothing**: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
 - **This setting only determines whether Metabase pushes transforms from Read-write mode.** When you _pull_ from a repository, all content present in the repo is loaded—including any transforms—regardless of this setting. Think of it like pulling a repo that has a new collection you hadn't previously synced: the setting doesn't filter what comes in, only what goes out.
@@ -506,5 +506,5 @@ Remote Sync does NOT sync table metadata, so if you're importing and exporting y
 
 ## Further reading
 
-- [Library](../data-studio/library.md)
+- [Library](../semantic-layer/library.md)
 - [Serialization](./serialization.md)

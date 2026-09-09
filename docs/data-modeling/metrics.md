@@ -30,7 +30,7 @@ Metabase will show the metrics as an option in the query builder along with the 
 
 If you use a metric as your aggregation, Metabase will replace the metric with the saved formula behind the scenes. See [Use metrics in the query builder](#use-metrics-in-the-query-builder).
 
-Metrics live in collections. You can save metrics into the [Library](../data-studio/library.md) collection to surface your org's official curated metrics and encourage people to use them for their own questions.
+Metrics live in collections. You can save metrics into the [Library](../semantic-layer/library.md) collection to surface your org's official curated metrics and encourage people to use them for their own questions.
 
 ## Use metrics in the query builder
 
@@ -54,7 +54,7 @@ To create a metric:
 
    You can also create a new metric by going to **Browse > Metrics** in the navigation sidebar and clicking on **+**.
 
-   If you're creating a [Library metric](../data-studio/library.md#metrics), you can also [navigate to the Library](../data-studio/library.md) and click **+ New > Metric**.
+   If you're creating a [Library metric](../semantic-layer/library.md#metrics), you can also [navigate to the Library](../semantic-layer/library.md) and click **+ New > Metric**.
 
 2. Select your starting data. You can start from a table, saved question, model, or another metric.
 
@@ -90,7 +90,7 @@ To edit a metric:
 
 ## Explore, compare, and do math with metrics
 
-To break metrics out by different dimensions, compare metrics and [measures](../data-studio/measures.md), and do math with metrics (like add or divide metrics by each other), check out the [Metrics explorer](../questions/metrics-explorer.md).
+To break metrics out by different dimensions, compare metrics and [measures](../semantic-layer/measures.md), and do math with metrics (like add or divide metrics by each other), check out the [Metrics explorer](../questions/metrics-explorer.md).
 
 ![Metrics explorer](./images/metric-explorer.png)
 
@@ -102,7 +102,7 @@ Metrics are attached to a specific data source. This means that if you define a 
 
 You can build metrics on tables, saved questions, models, and other metrics.
 
-We don't recommend using joins in metric definitions. If you need to build a metric that uses information from multiple tables, consider making a [transform](../data-studio/transforms/transforms-overview.md) to join those tables, _then_ create a metric on the table the transform creates.
+We don't recommend using joins in metric definitions. If you need to build a metric that uses information from multiple tables, consider making a [transform](../semantic-layer/transforms/transforms-overview.md) to join those tables, _then_ create a metric on the table the transform creates.
 
 ## Metric formula
 
@@ -114,7 +114,7 @@ You can use [custom expressions](../questions/query-builder/expressions.md) to d
  (CountIf([Score] >= 9) - CountIf([Score] <= 6) ) / Count() * 100
 ```
 
-A metric formula must be an _aggregation_ of a column, meaning you can have a formula like `Sum([Price])` which will add up all the values in the `Price` column across all records, but you can't have a formula like `[Price] + [Tax]` which adds two values on a per-record basis. If you want to create a "calculated" column, consider creating a [transform](../data-studio/transforms/transforms-overview.md) or [model](../data-modeling/models.md) instead.
+A metric formula must be an _aggregation_ of a column, meaning you can have a formula like `Sum([Price])` which will add up all the values in the `Price` column across all records, but you can't have a formula like `[Price] + [Tax]` which adds two values on a per-record basis. If you want to create a "calculated" column, consider creating a [transform](../semantic-layer/transforms/transforms-overview.md) or [model](../data-modeling/models.md) instead.
 
 We don't recommend adding filters into the metric definition to avoid filter conflicts when using metrics in the query builder. You can use conditional custom expressions like [`CountIf`, `SumIf`, and `DistinctIf`](../questions/query-builder/expressions-list.md#aggregations) to create conditional aggregations.
 
@@ -172,13 +172,13 @@ Anyone who has these permissions will be able to interact with the metric: for e
 
 ## Metrics in the Library
 
-By adding metrics to your Library, the query builder will display the metrics more prominently in menus. See [Library metrics](../data-studio/library.md#metrics).
+By adding metrics to your Library, the query builder will display the metrics more prominently in menus. See [Library metrics](../semantic-layer/library.md#metrics).
 
 ## Verifying a metric
 
 On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can [mark metrics as verified](../exploration-and-organization/content-verification.md).
 
-Prefer using the [Library](../data-studio/library.md#metrics) to let people know which metrics they should use.
+Prefer using the [Library](../semantic-layer/library.md#metrics) to let people know which metrics they should use.
 
 ## Caching a metric
 
@@ -201,7 +201,7 @@ See [Query caching](../configuring-metabase/caching.md).
 
 ## Further reading
 
-- [Measures](../data-studio/measures.md)
+- [Measures](../semantic-layer/measures.md)
 - [Models](./models.md)
 - [Segments](./segments.md)
 - [SQL Snippets](../questions/native-editor/snippets.md)

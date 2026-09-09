@@ -1,6 +1,8 @@
 ---
 title: Library
 summary: Create a source of truth for analytics with curated tables, metrics, and SQL snippets that your team can trust.
+redirect_from:
+  - /docs/latest/data-studio/library
 ---
 
 # Library

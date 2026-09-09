@@ -26,7 +26,7 @@ You can open the data reference from:
 
 You can also visit `https://[your metabase here]/reference`.
 
-Admins and [Data Analysts](../people-and-groups/managing.md#data-analysts) can get a more comfortable view of data reference in [Data Studio](../data-studio/overview.md).
+Admins and [Data Analysts](../people-and-groups/managing.md#data-analysts) can get a more comfortable view of data reference in [Data Studio](../semantic-layer/overview.md).
 
 ## Databases
 

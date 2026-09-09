@@ -317,7 +317,7 @@ If you can't use SQL casting in Metabase, create a view in your database that co
 
 #### Option 3: Use transforms
 
-Use a [transform](../data-studio/transforms/transforms-overview.md) to create a table that casts the advanced data type to a basic type. Then set up row and column security on the transformed table instead. You'll also need to block the original table.
+Use a [transform](../semantic-layer/transforms/transforms-overview.md) to create a table that casts the advanced data type to a basic type. Then set up row and column security on the transformed table instead. You'll also need to block the original table.
 
 ### People with row and column security can't create Slack subscriptions or alerts
 

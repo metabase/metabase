@@ -1,6 +1,8 @@
 ---
 title: Query-based transforms
 summary: Create Metabase questions and SQL queries to transform your data and write the results back into your data warehouse.
+redirect_from:
+  - /docs/latest/data-studio/transforms/query-transforms
 ---
 
 # Query-based transforms
