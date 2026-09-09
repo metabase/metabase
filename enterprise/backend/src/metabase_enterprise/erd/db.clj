@@ -40,7 +40,7 @@
 
 (mu/defn active-fields :- [:sequential ::warehouse-schema.schema/field]
   "The active Fields with `field-ids`."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
+  [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field {:where [:and
                                    [:in :id field-ids]
                                    [:= :active true]]}))

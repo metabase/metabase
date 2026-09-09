@@ -41,7 +41,7 @@
    [:client_uri         [:maybe :string]]
    [:registration_type  [:maybe [:or :keyword :string]]]
    [:application_type   [:maybe [:or :keyword :string]]]
-   [:redirect_uris      [:maybe [:sequential :string]]]
+   [:redirect_uris      [:maybe :string]]
    [:user_email         [:maybe :string]]
    [:user_first_name    [:maybe :string]]
    [:user_last_name     [:maybe :string]]])

@@ -340,7 +340,7 @@
 (mu/defn link-card-info-rows :- [:sequential :map]
   "The name, description, and related columns of the entities the link cards `link-card-model->ids`
   (`[[model #{ids}] ...]`) point at."
-  [link-card-model->ids :- [:sequential [:tuple :string [:sequential [:or :int :string]]]]]
+  [link-card-model->ids :- [:sequential [:tuple :string [:or [:set [:or :int :string]] [:sequential [:or :int :string]]]]]]
   (t2/query (link-card-info-query link-card-model->ids)))
 
 (mu/defn dashboard-tab :- [:maybe ::dashboards.schema/dashboard-tab]

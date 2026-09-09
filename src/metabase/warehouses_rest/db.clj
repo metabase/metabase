@@ -53,7 +53,7 @@
   restricts to Cards with no collection, and a collection of ids restricts to Cards in those collections."
   [card-type        :- [:or :keyword :string]
    database-ids     :- [:set ::lib.schema.id/database]
-   collection-scope :- [:maybe [:or [:= :root] [:sequential ms/PositiveInt]]]]
+   collection-scope :- [:maybe [:or [:= :root] [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
   (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
                                   :result_metadata :type :source_card_id :card_schema
                                   [^:allow-subquery {:select   [:status]

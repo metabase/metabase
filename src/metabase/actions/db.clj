@@ -216,7 +216,7 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids]))
 
-(mu/defn action-database-settings :- [:sequential [:map {:closed true} [:id ms/PositiveInt] [:settings [:maybe :map]]]]
+(mu/defn action-database-settings :- [:sequential [:map {:closed true} [:id ms/PositiveInt] [:settings [:maybe :string]]]]
   "The id and Database settings of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/query {:select [:action.id :db.settings]

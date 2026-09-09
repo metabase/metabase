@@ -129,7 +129,7 @@
 (mu/defn delete-entity! :- :int
   "Delete the `model` row with `id`, returning the number deleted."
   [model :- [:or :keyword symbol?]
-   id    :- [:or :int :string]]
+   id    :- [:maybe [:or :int :string]]]
   (t2/delete! model id))
 
 (mu/defn delete-entities-with-ids! :- :int

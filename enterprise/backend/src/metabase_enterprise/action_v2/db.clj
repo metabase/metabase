@@ -2,6 +2,7 @@
   "Application database queries for the action-v2 module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [malli.util :as mut]
    [metabase-enterprise.action-v2.schema :as action-v2.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
@@ -47,7 +48,7 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]}))
 
-(mu/defn field-requirements-by-name :- [:map-of :string ::lib.schema.id/field]
+(mu/defn field-requirements-by-name :- [:map-of :string (mut/select-keys ::warehouse-schema.schema/field [:name :database_required :base_type])]
   "A map of name to the name, required flag, and base type of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn->fn :name identity [:model/Field :name :database_required :base_type] :table_id table-id))

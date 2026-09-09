@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -193,8 +194,8 @@
   "A TransformJob as selected from the app DB: every column of `:transform_job`."
   [:map {:closed true}
    [:id              ms/PositiveInt]
-   [:name            :string]
-   [:description     [:maybe :string]]
+   [:name            [:or :string mu/localized-string-schema]]
+   [:description     [:maybe [:or :string mu/localized-string-schema]]]
    [:schedule        :string]
    [:entity_id       :string]
    [:created_at      ms/TemporalInstant]
@@ -206,8 +207,8 @@
 (mr/def ::transform-job.update
   "What an update (or insert) of a TransformJob accepts: every column of `:transform_job` except `id`, all optional."
   [:map {:closed true}
-   [:name            {:optional true} [:maybe :string]]
-   [:description     {:optional true} [:maybe :string]]
+   [:name            {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
+   [:description     {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:schedule        {:optional true} [:maybe :string]]
    [:entity_id       {:optional true} [:maybe :string]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
@@ -325,7 +326,7 @@
   "A TransformTag as selected from the app DB: every column of `:transform_tag`."
   [:map {:closed true}
    [:id            ms/PositiveInt]
-   [:name          :string]
+   [:name          [:or :string mu/localized-string-schema]]
    [:entity_id     :string]
    [:created_at    ms/TemporalInstant]
    [:updated_at    ms/TemporalInstant]
@@ -334,7 +335,7 @@
 (mr/def ::transform-tag.update
   "What an update (or insert) of a TransformTag accepts: every column of `:transform_tag` except `id`, all optional."
   [:map {:closed true}
-   [:name          {:optional true} [:maybe :string]]
+   [:name          {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:entity_id     {:optional true} [:maybe :string]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]

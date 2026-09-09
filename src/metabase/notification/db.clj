@@ -268,8 +268,8 @@
   (t2/select-one :model/NotificationSubscription subscription-id))
 
 (mu/defn subscriptions-for-notifications :- [:sequential ::notification.schema/notification-subscription]
-  "The NotificationSubscriptions of the Notifications with `notification-ids`."
-  [notification-ids :- [:sequential ms/PositiveInt]]
+  "The NotificationSubscriptions of the Notifications with `notification-ids` (nil entries are ignored)."
+  [notification-ids :- [:sequential [:maybe ms/PositiveInt]]]
   (t2/select :model/NotificationSubscription :notification_id [:in notification-ids]))
 
 (mu/defn cron-subscriptions-for-notification :- [:sequential ::notification.schema/notification-subscription]
@@ -657,7 +657,22 @@
   (assoc (admin-base-list-query (dissoc filters :sort_column :sort_direction))
          :order-by (admin-order-by-clauses (or sort_column :last_send) sort_direction)))
 
-(mu/defn admin-notifications-page :- [:sequential ::notification.schema/notification]
+(def ^:private AdminNotificationRow
+  "Rows returned by [[admin-notifications-page]] and [[admin-notification-detail-row]]: a Notification with the
+  admin list's joined columns."
+  (mut/merge ::notification.schema/notification
+             [:map
+              [:card_name         {:optional true} [:maybe :string]]
+              [:creator_is_active {:optional true} [:maybe :boolean]]
+              [:creator_name      {:optional true} [:maybe :string]]
+              [:lc_id             {:optional true} [:maybe ms/PositiveInt]]
+              [:lc_status         {:optional true} [:maybe [:or :keyword :string]]]
+              [:lc_started_at     {:optional true} [:maybe ms/TemporalInstant]]
+              [:ls_id             {:optional true} [:maybe ms/PositiveInt]]
+              [:ls_started_at     {:optional true} [:maybe ms/TemporalInstant]]
+              [:ls_has_failure    {:optional true} [:maybe :boolean]]]))
+
+(mu/defn admin-notifications-page :- [:sequential AdminNotificationRow]
   "A page (`limit`/`offset`) of admin notification-list rows matching `filters` (see
   [[metabase.notification.api.admin]] for the supported keys), most-relevant first per `:sort_column`/
   `:sort_direction`."
@@ -673,7 +688,7 @@
                             (assoc :select [[[:count :notification.id] :count]])
                             (dissoc :order-by)))))
 
-(mu/defn admin-notification-detail-row :- [:maybe ::notification.schema/notification]
+(mu/defn admin-notification-detail-row :- [:maybe AdminNotificationRow]
   "The admin notification-list row (skipping the run-summary joins) for the Notification with `notification-id`, or
   nil."
   [notification-id :- ms/PositiveInt]

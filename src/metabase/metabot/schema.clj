@@ -224,8 +224,8 @@
    [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:user_id           {:optional true} [:maybe ::lib.schema.id/user]]])
 
-(mr/def ::metabot-message.data
-  "The `:data` column of a MetabotMessage, decoded."
+(mr/def ::metabot-message.data-part
+  "One entry of the `:data` column of a MetabotMessage, decoded."
   :map)
 
 (mr/def ::metabot-message.usage
@@ -243,7 +243,7 @@
    [:created_at             ms/TemporalInstant]
    [:profile_id             :string]
    [:role                   [:or :keyword :string]]
-   [:data                   ::metabot-message.data]
+   [:data                   [:sequential ::metabot-message.data-part]]
    [:usage                  [:maybe ::metabot-message.usage]]
    [:total_tokens           :int]
    [:conversation_id        :string]
@@ -267,7 +267,7 @@
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:profile_id             {:optional true} [:maybe :string]]
    [:role                   {:optional true} [:maybe [:or :keyword :string]]]
-   [:data                   {:optional true} [:maybe ::metabot-message.data]]
+   [:data                   {:optional true} [:maybe [:sequential ::metabot-message.data-part]]]
    [:usage                  {:optional true} [:maybe ::metabot-message.usage]]
    [:total_tokens           {:optional true} [:maybe :int]]
    [:conversation_id        {:optional true} [:maybe :string]]

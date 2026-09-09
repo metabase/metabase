@@ -53,7 +53,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :parameters [:model/Card :parameters] :id card-id))
 
-(mu/defn card-dimensions :- [:maybe [:map {:closed true} [:dimensions [:maybe [:sequential :map]]]]]
+(mu/defn card-dimensions :- [:maybe [:map {:closed true} [:dimensions [:maybe :string]]]]
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/query-one {:select [:dimensions]
@@ -133,7 +133,7 @@
              :where    [:in :card_id card-ids]
              :group-by [:card_id]}))
 
-(mu/defn average-running-times-by-card :- [:sequential [:map {:closed true} [:running_time [:maybe :int]] [:card_id ::lib.schema.id/card]]]
+(mu/defn average-running-times-by-card :- [:sequential [:map {:closed true} [:running_time [:maybe number?]] [:card_id ::lib.schema.id/card]]]
   "Rows of `:card_id` and average `:running_time` of uncached executions for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%avg.running_time :running_time] :card_id]

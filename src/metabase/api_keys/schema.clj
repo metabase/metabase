@@ -152,5 +152,5 @@
   "What inserting an ApiKey returns: the selected row plus the `:group` and `:updated_by` hydrated by the after-insert hook."
   (mut/merge ::api-key
              [:map
-              [:group      {:optional true} [:map {:closed true} [:id pos-int?] [:name :string]]]
+              [:group      {:optional true} [:map {:closed true} [:id [:maybe pos-int?]] [:name [:maybe :string]]]]
               [:updated_by {:optional true} ::users.schema/user]]))

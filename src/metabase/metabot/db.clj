@@ -398,7 +398,7 @@
   [message-id :- ms/PositiveInt
    submitter-user-id :- ::lib.schema.id/user
    source-id :- ms/PositiveInt
-   source-type :- [:enum "table" "card" "model"]
+   source-type :- [:enum "table" "card" "model" "dashboard"]
    update-fn :- fn?]
   (mdb/update-or-insert! :model/MetabotSourceFeedback
                          {:message_id  message-id

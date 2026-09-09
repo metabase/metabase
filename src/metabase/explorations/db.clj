@@ -78,7 +78,14 @@
       limit  (assoc :limit limit)
       offset (assoc :offset offset))))
 
-(mu/defn my-explorations :- [:sequential ::explorations.schema/exploration]
+(def ^:private MyExploration
+  "Rows returned by [[my-explorations]]."
+  (mut/merge ::explorations.schema/exploration
+             [:map
+              [:total_count                  :int]
+              [:current_user_last_touched_at [:maybe ms/TemporalInstant]]]))
+
+(mu/defn my-explorations :- [:sequential MyExploration]
   "The Explorations `user-id` created or edited, most-recently-touched first, each carrying
   `:current_user_last_touched_at` and a `:total_count` window column; paginated by `limit`/`offset`."
   [user-id :- ::lib.schema.id/user
