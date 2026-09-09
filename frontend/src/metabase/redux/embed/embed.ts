@@ -6,7 +6,6 @@ import {
 import { compose, pick } from "underscore";
 
 import {
-  DEFAULT_EMBEDDING_ENTITY_TYPES,
   setDataPicker,
   setEntityTypes,
 } from "metabase/redux/embedding-data-picker";
@@ -140,17 +139,21 @@ function normalizeEntityTypes(
    */
   const { entity_types: entityTypesValueOrArray } = searchOptions;
   if (entityTypesValueOrArray) {
-    const entityTypes = Array.isArray(entityTypesValueOrArray)
-      ? entityTypesValueOrArray
-      : [entityTypesValueOrArray];
+    const entityTypes = (
+      Array.isArray(entityTypesValueOrArray)
+        ? entityTypesValueOrArray
+        : [entityTypesValueOrArray]
+    ).filter((entityType: string) => entityType !== "metric");
 
-    return {
-      ...searchOptions,
-      entity_types: entityTypes,
-    };
+    if (entityTypes.length > 0) {
+      return {
+        ...searchOptions,
+        entity_types: entityTypes,
+      };
+    }
   }
 
-  return { ...searchOptions, entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES };
+  return { ...searchOptions, entity_types: undefined };
 }
 
 /**
