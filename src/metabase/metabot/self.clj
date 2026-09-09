@@ -118,6 +118,7 @@
                                  (pr-str (llm.provider/model-ref->connection-key s)))
                             {:status-code 400
                              :api-error   true
+                             :error-code  :llm-not-configured
                              :model-ref   s})))]
     {:provider    type
      :stream-fn   (resolve-adapter type)

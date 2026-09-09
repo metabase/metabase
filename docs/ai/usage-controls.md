@@ -9,7 +9,7 @@ summary: Control who can use Metabot, and cap token or message usage by instance
 
 _Admin > AI > Usage controls_
 
-Once you've connected an AI provider (see [AI settings](./settings.md)), you can can control who can use Metabot and set usage budgets.
+Once you've connected an AI provider (see [AI settings](./settings.md)), you can control who can use Metabot and set usage budgets.
 
 - [AI feature access](#ai-feature-access): which groups can use Metabot, and which of its tools.
 - [AI usage limits](#ai-usage-limits): token or message caps by instance, group, or tenant.

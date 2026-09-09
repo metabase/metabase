@@ -3,7 +3,12 @@
   additional logic, so the rest of the module only touches `toucan2.core` for transactions."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
+   [metabase.auth-identity.schema :as auth-identity.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private totp-provider "totp")
@@ -53,65 +58,80 @@
              [:like :%lower.last_name  pattern]
              [:like :%lower.email      pattern]]))))
 
-(defn user
+(mu/defn user
   "The User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id))
 
-(defn user-email
+(mu/defn user-email
   "The email of the User with `user-id`."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :email :model/User :id user-id))
 
-(defn lock-user
+(mu/defn lock-user
   "The `:id` row of the User with `user-id`, locked for update."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id] :id user-id {:for :update}))
 
-(defn totp-identity
+(mu/defn totp-identity
   "The TOTP AuthIdentity of the User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider))
 
-(defn lock-totp-identity
+(mu/defn lock-totp-identity
   "The TOTP AuthIdentity of the User with `user-id`, locked for update, or nil."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider {:for :update}))
 
-(defn password-credentials
+(mu/defn password-credentials
   "The password credentials of the User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password"))
 
-(defn insert-auth-identity!
-  "Insert the AuthIdentity `row`."
-  [row]
+(mu/defn insert-auth-identity!
+  "Insert the AuthIdentity `row`, returning the number inserted."
+  [row :- [:map {:closed true}
+           [:id           {:optional true} ms/PositiveInt]
+           [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
+           [:provider     {:optional true} [:maybe [:or :keyword :string]]]
+           [:credentials  {:optional true} [:maybe :map]]
+           [:metadata     {:optional true} [:maybe :map]]
+           [:provider_id  {:optional true} [:maybe :string]]
+           [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
+           [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
+           [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
+           [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
+           [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]]]
   (t2/insert! :model/AuthIdentity row))
 
-(defn update-auth-identity!
-  "Apply `changes` to the AuthIdentity with `auth-identity-id`."
-  [auth-identity-id changes]
+(mu/defn update-auth-identity!
+  "Apply `changes` to the AuthIdentity with `auth-identity-id`, returning the number updated."
+  [auth-identity-id :- ms/PositiveInt
+   changes          :- (mut/select-keys ::auth-identity.schema/auth-identity.update [:credentials :confirmed_at])]
   (t2/update! :model/AuthIdentity auth-identity-id changes))
 
-(defn delete-totp-identity!
+(mu/defn delete-totp-identity!
   "Delete the TOTP AuthIdentity of the User with `user-id`, returning the number deleted."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/AuthIdentity :user_id user-id :provider totp-provider))
 
-(defn confirmed-totp-count
+(mu/defn confirmed-totp-count
   "The number of confirmed TOTP enrollments."
   []
   (t2/count :model/AuthIdentity :provider totp-provider :confirmed_at [:not= nil]))
 
-(defn unenrolled-user-count
+(mu/defn unenrolled-user-count
   "The number of active personal Users without a confirmed TOTP enrollment."
   []
   (t2/count :model/User {:where unenrolled-user-where}))
 
-(defn user-list
+(mu/defn user-list
   "The name-ordered admin list of enrolled (with their enrollment time) or unenrolled Users matching `search`, paged
   by the optional `limit` and `offset`."
-  [enrolled? search limit offset]
+  [enrolled? :- :boolean
+   search    :- [:maybe :string]
+   limit     :- [:maybe ms/PositiveInt]
+   offset    :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/User
              (cond-> {:select   (cond-> list-columns enrolled? (into enrolled-at-select))
                       :where    (user-list-where enrolled? search)
@@ -121,7 +141,8 @@
                ;; a nil limit would emit `LIMIT NULL`
                limit (assoc :limit limit :offset offset))))
 
-(defn user-list-count
+(mu/defn user-list-count
   "The number of enrolled or unenrolled Users matching `search`."
-  [enrolled? search]
+  [enrolled? :- :boolean
+   search    :- [:maybe :string]]
   (t2/count :model/User {:where (user-list-where enrolled? search)}))

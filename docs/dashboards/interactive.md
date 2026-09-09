@@ -21,7 +21,7 @@ To configure this interactivity, you'll use the **click behavior** option on a d
 
 From your dashboard, first click on the **pencil** icon to enter dashboard edit mode.
 
-If you hover over the card that contains question you want to customize, Metabase will display a menu at the top right of that card containing these options, from left to right:
+If you hover over the card that contains the question you want to customize, Metabase will display a menu at the top right of that card containing these options, from left to right:
 
 - **Visualization options**: This icon looks like a painter's palette.
 - **Click behavior**: This is the icon with the mouse cursor clicking on a card.
@@ -108,7 +108,7 @@ To learn more, check out [Custom destinations: choose what happens when people c
 
 If your dashboard contains at least one filter, you can set things up so that clicking on a chart in the dashboard will update a filter.
 
-When a user clicks on, say, a bar in a bar chart, you could send the value of the clicked bar to the filter, and update cards across the dashboard. We call this functionality **cross-filtering**. You can use this cross-filtering to make a chart behave as kind of "navigation question" that filters data across other cards.
+When a user clicks on, say, a bar in a bar chart, you could send the value of the clicked bar to the filter, and update cards across the dashboard. We call this functionality **cross-filtering**. You can use this cross-filtering to make a chart behave as a kind of "navigation question" that filters data across other cards.
 
 For example, clicking on the `Widget` bar will update the current dashboard's **category** filter to filter for `Widget`:
 

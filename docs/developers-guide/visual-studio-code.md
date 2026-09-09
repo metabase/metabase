@@ -12,7 +12,7 @@ First, install the following extension:
 
 _Note_: Debugger for Chrome has been deprecated. You can safely delete it as Visual Studio Code now has [a bundled JavaScript Debugger](https://github.com/microsoft/vscode-js-debug) that covers the same functionality.
 
-Before starting the debugging session, make sure that Metabase is built and running. Choose menu _View_, _Command Palette_, search for and choose _Tasks: Run Build Task_. Alternatively, use the corresponding shortcut `Ctrl+Shift+B`. The built-in terminal will appear to show the progress, wait a few moment until webpack indicates a complete (100%) bundling.
+Before starting the debugging session, make sure that Metabase is built and running. Choose menu _View_, _Command Palette_, search for and choose _Tasks: Run Build Task_. Alternatively, use the corresponding shortcut `Ctrl+Shift+B`. The built-in terminal will appear to show the progress, wait a few moments until webpack indicates a complete (100%) bundling.
 
 To begin debugging Metabase, switch to the Debug view (shortcut: `Ctrl+Shift+D`) and then select one of the two launch configurations from the drop-down at the top:
 

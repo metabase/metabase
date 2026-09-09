@@ -41,7 +41,7 @@ You can view your locally running Metabase at `http://localhost:3000`.
 
 [Download Prometheus](https://prometheus.io/download/), and extract the files.
 
-Change into the Prometheus directory, add the following YAML file to configure your Prometheus:
+Change into the Prometheus directory, and add the following YAML file to configure your Prometheus:
 
 ## Prometheus configuration file example
 

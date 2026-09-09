@@ -33,11 +33,11 @@ init:
     class: org.sqlite.JDBC
 ```
 
-The `driver` section tells Metabase that the plugin defines a driver named `:sqlite` that has `:sql-jdbc` as a parent. Metabase's plugin system uses these details to call `driver/register!`. The plugin also lists the display name and connection properties for the driver, which Metabase's plugin system uses to creates implementations for `driver/display-name` and `driver/connection-properties`.
+The `driver` section tells Metabase that the plugin defines a driver named `:sqlite` that has `:sql-jdbc` as a parent. Metabase's plugin system uses these details to call `driver/register!`. The plugin also lists the display name and connection properties for the driver, which Metabase's plugin system uses to create implementations for `driver/display-name` and `driver/connection-properties`.
 
 ## Lazy loading
 
-The driver in the [example above](#example-manifest) is listed as `lazy-load: true`, which means that, while the method implementation mentioned above are created when Metabase launches, Metabase won't initialize the driver until the first time someone attempts to connect to a database that uses that driver.
+The driver in the [example above](#example-manifest) is listed as `lazy-load: true`, which means that, while the method implementations mentioned above are created when Metabase launches, Metabase won't initialize the driver until the first time someone attempts to connect to a database that uses that driver.
 
 You _can_ (but shouldn't) set a driver to `lazy-load: false`, as this will make Metabase take longer to launch and eat up more memory.
 

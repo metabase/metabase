@@ -41,7 +41,7 @@ If you need to change the target database based on who is logged in, check out [
 
 Before you apply more specific permissions, you'll want to make sure that no one can see any data. Since everyone's automatically in the All Users group, you'll want to block this group from seeing any data.
 
-In the **Admin** > **Permissions** > **Data**, block the All Users group's access to the database.
+In **Admin** > **Permissions** > **Data**, block the All Users group's access to the database.
 
 From there, you can selectively grant privileges to different groups.
 

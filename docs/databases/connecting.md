@@ -18,7 +18,7 @@ To add a database connection:
 
 1. Click the **grid** icon in the top right.
 2. Select **Admin**.
-3. In Admin settings, navigate **Databases** > **Add a database**.
+3. In Admin settings, navigate to **Databases** > **Add a database**.
 4. Fill out the fields for that database, and click **Save changes** at the bottom.
 
    The connection settings differ database to database. For the list of connection settings available for your database, click the link to your database below.

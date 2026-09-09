@@ -2,41 +2,53 @@
   "Application database queries for the API keys module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
+   [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema :as users.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn unscoped-api-key-count
+(mu/defn unscoped-api-key-count
   "The number of ApiKeys without a scope."
   []
   (t2/count :model/ApiKey :scope nil))
 
-(defn unscoped-api-keys
+(mu/defn unscoped-api-keys
   "The ApiKeys without a scope."
   []
   (t2/select :model/ApiKey :scope nil))
 
-(defn api-key
+(mu/defn api-key
   "The ApiKey with `id`, or nil."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/select-one :model/ApiKey id))
 
-(defn save-api-key!
-  "Save the changes made to the ApiKey instance `api-key`."
-  [api-key]
+(def ^:private ApiKeyWithGroupId
+  "An ApiKey instance possibly carrying the `::api-keys/group-id` the before-update hook consumes."
+  (mut/merge ::api-keys.schema/api-key
+             [:map
+              [:metabase.api-keys.core/group-id {:optional true} [:maybe ms/PositiveInt]]]))
+
+(mu/defn save-api-key!
+  "Save the changes made to the ApiKey instance `api-key` and return it."
+  [api-key :- ApiKeyWithGroupId]
   (t2/save! api-key))
 
-(defn api-key-exists?
+(mu/defn api-key-exists?
   "Whether an ApiKey with `id` exists."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/exists? :model/ApiKey id))
 
-(defn delete-api-key!
+(mu/defn delete-api-key!
   "Delete the ApiKey with `id`."
-  [id]
+  [id :- ms/PositiveInt]
   (t2/delete! :model/ApiKey id))
 
-(defn api-key-groups
+(mu/defn api-key-groups
   "The group name, group id, and api key id of the PermissionsGroups of the ApiKeys with `api-key-ids`."
-  [api-key-ids]
+  [api-key-ids :- [:sequential ms/PositiveInt]]
   (t2/query {:select [[:pg.name :group-name]
                       [:pg.id :group-id]
                       [:api_key.id :api-key-id]]
@@ -45,42 +57,44 @@
                       :api_key [:= :api_key.user_id :pgm.user_id]]
              :where  [:in :api_key.id api-key-ids]}))
 
-(defn rename-api-key-user!
+(mu/defn rename-api-key-user!
   "Set the first name (and clear the last name) of the api-key User with `user-id`."
-  [user-id first-name]
+  [user-id    :- ::lib.schema.id/user
+   first-name :- :string]
   (t2/update! :model/User :id user-id, :type :api-key, {:first_name first-name, :last_name ""}))
 
-(defn user-type
+(mu/defn user-type
   "The `:type` of the User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :type :model/User :id user-id))
 
-(defn deactivate-api-key-user!
-  "Deactivate the api-key User with `user-id`."
-  [user-id]
+(mu/defn deactivate-api-key-user!
+  "Deactivate the api-key User with `user-id` (nil for keys without a user, e.g. SCIM keys, which updates nothing)."
+  [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/update! :model/User user-id, :type :api-key, {:is_active false}))
 
-(defn api-key-prefix-exists?
+(mu/defn api-key-prefix-exists?
   "Whether an ApiKey with `prefix` exists."
-  [prefix]
+  [prefix :- :string]
   (t2/exists? :model/ApiKey :key_prefix prefix))
 
-(defn api-key-name-exists?
+(mu/defn api-key-name-exists?
   "Whether an ApiKey named `key-name` exists."
-  [key-name]
+  [key-name :- :string]
   (t2/exists? :model/ApiKey :name key-name))
 
-(defn insert-user!
+(mu/defn insert-user!
   "Insert the User `row` and return its id."
-  [row]
+  [row :- ::users.schema/user.update]
   (t2/insert-returning-pk! :model/User row))
 
-(defn insert-api-key!
+(mu/defn insert-api-key!
   "Insert the ApiKey `row` and return the inserted instance."
-  [row]
+  [row :- ::api-keys.schema/api-key.create]
   (t2/insert-returning-instance! :model/ApiKey row))
 
-(defn update-api-key!
+(mu/defn update-api-key!
   "Apply `changes` to the ApiKey with `id`."
-  [id changes]
+  [id      :- ms/PositiveInt
+   changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
   (t2/update! :model/ApiKey :id id changes))

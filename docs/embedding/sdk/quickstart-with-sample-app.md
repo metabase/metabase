@@ -141,7 +141,7 @@ On the card that says **JWT**, click the **Setup** button.
 
 ### JWT Identity provider URI
 
-In **JWT IDENTITY PROVIDER URI** field, paste
+In the **JWT IDENTITY PROVIDER URI** field, paste
 
 ```txt
 http://localhost:9090/sso/metabase

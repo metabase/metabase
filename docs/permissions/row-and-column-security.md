@@ -33,7 +33,7 @@ You can define up to one row and column security policy for each table/group com
 
 ## Types of row and column security
 
-Row and column security show specific data to each person based on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). You can:
+Row and column security shows specific data to each person based on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). You can:
 
 - [Restrict **rows**](#row-level-security-filter-by-a-column-in-the-table)
 - [Restrict **columns** and rows](#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table) for specific people.
@@ -124,7 +124,7 @@ Metabase will display the results of the question in place of an original table 
 
 Aside from excluding rows and columns, you can also **display edited columns** (without changing the columns in your database).
 
-For example, you can create a "Edited Accounts" SQL question that truncates the Email column to display usernames instead of complete email addresses.
+For example, you can create an "Edited Accounts" SQL question that truncates the Email column to display usernames instead of complete email addresses.
 
 If you edit a column, the schema of the SQL question (the question you want to display instead of the table) must match the schema of the original table. That means the "Edited Accounts" SQL question must return the same number of columns and corresponding data types as the original Accounts table.
 
@@ -194,7 +194,7 @@ Learn more about [SQL parameters](../questions/native-editor/sql-parameters.md)
 
 ### Advanced row-level security: filtering tables for people that have multiple IDs
 
-For example, say have a table like this:
+For example, say you have a table like this:
 
 | User_ID | Value |
 | ------- | ----- |

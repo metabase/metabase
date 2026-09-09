@@ -52,7 +52,7 @@ If you see this error message in the Metabase interface, go to [Troubleshooting 
 
 ### Connections cannot be acquired from the underlying database
 
-If you see this error messages in the [logs](./server-logs.md) (**Admin** > **Tools** > **Logs**):
+If you see this error message in the [logs](./server-logs.md) (**Admin** > **Tools** > **Logs**):
 
 1. Go to **Admin** > **Databases** and select your database.
 2. Go to **Advanced options** > **Additional JDBC connection string options** and add `trustServerCertificate=true`.

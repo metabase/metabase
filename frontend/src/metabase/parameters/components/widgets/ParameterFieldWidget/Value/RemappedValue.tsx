@@ -3,22 +3,28 @@ import type { ReactNode } from "react";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import AutoLoadRemapped from "metabase/hoc/Remapped";
+import { getRemappedFieldValue } from "metabase/metadata-store";
+import { useSelector } from "metabase/redux";
 import { formatValue } from "metabase/value-formatting";
-import type Field from "metabase-lib/v1/metadata/Field";
+import type { ParameterField } from "metabase-lib/v1/parameters/types";
+import { isID } from "metabase-lib/v1/types/utils/isa";
 
-type RenderNormal = (opts: { value?: unknown; column?: Field }) => ReactNode;
+type RenderNormal = (opts: {
+  value?: unknown;
+  column?: ParameterField;
+}) => ReactNode;
 type RenderRemapped = (opts: {
   value: unknown;
-  column?: Field;
+  column?: ParameterField;
   displayValue?: unknown;
-  displayColumn?: Field;
+  displayColumn?: ParameterField;
 }) => ReactNode;
 
 export type RemappedValueProps = {
   value: unknown;
-  column?: Field;
+  column?: ParameterField;
   displayValue?: unknown;
-  displayColumn?: Field;
+  displayColumn?: ParameterField;
   renderNormal?: RenderNormal;
   renderRemapped?: RenderRemapped;
   autoLoad?: boolean;
@@ -38,7 +44,7 @@ const defaultRenderRemapped: RenderRemapped = ({
     {/* Unjustified type cast. FIXME */}
     <span className={CS.textBold}>{displayValue as ReactNode}</span>
     {/* Show the underlying ID for PK/FK */}
-    {column?.isID() && <span style={{ opacity: 0.5 }}>{" - " + value}</span>}
+    {isID(column) && <span style={{ opacity: 0.5 }}>{" - " + value}</span>}
   </span>
 );
 
@@ -72,7 +78,7 @@ const RemappedValueContent = ({
 
 const getEffectiveValue = (
   value: unknown,
-  column: Field | undefined,
+  column: ParameterField | undefined,
   props: object,
 ) =>
   column != null
@@ -81,7 +87,7 @@ const getEffectiveValue = (
 
 const getEffectiveDisplayValue = (
   displayValue: unknown,
-  displayColumn: Field | undefined,
+  displayColumn: ParameterField | undefined,
   props: object,
 ) =>
   displayColumn != null
@@ -95,14 +101,22 @@ const getEffectiveDisplayValue = (
 
 export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 
-export const FieldRemappedValue = (props: RemappedValueProps) => (
-  <RemappedValueContent
-    {...props}
-    displayValue={
-      props.displayValue ?? props.column?.remappedValue(props.value)
-    }
-  />
-);
+export const FieldRemappedValue = (props: RemappedValueProps) => {
+  const remappedValue = useRemappedValue(props.column, props.value);
+
+  return (
+    <RemappedValueContent
+      {...props}
+      displayValue={props.displayValue ?? remappedValue}
+    />
+  );
+};
+
+function useRemappedValue(column: ParameterField | undefined, value: unknown) {
+  return useSelector((state) =>
+    column == null ? undefined : getRemappedFieldValue(state, column, value),
+  );
+}
 
 const RemappedValue = ({ autoLoad = true, ...props }: RemappedValueProps) =>
   autoLoad && !props.displayValue ? (

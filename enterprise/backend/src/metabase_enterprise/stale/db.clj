@@ -2,21 +2,23 @@
   "Application database queries for the stale module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(defn collection
+(mu/defn collection
   "The Collection with `collection-id`, or nil."
-  [collection-id]
+  [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection collection-id))
 
-(defn collections-by-id
+(mu/defn collections-by-id
   "A map of ID to Collection for `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
 
-(defn stale-cards
+(mu/defn stale-cards
   "The listing columns of the Cards with `card-ids`, with their latest moderation status."
-  [card-ids]
+  [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card
               :id
               :dashboard_id
@@ -47,9 +49,9 @@
                :moderated_status]]
              :id [:in card-ids]))
 
-(defn stale-dashboards
+(mu/defn stale-dashboards
   "The listing columns of the Dashboards with `dashboard-ids`."
-  [dashboard-ids]
+  [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select [:model/Dashboard
               :id
               :description
@@ -71,11 +73,15 @@
   [union-queries]
   [[^:allow-subquery {:union-all union-queries} :dummy_alias]])
 
-(defn stale-content-rows
+(mu/defn stale-content-rows
   "A page of `:id`/`:model` rows from the union of `union-queries`, sorted by `sort-column` (`:name` or
   `:last_used_at`) in `sort-direction`, skipping `offset` and returning up to `limit` (either may be nil for no
   restriction)."
-  [union-queries sort-column sort-direction limit offset]
+  [union-queries :- [:sequential :map]
+   sort-column :- [:enum :name :last_used_at]
+   sort-direction :- [:enum :asc :desc]
+   limit :- [:maybe :int]
+   offset :- [:maybe :int]]
   (t2/query (cond-> {:select   [:id :model]
                      :from     (stale-content-union union-queries)
                      :order-by [[(case sort-column
@@ -85,8 +91,8 @@
               (some? limit)  (assoc :limit limit)
               (some? offset) (assoc :offset offset))))
 
-(defn stale-content-count
+(mu/defn stale-content-count
   "The total count of rows across every page [[stale-content-rows]] would return for `union-queries`."
-  [union-queries]
+  [union-queries :- [:sequential :map]]
   (:count (t2/query-one {:select [[:%count.* :count]]
                          :from   (stale-content-union union-queries)})))

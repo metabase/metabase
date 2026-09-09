@@ -8,7 +8,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Row and column security" %}
 
-[Row and column security](./row-and-column-security.md) let you:
+[Row and column security](./row-and-column-security.md) lets you:
 
 - [Restrict **rows**](./row-and-column-security.md#row-level-security-filter-by-a-column-in-the-table).
 - [Restrict **columns** (and rows)](./row-and-column-security.md#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table).
@@ -19,7 +19,7 @@ The examples below use the Sample database included with Metabase. Here's the ba
 
 1. **Block permissions for the All users group**: Hit cmd/ctrl + k to bring up the command palette and search for "Permissions". In the **Permissions** > **Data** tab. Click on the **All users** group. For the Sample database, set the All User's [View data](./data.md#view-data-permissions) permission to "Blocked".
 
-2. **Create a group called Customers**. Hit cmd/ctrl + k and search for the People settings. [Create a group called "Customers".
+2. **Create a group called Customers**. Hit cmd/ctrl + k and search for the People settings. Create a group called "Customers".
 
 3. **Create a user account for Cloyd Beer**. We'll [create a user account](../people-and-groups/managing.md#creating-an-account) for a random person from the People table in our Sample Database. Let's go with `Cloyd Beer` from the Sample database's `People` table.
 
@@ -29,7 +29,7 @@ The examples below use the Sample database included with Metabase. Here's the ba
 
 5. **Add Mr. Beer to the Customers group**: See [adding people to groups](../people-and-groups/managing.md#adding-people-to-groups).
 
-6. **Create a collection that is only viewable by Admins.**. Call it "Admin collection". We'll use this collection to store SQL questions that we use to secure tables in examples 2 and 3. See [Collection permissions](./collections.md).
+6. **Create a collection that is only viewable by Admins.** Call it "Admin collection". We'll use this collection to store SQL questions that we use to secure tables in examples 2 and 3. See [Collection permissions](./collections.md).
 
 ## Filtering rows based on user attributes
 
@@ -131,7 +131,7 @@ WHERE
 
 Save it to the "Admins collection" you created in the setup (or any collection that only Admins have access to).
 
-2. **Create the custom view**: Return to the **Permissions** tab. Select Cloyd Beer's Customer group, and set the **View data** access for the `Orders` table to **Row and column security**. Select **Use a saved question to create a custom view for this table**. Open up the row and column security modal and select the second option. Select the filtering question, we'll see an additional section which allows us to map the variable we defined in our question with a user attribute:
+2. **Create the custom view**: Return to the **Permissions** tab. Select Cloyd Beer's Customer group, and set the **View data** access for the `Orders` table to **Row and column security**. Select **Use a saved question to create a custom view for this table**. Open up the row and column security modal and select the second option. Select the filtering question, and we'll see an additional section which allows us to map the variable we defined in our question with a user attribute:
 
 3. **Save your changes**. Or abandon all hope.
 
