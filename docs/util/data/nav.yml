@@ -575,6 +575,8 @@ categories:
       - name: "Billing"
         url: "https://www.metabase.com/how-billing-works"
         pages:
+          - name: "How billing works"
+            url: "https://www.metabase.com/how-billing-works"
           - name: "Accounts and billing"
             url: "cloud/accounts-and-billing"
       - name: "Troubleshooting"
