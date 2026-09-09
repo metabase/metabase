@@ -126,7 +126,7 @@ function selectAppAssets(stats) {
     throw new Error('app: stats-main.json / "app-main" entrypoint missing');
   }
   const reachableAssets = entrypointJsAssets(stats, "app-main", "reachableAssets");
-  return { initialAssets, reachableAssets: reachableAssets && reachableAssets.filter(notLocale) };
+  return { initialAssets, reachableAssets: reachableAssets?.filter(notLocale) ?? null };
 }
 
 /**

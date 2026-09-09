@@ -2,20 +2,11 @@ import userEvent from "@testing-library/user-event";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { getIcon, screen, within } from "__support__/ui";
+import * as localization from "metabase/utils/localization";
 
 import { type SetupOpts, setup } from "./setup";
 
-const loadLocalizationSpy = jest.fn();
-jest.mock("metabase/utils/localization", () => {
-  const actual = jest.requireActual("metabase/utils/localization");
-  return {
-    ...actual,
-    loadLocalization: (locale: string) => {
-      loadLocalizationSpy(locale);
-      return actual.loadLocalization(locale);
-    },
-  };
-});
+const loadLocalizationSpy = jest.spyOn(localization, "loadLocalization");
 
 const FAKE_UUID = "123456";
 

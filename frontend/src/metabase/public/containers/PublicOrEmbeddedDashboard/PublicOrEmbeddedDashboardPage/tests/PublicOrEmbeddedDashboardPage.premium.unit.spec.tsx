@@ -2,22 +2,13 @@ import userEvent from "@testing-library/user-event";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
+import * as localization from "metabase/utils/localization";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
 
-const loadLocalizationSpy = jest.fn();
-jest.mock("metabase/utils/localization", () => {
-  const actual = jest.requireActual("metabase/utils/localization");
-  return {
-    ...actual,
-    loadLocalization: (locale: string) => {
-      loadLocalizationSpy(locale);
-      return actual.loadLocalization(locale);
-    },
-  };
-});
+const loadLocalizationSpy = jest.spyOn(localization, "loadLocalization");
 
 const DASHBOARD_TITLE = '"My test dash"';
 
