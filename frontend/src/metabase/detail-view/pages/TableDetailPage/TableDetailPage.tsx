@@ -15,7 +15,6 @@ import {
   getRowName,
   getTableQuery,
 } from "metabase/detail-view/utils";
-import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { useParams } from "metabase/router";
@@ -37,11 +36,7 @@ export function TableDetailPage() {
   } = useGetTableQueryMetadataQuery({ id: tableId });
   const { data: tableForeignKeys } = useListTableForeignKeysQuery(tableId);
 
-  const metadata = useSelector(getMetadata);
-  const tableQuery = useMemo(
-    () => getTableQuery(metadata, table),
-    [metadata, table],
-  );
+  const tableQuery = useSelector((state) => getTableQuery(state, table));
   const objectQuery = useMemo(() => {
     return tableQuery && table
       ? filterByPk(tableQuery, table.fields ?? [], rowId)
