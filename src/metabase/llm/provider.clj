@@ -368,13 +368,12 @@
                      :type        :text
                      :show-when   {:field :hosting :value ollama-self-hosted}
                      :placeholder "http://ollama.your.company:11434/v1"
-                     :help        (deferred-tru (str "Where Ollama is listening, ending in /v1. Metabase must be able "
-                                                     "to reach it: a server on your private network or on this machine "
-                                                     "needs MB_LLM_ALLOWED_NETWORKS."))}
+                     :help        (deferred-tru (str "Your Ollama server''s address, ending in /v1. Add private "
+                                                     "addresses to MB_LLM_ALLOWED_NETWORKS so Metabase can reach them."))}
                     {:key   :api-key
                      :label (deferred-tru "API key")
                      :type  :password
-                     :help  (deferred-tru "The key your Ollama endpoint expects. Leave empty if it doesn''t need one.")}]}
+                     :help  (deferred-tru "Leave blank if your server doesn''t require a key.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
