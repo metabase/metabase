@@ -12,6 +12,8 @@
   (t2/select [:model/Card
               :id :name :collection_id :description :display
               :dataset_query :type :archived :card_schema
+              ;; required alongside :card_schema for the Card schema upgrade
+              :database_id :result_metadata :dimensions :dimension_mappings
               :collection.authority_level [:collection.name :collection_name]
               [:dashboard.name :dashboard_name] :dashboard_id]
              {:where     [:in :report_card.id ids]
@@ -199,6 +201,10 @@
                        :card.database_id
                        :card.display
                        :card.card_schema
+                       ;; required alongside :card_schema for the Card schema upgrade
+                       :card.type
+                       :card.dimensions
+                       :card.dimension_mappings
                        :card.result_metadata
                        :card.dataset_query
                        :card.entity_id

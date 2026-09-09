@@ -2,6 +2,7 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
+   [better-cond.core :as b]
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -588,6 +589,12 @@
   (when-let [action-ids (queries.db/implicit-action-ids-for-model model-id)]
     (queries.db/delete-actions! action-ids)))
 
+(def ^:private ^:dynamic *update-baseline-select?*
+  "True when the select is being for the purposes of fetching the current baseline before diffing it in
+  [[t2/update!]]. This can be checked during [[t2/define-after-select]] to restrict certain logic to run only for
+  true, top-level `t2/select*` calls and not for the internal reads during an update."
+  false)
+
 ;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
 ;;; some but not all of it live in this `pre-update` function... all of the before-update stuff should live in a single
 ;;; function. We should move it all here or move it all there. Weird to split it up between two places.
@@ -656,9 +663,15 @@
   Metadata-provider fetches must be skipped: nothing consumes `:query_description` on lib metadata, and computing it
   resolves the metric's own `:metric` refs through the metadata provider, whose card fetches re-enter this
   after-select — with a cycle in the metric reference graph the recursion is unbounded and overflows the stack
-  (#74954)."
+  (#74954).
+
+  Column-restricted SELECTs are skipped too. `:query_description` is derived, not a column, so a caller that named
+  its columns cannot have been asking for it — and building the Lib query to compute it is expensive. This matters
+  because [[schema-upgrade-triggers]] forces `:type` into every projection that reads a schema-governed column,
+  which would otherwise opt all of them in to a field none of them read."
   [card]
   (if-not (and (map? card)
+               (empty? (:columns t2.pipeline/*parsed-args*))
                (= :metric (:type card))
                (not (metadata-provider-fetch? card))
                (-> card :dataset_query not-empty)
@@ -711,36 +724,100 @@
 ;; its `card_schema` is bumped to current and this upgrade no longer runs, so removals stay sticky.
 (defmethod upgrade-card-schema-to 24
   [card _schema-version]
-  (if (and (= :metric (keyword (:type card)))
-           (nil? (:dimensions card))
-           (seq (:dataset_query card)))
+  #_(prn (ex-info "dimensions" {:dimensions (:dimensions card)}))
+  (cond
+    (not= :metric (keyword (:type card))) card   ; Ignore non-:metric cards
+    (empty? (:dataset_query card))        card   ; And those without real queries
+
+    ;; If the `:dimensions` are populated, modernize the representation to the current form.
+    (:dimensions card)                    (update card :dimensions metrics/modernize-early-dimensions)
+
+    ;; If the `:dimensions` are unset, populate them with the present representation but with legacy semantics:
+    ;; all implicitly joinable columns become dimensions, not just "available" dimensions.
+    :else
     (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
-      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
-    card))
+      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))))
+
+(def ^:private schema-governed-columns
+  "The columns of `:model/Card` whose stored representation is relevant to `:card_schema`. These columns must be
+  read together, and will be written back together.
+
+  Keep this in sync when adding an upgrade that rewrites a new column."
+  #{:dataset_query :result_metadata :dimensions :dimension_mappings})
+
+(def ^:private schema-upgrade-triggers
+  "All the columns which any [[upgrade-card-schema-to]] function reads, implying that they can impact a card at
+  read time. A SELECT of any [[schema-governed-columns]] must include all of these.
+
+  `:card_schema` belongs here rather than in [[schema-governed-columns]]: it is the version marker, not a governed
+  representation, so selecting it alone (to satisfy this very rule) must not itself demand the rest of the set.
+
+  Keep this in sync with the columns read by the [[upgrade-card-schema-to]] implementations."
+  (conj schema-governed-columns :card_schema :type :database_id))
 
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
-  [card :- :map]
-  (-> (if (and (:id card)
-               (or (:dataset_query card)
-                   (:result_metadata card)
-                   (:database_id card)
-                   (:type card)))
-        ;; A plausible select to run the after-select logic on.
-        (if-not (:card_schema card)
-          ;; Plausible but no :card_schema - error.
-          (throw (ex-info "Cannot SELECT a Card without including :card_schema"
-                          {:card-id (:id card)}))
-          ;; Plausible and has the schema, so run the upgrades over it.
-          (loop [card card]
-            ;; Use >= to allow for downgrades.
-            (if (>= (:card_schema card) current-schema-version)
-              card
-              (let [new-version (inc (:card_schema card))]
-                (recur (assoc (upgrade-card-schema-to card new-version)
-                              :card_schema new-version))))))
-        ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
-        card)
-      queries.schema/normalize-card))
+  ([card] (upgrade-card-schema-to-latest card *update-baseline-select?*))
+  ([card                    :- :map
+    update-baseline-select? :- :boolean]
+   (-> (b/cond
+         ;; Not fetching the relevant parts of the card, just return it.
+         (not (and (:id card)
+                   (some #(contains? card %) schema-governed-columns)))
+         card
+
+         ;; Fetching some of the "hot" parts of a card but not all of them - error!
+         :let [missing (remove #(contains? card %) schema-upgrade-triggers)]
+         (seq missing)
+         (throw (ex-info "Cannot SELECT a Card with card_schema columns without all columns needed for an upgrade"
+                         {:card-id (:id card)
+                          :missing missing}))
+
+         ;; Skip the schema updates when the select is being done as the baseline for an UPDATE.
+         update-baseline-select?
+         card
+
+         ;; All gates passed, so run the schema upgrades.
+         :else
+         (loop [card card]
+           ;; Use >= to allow for downgrades.
+           (if (>= (:card_schema card) current-schema-version)
+             card
+             (let [new-version (inc (:card_schema card))]
+               (recur (assoc (upgrade-card-schema-to card new-version)
+                             :card_schema new-version))))))
+       queries.schema/normalize-card)))
+
+(defn- migrate-schema-governed-columns
+  "Cards are upgraded to the current schema on read, in memory only.
+
+  The vital invariant is that `:card_schema`, `:dataset_query`, `:dimensions`, and the other
+  [[schema-governed-columns]] are all upgraded together.
+
+  The superset [[schema-upgrade-triggers]] includes other fields which are *read* during schema upgrades, without
+  themselves being updated in lockstep. If any of these change, then all the [[schema-upgrade-triggers]] should be
+  updated too. Of course any incoming writes to e.g. `:dataset_query` will win over upgrading the old value.
+
+  Unrelated writes, e.g. to `:name` or `:collection_id`, don't cause the [[schema-governed-columns]] to be updated."
+  [card original changes]
+  (let [stored-schema (:card_schema original)]
+    (if-not (and stored-schema
+                 ;; Use < to leave downgraded rows alone, matching [[upgrade-card-schema-to-latest]].
+                 (< stored-schema current-schema-version)
+                 (some #(contains? changes %) schema-upgrade-triggers))
+      card
+      ;; Force the `update-baseline-select?` flag to false, since this runs inside the `t2/before-update` process.
+      ;; The schema upgrades are suppressed during `t2/update!` so that when it reads the baseline it sees the
+      ;; [[schema-governed-columns]] as they are really stored, not post-upgrade. That's important for the `t2/update!`
+      ;; diff process.
+      ;; However, here we really do want to run the upgrades, so we can write back a card which is fully updated in
+      ;; lockstep.
+      (let [upgraded (upgrade-card-schema-to-latest original false)
+            ;; Keep the `upgraded` version of any [[schema-governed-columns]], but prefer those in `changes`.
+            columns  (remove (set (keys changes)) schema-governed-columns)
+            relevant (when (seq columns)
+                       (select-keys upgraded columns))]
+        (-> (merge card relevant)
+            (assoc :card_schema current-schema-version))))))
 
 (defonce ^:private unique-cards-with-blank-dataset-query
   (atom #{}))
@@ -773,7 +850,8 @@
 ;; changes, which likely indicates a bug.
 (methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Card]
   [query-type model]
-  (let [xform (next-method query-type model)]
+  (let [xform     (next-method query-type model)
+        baseline? (isa? query-type :toucan.query-type/select.instances.from-update)]
     (fn xform' [rf]
       (let [rf' (xform rf)]
         (fn rf''
@@ -781,8 +859,9 @@
           ([acc]
            (rf' acc))
           ([acc card]
-           (lib/with-card-clean-hook (partial mbql5-conversion-clean-callback card)
-             (rf' acc card))))))))
+           (binding [*update-baseline-select?* baseline?]
+             (lib/with-card-clean-hook (partial mbql5-conversion-clean-callback card)
+               (rf' acc card)))))))))
 
 (t2/define-after-select :model/Card
   [card]
@@ -859,12 +938,15 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (some-> card t2/changes queries.schema/normalize-card)
-        card    (queries.schema/normalize-card card)]
+  (let [changes  (some-> card t2/changes queries.schema/normalize-card)
+        ;; Captured before `normalize-card` rebinds `card`, so the migration below never depends on
+        ;; normalization preserving the instance's original.
+        original (t2/original card)
+        card     (queries.schema/normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
-        (assoc :card_schema current-schema-version)
+        (migrate-schema-governed-columns original changes)
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
         (populate-result-metadata changes verified-result-metadata?)

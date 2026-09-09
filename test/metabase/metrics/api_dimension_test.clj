@@ -4,11 +4,14 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.events.core :as events]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
@@ -705,3 +708,146 @@
                    "the filtered query executes and returns a count")
                (is (< filtered total)
                    "filtering by a single joined product category returns fewer rows than unfiltered")))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |            Curated dimensions: modernizing a pre-curation metric that ALREADY has dimensions                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- legacy-dimension-set
+  "The `{:dimensions ... :dimension-mappings ...}` a metric on `query` would have had at `card_schema` 23:
+   the same full set [[metrics/compute-full-dimension-set]] produces, but *without* the table-prefixed
+   `:display-name`s that schema 24 introduced."
+  [query]
+  (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+        {:keys [dimensions dimension-mappings]}
+        (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)]
+    {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
+     :dimension-mappings dimension-mappings}))
+
+(defn- legacy-curated-metric!
+  "Insert a metric on ORDERS whose row looks like a metric that was curated *before* schema 24: previous
+   release's `card_schema` and a persisted dimension set using the old un-prefixed `:display-name`s.
+   `f` receives the metric id.
+
+   Distinct from [[pre-curation-metric!]], which leaves `:dimensions` NULL and so exercises the backfill
+   branch of the schema-24 upgrade rather than the modernization branch."
+  [f]
+  (let [orders-q (orders-metric-query)]
+    (mt/with-temp [:model/Card metric {:name          "Orders Count"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query orders-q}]
+      (let [{:keys [dimensions dimension-mappings]} (legacy-dimension-set orders-q)]
+        ;; Raw UPDATE so nothing bumps the schema back up or re-modernizes on the way in.
+        (t2/query-one {:update :report_card
+                       :set    {:card_schema        23
+                                :dimensions         (json/encode dimensions)
+                                :dimension_mappings (json/encode dimension-mappings)}
+                       :where  [:= :id (:id metric)]})
+        (f (:id metric))))))
+
+(defn- stored-card
+  "Read `card-id` straight out of `report_card`, bypassing `:model/Card`'s after-select. Necessary for any
+   assertion about what was actually *persisted* — a `t2/select-one` re-runs the schema upgrade on read and
+   would report the modernized value whether or not it ever reached the database."
+  [card-id]
+  (let [row (t2/query-one {:select [:card_schema :dimensions]
+                           :from   [:report_card]
+                           :where  [:= :id card-id]})]
+    (update row :dimensions #(some-> % (json/decode true)))))
+
+(defn- display-name-by-field-id [dimensions]
+  (into {} (map (juxt #(-> % :sources first :field-id) :display-name)) dimensions))
+
+(deftest legacy-curated-metric-dimensions-modernized-on-read-test
+  (testing (str "UXW-4987: a metric with the previous release's `card_schema` and dimensions ALREADY "
+                "persisted in the old un-prefixed form is modernized on read — the schema-24 upgrade "
+                "rewrites implicitly-joined dimensions' `:display-name`s to carry their group prefix.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (testing "precondition: the stored dimensions are the un-prefixed, pre-24 form"
+         (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+               stored-names (display-name-by-field-id dimensions)]
+           (is (= 23 card_schema))
+           (is (= "ID" (stored-names (mt/id :products :id))))
+           (is (= "ID" (stored-names (mt/id :people :id))))))
+       (let [dims  (:dimensions (t2/select-one :model/Card :id metric-id))
+             names (display-name-by-field-id dims)]
+         (testing "implicitly-joined dimensions gain their group prefix"
+           (is (= "Product - ID" (names (mt/id :products :id))))
+           (is (= "User - ID" (names (mt/id :people :id)))))
+         (testing "own-table dimensions are left alone"
+           (is (= "ID" (names (mt/id :orders :id))))))))))
+
+(deftest legacy-curated-metric-unrelated-update-leaves-vintage-alone-test
+  (testing (str "UXW-4987: an update that touches no schema-governed column must NOT bump `card_schema`. "
+                "Stamping the current version while leaving the legacy dimensions in place would strand "
+                "them — the schema-24 upgrade would never run again and the un-prefixed `:display-name`s "
+                "would become permanent.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (t2/update! :model/Card metric-id {:name "Renamed"})
+       (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+             stored-names (display-name-by-field-id dimensions)]
+         (is (= "Renamed" (t2/select-one-fn :name :model/Card :id metric-id))
+             "the rename itself is persisted")
+         (is (= 23 card_schema)
+             "the vintage is left behind, so the read-time upgrade keeps applying")
+         (testing "the stored dimensions are untouched"
+           (is (= "ID" (stored-names (mt/id :products :id))))
+           (is (= "ID" (stored-names (mt/id :people :id))))))
+       (testing "and reads still modernize"
+         (let [names (display-name-by-field-id
+                      (:dimensions (t2/select-one :model/Card :id metric-id)))]
+           (is (= "Product - ID" (names (mt/id :products :id))))
+           (is (= "User - ID" (names (mt/id :people :id))))))))))
+
+(deftest legacy-curated-metric-governed-update-migrates-whole-group-test
+  (testing (str "UXW-4987: an update that DOES touch a schema-governed column migrates the whole group and "
+                "stamps `:card_schema`, so the vintage and the representation move together.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       ;; `:dataset_query` is a migration trigger: upgrade 24 derives a metric's dimensions from it.
+       (t2/update! :model/Card metric-id {:dataset_query (people-metric-query)})
+       (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+             stored-names (display-name-by-field-id dimensions)]
+         (is (= @#'card/current-schema-version card_schema)
+             "the vintage advances alongside the migrated columns")
+         (testing "the dimensions written alongside that bump are the modernized ones"
+           (is (= "Product - ID" (stored-names (mt/id :products :id))))
+           (is (= "User - ID" (stored-names (mt/id :people :id))))
+           (is (= "ID" (stored-names (mt/id :orders :id))))))))))
+
+(deftest legacy-curated-metric-explicit-dimensions-win-over-migration-test
+  (testing (str "UXW-4987: when the caller supplies `:dimensions` explicitly, those values win over the "
+                "migrated ones — writing back an already-modernized set must not re-prefix it into "
+                "`User - User - ID`.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (let [modernized (:dimensions (t2/select-one :model/Card :id metric-id))]
+         (t2/update! :model/Card metric-id {:dimensions modernized})
+         (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+               stored-names (display-name-by-field-id dimensions)]
+           (is (= @#'card/current-schema-version card_schema))
+           (is (= "Product - ID" (stored-names (mt/id :products :id))))
+           (is (= "User - ID" (stored-names (mt/id :people :id))))
+           (doseq [[field-id display-name] stored-names]
+             (is (not (re-find #"(.+ - )\1" display-name))
+                 (format "field %d has a doubled group prefix: %s" field-id display-name)))))))))
+
+(deftest legacy-curated-metric-not-modernized-twice-test
+  (testing (str "UXW-4987: once persisted, the modernization must not be applied a second time. If the "
+                "`card_schema` bump were lost, the next read would re-prefix already-prefixed names and "
+                "produce `User - User - ID`.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (metrics/sync-dimensions! :metadata/metric metric-id)
+       (let [names (display-name-by-field-id
+                    (:dimensions (t2/select-one :model/Card :id metric-id)))]
+         (is (= "User - ID" (names (mt/id :people :id)))
+             "re-reading after the write does not double-prefix")
+         (is (= "Product - ID" (names (mt/id :products :id))))
+         (doseq [[field-id display-name] names]
+           (is (not (re-find #"(.+ - )\1" display-name))
+               (format "field %d has a doubled group prefix: %s" field-id display-name))))))))

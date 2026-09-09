@@ -11,7 +11,7 @@
   `:enable-embedding? true`, additionally requires embedding to be enabled."
   [card-id & {:keys [enable-embedding?]}]
   (t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters :visualization_settings
-                  :card_schema]
+                  :card_schema :type :database_id :result_metadata :dimensions :dimension_mappings]
                  {:where [:and
                           [:= :id card-id]
                           [:= :archived false]

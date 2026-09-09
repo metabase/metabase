@@ -712,14 +712,16 @@
 (defn card-queries
   "The ID, schema, Database, and query of the Cards with `card-ids`."
   [card-ids]
-  (t2/select [:model/Card :id :card_schema :database_id :dataset_query] :id [:in card-ids]))
+  (t2/select [:model/Card :id :card_schema :database_id :dataset_query
+              :type :result_metadata :dimensions :dimension_mappings]
+             :id [:in card-ids]))
 
 (defn metric-cards-by-id
   "A map of ID to the planner columns of the Cards with `card-ids`."
   [card-ids]
   (t2/select-pk->fn identity
-                    [:model/Card :id :name :description :database_id :dataset_query :card_schema :dimensions
-                     :dimension_mappings]
+                    [:model/Card :id :name :description :database_id :dataset_query :card_schema
+                     :type :result_metadata :dimensions :dimension_mappings]
                     :id [:in card-ids]))
 
 (defn metric-card-ids
@@ -739,7 +741,7 @@
 ;;; the response stays small and JSON encoding is fast.
 (def ^:private exploration-card-columns
   [:id :name :description :collection_id :database_id :table_id :type :entity_id
-   :card_schema :dataset_query :dimensions :dimension_mappings])
+   :card_schema :dataset_query :result_metadata :dimensions :dimension_mappings])
 
 (defn metric-cards-for-explorations
   "The exploration-relevant columns of the metric Cards with `card-ids`."
