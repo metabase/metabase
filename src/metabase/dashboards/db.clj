@@ -127,7 +127,7 @@
 
 (def ^:private CardQueryColumn
   "Rows returned by [[card-query-columns]]."
-  (mut/select-keys ::queries.schema/card [:dataset_query :card_schema]))
+  (mut/select-keys ::queries.schema/card [:dataset_query :card_schema :query_description]))
 
 (mu/defn card-query-columns :- [:maybe CardQueryColumn]
   "The query and schema of the Card with `card-id`, or nil."

@@ -165,7 +165,7 @@
   ([card field-ref]
    (values-from-card card field-ref nil))
 
-  ([card      :- :metabase.queries.schema/card
+  ([card      :- :metabase.queries.schema/card.partial
     field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
     opts      :- [:maybe ::values-from-card-query.options]]
    (values-from-card* (card-query (:id card) (not-empty (:dataset_query card))) field-ref opts)))

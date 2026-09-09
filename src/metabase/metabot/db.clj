@@ -278,9 +278,10 @@
                      :limit    limit}))
 
 (mu/defn insert-conversation! :- :int
-  "Insert `conversation`."
-  [conversation :- ::metabot.schema/metabot-conversation.update]
-  (t2/insert! :model/MetabotConversation conversation))
+  "Insert `conversation` under the client-generated `conversation-id`."
+  [conversation-id :- :string
+   conversation    :- ::metabot.schema/metabot-conversation.update]
+  (t2/insert! :model/MetabotConversation (assoc conversation :id conversation-id)))
 
 (mu/defn upsert-conversation! :- :string
   "Insert or update the MetabotConversation with `conversation-id`. `update-fn` receives the existing row (or nil on
@@ -750,7 +751,7 @@
 
 (def ^:private CardType
   "Rows returned by [[card-type-row]]."
-  (mut/select-keys ::queries.schema/card [:id :type :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :type :card_schema :query_description]))
 
 (mu/defn card-type-row :- [:maybe CardType]
   "The ID, type, and schema of the Card with `card-id`, or nil."
@@ -900,7 +901,7 @@
 
 (def ^:private SavedCardsForConversation
   "Rows returned by [[saved-cards-for-conversation]]."
-  (mut/select-keys ::queries.schema/card [:id :metabot_chart_id]))
+  (mut/select-keys ::queries.schema/card [:id :metabot_chart_id :query_description]))
 
 (mu/defn saved-cards-for-conversation :- [:sequential SavedCardsForConversation]
   "The ID and chart ID of the unarchived Cards saved from the MetabotConversation with `conversation-id`, in ID order."
@@ -946,7 +947,7 @@
 
 (def ^:private CollectionCurationInfoById
   "Rows returned by [[collection-curation-info-by-id]]."
-  (mut/select-keys ::collections.schema/collection [:id :authority_level :location :type]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:id :authority_level :location :type :name]) [:name]))
 
 (mu/defn collection-curation-info-by-id :- [:map-of ::lib.schema.id/collection CollectionCurationInfoById]
   "A map of ID to the ID, authority level, location, and type of the Collections with `collection-ids`."
@@ -1138,7 +1139,7 @@
 
 (def ^:private CardCollectionId
   "Rows returned by [[card-collection-ids]]."
-  (mut/select-keys ::queries.schema/card [:id :collection_id]))
+  (mut/select-keys ::queries.schema/card [:id :collection_id :query_description]))
 
 (mu/defn card-collection-ids :- [:sequential CardCollectionId]
   "The ID and Collection ID of the Cards with `ids`."

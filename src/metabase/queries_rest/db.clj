@@ -69,7 +69,7 @@
 
 (def ^:private PublicCard
   "Rows returned by [[public-cards]]."
-  (mut/select-keys ::queries.schema/card [:name :id :public_uuid :card_schema]))
+  (mut/select-keys ::queries.schema/card [:name :id :public_uuid :card_schema :query_description]))
 
 (mu/defn public-cards :- [:sequential PublicCard]
   "The name, id, public uuid, and schema of the unarchived Cards that are publicly shared."
@@ -78,7 +78,7 @@
 
 (def ^:private EmbeddableCard
   "Rows returned by [[embeddable-cards]]."
-  (mut/select-keys ::queries.schema/card [:name :id :card_schema]))
+  (mut/select-keys ::queries.schema/card [:name :id :card_schema :query_description]))
 
 (mu/defn embeddable-cards :- [:sequential EmbeddableCard]
   "The name, id, and schema of the unarchived Cards with embedding enabled."
@@ -115,7 +115,7 @@
 
 (def ^:private CardPublicUuidColumn
   "Rows returned by [[card-public-uuid-columns]]."
-  (mut/select-keys ::queries.schema/card [:public_uuid :card_schema]))
+  (mut/select-keys ::queries.schema/card [:public_uuid :card_schema :query_description]))
 
 (mu/defn card-public-uuid-columns :- [:maybe CardPublicUuidColumn]
   "The public uuid and schema of the Card with `card-id`, or nil."
@@ -167,8 +167,7 @@
 
 (def ^:private MaxCollectionPosition
   "Rows returned by [[max-collection-position]]."
-  (mut/merge ::queries.schema/card
-             [:map [:max_position [:maybe :int]]]))
+  [:map {:closed true} [:max_position [:maybe :int]]])
 
 (mu/defn max-collection-position :- [:maybe MaxCollectionPosition]
   "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."

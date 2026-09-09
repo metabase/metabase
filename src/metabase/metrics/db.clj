@@ -18,7 +18,7 @@
 
 (def ^:private MetricCardsPage
   "Rows returned by [[metric-cards-page]]."
-  (mut/select-keys ::queries.schema/card [:id :name :description :collection_id]))
+  (mut/select-keys ::queries.schema/card [:id :name :description :collection_id :query_description]))
 
 (mu/defn metric-cards-page :- [:sequential MetricCardsPage]
   "Up to `limit` id, name, description, and Collection id rows from `offset` of the Cards matching the Honey SQL
@@ -44,7 +44,7 @@
 
 (def ^:private MetricCardsForDatabase
   "Rows returned by [[metric-cards-for-database]]."
-  (mut/select-keys ::queries.schema/card [:id :dimensions]))
+  (mut/select-keys ::queries.schema/card [:id :dimensions :query_description]))
 
 (mu/defn metric-cards-for-database :- [:sequential MetricCardsForDatabase]
   "The id and dimensions of the metric Cards of the Database with `database-id`."

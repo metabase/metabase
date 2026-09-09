@@ -23,7 +23,7 @@
 
 (def ^:private SourceCardMetadata
   "Rows returned by [[source-card-metadata]]."
-  (mut/select-keys ::queries.schema/card [:entity_id :result_metadata :type :card_schema]))
+  (mut/select-keys ::queries.schema/card [:entity_id :result_metadata :type :card_schema :query_description]))
 
 (mu/defn source-card-metadata :- [:maybe SourceCardMetadata]
   "The entity id, result metadata, and type of the Card with `card-id`, or nil."
@@ -90,7 +90,7 @@
 
 (def ^:private CardDatabaseId
   "Rows returned by [[card-database-ids]]."
-  (mut/select-keys ::queries.schema/card [:id :database_id :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :database_id :card_schema :query_description]))
 
 (mu/defn card-database-ids :- [:sequential CardDatabaseId]
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."

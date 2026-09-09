@@ -165,7 +165,7 @@
   "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
   mappings."
-  [dashboard      :- ::dashboards.schema/dashboard
+  [dashboard      :- ::dashboards.schema/dashboard.partial
    dashcard       :- ::dashboards.schema/dashcard
    card-id        :- ::lib.schema.id/card
    request-params :- [:maybe [:sequential :map]]]

@@ -14,7 +14,7 @@
 
 (def ^:private LibraryRootCollection
   "Rows returned by [[library-root-collections]]."
-  (mut/select-keys ::collections.schema/collection [:id :type]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:id :type :name]) [:name]))
 
 (mu/defn library-root-collections :- [:sequential LibraryRootCollection]
   "The ID and type of the top-level Collections whose type is one of `types`."
@@ -50,7 +50,7 @@
 
 (def ^:private CollectionOwnersAndLocation
   "Rows returned by [[collection-owners-and-locations]]."
-  (mut/select-keys ::collections.schema/collection [:id :personal_owner_id :location]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:id :personal_owner_id :location :name]) [:name]))
 
 (mu/defn collection-owners-and-locations :- [:sequential CollectionOwnersAndLocation]
   "The ID, owner, and location of the Collections with `collection-ids`."
@@ -59,7 +59,7 @@
 
 (def ^:private PersonalCollectionOwner
   "Rows returned by [[personal-collection-owners]]."
-  (mut/select-keys ::collections.schema/collection [:id :personal_owner_id]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:id :personal_owner_id :name]) [:name]))
 
 (mu/defn personal-collection-owners :- [:sequential PersonalCollectionOwner]
   "The ID and owner of the personal Collections among `collection-ids`."
@@ -70,7 +70,7 @@
 
 (def ^:private CollectionLocation
   "Rows returned by [[collection-locations]]."
-  (mut/select-keys ::collections.schema/collection [:id :location]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:id :location :name]) [:name]))
 
 (mu/defn collection-locations :- [:sequential CollectionLocation]
   "The ID and location of the raw collection rows with `collection-ids`."

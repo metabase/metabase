@@ -90,7 +90,7 @@
   "Generate a query for a saved Card"
   [{dataset-query :dataset_query
     card-type     :type
-    :as           card} :- ::queries.schema/card.update
+    :as           card} :- ::queries.schema/card.partial
    parameters  :- [:maybe ::parameters.schema/parameters]
    constraints :- [:maybe :map]
    middleware  :- [:maybe :map]
@@ -264,7 +264,7 @@
   However, since card.parameters is a recently added feature, there may be instances where a template-tag
   is not present in the parameters.
   This function ensures that all template-tags are converted to parameters and added to card.parameters."
-  [{:keys [parameters] :as card} :- ::queries.schema/card.update]
+  [{:keys [parameters] :as card} :- ::queries.schema/card.partial]
   (let [template-tag-parameters     (queries/card-template-tag-parameters card)
         id->template-tags-parameter (m/index-by :id template-tag-parameters)
         parameter-ids               (into #{} (map :id) parameters)
@@ -343,7 +343,7 @@
 
   `card-transform` is applied after the Card read check and must preserve the Card's identity. Result metadata from a
   transformed query is returned but not persisted to the Card."
-  [card :- ::queries.schema/card.update
+  [card :- ::queries.schema/card.partial
    export-format
    & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform]
       :or   {constraints (qp.constraints/default-query-constraints)

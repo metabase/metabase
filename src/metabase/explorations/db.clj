@@ -830,7 +830,7 @@
 
 (def ^:private CardName
   "Rows returned by [[card-names]]."
-  (mut/select-keys ::queries.schema/card [:id :name]))
+  (mut/select-keys ::queries.schema/card [:id :name :query_description]))
 
 (mu/defn card-names :- [:sequential CardName]
   "The ID and name of the Cards with `card-ids`."
@@ -844,7 +844,7 @@
 
 (def ^:private CardPresentation
   "Rows returned by [[card-presentation]]."
-  (mut/select-keys ::queries.schema/card [:name :description :display :visualization_settings]))
+  (mut/select-keys ::queries.schema/card [:name :description :display :visualization_settings :query_description]))
 
 (mu/defn card-presentation :- [:maybe CardPresentation]
   "The name, description, display, and visualization settings of the Card with `card-id`, or nil."
@@ -853,7 +853,7 @@
 
 (def ^:private CardQuery
   "Rows returned by [[card-queries]]."
-  (mut/select-keys ::queries.schema/card [:id :card_schema :database_id :dataset_query]))
+  (mut/select-keys ::queries.schema/card [:id :card_schema :database_id :dataset_query :query_description]))
 
 (mu/defn card-queries :- [:sequential CardQuery]
   "The ID, schema, Database, and query of the Cards with `card-ids`."
@@ -875,7 +875,7 @@
 
 (def ^:private MetricCardId
   "Rows returned by [[metric-card-ids]]."
-  (mut/select-keys ::queries.schema/card [:id]))
+  (mut/select-keys ::queries.schema/card [:id :query_description]))
 
 (mu/defn metric-card-ids :- [:sequential MetricCardId]
   "The `:id`s of the Cards visible to the current user as metrics, restricted to `metric-ids` when
@@ -909,7 +909,7 @@
 
 (def ^:private LibraryMetricsRootCollection
   "Rows returned by [[library-metrics-root-collection]]."
-  (mut/select-keys ::collections.schema/collection [:id :location]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:id :location :name]) [:name]))
 
 (mu/defn library-metrics-root-collection :- [:maybe LibraryMetricsRootCollection]
   "The ID and location of the library metrics Collection of `type`, or nil."

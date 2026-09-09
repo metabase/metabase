@@ -33,7 +33,7 @@
 
 (def ^:private CardNameAndDescription
   "Rows returned by [[card-name-and-description]]."
-  (mut/select-keys ::queries.schema/card [:name :description :card_schema]))
+  (mut/select-keys ::queries.schema/card [:name :description :card_schema :query_description]))
 
 (mu/defn card-name-and-description :- [:maybe CardNameAndDescription]
   "The name and description of the Card with `card-id`, or nil."

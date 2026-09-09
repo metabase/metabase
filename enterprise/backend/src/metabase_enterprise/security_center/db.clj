@@ -75,7 +75,7 @@
                              advisory
                              (assoc advisory :match_status :unknown)))))
 
-(mu/defn user-summaries-by-id :- [:map-of ms/PositiveInt (mut/select-keys ::users.schema/user [:id :first_name :last_name :email])]
+(mu/defn user-summaries-by-id :- [:map-of ms/PositiveInt (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name])]
   "A map of ID to the ID, names, and email of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-fn->fn :id identity [:model/User :id :first_name :last_name :email] :id [:in user-ids]))

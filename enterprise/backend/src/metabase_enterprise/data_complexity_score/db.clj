@@ -67,7 +67,7 @@
 
 (def ^:private UniverseCard
   "Rows returned by [[universe-cards]]."
-  (mut/select-keys ::queries.schema/card [:id :name :type :collection_id :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :name :type :collection_id :card_schema :query_description]))
 
 (mu/defn universe-cards :- [:sequential UniverseCard]
   "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with

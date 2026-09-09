@@ -31,7 +31,7 @@
 
 (def ^:private CardQueryInfo
   "Rows returned by [[card-query-info]]."
-  (mut/select-keys ::queries.schema/card [:dataset_query :type :result_metadata :card_schema]))
+  (mut/select-keys ::queries.schema/card [:dataset_query :type :result_metadata :card_schema :query_description]))
 
 (mu/defn card-query-info :- [:maybe CardQueryInfo]
   "The query, type, result metadata, and schema of the Card with `card-id`."
@@ -74,7 +74,7 @@
 
 (def ^:private CardQuery
   "Rows returned by [[card-queries]]."
-  (mut/select-keys ::queries.schema/card [:id :dataset_query :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :dataset_query :card_schema :query_description]))
 
 (mu/defn card-queries :- [:sequential CardQuery]
   "The IDs and queries of the Cards with `card-ids`."
@@ -83,7 +83,7 @@
 
 (def ^:private SourceCardDependent
   "Rows returned by [[source-card-dependents]]."
-  (mut/select-keys ::queries.schema/card [:id :source_card_id :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :source_card_id :card_schema :query_description]))
 
 (mu/defn source-card-dependents :- [:sequential SourceCardDependent]
   "The IDs and source Card IDs of the Cards whose source Card is one of `source-card-ids`."

@@ -808,8 +808,8 @@
       (let [to-clone            (conj (vec before) target)
             new-conversation-id (str (random-uuid))]
         (t2/with-transaction [_conn]
-          (metabot.db/insert-conversation! {:id                          new-conversation-id
-                                            :user_id                     user-id
+          (metabot.db/insert-conversation! new-conversation-id
+                                            {:user_id                     user-id
                                             :forked_from_conversation_id conversation-id})
           (metabot.db/insert-messages! (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
         new-conversation-id))))

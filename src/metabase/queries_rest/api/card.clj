@@ -568,8 +568,8 @@
 
 (mu/defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
-  [card-before-updates :- ::queries.schema/card.update
-   card-updates        :- ::queries.schema/card.update]
+  [card-before-updates :- ::queries.schema/card.partial
+   card-updates        :- ::queries.schema/card.partial]
   (when (api/column-will-change? :dataset_query card-before-updates card-updates)
     (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
 
@@ -584,21 +584,21 @@
     (api/check-superuser)))
 
 (mu/defn- check-allowed-to-move
-  [card-before-update :- ::queries.schema/card.update
-   card-updates       :- ::queries.schema/card.update]
+  [card-before-update :- ::queries.schema/card.partial
+   card-updates       :- ::queries.schema/card.partial]
   (when (api/column-will-change? :dashboard_id card-before-update card-updates)
     (check-allowed-to-remove-from-existing-dashboards card-before-update))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
 (mu/defn- check-update-result-metadata-data-perms
-  [card-before-updates :- ::queries.schema/card.update
-   card-updates        :- ::queries.schema/card.update]
+  [card-before-updates :- ::queries.schema/card.partial
+   card-updates        :- ::queries.schema/card.partial]
   (when (api/column-will-change? :result_metadata card-before-updates card-updates)
     (let [database-id (some :database_id [card-before-updates card-updates])
           result-metadata (:result_metadata card-updates)]
       (query-perms/check-result-metadata-data-perms database-id result-metadata))))
 
-;;; TODO -- merge this into `:metabase.queries.schema/card`
+;;; TODO -- merge this into `:metabase.queries.schema/card.partial`
 (def ^:private CardUpdateSchema
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]

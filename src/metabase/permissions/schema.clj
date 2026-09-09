@@ -47,8 +47,8 @@
   "A ApplicationPermissionsRevision as selected from the app DB: every column of `:application_permissions_revision`."
   [:map {:closed true}
    [:id         ms/PositiveInt]
-   [:before     ::application-permissions-revision.before]
-   [:after      ::application-permissions-revision.after]
+   [:before     [:maybe ::application-permissions-revision.before]]
+   [:after      [:maybe ::application-permissions-revision.after]]
    [:user_id    ::lib.schema.id/user]
    [:created_at ms/TemporalInstant]
    [:remark     [:maybe :string]]])
@@ -74,8 +74,8 @@
   "A CollectionPermissionGraphRevision as selected from the app DB: every column of `:collection_permission_graph_revision`."
   [:map {:closed true}
    [:id         ms/PositiveInt]
-   [:before     ::collection-permission-graph-revision.before]
-   [:after      ::collection-permission-graph-revision.after]
+   [:before     [:maybe ::collection-permission-graph-revision.before]]
+   [:after      [:maybe ::collection-permission-graph-revision.after]]
    [:user_id    ::lib.schema.id/user]
    [:created_at ms/TemporalInstant]
    [:remark     [:maybe :string]]])
@@ -174,8 +174,8 @@
   "A PermissionsRevision as selected from the app DB: every column of `:permissions_revision`."
   [:map {:closed true}
    [:id         ms/PositiveInt]
-   [:before     ::permissions-revision.before]
-   [:after      ::permissions-revision.after]
+   [:before     [:maybe ::permissions-revision.before]]
+   [:after      [:maybe ::permissions-revision.after]]
    [:user_id    ::lib.schema.id/user]
    [:created_at ms/TemporalInstant]
    [:remark     [:maybe :string]]])

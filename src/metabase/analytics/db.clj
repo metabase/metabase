@@ -54,7 +54,7 @@
 
 (def ^:private CollectionByType
   "Rows returned by [[collection-by-type]]."
-  (mut/select-keys ::collections.schema/collection [:id :location]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:id :location :name]) [:name]))
 
 (mu/defn collection-by-type :- [:maybe CollectionByType]
   "The id and location of a Collection of `collection-type`, or nil."
@@ -179,7 +179,7 @@
 
 (def ^:private CardCollectionId
   "Rows returned by [[card-collection-ids]]."
-  (mut/select-keys ::queries.schema/card [:collection_id :card_schema]))
+  (mut/select-keys ::queries.schema/card [:collection_id :card_schema :query_description]))
 
 (mu/defn card-collection-ids :- [:sequential CardCollectionId]
   "The Collection id and schema of the non-internal Cards."

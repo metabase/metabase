@@ -15,7 +15,21 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn persisted-info-listing :- [:sequential ::model-persistence.schema/persisted-info]
+(def ^:private PersistedInfoListing
+  "Rows returned by [[persisted-info-listing]]."
+  (mut/merge (mut/select-keys ::model-persistence.schema/persisted-info
+                              [:id :database_id :definition :active :state :error :refresh_begin :refresh_end :table_name
+                               :creator_id :card_id])
+             [:map
+              [:card_name                  [:maybe :string]]
+              [:card_archived              [:maybe :boolean]]
+              [:card_type                  [:maybe [:or :keyword :string]]]
+              [:database_name              [:maybe :string]]
+              [:collection_id              [:maybe ::lib.schema.id/collection]]
+              [:collection_name            [:maybe :string]]
+              [:collection_authority_level [:maybe [:or :keyword :string]]]]))
+
+(mu/defn persisted-info-listing :- [:sequential PersistedInfoListing]
   "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window,
   table name, creator, card name/archived/type, database name, and collection id/name/authority level) for
   unarchived model Cards, optionally narrowed to `persisted-info-id`, `db-ids`, and/or `card-id`, newest
@@ -249,7 +263,7 @@
 
 (def ^:private CardArchivedAndType
   "Rows returned by [[card-archived-and-type]]."
-  (mut/select-keys ::queries.schema/card [:archived :type :card_schema]))
+  (mut/select-keys ::queries.schema/card [:archived :type :card_schema :query_description]))
 
 (mu/defn card-archived-and-type :- [:maybe CardArchivedAndType]
   "The archived flag and type of the Card with `card-id`, or nil."

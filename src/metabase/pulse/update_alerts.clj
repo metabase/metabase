@@ -48,7 +48,7 @@
 (mu/defn- multiple-breakouts?
   "If there are multiple breakouts and a goal, we don't know which breakout to compare to the goal, so it invalidates
   the alert"
-  [{:keys [display], query :dataset_query, :as new-card} :- :metabase.queries.schema/card]
+  [{:keys [display], query :dataset_query, :as new-card} :- :metabase.queries.schema/card.partial]
   (and (get-in new-card [:visualization_settings :graph.goal_value])
        (or (line-area-bar? display)
            (progress? display))

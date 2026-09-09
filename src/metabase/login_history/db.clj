@@ -31,7 +31,7 @@
 
 (def ^:private LoginHistoryIdsForUser
   "Rows returned by [[login-history-ids-for-user]]."
-  (mut/select-keys ::login-history.schema/login-history [:id]))
+  (mut/select-keys ::login-history.schema/login-history [:id :active]))
 
 (mu/defn login-history-ids-for-user :- [:sequential LoginHistoryIdsForUser]
   "Up to `limit` LoginHistory ids of the User with `user-id`."
@@ -41,7 +41,7 @@
 
 (def ^:private LoginHistoryIdsForUserDevice
   "Rows returned by [[login-history-ids-for-user-device]]."
-  (mut/select-keys ::login-history.schema/login-history [:id]))
+  (mut/select-keys ::login-history.schema/login-history [:id :active]))
 
 (mu/defn login-history-ids-for-user-device :- [:sequential LoginHistoryIdsForUserDevice]
   "Up to `limit` LoginHistory ids of the User with `user-id` on the device with `device-id`."

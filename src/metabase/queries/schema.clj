@@ -35,10 +35,27 @@
                              nil)))}
     :any]])
 
-(mu/defn normalize-card :- [:maybe ::card.update]
-  "Normalize a `card` so it satisfies the `::card.update` schema."
+(mr/def ::card.partial
+  "A possibly partial or hydrated Card instance, as non-db code passes it around: every column optional, extra keys
+  allowed. Use [[::card]] for a row read from the app DB and [[::card.update]] for what an update accepts."
+  [:map
+   [:id                 {:optional true} [:maybe ::lib.schema.id/card]]
+   [:collection_id      {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:dashboard_id       {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
+   [:document_id        {:optional true} [:maybe ::documents.schema/document.id]]
+   [:dataset_query      {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+   [:description        {:optional true} [:maybe :string]]
+   [:name               {:optional true} [:maybe :string]]
+   [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
+   [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
+   [:type               {:optional true} [:maybe ::card.type]]
+   [:result_metadata    {:optional true} [:maybe [:ref ::card.result-metadata]]]])
+
+(mu/defn normalize-card :- [:maybe ::card.partial]
+  "Normalize a `card` so it satisfies the `::card.partial` schema."
   [card :- [:maybe :map]]
-  (lib/normalize ::card.update card))
+  (lib/normalize ::card.partial card))
 
 (mr/def ::card.dataset-query
   "The `:dataset_query` column of a Card, decoded."
@@ -65,7 +82,7 @@
   :map)
 
 (mr/def ::card
-  "A Card as selected from the app DB: every column of `:report_card`."
+  "A Card as selected from the app DB: every column of `:report_card`, plus `:query_description` added by the model's after-select hook."
   [:map {:closed true}
    [:id                                        ::lib.schema.id/card]
    [:created_at                                ms/TemporalInstant]
@@ -99,7 +116,7 @@
    [:last_used_at                              ms/TemporalInstant]
    [:view_count                                :int]
    [:archived_directly                         :boolean]
-   [:dataset_query_metrics_v2_migration_backup [:maybe :string]]
+   [:dataset_query_metrics_v2_migration_backup {:optional true} [:maybe :string]]
    [:source_card_id                            [:maybe ::lib.schema.id/card]]
    [:dashboard_id                              [:maybe ::lib.schema.id/dashboard]]
    [:card_schema                               :int]
@@ -110,7 +127,8 @@
    [:dimensions                                [:maybe [:sequential :map]]]
    [:dimension_mappings                        [:maybe [:sequential :map]]]
    [:metabot_conversation_id                   [:maybe :string]]
-   [:metabot_chart_id                          [:maybe :string]]])
+   [:metabot_chart_id                          [:maybe :string]]
+   [:query_description                         {:optional true} [:maybe :string]]])
 
 (mr/def ::card.update
   "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."

@@ -56,7 +56,7 @@
 
 (def ^:private CardDimension
   "Rows returned by [[card-dimensions]]."
-  (mut/select-keys ::queries.schema/card [:dimensions :dimension_mappings]))
+  (mut/select-keys ::queries.schema/card [:dimensions :dimension_mappings :query_description]))
 
 (mu/defn card-dimensions :- [:maybe CardDimension]
   "The dimensions and dimension mappings of the Card with `card-id`, or nil."

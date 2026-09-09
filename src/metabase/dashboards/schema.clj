@@ -20,6 +20,15 @@
     [:map
      [:type {:optional true} [:ref ::lib.schema.parameter/type]]]]])
 
+(mr/def ::dashboard.partial
+  "A possibly partial or hydrated Dashboard instance, as non-db code passes it around: every column optional, extra
+  keys allowed. Use [[::dashboard]] for a row read from the app DB and [[::dashboard.update]] for what an update
+  accepts."
+  [:map
+   [:id         {:optional true} ::lib.schema.id/dashboard]
+   [:parameters {:optional true} [:maybe ::parameters]]
+   [:dashcards  {:optional true} [:maybe [:sequential ::dashcard]]]])
+
 (mr/def ::dashboard.parameter
   "One entry of the `:parameters` column of a Dashboard, decoded."
   :map)
@@ -64,7 +73,7 @@
    [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
-   [:parameters              {:optional true} [:maybe [:sequential :map]]]
+   [:parameters              {:optional true} [:maybe ::parameters]]
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]

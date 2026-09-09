@@ -12,7 +12,7 @@
 
 (def ^:private UnarchivedCardIdsAndPublicUuidsByPrefix
   "Rows returned by [[unarchived-card-ids-and-public-uuids-by-prefix]]."
-  (mut/select-keys ::queries.schema/card [:id :public_uuid]))
+  (mut/select-keys ::queries.schema/card [:id :public_uuid :query_description]))
 
 (mu/defn unarchived-card-ids-and-public-uuids-by-prefix :- [:sequential UnarchivedCardIdsAndPublicUuidsByPrefix]
   "The `:id` and `:public_uuid` of the unarchived Cards whose public uuid prefix is `prefix`."

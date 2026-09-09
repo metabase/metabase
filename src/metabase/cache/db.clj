@@ -39,7 +39,7 @@
 
 (def ^:private CardCollectionId
   "Rows returned by [[card-collection-id]]."
-  (mut/select-keys ::queries.schema/card [:collection_id]))
+  (mut/select-keys ::queries.schema/card [:collection_id :query_description]))
 
 (mu/defn card-collection-id :- [:maybe CardCollectionId]
   "The `:collection_id` of the Card with `card-id`, or nil."

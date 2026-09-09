@@ -72,7 +72,7 @@
 
 (def ^:private FirstLogin
   "Rows returned by [[first-login]]."
-  (mut/select-keys ::login-history.schema/login-history [:timestamp]))
+  (mut/select-keys ::login-history.schema/login-history [:timestamp :active]))
 
 (mu/defn first-login :- [:maybe FirstLogin]
   "The timestamp of the earliest LoginHistory of the User with `user-id`, or nil."

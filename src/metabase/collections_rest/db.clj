@@ -93,7 +93,7 @@
 
 (def ^:private CollectionLocationColumn
   "Rows returned by [[collection-location-columns]]."
-  (mut/select-keys ::collections.schema/collection [:location :id :type]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:location :id :type :name]) [:name]))
 
 (mu/defn collection-location-columns :- [:maybe CollectionLocationColumn]
   "The location, id, and type of the Collection with `id`, or nil."

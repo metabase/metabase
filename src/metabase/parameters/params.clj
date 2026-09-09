@@ -78,7 +78,7 @@
 
     (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
   [template-tag-name :- :string
-   card              :- :metabase.queries.schema/card]
+   card              :- :metabase.queries.schema/card.partial]
   (or (some-> card
               :dataset_query
               not-empty
@@ -97,7 +97,7 @@
   [target
    ;; TODO (Cam 9/25/25) -- `card` should actually be required but I don't have all day to fix broken tests from
    ;; before I schematized this.
-   card   :- [:maybe :metabase.queries.schema/card]]
+   card   :- [:maybe :metabase.queries.schema/card.partial]]
   (let [target (lib/normalize ::lib.schema.parameter/target target)]
     (or
      (when card
@@ -211,7 +211,7 @@
 
 (mu/defn- card->filterable-columns-query :- [:maybe ::lib.schema/query]
   "Build the lib query whose filterable columns we want for `card` at `stage-number`, or nil when `card` has no query."
-  [card         :- :metabase.queries.schema/card
+  [card         :- :metabase.queries.schema/card.partial
    stage-number :- :int]
   (when (and (seq (:dataset_query card)) (pos-int? (:database_id card)))
     (let [metadata-provider (lib-be/application-database-metadata-provider (:database_id card))
@@ -225,7 +225,7 @@
 
 (mu/defn- filterable-columns-for-query :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get the filterable columns of `card`'s query at `stage-number`."
-  [card         :- :metabase.queries.schema/card
+  [card         :- :metabase.queries.schema/card.partial
    stage-number :- :int]
   (when-let [query (card->filterable-columns-query card stage-number)]
     (when (and (>= stage-number -1) (< stage-number (lib/stage-count query)))
@@ -279,7 +279,7 @@
   {:card-id->filterable-columns {}
    :param-id->field-ids         {}})
 
-(mu/defn- param-dashcard-info->card :- [:maybe :metabase.queries.schema/card]
+(mu/defn- param-dashcard-info->card :- [:maybe :metabase.queries.schema/card.partial]
   "The Card on `param-dashcard-info`'s dashcard that its parameter mapping targets: matched by the mapping's `:card_id`
   against the dashcard's main Card and series Cards, falling back to the main Card when the mapping has no `:card_id`."
   [{:keys [param-mapping dashcard] :as _param-dashcard-info} :- ::param-dashcard-info]

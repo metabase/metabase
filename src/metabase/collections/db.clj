@@ -30,7 +30,7 @@
 
 (def ^:private CollectionIdAndNamespace
   "Rows returned by [[collection-id-and-namespace]]."
-  (mut/select-keys ::collections.schema/collection [:id :namespace]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:id :namespace :name]) [:name]))
 
 (mu/defn collection-id-and-namespace :- [:maybe CollectionIdAndNamespace]
   "The ID and namespace of the ::collections.schema/collection with `collection-id`, or nil."

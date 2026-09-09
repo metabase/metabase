@@ -218,7 +218,7 @@
 
 (def ^:private CardsById
   "Rows returned by [[cards-by-id]]."
-  (mut/select-keys ::queries.schema/card [:id :dataset_query :result_metadata :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :dataset_query :result_metadata :card_schema :query_description]))
 
 (mu/defn cards-by-id :- [:map-of ::lib.schema.id/card CardsById]
   "A map of Card ID to the query, result metadata, and schema of the Cards with `card-ids`."
@@ -227,7 +227,7 @@
 
 (def ^:private CardsResultMetadata
   "Rows returned by [[cards-result-metadata]]."
-  (mut/select-keys ::queries.schema/card [:id :result_metadata :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :result_metadata :card_schema :query_description]))
 
 (mu/defn cards-result-metadata :- [:sequential CardsResultMetadata]
   "The `:id`, `:result_metadata`, and `:card_schema` of the Cards with `card-ids`."
@@ -241,7 +241,7 @@
 
 (def ^:private SandboxingCard
   "Rows returned by [[sandboxing-cards]]."
-  (mut/select-keys ::queries.schema/card [:id :dataset_query :database_id :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :dataset_query :database_id :card_schema :query_description]))
 
 (mu/defn sandboxing-cards :- [:sequential SandboxingCard]
   "The `:id`, `:dataset_query`, `:database_id`, and `:card_schema` of the Cards Sandboxes are built on."

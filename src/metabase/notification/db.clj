@@ -333,8 +333,8 @@
   (t2/insert-returning-pk! :model/NotificationHandler handler))
 
 (mu/defn recipients-for-handlers :- [:sequential ::notification.schema/notification-recipient]
-  "The NotificationRecipients of the NotificationHandlers with `handler-ids`."
-  [handler-ids :- [:sequential ms/PositiveInt]]
+  "The NotificationRecipients of the NotificationHandlers with `handler-ids` (nil entries are ignored)."
+  [handler-ids :- [:sequential [:maybe ms/PositiveInt]]]
   (t2/select :model/NotificationRecipient :notification_handler_id [:in handler-ids]))
 
 (mu/defn raw-value-recipients-for-handler :- [:sequential ::notification.schema/notification-recipient]

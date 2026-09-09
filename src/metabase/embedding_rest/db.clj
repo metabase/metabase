@@ -23,7 +23,7 @@
 
 (def ^:private CardEmbeddingFlag
   "Rows returned by [[card-embedding-flags]]."
-  (mut/select-keys ::queries.schema/card [:enable_embedding :archived]))
+  (mut/select-keys ::queries.schema/card [:enable_embedding :archived :query_description]))
 
 (mu/defn card-embedding-flags :- [:maybe CardEmbeddingFlag]
   "The embedding-enabled and archived flags of the Card with `card-id`, or nil."

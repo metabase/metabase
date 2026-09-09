@@ -280,7 +280,7 @@
 
 (def ^:private CardType
   "Rows returned by [[card-types]]."
-  (mut/select-keys ::queries.schema/card [:id :type :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :type :card_schema :query_description]))
 
 (mu/defn card-types :- [:sequential CardType]
   "The `:id`, `:type`, and `:card_schema` of the Cards with `card-ids`."
@@ -324,7 +324,7 @@
 
 (def ^:private CollectionSyncState
   "Rows returned by [[collection-sync-states]]."
-  (mut/select-keys ::collections.schema/collection [:id :is_remote_synced]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:id :is_remote_synced :name]) [:name]))
 
 (mu/defn collection-sync-states :- [:sequential CollectionSyncState]
   "The `:id` and `:is_remote_synced` of the Collections with `collection-ids`."
@@ -362,7 +362,7 @@
 
 (def ^:private CollectionsInNamespace
   "Rows returned by [[collections-in-namespace]]."
-  (mut/select-keys ::collections.schema/collection [:id :entity_id]))
+  (mut/optional-keys (mut/select-keys ::collections.schema/collection [:id :entity_id :name]) [:name]))
 
 (mu/defn collections-in-namespace :- [:sequential CollectionsInNamespace]
   "The `:id` and `:entity_id` of the Collections of `namespace-name`."

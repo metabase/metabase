@@ -118,7 +118,8 @@
               [:assistant_message_count :int]
               [:total_tokens            :int]
               [:last_message_at         [:maybe ms/TemporalInstant]]
-              [:profile_id              [:maybe :string]]]))
+              [:profile_id              [:maybe :string]]
+              [:cache_read_tokens       :int]]))
 
 (mu/defn list-conversations :- [:sequential ListedConversation]
   "A page of conversation summary rows (see [[conversation-list-select]]), restricted to `user-id`, `group-id`,

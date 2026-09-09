@@ -227,7 +227,7 @@
 
 (def ^:private CardScopeColumn
   "Rows returned by [[card-scope-columns]]."
-  (mut/select-keys ::queries.schema/card [:dataset_query :collection_id :database_id :display]))
+  (mut/select-keys ::queries.schema/card [:dataset_query :collection_id :database_id :display :query_description]))
 
 (mu/defn card-scope-columns :- [:maybe CardScopeColumn]
   "The query, Collection id, Database id, and display of the Card with `card-id`, or nil."
