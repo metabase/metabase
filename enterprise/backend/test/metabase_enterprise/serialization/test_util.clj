@@ -77,7 +77,7 @@
    (fn [^javax.sql.DataSource data-source]
      ;; DB should stay open as long as `conn` is held open.
      (with-open [_conn (.getConnection data-source)]
-       (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script)])
+       (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script-empty)])
        (with-db data-source (mdb/finish-db-setup!))
        ;; These app DBs should contain only data loaded by the test. Prevent `with-temp` from prewarming the
        ;; test-data Database, which would add an unexpected Database to serialization extracts.
