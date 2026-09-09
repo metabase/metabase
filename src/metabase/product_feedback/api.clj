@@ -1,9 +1,9 @@
 (ns metabase.product-feedback.api
   (:require
-   [clj-http.client :as http]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.product-feedback.settings :as product-feedback.settings]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -15,14 +15,16 @@
    source :- ms/NonBlankString
    email :- [:maybe ms/NonBlankString]]
   (try
-    (http/post (or product-feedback.settings/product-feedback-url
-                   ;; this error should mostly be dev-facing
-                   (throw (ex-info "metabase.product-feedback.settings/product-feedback-url (MB_PRODUCT_FEEDBACK_URL) is not set"
-                                   {})))
-               {:content-type :json
-                :body         (json/encode {:comments comments
-                                            :source   source
-                                            :email    email})})
+    (u.http/post (or product-feedback.settings/product-feedback-url
+                     ;; this error should mostly be dev-facing
+                     (throw (ex-info "metabase.product-feedback.settings/product-feedback-url (MB_PRODUCT_FEEDBACK_URL) is not set"
+                                     {})))
+                 {;; URL is hardcoded in prod, env-set elsewhere
+                  :network-policy :allow-all
+                  :content-type   :json
+                  :body           (json/encode {:comments comments
+                                                :source   source
+                                                :email    email})})
     (catch Exception e
       (log/warn (ex-message e))
       (throw e))))

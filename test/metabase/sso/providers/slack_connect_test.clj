@@ -1,6 +1,5 @@
 (ns metabase.sso.providers.slack-connect-test
   (:require
-   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
@@ -11,6 +10,7 @@
    [metabase.sso.settings :as sso-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.http :as u.http]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -134,7 +134,7 @@
        slack-connect-authentication-mode "link-only"]
       (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                   (fn [_issuer] slack-discovery-doc)
-                                  http/post
+                                  u.http/post
                                   (fn [_url _opts]
                                     {:status 200
                                      :body {:id_token "valid-token"
@@ -165,7 +165,7 @@
        slack-connect-attribute-team-id "https://slack.com/team_id"]
       (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                   (fn [_issuer] slack-discovery-doc)
-                                  http/post
+                                  u.http/post
                                   (fn [_url _opts]
                                     {:status 200
                                      :body {:id_token "valid-token"
@@ -208,7 +208,7 @@
                                       {:valid? true
                                        :nonce "test-nonce"
                                        :redirect "/"})
-                                    http/post
+                                    u.http/post
                                     (fn [_url _opts]
                                       {:status 200
                                        :body {:id_token "valid-token"
@@ -254,7 +254,7 @@
                                       {:valid? true
                                        :nonce "test-nonce"
                                        :redirect "/"})
-                                    http/post
+                                    u.http/post
                                     (fn [_url _opts]
                                       {:status 200
                                        :body {:id_token "valid-token"
@@ -308,7 +308,7 @@
                                         {:valid? true
                                          :nonce "test-nonce"
                                          :redirect "/"})
-                                      http/post
+                                      u.http/post
                                       (fn [_url _opts]
                                         {:status 200
                                          :body {:id_token "valid-token"
@@ -354,7 +354,7 @@
                                         {:valid? true
                                          :nonce "test-nonce"
                                          :redirect "/"})
-                                      http/post
+                                      u.http/post
                                       (fn [_url _opts]
                                         {:status 200
                                          :body {:id_token "valid-token"

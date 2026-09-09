@@ -1,12 +1,12 @@
 (ns ^:synchronized metabase-enterprise.custom-viz-plugin.cache-test
   (:require
-   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase-enterprise.custom-viz-plugin.test-util :as cvp.tu]
    [metabase.config.core :as config]
    [metabase.test :as mt]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -154,23 +154,23 @@
 
 (deftest fetch-dev-manifest-test
   (testing "returns a well-formed manifest"
-    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
-                                        :body    (json/encode {:name "dev-viz"})})]
+    (with-redefs [u.http/get (constantly {:headers {:content-type "application/json"}
+                                          :body    (json/encode {:name "dev-viz"})})]
       (is (= {:name "dev-viz"}
              (cache/fetch-dev-manifest "http://localhost:5174")))))
   (testing "returns nil when the manifest cannot be fetched"
-    (with-redefs [http/get (fn [& _] (throw (Exception. "connection refused")))]
+    (with-redefs [u.http/get (fn [& _] (throw (Exception. "connection refused")))]
       (is (nil? (cache/fetch-dev-manifest "http://localhost:5174")))))
   (testing "rejects a structurally invalid manifest, same as the upload path"
-    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
-                                        :body    (json/encode {:name 123})})]
+    (with-redefs [u.http/get (constantly {:headers {:content-type "application/json"}
+                                          :body    (json/encode {:name 123})})]
       (is (thrown-with-msg? Exception #"is invalid"
                             (cache/fetch-dev-manifest "http://localhost:5174"))))))
 
 (deftest dev-fetch-surfaces-validation-errors-test
   (testing "a URL that fails validation surfaces as a 400, not as a silently-down dev server --
             DNS can change between saving the URL and fetching from it"
-    (with-redefs [http/get (fn [& _] (throw (Exception. "should not be reached")))]
+    (with-redefs [u.http/get (fn [& _] (throw (Exception. "should not be reached")))]
       (doseq [[url pattern] [["https://8.8.8.8" #"loopback or private"]
                              ["file:///etc/passwd" #"http or https"]]]
         (let [e (is (thrown-with-msg? Exception pattern (cache/fetch-dev-bundle url)))]
@@ -180,21 +180,41 @@
         (let [e (is (thrown-with-msg? Exception pattern (cache/fetch-dev-asset url "icon.svg")))]
           (is (= 400 (:status-code (ex-data e)))))))))
 
+(deftest dev-fetch-surfaces-a-connect-time-refusal-test
+  (testing "an address refused while connecting surfaces as a 400, not as a dev server that happens to be down --
+            the upfront check passed, so the resolver inside the connection is the only thing left to catch a rebind"
+    (doseq [[shape thrown]
+            [["thrown directly"
+              (ex-info "Refusing to connect to a non-permitted network address" {:blocked-address true})]
+             ;; the refusal is thrown from inside the connection, so it can reach the caller already wrapped
+             ["wrapped in another exception"
+              (ex-info "connect failed" {}
+                       (ex-info "Refusing to connect to a non-permitted network address"
+                                {:blocked-address true}))]]]
+      (testing shape
+        (with-redefs [u.http/get (fn [& _] (throw thrown))]
+          (doseq [[what f] [["fetch-dev-bundle"   #(cache/fetch-dev-bundle "http://localhost:5174")]
+                            ["fetch-dev-manifest" #(cache/fetch-dev-manifest "http://localhost:5174")]
+                            ["fetch-dev-asset"    #(cache/fetch-dev-asset "http://localhost:5174" "icon.svg")]]]
+            (testing what
+              (let [e (is (thrown-with-msg? Exception #"loopback or private" (f)))]
+                (is (= 400 (:status-code (ex-data e))))))))))))
+
 (deftest dev-fetch-requires-the-dev-servers-content-type-test
   (testing "a response that isn't what the dev server would have served is refused, not parsed --
             a dev URL may still be pointed at an internal service, and this bounds what it can hand back"
     (doseq [[what ctype body] [["an internal admin page" "text/html" "<html>secrets</html>"]
                                ["a response with no content type" nil "{\"name\":\"x\"}"]]]
       (testing what
-        (with-redefs [http/get (constantly {:headers (when ctype {:content-type ctype})
-                                            :body    body})]
+        (with-redefs [u.http/get (constantly {:headers (when ctype {:content-type ctype})
+                                              :body    body})]
           (is (thrown-with-msg? Exception #"Dev bundle URL returned"
                                 (cache/fetch-dev-manifest "http://localhost:5174")))
           (is (thrown-with-msg? Exception #"Dev bundle URL returned"
                                 (cache/fetch-dev-bundle "http://localhost:5174")))))))
   (testing "the content types the CLI's own dev server serves are accepted"
-    (with-redefs [http/get (constantly {:headers {:content-type "application/javascript; charset=utf-8"}
-                                        :body    "export default {}"})]
+    (with-redefs [u.http/get (constantly {:headers {:content-type "application/javascript; charset=utf-8"}
+                                          :body    "export default {}"})]
       (is (= "export default {}" (:content (cache/fetch-dev-bundle "http://localhost:5174")))
           "a charset parameter on the header is stripped before comparison"))))
 

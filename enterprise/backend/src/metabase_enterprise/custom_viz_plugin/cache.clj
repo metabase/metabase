@@ -13,7 +13,6 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
-   [clj-http.client :as http]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
@@ -319,7 +318,7 @@
   "Re-throw `e` as a 400 if it is the network policy refusing to connect, otherwise do nothing. Without this
    the surrounding catch would report a refused address as a dev server that happens to be down."
   [^Exception e ^String url]
-  (when (:ssrf (ex-data e))
+  (when (u.http/blocked-address-ex? e)
     (throw (disallowed-address-ex "Dev bundle URL" url))))
 
 (defn dev-base-url
@@ -334,11 +333,11 @@
   (str (dev-base-url base-url) relative-path))
 
 (def dev-http-opts
-  "clj-http options for every fetch of a caller-supplied dev bundle URL, including the SSE proxy in the api ns."
+  "`util.http` options for every fetch of a caller-supplied dev bundle URL, including the SSE proxy in the api ns."
   {:socket-timeout     5000
    :connection-timeout 5000
    :redirect-strategy  :none
-   :dns-resolver       (u.http/network-policy-dns-resolver dev-network-policy)})
+   :network-policy     dev-network-policy})
 
 ;; Content-type
 ;; The address policy has to keep allowing loopback and private addresses, so a dev URL can still be pointed
@@ -368,7 +367,7 @@
   ;; they are, not be swallowed by the catch as a dev server that happens to be down
   (let [url (dev-url base-url bundle-rel-path)]
     (when-let [resp (try
-                      (http/get url (assoc dev-http-opts :as :string))
+                      (u.http/get url (assoc dev-http-opts :as :string))
                       (catch Exception e
                         (rethrow-if-refused! e base-url)
                         (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
@@ -388,7 +387,7 @@
   ;; as in [[fetch-dev-bundle]], validate the URL outside the try
   (let [url (dev-url base-url (manifest/manifest-path))]
     (when-let [parsed (when-let [resp (try
-                                        (http/get url (assoc dev-http-opts :as :string))
+                                        (u.http/get url (assoc dev-http-opts :as :string))
                                         (catch Exception e
                                           (rethrow-if-refused! e base-url)
                                           (log/debugf "No manifest at %s: %s" base-url (ex-message e))
@@ -407,7 +406,7 @@
   ^bytes [^String base-url ^String asset-name]
   (let [url  (dev-url base-url (asset-rel-path asset-name))
         resp (try
-               (http/get url (assoc dev-http-opts :as :byte-array))
+               (u.http/get url (assoc dev-http-opts :as :byte-array))
                (catch Exception e
                  (rethrow-if-refused! e base-url)
                  (throw e)))]
