@@ -5,12 +5,15 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.segments.models.segment]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]
    [methodical.core :as methodical])
   (:import (clojure.lang ExceptionInfo)))
+
+(comment metabase.segments.models.segment/keep-me)
 
 ;;; TESTS FOR CHECK (ETC)
 
