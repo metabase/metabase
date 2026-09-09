@@ -6,24 +6,16 @@
    [malli.util :as mut]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
-   [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.measures.schema :as measures.schema]
    [metabase.models.interface :as mi]
-   [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
-   [metabase.segments.schema :as segments.schema]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (def ^:private VisibleOpts
@@ -53,19 +45,6 @@
     [:types {:optional true} [:set EntityType]]
     [:entity-type {:optional true} EntityType]
     [:ids {:optional true} [:sequential ::deps.dependency-types/entity-id]]]])
-
-(def ^:private AnyDependencyInstance
-  "A Toucan instance of any of the models the dependencies module tracks."
-  [:or
-   ::queries.schema/card
-   ::warehouse-schema.schema/table
-   ::native-query-snippets.schema/native-query-snippet
-   ::transforms.schema/transform
-   ::dashboards.schema/dashboard
-   ::documents.schema/document
-   ::sandbox.schema/sandbox
-   ::segments.schema/segment
-   ::measures.schema/measure])
 
 ;;; ------------------------------------------------ Graph edge restrictions ------------------------------------------------
 ;;; The dependency graph is traversed generically over every entity type the module knows about; these private
@@ -224,7 +203,7 @@
       1 (first fragments)
       (into [:and] fragments))))
 
-(mu/defn dependency-edges :- [:sequential ::dependencies.schema/dependency]
+(mu/defn dependency-edges
   "The Dependencies from the entities of type `entity-type` with `entity-ids`, where `src-type`/`src-id` name the
   Dependency columns identifying those entities and `dst-type`/`dst-id` name the columns identifying the related
   entities on the other side of the edge, optionally restricted by `destination-restriction` (applied to
@@ -248,7 +227,7 @@
                            [(edge-restriction-expr dst-type dst-id destination-restriction)
                             (edge-restriction-expr src-type src-id source-restriction)])}))
 
-(mu/defn finding-errors-from-sources :- [:sequential ::dependencies.schema/analysis-finding-error]
+(mu/defn finding-errors-from-sources
   "The AnalysisFindingErrors caused by any of the entities `source-entity-type` `source-entity-ids`, whose analyzed
   entity is visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
   [source-entity-type  :- EntityType
@@ -262,7 +241,7 @@
                                              {:user-id user-id :is-superuser? is-superuser?
                                               :is-data-analyst? is-data-analyst?})]}))
 
-(mu/defn finding-errors-for-entities-with-visible-sources :- [:sequential ::dependencies.schema/analysis-finding-error]
+(mu/defn finding-errors-for-entities-with-visible-sources
   "The AnalysisFindingErrors analyzing any of the entities `entity-type` `entity-ids`, excluding those whose source
   entity exists but is not visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
   [entity-type :- EntityType
@@ -498,7 +477,7 @@
    [:is-superuser? {:optional true} [:maybe :boolean]]
    [:is-data-analyst? {:optional true} [:maybe :boolean]]])
 
-(mu/defn dependency-item-ids :- [:sequential [:tuple :keyword ms/PositiveInt]]
+(mu/defn dependency-item-ids
   "A page of `[entity-type entity-id]` pairs for `query-type` (`:unreferenced` or `:breaking`), restricted to
   `entity-types`, `card-types` (applied only to `:card` entities), `search-text` (nil for none), and
   `include-personal-collections?`; sorted by `sort-column` (`:name`, `:location`, `:dependents-errors`, or
@@ -514,7 +493,7 @@
                           :limit limit))
          (map (fn [{:keys [entity_id entity_type]}] [(keyword entity_type) entity_id])))))
 
-(mu/defn dependency-item-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn dependency-item-count
   "The total count of items matching the same criteria as [[dependency-item-ids]] (ignoring sort direction, offset,
   and limit); throws when `user-id` is missing."
   [{:keys [entity-types] :as params} :- DependencyItemParams]
@@ -524,13 +503,7 @@
         first
         :total)))
 
-(def ^:private BrokenEntityPair
-  "Rows returned by [[broken-entity-pairs]]."
-  [:map {:closed true}
-   [:entity_type :string]
-   [:entity_id   ms/PositiveInt]])
-
-(mu/defn broken-entity-pairs :- [:sequential BrokenEntityPair]
+(mu/defn broken-entity-pairs
   "The `[:analyzed_entity_type :analyzed_entity_id]` pairs whose analysis failed and were caused by the entity
   `source-entity-type` `source-entity-id`, restricted to `dependent-types` and `dependent-card-types` (each nil
   for no restriction), visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
@@ -570,93 +543,77 @@
 
 ;;; ---------------------------------------------------- Entities ----------------------------------------------------
 
-(mu/defn instances :- [:sequential AnyDependencyInstance]
+(mu/defn instances
   "The instances of the entity type `entity-type` with `ids`."
   [entity-type :- ::deps.dependency-types/dependency-types
    ids         :- [:set ::deps.dependency-types/entity-id]]
   (t2/select (deps.dependency-types/dependency-type->model entity-type) :id [:in ids]))
 
-(mu/defn instances-with-columns :- [:sequential AnyDependencyInstance]
+(mu/defn instances-with-columns
   "The `columns` of the instances of the entity type `entity-type` with `ids`."
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
   (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns) :id [:in ids]))
 
-(mu/defn instance-with-columns :- [:maybe AnyDependencyInstance]
+(mu/defn instance-with-columns
   "The `columns` of the instance of the entity type `entity-type` with `id`, or nil."
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    id          :- ::deps.dependency-types/entity-id]
   (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns) :id id))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn card-types-by-id :- [:map-of ms/PositiveInt :keyword]
+(mu/defn card-types-by-id
   "A map of Card ID to type for `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in card-ids]))
 
-(def ^:private CardDatabaseId
-  "Rows returned by [[card-database-ids]]."
-  (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :database_id :card_schema :query_description :source_card_id]) [:source_card_id]))
-
-(mu/defn card-database-ids :- [:sequential CardDatabaseId]
+(mu/defn card-database-ids
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
 
-(mu/defn set-card-result-metadata! :- :int
+(mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id`, returning the number updated."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
   (t2/update! :model/Card card-id {:result_metadata result-metadata}))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(def ^:private TableDatabaseId
-  "Rows returned by [[table-database-ids]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id]))
-
-(mu/defn table-database-ids :- [:sequential TableDatabaseId]
+(mu/defn table-database-ids
   "The `:id` and `:db_id` of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id] :id [:in table-ids]))
 
-(mu/defn table-id-by-name :- [:maybe ::lib.schema.id/table]
+(mu/defn table-id-by-name
   "The ID of the Table named `table-name` in `schema` of the Database with `db-id`, or nil."
   [db-id      :- ::lib.schema.id/database
    schema     :- [:maybe :string]
    table-name :- :string]
   (t2/select-one-fn :id :model/Table :db_id db-id :schema schema :name table-name))
 
-(def ^:private TransformSource
-  "Rows returned by [[transform-sources]]."
-  (mut/select-keys ::transforms.schema/transform [:id :source]))
-
-(mu/defn transform-sources :- [:sequential TransformSource]
+(mu/defn transform-sources
   "The `:id` and `:source` of the Transforms with `transform-ids`."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select [:model/Transform :id :source] :id [:in transform-ids]))
 
-(mu/defn transform-ids-of-source-database :- [:maybe [:set ::lib.schema.id/transform]]
+(mu/defn transform-ids-of-source-database
   "The IDs of the Transforms reading from the Database with `db-id`."
   [db-id :- ::lib.schema.id/database]
   (t2/select-pks-set :model/Transform :source_database_id db-id))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
-(def ^:private DependenciesFrom
-  "Rows returned by [[dependencies-from]]."
-  (mut/select-keys ::dependencies.schema/dependency [:id :to_entity_type :to_entity_id]))
-
-(mu/defn dependencies-from :- [:sequential DependenciesFrom]
+(mu/defn dependencies-from
   "The `:id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entity `entity-type` `entity-id`."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
@@ -664,7 +621,7 @@
              :from_entity_type entity-type
              :from_entity_id entity-id))
 
-(mu/defn dependency-exists? :- :boolean
+(mu/defn dependency-exists?
   "Whether the entity `from-type` `from-id` depends on the entity `to-type` `to-id`."
   [from-type :- EntityType
    from-id   :- ms/PositiveInt
@@ -674,7 +631,7 @@
               :from_entity_type from-type :from_entity_id from-id
               :to_entity_type to-type :to_entity_id to-id))
 
-(mu/defn insert-dependencies! :- :int
+(mu/defn insert-dependencies!
   "Insert the Dependency `rows`, returning the number inserted."
   [rows :- [:sequential [:map {:closed true}
                          [:id               {:optional true} ms/PositiveInt]
@@ -684,7 +641,7 @@
                          [:to_entity_id     {:optional true} [:maybe ms/PositiveInt]]]]]
   (t2/insert! :model/Dependency rows))
 
-(mu/defn retarget-dependency! :- :int
+(mu/defn retarget-dependency!
   "Point the Dependency of the entity `from-type` `from-id` on the entity `old-to-type` `old-to-id` at the entity
   `new-to-type` `new-to-id`, returning the number updated."
   [from-type   :- EntityType
@@ -698,12 +655,12 @@
                :to_entity_type old-to-type :to_entity_id old-to-id}
               {:to_entity_type new-to-type :to_entity_id new-to-id}))
 
-(mu/defn delete-dependencies! :- :int
+(mu/defn delete-dependencies!
   "Delete the Dependencies with `dependency-ids`, returning the number deleted."
   [dependency-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Dependency :id [:in dependency-ids]))
 
-(mu/defn delete-dependency! :- :int
+(mu/defn delete-dependency!
   "Delete the Dependency of the entity `from-type` `from-id` on the entity `to-type` `to-id`, returning the number
   deleted."
   [from-type :- EntityType
@@ -714,13 +671,13 @@
               :from_entity_type from-type :from_entity_id from-id
               :to_entity_type to-type :to_entity_id to-id))
 
-(mu/defn delete-dependencies-from! :- :int
+(mu/defn delete-dependencies-from!
   "Delete the Dependencies of the entity `entity-type` `entity-id`, returning the number deleted."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
   (t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id entity-id))
 
-(mu/defn downstream-table-ids-of-transform :- [:maybe [:set ms/PositiveInt]]
+(mu/defn downstream-table-ids-of-transform
   "The IDs of the Tables that depend on the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-fn-set :from_entity_id :model/Dependency
@@ -728,7 +685,7 @@
                     :to_entity_type   :transform
                     :to_entity_id     transform-id))
 
-(mu/defn delete-table-dependencies-on-transform! :- :int
+(mu/defn delete-table-dependencies-on-transform!
   "Delete the Dependencies of the Tables with `table-ids` on the Transform with `transform-id`, returning the
   number deleted."
   [table-ids    :- [:sequential ::lib.schema.id/table]
@@ -741,19 +698,19 @@
 
 ;;; ------------------------------------------------ Dependency status ------------------------------------------------
 
-(mu/defn dependency-status :- [:maybe ::dependencies.schema/dependency-status]
+(mu/defn dependency-status
   "The DependencyStatus of the entity `entity-type` `entity-id`, or nil."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
   (t2/select-one :model/DependencyStatus :entity_type entity-type :entity_id entity-id))
 
-(mu/defn delete-dependency-status! :- :int
+(mu/defn delete-dependency-status!
   "Delete the DependencyStatus of the entity `entity-type` `entity-id`, returning the number deleted."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
   (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id entity-id))
 
-(mu/defn mark-dependency-status-stale! :- ms/PositiveInt
+(mu/defn mark-dependency-status-stale!
   "Mark the DependencyStatus of `entity-type` `entity-id` as stale for dependency recalculation, creating it if it
   doesn't exist. Resets retry state so previously-failed entities get a fresh chance."
   [entity-type :- EntityType
@@ -766,7 +723,7 @@
        {:stale true :fail_count 0 :next_retry_at nil :terminal false}
        {:stale true :dependency_analysis_version 0}))))
 
-(mu/defn upsert-dependency-status! :- ms/PositiveInt
+(mu/defn upsert-dependency-status!
   "Upsert the DependencyStatus of `entity-type` `entity-id`, setting stale=false, `dependency_analysis_version` to
   `current-version`, and clearing any failure state."
   [entity-type     :- EntityType
@@ -781,7 +738,7 @@
       :fail_count 0
       :next_retry_at nil})))
 
-(mu/defn record-dependency-status-failure! :- ms/PositiveInt
+(mu/defn record-dependency-status-failure!
   "Upsert the DependencyStatus of `entity-type` `entity-id`, creating it if needed. `update-fn` receives the
   existing DependencyStatus row (or nil if none exists) and must return the columns to set."
   [entity-type :- EntityType
@@ -792,12 +749,12 @@
    {:entity_type entity-type :entity_id entity-id}
    update-fn))
 
-(mu/defn pending-retry-exists? :- :boolean
+(mu/defn pending-retry-exists?
   "Whether a non-terminal DependencyStatus is waiting for a retry."
   []
   (t2/exists? :model/DependencyStatus :terminal false :next_retry_at [:not= nil]))
 
-(mu/defn instances-for-dependency-calculation :- [:sequential :map]
+(mu/defn instances-for-dependency-calculation
   "Up to `batch-size` instances of the entity type `entity-type` without a DependencyStatus, or whose status is
   stale or below `current-version`, is not terminal, and whose retry time has passed at `now`; stale ones first."
   [entity-type     :- ::deps.dependency-types/dependency-types
@@ -829,7 +786,7 @@
 
 ;;; ------------------------------------------------ Analysis findings ------------------------------------------------
 
-(mu/defn finding-id :- [:maybe ms/PositiveInt]
+(mu/defn finding-id
   "The ID of the AnalysisFinding of the entity `entity-type` `entity-id`, or nil."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
@@ -837,7 +794,7 @@
                     :analyzed_entity_type entity-type
                     :analyzed_entity_id entity-id))
 
-(mu/defn insert-finding! :- :int
+(mu/defn insert-finding!
   "Insert the AnalysisFinding `row`, returning the number inserted."
   [row :- [:map {:closed true}
            [:id                   {:optional true} ms/PositiveInt]
@@ -849,13 +806,13 @@
            [:analyzed_entity_id   {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/insert! :model/AnalysisFinding row))
 
-(mu/defn update-finding! :- :int
+(mu/defn update-finding!
   "Apply `changes` to the AnalysisFinding with `finding-id`, returning the number updated."
   [finding-id :- ms/PositiveInt
    changes    :- (mut/select-keys ::dependencies.schema/analysis-finding.update [:analyzed_at :analysis_version :result :stale])]
   (t2/update! :model/AnalysisFinding finding-id changes))
 
-(mu/defn mark-findings-stale! :- :int
+(mu/defn mark-findings-stale!
   "Mark the AnalysisFindings of the entities `entity-type` `entity-ids` as stale, returning the number updated."
   [entity-type :- EntityType
    entity-ids  :- [:sequential ms/PositiveInt]]
@@ -864,17 +821,17 @@
               :analyzed_entity_id [:in entity-ids]
               {:stale true}))
 
-(mu/defn stale-finding-exists? :- :boolean
+(mu/defn stale-finding-exists?
   "Whether a stale AnalysisFinding exists."
   []
   (t2/exists? :model/AnalysisFinding :stale true))
 
-(mu/defn stale-finding-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn stale-finding-count
   "The number of stale AnalysisFindings."
   []
   (t2/count :model/AnalysisFinding :stale true))
 
-(mu/defn instances-for-analysis :- [:sequential :map]
+(mu/defn instances-for-analysis
   "Up to `batch-size` instances of the entity type `entity-type` whose AnalysisFinding is stale, missing, or below
   `current-version`; stale ones first, then the longest unanalyzed."
   [entity-type     :- ::deps.dependency-types/dependency-types
@@ -899,7 +856,7 @@
                             [:analysis_finding.analyzed_at :asc]]
                 :limit     batch-size})))
 
-(mu/defn table-ids-with-outdated-findings :- [:maybe [:set ::lib.schema.id/table]]
+(mu/defn table-ids-with-outdated-findings
   "The IDs of the Tables of the Database with `db-id` whose dependents were analyzed before the Table or one of
   its Fields last changed."
   [db-id :- ::lib.schema.id/database]
@@ -931,24 +888,24 @@
 
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
 
-(mu/defn finding-errors-for-entity :- [:sequential ::dependencies.schema/analysis-finding-error]
+(mu/defn finding-errors-for-entity
   "The AnalysisFindingErrors of the entity `entity-type` `entity-id`."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
   (t2/select :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id entity-id))
 
-(mu/defn finding-errors-from-source :- [:sequential ::dependencies.schema/analysis-finding-error]
+(mu/defn finding-errors-from-source
   "The AnalysisFindingErrors caused by the entity `source-type` `source-id`."
   [source-type :- [:maybe :metabase.lib.schema.validate/source-entity-type]
    source-id   :- ms/PositiveInt]
   (t2/select :model/AnalysisFindingError :source_entity_type source-type :source_entity_id source-id))
 
-(mu/defn insert-finding-errors! :- :int
+(mu/defn insert-finding-errors!
   "Insert the AnalysisFindingError `rows`, returning the number inserted."
   [rows :- [:sequential (mut/select-keys ::dependencies.schema/analysis-finding-error.update [:analyzed_entity_type :analyzed_entity_id :error_type :error_detail :source_entity_type :source_entity_id])]]
   (t2/insert! :model/AnalysisFindingError rows))
 
-(mu/defn delete-finding-errors-for-entity! :- :int
+(mu/defn delete-finding-errors-for-entity!
   "Delete the AnalysisFindingErrors of the entity `entity-type` `entity-id`, returning the number deleted."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]

@@ -4,12 +4,10 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn unarchived-models-visible-to-user :- [:sequential ::queries.schema/card]
+(mu/defn unarchived-models-visible-to-user
   "The unarchived model Cards in Collections the current user can read."
   []
   (t2/select :model/Card {:where [:and
@@ -17,30 +15,22 @@
                                   [:= :archived false]
                                   (collection/visible-collection-filter-clause)]}))
 
-(def ^:private PublicAction
-  "Rows returned by [[public-actions]]."
-  [:map {:closed true}
-   [:name        :string]
-   [:id          ::lib.schema.id/action]
-   [:public_uuid :string]
-   [:model_id    ::lib.schema.id/card]])
-
-(mu/defn public-actions :- [:sequential PublicAction]
+(mu/defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."
   []
   (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
-(mu/defn delete-action! :- :int
+(mu/defn delete-action!
   "Delete the Action with `action-id`."
   [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/Action :id action-id))
 
-(mu/defn database :- [:maybe ::warehouses.schema/database]
+(mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn set-action-public-uuid! :- :int
+(mu/defn set-action-public-uuid!
   "Set the public uuid of the Action with `action-id` and the User who made it public."
   [action-id         :- ::lib.schema.id/action
    public-uuid       :- [:maybe :string]

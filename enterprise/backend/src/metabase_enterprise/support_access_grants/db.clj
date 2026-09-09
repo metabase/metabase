@@ -11,17 +11,17 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn active-grant-exists? :- :boolean
+(mu/defn active-grant-exists?
   "Whether a SupportAccessGrantLog is unrevoked and ends after `now`."
   [now :- ms/TemporalInstant]
   (t2/exists? :model/SupportAccessGrantLog :revoked_at nil :grant_end_timestamp [:> now]))
 
-(mu/defn grant :- [:maybe ::support-access-grants.schema/support-access-grant-log]
+(mu/defn grant
   "The SupportAccessGrantLog with `grant-id`, or nil."
   [grant-id :- ms/PositiveInt]
   (t2/select-one :model/SupportAccessGrantLog :id grant-id))
 
-(mu/defn current-grant :- [:maybe ::support-access-grants.schema/support-access-grant-log]
+(mu/defn current-grant
   "The newest unrevoked SupportAccessGrantLog that has not ended, or nil."
   []
   (t2/select-one :model/SupportAccessGrantLog
@@ -39,7 +39,7 @@
     (when (seq conditions)
       (into [:and] conditions))))
 
-(mu/defn grants-page :- [:sequential ::support-access-grants.schema/support-access-grant-log]
+(mu/defn grants-page
   "The newest-first SupportAccessGrantLogs, optionally narrowed to `ticket-number` and `user-id` and excluding revoked
   grants unless `include-revoked?`, paged by `limit` and `offset`."
   [include-revoked? :- [:maybe :boolean]
@@ -54,7 +54,7 @@
                         :order-by [[:created_at :desc]]}
                  where (assoc :where where)))))
 
-(mu/defn grant-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn grant-count
   "The number of SupportAccessGrantLogs [[grants-page]] would page through."
   [include-revoked? :- [:maybe :boolean]
    ticket-number    :- [:maybe :string]
@@ -64,85 +64,74 @@
               (cond-> {}
                 where (assoc :where where)))))
 
-(mu/defn insert-grant! :- ::support-access-grants.schema/support-access-grant-log
+(mu/defn insert-grant!
   "Insert `grant` and return the new instance."
   [grant :- (mut/select-keys ::support-access-grants.schema/support-access-grant-log.update [:user_id :ticket_number :notes :grant_start_timestamp :grant_end_timestamp])]
   (t2/insert-returning-instance! :model/SupportAccessGrantLog grant))
 
-(mu/defn update-grant! :- :int
+(mu/defn update-grant!
   "Apply `changes` to the SupportAccessGrantLog with `grant-id`, returning the number updated."
   [grant-id :- ms/PositiveInt
    changes  :- (mut/select-keys ::support-access-grants.schema/support-access-grant-log.update [:revoked_at :revoked_by_user_id])]
   (t2/update! :model/SupportAccessGrantLog grant-id changes))
 
-(mu/defn user :- [:maybe ::users.schema/user]
+(mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User user-id))
 
-(mu/defn user-by-email :- [:maybe ::users.schema/user]
+(mu/defn user-by-email
   "The User with `email`, or nil."
   [email :- :string]
   (t2/select-one :model/User :email email))
 
-(def ^:private UserSuperuserFlagByEmail
-  "Rows returned by [[user-superuser-flag-by-email]]."
-  (mut/select-keys ::users.schema/user [:id :is_superuser :common_name]))
-
-(mu/defn user-superuser-flag-by-email :- [:maybe UserSuperuserFlagByEmail]
+(mu/defn user-superuser-flag-by-email
   "The `:id` and `:is_superuser` of the User with `email`, or nil."
   [email :- :string]
   (t2/select-one [:model/User :id :is_superuser] :email email))
 
-(def ^:private UserNamesAndEmail
-  "Rows returned by [[user-names-and-emails]]."
-  [:map {:closed true}
-   [:first_name [:maybe :string]]
-   [:email      :string]])
-
-(mu/defn user-names-and-emails :- [:map-of ms/PositiveInt
-                                   UserNamesAndEmail]
+(mu/defn user-names-and-emails
   "A map of User ID to first name and email for `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
 
-(mu/defn insert-user! :- ::users.schema/user
+(mu/defn insert-user!
   "Insert `user` and return the new instance."
   [user :- (mut/select-keys ::users.schema/user.update [:email :first_name :last_name :is_superuser])]
   (t2/insert-returning-instance! :model/User user))
 
-(mu/defn update-user! :- :int
+(mu/defn update-user!
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
   (t2/update! :model/User user-id changes))
 
-(mu/defn session-exists-for-user? :- :boolean
+(mu/defn session-exists-for-user?
   "Whether the User with `user-id` has a Session."
   [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/Session :user_id user-id))
 
-(mu/defn delete-sessions-of-user! :- :int
+(mu/defn delete-sessions-of-user!
   "Delete the Sessions of the User with `user-id`, returning the number deleted."
   [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/Session :user_id user-id))
 
-(mu/defn auth-identity-ids-of-user :- [:maybe [:sequential ms/PositiveInt]]
+(mu/defn auth-identity-ids-of-user
   "The IDs of the AuthIdentities of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
   (t2/select-pks-vec :model/AuthIdentity :user_id user-id))
 
-(mu/defn support-access-auth-identity-id :- [:maybe ms/PositiveInt]
+(mu/defn support-access-auth-identity-id
   "The ID of the support-access-grant AuthIdentity of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "support-access-grant"))
 
-(mu/defn insert-auth-identity! :- :int
+(mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."
   [row :- (mut/select-keys ::auth-identity.schema/auth-identity.update [:user_id :provider :provider_id :expires_at :credentials :metadata])]
   (t2/insert! :model/AuthIdentity row))
 
-(mu/defn update-auth-identity! :- :int
+(mu/defn update-auth-identity!
   "Apply `changes` to the AuthIdentity with `auth-identity-id`, returning the number updated. `changes` may be a
   whole AuthIdentity instance re-saved after a partial edit (e.g. [[metabase.auth-identity.providers.emailed-secret/mark-token-consumed]]
   round-trips the full row it was given), so every column is accepted."
@@ -161,7 +150,7 @@
                         [:metadata      {:optional true} [:maybe :map]]]]
   (t2/update! :model/AuthIdentity auth-identity-id changes))
 
-(mu/defn expire-auth-identities! :- :int
+(mu/defn expire-auth-identities!
   "Set the expiry of the AuthIdentities with `auth-identity-ids` to `expires-at`, returning the number updated."
   [auth-identity-ids :- [:sequential ms/PositiveInt]
    expires-at        :- ms/TemporalInstant]

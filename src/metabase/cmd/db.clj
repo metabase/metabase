@@ -2,17 +2,11 @@
   "Application database queries for the command-line module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [malli.util :as mut]
-   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(def ^:private UserIdAndActiveByEmail
-  "Rows returned by [[user-id-and-active-by-email]]."
-  (mut/select-keys ::users.schema/user.full [:id :is_active :common_name]))
-
-(mu/defn user-id-and-active-by-email :- [:maybe UserIdAndActiveByEmail]
+(mu/defn user-id-and-active-by-email
   "The `:id` and `:is_active` of the User whose email matches `email` case-insensitively, or nil."
   [email :- :string]
   (t2/select-one [:model/User :id :is_active] :%lower.email (u/lower-case-en email)))

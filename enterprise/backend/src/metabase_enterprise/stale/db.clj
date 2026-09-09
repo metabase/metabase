@@ -2,33 +2,21 @@
   "Application database queries for the stale module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [malli.util :as mut]
-   [metabase.collections.schema :as collections.schema]
-   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn collection :- [:maybe ::collections.schema/collection]
+(mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection collection-id))
 
-(mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection ::collections.schema/collection]
+(mu/defn collections-by-id
   "A map of ID to Collection for `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
 
-(def ^:private StaleCard
-  "Rows returned by [[stale-cards]]."
-  (mut/merge (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :dashboard_id :description :collection_id :name :entity_id :archived :collection_position :display :collection_preview :database_id :dataset_query :card_schema :last_used_at :query_description :source_card_id]) [:source_card_id])
-             [:map
-              [:location         :nil]
-              [:moderated_status [:maybe :string]]]))
-
-(mu/defn stale-cards :- [:sequential StaleCard]
+(mu/defn stale-cards
   "The listing columns of the Cards with `card-ids`, with their latest moderation status."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card
@@ -61,18 +49,7 @@
                :moderated_status]]
              :id [:in card-ids]))
 
-(def ^:private StaleDashboard
-  "Rows returned by [[stale-dashboards]]."
-  (mut/merge (mut/select-keys ::dashboards.schema/dashboard
-                              [:id :description :collection_id :name :entity_id :archived :collection_position])
-             [:map
-              [:last_used_at [:maybe ms/TemporalInstant]]
-              [:model        [:= "dashboard"]]
-              [:dashboard_id :nil]
-              [:location     :nil]
-              [:database_id  :nil]]))
-
-(mu/defn stale-dashboards :- [:sequential StaleDashboard]
+(mu/defn stale-dashboards
   "The listing columns of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select [:model/Dashboard
@@ -96,13 +73,7 @@
   [union-queries]
   [[^:allow-subquery {:union-all union-queries} :dummy_alias]])
 
-(def ^:private StaleContent
-  "Rows returned by [[stale-content-rows]]."
-  [:map {:closed true}
-   [:id :int]
-   [:model :string]])
-
-(mu/defn stale-content-rows :- [:sequential StaleContent]
+(mu/defn stale-content-rows
   "A page of `:id`/`:model` rows from the union of `union-queries`, sorted by `sort-column` (`:name` or
   `:last_used_at`) in `sort-direction`, skipping `offset` and returning up to `limit` (either may be nil for no
   restriction)."
@@ -120,7 +91,7 @@
               (some? limit)  (assoc :limit limit)
               (some? offset) (assoc :offset offset))))
 
-(mu/defn stale-content-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn stale-content-count
   "The total count of rows across every page [[stale-content-rows]] would return for `union-queries`."
   [union-queries :- [:sequential :map]]
   (:count (t2/query-one {:select [[:%count.* :count]]

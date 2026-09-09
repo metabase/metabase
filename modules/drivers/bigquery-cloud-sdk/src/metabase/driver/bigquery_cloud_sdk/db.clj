@@ -4,23 +4,22 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.schema :as warehouses.schema]
    ;; the driver persists dataset-filter and project-id migrations of its Database details back to the app DB
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
-(mu/defn database :- [:maybe ::warehouses.schema/database]
+(mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database database-id))
 
-(mu/defn update-database-details! :- :int
+(mu/defn update-database-details!
   "Set the details of the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    details     :- :map]
   (t2/update! :model/Database database-id {:details details}))
 
-(mu/defn set-table-schemas! :- :int
+(mu/defn set-table-schemas!
   "Set the schema of the Tables of the Database with `database-id` that do not have `schema` yet, overwriting any
   stale schema they already have, returning the number updated."
   [database-id :- ::lib.schema.id/database
@@ -33,7 +32,7 @@
                            [:= :schema nil]
                            [:not= :schema schema]]]}))
 
-(mu/defn active-partitioned-field-exists? :- :boolean
+(mu/defn active-partitioned-field-exists?
   "Whether the Table with `table-id` has an active database-partitioned Field named `field-name`."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string]

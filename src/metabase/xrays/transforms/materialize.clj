@@ -51,7 +51,7 @@
     (xrays.db/delete-cards-in-collection! collection-id)
     (create-collection! name description)))
 
-(mu/defn make-card-for-step! :- ::queries.schema/card.partial
+(mu/defn make-card-for-step! :- ::queries.schema/card
   "Make and save a card for a given transform step and query."
   [{:keys [name transform description]} :- transforms.specs/Step
    query                                :- ::transforms.specs/query]

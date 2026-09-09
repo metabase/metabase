@@ -7,7 +7,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.schema :as model-persistence.schema]
-   [metabase.queries.schema :as queries.schema]
    [metabase.tracing.core :as tracing]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -15,21 +14,7 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(def ^:private PersistedInfoListing
-  "Rows returned by [[persisted-info-listing]]."
-  (mut/merge (mut/select-keys ::model-persistence.schema/persisted-info
-                              [:id :database_id :definition :active :state :error :refresh_begin :refresh_end :table_name
-                               :creator_id :card_id])
-             [:map
-              [:card_name                  [:maybe :string]]
-              [:card_archived              [:maybe :boolean]]
-              [:card_type                  [:maybe [:or :keyword :string]]]
-              [:database_name              [:maybe :string]]
-              [:collection_id              [:maybe ::lib.schema.id/collection]]
-              [:collection_name            [:maybe :string]]
-              [:collection_authority_level [:maybe [:or :keyword :string]]]]))
-
-(mu/defn persisted-info-listing :- [:sequential PersistedInfoListing]
+(mu/defn persisted-info-listing
   "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window,
   table name, creator, card name/archived/type, database name, and collection id/name/authority level) for
   unarchived model Cards, optionally narrowed to `persisted-info-id`, `db-ids`, and/or `card-id`, newest
@@ -64,7 +49,7 @@
                limit             (sql.helpers/limit limit)
                offset            (sql.helpers/offset offset))))
 
-(mu/defn deletable-prunable-persisted-infos :- [:sequential ::model-persistence.schema/persisted-info]
+(mu/defn deletable-prunable-persisted-infos
   "The PersistedInfos in one of `states` for over an hour, or attached to an archived question, or whose
   Card has been deleted — the records [[metabase.model-persistence.task.persist-refresh]] may unpersist."
   [states :- [:set :string]]
@@ -85,15 +70,7 @@
     (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/select :model/PersistedInfo hsql))))
 
-(def ^:private RefreshablePersistedInfo
-  "Rows returned by [[refreshable-persisted-infos]]."
-  (mut/merge ::model-persistence.schema/persisted-info
-             [:map
-              [:type     [:maybe [:or :keyword :string]]]
-              [:archived [:maybe :boolean]]
-              [:name     [:maybe :string]]]))
-
-(mu/defn refreshable-persisted-infos :- [:sequential RefreshablePersistedInfo]
+(mu/defn refreshable-persisted-infos
   "The PersistedInfos of the Database with `database-id` in one of `states` whose Card is an unarchived
   model, plus the Card's `:type`, `:archived`, and `:name`."
   [database-id :- ::lib.schema.id/database
@@ -110,43 +87,43 @@
                                                                :db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/select :model/PersistedInfo hsql))))
 
-(mu/defn persisted-infos-by-ids :- [:sequential ::model-persistence.schema/persisted-info]
+(mu/defn persisted-infos-by-ids
   "The PersistedInfos with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/PersistedInfo :id [:in ids]))
 
-(mu/defn persisted-info :- [:maybe ::model-persistence.schema/persisted-info]
+(mu/defn persisted-info
   "The PersistedInfo with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/PersistedInfo :id id))
 
-(mu/defn persisted-info-for-card :- [:maybe ::model-persistence.schema/persisted-info]
+(mu/defn persisted-info-for-card
   "The PersistedInfo of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/PersistedInfo :card_id card-id))
 
-(mu/defn persisted-info-id-for-card :- [:maybe ms/PositiveInt]
+(mu/defn persisted-info-id-for-card
   "The id of the PersistedInfo of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :id :model/PersistedInfo :card_id card-id))
 
-(mu/defn persisted-info-state :- [:maybe :string]
+(mu/defn persisted-info-state
   "The state of the PersistedInfo with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one-fn :state :model/PersistedInfo :id id))
 
-(mu/defn persisted-database-ids :- [:maybe [:set ::lib.schema.id/database]]
+(mu/defn persisted-database-ids
   "The set of Database ids with PersistedInfos."
   []
   (t2/select-fn-set :database_id :model/PersistedInfo))
 
-(mu/defn persisted-card-ids-in-states :- [:maybe [:set ::lib.schema.id/card]]
+(mu/defn persisted-card-ids-in-states
   "The Card ids among `card-ids` whose PersistedInfo is in one of `states`."
   [card-ids :- [:sequential ::lib.schema.id/card]
    states   :- [:set :string]]
   (t2/select-fn-set :card_id :model/PersistedInfo :card_id [:in card-ids] :state [:in states]))
 
-(mu/defn persisted-model-count-for-databases :- ms/IntGreaterThanOrEqualToZero
+(mu/defn persisted-model-count-for-databases
   "The number of PersistedInfos of unarchived model Cards of the Databases with `database-ids`."
   [database-ids :- [:or [:set ::lib.schema.id/database] [:sequential ::lib.schema.id/database]]]
   (t2/count :model/PersistedInfo {:from [[:persisted_info :p]]
@@ -156,23 +133,23 @@
                                           [:= :c.type "model"]
                                           [:not :c.archived]]}))
 
-(mu/defn insert-persisted-info! :- ::model-persistence.schema/persisted-info
+(mu/defn insert-persisted-info!
   "Insert the PersistedInfo `row` and return the inserted instance."
   [row :- ::model-persistence.schema/persisted-info.update]
   (t2/insert-returning-instance! :model/PersistedInfo row))
 
-(mu/defn insert-persisted-infos! :- :int
+(mu/defn insert-persisted-infos!
   "Insert the PersistedInfo `rows`, returning the number inserted."
   [rows :- [:sequential ::model-persistence.schema/persisted-info.update]]
   (t2/insert! :model/PersistedInfo rows))
 
-(mu/defn update-persisted-info! :- :int
+(mu/defn update-persisted-info!
   "Apply `changes` to the PersistedInfo with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- ::model-persistence.schema/persisted-info.update]
   (t2/update! :model/PersistedInfo id changes))
 
-(mu/defn begin-persisted-info-refresh! :- :int
+(mu/defn begin-persisted-info-refresh!
   "Mark the PersistedInfo with `id` as refreshing `definition` (with `query-hash`), starting now, returning the number
   updated."
   [id         :- ms/PositiveInt
@@ -184,7 +161,7 @@
                                        :refresh_end     nil
                                        :state           "refreshing"}))
 
-(mu/defn end-persisted-info-refresh! :- :int
+(mu/defn end-persisted-info-refresh!
   "Record the outcome of the refresh of the PersistedInfo with `id`: `state` (\"persisted\" or \"error\"), whether
   it is now `active?`, and the `error` message, ended now. Returns the number updated."
   [id      :- ms/PositiveInt
@@ -195,25 +172,25 @@
                                        :state  state
                                        :error  error}))
 
-(mu/defn deactivate-all-persisted-infos! :- :int
+(mu/defn deactivate-all-persisted-infos!
   "Deactivate every PersistedInfo and move it to `state`, returning the number updated."
   [state :- :string]
   (t2/update! :model/PersistedInfo {} {:active false, :state state, :state_change_at :%now}))
 
-(mu/defn deactivate-persisted-info! :- :int
+(mu/defn deactivate-persisted-info!
   "Deactivate the PersistedInfo with `id` and move it to `state`, returning the number updated."
   [id    :- ms/PositiveInt
    state :- :string]
   (t2/update! :model/PersistedInfo id {:active false, :state state, :state_change_at :%now}))
 
-(mu/defn deactivate-persisted-infos-for-database! :- :int
+(mu/defn deactivate-persisted-infos-for-database!
   "Deactivate the PersistedInfos of the Database with `database-id` and move them to `state`, returning the
   number updated."
   [database-id :- ::lib.schema.id/database
    state       :- :string]
   (t2/update! :model/PersistedInfo :database_id database-id {:active false, :state state, :state_change_at :%now}))
 
-(mu/defn invalidate-persisted-infos-for-cards! :- :int
+(mu/defn invalidate-persisted-infos-for-cards!
   "Deactivate the active PersistedInfos of the Cards with `card-ids` and move them back to creating, returning
   the number updated."
   [card-ids :- [:sequential ::lib.schema.id/card]]
@@ -221,12 +198,12 @@
               {:active true, :card_id [:in card-ids]}
               {:active false, :state "creating", :state_change_at :%now}))
 
-(mu/defn reset-persisted-info-to-creating! :- :int
+(mu/defn reset-persisted-info-to-creating!
   "Deactivate the PersistedInfo with `id` and move it back to creating, returning the number updated."
   [id :- ms/PositiveInt]
   (t2/update! :model/PersistedInfo id {:active false, :state "creating", :state_change_at :%now}))
 
-(mu/defn ready-deletable-persisted-infos! :- :int
+(mu/defn ready-deletable-persisted-infos!
   "Move the deletable PersistedInfos of the Database with `database-id` to `state`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    state       :- :string]
@@ -239,12 +216,12 @@
           :state state,
           :state_change_at :%now}}))
 
-(mu/defn delete-persisted-info! :- :int
+(mu/defn delete-persisted-info!
   "Delete the PersistedInfo with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/PersistedInfo :id id))
 
-(mu/defn unpersisted-models-for-database :- [:sequential ::queries.schema/card]
+(mu/defn unpersisted-models-for-database
   "The model Cards of the Database with `database-id` that have no PersistedInfo."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Card
@@ -256,36 +233,32 @@
                               :from [:persisted_info]
                               :where [:= :persisted_info.card_id :report_card.id]}]]]}))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(def ^:private CardArchivedAndType
-  "Rows returned by [[card-archived-and-type]]."
-  (mut/optional-keys (mut/select-keys ::queries.schema/card [:archived :type :card_schema :query_description :source_card_id]) [:source_card_id]))
-
-(mu/defn card-archived-and-type :- [:maybe CardArchivedAndType]
+(mu/defn card-archived-and-type
   "The archived flag and type of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :archived :type :card_schema] :id card-id))
 
-(mu/defn database :- [:maybe ::warehouses.schema/database]
+(mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn databases :- [:sequential ::warehouses.schema/database]
+(mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select :model/Database :id [:in database-ids]))
 
-(mu/defn all-databases :- [:sequential ::warehouses.schema/database]
+(mu/defn all-databases
   "Every Database."
   []
   (t2/select :model/Database))
 
-(mu/defn update-database! :- :int
+(mu/defn update-database!
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- (mut/select-keys ::warehouses.schema/database.update [:settings])]

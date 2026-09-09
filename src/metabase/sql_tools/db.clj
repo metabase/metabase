@@ -7,7 +7,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn active-visible-table-ids-by-name :- [:maybe [:set ::lib.schema.id/table]]
+(mu/defn active-visible-table-ids-by-name
   "Ids of the active, non-hidden Tables of Database `database-id` whose name case-insensitively matches one of
   `table-names`, or nil."
   [database-id :- ::lib.schema.id/database

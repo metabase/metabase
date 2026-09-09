@@ -279,7 +279,7 @@
                                                        (m/remove-keys hidden-parameter-ids fields)))
         (select-keys action-public-keys))))
 
-(mu/defn public-dashboard :- ::dashboards.schema/dashboard.partial
+(mu/defn public-dashboard :- ::dashboards.schema/dashboard
   "Return the public Dashboard with the given `dashboard-id`, removing all columns that should not be visible to
   the general public. Throws a 404 if the Dashboard doesn't exist. With `:enable-embedding? true`, additionally
   requires embedding to be enabled."

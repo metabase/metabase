@@ -2,29 +2,15 @@
   "Application database queries for the activity feed module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.activity-feed.schema :as activity-feed.schema]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.schema :as collections.schema]
-   [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(def ^:private RecentCard
-  "Rows returned by [[recent-cards]]."
-  (mut/merge (mut/optional-keys (mut/select-keys ::queries.schema/card [:id :name :collection_id :description :display :dataset_query :type :archived :card_schema :dashboard_id :query_description :source_card_id]) [:source_card_id])
-             [:map
-              [:authority_level [:maybe [:or :keyword :string]]]
-              [:collection_name [:maybe :string]]
-              [:dashboard_name  [:maybe :string]]]))
-
-(mu/defn recent-cards :- [:sequential RecentCard]
+(mu/defn recent-cards
   "The recently viewed Cards with `ids`, with their Collection and Dashboard names."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Card
@@ -36,15 +22,7 @@
               :left-join [:collection [:= :collection.id :report_card.collection_id]
                           [:report_dashboard :dashboard] [:= :dashboard.id :report_card.dashboard_id]]}))
 
-(def ^:private RecentDashboard
-  "Rows returned by [[recent-dashboards]]."
-  (mut/merge (mut/select-keys ::dashboards.schema/dashboard
-                              [:id :name :collection_id :description :archived])
-             [:map
-              [:authority_level [:maybe [:or :keyword :string]]]
-              [:collection_name [:maybe :string]]]))
-
-(mu/defn recent-dashboards :- [:sequential RecentDashboard]
+(mu/defn recent-dashboards
   "The recently viewed Dashboards with `ids`, with their Collection names."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Dashboard
@@ -54,15 +32,7 @@
              {:where     [:in :report_dashboard.id ids]
               :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]}))
 
-(def ^:private RecentTable
-  "Rows returned by [[recent-tables]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/table
-                              [:id :name :db_id :active :display_name :visibility_type])
-             [:map
-              [:initial-sync-status [:maybe [:or :keyword :string]]]
-              [:database-name       [:maybe :string]]]))
-
-(mu/defn recent-tables :- [:sequential RecentTable]
+(mu/defn recent-tables
   "The recently viewed Tables with `ids`, with their Database names and sync status."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Table
@@ -73,12 +43,7 @@
              {:where     [:in :metabase_table.id ids]
               :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]}))
 
-(def ^:private RecentDashboardAndTableView
-  "Rows returned by [[recent-dashboard-and-table-views]]."
-  (mut/merge (mut/select-keys ::activity-feed.schema/recent-views [:user_id :model :model_id])
-             [:map [:cnt [:maybe :int]] [:max_ts [:maybe ms/TemporalInstant]]]))
-
-(mu/defn recent-dashboard-and-table-views :- [:sequential RecentDashboardAndTableView]
+(mu/defn recent-dashboard-and-table-views
   "Up to `limit` most recently viewed unarchived, active Dashboards and Tables with their view counts and last
   viewer."
   [limit :- ms/PositiveInt]
@@ -105,17 +70,7 @@
                            [:= :model "table"]
                            [:= :t.id :model_id]]]}))
 
-(def ^:private RecentCardRun
-  "Rows returned by [[recent-card-runs]]."
-  [:map {:closed true}
-   [:user_id   [:maybe ::lib.schema.id/user]]
-   [:model_id  [:maybe ::lib.schema.id/card]]
-   [:cnt       :int]
-   [:max_ts    [:maybe ms/TemporalInstant]]
-   ;; added by the model's after-select hook
-   [:row_count :int]])
-
-(mu/defn recent-card-runs :- [:sequential RecentCardRun]
+(mu/defn recent-card-runs
   "Up to `limit` most recently run question Cards with their run counts and last runner."
   [limit :- ms/PositiveInt]
   (t2/select [:model/QueryExecution
@@ -129,68 +84,68 @@
               :order-by [[:max_ts :desc]]
               :limit    limit}))
 
-(mu/defn card-exists? :- :boolean
+(mu/defn card-exists?
   "Whether a Card with `id` exists."
   [id :- ::lib.schema.id/card]
   (t2/exists? :model/Card :id id))
 
-(mu/defn dashboard-exists? :- :boolean
+(mu/defn dashboard-exists?
   "Whether a Dashboard with `id` exists."
   [id :- ::lib.schema.id/dashboard]
   (t2/exists? :model/Dashboard :id id))
 
-(mu/defn table-exists? :- :boolean
+(mu/defn table-exists?
   "Whether a Table with `id` exists."
   [id :- ::lib.schema.id/table]
   (t2/exists? :model/Table :id id))
 
-(mu/defn collection-exists? :- :boolean
+(mu/defn collection-exists?
   "Whether a Collection with `id` exists."
   [id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id id))
 
-(mu/defn document-exists? :- :boolean
+(mu/defn document-exists?
   "Whether a Document with `id` exists."
   [id :- ms/PositiveInt]
   (t2/exists? :model/Document :id id))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
+(mu/defn card
   "The Card with `id`, or nil."
   [id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id id))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table
   "The Table with `id`, or nil."
   [id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id id))
 
-(mu/defn collection :- [:maybe ::collections.schema/collection]
+(mu/defn collection
   "The Collection with `id`, or nil."
   [id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id id))
 
-(mu/defn document :- [:maybe ::documents.schema/document]
+(mu/defn document
   "The Document with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Document :id id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
-(mu/defn card-document-id :- [:maybe ms/PositiveInt]
+(mu/defn card-document-id
   "The Document id of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :document_id :model/Card :id card-id))
 
-(mu/defn recent-views-for-user-context :- [:sequential ::activity-feed.schema/recent-views]
+(mu/defn recent-views-for-user-context
   "The RecentViews of the User with `user-id` in `context`, newest first."
   [user-id :- ::lib.schema.id/user
    context :- [:or :keyword :string]]
   (t2/select :model/RecentViews :user_id user-id :context context {:order-by [[:timestamp :desc]]}))
 
-(mu/defn recent-view-ids-to-prune :- [:maybe [:set ms/PositiveInt]]
+(mu/defn recent-view-ids-to-prune
   "The ids of the RecentViews of the User with `user-id` for `db-model` in `context` beyond the newest `keep` of
   them, restricted to the Cards of `card-type` when non-nil."
   [db-model  :- :string
@@ -217,17 +172,17 @@
                      :limit 100000
                      :offset keep}))
 
-(mu/defn insert-recent-views! :- :int
+(mu/defn insert-recent-views!
   "Insert the RecentViews `rows`."
   [rows :- [:sequential ::activity-feed.schema/recent-views.update]]
   (t2/insert! :model/RecentViews rows))
 
-(mu/defn delete-recent-views! :- :int
+(mu/defn delete-recent-views!
   "Delete the RecentViews with `ids`."
   [ids :- [:set ms/PositiveInt]]
   (t2/delete! :model/RecentViews :id [:in ids]))
 
-(mu/defn most-recently-viewed-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
+(mu/defn most-recently-viewed-dashboard-id
   "The id of the unarchived Dashboard the User with `user-id` viewed most recently after `since`, or nil."
   [user-id :- ::lib.schema.id/user
    since   :- ms/TemporalInstant]
@@ -243,17 +198,7 @@
     :left-join [[:report_dashboard :d]
                 [:= :recent_views.model_id :d.id]]}))
 
-(def ^:private CardsForRecentView
-  "Rows returned by [[cards-for-recent-views]]."
-  (mut/merge (mut/optional-keys (mut/select-keys ::queries.schema/card [:name :description :archived :id :database_id :display :card_schema :result_metadata :dataset_query :entity_id :visualization_settings :dashboard_id :collection_id :query_description :source_card_id]) [:source_card_id])
-             [:map
-              [:dashboard_name             [:maybe :string]]
-              [:entity-coll-id             [:maybe ::lib.schema.id/collection]]
-              [:moderated-status           [:maybe [:or :keyword :string]]]
-              [:collection_name            [:maybe :string]]
-              [:collection_authority_level [:maybe [:or :keyword :string]]]]))
-
-(mu/defn cards-for-recent-views :- [:sequential CardsForRecentView]
+(mu/defn cards-for-recent-views
   "The Cards with `card-ids` with their Dashboard, Collection, and moderation status."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select :model/Card
@@ -289,17 +234,7 @@
                           [:report_dashboard :dashboard]
                           [:= :dashboard.id :card.dashboard_id]]}))
 
-(def ^:private DashboardsForRecentView
-  "Rows returned by [[dashboards-for-recent-views]]."
-  (mut/merge (mut/select-keys ::dashboards.schema/dashboard
-                              [:id :name :description :archived :collection_id])
-             [:map
-              [:entity-coll-id             [:maybe ::lib.schema.id/collection]]
-              [:collection_name            [:maybe :string]]
-              [:collection_authority_level [:maybe [:or :keyword :string]]]
-              [:moderated-status           [:maybe [:or :keyword :string]]]]))
-
-(mu/defn dashboards-for-recent-views :- [:sequential DashboardsForRecentView]
+(mu/defn dashboards-for-recent-views
   "The Dashboards with `dashboard-ids` with their Collection and moderation status."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard
@@ -324,12 +259,7 @@
                            [:= :c.id :dash.collection_id]
                            [:= :c.archived false]]]}))
 
-(def ^:private UnarchivedCollectionsWithDetail
-  "Rows returned by [[unarchived-collections-with-details]]."
-  (mut/select-keys ::collections.schema/collection
-                   [:id :name :description :authority_level :archived :location :type]))
-
-(mu/defn unarchived-collections-with-details :- [:sequential UnarchivedCollectionsWithDetail]
+(mu/defn unarchived-collections-with-details
   "The unarchived Collections with `collection-ids`, with their location, type, and authority level."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection
@@ -339,15 +269,7 @@
                       [:in :id collection-ids]
                       [:= :archived false]]}))
 
-(def ^:private VisibleTablesForRecentView
-  "Rows returned by [[visible-tables-for-recent-views]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/table
-                              [:id :name :description :display_name :active :visibility_type :schema :db_id])
-             [:map
-              [:database-name       [:maybe :string]]
-              [:initial-sync-status [:maybe [:or :keyword :string]]]]))
-
-(mu/defn visible-tables-for-recent-views :- [:sequential VisibleTablesForRecentView]
+(mu/defn visible-tables-for-recent-views
   "The non-hidden Tables with `table-ids` with their Database name and sync status."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Table
@@ -365,12 +287,7 @@
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
 
-(def ^:private RecentViewsWithCardType
-  "Rows returned by [[recent-views-with-card-type]]."
-  (mut/merge ::activity-feed.schema/recent-views
-             [:map [:card_type [:maybe [:or :keyword :string]]]]))
-
-(mu/defn recent-views-with-card-type :- [:sequential RecentViewsWithCardType]
+(mu/defn recent-views-with-card-type
   "The RecentViews of the User with `user-id` in `contexts`, newest first, with the type of the viewed Card. Narrowed
   to `db-models` and to the Cards of `card-types` when given; excludes trashed and namespaced Collections, exploration
   Documents, and, when `selections?`, the instance analytics Collection."
@@ -422,15 +339,7 @@
                            [:= :doc.id :rv.model_id]]]
               :order-by  [[:rv.timestamp :desc]]}))
 
-(def ^:private DocumentsForRecentView
-  "Rows returned by [[documents-for-recent-views]]."
-  (mut/merge (mut/select-keys ::documents.schema/document [:id :name :archived :collection_id])
-             [:map
-              [:entity-coll-id             [:maybe ::lib.schema.id/collection]]
-              [:collection_name            [:maybe :string]]
-              [:collection_authority_level [:maybe [:or :keyword :string]]]]))
-
-(mu/defn documents-for-recent-views :- [:sequential DocumentsForRecentView]
+(mu/defn documents-for-recent-views
   "The Documents with `document-ids` with their Collection."
   [document-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Document

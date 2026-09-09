@@ -2,11 +2,9 @@
   "Application database queries for the erd module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.table :as schema.table]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (def ^:private ActiveTablesOpts
@@ -15,7 +13,7 @@
    [:table-ids {:optional true} [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
    [:schema    {:optional true} [:maybe :string]]])
 
-(mu/defn active-tables-in-database :- [:sequential (mut/optional-keys ::warehouse-schema.schema/table)]
+(mu/defn active-tables-in-database
   "The `columns` of the active Tables in the Database with `database-id`. `opts` may restrict the result: a
   `:table-ids` key restricts to those IDs (even when its value is empty), and a `:schema` key restricts to that
   schema (`\"\"` matches both nil and empty-string schemas)."
@@ -31,7 +29,7 @@
                                                                [:or [:= :schema nil] [:= :schema ""]]
                                                                [:= :schema schema])))})))
 
-(mu/defn active-fields-for-tables :- [:sequential ::warehouse-schema.schema/field]
+(mu/defn active-fields-for-tables
   "The active Fields of the Tables with `table-ids`, in field order."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Field {:where    [:and
@@ -39,7 +37,7 @@
                                       [:= :active true]]
                            :order-by schema.table/field-order-rule}))
 
-(mu/defn active-fields :- [:sequential ::warehouse-schema.schema/field]
+(mu/defn active-fields
   "The active Fields with `field-ids`."
   [field-ids :- [:or [:set ::lib.schema.id/field] [:sequential ::lib.schema.id/field]]]
   (t2/select :model/Field {:where [:and

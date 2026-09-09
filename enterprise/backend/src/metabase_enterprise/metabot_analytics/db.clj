@@ -2,9 +2,7 @@
   "Application database queries for the metabot-analytics module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.metabot.schema :as metabot.schema]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.util.date-2 :as u.date]
@@ -13,7 +11,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn conversation :- [:maybe ::metabot.schema/metabot-conversation]
+(mu/defn conversation
   "The MetabotConversation with `conversation-id`, or nil."
   [conversation-id :- :string]
   (t2/select-one :model/MetabotConversation :id conversation-id))
@@ -109,19 +107,7 @@
                [:core_user :u]       [:= :u.id :c.user_id]]
    :group-by  [:c.id]})
 
-(def ^:private ListedConversation
-  "Rows returned by [[list-conversations]]."
-  (mut/merge ::metabot.schema/metabot-conversation
-             [:map
-              [:message_count           :int]
-              [:user_message_count      :int]
-              [:assistant_message_count :int]
-              [:total_tokens            :int]
-              [:last_message_at         [:maybe ms/TemporalInstant]]
-              [:profile_id              [:maybe :string]]
-              [:cache_read_tokens       :int]]))
-
-(mu/defn list-conversations :- [:sequential ListedConversation]
+(mu/defn list-conversations
   "A page of conversation summary rows (see [[conversation-list-select]]), restricted to `user-id`, `group-id`,
   `tenant-id`, and `date` (each nil for no restriction), sorted by the allow-listed `sort-by` column name in
   `sort-direction` (`:asc` or `:desc`), skipping `offset` and returning up to `limit`."
@@ -146,7 +132,7 @@
                               :offset   offset)
                  where (assoc :where where)))))
 
-(mu/defn conversation-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn conversation-count
   "The total count of conversations matching the same criteria as [[list-conversations]] (ignoring sort, offset,
   and limit)."
   [{:keys [user-id group-id tenant-id date]}
@@ -160,28 +146,18 @@
                                    :from   [[:metabot_conversation :c]]}
                             where (assoc :where where))))))
 
-(mu/defn messages-for-conversation :- [:sequential ::metabot.schema/metabot-message]
+(mu/defn messages-for-conversation
   "The MetabotMessages of the MetabotConversation with `conversation-id`, oldest first."
   [conversation-id :- :string]
   (t2/select :model/MetabotMessage :conversation_id conversation-id {:order-by [[:created_at :asc] [:id :asc]]}))
 
-(def ^:private MessageDataForConversation
-  "Rows returned by [[message-data-for-conversations]]."
-  (mut/select-keys ::metabot.schema/metabot-message [:conversation_id :data :data_version]))
-
-(mu/defn message-data-for-conversations :- [:sequential MessageDataForConversation]
+(mu/defn message-data-for-conversations
   "The conversation, data, and data version of the MetabotMessages of the MetabotConversations with
   `conversation-ids`."
   [conversation-ids :- [:sequential :string]]
   (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in conversation-ids]))
 
-(def ^:private FeedbackForConversation
-  "Rows returned by [[feedback-for-conversation]]."
-  (mut/merge (mut/select-keys ::metabot.schema/metabot-feedback
-                              [:id :message_id :user_id :positive :issue_type :freeform_feedback :created_at :updated_at])
-             [:map [:external_id [:maybe :string]]]))
-
-(mu/defn feedback-for-conversation :- [:sequential FeedbackForConversation]
+(mu/defn feedback-for-conversation
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."
   [conversation-id :- :string]
   (t2/select :model/MetabotFeedback

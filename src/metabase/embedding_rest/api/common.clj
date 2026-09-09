@@ -421,7 +421,7 @@
   (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
        (eid-translation/->id :model/Dashboard)))
 
-(mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard.partial
+(mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard
   "Return the info needed for embedding about Dashboard specified in `token`."
   [unsigned-token & {:keys [embedding-params enable-embedding?]}]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)

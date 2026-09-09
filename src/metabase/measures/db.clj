@@ -3,14 +3,12 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
-   [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(mu/defn insert-measure! :- ::measures.schema/measure
+(mu/defn insert-measure!
   "Insert a Measure and return the inserted instance."
   [creator-id   :- ::lib.schema.id/user
    measure-name :- :string
@@ -22,47 +20,43 @@
                                  :description description
                                  :definition  definition))
 
-(mu/defn measure :- [:maybe ::measures.schema/measure]
+(mu/defn measure
   "The Measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
   (t2/select-one :model/Measure :id id))
 
-(mu/defn unarchived-measures :- [:sequential ::measures.schema/measure]
+(mu/defn unarchived-measures
   "The unarchived Measures, in case-insensitive name order."
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn table-database-ids :- [:maybe [:set ::lib.schema.id/database]]
+(mu/defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
 
-(mu/defn update-measure! :- :int
+(mu/defn update-measure!
   "Apply `changes` to the Measure with `id`."
   [id      :- ::lib.schema.id/measure
    changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
   (t2/update! :model/Measure id changes))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
 
-(def ^:private TablePermsColumn
-  "Rows returned by [[table-perms-columns]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:db_id :schema :id]))
-
-(mu/defn table-perms-columns :- [:maybe TablePermsColumn]
+(mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :db_id :schema :id] :id table-id))
 
-(mu/defn collections :- [:sequential ::collections.schema/collection]
+(mu/defn collections
   "The Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection :id [:in collection-ids]))
 
-(mu/defn set-measure-dimensions! :- :int
+(mu/defn set-measure-dimensions!
   "Set the dimensions and dimension mappings of the Measure with `id`."
   [id                 :- ::lib.schema.id/measure
    dimensions         :- [:maybe sequential?]

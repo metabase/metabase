@@ -3,15 +3,10 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
-   [metabase.audit-app.schema :as audit-app.schema]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (def ^:private TableSelectors
@@ -64,7 +59,7 @@
                                   [:in input-table-id table-ids]
                                   not-in-tables]})))
 
-(mu/defn table-ids-matching-selectors :- [:maybe [:set ::lib.schema.id/table]]
+(mu/defn table-ids-matching-selectors
   "The IDs of the Tables selected by `selectors` (`{:database-ids :table-ids :schema-ids}`) plus, when given, the
   `extra-table-ids` that are unpublished (`:unpublished` mode) or any of them (`:any` mode)."
   [selectors        :- TableSelectors
@@ -78,26 +73,22 @@
                                                       :any         [:in :id extra-table-ids])]
                                  selector-expr))}))
 
-(mu/defn published-table-ids :- [:maybe [:set ::lib.schema.id/table]]
+(mu/defn published-table-ids
   "The IDs of the published Tables among `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(mu/defn collection :- [:maybe ::collections.schema/collection]
+(mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection collection-id))
 
-(def ^:private LatestTablePublishingEvent
-  "Rows returned by [[latest-table-publishing-event]]."
-  (mut/select-keys ::audit-app.schema/audit-log [:timestamp :topic :user_id]))
-
-(mu/defn latest-table-publishing-event :- [:maybe LatestTablePublishingEvent]
+(mu/defn latest-table-publishing-event
   "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
@@ -106,27 +97,23 @@
                  :model_id table-id
                  {:order-by [[:timestamp :desc] [:id :desc]]}))
 
-(def ^:private UserNameAndEmail
-  "Rows returned by [[user-name-and-email]]."
-  (mut/select-keys ::users.schema/user [:id :first_name :last_name :email :common_name]))
-
-(mu/defn user-name-and-email :- [:maybe UserNameAndEmail]
+(mu/defn user-name-and-email
   "The id, first name, last name, and email of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
 
-(mu/defn publish-tables! :- :int
+(mu/defn publish-tables!
   "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."
   [table-ids     :- [:set ::lib.schema.id/table]
    collection-id :- ::lib.schema.id/collection]
   (t2/update! :model/Table :id [:in table-ids] {:collection_id collection-id, :is_published true}))
 
-(mu/defn unpublish-tables! :- :int
+(mu/defn unpublish-tables!
   "Unpublish the Tables with `table-ids` and detach them from their Collection, returning the number updated."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/update! :model/Table :id [:in table-ids] {:collection_id nil, :is_published false}))
 
-(mu/defn published-table-visible-to-user? :- :boolean
+(mu/defn published-table-visible-to-user?
   "Whether the Table with `table-id` is published in a Collection the User with `user-id` can read."
   [table-id   :- ::lib.schema.id/table
    user-id    :- ::lib.schema.id/user
@@ -139,7 +126,7 @@
                         :collection_id {} {:current-user-id user-id
                                            :is-superuser?   superuser?})]}))
 
-(mu/defn any-published-table-visible? :- :boolean
+(mu/defn any-published-table-visible?
   "Whether the current user can read the Collection of any published Table."
   []
   (t2/exists? :model/Table
@@ -147,7 +134,7 @@
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause :collection_id)]}))
 
-(mu/defn published-table-visible-in-database? :- :boolean
+(mu/defn published-table-visible-in-database?
   "Whether the current user can read the Collection of any published Table in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Table

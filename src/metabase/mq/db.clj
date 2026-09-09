@@ -6,7 +6,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn waiting-queue-triggers-before :- [:sequential [:map {:closed true} [:trigger_name :string] [:job_name :string]]]
+(mu/defn waiting-queue-triggers-before
   "The `{:trigger_name :job_name}` rows of `trigger-group` triggers in `sched-name`'s Quartz store that are `WAITING`
   and started before `threshold` (epoch ms)."
   [sched-name    :- :string
@@ -18,26 +18,18 @@
                   " AND start_time < ?")
              sched-name trigger-group threshold]))
 
-(mu/defn insert-outbox-row! :- ms/PositiveInt
+(mu/defn insert-outbox-row!
   "Insert a `queue_message_outbox` row for `queue-name` with `payload` and return its id."
   [queue-name :- :string
    payload    :- :string]
   (t2/insert-returning-pk! :queue_message_outbox {:queue_name queue-name, :payload payload}))
 
-(mu/defn delete-outbox-rows! :- :int
+(mu/defn delete-outbox-rows!
   "Delete the `queue_message_outbox` rows with `ids`, returning the number deleted."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :queue_message_outbox :id [:in ids]))
 
-(def ^:private DueOutbox
-  "Rows returned by [[due-outbox-rows]]."
-  [:map {:closed true}
-   [:id :int]
-   [:queue_name :string]
-   [:payload :string]
-   [:publish_attempts :int]])
-
-(mu/defn due-outbox-rows :- [:sequential DueOutbox]
+(mu/defn due-outbox-rows
   "Up to `limit` `queue_message_outbox` rows after `after-id`, in id order, that are due: never attempted and created
   before `created-before`, or scheduled to retry at or before `now`. Locked with the `for` clause `for-clause`.
 "
@@ -57,7 +49,7 @@
              :limit    limit
              :for      for-clause}))
 
-(mu/defn bump-outbox-row! :- :int
+(mu/defn bump-outbox-row!
   "Increment the publish attempts of the `queue_message_outbox` row with `id` and schedule its next attempt,
   returning the number updated."
   [id              :- ms/PositiveInt

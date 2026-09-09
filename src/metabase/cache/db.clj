@@ -5,53 +5,42 @@
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.cache.schema :as cache.schema]
-   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn database-with-ids :- [:maybe ::warehouses.schema/database]
+(mu/defn database-with-ids
   "A Database whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-one :model/Database :id [:in ids]))
 
-(mu/defn dashboard-with-ids :- [:maybe ::dashboards.schema/dashboard]
+(mu/defn dashboard-with-ids
   "A Dashboard whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-one :model/Dashboard :id [:in ids]))
 
-(mu/defn card-with-ids :- [:maybe ::queries.schema/card]
+(mu/defn card-with-ids
   "A Card whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-one :model/Card :id [:in ids]))
 
-(def ^:private DashboardCollectionId
-  "Rows returned by [[dashboard-collection-id]]."
-  (mut/select-keys ::dashboards.schema/dashboard [:collection_id]))
-
-(mu/defn dashboard-collection-id :- [:maybe DashboardCollectionId]
+(mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one [:model/Dashboard :collection_id] :id dashboard-id))
 
-(def ^:private CardCollectionId
-  "Rows returned by [[card-collection-id]]."
-  (mut/optional-keys (mut/select-keys ::queries.schema/card [:collection_id :query_description :source_card_id]) [:source_card_id]))
-
-(mu/defn card-collection-id :- [:maybe CardCollectionId]
+(mu/defn card-collection-id
   "The `:collection_id` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :collection_id] :id card-id))
 
-(mu/defn cache-config :- [:maybe ::cache.schema/cache-config]
+(mu/defn cache-config
   "The CacheConfig with primary key `pk`, or nil."
   [pk :- ms/PositiveInt]
   (t2/select-one :model/CacheConfig pk))
 
-(mu/defn root-ttl-cache-config :- [:maybe ::cache.schema/cache-config]
+(mu/defn root-ttl-cache-config
   "The root TTL CacheConfig, or nil."
   []
   (t2/select-one :model/CacheConfig :model "root" :model_id 0 :strategy :ttl))
@@ -98,17 +87,7 @@
                   [:= :model "dashboard"] [:!= :report_dashboard.id nil]
                   :else                             true]]}))
 
-(def ^:private CacheConfigsPage
-  "Rows returned by [[cache-configs-page]]."
-  (mut/merge ::cache.schema/cache-config
-             [:map
-              [:item_name                  {:optional true} [:maybe :string]]
-              [:collection_id              {:optional true} [:maybe ::lib.schema.id/collection]]
-              [:collection_name            {:optional true} [:maybe :string]]
-              [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
-              [:collection_type            {:optional true} [:maybe [:or :keyword :string]]]]))
-
-(mu/defn cache-configs-page :- [:sequential CacheConfigsPage]
+(mu/defn cache-configs-page
   "The CacheConfigs of `models` in `collection` (or of the entity with `id`), with the name and Collection of the
   configured entity, sorted by `sort-column` in `sort-direction` when given and paged by `limit` and `offset`."
   [models         :- [:sequential :string]
@@ -124,7 +103,7 @@
                limit       (assoc :limit limit)
                offset      (assoc :offset offset))))
 
-(mu/defn cache-config-count-row :- [:map {:closed true} [:count :int]]
+(mu/defn cache-config-count-row
   "The `:count` row of the CacheConfigs [[cache-configs-page]] pages through."
   [models     :- [:sequential :string]
    collection :- [:maybe ms/PositiveInt]
@@ -133,13 +112,13 @@
                     (dissoc :select)
                     (assoc :select [[[:count :*] :count]]))))
 
-(mu/defn lock-cache-config :- [:maybe ::cache.schema/cache-config]
+(mu/defn lock-cache-config
   "The CacheConfig for `model` and `model-id` locked for update, or nil."
   [model    :- :string
    model-id :- ms/IntGreaterThanOrEqualToZero]
   (t2/select-one :model/CacheConfig :model model :model_id model-id {:for :update}))
 
-(mu/defn upsert-cache-config! :- ms/PositiveInt
+(mu/defn upsert-cache-config!
   "Insert or replace the CacheConfig for `model` and `model-id` with `data`, returning its ID."
   [model    :- :string
    model-id :- ms/IntGreaterThanOrEqualToZero
@@ -147,35 +126,35 @@
   (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model-id}
                             (constantly data)))
 
-(mu/defn cache-configs-for :- [:sequential ::cache.schema/cache-config]
+(mu/defn cache-configs-for
   "The CacheConfigs for `model` and `model-ids`."
   [model     :- :string
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/CacheConfig :model model :model_id [:in model-ids]))
 
-(mu/defn delete-cache-configs! :- :int
+(mu/defn delete-cache-configs!
   "Delete the CacheConfigs for `model` and `model-ids`, returning the number deleted."
   [model     :- :string
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
   (t2/delete! :model/CacheConfig :model model :model_id [:in model-ids]))
 
-(mu/defn card-ids-for-databases :- [:maybe [:sequential ::lib.schema.id/card]]
+(mu/defn card-ids-for-databases
   "The ids of the Cards of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn-vec :id [:model/Card :id] :database_id [:in database-ids]))
 
-(mu/defn dashboard-card-ids :- [:maybe [:sequential [:maybe ::lib.schema.id/card]]]
+(mu/defn dashboard-card-ids
   "The Card ids of the DashboardCards of the Dashboards with `dashboard-ids` (nil for DashboardCards without a Card)."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in dashboard-ids]))
 
-(mu/defn invalidate-cards! :- :int
+(mu/defn invalidate-cards!
   "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, returning the number updated."
   [card-ids       :- [:sequential ::lib.schema.id/card]
    invalidated-at :- ms/TemporalInstant]
   (t2/update! :model/Card :id [:in card-ids] {:cache_invalidated_at invalidated-at}))
 
-(mu/defn invalidate-cache-configs! :- :int
+(mu/defn invalidate-cache-configs!
   "Set `invalidated_at` of the CacheConfigs identified by the `[model model-id]` pairs to `invalidated-at`, returning
   the number updated."
   [model+ids      :- [:sequential [:tuple :string ms/IntGreaterThanOrEqualToZero]]
@@ -185,7 +164,7 @@
                  :where  (into [:or] (for [[model model-id] model+ids]
                                        [:and [:= :model model] [:= :model_id model-id]]))}))
 
-(mu/defn cache-config-exists? :- :boolean
+(mu/defn cache-config-exists?
   "Whether any CacheConfig exists."
   []
   (t2/exists? :model/CacheConfig))

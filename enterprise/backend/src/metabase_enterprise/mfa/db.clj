@@ -6,7 +6,6 @@
    [malli.util :as mut]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -59,41 +58,37 @@
              [:like :%lower.last_name  pattern]
              [:like :%lower.email      pattern]]))))
 
-(mu/defn user :- [:maybe ::users.schema/user]
+(mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id))
 
-(mu/defn user-email :- [:maybe :string]
+(mu/defn user-email
   "The email of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :email :model/User :id user-id))
 
-(def ^:private LockUser
-  "Rows returned by [[lock-user]]."
-  (mut/select-keys ::users.schema/user [:id :common_name]))
-
-(mu/defn lock-user :- [:maybe LockUser]
+(mu/defn lock-user
   "The `:id` row of the User with `user-id`, locked for update."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id] :id user-id {:for :update}))
 
-(mu/defn totp-identity :- [:maybe ::auth-identity.schema/auth-identity]
+(mu/defn totp-identity
   "The TOTP AuthIdentity of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider))
 
-(mu/defn lock-totp-identity :- [:maybe ::auth-identity.schema/auth-identity]
+(mu/defn lock-totp-identity
   "The TOTP AuthIdentity of the User with `user-id`, locked for update, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider {:for :update}))
 
-(mu/defn password-credentials :- [:maybe :map]
+(mu/defn password-credentials
   "The password credentials of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password"))
 
-(mu/defn insert-auth-identity! :- :int
+(mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."
   [row :- [:map {:closed true}
            [:id           {:optional true} ms/PositiveInt]
@@ -109,34 +104,28 @@
            [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]]]
   (t2/insert! :model/AuthIdentity row))
 
-(mu/defn update-auth-identity! :- :int
+(mu/defn update-auth-identity!
   "Apply `changes` to the AuthIdentity with `auth-identity-id`, returning the number updated."
   [auth-identity-id :- ms/PositiveInt
    changes          :- (mut/select-keys ::auth-identity.schema/auth-identity.update [:credentials :confirmed_at])]
   (t2/update! :model/AuthIdentity auth-identity-id changes))
 
-(mu/defn delete-totp-identity! :- :int
+(mu/defn delete-totp-identity!
   "Delete the TOTP AuthIdentity of the User with `user-id`, returning the number deleted."
   [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/AuthIdentity :user_id user-id :provider totp-provider))
 
-(mu/defn confirmed-totp-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn confirmed-totp-count
   "The number of confirmed TOTP enrollments."
   []
   (t2/count :model/AuthIdentity :provider totp-provider :confirmed_at [:not= nil]))
 
-(mu/defn unenrolled-user-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn unenrolled-user-count
   "The number of active personal Users without a confirmed TOTP enrollment."
   []
   (t2/count :model/User {:where unenrolled-user-where}))
 
-(def ^:private UserListRow
-  "Rows returned by [[user-list]]."
-  (mut/merge (mut/select-keys ::users.schema/user.full [:id :email :first_name :last_name :sso_source :is_active :is_superuser :common_name])
-             [:map
-              [:enrolled_at {:optional true} [:maybe ms/TemporalInstant]]]))
-
-(mu/defn user-list :- [:sequential UserListRow]
+(mu/defn user-list
   "The name-ordered admin list of enrolled (with their enrollment time) or unenrolled Users matching `search`, paged
   by the optional `limit` and `offset`."
   [enrolled? :- :boolean
@@ -152,7 +141,7 @@
                ;; a nil limit would emit `LIMIT NULL`
                limit (assoc :limit limit :offset offset))))
 
-(mu/defn user-list-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn user-list-count
   "The number of enrolled or unenrolled Users matching `search`."
   [enrolled? :- :boolean
    search    :- [:maybe :string]]

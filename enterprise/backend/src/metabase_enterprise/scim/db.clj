@@ -20,17 +20,17 @@
   "Required columns when fetching groups for SCIM."
   [:model/PermissionsGroup :id :name :entity_id])
 
-(mu/defn scim-api-key :- [:maybe ::api-keys.schema/api-key]
+(mu/defn scim-api-key
   "The SCIM ApiKey, or nil."
   []
   (t2/select-one :model/ApiKey :scope :scim))
 
-(mu/defn delete-scim-api-keys! :- :int
+(mu/defn delete-scim-api-keys!
   "Delete every SCIM ApiKey, returning the number deleted."
   []
   (t2/delete! :model/ApiKey :scope :scim))
 
-(mu/defn insert-api-key! :- ::api-keys.schema/api-key.inserted
+(mu/defn insert-api-key!
   "Insert `api-key` and return the new instance."
   [api-key :- ::api-keys.schema/api-key.create]
   (t2/insert-returning-instance! :model/ApiKey api-key))
@@ -40,32 +40,17 @@
   [:and [:= :type "personal"]
    (when email [:= :%lower.email (u/lower-case-en email)])])
 
-(def ^:private ScimUserByEntityId
-  "Rows returned by [[scim-user-by-entity-id]]."
-  (mut/select-keys ::users.schema/user.full
-                   [:id :first_name :last_name :email :locale :is_active :entity_id :common_name]))
-
-(mu/defn scim-user-by-entity-id :- [:maybe ScimUserByEntityId]
+(mu/defn scim-user-by-entity-id
   "The SCIM columns of the personal User with `entity-id`, or nil."
   [entity-id :- :string]
   (t2/select-one user-columns :entity_id entity-id {:where [:= :type "personal"]}))
 
-(def ^:private ScimUserByEmail
-  "Rows returned by [[scim-user-by-email]]."
-  (mut/select-keys ::users.schema/user.full
-                   [:id :first_name :last_name :email :locale :is_active :entity_id :common_name]))
-
-(mu/defn scim-user-by-email :- [:maybe ScimUserByEmail]
+(mu/defn scim-user-by-email
   "The SCIM columns of the User with `email`, or nil."
   [email :- :string]
   (t2/select-one user-columns :email (u/lower-case-en email)))
 
-(def ^:private ScimUser
-  "Rows returned by [[scim-users]]."
-  (mut/select-keys ::users.schema/user.full
-                   [:id :first_name :last_name :email :locale :is_active :entity_id :common_name]))
-
-(mu/defn scim-users :- [:sequential ScimUser]
+(mu/defn scim-users
   "The SCIM columns of the personal Users, narrowed to the optional `email` (case-insensitive), paged by `limit`
   and `offset` in ID order."
   [email  :- [:maybe :string]
@@ -77,38 +62,33 @@
               :offset   offset
               :order-by [[:id :asc]]}))
 
-(mu/defn scim-user-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn scim-user-count
   "The number of personal Users, narrowed to the optional `email` (case-insensitive)."
   [email :- [:maybe :string]]
   (t2/count :model/User {:where (personal-user-expr email)}))
 
-(mu/defn user-email-exists? :- :boolean
+(mu/defn user-email-exists?
   "Whether a User with `email` (case-insensitive) exists."
   [email :- :string]
   (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
 
-(mu/defn user-ids-by-entity-ids :- [:maybe [:set ::lib.schema.id/user]]
+(mu/defn user-ids-by-entity-ids
   "The IDs of the Users with `entity-ids`."
   [entity-ids :- [:sequential :string]]
   (t2/select-fn-set :id :model/User {:where [:in :entity_id entity-ids]}))
 
-(mu/defn insert-user! :- :int
+(mu/defn insert-user!
   "Insert the User `row`, returning the number inserted."
   [row :- ::users.schema/user.update]
   (t2/insert! :model/User row))
 
-(mu/defn update-user! :- :int
+(mu/defn update-user!
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
   (t2/update! :model/User user-id changes))
 
-(def ^:private UserGroupMembership
-  "Rows returned by [[user-group-memberships]]."
-  (mut/merge (mut/select-keys ::permissions.schema/permissions-group-membership [:user_id])
-             [:map [:name [:maybe :string]] [:entity_id [:maybe :string]]]))
-
-(mu/defn user-group-memberships :- [:sequential UserGroupMembership]
+(mu/defn user-group-memberships
   "Rows of User ID, group name, and group entity ID for the memberships of the Users with `user-ids`, excluding the
   groups with `excluded-group-ids`."
   [user-ids           :- [:sequential ::lib.schema.id/user]
@@ -126,21 +106,13 @@
         (map (fn [group-id] [:not= :id group-id]))
         excluded-group-ids))
 
-(def ^:private ScimGroupByEntityId
-  "Rows returned by [[scim-group-by-entity-id]]."
-  (mut/select-keys ::permissions.schema/permissions-group [:id :name :entity_id]))
-
-(mu/defn scim-group-by-entity-id :- [:maybe ScimGroupByEntityId]
+(mu/defn scim-group-by-entity-id
   "The SCIM columns of the PermissionsGroup with `entity-id` other than `excluded-group-ids`, or nil."
   [entity-id          :- :string
    excluded-group-ids :- [:sequential ms/PositiveInt]]
   (t2/select-one group-columns :entity_id entity-id {:where (manageable-group-expr excluded-group-ids nil)}))
 
-(def ^:private ScimGroup
-  "Rows returned by [[scim-groups]]."
-  (mut/select-keys ::permissions.schema/permissions-group [:id :name :entity_id]))
-
-(mu/defn scim-groups :- [:sequential ScimGroup]
+(mu/defn scim-groups
   "The SCIM columns of the PermissionsGroups other than `excluded-group-ids`, narrowed to the optional `group-name`,
   paged by `limit` and `offset` in ID order."
   [excluded-group-ids :- [:sequential ms/PositiveInt]
@@ -153,39 +125,34 @@
               :offset   offset
               :order-by [[:id :asc]]}))
 
-(mu/defn scim-group-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn scim-group-count
   "The number of PermissionsGroups other than `excluded-group-ids`, narrowed to the optional `group-name`."
   [excluded-group-ids :- [:sequential ms/PositiveInt]
    group-name         :- [:maybe :string]]
   (t2/count :model/PermissionsGroup {:where (manageable-group-expr excluded-group-ids group-name)}))
 
-(mu/defn group-name-exists? :- :boolean
+(mu/defn group-name-exists?
   "Whether a PermissionsGroup with `group-name` (case-insensitive) exists."
   [group-name :- :string]
   (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name)))
 
-(mu/defn insert-group! :- ::permissions.schema/permissions-group
+(mu/defn insert-group!
   "Insert `group` and return the new instance."
   [group :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
   (first (t2/insert-returning-instances! :model/PermissionsGroup group)))
 
-(mu/defn update-group! :- :int
+(mu/defn update-group!
   "Apply `changes` to the PermissionsGroup with `group-id`, returning the number updated."
   [group-id :- ms/PositiveInt
    changes  :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
   (t2/update! :model/PermissionsGroup group-id changes))
 
-(mu/defn delete-group! :- :int
+(mu/defn delete-group!
   "Delete the PermissionsGroup with `group-id`, returning the number deleted."
   [group-id :- ms/PositiveInt]
   (t2/delete! :model/PermissionsGroup group-id))
 
-(def ^:private GroupMember
-  "Rows returned by [[group-members]]."
-  (mut/merge (mut/select-keys ::permissions.schema/permissions-group-membership [:group_id])
-             [:map [:email [:maybe :string]] [:entity_id [:maybe :string]]]))
-
-(mu/defn group-members :- [:sequential GroupMember]
+(mu/defn group-members
   "Rows of group ID, member email, and member entity ID for the memberships of the PermissionsGroups with
   `group-ids`."
   [group-ids :- [:sequential ms/PositiveInt]]

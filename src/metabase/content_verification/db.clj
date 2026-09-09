@@ -6,12 +6,11 @@
    [metabase.app-db.core :as app-db]
    [metabase.content-verification.schema :as content-verification.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn moderation-reviews-for-items :- [:sequential ::content-verification.schema/moderation-review]
+(mu/defn moderation-reviews-for-items
   "The ModerationReviews of the items with `item-types` and `item-ids`, newest first."
   [item-types :- [:set :keyword]
    item-ids   :- [:sequential ms/PositiveInt]]
@@ -20,12 +19,12 @@
              :moderated_item_id [:in item-ids]
              {:order-by [[:id :desc]]}))
 
-(mu/defn users :- [:sequential ::users.schema/user]
+(mu/defn users
   "The Users with `user-ids`."
   [user-ids :- [:maybe [:sequential [:maybe ::lib.schema.id/user]]]]
   (t2/select :model/User :id [:in user-ids]))
 
-(mu/defn moderation-review-ids-for-item :- [:sequential [:map {:closed true} [:id ms/PositiveInt]]]
+(mu/defn moderation-review-ids-for-item
   "The ids of the ModerationReviews of the item with `item-id` and `item-type`, newest first."
   [item-id   :- ms/PositiveInt
    item-type :- [:or :string :keyword]]
@@ -36,12 +35,7 @@
                             [:= :moderated_item_type item-type]]
                  :order-by [[:id :desc]]}))
 
-(def ^:private MostRecentModerationReviewStatuse
-  "Rows returned by [[most-recent-moderation-review-statuses]]."
-  (mut/select-keys ::content-verification.schema/moderation-review
-                   [:moderated_item_id :moderated_item_type :status]))
-
-(mu/defn most-recent-moderation-review-statuses :- [:sequential MostRecentModerationReviewStatuse]
+(mu/defn most-recent-moderation-review-statuses
   "The item id, item type, and status of the most recent ModerationReviews of the items with `item-types` and
   `item-ids`, newest first."
   [item-types :- [:set :keyword]
@@ -52,12 +46,12 @@
              :most_recent true
              {:order-by [[:id :desc]]}))
 
-(mu/defn delete-moderation-reviews! :- :int
+(mu/defn delete-moderation-reviews!
   "Delete the ModerationReviews with `ids`."
   [ids :- [:set ms/PositiveInt]]
   (t2/delete! :model/ModerationReview :id [:in ids]))
 
-(mu/defn unmark-most-recent-moderation-reviews! :- :int
+(mu/defn unmark-most-recent-moderation-reviews!
   "Clear `most_recent` on the ModerationReviews of the item with `item-id` and `item-type`."
   [item-id   :- ms/PositiveInt
    item-type :- [:or :string :keyword]]
@@ -65,7 +59,7 @@
               {:moderated_item_id item-id, :moderated_item_type item-type}
               {:most_recent false}))
 
-(mu/defn insert-moderation-review! :- ::content-verification.schema/moderation-review
+(mu/defn insert-moderation-review!
   "Insert the ModerationReview `row` and return the inserted instance."
   [row :- (mut/select-keys ::content-verification.schema/moderation-review.update [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]
   (t2/insert-returning-instance! :model/ModerationReview row))

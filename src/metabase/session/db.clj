@@ -2,30 +2,27 @@
   "Application database queries for the session module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.db :as auth-identity.db]
-   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.tracing.core :as tracing]
-   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn delete-session-by-key-hashed! :- :int
+(mu/defn delete-session-by-key-hashed!
   "Delete the Session with `key-hashed`, returning the number of rows deleted."
   [key-hashed :- :string]
   (t2/delete! :model/Session :key_hashed key-hashed))
 
-(mu/defn delete-sessions-for-user! :- :int
+(mu/defn delete-sessions-for-user!
   "Delete every Session of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/Session :user_id user-id))
 
-(mu/defn delete-expired-sessions! :- :int
+(mu/defn delete-expired-sessions!
   "Delete Sessions older than `max-age-minutes`, past their own `expires_at`, or (when `idle-timeout-seconds` is
   given) idle longer than `idle-timeout-seconds`. Returns the number of rows deleted."
   [max-age-minutes      :- ms/PositiveInt
@@ -44,53 +41,41 @@
     (tracing/with-span :tasks "task.session-cleanup.delete" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/query-one hsql))))
 
-(mu/defn auth-identity-for-provider :- [:maybe ::auth-identity.schema/auth-identity]
+(mu/defn auth-identity-for-provider
   "The AuthIdentity of the User with `user-id` at `provider`, or nil. See `metabase.auth-identity.db/auth-identity`,
   which owns the AuthIdentity table."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
   (auth-identity.db/auth-identity user-id provider))
 
-(mu/defn auth-identity-exists? :- :boolean
+(mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
   (auth-identity.db/auth-identity-exists? user-id provider))
 
-(mu/defn set-auth-identity-credentials! :- :int
+(mu/defn set-auth-identity-credentials!
   "Set the `credentials` of the AuthIdentity with `auth-identity-id`."
   [auth-identity-id :- ms/PositiveInt
    credentials      :- [:maybe :map]]
   (t2/update! :model/AuthIdentity auth-identity-id {:credentials credentials}))
 
-(def ^:private AuthIdentityProvider
-  "Rows returned by [[auth-identity-provider]]."
-  (mut/select-keys ::auth-identity.schema/auth-identity [:provider]))
-
-(mu/defn auth-identity-provider :- [:maybe AuthIdentityProvider]
+(mu/defn auth-identity-provider
   "The `:provider` of the AuthIdentity with `auth-identity-id`, or nil."
   [auth-identity-id :- ms/PositiveInt]
   (t2/select-one [:model/AuthIdentity :provider] :id auth-identity-id))
 
-(def ^:private UserByEmail
-  "Rows returned by [[user-by-email]]."
-  (mut/select-keys ::users.schema/user.full [:id :sso_source :is_active :common_name]))
-
-(mu/defn user-by-email :- [:maybe UserByEmail]
+(mu/defn user-by-email
   "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."
   [email :- :string]
   (t2/select-one [:model/User :id :sso_source :is_active] :%lower.email (u/lower-case-en email)))
 
-(mu/defn user :- [:maybe ::users.schema/user]
+(mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id))
 
-(def ^:private UserLoginStatus
-  "Rows returned by [[user-login-status]]."
-  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :tenant_id :common_name]))
-
-(mu/defn user-login-status :- [:maybe UserLoginStatus]
+(mu/defn user-login-status
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))

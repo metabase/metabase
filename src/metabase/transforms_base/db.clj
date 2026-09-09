@@ -7,56 +7,24 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn transform-source :- [:maybe :map]
+(mu/defn transform-source
   "The source of the Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one-fn :source [:model/Transform :id :source] transform-id))
 
-(def ^:private TransformsForOrdering
-  "Rows returned by [[transforms-for-ordering]]."
-  [:map {:closed true}
-   [:id                 ::lib.schema.id/transform]
-   [:name               :string]
-   [:target             :map]
-   [:target_table_id    [:maybe ::lib.schema.id/table]]
-   [:source_database_id [:maybe ::lib.schema.id/database]]
-   [:table_dependencies [:maybe [:sequential :map]]]])
-
-(mu/defn transforms-for-ordering :- [:sequential TransformsForOrdering]
+(mu/defn transforms-for-ordering
   "The id, name, target, target Table id, source Database id, and table dependencies of every Transform
    excluding [[transform-id]]."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select [:model/Transform :id :name :target :target_table_id :source_database_id :table_dependencies]
              :id [:not= transform-id]))
 
-(def ^:private Transform
-  "Rows returned by [[transform]]."
-  [:map {:closed true}
-   [:id                    ::lib.schema.id/transform]
-   [:name                  :string]
-   [:description           [:maybe :string]]
-   [:source                :map]
-   [:target                :map]
-   [:entity_id             :string]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]
-   [:source_type           [:or :keyword :string]]
-   [:creator_id            ::lib.schema.id/user]
-   [:source_database_id    [:maybe ::lib.schema.id/database]]
-   [:collection_id         [:maybe ::lib.schema.id/collection]]
-   [:owner_user_id         [:maybe ::lib.schema.id/user]]
-   [:owner_email           [:maybe :string]]
-   [:target_db_id          [:maybe ::lib.schema.id/database]]
-   [:last_checkpoint_value [:maybe :string]]
-   [:target_table_id       [:maybe ::lib.schema.id/table]]
-   [:table_dependencies    [:maybe [:sequential :map]]]])
-
-(mu/defn transform :- [:maybe Transform]
+(mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform transform-id))
 
-(mu/defn update-transform! :- :int
+(mu/defn update-transform!
   "Apply `changes` to the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform
    changes      :- [:map {:closed true}
@@ -64,7 +32,7 @@
                     [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]]]
   (t2/update! :model/Transform transform-id changes))
 
-(mu/defn update-transform-run! :- :int
+(mu/defn update-transform-run!
   "Apply `changes` to the TransformRun with `run-id`."
   [run-id  :- ms/PositiveInt
    changes :- [:map {:closed true}
@@ -73,93 +41,17 @@
                [:checkpoint_hi_value        {:optional true} [:maybe :string]]]]
   (t2/update! :model/TransformRun run-id changes))
 
-(def ^:private Database
-  "Rows returned by [[database]]."
-  [:map {:closed true}
-   [:id                          ::lib.schema.id/database]
-   [:created_at                  ms/TemporalInstant]
-   [:updated_at                  ms/TemporalInstant]
-   [:name                        :string]
-   [:description                 [:maybe :string]]
-   [:details                     :map]
-   [:engine                      [:or :keyword :string]]
-   [:is_sample                   :boolean]
-   [:is_full_sync                :boolean]
-   [:points_of_interest          [:maybe :string]]
-   [:caveats                     [:maybe :string]]
-   [:metadata_sync_schedule      :string]
-   [:cache_field_values_schedule [:maybe :string]]
-   [:timezone                    [:maybe :string]]
-   [:is_on_demand                :boolean]
-   [:auto_run_queries            :boolean]
-   [:refingerprint               [:maybe :boolean]]
-   [:cache_ttl                   [:maybe :int]]
-   [:initial_sync_status         [:or :keyword :string]]
-   [:creator_id                  [:maybe ::lib.schema.id/user]]
-   [:settings                    [:maybe :map]]
-   [:dbms_version                [:maybe :map]]
-   [:is_audit                    :boolean]
-   [:uploads_enabled             :boolean]
-   [:uploads_schema_name         [:maybe :string]]
-   [:uploads_table_prefix        [:maybe :string]]
-   [:is_attached_dwh             :boolean]
-   [:router_database_id          [:maybe ::lib.schema.id/database]]
-   [:provider_name               [:maybe :string]]
-   [:write_data_details          [:maybe :map]]
-   [:admin_details               [:maybe :map]]
-   [:is_stub                     :boolean]
-   ;; added by the model's after-select hook
-   [:features {:optional true} [:maybe [:set :keyword]]]])
-
-(mu/defn database :- [:maybe Database]
+(mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database database-id))
 
-(mu/defn field-table-id :- [:maybe [:maybe ::lib.schema.id/table]]
+(mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :table_id :model/Field field-id))
 
-(def ^:private TargetTable
-  "Rows returned by [[target-table]]."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/table]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:name                    :string]
-   [:description             [:maybe :string]]
-   [:entity_type             [:maybe [:or :keyword :string]]]
-   [:active                  :boolean]
-   [:db_id                   ::lib.schema.id/database]
-   [:display_name            [:maybe :string]]
-   [:visibility_type         [:maybe [:or :keyword :string]]]
-   [:schema                  [:maybe :string]]
-   [:points_of_interest      [:maybe :string]]
-   [:caveats                 [:maybe :string]]
-   [:show_in_getting_started :boolean]
-   [:field_order             [:or :keyword :string]]
-   [:initial_sync_status     [:or :keyword :string]]
-   [:is_upload               :boolean]
-   [:database_require_filter [:maybe :boolean]]
-   [:estimated_row_count     [:maybe :int]]
-   [:view_count              :int]
-   [:is_defective_duplicate  {:optional true} :boolean]
-   [:unique_table_helper     {:optional true} [:maybe :string]]
-   [:deactivated_at          [:maybe ms/TemporalInstant]]
-   [:archived_at             [:maybe ms/TemporalInstant]]
-   [:is_writable             [:maybe :boolean]]
-   [:data_authority          [:or :keyword :string]]
-   [:data_source             [:maybe [:or :keyword :string]]]
-   [:data_layer              [:maybe [:or :keyword :string]]]
-   [:owner_email             [:maybe :string]]
-   [:owner_user_id           [:maybe ::lib.schema.id/user]]
-   [:collection_id           [:maybe ::lib.schema.id/collection]]
-   [:is_published            :boolean]
-   [:transform_id            [:maybe ::lib.schema.id/transform]]
-   [:transform_target        :boolean]])
-
-(mu/defn target-table :- [:maybe TargetTable]
+(mu/defn target-table
   "The Table named `table-name` in `schema` of the Database with `database-id` also matching the key-value
   `conditions`, or nil."
   [database-id :- ::lib.schema.id/database
@@ -168,93 +60,17 @@
    & conditions :- [:* :some]]
   (apply t2/select-one :model/Table :db_id database-id :schema schema :name table-name conditions))
 
-(def ^:private Table
-  "Rows returned by [[table]]."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/table]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:name                    :string]
-   [:description             [:maybe :string]]
-   [:entity_type             [:maybe [:or :keyword :string]]]
-   [:active                  :boolean]
-   [:db_id                   ::lib.schema.id/database]
-   [:display_name            [:maybe :string]]
-   [:visibility_type         [:maybe [:or :keyword :string]]]
-   [:schema                  [:maybe :string]]
-   [:points_of_interest      [:maybe :string]]
-   [:caveats                 [:maybe :string]]
-   [:show_in_getting_started :boolean]
-   [:field_order             [:or :keyword :string]]
-   [:initial_sync_status     [:or :keyword :string]]
-   [:is_upload               :boolean]
-   [:database_require_filter [:maybe :boolean]]
-   [:estimated_row_count     [:maybe :int]]
-   [:view_count              :int]
-   [:is_defective_duplicate  {:optional true} :boolean]
-   [:unique_table_helper     {:optional true} [:maybe :string]]
-   [:deactivated_at          [:maybe ms/TemporalInstant]]
-   [:archived_at             [:maybe ms/TemporalInstant]]
-   [:is_writable             [:maybe :boolean]]
-   [:data_authority          [:or :keyword :string]]
-   [:data_source             [:maybe [:or :keyword :string]]]
-   [:data_layer              [:maybe [:or :keyword :string]]]
-   [:owner_email             [:maybe :string]]
-   [:owner_user_id           [:maybe ::lib.schema.id/user]]
-   [:collection_id           [:maybe ::lib.schema.id/collection]]
-   [:is_published            :boolean]
-   [:transform_id            [:maybe ::lib.schema.id/transform]]
-   [:transform_target        :boolean]])
-
-(mu/defn table :- [:maybe Table]
+(mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table table-id))
 
-(def ^:private TableForTransform
-  "Rows returned by [[table-for-transform]]."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/table]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:name                    :string]
-   [:description             [:maybe :string]]
-   [:entity_type             [:maybe [:or :keyword :string]]]
-   [:active                  :boolean]
-   [:db_id                   ::lib.schema.id/database]
-   [:display_name            [:maybe :string]]
-   [:visibility_type         [:maybe [:or :keyword :string]]]
-   [:schema                  [:maybe :string]]
-   [:points_of_interest      [:maybe :string]]
-   [:caveats                 [:maybe :string]]
-   [:show_in_getting_started :boolean]
-   [:field_order             [:or :keyword :string]]
-   [:initial_sync_status     [:or :keyword :string]]
-   [:is_upload               :boolean]
-   [:database_require_filter [:maybe :boolean]]
-   [:estimated_row_count     [:maybe :int]]
-   [:view_count              :int]
-   [:is_defective_duplicate  {:optional true} :boolean]
-   [:unique_table_helper     {:optional true} [:maybe :string]]
-   [:deactivated_at          [:maybe ms/TemporalInstant]]
-   [:archived_at             [:maybe ms/TemporalInstant]]
-   [:is_writable             [:maybe :boolean]]
-   [:data_authority          [:or :keyword :string]]
-   [:data_source             [:maybe [:or :keyword :string]]]
-   [:data_layer              [:maybe [:or :keyword :string]]]
-   [:owner_email             [:maybe :string]]
-   [:owner_user_id           [:maybe ::lib.schema.id/user]]
-   [:collection_id           [:maybe ::lib.schema.id/collection]]
-   [:is_published            :boolean]
-   [:transform_id            [:maybe ::lib.schema.id/transform]]
-   [:transform_target        :boolean]])
-
-(mu/defn table-for-transform :- [:maybe TableForTransform]
+(mu/defn table-for-transform
   "The Table owned by the Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Table :transform_id transform-id))
 
-(mu/defn update-table! :- :int
+(mu/defn update-table!
   "Apply `changes` to the Table with `table-id`."
   [table-id :- ::lib.schema.id/table
    changes  :- [:map {:closed true}
@@ -263,7 +79,7 @@
                 [:transform_id {:optional true} [:maybe ::lib.schema.id/transform]]]]
   (t2/update! :model/Table table-id changes))
 
-(mu/defn mark-table-index-failed! :- :int
+(mu/defn mark-table-index-failed!
   "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`."
   [transform-id  :- ::lib.schema.id/transform
    index-name    :- :string
@@ -272,12 +88,12 @@
               :transform_id transform-id :index_name index-name
               {:status :failed :error_message error-message :last_executed_at :%now}))
 
-(mu/defn delete-table-indexes! :- :int
+(mu/defn delete-table-indexes!
   "Delete the TableIndexes with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/TableIndex :id [:in ids]))
 
-(mu/defn update-table-indexes! :- :int
+(mu/defn update-table-indexes!
   "Apply `changes` to the TableIndexes with `ids`, stamping `last_executed_at` with the app DB's now."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- [:map {:closed true}
@@ -285,22 +101,14 @@
                [:error_message {:optional true} [:maybe :string]]]]
   (t2/update! :model/TableIndex :id [:in ids] (merge {:last_executed_at :%now} changes)))
 
-(mu/defn active-field-names-for-table :- [:maybe [:sequential :string]]
+(mu/defn active-field-names-for-table
   "The names of the active Fields of the Table with `table-id`, in position order."
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-vec :name [:model/Field :name :position]
                     :table_id table-id :active true
                     {:order-by [[:position :asc]]}))
 
-(def ^:private TableRefsMatching
-  "Rows returned by [[table-refs-matching]]."
-  [:map {:closed true}
-   [:id     ::lib.schema.id/table]
-   [:db_id  ::lib.schema.id/database]
-   [:schema [:maybe :string]]
-   [:name   :string]])
-
-(mu/defn table-refs-matching :- [:sequential TableRefsMatching]
+(mu/defn table-refs-matching
   "The id, Database id, schema, and name of the Tables matching any of `refs` (each a `[db-id schema table-name]`
   triple; `schema` may be nil)."
   [refs :- [:sequential [:tuple ms/PositiveInt [:maybe :string] :string]]]
@@ -315,15 +123,7 @@
                                    [:= :name table-name]]))
                            refs)}))
 
-(def ^:private TableRef
-  "Rows returned by [[table-refs]]."
-  [:map {:closed true}
-   [:id     ::lib.schema.id/table]
-   [:db_id  ::lib.schema.id/database]
-   [:schema [:maybe :string]]
-   [:name   :string]])
-
-(mu/defn table-refs :- [:sequential TableRef]
+(mu/defn table-refs
   "The id, Database id, schema, and name of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id :schema :name] :id [:in table-ids]))

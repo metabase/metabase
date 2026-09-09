@@ -4,15 +4,14 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn active-personal-user-count :- ms/IntGreaterThanOrEqualToZero
+(mu/defn active-personal-user-count
   "The number of active personal Users."
   []
   (t2/count :model/User :is_active true :type :personal))
 
-(mu/defn user-email :- [:maybe :string]
+(mu/defn user-email
   "The email of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :email :model/User :id user-id))

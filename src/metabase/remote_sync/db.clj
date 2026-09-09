@@ -7,12 +7,12 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn remote-synced-collection-ids :- [:maybe [:set ::lib.schema.id/collection]]
+(mu/defn remote-synced-collection-ids
   "The ids among `collection-ids` of Collections that are remote synced, or nil."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pks-set :model/Collection :id [:in collection-ids] :is_remote_synced true))
 
-(mu/defn is-remote-synced-by-id :- [:sequential [:map [:id ms/PositiveInt] [:is_remote_synced [:maybe :boolean]]]]
+(mu/defn is-remote-synced-by-id
   "The `:id` and the containing Collection's `:is_remote_synced` of the `model` rows with `ids`."
   [model :- :keyword
    ids :- [:sequential ms/PositiveInt]]

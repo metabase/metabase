@@ -35,9 +35,8 @@
                              nil)))}
     :any]])
 
-(mr/def ::card.partial
-  "A possibly partial or hydrated Card instance, as non-db code passes it around: every column optional, extra keys
-  allowed. Use [[::card]] for a row read from the app DB and [[::card.update]] for what an update accepts."
+(mr/def ::card
+  "Schema for an instance of a `:model/Card` (everything is optional to support updates)."
   [:map
    [:id                 {:optional true} [:maybe ::lib.schema.id/card]]
    [:collection_id      {:optional true} [:maybe ::lib.schema.id/collection]]
@@ -52,10 +51,10 @@
    [:type               {:optional true} [:maybe ::card.type]]
    [:result_metadata    {:optional true} [:maybe [:ref ::card.result-metadata]]]])
 
-(mu/defn normalize-card :- [:maybe ::card.partial]
-  "Normalize a `card` so it satisfies the `::card.partial` schema."
+(mu/defn normalize-card :- [:maybe ::card]
+  "Normalize a `card` so it satisfies the `::card` schema."
   [card :- [:maybe :map]]
-  (lib/normalize ::card.partial card))
+  (lib/normalize ::card card))
 
 (mr/def ::card.dataset-query
   "The `:dataset_query` column of a Card, decoded."
@@ -80,55 +79,6 @@
 (mr/def ::card.dimension-mapping
   "One entry of the `:dimension_mappings` column of a Card, decoded."
   :map)
-
-(mr/def ::card
-  "A Card as selected from the app DB: every column of `:report_card`, plus `:query_description` added by the model's after-select hook."
-  [:map {:closed true}
-   [:id                                        ::lib.schema.id/card]
-   [:created_at                                ms/TemporalInstant]
-   [:updated_at                                ms/TemporalInstant]
-   [:name                                      :string]
-   [:description                               [:maybe :string]]
-   [:display                                   [:or :keyword :string]]
-   [:dataset_query                             ::card.dataset-query]
-   [:visualization_settings                    ::card.visualization-settings]
-   [:creator_id                                ::lib.schema.id/user]
-   [:database_id                               ::lib.schema.id/database]
-   [:table_id                                  [:maybe ::lib.schema.id/table]]
-   [:query_type                                [:maybe [:or :keyword :string]]]
-   [:archived                                  :boolean]
-   [:collection_id                             [:maybe ::lib.schema.id/collection]]
-   [:public_uuid                               [:maybe :string]]
-   [:made_public_by_id                         [:maybe ms/PositiveInt]]
-   [:enable_embedding                          :boolean]
-   [:embedding_params                          [:maybe ms/EmbeddingParams]]
-   [:cache_ttl                                 [:maybe :int]]
-   [:result_metadata                           [:maybe ::card.result-metadata]]
-   [:collection_position                       [:maybe :int]]
-   [:entity_id                                 :string]
-   [:parameters                                [:maybe [:sequential ::card.parameter]]]
-   [:parameter_mappings                        [:maybe [:sequential ::card.parameter-mapping]]]
-   [:collection_preview                        :boolean]
-   [:metabase_version                          [:maybe :string]]
-   [:type                                      ::lib.schema.metadata/card.type]
-   [:initially_published_at                    [:maybe ms/TemporalInstant]]
-   [:cache_invalidated_at                      [:maybe ms/TemporalInstant]]
-   [:last_used_at                              ms/TemporalInstant]
-   [:view_count                                :int]
-   [:archived_directly                         :boolean]
-   [:dataset_query_metrics_v2_migration_backup {:optional true} [:maybe :string]]
-   [:source_card_id                            [:maybe ::lib.schema.id/card]]
-   [:dashboard_id                              [:maybe ::lib.schema.id/dashboard]]
-   [:card_schema                               :int]
-   [:document_id                               [:maybe ms/PositiveInt]]
-   [:legacy_query                              [:maybe :string]]
-   [:embedding_type                            [:maybe [:or :keyword :string]]]
-   [:public_uuid_prefix                        [:maybe :string]]
-   [:dimensions                                [:maybe [:sequential ::card.dimension]]]
-   [:dimension_mappings                        [:maybe [:sequential ::card.dimension-mapping]]]
-   [:metabot_conversation_id                   [:maybe :string]]
-   [:metabot_chart_id                          [:maybe :string]]
-   [:query_description                         {:optional true} [:maybe :string]]])
 
 (mr/def ::card.update
   "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."

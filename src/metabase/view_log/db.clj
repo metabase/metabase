@@ -23,37 +23,37 @@
 (def ^:private count->ids-schema
   [:map-of ms/PositiveInt [:sequential ms/PositiveInt]])
 
-(mu/defn increment-card-view-counts! :- [:sequential :int]
+(mu/defn increment-card-view-counts!
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Cards with `ids`."
   [count->ids :- count->ids-schema]
   (increment-view-counts-of-model! :model/Card count->ids))
 
-(mu/defn increment-dashboard-view-counts! :- [:sequential :int]
+(mu/defn increment-dashboard-view-counts!
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Dashboards with `ids`."
   [count->ids :- count->ids-schema]
   (increment-view-counts-of-model! :model/Dashboard count->ids))
 
-(mu/defn increment-table-view-counts! :- [:sequential :int]
+(mu/defn increment-table-view-counts!
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`."
   [count->ids :- count->ids-schema]
   (increment-view-counts-of-model! :model/Table count->ids))
 
-(mu/defn increment-document-view-counts! :- [:sequential :int]
+(mu/defn increment-document-view-counts!
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Documents with `ids`."
   [count->ids :- count->ids-schema]
   (increment-view-counts-of-model! :model/Document count->ids))
 
-(mu/defn insert-view-logs! :- :int
+(mu/defn insert-view-logs!
   "Insert the ViewLog rows `views`, returning the number inserted."
   [views :- [:sequential ::view-log.schema/view-log.update]]
   (t2/insert! :model/ViewLog views))
 
-(mu/defn card-type :- [:maybe :keyword]
+(mu/defn card-type
   "The `:type` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :type :model/Card :id card-id))
 
-(mu/defn update-dashboards-last-viewed-at! :- [:sequential :int]
+(mu/defn update-dashboards-last-viewed-at!
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching
   `updated_at`, via a raw update that bypasses Toucan 2 model hooks (specifically the :hook/search-index
   after-update; the search index can tolerate staleness on this field, catching up on the next re-index cycle or

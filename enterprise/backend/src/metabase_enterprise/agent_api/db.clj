@@ -7,12 +7,12 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn insert-call-log! :- :int
+(mu/defn insert-call-log!
   "Insert the AgentApiCallLog `row`."
   [row :- ::agent-api.schema/agent-api-call-log.update]
   (t2/insert! :model/AgentApiCallLog row))
 
-(mu/defn delete-call-logs-created-before! :- :int
+(mu/defn delete-call-logs-created-before!
   "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/AgentApiCallLog {:where [:< :created_at cutoff]}))

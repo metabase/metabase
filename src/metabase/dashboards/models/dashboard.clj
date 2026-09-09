@@ -81,7 +81,7 @@
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (let [defaults  {:parameters []}
-        dashboard (lib/normalize ::dashboards.schema/dashboard.partial (merge defaults dashboard))]
+        dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
     (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
@@ -95,8 +95,8 @@
 (t2/define-before-update :model/Dashboard
   [dashboard]
   (let [changes   (t2/changes dashboard)
-        dashboard (lib/normalize ::dashboards.schema/dashboard.partial dashboard)
-        changes   (lib/normalize ::dashboards.schema/dashboard.partial changes)]
+        dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
+        changes   (lib/normalize ::dashboards.schema/dashboard changes)]
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
     (u/prog1 (-> dashboard
                  maybe-populate-initially-published-at
@@ -275,7 +275,7 @@
     ;; `t2/hydrate` is a no-op when `:card` is already present, so strip any
     ;; client-supplied value first: a JSON round-trip strings-ifies keyword
     ;; metadata (`type/Category`, `source/table-defaults`, ...) that
-    ;; `param-target->field-id` later validates against `:metabase.queries.schema/card.partial`.
+    ;; `param-target->field-id` later validates against `:metabase.queries.schema/card`.
     (let [dashcards-for-hydration (map #(dissoc % :card) new-dashcards)
           new-param-field-ids    (params/dashcards->param-field-ids (t2/hydrate dashcards-for-hydration :card))]
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))

@@ -6,7 +6,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn unarchived-dashboard-exists? :- :boolean
+(mu/defn unarchived-dashboard-exists?
   "Whether an unarchived Dashboard with `dashboard-id` exists."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/exists? :model/Dashboard :id dashboard-id :archived false))

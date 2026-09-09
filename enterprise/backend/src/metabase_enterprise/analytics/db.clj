@@ -5,12 +5,12 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn database-with-engine-exists? :- :boolean
+(mu/defn database-with-engine-exists?
   "Whether a Database whose engine is one of `engines` exists."
   [engines :- [:sequential :keyword]]
   (t2/exists? :model/Database :engine [:in engines]))
 
-(mu/defn sandbox-exists? :- :boolean
+(mu/defn sandbox-exists?
   "Whether any Sandbox exists."
   []
   (t2/exists? :model/Sandbox))

@@ -5,7 +5,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn database-engines :- [:maybe [:set :keyword]]
+(mu/defn database-engines
   "The set of engines of all Databases."
   []
   (t2/select-fn-set :engine :model/Database))

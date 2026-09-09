@@ -3,11 +3,10 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn insert-superuser! :- ::users.schema/user
+(mu/defn insert-superuser!
   "Insert a superuser with the given email and name and return the User instance."
   [email :- :string
    first-name :- [:maybe :string]
@@ -18,7 +17,7 @@
                                  :last_name    last-name
                                  :is_superuser true))
 
-(mu/defn user :- [:maybe ::users.schema/user]
+(mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id))

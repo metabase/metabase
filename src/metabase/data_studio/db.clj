@@ -8,7 +8,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (def ^:private TableSelectors
@@ -72,60 +71,50 @@
                                           :from   [(t2/table-name :model/Table)]
                                           :where  [:and where [:= :id output-table-id]]}]]]})))
 
-(mu/defn database :- [:maybe ::warehouses.schema/database]
+(mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database database-id))
 
-(mu/defn databases :- [:sequential ::warehouses.schema/database]
+(mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select :model/Database :id [:in database-ids]))
 
-(mu/defn tables-matching-selectors :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables-matching-selectors
   "The Tables picked out by `selectors`, a map of `:database_ids`, `:schema_ids`, and/or `:table_ids`."
   [selectors :- TableSelectors]
   (t2/select :model/Table {:where (table-selectors-where selectors)}))
 
-(mu/defn tables-matching-selectors-in-id-order :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables-matching-selectors-in-id-order
   "The Tables picked out by `selectors`, in id order."
   [selectors :- TableSelectors]
   (t2/select :model/Table {:where (table-selectors-where selectors), :order-by [[:id]]}))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(mu/defn update-tables! :- :int
+(mu/defn update-tables!
   "Apply `changes` to the Tables with `table-ids`, returning the number updated."
   [table-ids :- [:set ::lib.schema.id/table]
    changes   :- (mut/select-keys ::warehouse-schema.schema/table.update [:data_authority :data_source :data_layer :entity_type :owner_email :owner_user_id])]
   (t2/update! :model/Table [:in table-ids] changes))
 
-(def ^:private SelectionColumnsForSelector
-  "Rows returned by [[selection-columns-for-selectors]]."
-  (mut/select-keys ::warehouse-schema.schema/table
-                   [:id :db_id :name :display_name :schema :is_published]))
-
-(mu/defn selection-columns-for-selectors :- [:sequential SelectionColumnsForSelector]
+(mu/defn selection-columns-for-selectors
   "Up to `limit` id, database, name, schema, and published flag of the Tables picked out by `selectors`."
   [selectors :- TableSelectors
    limit     :- ms/PositiveInt]
   (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published]
              {:where (table-selectors-where selectors), :limit limit}))
 
-(def ^:private SelectionColumnsForTable
-  "Rows returned by [[selection-columns-for-tables]]."
-  (mut/select-keys ::warehouse-schema.schema/table
-                   [:id :db_id :name :display_name :schema :is_published]))
-
-(mu/defn selection-columns-for-tables :- [:sequential SelectionColumnsForTable]
+(mu/defn selection-columns-for-tables
   "The id, database, name, schema, and published flag of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published] :id [:in table-ids]))
 
-(mu/defn delete-field-values-for-tables! :- :int
+(mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/delete! (t2/table-name :model/FieldValues)

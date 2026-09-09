@@ -3,30 +3,22 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
-(mu/defn fields :- [:sequential ::warehouse-schema.schema/field]
+(mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids]))
 
-(def ^:private CardTableAndDatabaseId
-  "Rows returned by [[card-table-and-database-id]]."
-  (mut/optional-keys (mut/select-keys ::queries.schema/card [:table_id :database_id :query_description :source_card_id]) [:source_card_id]))
-
-(mu/defn card-table-and-database-id :- [:maybe CardTableAndDatabaseId]
+(mu/defn card-table-and-database-id
   "The `:table_id` and `:database_id` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :table_id :database_id] card-id))
 
-(mu/defn table-database-id :- [:maybe ::lib.schema.id/database]
+(mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table table-id))
@@ -45,7 +37,7 @@
               card-ids     (conj [:in :source_card_id card-ids])
               active-only? (conj [:= :archived false])))))
 
-(mu/defn metrics :- [:sequential ::lib.schema.metadata/metric]
+(mu/defn metrics
   "The metric Cards (`:metadata/metric`) picked out by `metadata-spec`."
   [metadata-spec :- [:map
                      [:id        {:optional true} [:maybe [:set ms/PositiveInt]]]
@@ -66,7 +58,7 @@
               table-ids    (conj [:in :measure/table_id table-ids])
               active-only? (conj [:= :measure/archived false])))))
 
-(mu/defn measures :- [:sequential ::lib.schema.metadata/measure]
+(mu/defn measures
   "The `:metadata/measure` rows picked out by `metadata-spec`."
   [metadata-spec :- [:map
                      [:id        {:optional true} [:maybe [:set ms/PositiveInt]]]

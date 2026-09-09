@@ -6,7 +6,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn heartbeat! :- [:sequential :int]
+(mu/defn heartbeat!
   "Set `heartbeat-column` to now on the `model` rows in `ids` matching the Honey SQL predicate `active`, returning
   the number updated."
   [model            :- :keyword
@@ -17,21 +17,21 @@
              :set    {heartbeat-column :%now}
              :where  [:and active [:in :id ids]]}))
 
-(mu/defn active-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn active-ids
   "The ids among `ids` of the `model` rows matching the Honey SQL predicate `active`."
   [model  :- :keyword
    active :- vector?
    ids    :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id model {:where [:and [:in :id ids] active]}))
 
-(mu/defn lock-active-stale-rows :- [:sequential :map]
+(mu/defn lock-active-stale-rows
   "The `model` rows matching the Honey SQL predicates `active` and `stale`, locked for update."
   [model  :- :keyword
    active :- vector?
    stale  :- vector?]
   (t2/select model {:where [:and active stale] :for :update}))
 
-(mu/defn set-terminal! :- [:sequential :int]
+(mu/defn set-terminal!
   "Apply the `terminal` column values to the `model` rows in `ids` matching the Honey SQL predicate `active`,
   returning the number updated."
   [model    :- :keyword

@@ -10,17 +10,17 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn insert-feedback! :- :int
+(mu/defn insert-feedback!
   "Insert the McpFeedback `row`, returning the number inserted."
   [row :- ::mcp.schema/mcp-feedback.update]
   (t2/insert! :model/McpFeedback row))
 
-(mu/defn session-user-id :- [:maybe ::lib.schema.id/user]
+(mu/defn session-user-id
   "The id of the User owning the `core_session` with `key-hashed`, or nil."
   [key-hashed :- :string]
   (t2/select-one-fn :user_id :core_session :key_hashed key-hashed))
 
-(mu/defn get-or-create-core-session! :- :map
+(mu/defn get-or-create-core-session!
   "The `core_session` row for `key-hashed` and `user-id`, creating one with a freshly generated session id if none
   exists. Uses the raw `:core_session` table (not `:model/Session`) to bypass the after-insert hook, which would
   otherwise publish a spurious `:event/user-login` event."
@@ -35,13 +35,13 @@
       :anti_csrf_token nil
       :created_at      :%now})))
 
-(mu/defn insert-query-handle! :- :int
+(mu/defn insert-query-handle!
   "Insert the McpQueryHandle `row` under the client-generated `handle-id`, returning the number inserted."
   [handle-id :- ms/UUIDString
    row       :- ::mcp.schema/mcp-query-handle.update]
   (t2/insert! :model/McpQueryHandle (assoc row :id handle-id)))
 
-(mu/defn query-handle-for-user :- [:maybe ::mcp.schema/mcp-query-handle]
+(mu/defn query-handle-for-user
   "The McpQueryHandle with `handle-id` whose session belongs to the User with `user-id`, or nil."
   [handle-id :- :string
    user-id   :- ::lib.schema.id/user]
@@ -53,7 +53,7 @@
                            [:= :mqh.id handle-id]
                            [:= :cs.user_id user-id]]}))
 
-(mu/defn delete-session-for-user! :- [:sequential :int]
+(mu/defn delete-session-for-user!
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
   [key-hashed :- :string
    user-id    :- ::lib.schema.id/user]
@@ -62,7 +62,7 @@
                            [:= :key_hashed key-hashed]
                            [:= :user_id user-id]]}))
 
-(mu/defn delete-query-handles-for-mcp-session! :- :int
+(mu/defn delete-query-handles-for-mcp-session!
   "Delete the McpQueryHandles of the MCP session `mcp-session-id`, returning the number deleted."
   [mcp-session-id :- :string]
   (t2/delete! :model/McpQueryHandle :mcp_session_id mcp-session-id))

@@ -2,13 +2,10 @@
   "Application database queries for the permissions REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.permissions.schema :as permissions.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (defn- managed-groups-clause
@@ -20,7 +17,7 @@
                                                     [:= :user_id manager-user-id]
                                                     [:= :is_group_manager true]]}]))
 
-(mu/defn permissions-groups :- [:sequential ::permissions.schema/permissions-group]
+(mu/defn permissions-groups
   "Up to `limit` PermissionsGroups starting at `offset` (both optional), ordered by lower-cased name.
 
   `tenancy` (\"external\"/\"internal\"/nil) narrows to tenant/non-tenant groups (nil returns both); when
@@ -51,40 +48,34 @@
                  limit  (assoc :limit limit)
                  offset (assoc :offset offset)))))
 
-(mu/defn permissions-group :- [:maybe ::permissions.schema/permissions-group]
+(mu/defn permissions-group
   "The PermissionsGroup with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroup :id id))
 
-(mu/defn permissions-group-exists? :- :boolean
+(mu/defn permissions-group-exists?
   "Whether a PermissionsGroup with `id` exists."
   [id :- ms/PositiveInt]
   (t2/exists? :model/PermissionsGroup :id id))
 
-(mu/defn insert-permissions-group! :- ::permissions.schema/permissions-group
+(mu/defn insert-permissions-group!
   "Insert a PermissionsGroup and return the inserted instance."
   [group-name    :- :string
    tenant-group? :- :boolean]
   (t2/insert-returning-instance! :model/PermissionsGroup :name group-name :is_tenant_group tenant-group?))
 
-(mu/defn rename-permissions-group! :- :int
+(mu/defn rename-permissions-group!
   "Set the name of the PermissionsGroup with `id`, returning the number updated."
   [id         :- ms/PositiveInt
    group-name :- :string]
   (t2/update! :model/PermissionsGroup id {:name group-name}))
 
-(mu/defn delete-permissions-group! :- :int
+(mu/defn delete-permissions-group!
   "Delete the PermissionsGroup with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/PermissionsGroup :id id))
 
-(def ^:private GroupMembership
-  "Rows returned by [[group-memberships]]."
-  (mut/merge (mut/select-keys ::permissions.schema/permissions-group-membership
-                              [:group_id :user_id :is_group_manager])
-             [:map [:membership_id [:maybe ms/PositiveInt]]]))
-
-(mu/defn group-memberships :- [:sequential GroupMembership]
+(mu/defn group-memberships
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally
   restricted to the groups `manager-user-id` manages, excluding `excluded-group-id`, and excluding tenant groups
   when `exclude-tenant-groups?`."
@@ -103,23 +94,23 @@
                                                                    :from   [:permissions_group]
                                                                    :where  [:= :is_tenant_group true]}])])}))
 
-(mu/defn non-admin-user-exists? :- :boolean
+(mu/defn non-admin-user-exists?
   "Whether the User with `user-id` exists and is not a superuser."
   [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User :id user-id :is_superuser false))
 
-(mu/defn group-membership :- [:maybe ::permissions.schema/permissions-group-membership]
+(mu/defn group-membership
   "The PermissionsGroupMembership with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroupMembership :id id))
 
-(mu/defn set-group-membership-manager! :- :int
+(mu/defn set-group-membership-manager!
   "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."
   [id             :- ms/PositiveInt
    group-manager? :- :boolean]
   (t2/update! :model/PermissionsGroupMembership id {:is_group_manager group-manager?}))
 
-(mu/defn non-destination-database-ids :- [:maybe [:sequential ::lib.schema.id/database]]
+(mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no
   exclusion)."
   [excluded-database-id :- [:maybe ::lib.schema.id/database]]
@@ -160,11 +151,7 @@
                                                               [:= :router_db.id :db_id]]}]])
     :order-by [:group_id :db_id]}))
 
-(def ^:private TablesForDatabase
-  "Rows returned by [[tables-for-databases]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
-
-(mu/defn tables-for-databases :- [:sequential TablesForDatabase]
+(mu/defn tables-for-databases
   "The id, Database id, and schema of the Tables of the Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
   (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]))

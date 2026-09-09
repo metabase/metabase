@@ -11,12 +11,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private LoginHistoryForUser
-  "Rows returned by [[login-history-for-user]]."
-  (mut/select-keys ::login-history.schema/login-history
-                   [:timestamp :session_id :device_description :ip_address]))
-
-(mu/defn login-history-for-user :- [:sequential LoginHistoryForUser]
+(mu/defn login-history-for-user
   "The timestamp, session id, device description, and IP address of the LoginHistory of the User with `user-id`,
   newest first."
   [user-id :- ::lib.schema.id/user]
@@ -24,33 +19,25 @@
              :user_id user-id
              {:order-by [[:timestamp :desc]]}))
 
-(mu/defn insert-login-history! :- :int
+(mu/defn insert-login-history!
   "Insert the LoginHistory `row`, returning the number of rows inserted."
   [row :- (mut/select-keys ::login-history.schema/login-history.update [:user_id :session_id :device_id :device_description :ip_address])]
   (t2/insert! :model/LoginHistory row))
 
-(def ^:private LoginHistoryIdsForUser
-  "Rows returned by [[login-history-ids-for-user]]."
-  (mut/select-keys ::login-history.schema/login-history [:id :active]))
-
-(mu/defn login-history-ids-for-user :- [:sequential LoginHistoryIdsForUser]
+(mu/defn login-history-ids-for-user
   "Up to `limit` LoginHistory ids of the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    limit   :- ms/PositiveInt]
   (t2/select [:model/LoginHistory :id] :user_id user-id {:limit limit}))
 
-(def ^:private LoginHistoryIdsForUserDevice
-  "Rows returned by [[login-history-ids-for-user-device]]."
-  (mut/select-keys ::login-history.schema/login-history [:id :active]))
-
-(mu/defn login-history-ids-for-user-device :- [:sequential LoginHistoryIdsForUserDevice]
+(mu/defn login-history-ids-for-user-device
   "Up to `limit` LoginHistory ids of the User with `user-id` on the device with `device-id`."
   [user-id   :- ::lib.schema.id/user
    device-id :- :string
    limit     :- ms/PositiveInt]
   (t2/select [:model/LoginHistory :id] :user_id user-id, :device_id device-id, {:limit limit}))
 
-(mu/defn first-device-login-count-since :- ms/IntGreaterThanOrEqualToZero
+(mu/defn first-device-login-count-since
   "The number of LoginHistory rows of the User with `user-id` in the last `window-hours` that are the first
   login on their device."
   [user-id      :- ::lib.schema.id/user

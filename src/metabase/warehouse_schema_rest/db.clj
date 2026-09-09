@@ -5,22 +5,14 @@
    [clojure.string :as str]
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
-   [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(def ^:private FieldAndTargetDatabaseId
-  "Rows returned by [[field-and-target-database-ids]]."
-  [:map {:closed true}
-   [:source_db_id [:maybe ::lib.schema.id/database]]
-   [:target_db_id [:maybe ::lib.schema.id/database]]])
-
-(mu/defn field-and-target-database-ids :- [:sequential FieldAndTargetDatabaseId]
+(mu/defn field-and-target-database-ids
   "The `:source_db_id` and `:target_db_id` of the Fields with `source-field-id` and `target-field-id`."
   [source-field-id :- ::lib.schema.id/field
    target-field-id :- ::lib.schema.id/field]
@@ -32,18 +24,18 @@
                       [(t2/table-name :model/Table) :target_t] [:= :tf.table_id :target_t.id]]
              :where  [:= :sf.id source-field-id]}))
 
-(mu/defn field :- [:maybe ::warehouse-schema.schema/field]
+(mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn update-field! :- :int
+(mu/defn update-field!
   "Apply `changes` to the Field with `field-id`."
   [field-id :- ::lib.schema.id/field
    changes  :- ::warehouse-schema.schema/field.update]
   (t2/update! :model/Field field-id changes))
 
-(mu/defn set-nested-fields-active! :- :int
+(mu/defn set-nested-fields-active!
   "Set the active flag of the Fields of the Table with `table-id` whose NFC path matches the SQL LIKE
   `nfc-path-pattern`, returning the number updated."
   [table-id          :- ::lib.schema.id/table
@@ -51,39 +43,39 @@
    active?           :- :boolean]
   (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
 
-(mu/defn dimension-for-field :- [:maybe ::warehouse-schema.schema/dimension]
+(mu/defn dimension-for-field
   "The Dimension of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Dimension :field_id field-id))
 
-(mu/defn insert-dimension! :- :int
+(mu/defn insert-dimension!
   "Insert the Dimension `row`."
   [row :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:field_id :type :name :human_readable_field_id])]
   (t2/insert! :model/Dimension row))
 
-(mu/defn update-dimension! :- :int
+(mu/defn update-dimension!
   "Apply `changes` to the Dimension with `id`."
   [id      :- ::lib.schema.id/dimension
    changes :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:type :name :human_readable_field_id])]
   (t2/update! :model/Dimension id changes))
 
-(mu/defn rename-dimension-for-field! :- :int
+(mu/defn rename-dimension-for-field!
   "Set the name of the Dimension of the Field with `field-id`."
   [field-id       :- ::lib.schema.id/field
    dimension-name :- :string]
   (t2/update! :model/Dimension :field_id field-id {:name dimension-name}))
 
-(mu/defn delete-dimension! :- :int
+(mu/defn delete-dimension!
   "Delete the Dimension with `id`."
   [id :- ::lib.schema.id/dimension]
   (t2/delete! :model/Dimension :id id))
 
-(mu/defn delete-dimensions-for-field! :- :int
+(mu/defn delete-dimensions-for-field!
   "Delete the Dimensions of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
   (t2/delete! :model/Dimension :field_id field-id))
 
-(mu/defn matching-tables :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn matching-tables
   "The Tables (active, or with `transform_target` when `include-transform-targets?`) matching `term` (a glob pattern
   using `*` as a wildcard, matched against `:name` and `:display_name`), optionally narrowed to `visibility-type`,
   `data-layer`, `data-source`, `owner-user-id`, and/or `owner-email`; restricted to ownerless Tables when
@@ -138,58 +130,58 @@
                                                                    [:= :d.to_entity_type "table"]]}]))]
     (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
 
-(mu/defn tables-by-ids :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn update-table! :- :int
+(mu/defn update-table!
   "Apply `changes` to the Table with `table-id`."
   [table-id :- ::lib.schema.id/table
    changes  :- ::warehouse-schema.schema/table.update]
   (t2/update! :model/Table table-id changes))
 
-(mu/defn database :- [:maybe ::warehouses.schema/database]
+(mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database database-id))
 
-(mu/defn non-destination-database :- [:maybe ::warehouses.schema/database]
+(mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id :router_database_id nil))
 
-(mu/defn collection :- [:maybe ::collections.schema/collection]
+(mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn active-unretired-field-ids-for-table :- [:maybe [:set ::lib.schema.id/field]]
+(mu/defn active-unretired-field-ids-for-table
   "The ids of the active, unretired Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-pks-set :model/Field, :table_id table-id, :visibility_type [:not= "retired"], :active true))
 
-(mu/defn field-ids-for-table :- [:maybe [:set ::lib.schema.id/field]]
+(mu/defn field-ids-for-table
   "The ids of the Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-pks-set :model/Field :table_id table-id))
 
-(mu/defn active-fields-targeting :- [:sequential ::warehouse-schema.schema/field]
+(mu/defn active-fields-targeting
   "The active Fields whose FK target is one of `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true))
 
-(mu/defn delete-field-values-for-fields! :- :int
+(mu/defn delete-field-values-for-fields!
   "Delete the FieldValues of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
 
-(mu/defn update-or-insert-full-field-values! :- ms/PositiveInt
+(mu/defn update-or-insert-full-field-values!
   "Update the full FieldValues of the Field with `field-id` to have `values` and `human-readable-values`, inserting
   one if none exists yet. Returns the number of rows affected."
   [field-id               :- ::lib.schema.id/field

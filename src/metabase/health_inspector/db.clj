@@ -11,7 +11,7 @@
   []
   (t2/reducible-select :report_card {:where [:= :archived false]}))
 
-(mu/defn insert-run! :- :int
+(mu/defn insert-run!
   "Insert the `health_inspector_runs` `row`."
   [row :- [:map {:closed true}
            [:id {:optional true} :int]
@@ -21,18 +21,12 @@
            [:health {:optional true} :int]]]
   (t2/insert! :health_inspector_runs row))
 
-(mu/defn delete-runs-before! :- :int
+(mu/defn delete-runs-before!
   "Delete the `health_inspector_runs` rows run before `run-before`."
   [run-before :- ms/TemporalInstant]
   (t2/delete! :health_inspector_runs :run_at [:< run-before]))
 
-(def ^:private LatestRunRow
-  "Rows returned by [[latest-run]]."
-  [:map {:closed true}
-   [:health :int]
-   [:message :string]])
-
-(mu/defn latest-run :- [:maybe LatestRunRow]
+(mu/defn latest-run
   "The `:health` and `:message` of the most recent `health_inspector_runs` row for `check-name`, or nil."
   [check-name :- :string]
   ;; Ty-break on id: back-to-back inserts can share a run_at, and run_at alone would then pick a non-deterministic
@@ -40,16 +34,7 @@
   (t2/select-one [:health_inspector_runs :health :message] :check_name check-name
                  {:order-by [[:run_at :desc] [:id :desc]]}))
 
-(def ^:private LatestRun
-  "Rows returned by [[latest-runs]]."
-  [:map {:closed true}
-   [:id :int]
-   [:message :string]
-   [:check_name :string]
-   [:run_at ms/TemporalInstant]
-   [:health :int]])
-
-(mu/defn latest-runs :- [:sequential LatestRun]
+(mu/defn latest-runs
   "The `limit` most recent `health_inspector_runs` rows."
   [limit :- ms/PositiveInt]
   (t2/select :health_inspector_runs {:limit limit :order-by [[:run_at :desc]]}))
