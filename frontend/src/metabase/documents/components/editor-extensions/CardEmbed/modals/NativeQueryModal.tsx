@@ -7,6 +7,7 @@ import { datasetApi } from "metabase/api/dataset";
 import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { getMetadata } from "metabase/metadata-store";
+import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
@@ -418,6 +419,7 @@ export const NativeQueryModal = ({
                   <Visualization
                     rawSeries={rawSeries}
                     metadata={metadata}
+                    mode={defaultClickActionMode}
                     onChangeCardAndRun={() => {}}
                     getExtraDataForClick={() => ({})}
                     isEditing={false}

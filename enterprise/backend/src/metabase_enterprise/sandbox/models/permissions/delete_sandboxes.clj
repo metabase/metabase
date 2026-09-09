@@ -1,7 +1,6 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
    [metabase-enterprise.sandbox.db :as sandbox.db]
-   [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
@@ -45,18 +44,8 @@
                                         :when (contains? db-changes :view-data)]
                                     db-id))]
       (when (and (seq all-group-ids) (seq all-db-ids))
-        (let [candidate-sandboxes (app-db/query
-                                   {:select    [[:sandboxes.id :id]
-                                                [:sandboxes.group_id :group_id]
-                                                [:sandboxes.table_id :table_id]
-                                                [:table.db_id :db_id]
-                                                [:table.schema :schema]]
-                                    :from      [[:sandboxes]]
-                                    :left-join [[:metabase_table :table]
-                                                [:= :sandboxes.table_id :table.id]]
-                                    :where     [:and
-                                                [:in :sandboxes.group_id all-group-ids]
-                                                [:in :table.db_id all-db-ids]]})
+        (let [candidate-sandboxes (sandbox.db/candidate-sandboxes-for-groups-and-databases
+                                   all-group-ids all-db-ids)
               ids-to-delete (into #{}
                                   (comp (filter (partial should-delete-sandbox? changes))
                                         (map :id))

@@ -4,7 +4,16 @@
   (:require
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(def ^:private TableSelectors
+  [:map {:closed true}
+   [:database-ids {:optional true} [:maybe [:or [:set ::lib.schema.id/database] [:sequential ::lib.schema.id/database]]]]
+   [:table-ids    {:optional true} [:maybe [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]]
+   [:schema-ids   {:optional true} [:maybe [:or [:set :string] [:sequential :string]]]]])
 
 (defn- table-selectors-expr
   "Matches the Tables selected by `database-ids`, `table-ids`, and `schema-ids` (each `\"<db-id>:<schema>\"`)."
@@ -21,11 +30,13 @@
   [selectors]
   ^:allow-subquery {:select [:id] :from [(t2/table-name :model/Table)] :where (table-selectors-expr selectors)})
 
-(defn remapped-table-ids-reducible
+(mu/defn remapped-table-ids-reducible
   "Reducible `:table_id` rows of the Tables reachable from `tables` through FK remapping Dimensions, from the
   `input-field` side to the `output-field` side (`:source_field` or `:target_field`), excluding `tables` themselves.
   `tables` is a set of Table IDs or a selectors map (see [[table-ids-matching-selectors]])."
-  [input-field output-field tables]
+  [input-field  :- :keyword
+   output-field :- :keyword
+   tables       :- [:or [:set ms/PositiveInt] TableSelectors]]
   (let [input-table-id  (keyword (name input-field) "table_id")
         output-table-id (keyword (name output-field) "table_id")
         table-ids       (if (map? tables)
@@ -48,10 +59,12 @@
                                   [:in input-table-id table-ids]
                                   not-in-tables]})))
 
-(defn table-ids-matching-selectors
+(mu/defn table-ids-matching-selectors
   "The IDs of the Tables selected by `selectors` (`{:database-ids :table-ids :schema-ids}`) plus, when given, the
   `extra-table-ids` that are unpublished (`:unpublished` mode) or any of them (`:any` mode)."
-  [selectors extra-table-ids extra-mode]
+  [selectors        :- TableSelectors
+   extra-table-ids  :- [:maybe [:set ::lib.schema.id/table]]
+   extra-mode       :- [:enum :unpublished :any]]
   (t2/select-pks-set :model/Table
                      {:where (let [selector-expr (table-selectors-expr selectors)]
                                (if (seq extra-table-ids)
@@ -60,34 +73,51 @@
                                                       :any         [:in :id extra-table-ids])]
                                  selector-expr))}))
 
-(defn published-table-ids
+(mu/defn published-table-ids
   "The IDs of the published Tables among `table-ids`."
-  [table-ids]
+  [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true))
 
-(defn tables
+(mu/defn tables
   "The Tables with `table-ids`."
-  [table-ids]
+  [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
-(defn collection
+(mu/defn collection
   "The Collection with `collection-id`, or nil."
-  [collection-id]
+  [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection collection-id))
 
-(defn publish-tables!
-  "Publish the Tables with `table-ids` into the Collection with `collection-id`."
-  [table-ids collection-id]
+(mu/defn latest-table-publishing-event
+  "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
+                 :topic [:in [:table-publish :table-unpublish]]
+                 :model "Table"
+                 :model_id table-id
+                 {:order-by [[:timestamp :desc] [:id :desc]]}))
+
+(mu/defn user-name-and-email
+  "The id, first name, last name, and email of the User with `user-id`, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
+
+(mu/defn publish-tables!
+  "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."
+  [table-ids     :- [:set ::lib.schema.id/table]
+   collection-id :- ::lib.schema.id/collection]
   (t2/update! :model/Table :id [:in table-ids] {:collection_id collection-id, :is_published true}))
 
-(defn unpublish-tables!
-  "Unpublish the Tables with `table-ids` and detach them from their Collection."
-  [table-ids]
+(mu/defn unpublish-tables!
+  "Unpublish the Tables with `table-ids` and detach them from their Collection, returning the number updated."
+  [table-ids :- [:set ::lib.schema.id/table]]
   (t2/update! :model/Table :id [:in table-ids] {:collection_id nil, :is_published false}))
 
-(defn published-table-visible-to-user?
+(mu/defn published-table-visible-to-user?
   "Whether the Table with `table-id` is published in a Collection the User with `user-id` can read."
-  [table-id user-id superuser?]
+  [table-id   :- ::lib.schema.id/table
+   user-id    :- ::lib.schema.id/user
+   superuser? :- :boolean]
   (t2/exists? :model/Table
               {:where [:and
                        [:= :id table-id]
@@ -96,7 +126,7 @@
                         :collection_id {} {:current-user-id user-id
                                            :is-superuser?   superuser?})]}))
 
-(defn any-published-table-visible?
+(mu/defn any-published-table-visible?
   "Whether the current user can read the Collection of any published Table."
   []
   (t2/exists? :model/Table
@@ -104,9 +134,9 @@
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause :collection_id)]}))
 
-(defn published-table-visible-in-database?
+(mu/defn published-table-visible-in-database?
   "Whether the current user can read the Collection of any published Table in the Database with `database-id`."
-  [database-id]
+  [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Table
               {:where [:and
                        [:= :db_id database-id]
