@@ -32,6 +32,7 @@ import {
 } from "__support__/ui";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { markEntitySaved } from "metabase/metabot";
 import { Route } from "metabase/router";
 import type { AdhocDashboardDefinition } from "metabase/urls";
 import * as Urls from "metabase/urls";
@@ -413,6 +414,18 @@ describe("DashboardApp ad-hoc dashboards", () => {
     expect(
       screen.getByTestId("save-adhoc-dashboard-button"),
     ).toBeInTheDocument();
+  });
+
+  it("moves to the saved dashboard when the conversation saves it from the sidebar", async () => {
+    const { store } = setupAdhoc({
+      ...definition,
+      metabot: { conversation_id: "convo-1", dashboard_id: "dash-1" },
+    });
+    expect(await screen.findByText("Ops overview")).toBeInTheDocument();
+
+    store.dispatch(markEntitySaved({ entityId: "dash-1", savedId: 9 }));
+
+    expect(await screen.findByText("saved dashboard")).toBeInTheDocument();
   });
 
   it("offers to save a Metabot-generated dashboard and opens the saved dashboard", async () => {
