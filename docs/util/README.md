@@ -34,3 +34,5 @@ To run it locally you need [babashka](https://babashka.org) and lychee (`brew in
 When a page is missing, the task looks for a `redirect_from` entry matching the old URL elsewhere in `docs/` and suggests the new URL.
 
 macOS filesystems are case-insensitive but the docs site is not, so lychee alone would let a url with the wrong capitalization pass locally and fail in CI. The task checks capitalization separately and reports those as `CASE`.
+
+Headings that start with a digit or punctuation get different automatic ids on GitHub and on the docs site, so give such a heading an explicit `{#id}` before linking to it from the nav.

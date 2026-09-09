@@ -103,10 +103,10 @@
                (nav/case-mismatches [{:trail "A" :url (str wrong "#anchor")}])))))))
 
 (deftest summary-test
-  (is (= "Checked 3 nav urls: 3 ok, 0 problems" (summary 3 0 0 0)))
-  (is (= "Checked 3 nav urls: 2 ok, 1 problem" (summary 3 1 0 0)))
+  (is (= "Checked 3 nav urls: 3 ok, 0 problems" (summary {:links 3 :failures 0 :mismatches 0 :problems 0})))
+  (is (= "Checked 3 nav urls: 2 ok, 1 problem" (summary {:links 3 :failures 1 :mismatches 0 :problems 0})))
   (testing "structure problems count as problems but not as bad urls"
-    (is (= "Checked 3 nav urls: 1 ok, 3 problems" (summary 3 1 1 1)))))
+    (is (= "Checked 3 nav urls: 1 ok, 3 problems" (summary {:links 3 :failures 1 :mismatches 1 :problems 1})))))
 
 (deftest script-has-no-mage-dependencies-test
   (testing "the standalone script only needs what babashka ships, since CI runs it without bb.edn"

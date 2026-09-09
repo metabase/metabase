@@ -1,24 +1,14 @@
 #!/usr/bin/env bb
-;; Renders the nav tree in docs/util/data/nav.yml as a markdown list of links, one line per
-;; relative `url`, so that lychee can check that every page and `#anchor` exists under docs/.
-;;
-;;   bb --config /dev/null docs/util/nav_links.clj OUT.md
-;;   lychee --offline --root-dir ./docs --fallback-extensions md,html --include-fragments OUT.md
-;;
-;; `./bin/mage docs-check-nav-links` runs both steps and maps each failure back to its nav entry.
-;; `--config /dev/null` stops bb from resolving the repo's bb.edn dependencies, which this
-;; script does not need. It only uses the YAML parser built into babashka.
-;;
-;; URL handling:
-;;   - `https://...` and other scheme URLs are skipped (external).
-;;   - `/learn/...` style leading-slash URLs are metabase.com pages outside this repo, skipped.
-;;   - Everything else is written as a root-relative link, which lychee resolves against docs/
-;;     to <url>.md, <url>/index.md, or <url>.html.
-;;
-;; Headings that start with a digit or punctuation get different automatic ids on GitHub and on the
-;; docs site, so give such a heading an explicit `{#id}` before linking to it from the nav.
-
 (ns nav-links
+  "Renders the nav tree in docs/util/data/nav.yml as a markdown list of links, one line per relative
+  `url`, so that lychee can check that every page and `#anchor` exists under docs/.
+
+      bb --config /dev/null docs/util/nav_links.clj OUT.md
+      lychee --offline --root-dir ./docs --fallback-extensions md,html --include-fragments OUT.md
+
+  `./bin/mage docs-check-nav-links` runs both steps and maps each failure back to its nav entry.
+  `--config /dev/null` stops bb from resolving the repo's bb.edn dependencies, which this script does
+  not need: it only uses the YAML parser built into babashka."
   (:require
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
@@ -68,6 +58,11 @@
     {:url  (path->nav-url path)
      :file (str "docs/" path)}))
 
+(defn- index-pairs
+  "`{k [v ...]}` from `[k v]` pairs, keeping each key's values in order."
+  [pairs]
+  (update-vals (group-by first pairs) #(mapv second %)))
+
 ;;; ------------------------------------------------ nav tree walk -------------------------------------------------
 
 (defn- problem [trail message]
@@ -76,68 +71,74 @@
 (defn- entry-name
   "The entry's `name` when it is a non-blank string, else nil."
   [node]
-  (let [entry-name (:name node)]
-    (when (and (string? entry-name) (not (str/blank? entry-name)))
-      entry-name)))
+  (let [value (:name node)]
+    (when (and (string? value) (not (str/blank? value)))
+      value)))
 
 (defn- node-trail
   "Breadcrumb of nav names down to `node`, like `Analytics > Questions > Editor`."
   [node parent-trail]
   (str/join " > " (remove nil? [parent-trail (or (entry-name node) "(unnamed)")])))
 
+(defn- nodes-with-trails
+  "Flattens nav `nodes` depth-first into `[{:node :trail}]` in document order, `:trail` being the
+  [[node-trail]] of each node."
+  ([nodes] (nodes-with-trails nodes nil))
+  ([nodes parent-trail]
+   (mapcat (fn [node]
+             (if-not (map? node)
+               [{:node node :trail (or parent-trail "(top level)")}]
+               (let [trail (node-trail node parent-trail)
+                     pages (:pages node)]
+                 (cons {:node node :trail trail}
+                       (when (sequential? pages)
+                         (nodes-with-trails pages trail))))))
+           nodes)))
+
 (defn- node-problems
   "Structural problems with one nav entry, as `[{:trail :message}]`. Empty when it is well formed."
-  [{:keys [url pages] :as node} trail]
-  (cond-> []
-    (not (entry-name node))
-    (conj (problem trail "entry has no `name`"))
+  [{:keys [node trail]}]
+  (if-not (map? node)
+    [(problem trail (str "entry is not a map: " (pr-str node)))]
+    (let [{:keys [url pages]} node]
+      (cond-> []
+        (not (entry-name node))
+        (conj (problem trail "entry has no `name`"))
 
-    (not (or (contains? node :url) (contains? node :pages)))
-    (conj (problem trail "entry has neither `url` nor `pages`"))
+        (not (or (contains? node :url) (contains? node :pages)))
+        (conj (problem trail "entry has neither `url` nor `pages`"))
 
-    (and (contains? node :url) (not (string? url)))
-    (conj (problem trail (str "`url` must be a string, got " (pr-str url))))
+        (and (contains? node :url) (not (string? url)))
+        (conj (problem trail (str "`url` must be a string, got " (pr-str url))))
 
-    (and (contains? node :pages) (not (sequential? pages)))
-    (conj (problem trail "`pages` must be a list"))))
+        (and (contains? node :pages) (not (sequential? pages)))
+        (conj (problem trail "`pages` must be a list"))))))
 
 (defn- node-link
   "`{:trail :url}` when the entry has a relative url that lychee should check, else nil."
-  [{:keys [url]} trail]
-  (when (and (string? url) (not (external? url)))
-    {:trail trail :url url}))
+  [{:keys [node trail]}]
+  (let [url (:url node)]
+    (when (and (string? url) (not (external? url)))
+      {:trail trail :url url})))
 
 (defn entries
   "Walks nav `nodes` and returns `{:links [{:trail :url}] :problems [{:trail :message}]}`.
   `:links` are the relative urls in document order, each with its breadcrumb trail of nav names.
   `:problems` are structural issues, see [[node-problems]]."
-  ([nodes] (entries nodes nil))
-  ([nodes parent-trail]
-   (reduce
-    (fn [acc node]
-      (if-not (map? node)
-        (update acc :problems conj (problem (or parent-trail "(top level)")
-                                            (str "entry is not a map: " (pr-str node))))
-        (let [trail    (node-trail node parent-trail)
-              pages    (:pages node)
-              own      {:links    (if-let [link (node-link node trail)] [link] [])
-                        :problems (node-problems node trail)}
-              children (if (sequential? pages) (entries pages trail) {})]
-          (merge-with into acc own children))))
-    {:links [] :problems []}
-    nodes)))
+  [nodes]
+  (let [flat (nodes-with-trails nodes)]
+    {:links    (into [] (keep node-link) flat)
+     :problems (into [] (mapcat node-problems) flat)}))
 
 ;;; ------------------------------------------------ yaml line numbers ---------------------------------------------
 
 (defn url-line-numbers
   "Map of each url in the nav yaml `text` to the 1-based line numbers of its `url:` lines, in document order."
   [text]
-  (reduce (fn [m [i line]]
-            (if-let [[_ url] (re-find #"^\s*(?:-\s+)?url:\s*[\"']?([^\"'\s]+)" line)]
-              (update m url (fnil conj []) (inc i))
-              m))
-          {}
-          (map-indexed vector (str/split-lines text))))
+  (index-pairs (keep-indexed (fn [i line]
+                               (when-let [[_ url] (re-find #"^\s*(?:-\s+)?url:\s*[\"']?([^\"'\s]+)" line)]
+                                 [url (inc i)]))
+                             (str/split-lines text))))
 
 (defn- occurrence-indexes
   "How many times each value of `coll` appeared before it: `[a b a]` -> `[0 0 1]`."
@@ -171,20 +172,16 @@
        :problems [(problem "(top level)" "expected a single document with a top-level `categories` list")]})))
 
 (defn markdown
-  "One markdown link per line. Line N corresponds to `(nth links (dec N))`, which is how
-  lychee failures are mapped back to nav entries."
+  "One markdown link per line, in order: line N is `(nth links (dec N))`."
   [links]
   (str/join (map (fn [{:keys [trail url]}]
                    (str "- [" (str/replace trail #"[\[\]]" "\\\\$0") "](/" url ")\n"))
                  links)))
 
 ;;; ------------------------------------------------ redirect_from suggestions -------------------------------------
-;;; Used by `./bin/mage docs-check-nav-links` when a page is missing.
 
 (defn- frontmatter [text]
-  (when (str/starts-with? text "---\n")
-    (let [end (str/index-of text "\n---" 4)]
-      (when end (subs text 4 end)))))
+  (second (re-find #"(?s)\A---\n(.*?)\n---" text)))
 
 (defn- markdown-pages
   "Every markdown file under docs/, excluding node_modules."
@@ -206,17 +203,16 @@
 (defn redirect-index
   "Map of old nav url to the [[page-ref]]s of the pages under docs/ that redirect from it."
   []
-  (let [pairs (for [file (markdown-pages)
-                    from (redirect-sources (slurp file))]
-                [from (page-ref file)])]
-    (update-vals (group-by first pairs) #(mapv second %))))
+  (index-pairs (for [file (markdown-pages)
+                     from (redirect-sources (slurp file))]
+                 [from (page-ref file)])))
 
 (defn suggestions
   "Replacement nav urls for a missing `url`, based on [[redirect-index]]. Keeps any `#anchor`."
   [index url]
-  (let [anchor (anchor url)]
+  (let [fragment (anchor url)]
     (for [ref (get index (page-path url))]
-      (cond-> ref anchor (update :url str "#" anchor)))))
+      (cond-> ref fragment (update :url str "#" fragment)))))
 
 ;;; ------------------------------------------------ case mismatches -----------------------------------------------
 
