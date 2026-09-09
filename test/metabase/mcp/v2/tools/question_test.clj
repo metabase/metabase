@@ -392,6 +392,30 @@
         (is (re-find #"Dashboard 999999999 not found"
                      (-> result :content first :text)))))))
 
+(deftest create-dashboard-question-existence-does-not-leak-test
+  (testing "GHY-4443: a dashboard the caller cannot read and a dashboard that does not exist must be
+            indistinguishable. Reading the row without a read check and letting the later write check
+            answer makes the first a 403 and the second a 404, which is an existence oracle: a token
+            scoped to one collection could enumerate every dashboard id on the instance."
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [args-for  (fn [dashboard-id]
+                          {:method       "create"
+                           :name         "Existence probe"
+                           :dashboard_id dashboard-id
+                           :query        {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
+              unreadable (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
+                                    (args-for dash-id))
+              missing    (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
+                                    (args-for 999999999))]
+          (is (:isError unreadable))
+          (is (:isError missing))
+          (is (= (str/replace (-> missing :content first :text) #"999999999" "<id>")
+                 (str/replace (-> unreadable :content first :text) (re-pattern (str dash-id)) "<id>"))
+              "the refusal for an unreadable dashboard must read exactly like the one for a missing dashboard"))))))
+
 ;;; ------------------------------------------------------ Update --------------------------------------------------
 
 (deftest update-question-rename-test
@@ -688,10 +712,14 @@
                    :model/Collection coll-b {}
                    :model/Dashboard dash-b {:collection_id (:id coll-b)}
                    :model/Card card {:dataset_query (orders-query) :collection_id (:id coll-a)}]
-      ;; the default "All Users" group has write access to freshly created root collections in
-      ;; tests; revoke it on the destination only, to prove the collection-move check (and thus
-      ;; the write requirement on the dashboard's collection) still runs for a dashboard move.
+      ;; Read but not write on the destination: the caller can see the dashboard, so the read check
+      ;; in `resolve-dashboard!` passes and the *write* requirement on the dashboard's collection is
+      ;; what refuses — which is what this test exists to prove. Revoking read too would collapse the
+      ;; refusal into the not-found that
+      ;; `create-dashboard-question-existence-does-not-leak-test` covers, and this assertion would
+      ;; pass for the wrong reason.
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-b)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-b)
       (mt/with-current-user (mt/user->id :rasta)
         (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
                                 {:method "update" :id (:id card) :dashboard_id (:id dash-b)})]

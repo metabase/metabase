@@ -293,16 +293,14 @@
 
 (defn- resolve-dashboard!
   "Resolve `dashboard_id` to `{:dashboard-id id :collection-id (its collection_id)}`, or nil when
-   `dashboard_id` is absent. [[v2.resolve/resolve-id-or-404]] is translation only — a numeric id
-   passes straight through with no lookup — so an explicit existence check is needed here (mirrors
-   [[v2.resolve/resolve-collection-id]]) or a bad numeric id reaches the DB as a raw FK violation."
+   `dashboard_id` is absent. Read-checked, so a dashboard that doesn't exist and one the caller
+   can't read are the same not-found — answering the second with the later write check's 403 would
+   make the argument an existence oracle for every dashboard on the instance. The write check still
+   decides whether a card may actually be saved into it."
   [dashboard_id]
   (when dashboard_id
-    (let [id  (v2.resolve/resolve-id-or-404 :model/Dashboard dashboard_id)
-          row (mcp.db/select-one-by-id [:model/Dashboard :collection_id] id)]
-      (when-not row
-        (common/throw-not-found :model/Dashboard dashboard_id))
-      {:dashboard-id id :collection-id (:collection_id row)})))
+    (let [dashboard (v2.resolve/resolve-and-read :model/Dashboard dashboard_id)]
+      {:dashboard-id (:id dashboard) :collection-id (:collection_id dashboard)})))
 
 (defn- create!
   "Run the shared REST create check stack ([[metabase.queries.core/check-allowed-to-create-card!]])
