@@ -17,6 +17,11 @@
   {:pre [(integer? id)]}
   (t2/select-one model :id id))
 
+(defn field-types
+  "The `base_type` and `effective_type` of the Field with `field-id`, or nil."
+  [field-id]
+  (t2/select-one [:model/Field :base_type :effective_type] :id field-id))
+
 (defn insert-feedback!
   "Insert the McpFeedback `row`."
   [row]

@@ -1361,10 +1361,12 @@
            models
            notification
            oauth-server
+           parameters
            permissions
            premium-features
            pulse
            queries
+           query-processor
            request
            server
            session
