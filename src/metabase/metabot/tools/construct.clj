@@ -207,6 +207,35 @@
   (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
     [::field-id x]))
 
+(defn- numeric-scoped-content-ref
+  "A bare numeric measure / segment id, tagged with the model it names so
+  [[resolve-table-fk]] can resolve it to the table it is scoped to.
+
+  Measures and segments live on a table, and that table is the thing a query permission is
+  about — but a `[\"measure\" {} 44]` clause names neither a table nor a field, so without this
+  the sweep never sees it and `api/query-check` never runs for it. They do get `api/read-check`
+  through the content store, but `mi/can-read?` on both models delegates to the Table's
+  `can-read?`, which is strictly weaker than `can-query?` (only `can-read?` has the
+  `manage-table-metadata` disjunct). Metric refs are Cards and are deliberately not covered:
+  a card pulls in whatever tables its own query names, which this pre-flight sweep cannot see,
+  and the QP re-checks them at execution."
+  [model x]
+  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+    [::scoped-content model x]))
+
+(defn- node-scoped-content-ref
+  "The tagged ref for a `[\"measure\" {} 44]` / `[\"segment\" {} 43]` clause, or nil."
+  [node]
+  (when (and (vector? node) (not (map-entry? node)))
+    (let [op (nth node 0 nil)]
+      (when-let [model (case op
+                         ("measure" :measure) :model/Measure
+                         ("segment" :segment) :model/Segment
+                         nil)]
+        ;; the id sits in slot 2 (`[op {} id]`) or slot 1 (`[op id]`, pre-repair)
+        (or (numeric-scoped-content-ref model (nth node 2 nil))
+            (numeric-scoped-content-ref model (nth node 1 nil)))))))
+
 (defn- node-table-fks
   [node]
   (cond
@@ -216,12 +245,20 @@
                     (portable-field-fk-table (get node "source-field"))
                     (numeric-field-id-ref (get node "source-field"))])
 
+    (node-scoped-content-ref node)
+    [(node-scoped-content-ref node)]
+
     (and (vector? node)
          (not (map-entry? node))
          (= "field" (nth node 0 nil)))
+    ;; Both slots, for both forms. Repair inserts the options map later, so an LLM-authored
+    ;; `["field", 42]` still carries its target in slot 1 when this pass runs — checking the
+    ;; numeric form in slot 2 only (as this did) let that shape through uncollected, and so
+    ;; unchecked. The portable form already looked at both slots; the numeric one has to match.
     (keep identity [(or (portable-field-fk-table (nth node 2 nil))
                         (portable-field-fk-table (nth node 1 nil))
-                        (numeric-field-id-ref (nth node 2 nil)))])))
+                        (numeric-field-id-ref (nth node 2 nil))
+                        (numeric-field-id-ref (nth node 1 nil)))])))
 
 (defn- referenced-table-fks
   "Every table reference in the query: portable `[db schema table]` FKs, plus bare table ids on the
@@ -234,26 +271,133 @@
 (def ^:private unresolved-table-fk-errors
   #{:unknown-table :ambiguous-table})
 
-(defn- resolve-field-id->table-id
-  "The table a numeric field id lives on, via the metadata provider, or nil when the field is not
-  found. A missing field is not this pass's error to raise — resolve/validate will surface it — so
-  we swallow the lookup failure and leave the (non-existent) table unchecked."
+;;; ----- the numeric-id boundary contract -------------------------------------------------
+;;;
+;;; A portable reference names a table or column, and resolution answers "is there something
+;;; with this name, in this database, that the caller may use?" — so being in the query's
+;;; database, and being a column the warehouse actually exposes, both fall out of resolving the
+;;; name. A bare numeric id skips all of that: it is an LLM-authored integer pointing at a row.
+;;;
+;;; These two helpers put that contract back. Everything the numeric dialect accepts goes
+;;; through the query's own metadata provider, which is scoped to the query's database — so a
+;;; table in another database simply is not there. On top of that we re-apply the visibility
+;;; rules, because `metadata-spec->honey-sql` deliberately drops its active/visibility filter
+;;; for by-id lookups (`active-only?` is `(not (or id-set name-set))`): asking for a specific
+;;; id is normally a deliberate act by trusted code, which is exactly the assumption an
+;;; agent-authored id breaks.
+
+(defn- visible-table
+  "The table `table-id` names, as seen from `metadata-provider`, or nil when it is not a table
+  this query may reference: a table in another database (the provider is database-scoped, so it
+  is simply absent), an inactive one, or one the warehouse hides."
+  [metadata-provider table-id]
+  ;; Any lookup failure — not just a miss — is treated as "not referenceable". This pass decides
+  ;; only what a numeric id is allowed to name; it is deliberately not the place a provider
+  ;; outage is diagnosed, and failing closed here is the safe direction.
+  (when-let [table (try
+                     (lib.metadata.protocols/table metadata-provider table-id)
+                     (catch Exception _ nil))]
+    (when (and (not (false? (:active table)))
+               (not (contains? #{:hidden :technical :cruft} (:visibility-type table))))
+      table)))
+
+(def ^:private hidden-field-visibility-types
+  "Field visibility types the warehouse marks as not for querying."
+  #{:sensitive :retired})
+
+(defn- field-itself-visible?
+  "The per-field half of [[visible-field]]: active, and not marked unqueryable. Says nothing
+  about the field's table or its ancestors."
+  [field]
+  (and (some? field)
+       (not (false? (:active field)))
+       (not (contains? hidden-field-visibility-types (:visibility-type field)))))
+
+(defn- fetch-field
+  "`field-id` from `metadata-provider`, or nil. Catch-all for the same reason as
+  [[visible-table]]: fail closed, diagnose elsewhere."
   [metadata-provider field-id]
   (try
-    (:table-id (lib.metadata.protocols/field metadata-provider field-id))
+    (lib.metadata.protocols/field metadata-provider field-id)
     (catch Exception _ nil)))
+
+(def ^:private max-parent-chain-depth
+  "Depth bound for the `:parent-id` walk. JSON-unfolded columns nest a handful deep at most; the
+  bound is here so a cyclic or corrupt chain cannot spin, not because real data approaches it."
+  50)
+
+(defn- visible-field
+  "The field `field-id` names, as seen from `metadata-provider`, or nil when it is not a field
+  this query may reference — same rules as [[visible-table]], plus the field-level visibility
+  types. `:sensitive` and `:retired` columns are excluded: the warehouse marks them as not for
+  querying, and the portable dialect cannot name them because they are absent from the by-name
+  fetch.
+
+  Walks the whole `:parent-id` chain, not just the named field. A JSON column unfolds into child
+  fields that carry their own visibility, so a perfectly ordinary-looking child of a `:sensitive`
+  parent would otherwise be referenceable by id — reaching inside a column the warehouse marked
+  unqueryable. Hiding a parent has to hide everything under it.
+
+  The walk checks each ancestor's own visibility, not its `:table-id`. Sync is the only writer
+  of `parent_id` and always threads a field's table and parent together; there is no API that
+  sets it, so a cross-table chain would take direct app-DB manipulation. The leaf's table is
+  checked, which is the reference the query actually names."
+  [metadata-provider field-id]
+  (when-let [field (fetch-field metadata-provider field-id)]
+    (when (and (field-itself-visible? field)
+               ;; the field's own table has to be referenceable too
+               (visible-table metadata-provider (:table-id field))
+               ;; …as does every ancestor, for its own sake
+               (loop [parent-id (:parent-id field)
+                      depth     0]
+                 (cond
+                   (nil? parent-id)                 true
+                   (>= depth max-parent-chain-depth) false
+                   :else (when-let [parent (fetch-field metadata-provider parent-id)]
+                           (when (field-itself-visible? parent)
+                             (recur (:parent-id parent) (inc depth)))))))
+      field)))
+
+(defn- resolve-field-id->table-id
+  "The table a numeric field id lives on, via the metadata provider, or nil when the field is not
+  one this query may reference (see [[visible-field]]).
+
+  Returning nil leaves the table out of the permission sweep, which is safe precisely because
+  the same predicate gates the id downstream: a field that fails here never resolves either, so
+  there is no table to check. `assert-numeric-ids-are-referenceable!` raises the agent-facing
+  error; this pass only decides what to permission-check."
+  [metadata-provider field-id]
+  (:table-id (visible-field metadata-provider field-id)))
 
 (defn- resolve-table-fk
   [metadata-provider resolver table-fk]
   (cond
     (pos-int? table-fk)
-    ;; Already a table id — nothing to resolve. Its permission check happens in the caller, same as
-    ;; for a resolved portable FK.
-    table-fk
+    ;; Already a table id, but not necessarily one this query may reference. Resolve it through
+    ;; the (database-scoped) provider rather than trusting the integer: a table in another
+    ;; database is absent there, and `api/query-check` would not catch that on its own — it asks
+    ;; whether the caller can query *that* table, never whether it belongs to this query's
+    ;; database. nil here leaves it unchecked, which is safe because
+    ;; `assert-numeric-ids-are-referenceable!` has already rejected the query.
+    (:id (visible-table metadata-provider table-fk))
 
     ;; A numeric field id: check the table the field lives on, not the id itself.
     (and (vector? table-fk) (= ::field-id (nth table-fk 0 nil)))
     (resolve-field-id->table-id metadata-provider (nth table-fk 1))
+
+    ;; A numeric measure / segment id: same idea, via the table it is scoped to. The lookup goes
+    ;; through the read-checked store, so an unreadable one resolves to nil and is skipped —
+    ;; `assert-numeric-ids-are-referenceable!` is what turns that into the caller-facing error.
+    (and (vector? table-fk) (= ::scoped-content (nth table-fk 0 nil)))
+    (let [[_ model id] table-fk
+          row (try
+                (case model
+                  :model/Measure (resolve.mp/measure-by-id permission-aware-content-store id)
+                  :model/Segment (resolve.mp/segment-by-id permission-aware-content-store id)
+                  nil)
+                (catch Exception _ nil))]
+      (when-let [table-id (or (:table-id row) (:table_id row))]
+        (:id (visible-table metadata-provider table-id))))
 
     :else
     (try
@@ -262,6 +406,86 @@
         (when-not (contains? unresolved-table-fk-errors (:error (ex-data e)))
           (throw e))
         nil))))
+
+(defn- assert-numeric-ids-are-referenceable!
+  "Reject every numeric table / field id in `parsed-query` that this query may not reference,
+  before anything looks the ids up for real.
+
+  This is the numeric dialect's equivalent of name resolution failing on the portable path. It
+  runs ahead of the permission sweep on purpose: `api/query-check` asks whether the caller may
+  query a given table, not whether that table belongs to *this* query's database, so an id from
+  another database would otherwise pass the check and travel on into repair. Errors are phrased
+  as plain not-found — an id being absent, hidden, or in the wrong database are all the same
+  answer to the agent, and distinguishing them would report on rows it cannot otherwise see."
+  [metadata-provider parsed-query]
+  (when serdes.resolve/*numeric-ids-allowed?*
+    (doseq [ref (referenced-table-fks parsed-query)]
+      (cond
+        (pos-int? ref)
+        (when-not (visible-table metadata-provider ref)
+          (throw (ex-info (tru "No table found with id {0}." (str ref))
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :unknown-table-id
+                           :table-id     ref})))
+
+        (and (vector? ref) (= ::field-id (nth ref 0 nil)))
+        (let [field-id (nth ref 1)]
+          (when-not (visible-field metadata-provider field-id)
+            (throw (ex-info (tru "No field found with id {0}." (str field-id))
+                            {:agent-error? true
+                             :status-code  400
+                             :error        :unknown-field-id
+                             :field-id     field-id}))))
+
+        (and (vector? ref) (= ::scoped-content (nth ref 0 nil)))
+        (let [[_ model id] ref]
+          (when-not (resolve-table-fk metadata-provider nil ref)
+            (throw (ex-info (if (= model :model/Measure)
+                              (tru "No measure found with id {0}." (str id))
+                              (tru "No segment found with id {0}." (str id)))
+                            {:agent-error? true
+                             :status-code  400
+                             :error        (if (= model :model/Measure)
+                                             :unknown-measure-id
+                                             :unknown-segment-id)
+                             :content-id   id}))))
+
+        :else nil))))
+
+(defn- numeric-ref?
+  "Was this collected reference authored as a bare id rather than a portable one? Numeric refs
+  are the raw table id, or the `[::field-id n]` tag [[numeric-field-id-ref]] produces."
+  [table-fk]
+  (or (pos-int? table-fk)
+      (and (vector? table-fk)
+           (contains? #{::field-id ::scoped-content} (nth table-fk 0 nil)))))
+
+(defn- query-check-table!
+  "`api/query-check` the table, translating a denial on a *numeric* reference into the same
+  not-found error an absent id produces.
+
+  `mi/can-read?` (which gates [[visible-table]] and the first-stage lookup) is strictly weaker
+  than `mi/can-query?`: only `can-read?` has the `manage-table-metadata :yes` disjunct. So a
+  metadata-only user passes every earlier gate and lands here, and a bare 403 would confirm the
+  table exists, is active, and is in this database — the oracle the numeric path exists to
+  close, one step further along than the first-stage lookup that already closes it.
+
+  The portable path keeps its 403: its references are unguessable names, so there is nothing to
+  enumerate, and callers there benefit from the accurate status."
+  [table-fk table-id]
+  (if (numeric-ref? table-fk)
+    (try
+      (api/query-check :model/Table table-id)
+      (catch clojure.lang.ExceptionInfo e
+        (if (= 403 (:status-code (ex-data e)))
+          (throw (ex-info (tru "No table found with id {0}." (str table-id))
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :unknown-table-id
+                           :table-id     table-id}))
+          (throw e))))
+    (api/query-check :model/Table table-id)))
 
 (defn- check-source-table-query-permissions!
   ([metadata-provider portable-query]
@@ -274,7 +498,7 @@
                  (if-let [table-id (resolve-table-fk metadata-provider resolver table-fk)]
                    (if (contains? checked table-id)
                      checked
-                     (do (api/query-check :model/Table table-id)
+                     (do (query-check-table! table-fk table-id)
                          (conj checked table-id)))
                    checked))
                already-checked
@@ -290,7 +514,7 @@
       by that `db` name. Unknown / ambiguous names surface `:unknown-database` / `:ambiguous-database-name`
       agent-errors.
     * On a surface that accepts numeric ids, a numeric `stages[0].source-table` resolves through
-      the table row's `:db_id`. Unknown / inactive ids surface `:unknown-table`.
+      the table row's `:db_id`. Unknown / inactive / unreadable ids surface `:unknown-table-id`.
     * Otherwise, if `stages[0].source-card` is an entity_id string, look up the card by entity_id
       and use its `:database_id`. Unknown entity_id surfaces `:unknown-card`. On a numeric-id
       surface a numeric `source-card` resolves the same way, behind a read check.
@@ -316,11 +540,7 @@
       (let [db-name (nth source-table-fk 0)
             ids     (metabot.db/database-ids-by-name db-name)]
         (case (count ids)
-          0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
-                                      "reported by search / `read_resource` (it appears "
-                                      "as the first element of every portable FK, e.g. "
-                                      "`source-table: [<db-name>, <schema>, <table>]`).")
-                                 db-name)
+          0 (throw (ex-info (tru "Unknown database: `{0}`." db-name)
                             {:agent-error? true
                              :status-code  400
                              :error        :unknown-database
@@ -337,7 +557,11 @@
                            :database-ids (vec (sort ids))}))))
 
       numeric-table
-      (or (:db_id (metabot.db/active-table-with-columns [:model/Table :db_id] numeric-table))
+      ;; Read-checked, and reporting a table the caller may not see exactly as it reports one
+      ;; that does not exist: this lookup runs before the metadata provider exists (it is what
+      ;; decides which provider to build), so an unchecked existence answer here would let the
+      ;; id argument enumerate table ids across databases the caller cannot otherwise see.
+      (or (metabot.db/readable-active-table-database-id numeric-table)
           ;; the id renders via str, not as a number — tru's MessageFormat would add locale
           ;; digit grouping ("999,999,999").
           ;; `:unknown-table-id`, not `:unknown-table`: a portable-FK miss (`:unknown-table`)
@@ -359,17 +583,29 @@
                          :entity-id    source-card-eid})))
 
       numeric-card
-      (let [card-id numeric-card
-            card    (metabot.db/card card-id)]
-        (when-not card
+      (let [card-id  numeric-card
+            card     (metabot.db/card card-id)
+            ;; Read-check here rather than let the 403 escape: an unreadable card and an absent
+            ;; one must be reported identically, or the status code tells a caller whether a
+            ;; hidden card exists. Same collapse the read-checked content store applies to every
+            ;; other content lookup, and the same one the numeric table branch already had.
+            readable (when card
+                       (try
+                         (api/read-check card)
+                         true
+                         (catch clojure.lang.ExceptionInfo e
+                           (if (= 403 (:status-code (ex-data e)))
+                             false
+                             (throw e)))))]
+        (when-not readable
           (throw (ex-info (tru "No saved question or model found with id {0}."
                                (str card-id))
                           {:agent-error? true
                            :status-code  400
-                           :error        :unknown-card
+                           ;; the numeric-specific key, matching `export-card-by-id` — a numeric
+                           ;; miss and a portable-entity_id miss want different recovery advice
+                           :error        :unknown-card-id
                            :card-id      card-id})))
-        (when api/*current-user-id*
-          (api/read-check card))
         (:database_id card))
 
       :else
@@ -467,6 +703,10 @@
                         (throw (as-agent-input-error e))))
         database-id (resolve-database-id-from-first-stage parsed)
         mp          (lib-be/application-database-metadata-provider database-id)
+        ;; Numeric ids are LLM-authored integers rather than resolved names, so establish that
+        ;; each one actually denotes something this query may reference before the permission
+        ;; sweep runs against it. No-op on the portable-only surface.
+        _refs       (assert-numeric-ids-are-referenceable! mp parsed)
         ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
         ;; never inspects table/card metadata that the current user cannot use.
         checked     (check-source-table-query-permissions! mp parsed)]
@@ -511,7 +751,7 @@
 (defn- with-recovery-hint
   "Return `e` with the caller's recovery sentence appended to its message, or unchanged when
   `recovery-hint` is absent or has nothing to say about this error."
-  [^clojure.lang.ExceptionInfo e recovery-hint]
+  [e recovery-hint]
   (if-let [hint (when recovery-hint (recovery-hint (ex-data e)))]
     (ex-info (str (ex-message e) " " hint) (ex-data e) e)
     e))
