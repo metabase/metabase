@@ -16,9 +16,7 @@ export const GOAL_SETTINGS: Record<GoalSettingKey, GoalSettingKind> = {
   "scalar.segments": "segments",
 };
 
-// A display is listed once its renderers, interactive and static, resolve the setting.
-// Lives in its own module so specs can spy on `getDynamicGoalSettingKeys`
-// (see `__support__/dynamic-goals`) for paths no display reaches yet.
+// Kept in a separate module so `__support__/dynamic-goals` can spy on `getDynamicGoalSettingKeys` .
 const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
   Record<VisualizationDisplay, GoalSettingKey[]>
 > = {
