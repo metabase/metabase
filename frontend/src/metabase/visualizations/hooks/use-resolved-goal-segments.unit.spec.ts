@@ -267,7 +267,7 @@ describe("useResolvedOpenEndedGoalSegments", () => {
     },
   ];
 
-  function setupOpenEnded(data: DatasetData, segments: GoalSegment[]) {
+  function setup(data: DatasetData, segments: GoalSegment[]) {
     return renderHookWithProviders(
       () => useResolvedOpenEndedGoalSegments(DATASET_QUERY, data, segments),
       {},
@@ -275,7 +275,7 @@ describe("useResolvedOpenEndedGoalSegments", () => {
   }
 
   it("keeps empty bounds open without fetching", () => {
-    const { result } = setupOpenEnded(DATA, [
+    const { result } = setup(DATA, [
       { min: null, max: 10, color: "red", label: "" },
       { min: 10, max: null, color: "green", label: "" },
     ]);
@@ -309,7 +309,7 @@ describe("useResolvedOpenEndedGoalSegments", () => {
       },
     });
 
-    const { result } = setupOpenEnded(DATA, OPEN_ENDED_SEGMENTS);
+    const { result } = setup(DATA, OPEN_ENDED_SEGMENTS);
     expect(result.current).toEqual({ status: "resolving" });
 
     await waitFor(() =>
@@ -331,7 +331,7 @@ describe("useResolvedOpenEndedGoalSegments", () => {
       },
     });
 
-    const { result } = setupOpenEnded(data, OPEN_ENDED_SEGMENTS);
+    const { result } = setup(data, OPEN_ENDED_SEGMENTS);
 
     expect(result.current).toEqual({ status: "failed" });
   });
