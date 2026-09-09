@@ -8,9 +8,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { getShallowTables as getTables } from "metabase/metadata-store";
-import { Revision } from "metabase/querying/segments/components/revisions/Revision";
 import { connect } from "metabase/redux";
 import S from "metabase/reference/components/List/List.module.css";
+import { Revision } from "metabase/segments";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import type {
   NormalizedTable,

@@ -24,7 +24,14 @@
    caller, which satisfies every scope check."
   ([args] (call-content nil args))
   ([token-scopes args]
-   (registry/call-tool token-scopes "test-session" "get_content" args)))
+   ;; `call-tool` answers `{:result …}` after dispatch, or `{:error …}` when the registry rejects
+   ;; the call before it. Present a rejection in the same `{:isError true}` shape a handler error
+   ;; takes, so the error-reading helpers below see both alike — the assertions here read the
+   ;; refusal text as a value, so a wrapper that threw would turn those into errors.
+   (let [{:keys [result error]} (registry/call-tool token-scopes "test-session" "get_content" args)]
+     (if error
+       {:isError true :content [{:type "text" :text (:message error)}]}
+       result))))
 
 (defn- content-results
   "The `:results` vector from a successful get_content call. Throws when the call was rejected

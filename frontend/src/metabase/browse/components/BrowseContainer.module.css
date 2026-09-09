@@ -6,12 +6,12 @@
 }
 
 .browseHeader {
-  padding: var(--mantine-spacing-md) 2.5rem 3rem 2.5rem;
+  padding: var(--mantine-spacing-lg) 2.5rem 3rem 2.5rem;
 }
 
 .browseMain {
   padding: 0 2.5rem;
-  padding-bottom: var(--mantine-spacing-xl);
+  padding-bottom: var(--mantine-spacing-xxl);
 }
 
 .centeredEmptyState {

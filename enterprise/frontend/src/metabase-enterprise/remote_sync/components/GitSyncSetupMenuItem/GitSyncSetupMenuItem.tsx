@@ -27,7 +27,7 @@ export const GitSyncSetupMenuItem = (props: GitSyncSetupMenuItemProps) => {
       >
         <UnstyledButton
           aria-label={t`Set up remote sync`}
-          bdrs="md"
+          bdrs="sm"
           className={S.tab}
           onClick={onClick}
           p="0.5rem"

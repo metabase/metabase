@@ -15,12 +15,12 @@ export const DataAppListItem = ({ app, canRemove = false }: Props) => (
     data-testid={`data-app-list-item-${app.name}`}
     justify="space-between"
     align="center"
-    gap="md"
-    p="md"
+    gap="lg"
+    p="lg"
   >
     <DataAppSummary app={app} />
 
-    <Group flex="0 0 auto" gap="md" wrap="nowrap" align="center">
+    <Group flex="0 0 auto" gap="lg" wrap="nowrap" align="center">
       <DataAppStatusBadge app={app} />
 
       <DataAppActionsMenu app={app} canRemove={canRemove} />

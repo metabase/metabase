@@ -88,7 +88,7 @@ export function PublicOrEmbeddedDashboardView() {
         className={cx({
           [DashboardS.DashboardFullscreen]: isFullscreen,
         })}
-        mt={isCompactHeader ? "xs" : "sm"}
+        mt={isCompactHeader ? "xxs" : "sm"}
       >
         <Dashboard.Grid />
       </FullWidthContainer>

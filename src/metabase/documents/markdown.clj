@@ -98,6 +98,18 @@
 (def ^:private resize-node-default-height 442)
 (def ^:private resize-node-default-min-height 280)
 
+(def ^:private line-ending-re
+  "The line endings the Markdown parser breaks a line on: CRLF, CR, LF (CommonMark 2.2). Prose
+  reaching the serializer is an arbitrary stored string, so it can hold any of them, and every
+  line the parser will see has to go through [[escape-line-start]] — a CR the serializer treats
+  as ordinary text is a line the parser reads as a fresh one, free to open a block.
+
+  The scanner splits on this too, and must: `clojure.string/split-lines` breaks on `\\r?\\n` and
+  leaves a lone CR inside the line it returns. flexmark would end the line there, so the two
+  disagree about where lines begin — and a `{% card %}` the author fenced as code lands on a
+  scanner line that no longer looks like a fence, promoting it to a real embed."
+  #"\r\n|\r|\n")
+
 (def ^:private max-nesting-depth
   "How deep a parse tree may get before parsing refuses the input. Conversion recurses once per
   level — `scan-segments` per container fence, `convert-block`/`convert-inline` per block and
@@ -223,7 +235,11 @@
         body))))
 
 (def ^:private code-fence-re
-  #"[ \t]{0,3}(`{3,}|~{3,})(.*)")
+  ;; A fence may open on a list item's marker line (`- ```clj`). Without the marker branch the
+  ;; scanner never enters the code state for such a block, and the item's content lines -- which
+  ;; sit at 2-3 columns, inside this regex's indent budget -- get read as structure, manufacturing
+  ;; a card embed or closing a container early out of what CommonMark calls code.
+  #"[ \t]{0,3}(?:(?:[-+*]|\d{1,9}[.)])[ \t]{1,4})?(`{3,}|~{3,})(.*)")
 
 (defn- code-fence-open
   "The fence descriptor `{:ch :len}` a line opens, or nil. A backtick fence's info string
@@ -233,11 +249,38 @@
     (when-not (and (str/starts-with? fence "`") (str/includes? info "`"))
       {:ch (first fence) :len (count fence)})))
 
+(def ^:private code-fence-close-re
+  ;; A fence opened behind a list marker closes at the item's content indent, which sits past the
+  ;; 3 columns a top-level fence is limited to. Allowing more leading space here only ever ends a
+  ;; block the opener already began, so it cannot make non-code text look like structure.
+  #"[ \t]{0,13}(`{3,}|~{3,})[ \t]*")
+
 (defn- code-fence-close?
   [^String line {:keys [ch len]}]
   (boolean
-   (when-let [[_ fence] (re-matches #"[ \t]{0,3}(`{3,}|~{3,})[ \t]*" line)]
+   (when-let [[_ fence] (re-matches code-fence-close-re line)]
      (and (= ch (first fence)) (>= (count fence) (long len))))))
+
+(defn- indented-code-line?
+  "Whether CommonMark reads `line` as indented code, i.e. its content starts at column 4 or later.
+
+  The token and fence regexes bound their indent with `[ \\t]{0,3}`, which counts a tab as one
+  character. A tab advances to the next 4-column tab stop (CommonMark 2.2), so `\\t{% card id=1 %}`
+  is a one-character indent to those regexes and a code block to flexmark — the scanner promotes to
+  structure exactly what the parser reads as content. Measuring in columns is what makes the two
+  agree, and doing it here covers every token type at once."
+  [^String line]
+  (loop [idx (long 0) col (long 0)]
+    (if (>= idx (.length line))
+      ;; Ran out of line while still counting indent: the line is blank. A blank line separates
+      ;; blocks rather than opening a code block, however wide its whitespace is — so the column
+      ;; test belongs on the first non-whitespace character, not on entry to each iteration.
+      false
+      (let [c (.charAt line idx)]
+        (cond
+          (= c \space) (recur (inc idx) (inc col))
+          (= c \tab)   (recur (inc idx) (long (+ col (- 4 (mod col 4)))))
+          :else        (>= col 4))))))
 
 (defn- scan-segments
   "Scan `lines` from index `i` into segments. `open-fence` names the container fence being
@@ -262,6 +305,12 @@
           code-fence
           (recur (inc i) (conj md-lines line) segments
                  (when-not (code-fence-close? line code-fence) code-fence))
+
+          ;; Indented code is content, not structure — flexmark will read this line as a code
+          ;; block, so no token or fence on it may be promoted. Sits below the `code-fence` arm
+          ;; because a line inside an already-open fence is opaque whatever its indent.
+          (indented-code-line? line)
+          (recur (inc i) (conj md-lines line) segments nil)
 
           (code-fence-open line)
           (recur (inc i) (conj md-lines line) segments (code-fence-open line))
@@ -382,6 +431,21 @@
        (some (fn [[header delimiter]]
                (and (str/includes? header "|") (table-delimiter-row? delimiter))))
        boolean))
+
+(defn contains-table?
+  "Returns true when `markdown-string` contains a GFM pipe table outside a code block."
+  [markdown-string]
+  (letfn [(node-table? [node]
+            (and (instance? Paragraph node)
+                 (table-paragraph? (fm-children node))))
+          (segment-table? [{:keys [kind text children]}]
+            (case kind
+              :markdown (let [root (.parse flexmark-parser ^String text)]
+                          (boolean (some node-table? (tree-seq #(seq (fm-children %)) fm-children root))))
+              :container (boolean (some segment-table? children))
+              false))]
+    (let [[segments _] (scan-segments (str/split-lines (or markdown-string "")) 0 nil 0)]
+      (boolean (some segment-table? segments)))))
 
 (defn- reference-link-url
   "The URL a `[text][ref]` link resolves to, or nil when nothing in the document defines `ref`. The
@@ -681,7 +745,10 @@
 
 (defn- parse-content
   [markdown-string]
-  (let [[segments _] (scan-segments (str/split-lines (or markdown-string "")) 0 nil 0)]
+  ;; Splits on [[line-ending-re]], not `str/split-lines`, so the scanner and flexmark agree on
+  ;; where every line begins — see that var for what a lone CR otherwise does to token opacity.
+  (let [lines (str/split (or markdown-string "") line-ending-re -1)
+        [segments _] (scan-segments lines 0 nil 0)]
     (into [] (mapcat segment->nodes) segments)))
 
 (defn- wrap-loose-embeds
@@ -768,13 +835,6 @@
         (str ws digits "\\" delim tail))
 
       :else (str ws body))))
-
-(def ^:private line-ending-re
-  "The line endings the Markdown parser breaks a line on: CRLF, CR, LF (CommonMark 2.2). Prose
-  reaching the serializer is an arbitrary stored string, so it can hold any of them, and every
-  line the parser will see has to go through [[escape-line-start]] — a CR the serializer treats
-  as ordinary text is a line the parser reads as a fresh one, free to open a block."
-  #"\r\n|\r|\n")
 
 (defn- escape-block-starts
   "Escape every line of `s` against being re-read as a block construct, normalizing the parser's
@@ -1228,6 +1288,31 @@
     (cond-> new-node
       (and id (contains? (:attrs new-node) :_id)) (assoc-in [:attrs :_id] id))))
 
+(defn- carry-attrs
+  "Carry the old node's attrs onto its re-parsed counterpart, with freshly parsed values winning.
+
+  A node's serialized text does not round-trip every attr it holds: a card token writes `id` and
+  `name`, so re-parsing one drops `stored_result_id`, `sort`, `chart_href`, `child_target_id`, and
+  `host_data`. `child_target_id` anchors comments and the rest is user-visible visualization state,
+  so a splice that re-parses a sibling it did not semantically change must not shed them.
+
+  Only same-type pairs merge. [[same-block?]] also pairs convertible types (a paragraph with a
+  bulletList), where the old attrs describe a different node shape -- a heading's `level` has no
+  meaning on the paragraph it became -- so those keep the id-only carry.
+
+  `:_id` goes the other way. Every other attr is parsed from the node's text, so a fresh value is
+  the edit's intent and has to win -- retargeting a card token to `id=1234` must not be undone by
+  the old `id=7`. But `:_id` is minted anew by [[parse]] on every node, never round-tripped, so a
+  fresh one is not intent, just a new identity. Letting it win would rename the block on every
+  splice and orphan the comments anchored to it, which is the guarantee [[reconcile-ids]] exists
+  to keep."
+  [new-node old-node]
+  (if (= (:type new-node) (:type old-node))
+    (-> new-node
+        (update :attrs #(merge (:attrs old-node) %))
+        (carry-id old-node))
+    (carry-id new-node old-node)))
+
 (defn- reconcile-ids
   "Give freshly parsed `new-nodes` the `:_id`s of the `old-nodes` they replace, so a block whose
   text an edit rewrote keeps the identity its comments anchor to — the same guarantee the editor
@@ -1243,7 +1328,7 @@
                 (if-not (same-block? o n)
                   acc
                   (assoc acc ni
-                         (cond-> (carry-id n o)
+                         (cond-> (carry-attrs n o)
                            ;; Both sides must hold block content. `convertible-block-types` lets a
                            ;; paragraph pair with a bulletList or blockquote, but a paragraph's
                            ;; `:content` is inline — recursing on the new node's type alone hands

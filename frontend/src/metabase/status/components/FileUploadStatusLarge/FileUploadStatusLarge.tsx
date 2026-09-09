@@ -121,7 +121,7 @@ const Description = ({ upload }: { upload: FileUpload }) => {
 
   if (upload.status === "error") {
     return (
-      <Stack align="start" gap="xs">
+      <Stack align="start" gap="xxs">
         <Box>{upload.message}</Box>
         <UploadErrorDisplay upload={upload} />
       </Stack>

@@ -25,6 +25,7 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   Field as ApiField,
+  FieldDimension,
   FieldFingerprint,
   FieldId,
   FieldReference,
@@ -34,6 +35,24 @@ import type {
 import type Metadata from "./Metadata";
 import type Table from "./Table";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
+import {
+  getExternalRemappedField,
+  getRemappedField,
+  getSearchField,
+  getSharedRemappedField,
+  isSearchableField,
+} from "./utils/remapping";
+
+/**
+ * A dimension whose remap target is hydrated into a `Field`, matching how the
+ * API nests it.
+ */
+export type HydratedFieldDimension = Omit<
+  FieldDimension,
+  "human_readable_field"
+> & {
+  human_readable_field?: Field;
+};
 
 // This interface is intentionally empty: a class cannot `extends` a type alias,
 // so merging an interface with the class is how instances inherit the API
@@ -42,7 +61,7 @@ import { getIconForField, getUniqueFieldId } from "./utils/fields";
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface Field extends Omit<
   ApiField,
-  "table" | "target" | "name_field" | "fingerprint"
+  "table" | "target" | "name_field" | "fingerprint" | "dimensions"
 > {}
 
 /**
@@ -58,6 +77,7 @@ class Field {
   table?: Table;
   target?: Field;
   name_field?: Field;
+  dimensions?: HydratedFieldDimension[];
   fingerprint?: FieldFingerprint;
   _plainObject: NormalizedField;
   metadata?: Metadata;
@@ -235,43 +255,15 @@ class Field {
   // REMAPPINGS
 
   static remappedField(fields: Field[]): Field | null {
-    const remappedFields = fields.map((field) => field.remappedField());
-    const remappedFieldIds = new Set(remappedFields.map((field) => field?.id));
-    if (remappedFields[0] != null && remappedFieldIds.size === 1) {
-      return remappedFields[0];
-    }
-    return null;
+    return getSharedRemappedField<Field>(fields);
   }
 
   remappedField() {
-    return this.remappedInternalField() ?? this.remappedExternalField();
-  }
-
-  remappedInternalField() {
-    const dimensions = this.dimensions ?? [];
-    if (dimensions.length > 0 && dimensions[0].type === "internal") {
-      return this;
-    }
-
-    return null;
+    return getRemappedField<Field>(this);
   }
 
   remappedExternalField() {
-    const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
-
-    if (displayFieldId != null) {
-      return this.metadata?.field(displayFieldId) ?? null;
-    }
-
-    // enables "implicit" remapping from type/PK to type/Name on the same table,
-    // or type/FK to type/Name on the type/FK table;
-    // used in FieldValuesWidget, but not table/object detail listings
-    const maybePkField = this.target ?? this;
-    if (maybePkField.name_field) {
-      return maybePkField.name_field;
-    }
-
-    return null;
+    return getExternalRemappedField<Field>(this);
   }
 
   remappedValue(value: unknown) {
@@ -296,21 +288,11 @@ class Field {
 
   // Returns true if this field can be searched, e.g. in filter or parameter widgets
   isSearchable() {
-    // TODO: ...?
-    return this.isString();
+    return isSearchableField(this);
   }
 
   searchField(disablePKRemapping = false): Field | null {
-    if (disablePKRemapping && this.isPK()) {
-      return this.isSearchable() ? this : null;
-    }
-
-    const remappedField = this.remappedExternalField();
-    if (remappedField && remappedField.isSearchable()) {
-      return remappedField;
-    }
-
-    return this.isSearchable() ? this : null;
+    return getSearchField<Field>(this, disablePKRemapping);
   }
 
   clone(fieldMetadata?: Partial<NormalizedField>) {

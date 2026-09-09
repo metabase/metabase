@@ -13,6 +13,7 @@
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -24,13 +25,20 @@
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-;; The `:document` projection is registered in `metabase.mcp.v2.projections`, which this ns
-;; requires — `document-response` below projects through it.
+;;; ------------------------------------------------ :document projection ------------------------------------------
+
+;; Relocated here from `content.clj` (slice 11), which hasn't landed yet: this tool is the first
+;; consumer of a `:document` response, and `document-response` below calls `projections/project
+;; :document`. content/11 drops its duplicate registration when it lands — the same
+;; projection-ownership dance used for metric/content in earlier slices.
+;; The `:document` projection is registered in [[metabase.mcp.v2.projections]], the namespace both
+;; this tool and `get_content` load. Registering it here instead would leave `get_content` — which
+;; requires `projections` but not this namespace — depending on `api.clj`'s require order to have
+;; populated the registry before it reads.
 
 ;;; ------------------------------------------------ Smart links ---------------------------------------------------
 
@@ -89,7 +97,7 @@
                                                       set
                                                       (conj api/*current-user-id*))])
                     :none  (conj clauses [:= :id api/*current-user-id*])))]
-    (t2/select :model/User {:where clauses})))
+    (mcp.db/select-users-where clauses)))
 
 (defn- smart-link-rows
   "`{[model id] row}` for every distinct smart-link target among `links` the current user may
@@ -107,7 +115,7 @@
                                      (filterv #(smart-link-readable? model %)
                                               (if (= "user" model)
                                                 (visible-user-rows ids)
-                                                (t2/select db-model :id [:in ids])))
+                                                (mcp.db/select-by-ids db-model ids)))
                                      (catch Exception e
                                        (log/warnf e "smart link lookup failed for %s" model)
                                        nil)))]
@@ -171,6 +179,28 @@
   (set (prose-mirror/collect-ast {:document ast :content_type prose-mirror/prose-mirror-content-type}
                                  (comp :_id :attrs))))
 
+(defn- ast-id->type
+  [ast]
+  (into {} (prose-mirror/collect-ast
+            {:document ast :content_type prose-mirror/prose-mirror-content-type}
+            (fn [{:keys [type attrs]}]
+              (when-let [id (:_id attrs)]
+                [id type])))))
+
+(defn- changed-blocks
+  [before after]
+  (let [after-types (ast-id->type after)]
+    (->> (prose-mirror/collect-ast
+          {:document before :content_type prose-mirror/prose-mirror-content-type}
+          (fn [{:keys [type attrs]}]
+            (when-let [id (:_id attrs)]
+              [id type])))
+         (keep (fn [[id old-type]]
+                 (let [new-type (get after-types id)]
+                   (when (not= old-type new-type)
+                     {:block_id id :old_type old-type :new_type new-type}))))
+         vec)))
+
 (defn- check-card-embeds!
   "Every `{% card id=N %}` embed in `ast` must reference a card the caller can read, or one
   already owned by `document-id` (nil at create). \"Doesn't exist\" and \"exists but not
@@ -182,7 +212,7 @@
   (let [ids (distinct (prose-mirror/card-ids {:document     ast
                                               :content_type prose-mirror/prose-mirror-content-type}))]
     (when (seq ids)
-      (let [cards (into {} (map (juxt :id identity)) (t2/select :model/Card :id [:in ids]))]
+      (let [cards (into {} (map (juxt :id identity)) (mcp.db/select-by-ids :model/Card ids))]
         (doseq [id ids]
           (let [card (get cards id)]
             (when-not (and card
@@ -216,16 +246,17 @@
   "The written document echoed to the caller: the `:document` concise read projection, so the echo
    and a concise `get_content` read name the body identically and a read-modify-write needs no
    renaming, plus the write-only fields — `:entity_id` (a portable id to update by),
-   `:collection_position`, and the comment threads this write orphaned.
+   `:collection_position`, changed blocks, and the comment threads this write orphaned.
 
    The body is re-serialized from the stored AST rather than taken from the projection, so it
    reflects post-clone card ids: the next edit's `old_str` is matched against this exact text."
-  [document orphaned-threads]
+  [document orphaned-threads changed-blocks]
   (-> (projections/project :document :concise document)
       (merge {:entity_id                (:entity_id document)
               :collection_position      (:collection_position document)
               :archived                 (boolean (:archived document))
-              :orphaned_comment_threads orphaned-threads}
+              :orphaned_comment_threads orphaned-threads
+              :changed_blocks           changed-blocks}
              (body-projection (:document document)))))
 
 ;;; ------------------------------------------------------ Edits ---------------------------------------------------
@@ -243,38 +274,34 @@
   (let [s (str s)]
     (pr-str (if (> (count s) 80) (str (subs s 0 77) "…") s))))
 
-(def ^:private max-replace-all-work
-  "Ceiling on `matches × document-KB` for one `replace_all`, the product that sets its cost: each
-  occurrence is spliced separately and every splice re-serializes the whole document, so the work is
-  quadratic in a document's size once `old_str` is short enough to appear throughout it.
+(def ^:private max-edit-work
+  "Ceiling on `splices × document-KB` for one `document_write` call, the product that sets its cost:
+  every splice re-serializes the whole document, so the work is quadratic in a document's size once a
+  `replace_all`'s `old_str` is short enough to appear throughout it.
 
-  Measured at roughly 0.03ms per match·KB, so this caps a single call near 600ms. Real edits are
-  orders of magnitude under — renaming a term appearing 30 times in a 50KB document is 1,500 — while
-  the shape this exists to stop, a one-character `old_str` on a 64KB document, prices at ~460,000 and
-  took ~14s before the ceiling existed. Left unbounded it grows with document size: an 85-byte
-  request against a 1MB document buys about an hour of one thread."
+  Measured at roughly 0.03ms per splice·KB, so this caps a call near 600ms. Real edits are orders of
+  magnitude under — renaming a term appearing 30 times in a 50KB document is 1,500 — while the shape
+  this exists to stop, a one-character `old_str` on a 64KB document, prices at ~460,000 and took ~14s
+  before the ceiling existed. Left unbounded it grows with document size: an 85-byte request against a
+  1MB document buys about an hour of one thread.
+
+  Budgeted per call rather than per edit because `edits` is an unbounded list: an allowance handed
+  fresh to each entry is no bound at all, since 100 edits each just under it buy 100x the work in one
+  request."
   20000)
 
-(defn- replace-all-work
-  "`matches × document-KB` for `old_str` against `markdown` — the cost estimate
-  [[max-replace-all-work]] bounds. Sub-KB documents price at zero, which is correct: they are cheap
-  however many matches they hold."
-  [^String markdown matches]
-  (long (* (count matches) (/ (count markdown) 1024.0))))
+(defn- edit-work
+  "`splices × document-KB` against `markdown` — the cost estimate [[max-edit-work]] bounds. One splice
+  for a single edit, one per occurrence for a `replace_all`. Sub-KB documents price at zero, which is
+  correct: they are cheap however many splices they take."
+  [^String markdown ^long splices]
+  (long (* splices (/ (count markdown) 1024.0))))
 
-(defn- in-code-context?
-  "Is offset `idx` of `markdown` inside a code span or a fenced code block? Backslashes are literal
-   there, so the escaping [[metabase.documents.core/escape-text]] applies for prose would store
-   characters the caller never wrote. Counts unescaped backticks before `idx`: an odd count of
-   fence lines means the offset is inside a fence, and an odd count of inline backticks on its own
-   line means it is inside a span."
-  [^String markdown ^long idx]
-  (let [before     (subs markdown 0 (min idx (count markdown)))
-        fence-count (count (re-seq #"(?m)^\s*```" before))
-        line-start (inc (.lastIndexOf before "\n"))
-        line       (subs before (max 0 line-start))
-        ticks      (count (re-seq #"(?<!\\\\)`" line))]
-    (or (odd? fence-count) (odd? ticks))))
+(defn- check-no-markdown-tables!
+  [^String markdown]
+  (when (documents/contains-table? markdown)
+    (common/throw-teaching-error
+     "Markdown tables are not supported. Save the query as a question with `display: table` and embed it with {% card id=… %}.")))
 
 (defn- replace-all
   "Splice every occurrence of `old_str`, right-to-left so a replacement containing `old_str`
@@ -284,29 +311,15 @@
   remains; an iteration cap turns any pathological non-convergence into a teaching error
   rather than a silent miss.
 
-  Refuses up front when the call prices past [[max-replace-all-work]]. Pricing it costs one
-  serialization rather than one per match, so an over-budget call is rejected without doing any of
-  the work being rejected."
-  [ast old_str new_str escape-at]
-  (let [self-matching? (str/includes? new_str old_str)
-        first-ser      (documents/serialize ast)
-        first-matches  (match-indexes (:markdown first-ser) old_str)
-        work           (replace-all-work (:markdown first-ser) first-matches)]
-    (when (> work max-replace-all-work)
-      (common/throw-teaching-error
-       (format (str "replace_all for old_str %s would rewrite %d matches across a %dKB document, which is more "
-                    "work than one call can do. Extend old_str with surrounding context so it matches fewer "
-                    "places and repeat, or replace the whole body with content_markdown, which rewrites it in "
-                    "a single pass — note that a full rewrite re-creates every block, so comment threads "
-                    "anchored to the body are orphaned.")
-               (snippet old_str)
-               (count first-matches)
-               (quot (count (:markdown first-ser)) 1024))))
-    ;; The pricing serialization above doubles as the first iteration's, so bounding the work costs
-    ;; nothing on an in-budget call. `splice` reuses a serialization only when it is of the very AST
-    ;; being spliced, so each recur re-serializes the AST it produced.
-    (loop [ast ast, ser first-ser, bound Long/MAX_VALUE, iterations 0]
-      (when (> iterations (+ 100 (* 2 (count first-matches))))
+  `ser` and `initial-matches` are [[apply-edit]]'s serialization of `ast` and the occurrences it
+  found there, already priced against [[max-edit-work]]. Taking them rather than recomputing them
+  keeps a `replace_all` to one serialization per splice, with none spent on pricing."
+  [ast ser initial-matches old_str new_str]
+  (let [self-matching? (str/includes? new_str old_str)]
+    ;; `splice` reuses a serialization only when it is of the very AST being spliced, so each recur
+    ;; re-serializes the AST it produced.
+    (loop [ast ast, ser ser, bound Long/MAX_VALUE, iterations 0]
+      (when (> iterations (+ 100 (* 2 (count initial-matches))))
         (common/throw-teaching-error
          (format (str "replace_all could not converge for old_str %s — the replacement keeps re-creating "
                       "text that matches. Use distinct old_str/new_str pairs or edit the surrounding "
@@ -316,8 +329,7 @@
             idx     (last (filter #(< % bound) matches))]
         (cond
           (some? idx)
-          (let [spliced (documents/splice ast ser idx (+ idx (count old_str))
-                                          (escape-at (:markdown ser) idx))]
+          (let [spliced (documents/splice ast ser idx (+ idx (count old_str)) new_str)]
             (recur spliced (documents/serialize spliced) (long idx) (inc iterations)))
 
           (and (not self-matching?) (seq matches))
@@ -327,23 +339,17 @@
 
 (defn- apply-edit
   "Apply one `{old_str, new_str, replace_all?}` edit to `ast`, locating `old_str` in a fresh
-  serialization of the current AST — never a client-supplied snapshot."
-  [ast {:keys [old_str new_str replace_all]}]
+  serialization of the current AST — never a client-supplied snapshot.
+
+  Takes and returns `{:ast :spent}`, where `spent` is the work the edits before it in this call have
+  already priced, so [[max-edit-work]] bounds the call rather than each entry. The budget is spent
+  down as the sweep goes rather than totalled up front because an edit's cost is only knowable once
+  its predecessors have run — its matches are counted against the text they produced."
+  [{:keys [ast spent]} {:keys [old_str new_str replace_all]}]
   (when (empty? old_str)
     (common/throw-teaching-error "old_str must be a non-empty string."))
-  ;; `splice` re-parses the region it edits as Markdown source, so `new_str` is escaped to its
-  ;; literal-text form first — otherwise a replacement like `*` or a leading `#` reopens the block
-  ;; as a list or heading (and shifts the offsets the rest of the sweep depends on). `old_str` is
-  ;; matched against the already-escaped serialization as-is.
-  ;;
-  ;; Escaping is skipped where the match lands inside code, though: backslashes are literal in a code
-  ;; span or fenced block, so escaping there stores characters the caller never wrote (`my_var`
-  ;; becomes `my\_var`). Escaping is what is inert in prose — not in code.
   (let [{:keys [markdown] :as ser} (documents/serialize ast)
-        matches                    (match-indexes markdown old_str)
-        escape-at                  (fn [md idx] (if (in-code-context? md idx)
-                                                  new_str
-                                                  (documents/escape-text new_str)))]
+        matches                    (match-indexes markdown old_str)]
     (cond
       (empty? matches)
       (common/throw-teaching-error
@@ -358,14 +364,25 @@
                     "it matches exactly once, or set replace_all: true.")
                (snippet old_str) (count matches)))
 
-      replace_all
-      ;; Every match is escaped by its own context, so one occurrence in prose and another in a code
-      ;; span each round-trip correctly.
-      (replace-all ast old_str new_str escape-at)
-
       :else
-      (documents/splice ast ser (first matches) (+ (first matches) (count old_str))
-                        (escape-at markdown (first matches))))))
+      (let [splices (if replace_all (count matches) 1)
+            spent   (+ spent (edit-work markdown splices))]
+        (when (> spent max-edit-work)
+          (common/throw-teaching-error
+           (format (str "The edit for old_str %s would splice %d times across a %dKB document, putting this "
+                        "call past the rewriting work one call can do — the ceiling covers every edit in the "
+                        "call together, not each one on its own. Split the edits across several "
+                        "document_write calls, or, for a replace_all matching everywhere, extend old_str "
+                        "with surrounding context so it matches fewer places. Replacing the whole body with "
+                        "content_markdown rewrites it in a single pass instead — note that a full rewrite "
+                        "re-creates every block, so comment threads anchored to the body are orphaned.")
+                   (snippet old_str)
+                   splices
+                   (quot (count markdown) 1024))))
+        {:ast   (if replace_all
+                  (replace-all ast ser matches old_str new_str)
+                  (documents/splice ast ser (first matches) (+ (first matches) (count old_str)) new_str))
+         :spent spent}))))
 
 ;;; ------------------------------------------------------ Create --------------------------------------------------
 
@@ -385,7 +402,7 @@
                                                  :document            ast
                                                  :collection_id       collection-id
                                                  :collection_position collection_position})]
-        (document-response created [])))))
+        (document-response created [] [])))))
 
 ;;; ------------------------------------------------------ Update --------------------------------------------------
 
@@ -418,7 +435,9 @@
                               ;; Full rewrite: everything re-parses, nothing keeps its node id, so
                               ;; every anchored comment thread is reported orphaned below.
                               content_markdown (documents/parse content_markdown)
-                              (seq edits)      (reduce apply-edit (:document existing) edits))
+                              (seq edits)      (:ast (reduce apply-edit
+                                                             {:ast (:document existing) :spent 0}
+                                                             edits)))
                             (resolve-smart-links! (:document existing)))
             _       (when new-ast
                       (check-card-embeds! new-ast (:id existing)))
@@ -430,12 +449,16 @@
                       (contains? args :archived)            (assoc :archived (boolean archived)))
             updated (documents/update-document! existing body)
             removed (when new-ast
-                      (set/difference old-ids (ast-id-set (:document updated))))]
+                      (set/difference old-ids (ast-id-set (:document updated))))
+            changed (if (seq edits)
+                      (changed-blocks (:document existing) (:document updated))
+                      [])]
         (document-response updated
                            (if (seq removed)
                              (filterv #(contains? removed (:child_target_id %))
                                       (comments/child-target-ids-for-document (:id updated)))
-                             []))))))
+                             [])
+                           changed)))))
 
 ;;; ------------------------------------------------------ Tool ----------------------------------------------------
 
@@ -469,7 +492,7 @@
                           "collection_position"]]]]])
 
 (registry/deftool document-write-tool
-  "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an id that doesn't resolve fails the write; the embed is given a height for you), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: fenced layout containers — ::: flex {columns=[60,40]} holds 1-3 cells (prose in ::: supporting, or a card embed); ::: resize {height=442 minHeight=280} pins the height of one flex container or embed; a bare ::: line closes the innermost container, so every opener needs its name. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (omit for your personal collection; \"root\" for the root collection) and collection_position. Update: id + exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, orphaning every comment thread anchored to the body) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; blocks keep their ids and comment anchors through edits to their text, so only a removed block loses its comments); edits: [] changes only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). To unset a property rather than change it, name it in clear: [\"collection_position\"] — a null does not clear, since strict clients fill every unset property with null and those are stripped. The response lists orphaned_comment_threads, and carries content_markdown_unavailable in place of content_markdown when the stored body holds a block with no Markdown form — the write still happened, but this body cannot be edited or rewritten as Markdown — get_content omits content_markdown for it too, and rewriting it from any flattened text would discard the block that has no Markdown form. Writes are last-write-wins — no version check, a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal."
+  "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an id that doesn't resolve fails the write; the embed is given a height for you), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: fenced layout containers — ::: flex {columns=[60,40]} holds 1-3 cells (prose in ::: supporting, or a card embed); ::: resize {height=442 minHeight=280} pins the height of one flex container or embed; a bare ::: line closes the innermost container, so every opener needs its name. No Markdown tables - embed a table-display question instead. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (omit for your personal collection; \"root\" for the root collection) and collection_position. Update: id + exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, orphaning every comment thread anchored to the body) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; new_str is parsed as Markdown; blocks keep their ids and comment anchors through edits to their text, so only a removed block loses its comments); edits: [] changes only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). To unset a property rather than change it, name it in clear: [\"collection_position\"] — a null does not clear, since strict clients fill every unset property with null and those are stripped. The response lists changed_blocks and orphaned_comment_threads, and carries content_markdown_unavailable in place of content_markdown when the stored body holds a block with no Markdown form — the write still happened, but this body cannot be edited or rewritten as Markdown — get_content omits content_markdown for it too, and rewriting it from any flattened text would discard the block that has no Markdown form. Writes are last-write-wins — no version check, a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal."
   {:name        "document_write"
    :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false}
@@ -479,8 +502,12 @@
                   {:create-required [:name :content_markdown]
                    :clearable       #{:collection_position}}
                   args)
+        write-args (if (= op :create) a b)
+        _          (doseq [markdown (cons (:content_markdown write-args) (map :new_str (:edits write-args)))]
+                     (check-no-markdown-tables! markdown))
         payload  (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                                     (case op
                                       :create (create! a)
-                                      :update (update! a b)))]
+                                      :update (update! a b))
+                                    nil)]
     (common/success-content payload)))

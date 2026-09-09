@@ -160,14 +160,14 @@ export function GroupMappingsWidgetView({
 
   return (
     <Flex direction="column" w="100%">
-      <Group mb="md" gap="sm">
+      <Group mb="lg" gap="sm">
         <Text fw="bold">{t`Synchronize Group Memberships`}</Text>
         <FormSwitch data-testid="group-sync-switch" name={setting.key} />
       </Group>
 
       <Flex
         bd="1px solid var(--mb-color-border-neutral)"
-        bdrs="md"
+        bdrs="sm"
         direction="column"
         w="100%"
       >
@@ -176,7 +176,7 @@ export function GroupMappingsWidgetView({
           align="center"
           bg="background-secondary"
           mih={rem(56)}
-          px="md"
+          px="lg"
           py="sm"
         >
           {!showAddRow && (
@@ -227,7 +227,7 @@ export function GroupMappingsWidgetView({
           </AdminContentTable>
         ) : (
           !showAddRow && (
-            <Box pb="md">
+            <Box pb="lg">
               <EmptyState
                 illustrationElement={<img src={NoResults} alt="" />}
                 message={noMappingText(mappingSetting, groupSyncSwitchValue)}
