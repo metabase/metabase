@@ -28,6 +28,7 @@ export const TransformsHeader = memo(function TransformsHeader({
   // A worktree only checks out transforms: its jobs never run and there is no run
   // history, so the section has nothing to switch between.
   const isInsideWorktree = useWorktreeId() != null;
+  const hasTabs = showTabs && !isInsideWorktree;
   const tabs: PillTab[] = [
     {
       label: t`Transforms`,
@@ -55,13 +56,11 @@ export const TransformsHeader = memo(function TransformsHeader({
       breadcrumbs={
         <DataStudioBreadcrumbs>{t`Data transformation`}</DataStudioBreadcrumbs>
       }
-      tabs={
-        showTabs && !isInsideWorktree ? (
-          <PillTabNavigation tabs={tabs} />
-        ) : undefined
-      }
+      tabs={hasTabs ? <PillTabNavigation tabs={tabs} /> : undefined}
       py={0}
-      mb="lg"
+      // the margin separates the tab row from the content; without tabs the
+      // header should sit as tight as the other Data Studio sections
+      mb={hasTabs ? "lg" : 0}
       showMetabotButton={showMetabotButton}
     />
   );
