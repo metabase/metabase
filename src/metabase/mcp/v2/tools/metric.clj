@@ -14,8 +14,8 @@
    [metabase.channel.urls :as channel.urls]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
-   [metabase.mcp.v2.db :as v2.db]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -193,7 +193,7 @@
                       ;; verified card whose query changes by reading `:moderation_reviews` off the
                       ;; card-before, and a bare row would leave the Verified badge on a swapped
                       ;; definition.
-                      (fn [cid] (v2.db/hydrate-moderation-reviews (api/write-check :model/Card cid))))
+                      (fn [cid] (mcp.db/hydrate-moderation-reviews (api/write-check :model/Card cid))))
         _            (check-is-metric! card-before)
         card-id      (:id card-before)
         new-query    (resolve-definition args session-id)
@@ -216,7 +216,7 @@
                            :card-updates          card-updates
                            :actor                 @api/*current-user*
                            :delete-old-dashcards? false})
-    (write-result (v2.db/card card-id))))
+    (write-result (mcp.db/select-one-by-id :model/Card card-id))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 

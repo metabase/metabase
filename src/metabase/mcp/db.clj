@@ -87,6 +87,11 @@
                                                                              [:= :key_hashed key-hashed]
                                                                              [:= :user_id user-id]]}]]]}))
 
+(defn hydrate-moderation-reviews
+  "`card` with `:moderation_reviews` hydrated, each review carrying its `:moderator_details`."
+  [card]
+  (t2/hydrate card [:moderation_reviews :moderator_details]))
+
 (defn hydrate-notification
   "`notification` with its payload, subscriptions, and handler channels and recipients hydrated.
 
