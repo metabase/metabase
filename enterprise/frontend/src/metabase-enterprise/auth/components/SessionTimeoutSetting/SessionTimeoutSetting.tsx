@@ -14,7 +14,7 @@ const getUnits = () => [
   { value: "hours", label: t`hours` },
 ];
 
-const DEFAULT_VALUE = { amount: 30, unit: getUnits()[0].value };
+const getDefaultValue = () => ({ amount: 30, unit: getUnits()[0].value });
 
 // This should mirror the BE validation of the session-timeout setting.
 const validate = (value: TimeoutValue | null) => {
@@ -44,12 +44,12 @@ export const SessionTimeoutSetting = () => {
     settingDetails,
   } = useAdminSetting("session-timeout");
   const [localValue, setLocalValue] = useState<TimeoutValue | null>(
-    settingValue ?? DEFAULT_VALUE,
+    settingValue ?? getDefaultValue(),
   );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLocalValue(settingValue ?? DEFAULT_VALUE);
+    setLocalValue(settingValue ?? getDefaultValue());
   }, [settingValue]);
 
   const handleChange = (newValue: Partial<TimeoutValue> | null) => {
@@ -58,7 +58,7 @@ export const SessionTimeoutSetting = () => {
       return null;
     } else {
       const fullValue = {
-        ...DEFAULT_VALUE,
+        ...getDefaultValue(),
         ...localValue,
         ...newValue,
       };
@@ -82,7 +82,7 @@ export const SessionTimeoutSetting = () => {
   };
 
   const handleToggle = (isEnabled: boolean) => {
-    const newValue = isEnabled ? DEFAULT_VALUE : null;
+    const newValue = isEnabled ? getDefaultValue() : null;
     handleChange(newValue);
     handleSave(newValue);
   };

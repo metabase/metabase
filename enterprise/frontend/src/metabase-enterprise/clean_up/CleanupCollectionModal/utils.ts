@@ -14,7 +14,7 @@ export const getModalHeightCalc = (additionalOffset?: string) => {
 export const itemKeyFn = (item: StaleCollectionItem) =>
   `${item.id}:${item.model}`;
 
-export const dateFilterOptions = [
+export const getDateFilterOptions = () => [
   {
     label: c(`Occurs in the phrase 'Not used in over 1 month'`).t`1 month`,
     value: "one-month",
@@ -60,8 +60,10 @@ export const dateFilterOptions = [
   },
 ];
 
-export type DateFilter = (typeof dateFilterOptions)[number]["value"];
-export type DateDurations = (typeof dateFilterOptions)[number]["duration"];
+export type DateFilter =
+  ReturnType<typeof getDateFilterOptions>[number]["value"];
+export type DateDurations =
+  ReturnType<typeof getDateFilterOptions>[number]["duration"];
 export type DateFilterOption = {
   label: string;
   value: DateFilter;
@@ -69,21 +71,22 @@ export type DateFilterOption = {
 };
 export type DateFilterOptions = DateFilterOption[];
 
-const dateFiltersMap = _.object(
-  dateFilterOptions.map<[DateFilter, DateFilterOption]>((option) => [
-    option.value,
-    option,
-  ]),
-);
+const getDateFiltersMap = () =>
+  _.object(
+    getDateFilterOptions().map<[DateFilter, DateFilterOption]>((option) => [
+      option.value,
+      option,
+    ]),
+  );
 
 export const isDateFilter = (value: string): value is DateFilter => {
-  return value in dateFiltersMap;
+  return value in getDateFiltersMap();
 };
 
 export const getDateFilterValue = (dateFilter: DateFilter) => {
   const today = dayjs().startOf("day");
 
-  const dateFilterOption = dateFiltersMap[dateFilter];
+  const dateFilterOption = getDateFiltersMap()[dateFilter];
   const filterOffsetDurations = dateFilterOption.duration;
   const date = filterOffsetDurations.reduce((date, [amount, unit]) => {
     return date.subtract(amount, unit);
@@ -93,7 +96,7 @@ export const getDateFilterValue = (dateFilter: DateFilter) => {
 };
 
 export const getDateFilterLabel = (dateFilter: DateFilter) => {
-  const option = dateFilterOptions.find(
+  const option = getDateFilterOptions().find(
     (option) => option.value === dateFilter,
   );
   const label = option?.label;
