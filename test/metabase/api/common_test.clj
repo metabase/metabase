@@ -15,6 +15,9 @@
    [methodical.core :as methodical])
   (:import (clojure.lang ExceptionInfo)))
 
+(comment metabase.measures.models.measure/keep-me
+         metabase.segments.models.segment/keep-me)
+
 ;;; TESTS FOR CHECK (ETC)
 
 (defn- four-oh-four

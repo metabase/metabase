@@ -7,6 +7,8 @@
    [ring.mock.request :as ring.mock]
    [ring.util.response :as response]))
 
+(comment metabase.audit-app.events.audit-log/keep-me)
+
 (defn- handler [request]
   ((mw.ssl/redirect-to-https-middleware
     (fn [_request respond _raise] (respond (response/response ""))))

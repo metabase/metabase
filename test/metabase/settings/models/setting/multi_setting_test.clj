@@ -6,6 +6,8 @@
    [metabase.settings.models.setting.multi-setting :as multi-setting]
    [metabase.test.fixtures :as fixtures]))
 
+(comment metabase.audit-app.events.audit-log/keep-me)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (def ^:dynamic ^:private *parakeet* :green-friend)

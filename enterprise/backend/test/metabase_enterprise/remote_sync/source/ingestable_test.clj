@@ -11,6 +11,9 @@
    [metabase.users.settings]
    [toucan2.core :as t2]))
 
+(comment metabase.audit-app.events.audit-log/keep-me
+         metabase.users.settings/keep-me)
+
 (use-fixtures :each test-helpers/clean-remote-sync-state)
 
 (use-fixtures :once (fixtures/initialize :db))

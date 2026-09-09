@@ -27,6 +27,8 @@
 
 (set! *warn-on-reflection* true)
 
+(comment metabase.audit-app.events.audit-log/keep-me)
+
 ;; TODO - this should be made dynamic so it's (at least theoretically) possible to use this in parallel
 (def inbox
   "Map of email addresses -> sequence of messages they've received."

@@ -11,6 +11,8 @@
   (:import
    (java.io PipedInputStream)))
 
+(comment metabase.tiles.settings/keep-me)
+
 (defn- handler [request]
   (let [handler  (fn [request respond _]
                    (respond (response/response {:limit  (request/limit)

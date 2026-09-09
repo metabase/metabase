@@ -14,6 +14,8 @@
 
 (set! *warn-on-reflection* true)
 
+(comment metabase-enterprise.transforms-inspector.core/keep-me)
+
 ;;; -------------------------------------------------- Test context helpers --------------------------------------------------
 
 (defn- collect-field-metadata

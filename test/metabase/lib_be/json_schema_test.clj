@@ -14,6 +14,8 @@
 
 (set! *warn-on-reflection* true)
 
+(comment metabase.server.middleware.json/keep-me)
+
 (defn- check-node [node]
   (when (map? node)
     (when (contains? node "type")
