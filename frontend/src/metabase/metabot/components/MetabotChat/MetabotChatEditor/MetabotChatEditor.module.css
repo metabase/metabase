@@ -4,6 +4,7 @@
   width: 100%;
   height: 100%;
   min-height: 46px;
+  gap: 0.25rem;
 }
 
 .contentWrapper {
@@ -14,9 +15,9 @@
 }
 
 .button {
-  margin: 0 -0.25rem calc(0.5rem - 1px) 2px;
+  margin: 0 -0.25rem calc(0.5rem - 1px) 0;
   background: var(--mb-color-core-brand);
-  border-radius: 6px;
+  border-radius: 0.625rem;
   width: 2rem;
   height: 2rem;
   display: flex;
@@ -51,8 +52,18 @@
 }
 
 .buttonResponding {
-  border: 1px solid var(--mb-color-core-brand);
-  background: transparent;
+  border: none;
+  background: var(--mb-color-background_surface-secondary);
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+    border: 1px solid var(--mb-color-core-brand);
+
+    .stopIcon {
+      color: var(--mb-color-core-brand);
+    }
+  }
 }
 
 .sendIcon {
@@ -62,8 +73,8 @@
 }
 
 .stopIcon {
-  color: var(--mb-color-core-brand);
+  color: var(--mb-color-text-primary);
   width: 0.7rem;
   height: 0.7rem;
-  transition: color 150ms ease;
+  transition: color 75ms ease;
 }

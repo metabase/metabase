@@ -246,7 +246,6 @@ export const MetabotChat = ({
                   value={metabot.prompt}
                   autoFocus
                   isResponding={metabot.isDoingScience}
-                  placeholder={t`How can I help? Type @ to mention items.`}
                   onChange={metabot.setPrompt}
                   onSubmit={() => metabot.submitInput(metabot.prompt)}
                   onStop={metabot.cancelRequest}

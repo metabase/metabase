@@ -36,7 +36,7 @@
   display: flex;
   flex-direction: column;
   padding: 0.5rem 1rem 1rem;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   box-shadow:
     0 0 0 1px var(--mb-color-border-neutral),
     0 4px 24px rgba(0, 0, 0, 0.08);
@@ -64,6 +64,7 @@
 
 .sendButton {
   color: var(--mb-color-background_page-primary);
+  border-radius: 0.625rem;
 
   &:disabled,
   &:disabled:hover {
