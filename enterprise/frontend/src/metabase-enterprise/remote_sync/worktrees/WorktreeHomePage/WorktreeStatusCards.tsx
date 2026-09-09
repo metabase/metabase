@@ -50,7 +50,6 @@ export function WorktreeStatusCards({
         isSyncing={isSyncing}
       />
       <RemoteBranchCard
-        branch={worktree.branch}
         hasRemoteChanges={hasRemoteChanges}
         isChecking={isCheckingRemote}
       />
@@ -181,13 +180,11 @@ function ChangeCountsLine({ counts }: { counts: ChangeCounts }) {
 }
 
 type RemoteBranchCardProps = {
-  branch: string;
   hasRemoteChanges: boolean;
   isChecking: boolean;
 };
 
 function RemoteBranchCard({
-  branch,
   hasRemoteChanges,
   isChecking,
 }: RemoteBranchCardProps) {
@@ -204,12 +201,6 @@ function RemoteBranchCard({
           {t`Up to date with remote`}
         </StatusLine>
       )}
-      <Group gap="xs" wrap="nowrap" c="text-secondary">
-        <FixedSizeIcon name="git_branch" size={12} />
-        <Text size="sm" c="text-secondary" truncate title={branch}>
-          {branch}
-        </Text>
-      </Group>
     </StatusCard>
   );
 }

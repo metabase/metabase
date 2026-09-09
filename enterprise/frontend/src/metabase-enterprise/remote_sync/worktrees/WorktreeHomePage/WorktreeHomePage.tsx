@@ -79,7 +79,6 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Overview`}</DataStudioBreadcrumbs>
         }
-        icon="git_branch"
         title={
           <PanelHeaderTitle>
             <span data-testid="worktree-home-title">{worktree.branch}</span>
