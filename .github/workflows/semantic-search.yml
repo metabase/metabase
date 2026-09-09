@@ -96,7 +96,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-mariadb:
     if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mariadb') }}
@@ -162,7 +161,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-mysql:
     if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mysql') }}
@@ -235,7 +233,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-postgres:
     if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'postgres') }}
@@ -300,7 +297,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   # pgvector-on-the-app-db mode: the app db itself is a pgvector-capable Postgres and
   # MB_PGVECTOR_DB_URL is deliberately unset. The dedicated-harness tests gate themselves off; the
@@ -355,7 +351,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-result:
     needs:

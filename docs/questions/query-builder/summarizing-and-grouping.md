@@ -46,7 +46,7 @@ If you summarize and add a grouping you can then summarize _again_. You can also
 
 ![Multiple summarize steps](../images/multiple-summarize-steps.png)
 
-You can also add metrics and groupings on the results page in a sidebar: the top of the sidebar where you pick the number ("metric") you want to see, and the part below is where you pick how to group that number (or how to "break it out").
+You can also add metrics and groupings on the results page in a sidebar: the top of the sidebar is where you pick the number ("metric") you want to see, and the part below is where you pick how to group that number (or how to "break it out").
 
 If your admins have created any named [metrics](../../data-modeling/metrics.md) or [measures](../../data-studio/measures.md) that are specific to your company or organization, they will be in this dropdown under the **Metrics** or **Measures** section. These might be things like your company’s official way of calculating revenue.
 

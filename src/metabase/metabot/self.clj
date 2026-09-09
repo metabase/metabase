@@ -118,6 +118,7 @@
                                  (pr-str (llm.provider/model-ref->connection-key s)))
                             {:status-code 400
                              :api-error   true
+                             :error-code  :llm-not-configured
                              :model-ref   s})))]
     {:provider    type
      :stream-fn   (resolve-adapter type)
@@ -157,7 +158,7 @@
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
   The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes
-  AWS key material and region (see [[bedrock/list-models]])."
+  optional AWS key material and region (see [[bedrock/list-models]])."
   ([provider]
    ((resolve-model-lister provider)))
   ([provider opts]

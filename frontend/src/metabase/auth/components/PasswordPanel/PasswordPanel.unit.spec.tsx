@@ -7,11 +7,8 @@ import {
   setupLoginEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import MetabaseSettings from "metabase/utils/settings";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 

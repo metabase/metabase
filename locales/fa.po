@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-08-26 19:37+0000\n"
+"POT-Creation-Date: 2026-09-01 05:46+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Persian\n"
 "Language: fa_IR\n"
-"PO-Revision-Date: 2026-09-01 05:39\n"
+"PO-Revision-Date: 2026-09-08 05:41\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -248,12 +248,14 @@ msgstr "ویرایش اتصال"
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.tsx
 #: frontend/src/metabase/comments/components/Comments/Comments.tsx
 #: frontend/src/metabase/common/components/ErrorPages/ErrorDiagnosticModal.tsx
+#: frontend/src/metabase/common/components/SidebarHeader/SidebarHeader.tsx
 #: frontend/src/metabase/common/components/Sidesheet/Sidesheet.tsx
 #: frontend/src/metabase/common/components/Toaster/Toaster.tsx
 #: frontend/src/metabase/common/components/upsells/components/UpgradeModal/UpgradeModalError.tsx
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/PulsesListSidebar.tsx
 #: frontend/src/metabase/detail-view/components/DetailViewSidesheet/Sidesheet/Sidesheet.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ExplorationComments.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/TimelineEventsSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobTriggersSidebar.tsx
@@ -433,6 +435,7 @@ msgstr "لغو"
 #: frontend/src/metabase/data-studio/segments/pages/SegmentDetailPage/SegmentDetailPage.tsx
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/ProviderConnectionForm.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/CustomMappingModal/CustomMappingModal.tsx
@@ -1779,11 +1782,11 @@ msgstr "ویرایش سیاست پیش‌فرض (در حال حاضر: {0})"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Reset all to default?"
-msgstr ""
+msgstr "همه به حالت پیش‌فرض بازنشانی شوند؟"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "This will reset all database caching policies to their default values."
-msgstr ""
+msgstr "این کار همهٔ سیاست‌های کش‌کردن پایگاه‌داده را به مقادیر پیش‌فرضشان بازنشانی می‌کند."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Reset all to default"
@@ -1791,7 +1794,7 @@ msgstr "بازنشانی همه به پیش‌فرض"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Could not reset the caching policies."
-msgstr ""
+msgstr "بازنشانی سیاست‌های کش‌کردن انجام نشد."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 #: frontend/src/metabase/admin/performance/components/StrategyEditorForDatabases.tsx
@@ -1806,11 +1809,11 @@ msgstr "تنظیمات کش داده"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Speed up queries by caching results with a global policy or database-specific policies."
-msgstr ""
+msgstr "با کش‌کردن نتایج، کوئری‌ها را با یک سیاست سراسری یا سیاست‌های مخصوص هر پایگاه‌داده سریع‌تر کنید."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Search by name or policy…"
-msgstr ""
+msgstr "جستجو بر اساس نام یا سیاست…"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Untitled database"
@@ -1875,11 +1878,11 @@ msgstr "کش"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicySidePanel/PolicySidePanel.tsx
 msgid "Previous item"
-msgstr ""
+msgstr "مورد قبلی"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicySidePanel/PolicySidePanel.tsx
 msgid "Next item"
-msgstr ""
+msgstr "مورد بعدی"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicyTable/PolicyTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CleanupCollectionModal/CleanupCollectionTable.tsx
@@ -1945,7 +1948,7 @@ msgstr "سیاست"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicyTable/PolicyTable.tsx
 msgid "Caching policies"
-msgstr ""
+msgstr "سیاست‌های کش‌کردن"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx
 msgid "Refresh cache automatically"
@@ -1977,7 +1980,7 @@ msgstr "چه زمانی نتایج جدید بگیریم"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
 msgid "Caching policy"
-msgstr ""
+msgstr "سیاست کش‌کردن"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/IllustrationWidget/IllustrationWidget.tsx
@@ -2000,11 +2003,11 @@ msgstr "نوع"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: frontend/src/embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/LinkOptions.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/constants.ts
 #: frontend/src/metabase/monitor/tools/utils.ts
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: metabase/revisions/models/revision/diff.clj
 msgid "Dashboard"
 msgstr "داشبورد"
@@ -2016,11 +2019,11 @@ msgstr "داشبورد"
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/context/SdkQuestionProvider.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/DetailsSection.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationsTable/NotificationsTable.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
 msgid "Question"
 msgstr "سؤال"
@@ -2032,11 +2035,11 @@ msgstr "کش‌کردن داشبورد و سؤال"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "These dashboards and questions have custom caching policies that override default or database-level policies."
-msgstr ""
+msgstr "این داشبوردها و سؤال‌ها سیاست‌های کش‌کردن سفارشی دارند که سیاست‌های پیش‌فرض یا سطح پایگاه‌داده را override می‌کنند."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "Search by name or collection…"
-msgstr ""
+msgstr "جستجو بر اساس نام یا مجموعه…"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "No dashboards or questions have their own caching policies yet."
@@ -2044,7 +2047,7 @@ msgstr "هنوز هیچ داشبورد یا سؤالی سیاست کش مخصو�
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "Untitled dashboard"
-msgstr ""
+msgstr "داشبورد بدون عنوان"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/utils.tsx
@@ -2865,14 +2868,14 @@ msgstr "داده‌ها درست واکشی نشدند: {0}"
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
 #: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
 #: metabase/collections/models/collection.clj
 msgid "Data"
 msgstr "داده"
@@ -2885,7 +2888,6 @@ msgstr "داده"
 #: frontend/src/metabase/browse/metrics/BrowseMetrics.tsx
 #: frontend/src/metabase/common/components/Pickers/MiniPicker/components/MiniPickerItemList.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-#: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 #: frontend/src/metabase/home/components/Onboarding/items/DataStudioItem.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
@@ -3310,7 +3312,7 @@ msgstr "فیلدها"
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.tsx
 #: frontend/src/metabase/reference/segments/SegmentList/SegmentList.tsx
 #: frontend/src/metabase/reference/segments/SegmentSidebar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Segments"
 msgstr "بخش‌ها"
 
@@ -3698,10 +3700,9 @@ msgstr "schemaها را برای replicate شدن انتخاب کنید"
 
 #: enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
 #: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/driver/redshift.clj metabase/driver/util.clj
 msgid "All"
 msgstr "همه"
@@ -4178,6 +4179,7 @@ msgstr "فیلتر"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/displayGroups.ts
 #: enterprise/frontend/src/metabase-enterprise/replacement/pages/MigrateModelsPage/PageHeader/PageHeader.tsx
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/pages/PythonLibraryEditorPage/PythonLibraryEditorHeader.tsx
+#: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/utils.ts
 #: frontend/src/metabase/common/components/TransformCollectionName.tsx
 #: frontend/src/metabase/data-studio/app/pages/TransformsSectionLayout/TransformsSectionLayout.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
@@ -4186,7 +4188,6 @@ msgstr "فیلتر"
 #: frontend/src/metabase/transforms/components/TransformsHeader/TransformsHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunSidebar.tsx
 #: frontend/src/metabase/transforms/pages/TransformGraphRunListPage/TransformGraphRunSidebar/TransformGraphRunSidebar.tsx
-#: frontend/src/metabase/transforms/utils.ts
 #: metabase/collections/models/collection/root.clj
 msgid "Transforms"
 msgstr "تبدیل‌ها"
@@ -4521,14 +4522,16 @@ msgid "Transform"
 msgstr "تبدیل"
 
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: metabase/revisions/models/revision/diff.clj
 msgid "Document"
 msgstr "سند"
 
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/explorations/constants.ts
+#: metabase/explorations/composite.clj
 #: metabase/revisions/models/revision/diff.clj
 msgid "Segment"
 msgstr "بخش"
@@ -5367,14 +5370,13 @@ msgstr "آنالیتیکس CLI"
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/ConversationsByDayChart.tsx
 #: frontend/src/metabase/common/utils/fields.ts
 #: frontend/src/metabase/embedding/mcp/McpFeedbackArea.tsx
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 #: frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/echarts/pie/constants.ts
-#: frontend/src/metabase/visualizations/echarts/tooltip/utils.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/pie/constants.ts
+#: frontend/src/metabase/viz-core/echarts/tooltip/utils.ts
 msgid "Other"
 msgstr "سایر"
 
@@ -5628,7 +5630,7 @@ msgid "Submitted by {0}"
 msgstr "ارسال‌شده توسط {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "SQL query"
 msgstr "کوئری SQL"
@@ -5770,7 +5772,7 @@ msgstr "30 روز گذشته"
 #: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateShortcutPicker/constants.ts
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Previous month"
 msgstr "ماه قبل"
@@ -6075,8 +6077,8 @@ msgstr "هیچ گفتگویی پیدا نشد"
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationsPage/ConversationsTable.tsx
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
 #: frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
 msgid "Title"
 msgstr "عنوان"
 
@@ -6097,7 +6099,6 @@ msgstr "پروفایل"
 #: frontend/src/metabase/actions/constants.ts
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePickerBody/SingleDatePickerBody.tsx
 #: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
@@ -6222,7 +6223,7 @@ msgstr "اطلاعات"
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
 msgid "Description"
 msgstr "توضیحات"
 
@@ -7628,6 +7629,9 @@ msgstr "برای اینکه این گزینه کار کند، کاربران ش�
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Summary"
 msgstr "خلاصه"
@@ -8894,9 +8898,7 @@ msgstr "و"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] ""
-msgstr[1] ""
+msgstr "جدول"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9037,10 +9039,10 @@ msgstr "بستن تب"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/settings.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 #: metabase/driver/common.clj metabase/driver/redshift.clj
 msgid "Columns"
 msgstr "ستون‌ها"
@@ -10104,10 +10106,10 @@ msgstr "بازنشانی"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ChartColorSettings/ChartColorSettings.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/MetabotLayoutSetting.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Auto"
 msgstr "Auto"
 
@@ -10635,7 +10637,7 @@ msgstr "جمعِ در حال گردشِ یک ستون در سراسر یک تف�
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithSource.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/utils.ts
-#: frontend/src/metabase/visualizations/lib/errors.ts
+#: frontend/src/metabase/viz-core/lib/errors.ts
 msgid "column"
 msgstr "ستون"
 
@@ -10667,16 +10669,16 @@ msgstr "مقداری که باید از یک ردیف دیگر گرفته شود
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/static-viz/components/TreemapChart/legend.ts
 #: frontend/src/metabase/visualizations/components/ChartTooltip/TooltipRow/TooltipRow.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/waterfall/model/axis.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/waterfall/model/dataset.ts
-#: frontend/src/metabase/visualizations/echarts/graph/sankey/option/tooltip.tsx
-#: frontend/src/metabase/visualizations/echarts/graph/treemap/model/tooltip.ts
-#: frontend/src/metabase/visualizations/echarts/pie/constants.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/CartesianChart/events.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/TreemapBreadcrumb.tsx
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/waterfall/model/axis.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/waterfall/model/dataset.ts
+#: frontend/src/metabase/viz-core/echarts/graph/sankey/option/tooltip.tsx
+#: frontend/src/metabase/viz-core/echarts/graph/treemap/model/tooltip.ts
+#: frontend/src/metabase/viz-core/echarts/pie/constants.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Total"
 msgstr "جمع"
 
@@ -11631,7 +11633,6 @@ msgstr "ستون یا مقداری که باید بررسی شود."
 
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/querying/drills/utils/pivot-drill.tsx
@@ -12802,7 +12803,7 @@ msgid "An audit log of MCP and Agent API client registrations and the authorizat
 msgstr "یک لاگ ممیزی از ثبت‌نام کلاینت‌های MCP و Agent API و تصمیم‌های مجوزدهی که کاربران تأیید یا رد کرده‌اند."
 
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
 msgid "All events"
 msgstr "همهٔ رویدادها"
 
@@ -13998,7 +13999,7 @@ msgstr "ذخیره شد"
 
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 msgid "Cache invalidation policy"
-msgstr ""
+msgstr "سیاست بی‌اعتبارسازی کش"
 
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 msgid "This determines how long cached results will be stored."
@@ -14191,6 +14192,7 @@ msgstr "گروه می‌تواند آیتم‌های داخل مجموعه را 
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsHelp/CollectionPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/constants/collections-permissions.ts
 #: frontend/src/metabase/archive/hooks/use-restore.ts
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 #: frontend/src/metabase/explorations/pages/ExplorationPage.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionListItem.tsx
@@ -15215,7 +15217,7 @@ msgstr "احتمالاً بهتر است این تنظیم را به {0} تغی�
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
 #: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "None"
 msgstr "هیچ‌کدام"
 
@@ -15963,17 +15965,17 @@ msgid "Dates and times"
 msgstr "تاریخ‌ها و زمان‌ها"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Date style"
 msgstr "سبک تاریخ"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Abbreviate days and months"
 msgstr "خلاصه کردن روزها و ماه‌ها"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Time style"
 msgstr "سبک زمان"
 
@@ -15982,23 +15984,23 @@ msgid "Numbers"
 msgstr "شماره"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Separator style"
 msgstr "سبک جداکننده"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Currency"
 msgstr "ارز"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Unit of currency"
 msgstr "واحد ارز"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Currency label style"
 msgstr "سبک برچسب ارز"
 
@@ -17238,9 +17240,10 @@ msgid "Edit permissions"
 msgstr "مجوزها را ویرایش کن"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionTimeline.tsx
+#: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/CardEmbedMenuDropdown.tsx
 #: frontend/src/metabase/query_builder/components/view/QuestionTimelineWidget/QuestionTimelineWidget.tsx
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
 #: frontend/src/metabase/timelines/collections/components/TimelineListModal/TimelineListModal.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
 msgid "Events"
 msgstr "رویداد"
 
@@ -18240,7 +18243,7 @@ msgstr "در حال دریافت مقادیر متمایز..."
 
 #: frontend/src/metabase/common/components/MetadataInfo/QueryColumnFingerprintInfo/NumberFingerprint.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Average"
 msgstr "میانگین"
@@ -18252,9 +18255,9 @@ msgstr "میانگین"
 #: frontend/src/metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberFilterPicker.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Min"
 msgstr "حداقل"
@@ -18266,9 +18269,9 @@ msgstr "حداقل"
 #: frontend/src/metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberFilterPicker.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Max"
 msgstr "حداکثر"
@@ -18330,13 +18333,6 @@ msgstr "پیش‌نمایش تغییرات"
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsModal.tsx
 msgid "The questions were successfully moved into their dashboards"
 msgstr "سؤال‌ها با موفقیت به داشبوردهایشان منتقل شدند"
-
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
-#: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
-#: metabase/lib/stage.cljc metabase/xrays/automagic_dashboards/core.clj
-#: resources/automagic_dashboards/table/example.yaml
-msgid "Native query"
-msgstr "کوئری نیتیو"
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 #, javascript-format
@@ -18878,7 +18874,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "دقیقه"
 msgstr[1] "{0} دقیقه"
 
@@ -19141,6 +19137,14 @@ msgstr "یک تریال رایگان 14روزه از این و سایر قابل
 msgid "You have unsaved changes."
 msgstr "تغییرات ذخیره‌نشده دارید."
 
+#: frontend/src/metabase/common/hooks/use-metadata-toasts.ts
+msgid "Couldn't undo"
+msgstr "نشد undo کرد"
+
+#: frontend/src/metabase/common/hooks/use-metadata-toasts.ts
+msgid "Change undone"
+msgstr "تغییر برگردانده شد"
+
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/dashboard/actions/trash.ts
 #: frontend/src/metabase/timelines/common/hooks/use-set-timeline.ts
@@ -19360,7 +19364,6 @@ msgid "Income"
 msgstr "درآمد"
 
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 msgid "Numeric"
 msgstr "عددی"
 
@@ -19795,10 +19798,6 @@ msgstr "هیچ عملی برای این مدل وجود ندارد"
 #: frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/nested.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
@@ -19808,6 +19807,10 @@ msgstr "هیچ عملی برای این مدل وجود ندارد"
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/nested.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Display"
 msgstr "نمایش"
 
@@ -19826,10 +19829,10 @@ msgstr "دکمه"
 #: frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/AnotherColumnForm.tsx
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/StaticNumberForm.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Label"
 msgstr "برچسب"
 
@@ -20998,9 +21001,9 @@ msgstr "رفرش می‌شود تا"
 
 #: frontend/src/metabase/dashboard/components/RefreshWidget/options.ts
 #: frontend/src/metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Off"
 msgstr "خاموش"
 
@@ -21269,10 +21272,10 @@ msgid "Horizontal Alignment"
 msgstr "تراز افقی"
 
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Left"
 msgstr "چپ"
 
@@ -21281,10 +21284,10 @@ msgid "Center"
 msgstr "Center"
 
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Right"
 msgstr "راست"
 
@@ -21379,6 +21382,7 @@ msgid "View your database connections"
 msgstr "اتصال‌های پایگاه داده‌تان را ببینید"
 
 #: frontend/src/metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: frontend/src/metabase/reference/segments/SegmentSidebar.tsx
 msgid "Revision history"
 msgstr "تاریخچهٔ بازبینی"
@@ -22115,8 +22119,8 @@ msgstr "ببخشید، این منبع داده را پیدا نکردیم. به
 #: frontend/src/metabase/databases/components/DatabaseFormError/DatabaseFormError.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Hide"
 msgstr "پنهان کردن"
 
@@ -22521,23 +22525,6 @@ msgid "Remove public link"
 msgstr "حذف لینک عمومی"
 
 #: frontend/src/metabase/documents/components/DocumentPage.tsx
-#, javascript-format
-msgid "Untitled document - {0}"
-msgstr "سندِ بدون عنوان - {0}"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Document created"
-msgstr "سند ایجاد شد"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Document saved"
-msgstr "سند ذخیره شد"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Error saving document"
-msgstr "خطا در ذخیرهٔ سند"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
 msgid "Where should we save this document?"
 msgstr "این سند را کجا ذخیره کنیم؟"
 
@@ -22568,6 +22555,14 @@ msgstr "بارگذاری سؤال ناموفق بود"
 #: frontend/src/metabase/documents/components/EmbedQuestionSettingsSidebar.tsx
 msgid "Visualize as"
 msgstr "نمایش به‌صورت"
+
+#: frontend/src/metabase/documents/components/EmbedTimelineSidebar.tsx
+msgid "Loading timeline events..."
+msgstr "در حال بارگذاری رویدادهای تایم‌لاین..."
+
+#: frontend/src/metabase/documents/components/EmbedTimelineSidebar.tsx
+msgid "Failed to load timeline events"
+msgstr "بارگذاری رویدادهای تایم‌لاین ناموفق بود"
 
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/CardEmbedMenuDropdown.tsx
 msgid "Add supporting text"
@@ -22640,6 +22635,23 @@ msgstr "سؤال جدید"
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/modals/NativeQueryModal.tsx
 msgid "Edit SQL Query"
 msgstr "ویرایش کوئری SQL"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+#, javascript-format
+msgid "Untitled document - {0}"
+msgstr "سندِ بدون عنوان - {0}"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Document created"
+msgstr "سند ایجاد شد"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Document saved"
+msgstr "سند ذخیره شد"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Error saving document"
+msgstr "خطا در ذخیرهٔ سند"
 
 #: frontend/src/metabase/embedding/components/ArchiveButton.tsx
 msgctxt "button that opens an actions dropdown e.g. Move this item to trash"
@@ -23680,7 +23692,9 @@ msgid "Embed an entire dashboard with multiple charts and filters"
 msgstr "یک داشبورد کامل را با چندین نمودار و فیلتر جاسازی کنید"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/constants.ts
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/utils.ts
 #: frontend/src/metabase/rich_text_editing/tiptap/extensions/Command/utils.ts
+#: metabase/explorations/models/exploration_query_result.clj
 msgid "Chart"
 msgstr "نمودار"
 
@@ -23875,8 +23889,8 @@ msgstr "اکشن‌های گروه"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Show"
 msgstr "نمایش"
 
@@ -23984,6 +23998,10 @@ msgstr "بحث‌ها"
 msgid "No discussions yet."
 msgstr "هنوز بحثی نیست."
 
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
+msgid "Document your research findings here. You can add interesting charts to this summary by clicking \"Add to Summary\" from the chart's page..."
+msgstr "یافته‌های پژوهش‌تان را اینجا مستند کنید. می‌توانید با کلیک روی \"Add to Summary\" از صفحهٔ نمودار، نمودارهای جالب را به این خلاصه اضافه کنید..."
+
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 msgid "Failed to update star"
 msgstr "به‌روزرسانی ستاره ناموفق بود"
@@ -23996,6 +24014,16 @@ msgstr "به‌روزرسانی میزان نمایش ناموفق بود"
 #, javascript-format
 msgid "\"{0}\" hidden"
 msgstr "\"{0}\" پنهان شد"
+
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+msgid "Failed to add to Summary"
+msgstr "افزودن به Summary ناموفق بود"
+
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#, javascript-format
+msgctxt "{0} is the document name"
+msgid "Added to {0}"
+msgstr "به {0} اضافه شد"
 
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts
@@ -24027,6 +24055,10 @@ msgstr "حذف ستاره"
 msgid "Add comment"
 msgstr "افزودن نظر"
 
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+msgid "Add to Summary"
+msgstr "افزودن به خلاصه"
+
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ExplorationGroupVisualization.tsx
 msgid "No charts in this group."
 msgstr "در این گروه نموداری وجود ندارد."
@@ -24053,7 +24085,7 @@ msgid "Hide comments"
 msgstr "پنهان کردن نظرات"
 
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/TimelineEventCard.tsx
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
 msgid "Timeline event card"
 msgstr "کارت رویداد تایم‌لاین"
 
@@ -24066,10 +24098,6 @@ msgid "{0} event"
 msgid_plural "{0} events"
 msgstr[0] "{0} رویداد"
 msgstr[1] "{0} رویداد"
-
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/utils.ts
-msgid "(All)"
-msgstr "(همه)"
 
 #: frontend/src/metabase/explorations/components/NewExplorationChat/NewExplorationChat.tsx
 msgid "Failed to add research groups"
@@ -24119,20 +24147,6 @@ msgstr "حذف ناحیه"
 msgid "Modify which dimensions to see this metric by"
 msgstr "تعیین کنید این معیار را بر اساس کدام بُعدها ببینید"
 
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-#: metabase/lib_metric/display_info.cljc
-msgid "Dimension"
-msgstr "بُعد"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-msgid "Modify which metrics to look at for this dimension"
-msgstr "تعیین کنید برای این بُعد کدام معیارها را بررسی کنید"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-msgid "No related metrics."
-msgstr "هیچ معیار مرتبطی نیست."
-
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 msgid "Failed to start research"
 msgstr "شروع تحقیق ناموفق بود"
@@ -24142,15 +24156,8 @@ msgid "Research plan"
 msgstr "پلن تحقیق"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
-msgid "+ Data"
-msgstr "+ داده"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
-#: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
-#: frontend/src/metabase/metrics/components/MetricHeader/MetricTabs/MetricTabs.tsx
-#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/VerticalWell/PieVerticalWell.tsx
-msgid "Dimensions"
-msgstr "ابعاد"
+msgid "+ Metrics"
+msgstr "+ معیارها"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 msgid "Add events"
@@ -24185,14 +24192,6 @@ msgstr "می‌خواهید چه چیزی را تحقیق کنید؟"
 msgid "Research mode helps automate running and inspecting combinations of metrics, dimensions, and timelines so you can use your brain for analysis, not busy work."
 msgstr "حالت تحقیق کمک می‌کند اجرای ترکیب‌های مختلفِ معیارها، بُعدها و تایم‌لاین‌ها را خودکار کنید و بررسی‌شان کنید تا ذهن‌تان را برای تحلیل بگذارید، نه کارهای تکراری."
 
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
-msgid "Add dimensions of interest to your research plan"
-msgstr "بُعدهای موردنظر را به پلن تحقیق‌تان اضافه کنید"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
-msgid "Search for a dimension"
-msgstr "جستجوی یک بُعد"
-
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
 msgid "Add metrics to your research plan"
 msgstr "افزودن معیارها به پلن تحقیق‌تان"
@@ -24208,10 +24207,6 @@ msgstr "افزودن رویدادها به پلن تحقیق‌تان"
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddTimelinesModal.tsx
 msgid "Search for a timeline"
 msgstr "جستجوی یک تایم‌لاین"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
-msgid "Geo"
-msgstr "جغرافیا"
 
 #: frontend/src/metabase/explorations/components/NewExplorationEntry/NewExplorationEntry.tsx
 msgid "Manual setup"
@@ -24243,6 +24238,11 @@ msgstr "همه پروژه‌ها"
 #, javascript-format
 msgid "New research - {0}"
 msgstr "تحقیق جدید - {0}"
+
+#: frontend/src/metabase/explorations/constants.ts
+#: metabase/explorations/composite.clj
+msgid "(All)"
+msgstr "(همه)"
 
 #: frontend/src/metabase/explorations/hooks/useCopyLink.ts
 msgid "Couldn't copy link"
@@ -24731,6 +24731,13 @@ msgstr "+ جدید"
 #: frontend/src/metabase/metabot/components/NewMenuItemAIExploration.tsx
 msgid "AI exploration"
 msgstr "کاوش هوش مصنوعی"
+
+#: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
+#: metabase/lib/stage.cljc metabase/xrays/automagic_dashboards/core.clj
+#: resources/automagic_dashboards/table/example.yaml
+msgid "Native query"
+msgstr "کوئری نیتیو"
 
 #: frontend/src/metabase/home/components/Onboarding/use-checklist-items.ts
 msgid "Set things up"
@@ -26041,14 +26048,6 @@ msgstr "انتخاب کنید آیا JSON باز شود یا نه"
 msgid "Pick someone, or type an email"
 msgstr "یک نفر را انتخاب کنید، یا یک ایمیل تایپ کنید"
 
-#: frontend/src/metabase/metadata/hooks/useMetadataToasts.ts
-msgid "Couldn't undo"
-msgstr "نشد undo کرد"
-
-#: frontend/src/metabase/metadata/hooks/useMetadataToasts.ts
-msgid "Change undone"
-msgstr "تغییر برگردانده شد"
-
 #: frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/components/Search.tsx
 msgid "No results."
 msgstr "بدون نتیجه."
@@ -26070,6 +26069,12 @@ msgstr "نه بیرون"
 #: frontend/src/metabase/metrics-viewer/components/FilterPopover/FilterPopoverContent.tsx
 msgid "No dimensions found"
 msgstr "هیچ بُعدی پیدا نشد"
+
+#: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
+#: frontend/src/metabase/metrics/components/MetricHeader/MetricTabs/MetricTabs.tsx
+#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/VerticalWell/PieVerticalWell.tsx
+msgid "Dimensions"
+msgstr "ابعاد"
 
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 msgid "No shared dimensions found"
@@ -26151,9 +26156,9 @@ msgid "X-axis controls"
 msgstr "کنترل‌های محور X"
 
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/CenterControls/CenterControls.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "X-axis"
 msgstr "محور X"
 
@@ -26346,7 +26351,6 @@ msgid "true"
 msgstr "درست"
 
 #: frontend/src/metabase/metrics/components/MetricDimensionGrid/MetricDimensionGrid.tsx
-#: metabase/explorations/blocks.clj
 #, javascript-format
 msgid "By {0}"
 msgstr "توسط {0}"
@@ -27002,7 +27006,7 @@ msgstr "هیچ موجودیتی در دسترس نیست"
 #: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateShortcutPicker/constants.ts
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Previous week"
 msgstr "هفته قبل"
@@ -28195,7 +28199,7 @@ msgid "We don’t have any cached values for the connected fields. Try one of th
 msgstr "ما هیچ مقداری کش شده‌ای برای فیلدهای مرتبط نداریم. یکی از گزینه‌های دیگر را امتحان کنید، یا این ویجت را به یک جعبه جستجو تغییر دهید."
 
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Values"
 msgstr "مقادیر"
 
@@ -28474,8 +28478,8 @@ msgstr "فقط نمایش جزئیات"
 #: frontend/src/metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/LinkEditor.tsx
 #: frontend/src/metabase/rich_text_editing/tiptap/extensions/Command/utils.ts
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
 #: frontend/src/metabase/visualizations/visualizations/Scalar/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Formatting"
 msgstr "قالب‌بندی"
 
@@ -28583,67 +28587,6 @@ msgstr "این یک نسخهٔ توسعه‌ای از ویژوالایزیشن �
 #: frontend/src/metabase/query_builder/components/chart-type-selector/ChartTypeOption/ChartTypeOption.tsx
 msgid "Dev"
 msgstr "Dev"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-msgid "Event menu"
-msgstr "منوی رویداد"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/common/components/EditEventModal/EditEventModal.tsx
-msgid "Edit event"
-msgstr "ویرایش رویداد"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-msgid "Move event"
-msgstr "حرکت رویداد"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
-msgid "Archive event"
-msgstr "آرشیو رویداد"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineCard/TimelineCard.tsx
-msgid "Timeline card header"
-msgstr "هدر کارت تایم‌لاین"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Collection event illustration"
-msgstr "تصویرسازی رویدادِ مجموعه"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Add context to your time series charts"
-msgstr "به نمودارهای سری زمانی‌تان کانتکست اضافه کنید"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#, javascript-format
-msgid "Add events to {0} to show important milestones, launches, or anything else, right alongside your data."
-msgstr "به {0} رویداد اضافه کنید تا نقاط عطف مهم، لانچ‌ها یا هر چیز دیگری را دقیقاً در کنار داده‌هایتان نشان دهد."
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#, javascript-format
-msgid "Events in {0} let you see important milestones, launches, or anything else, right alongside your data."
-msgstr "رویدادهای {0} به شما اجازه می‌دهد نقاط عطف مهم، لانچ‌ها یا هر چیز دیگری را دقیقاً در کنار داده‌هایتان ببینید."
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelinePanel/TimelinePanel.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Create event"
-msgstr "ایجاد رویداد"
-
-#: frontend/src/metabase/query_builder/components/timelines/containers/EditEventModal/EditEventModal.tsx
-msgid "Updated event"
-msgstr "رویداد به‌روزرسانی شده"
-
-#: frontend/src/metabase/query_builder/components/timelines/containers/NewEventModal/NewEventModal.tsx
-msgid "Created event"
-msgstr "رویداد ایجاد شد"
 
 #: frontend/src/metabase/query_builder/components/view/ExecutionTime/ExecutionTime.tsx
 msgid "How long this query took"
@@ -28961,7 +28904,7 @@ msgid "Most"
 msgstr "بیشترین"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Some"
 msgstr "برخی"
 
@@ -29101,21 +29044,6 @@ msgstr "گروه‌بندی بر اساس"
 msgid "Summarize by"
 msgstr "خلاصه‌سازی بر اساس"
 
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events between {0} and {1}"
-msgstr "رویدادها بین {0} و {1}"
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events in {0}"
-msgstr "رویدادها در {0}"
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events on {0}"
-msgstr "رویدادها در {0}"
-
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
 msgid "All Set! Your question is ready."
 msgstr "همه تنظیم شد! پرسش شما آماده است."
@@ -29165,8 +29093,8 @@ msgstr "فعلی"
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/constants.ts
 #: frontend/src/metabase/querying/drills/utils/quick-filter-drill.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "On"
 msgstr "در"
 
@@ -30015,7 +29943,7 @@ msgid "Avg"
 msgstr "Avg"
 
 #: frontend/src/metabase/querying/drills/utils/summarize-column-drill.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 #: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/DateTime.yaml
@@ -31401,6 +31329,28 @@ msgid "Export in progress. Are you sure you want to leave?"
 msgstr "در حال خروجی گرفتن. مطمئنید می‌خواهید صفحه را ترک کنید؟"
 
 #: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Event menu"
+msgstr "منوی رویداد"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/common/components/EditEventModal/EditEventModal.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Edit event"
+msgstr "ویرایش رویداد"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Move event"
+msgstr "حرکت رویداد"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Archive event"
+msgstr "آرشیو رویداد"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
 msgid "Unarchive event"
 msgstr "بازخوانی رویداد"
 
@@ -31446,6 +31396,13 @@ msgid "Search for an event"
 msgstr "جستجو برای یک رویداد"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelinePanel/TimelinePanel.tsx
+msgid "Create event"
+msgstr "ایجاد رویداد"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
 #: frontend/src/metabase/timelines/collections/components/TimelineListModal/TimelineListModal.tsx
 msgid "New timeline"
 msgstr "جدول زمانی جدید"
@@ -31470,6 +31427,16 @@ msgstr "مشاهده جدول‌های زمانی بایگانی‌شده"
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
 msgid "Launch of v2.0"
 msgstr "راه‌اندازی نسخه ۲.۰"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+msgid "Collection event illustration"
+msgstr "تصویرسازی رویدادِ مجموعه"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+msgid "Add context to your time series charts"
+msgstr "به نمودارهای سری زمانی‌تان کانتکست اضافه کنید"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
 #, javascript-format
@@ -31551,6 +31518,43 @@ msgstr "آیکون پیش‌فرض"
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 msgid "Archive timeline and all events"
 msgstr "آرشیو جدول‌زمانی و تمامی رویدادها"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineCard/TimelineCard.tsx
+msgid "Timeline card header"
+msgstr "هدر کارت تایم‌لاین"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#, javascript-format
+msgid "Add events to {0} to show important milestones, launches, or anything else, right alongside your data."
+msgstr "به {0} رویداد اضافه کنید تا نقاط عطف مهم، لانچ‌ها یا هر چیز دیگری را دقیقاً در کنار داده‌هایتان نشان دهد."
+
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#, javascript-format
+msgid "Events in {0} let you see important milestones, launches, or anything else, right alongside your data."
+msgstr "رویدادهای {0} به شما اجازه می‌دهد نقاط عطف مهم، لانچ‌ها یا هر چیز دیگری را دقیقاً در کنار داده‌هایتان ببینید."
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events between {0} and {1}"
+msgstr "رویدادها بین {0} و {1}"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events in {0}"
+msgstr "رویدادها در {0}"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events on {0}"
+msgstr "رویدادها در {0}"
+
+#: frontend/src/metabase/timelines/questions/containers/EditEventModal/EditEventModal.tsx
+msgid "Updated event"
+msgstr "رویداد به‌روزرسانی شده"
+
+#: frontend/src/metabase/timelines/questions/containers/NewEventModal/NewEventModal.tsx
+msgid "Created event"
+msgstr "رویداد ایجاد شد"
 
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 msgid "Failed to create collection"
@@ -33220,8 +33224,8 @@ msgid "{0} this question to drill-through."
 msgstr "برای کاوش عمیق، این سؤال را {0}."
 
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Axes"
 msgstr "محورها"
 
@@ -33570,14 +33574,14 @@ msgid "Aggregation method for Other group"
 msgstr "روش تجمیع برای گروه Other"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Median"
 msgstr "میانه"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 msgid "Standard deviation"
 msgstr "انحراف معیار"
 
@@ -33599,7 +33603,7 @@ msgid "Add a range"
 msgstr "یک بازه اضافه کنید"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Add another series"
 msgstr "اضافه کردن یک سری دیگر"
 
@@ -33793,95 +33797,10 @@ msgstr "true است"
 msgid "is false"
 msgstr "false است"
 
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Upper whisker"
-msgstr "سبیل بالا"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Q3 (75th percentile)"
-msgstr "Q3 (صدک 75)"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Mean"
-msgstr "میانگین"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Q1 (25th percentile)"
-msgstr "Q1 (صدک 25)"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Lower whisker"
-msgstr "سبیل پایین"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "outlier"
-msgstr "پرت"
-
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
-msgid "There is no data to display. Check the query to ensure there are non-null x-axis values."
-msgstr "هیچ داده‌ای برای نمایش وجود ندارد. کوئری را بررسی کنید تا مطمئن شوید مقدارهای محور x نال نیستند."
-
-#: frontend/src/metabase/visualizations/echarts/graph/sankey/model/index.ts
-msgid "Columns selection is invalid"
-msgstr "انتخاب ستون‌ها نامعتبر است"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-#, javascript-format
-msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
-msgstr "عه! داده‌های کوئری شما با گزینهٔ نمایش انتخاب‌شده جور درنمی‌آید. این ویژوالیزیشن حداقل به {0} {1} داده نیاز دارد."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-#, javascript-format
-msgid "No dice. We have {0} data {1} to show and that's not enough for this visualization."
-msgstr "هیچی به هیچی. ما {0} {1} داده برای نمایش داریم و این برای این ویژوالیزیشن کافی نیست."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "point"
-msgid_plural "points"
-msgstr[0] "نقطه"
-msgstr[1] "نقطه"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Bummer. We can't actually do a pin map for this data because we require both a latitude and longitude column."
-msgstr "ای بابا. عملاً نمی‌توانیم برای این داده‌ها نقشه پین بسازیم، چون به هر دو ستون عرض جغرافیایی و طول جغرافیایی نیاز داریم."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Please configure this chart in the chart settings"
-msgstr "لطفاً این نمودار را در تنظیمات نمودار پیکربندی کنید"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Edit Settings"
-msgstr "ویرایش تنظیمات"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "There was a problem displaying this chart."
-msgstr "مشکلی در نمایش این نمودار پیش آمد."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Sorry, you don't have permission to see this card."
-msgstr "متأسفیم، شما اجازهٔ دیدن این کارت را ندارید."
-
 #: frontend/src/metabase/visualizations/lib/exports-branding-utils.tsx
 #: metabase/channel/render/pdf.clj
 msgid "Made with"
 msgstr "ساخته‌شده با"
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization is null"
-msgstr "Visualization is null"
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization must define an 'identifier' static variable: "
-msgstr "Visualization must define an 'identifier' static variable: "
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization with that identifier is already registered: "
-msgstr "Visualization with that identifier is already registered: "
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-#, javascript-format
-msgid "No visualization for {0}"
-msgstr "هیچ visualizationای برای {0} نیست"
 
 #: frontend/src/metabase/visualizations/lib/save-dashboard-pdf.ts
 msgid "Export tab as PDF"
@@ -33890,458 +33809,6 @@ msgstr "خروجی گرفتن از تب به‌صورت PDF"
 #: frontend/src/metabase/visualizations/lib/save-dashboard-pdf.ts
 msgid "Export as PDF"
 msgstr "خروجی گرفتن به‌صورت PDF"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM"
-msgstr "HH:MM"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM:SS"
-msgstr "HH:MM:SS"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM:SS.MS"
-msgstr "HH:MM:SS.MS"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Date separators"
-msgstr "جداکننده‌های تاریخ"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Show the time"
-msgstr "نمایش زمان"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-#: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
-#: metabase/driver/redshift.clj
-msgid "Style"
-msgstr "استایل"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Normal"
-msgstr "عادی"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Percent"
-msgstr "درصد"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Scientific"
-msgstr "علمی"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Where to display the unit of currency"
-msgstr "محل نمایش واحد ارز"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "In the column heading"
-msgstr "در سرستون"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "In every table cell"
-msgstr "در هر سلول جدول"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-msgid "Number of decimal places"
-msgstr "تعداد رقم‌های اعشار"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Multiply by a number"
-msgstr "ضرب در یک عدد"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Add a prefix"
-msgstr "افزودن پیشوند"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Add a suffix"
-msgstr "افزودن پسوند"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "dollars"
-msgstr "دلار"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal line"
-msgstr "خط هدف"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal value"
-msgstr "مقدار هدف"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal label"
-msgstr "برچسب هدف"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Add series breakout"
-msgstr "اضافه کردن تقسیم‌بندی سری"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Y-axis"
-msgstr "محور Y"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/ScatterFloatingWell/ScatterFloatingWell.tsx
-msgid "Bubble size"
-msgstr "اندازهٔ حباب"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stacking"
-msgstr "روی‌هم‌گذاری"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Don't stack"
-msgstr "روی هم نگذار"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stack"
-msgstr "روی هم بگذار"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stack - 100%"
-msgstr "روی هم بگذار - 100%"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack series"
-msgstr "سری‌ها را استک کنید"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Additional tooltip columns"
-msgstr "ستون‌های اضافیِ تولتیپ"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Enter column names"
-msgstr "نام ستون‌ها را وارد کنید"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Trend line"
-msgstr "خط روند"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Show values on data points"
-msgstr "نمایش مقادیر روی نقاط داده"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Values to show"
-msgstr "مقادیر برای نمایش"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack values to show"
-msgstr "مقادیر پشته برای نمایش"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-msgid "Both"
-msgstr "هر دو"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack value format"
-msgstr "فرمت مقدارِ استک"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Percentages"
-msgstr "درصدها"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Auto formatting"
-msgstr "فرمت‌دهی خودکار"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Compact"
-msgstr "Compact"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Full"
-msgstr "Full"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Scale"
-msgstr "مقیاس"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Linear"
-msgstr "خطی"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Power"
-msgstr "توانی"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Log"
-msgstr "لگاریتمی"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show lines and tick marks"
-msgstr "نمایش خطوط و تیک‌مارک‌ها"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Rotate 45°"
-msgstr "چرخش 45°"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Rotate 90°"
-msgstr "چرخش 90°"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Unpin from zero"
-msgstr "برداشتن پین از صفر"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Auto y-axis range"
-msgstr "بازهٔ خودکار محور y"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Split y-axis when necessary"
-msgstr "محور y را وقتی لازم است جدا کنید"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Show label"
-msgstr "نمایش برچسب"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Number of tick marks"
-msgstr "تعداد تیک‌مارک‌ها"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Hide overlapping labels"
-msgstr "پنهان کردن برچسب‌های هم‌پوشان"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Whiskers extend to"
-msgstr "سبیل‌ها تا اینجا امتداد دارند"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "1.5 × interquartile range"
-msgstr "1.5 × دامنهٔ بین‌چارکی"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Min/Max"
-msgstr "Min/Max"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show points"
-msgstr "نمایش نقاط"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Outliers only"
-msgstr "فقط پرت‌ها"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "All points"
-msgstr "همهٔ نقاط"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show mean"
-msgstr "نمایش میانگین"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Values to display"
-msgstr "مقادیر برای نمایش"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Median only"
-msgstr "فقط میانه"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Display type"
-msgstr "نوع نمایش"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line shape"
-msgstr "شکل خط"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line style"
-msgstr "سبک خط"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line size"
-msgstr "اندازهٔ خط"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show dots on lines"
-msgstr "نمایش نقطه‌ها روی خط‌ها"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Replace missing values with"
-msgstr "جایگزینی مقادیرِ ناموجود با"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Zero"
-msgstr "صفر"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Nothing"
-msgstr "هیچ‌چیز"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Linear Interpolated"
-msgstr "درون‌یابی خطی"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Y-axis position"
-msgstr "موقعیت محور Y"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show trend line for this series"
-msgstr "نمایش خط روند برای این سری"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show values for this series"
-msgstr "نمایش مقادیر برای این سری"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "Which fields do you want to use for the X and Y axes?"
-msgstr "می‌خواهید برای محورهای X و Y از کدام فیلدها استفاده کنید؟"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-#: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
-msgid "Choose fields"
-msgstr "فیلدها را انتخاب کنید"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "No breakouts are enabled"
-msgstr "هیچ تقسیم‌بندی فعال نشده است"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "It is not possible to use the Log scale for a stacked percentage chart"
-msgstr "امکان استفاده از مقیاس لگاریتمی برای نمودار توزیع درصدی وجود ندارد"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-#, javascript-format
-msgid "This chart type doesn't support more than {0} series of data."
-msgstr "این نوع نمودار بیشتر از {0} سری داده را پشتیبانی نمی‌کند."
-
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
-msgid "Hide this card if there are no results"
-msgstr "اگر نتیجه‌ای نبود این کارت را پنهان کن"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#, javascript-format
-msgid "compared to {0}"
-msgstr "در مقایسه با {0}"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-msgid "compared to previous value"
-msgstr "در مقایسه با مقدار قبلی"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous minute"
-msgstr "دقیقهٔ قبل"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous hour"
-msgstr "ساعت قبل"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-msgid "Previous day"
-msgstr "روز قبل"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous quarter"
-msgstr "سه‌ماههٔ قبل"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous year"
-msgstr "سال قبل"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Data includes missing dimension values."
-msgstr "داده شامل مقدارهای بُعدِ از‌دست‌رفته است."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "We encountered an invalid date: \"{0}\""
-msgstr "با یک تاریخ نامعتبر مواجه شدیم: \"{0}\""
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the {1}-axis, the values will be summed."
-msgstr "\"{0}\" یک فیلد غیرتجمیعی است: اگر در یک نقطه در محور {1} بیش از یک مقدار داشته باشد، مقادیر جمع می‌شوند."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "\"{0}\" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed."
-msgstr "\"{0}\" یک فیلد بدون تجمیع است: اگر بیش از یک ردیف با مقدار یکسان داشته باشد، مقدارهای معیارشان با هم جمع می‌شوند."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "{0} are unaggregated fields: if there is more than one row with the same values, their measure values will be summed."
-msgstr "{0} فیلدِ بدون تجمیع هستند: اگر بیش از یک ردیف با همان مقادیر وجود داشته باشد، مقادیر معیار آن‌ها با هم جمع می‌شود."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "The query for this chart was run in {0} rather than {1} due to database or driver constraints."
-msgstr "کوئری این نمودار به‌دلیل محدودیت‌های دیتابیس یا درایور، در {0} اجرا شد نه در {1}."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "This chart contains queries run in multiple timezones: {0}"
-msgstr "این نمودار شامل کوئری‌هایی است که در چندین منطقهٔ زمانی اجرا شده‌اند: {0}"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Negative values in measure column have been omitted from pie chart."
-msgstr "مقدارهای منفی در ستون معیار از نمودار دایره‌ای حذف شده‌اند."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Negative values in measure column have been omitted from treemap chart."
-msgstr "مقادیر منفی در ستون معیار از نمودار treemap حذف شده‌اند."
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Ordinal"
-msgstr "ترتیبی"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-msgid "Timeseries"
-msgstr "سری زمانی"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-msgid "Histogram"
-msgstr "هیستوگرام"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
-msgid "Goal"
-msgstr "هدف"
-
-#: frontend/src/metabase/visualizations/shared/utils/data.ts
-#, javascript-format
-msgid "All values ({0})"
-msgstr "تمام مقادیر ({0})"
-
-#: frontend/src/metabase/visualizations/shared/utils/data.ts
-#, javascript-format
-msgid "Other ({0})"
-msgstr "دیگر ({0})"
 
 #: frontend/src/metabase/visualizations/visualizations/AreaChart/definition.ts
 msgid "Area"
@@ -34390,6 +33857,11 @@ msgstr "قیف"
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 msgid "Which fields do you want to use?"
 msgstr "می‌خواهید از کدام فیلدها استفاده کنید؟"
+
+#: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "Choose fields"
+msgstr "فیلدها را انتخاب کنید"
 
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 msgid "Column with steps"
@@ -34601,6 +34073,19 @@ msgid "Which columns do you want to use?"
 msgstr "می‌خواهید از کدام ستون‌ها استفاده کنید؟"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: metabase/lib_metric/display_info.cljc
+msgid "Dimension"
+msgstr "بُعد"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+#: metabase/driver/redshift.clj
+msgid "Style"
+msgstr "استایل"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "Show legend"
 msgstr "نمایش لِجند"
 
@@ -34624,6 +34109,16 @@ msgstr "در افسانه"
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "On the chart"
 msgstr "در نمودار"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Both"
+msgstr "هر دو"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Number of decimal places"
+msgstr "تعداد رقم‌های اعشار"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "Minimum slice percentage"
@@ -34695,6 +34190,11 @@ msgstr "پیشرفت"
 msgid "Progress visualization requires at least one numeric column."
 msgstr "ویژوالیزیشن Progress حداقل به یک ستون عددی نیاز دارد."
 
+#: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Goal"
+msgstr "هدف"
+
 #: frontend/src/metabase/visualizations/visualizations/Progress/utils.ts
 #: frontend/src/metabase/visualizations/visualizations/Progress/utils.unit.spec.ts
 msgid "No data available"
@@ -34728,6 +34228,60 @@ msgstr "ردیفی"
 msgid "row chart"
 msgstr "نمودار ردیفی"
 
+#: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Y-axis"
+msgstr "محور Y"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stacking"
+msgstr "روی‌هم‌گذاری"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Don't stack"
+msgstr "روی هم نگذار"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack"
+msgstr "روی هم بگذار"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack - 100%"
+msgstr "روی هم بگذار - 100%"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Scale"
+msgstr "مقیاس"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Ordinal"
+msgstr "ترتیبی"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Linear"
+msgstr "خطی"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Power"
+msgstr "توانی"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Log"
+msgstr "لگاریتمی"
+
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 msgid "Show lines and marks"
 msgstr "نمایش خطوط و نشانه‌ها"
@@ -34737,8 +34291,30 @@ msgid "Auto x-axis range"
 msgstr "محدوده محور x خودکار"
 
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show label"
+msgstr "نمایش برچسب"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show values on data points"
+msgstr "نمایش مقادیر روی نقاط داده"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 msgid "Value labels formatting"
 msgstr "قالب‌بندی برچسب‌های مقدار"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Compact"
+msgstr "Compact"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Full"
+msgstr "Full"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Justify"
@@ -34747,6 +34323,11 @@ msgstr "Justify"
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Show edge labels"
 msgstr "نمایش برچسب‌های یال"
+
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Auto formatting"
+msgstr "فرمت‌دهی خودکار"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Edge color"
@@ -34880,7 +34461,7 @@ msgstr "برای دیدن اینکه این در طول زمان چطور تغی
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Add a metric to see how it's changed over time"
-msgstr ""
+msgstr "یک معیار اضافه کنید تا ببینید در طول زمان چطور تغییر کرده است"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/utils.ts
 msgid "Value from another column…"
@@ -35086,6 +34667,11 @@ msgstr "ویژوال‌سازی اینجا نمایش داده می‌شود"
 msgid "View as table"
 msgstr "مشاهده به‌صورت جدول"
 
+#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/ScatterFloatingWell/ScatterFloatingWell.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Bubble size"
+msgstr "اندازهٔ حباب"
+
 #: frontend/src/metabase/visualizer/components/VisualizerModal/VisualizerModal.tsx
 msgid "Are you sure you want to leave?"
 msgstr "مطمئنید می‌خواهید خارج شوید؟"
@@ -35093,6 +34679,429 @@ msgstr "مطمئنید می‌خواهید خارج شوید؟"
 #: frontend/src/metabase/visualizer/components/VisualizerModal/VisualizerModal.tsx
 msgid "Any unsaved changes will be lost."
 msgstr "هر تغییری که ذخیره نشده باشد از بین می‌رود."
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Upper whisker"
+msgstr "سبیل بالا"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Q3 (75th percentile)"
+msgstr "Q3 (صدک 75)"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Mean"
+msgstr "میانگین"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Q1 (25th percentile)"
+msgstr "Q1 (صدک 25)"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Lower whisker"
+msgstr "سبیل پایین"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "outlier"
+msgstr "پرت"
+
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/dataset.ts
+msgid "There is no data to display. Check the query to ensure there are non-null x-axis values."
+msgstr "هیچ داده‌ای برای نمایش وجود ندارد. کوئری را بررسی کنید تا مطمئن شوید مقدارهای محور x نال نیستند."
+
+#: frontend/src/metabase/viz-core/echarts/graph/sankey/model/index.ts
+msgid "Columns selection is invalid"
+msgstr "انتخاب ستون‌ها نامعتبر است"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+#, javascript-format
+msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
+msgstr "عه! داده‌های کوئری شما با گزینهٔ نمایش انتخاب‌شده جور درنمی‌آید. این ویژوالیزیشن حداقل به {0} {1} داده نیاز دارد."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+#, javascript-format
+msgid "No dice. We have {0} data {1} to show and that's not enough for this visualization."
+msgstr "هیچی به هیچی. ما {0} {1} داده برای نمایش داریم و این برای این ویژوالیزیشن کافی نیست."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "point"
+msgid_plural "points"
+msgstr[0] "نقطه"
+msgstr[1] "نقطه"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Bummer. We can't actually do a pin map for this data because we require both a latitude and longitude column."
+msgstr "ای بابا. عملاً نمی‌توانیم برای این داده‌ها نقشه پین بسازیم، چون به هر دو ستون عرض جغرافیایی و طول جغرافیایی نیاز داریم."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Please configure this chart in the chart settings"
+msgstr "لطفاً این نمودار را در تنظیمات نمودار پیکربندی کنید"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Edit Settings"
+msgstr "ویرایش تنظیمات"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "There was a problem displaying this chart."
+msgstr "مشکلی در نمایش این نمودار پیش آمد."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Sorry, you don't have permission to see this card."
+msgstr "متأسفیم، شما اجازهٔ دیدن این کارت را ندارید."
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization is null"
+msgstr "Visualization is null"
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization must define an 'identifier' static variable: "
+msgstr "Visualization must define an 'identifier' static variable: "
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization with that identifier is already registered: "
+msgstr "Visualization with that identifier is already registered: "
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+#, javascript-format
+msgid "No visualization for {0}"
+msgstr "هیچ visualizationای برای {0} نیست"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM"
+msgstr "HH:MM"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM:SS"
+msgstr "HH:MM:SS"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM:SS.MS"
+msgstr "HH:MM:SS.MS"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Date separators"
+msgstr "جداکننده‌های تاریخ"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Show the time"
+msgstr "نمایش زمان"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Normal"
+msgstr "عادی"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Percent"
+msgstr "درصد"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Scientific"
+msgstr "علمی"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Where to display the unit of currency"
+msgstr "محل نمایش واحد ارز"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "In the column heading"
+msgstr "در سرستون"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "In every table cell"
+msgstr "در هر سلول جدول"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Multiply by a number"
+msgstr "ضرب در یک عدد"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Add a prefix"
+msgstr "افزودن پیشوند"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Add a suffix"
+msgstr "افزودن پسوند"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "dollars"
+msgstr "دلار"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal line"
+msgstr "خط هدف"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal value"
+msgstr "مقدار هدف"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal label"
+msgstr "برچسب هدف"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Add series breakout"
+msgstr "اضافه کردن تقسیم‌بندی سری"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack series"
+msgstr "سری‌ها را استک کنید"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Additional tooltip columns"
+msgstr "ستون‌های اضافیِ تولتیپ"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Enter column names"
+msgstr "نام ستون‌ها را وارد کنید"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Trend line"
+msgstr "خط روند"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Values to show"
+msgstr "مقادیر برای نمایش"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack values to show"
+msgstr "مقادیر پشته برای نمایش"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack value format"
+msgstr "فرمت مقدارِ استک"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Percentages"
+msgstr "درصدها"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show lines and tick marks"
+msgstr "نمایش خطوط و تیک‌مارک‌ها"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Rotate 45°"
+msgstr "چرخش 45°"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Rotate 90°"
+msgstr "چرخش 90°"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Unpin from zero"
+msgstr "برداشتن پین از صفر"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Auto y-axis range"
+msgstr "بازهٔ خودکار محور y"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Split y-axis when necessary"
+msgstr "محور y را وقتی لازم است جدا کنید"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Number of tick marks"
+msgstr "تعداد تیک‌مارک‌ها"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Hide overlapping labels"
+msgstr "پنهان کردن برچسب‌های هم‌پوشان"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Whiskers extend to"
+msgstr "سبیل‌ها تا اینجا امتداد دارند"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "1.5 × interquartile range"
+msgstr "1.5 × دامنهٔ بین‌چارکی"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Min/Max"
+msgstr "Min/Max"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show points"
+msgstr "نمایش نقاط"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Outliers only"
+msgstr "فقط پرت‌ها"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "All points"
+msgstr "همهٔ نقاط"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show mean"
+msgstr "نمایش میانگین"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Values to display"
+msgstr "مقادیر برای نمایش"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Median only"
+msgstr "فقط میانه"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Display type"
+msgstr "نوع نمایش"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line shape"
+msgstr "شکل خط"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line style"
+msgstr "سبک خط"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line size"
+msgstr "اندازهٔ خط"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show dots on lines"
+msgstr "نمایش نقطه‌ها روی خط‌ها"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Replace missing values with"
+msgstr "جایگزینی مقادیرِ ناموجود با"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Zero"
+msgstr "صفر"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Nothing"
+msgstr "هیچ‌چیز"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Linear Interpolated"
+msgstr "درون‌یابی خطی"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Y-axis position"
+msgstr "موقعیت محور Y"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show trend line for this series"
+msgstr "نمایش خط روند برای این سری"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show values for this series"
+msgstr "نمایش مقادیر برای این سری"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "Which fields do you want to use for the X and Y axes?"
+msgstr "می‌خواهید برای محورهای X و Y از کدام فیلدها استفاده کنید؟"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "No breakouts are enabled"
+msgstr "هیچ تقسیم‌بندی فعال نشده است"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "It is not possible to use the Log scale for a stacked percentage chart"
+msgstr "امکان استفاده از مقیاس لگاریتمی برای نمودار توزیع درصدی وجود ندارد"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+#, javascript-format
+msgid "This chart type doesn't support more than {0} series of data."
+msgstr "این نوع نمودار بیشتر از {0} سری داده را پشتیبانی نمی‌کند."
+
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
+msgid "Hide this card if there are no results"
+msgstr "اگر نتیجه‌ای نبود این کارت را پنهان کن"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#, javascript-format
+msgid "compared to {0}"
+msgstr "در مقایسه با {0}"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+msgid "compared to previous value"
+msgstr "در مقایسه با مقدار قبلی"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous minute"
+msgstr "دقیقهٔ قبل"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous hour"
+msgstr "ساعت قبل"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+msgid "Previous day"
+msgstr "روز قبل"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous quarter"
+msgstr "سه‌ماههٔ قبل"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous year"
+msgstr "سال قبل"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Data includes missing dimension values."
+msgstr "داده شامل مقدارهای بُعدِ از‌دست‌رفته است."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "We encountered an invalid date: \"{0}\""
+msgstr "با یک تاریخ نامعتبر مواجه شدیم: \"{0}\""
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the {1}-axis, the values will be summed."
+msgstr "\"{0}\" یک فیلد غیرتجمیعی است: اگر در یک نقطه در محور {1} بیش از یک مقدار داشته باشد، مقادیر جمع می‌شوند."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "\"{0}\" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed."
+msgstr "\"{0}\" یک فیلد بدون تجمیع است: اگر بیش از یک ردیف با مقدار یکسان داشته باشد، مقدارهای معیارشان با هم جمع می‌شوند."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "{0} are unaggregated fields: if there is more than one row with the same values, their measure values will be summed."
+msgstr "{0} فیلدِ بدون تجمیع هستند: اگر بیش از یک ردیف با همان مقادیر وجود داشته باشد، مقادیر معیار آن‌ها با هم جمع می‌شود."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "The query for this chart was run in {0} rather than {1} due to database or driver constraints."
+msgstr "کوئری این نمودار به‌دلیل محدودیت‌های دیتابیس یا درایور، در {0} اجرا شد نه در {1}."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "This chart contains queries run in multiple timezones: {0}"
+msgstr "این نمودار شامل کوئری‌هایی است که در چندین منطقهٔ زمانی اجرا شده‌اند: {0}"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Negative values in measure column have been omitted from pie chart."
+msgstr "مقدارهای منفی در ستون معیار از نمودار دایره‌ای حذف شده‌اند."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Negative values in measure column have been omitted from treemap chart."
+msgstr "مقادیر منفی در ستون معیار از نمودار treemap حذف شده‌اند."
+
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Timeseries"
+msgstr "سری زمانی"
+
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Histogram"
+msgstr "هیستوگرام"
+
+#: frontend/src/metabase/viz-core/shared/utils/data.ts
+#, javascript-format
+msgid "All values ({0})"
+msgstr "تمام مقادیر ({0})"
+
+#: frontend/src/metabase/viz-core/shared/utils/data.ts
+#, javascript-format
+msgid "Other ({0})"
+msgstr "دیگر ({0})"
 
 #: metabase/actions/actions.clj
 msgid "Unknown Action {0}. Valid Actions are: {1}"
@@ -35738,7 +35747,7 @@ msgstr "برای کارکردن یکپارچه‌سازی Slack باید site-ur
 
 #: metabase/channel/api/slack.clj
 msgid "Bug reporting is not enabled."
-msgstr ""
+msgstr "گزارش باگ فعال نیست."
 
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
@@ -36197,6 +36206,10 @@ msgstr "هیچ کاربری با آدرس ایمیل ''{0}'' پیدا نشد. "
 #: metabase/cmd/reset_password.clj
 msgid "Please check the spelling and try again."
 msgstr "لطفاً املا را بررسی کنید و دوباره تلاش کنید."
+
+#: metabase/cmd/reset_password.clj
+msgid "Cannot reset the password for the deactivated user ''{0}''. Please reactivate the account and try again."
+msgstr "نمی‌توان رمز عبورِ کاربر غیرفعال ''{0}'' را بازنشانی کرد. لطفاً حساب را دوباره فعال کنید و مجدداً تلاش کنید."
 
 #: metabase/cmd/reset_password.clj
 msgid "Resetting password for {0}..."
@@ -36847,6 +36860,26 @@ msgstr "شما مجوز حذف داده از این پایگاه داده را �
 msgid "Killed MySQL process id {0} due to timeout."
 msgstr "process id ‏MySQL ‏{0} به‌دلیل timeout کشته شد."
 
+#: metabase/driver/oracle.clj
+msgid "host"
+msgstr "هاست"
+
+#: metabase/driver/oracle.clj
+msgid "port"
+msgstr "پورت"
+
+#: metabase/driver/oracle.clj
+msgid "Oracle system ID (SID)"
+msgstr "شناسهٔ سیستم Oracle (SID)"
+
+#: metabase/driver/oracle.clj
+msgid "Oracle service name"
+msgstr "نام سرویس Oracle"
+
+#: metabase/driver/oracle.clj
+msgid "Invalid {0}: it must be a plain value, not a URL or an Oracle connect descriptor."
+msgstr "{0} نامعتبر است: باید یک مقدار ساده باشد، نه یک URL یا یک Oracle connect descriptor."
+
 #: metabase/driver/postgres.clj
 msgid "SSL Mode"
 msgstr "حالت SSL"
@@ -37105,7 +37138,7 @@ msgstr "خطا(ها) در حال به‌روزرسانی ردیف‌ها."
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled."
-msgstr ""
+msgstr "نمی‌توان برای پایگاه‌دادهٔ analytics-dev اتصال باز کرد مگر اینکه حالت analytics dev فعال باشد."
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Not a valid Database/Database ID/JDBC spec"
@@ -37113,7 +37146,7 @@ msgstr "پایگاه داده/شناسه پایگاه داده/JDBC مشخصات
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Cannot connect to an analytics-dev database unless analytics dev mode is enabled."
-msgstr ""
+msgstr "نمی‌توان به پایگاه‌دادهٔ analytics-dev وصل شد مگر اینکه حالت analytics dev فعال باشد."
 
 #: metabase/driver/sql_jdbc/execute.clj
 msgid "Too many queries are running. Please try again in a moment."
@@ -37464,6 +37497,18 @@ msgstr "{0} بر اساس {1} {2}"
 #: metabase/xrays/automagic_dashboards/names.clj
 msgid "{0} by {1}"
 msgstr "{0} بر اساس {1}"
+
+#: metabase/explorations/composite.clj
+msgid "Series"
+msgstr "سری"
+
+#: metabase/explorations/models/exploration_query_result.clj
+msgid "Cannot combine these results: a source result has no recorded data-access context."
+msgstr "نمی‌توان این نتایج را ترکیب کرد: یکی از نتایج منبع هیچ کانتکستِ دسترسی به دادهٔ ثبت‌شده‌ای ندارد."
+
+#: metabase/explorations/models/exploration_query_result.clj
+msgid "Cannot combine these results: they were computed under different data-access contexts."
+msgstr "نمی‌توان این نتایج را ترکیب کرد: تحت کانتکست‌های متفاوتِ دسترسی به داده محاسبه شده‌اند."
 
 #: metabase/explorations/query_plan/variants.clj
 #: metabase_enterprise/transforms_inspector/lens/column_comparison.clj
@@ -39804,6 +39849,10 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "مدل گوگل نامعتبر {0} — انتظار می‌رفت یک ID دارای publisher مثل \"google/gemini-3.5-flash\" باشد"
 
 #: metabase/metabot/self/google.clj
+msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
+msgstr "مدل Google پشتیبانی‌نشده {0}. فقط مدل‌های google/* و anthropic/* پشتیبانی می‌شوند."
+
+#: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
 msgstr "مدل گوگل نامعتبر {0} — publisher و model ID فقط می‌توانند شامل حروف، ارقام، و کاراکترهای \".\", \"_\", \"-\" و \"@\" باشند"
 
@@ -40160,6 +40209,10 @@ msgid "Invalid Azure model {0}. Expected format: <connection>/<family>/<deployme
 msgstr "مدل Azure نامعتبر {0}. فرمت مورد انتظار: <connection>/<family>/<deployment-name> که <family> یکی از این‌هاست: {1}"
 
 #: metabase/metabot/settings.clj
+msgid "Invalid Google model {0}. Expected format: <connection>/<publisher>/<model> where <publisher> is one of: {1}"
+msgstr "مدل Google نامعتبر {0}. فرمت مورد انتظار: <connection>/<publisher>/<model> که در آن <publisher> یکی از این‌هاست: {1}"
+
+#: metabase/metabot/settings.clj
 msgid "Unsupported model {0} for Metabase managed AI. Supported models: {1}"
 msgstr "مدل {0} برای هوش مصنوعی مدیریت‌شدهٔ Metabase پشتیبانی نمی‌شود. مدل‌های پشتیبانی‌شده: {1}"
 
@@ -40277,12 +40330,20 @@ msgid "A `document_id` is required when saving to a document."
 msgstr "برای ذخیره در یک سند، `document_id` لازم است."
 
 #: metabase/metabot/tools/sql/common.clj
+msgid "You do not have permission to write SQL queries against this database. Native query permissions are required."
+msgstr "شما اجازهٔ نوشتن کوئری‌های SQL روی این پایگاه‌داده را ندارید. مجوز کوئری‌های نیتیو لازم است."
+
+#: metabase/metabot/tools/sql/common.clj
 msgid "Unsupported query format"
 msgstr "فرمت کوئری پشتیبانی نمی‌شود"
 
 #: metabase/metabot/tools/sql/create.clj
 msgid "Database {0} not found"
 msgstr "پایگاه داده {0} پیدا نشد"
+
+#: metabase/metabot/tools/sql/create.clj
+msgid "You do not have access to this database."
+msgstr "شما به این پایگاه‌داده دسترسی ندارید."
 
 #: metabase/metabot/tools/sql/edit.clj
 msgid "Each edit must include old_string and new_string"
@@ -40684,6 +40745,10 @@ msgstr "گروهی با آن نام از قبل وجود دارد."
 msgid "You cannot edit or delete the ''{0}'' permissions group!"
 msgstr "نمی‌توانید گروه مجوزهای ''{0}'' را ویرایش یا حذف کنید!"
 
+#: metabase/permissions/models/permissions_group.clj
+msgid "Tenant groups are not editable while the Tenants feature is disabled."
+msgstr "وقتی قابلیت Tenants غیرفعال است، گروه‌های مستأجر قابل ویرایش نیستند."
+
 #: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "نمی‌توانید آخرین عضو گروه ''Admin'' را حذف کنید!"
@@ -40737,6 +40802,10 @@ msgstr "عملکرد مجوزهای {0} فقط در صورتی فعال می‌�
 #: metabase/permissions_rest/api.clj metabase_enterprise/sandbox/api/routes.clj
 msgid "Sandboxes"
 msgstr "Sandboxes"
+
+#: metabase/permissions_rest/api.clj
+msgid "Tenant groups cannot be created while the Tenants feature is disabled."
+msgstr "وقتی قابلیت Tenants غیرفعال است، نمی‌توان گروه‌های مستأجر ایجاد کرد."
 
 #: metabase/permissions_rest/api.clj
 msgid "Admin cannot be a group manager."
@@ -41046,6 +41115,10 @@ msgstr "parameterized_object_type نامعتبر"
 #: metabase/queries/models/query_execution.clj
 msgid "Invalid query execution context: {0}"
 msgstr "کانتکست اجرای کوئری نامعتبر: {0}"
+
+#: metabase/queries/models/stored_result_use.clj
+msgid "This card has no cached results."
+msgstr "این کارت هیچ نتیجهٔ کش‌شده‌ای ندارد."
 
 #: metabase/queries_rest/api/card.clj
 msgid "value must be a sequence of positive integers"
@@ -42067,6 +42140,10 @@ msgstr "پورت سرور، معمولاً 389 یا اگر از SSL استفاد
 #: metabase/sso/settings.clj
 msgid "Use SSL, TLS or plain text."
 msgstr "از SSL، TLS یا متن ساده استفاده کنید."
+
+#: metabase/sso/settings.clj
+msgid "Path to a JKS trust store of CA certificates used to validate the LDAP server''s TLS certificate. Leave blank to use the JVM default trust store."
+msgstr "مسیر یک trust store از نوع JKS شامل گواهی‌های CA که برای اعتبارسنجی گواهی TLS سرور LDAP استفاده می‌شود. برای استفاده از trust store پیش‌فرض JVM خالی بگذارید."
 
 #: metabase/sso/settings.clj
 msgid "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."
@@ -43394,7 +43471,7 @@ msgstr "تبدیل‌ها Python"
 
 #: metabase_enterprise/audit_app/analytics_dev.clj
 msgid "Analytics dev mode is not enabled."
-msgstr ""
+msgstr "حالت analytics dev فعال نیست."
 
 #: metabase_enterprise/audit_app/interface.clj
 msgid "Unable to run internal query function: cannot resolve {0}"
@@ -44293,6 +44370,10 @@ msgstr "آیا باید ویژگی‌های کاربر را هنگام ورود 
 #: metabase_enterprise/sso/settings.clj
 msgid "Comma-separated list of user attributes to skip syncing for LDAP users."
 msgstr "لیست جدا شده با کاما از ویژگی‌های کاربر که برای کاربران LDAP همگام‌سازی انها نادیده گرفته میشود."
+
+#: metabase_enterprise/sso/settings.clj
+msgid "Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none."
+msgstr "فهرست جداشده با کاما از ویژگی‌های کاربر برای sync کردن کاربران LDAP. فقط همین ویژگی‌ها sync می‌شوند؛ برای sync نکردن هیچ‌کدام خالی بگذارید."
 
 #: metabase_enterprise/sso/settings.clj
 msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively."
