@@ -12,11 +12,10 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
 import type { MetricUrls } from "metabase/common/metrics/types";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromOpts } from "metabase/metadata-store";
 import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate } from "metabase/router";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -43,10 +42,10 @@ export function NewMetricPage({
   triggeredFrom = "main_app",
 }: NewMetricPageProps) {
   const location = useLocation();
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromOpts();
   const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
-    Lib.toJsQuery(getInitialQuery(metadata)),
+    Lib.toJsQuery(getInitialQuery(buildQuestion)),
   );
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
@@ -58,8 +57,8 @@ export function NewMetricPage({
   const navigate = useNavigate();
 
   const query = useMemo(
-    () => getQuery(datasetQuery, metadata),
-    [datasetQuery, metadata],
+    () => getQuery(datasetQuery, buildQuestion),
+    [datasetQuery, buildQuestion],
   );
 
   const resultMetadata = useMemo(() => {
