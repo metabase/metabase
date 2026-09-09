@@ -32,6 +32,7 @@ import {
   Portal,
   Progress,
   Stack,
+  rem,
 } from "metabase/ui";
 import { capitalize, inflect } from "metabase/utils/formatting";
 
@@ -47,8 +48,8 @@ const TOAST_MESSAGE_MAX_LINES = 4;
 // on `contentAlignment` so the controls optically align with the message.
 // Tune these values visually.
 const CONTROLS_VERTICAL_OFFSET: Record<"center" | "flex-start", string> = {
-  center: "2px",
-  "flex-start": "-8px",
+  center: rem(2),
+  "flex-start": rem(-3),
 };
 
 function defaultMessage({
@@ -202,7 +203,7 @@ function UndoToast({
             <Button
               variant="transparent"
               color="text-secondary-inverse"
-              size="compact"
+              size="compact-md"
               onClick={onUndo}
             >
               {undo.actionLabel ?? t`Undo`}
@@ -212,7 +213,7 @@ function UndoToast({
             <Button
               variant="transparent"
               color="text-secondary-inverse"
-              size="compact"
+              size="compact-md"
               onClick={() => {
                 undo.extraAction?.action();
                 if (undo.canDismiss) {
