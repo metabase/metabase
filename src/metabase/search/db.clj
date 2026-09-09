@@ -17,6 +17,23 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(def sql-states
+  "SQLSTATE codes returned by supported application databases."
+  ;; `undefined_table` is PostgreSQL-specific; the rest are X/Open. H2 uses three missing-table states, corresponding
+  ;; to `TABLE_OR_VIEW_NOT_FOUND_1`, `..._WITH_CANDIDATES_2`, and `..._DATABASE_EMPTY_1` in `org.h2.api.ErrorCode`.
+  {:undefined-table                         "42P01"
+   :table-or-view-not-found                 "42S02"
+   :table-or-view-not-found-with-candidates "42S03"
+   :table-or-view-not-found-database-empty  "42S04"
+   :unique-violation                        "23505"
+   :integrity-constraint-violation          "23000"})
+
+(def error-codes
+  "Vendor-specific error codes returned by supported application databases."
+  ;; MySQL and MariaDB use one SQLSTATE for every integrity-constraint failure, so `ER_DUP_ENTRY` identifies duplicate
+  ;; keys.
+  {:mysql/duplicate-entry 1062})
+
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
   matching `where-clause`, or every row when it is nil.
@@ -105,12 +122,14 @@
 (mu/defn drop-search-index-table-if-exists!
   "Drop the search index table named `table-name`, if it exists."
   [table-name :- [:or :keyword :string]]
-  (t2/query (sql.helpers/drop-table :if-exists table-name)))
+  (t2/query {:drop-table [:if-exists table-name]}))
 
+;; `IF EXISTS` cannot reliably report whether it dropped a table: PostgreSQL emits only a JDBC warning, which Toucan
+;; does not expose, and H2 emits nothing. Let an absent table throw so callers can detect races.
 (mu/defn drop-search-index-table!
-  "Drop the search index table named `table-name`."
+  "Drop the search index table named `table-name`, throwing if it is already gone."
   [table-name :- [:or :keyword :string]]
-  (t2/query (sql.helpers/drop-table table-name)))
+  (t2/query {:drop-table table-name}))
 
 (mu/defn create-search-index-table!
   "Create the search index table named `table-name`: the columns of `metabase.search.appdb.index-schema/base-schema`
@@ -253,19 +272,24 @@
   [version :- :string]
   (t2/delete! :model/SearchIndexMetadata :version version))
 
-(mu/defn delete-index-metadata-by-name-on-conn!
-  "Delete the SearchIndexMetadata rows named `index-name`, on `conn`."
+(mu/defn delete-index-metadata-by-name!
+  "Delete the SearchIndexMetadata rows named `index-name` using `conn`."
   [conn       :- (ms/InstanceOfClass java.sql.Connection)
    index-name :- :string]
   (t2/delete! :conn conn :model/SearchIndexMetadata :index_name index-name))
 
-(mu/defn delete-index-metadata!
-  "Delete the SearchIndexMetadata row of `engine`, `version`, `lang-code`, and `index-name`."
+(mu/defn delete-pending-index-metadata!
+  "Delete the pending SearchIndexMetadata row of `engine`, `version`, `lang-code`, and `index-name`."
   [engine     :- :keyword
    version    :- :string
    lang-code  :- :string
    index-name :- :string]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :index_name index-name))
+  (t2/delete! :model/SearchIndexMetadata
+              :engine engine
+              :version version
+              :lang_code lang-code
+              :index_name index-name
+              :status :pending))
 
 (mu/defn index-metadata
   "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and
