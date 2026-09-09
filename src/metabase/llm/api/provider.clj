@@ -52,6 +52,9 @@
    [:models [:sequential [:map [:id :string] [:display_name :string]]]]
    ;; alternative credential groups: the connection is complete when one group is filled in full
    [:required_any [:sequential [:sequential :string]]]
+   ;; paired credential groups: each must be filled in full or left empty in full
+   ;; per-field dependencies: a field may be filled only when the fields it names are too
+   [:requires [:map-of :string [:sequential :string]]]
    [:fields [:sequential field-response-schema]]])
 
 (def ^:private connection-response-schema
@@ -107,7 +110,7 @@
     show-when   (assoc :show_when {:field (name (:field show-when)) :value (:value show-when)})))
 
 (defn- provider-type-response
-  [{:keys [type label managed? singleton? default-model required-any fields]}]
+  [{:keys [type label managed? singleton? default-model required-any requires fields]}]
   {:type          type
    :label         (str label)
    :managed       (boolean managed?)
@@ -116,6 +119,7 @@
    :default_model default-model
    :models        (mapv #(select-keys % [:id :display_name]) (llm.provider/fixed-models type))
    :required_any  (mapv #(mapv name %) required-any)
+   :requires      (into {} (map (fn [[k deps]] [(name k) (mapv name deps)])) requires)
    :fields        (mapv field-response fields)})
 
 (defn- connection-response
@@ -477,6 +481,11 @@
                      (not-empty name)   (assoc :name name))
         ;; what the connection will actually run on: the stored config with the environment layered back over it
         effective  (merge (:config merged) env-config)]
+    ;; Before validation probes the new URL with the effective credentials, require proof that the caller holds every
+    ;; secret that would travel there. Omitted and masked secrets were merged from storage; env-owned ones cannot be
+    ;; re-supplied through this API at all.
+    (llm.provider/assert-base-url-change-authorized! (:type merged) (:config live) effective config
+                                                     (:env-fields live))
     (llm.provider/validate-config! (:type merged) effective)
     (let [{:keys [learned-config] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))

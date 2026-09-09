@@ -445,7 +445,6 @@ async function fetchAndRegisterCustomVizPlugin(
       {
         identifier,
         plugin,
-        getUiName: () => plugin.display_name,
         iconUrl: resolvedIconUrl,
         isDev: Boolean(plugin.dev_bundle_url),
       },

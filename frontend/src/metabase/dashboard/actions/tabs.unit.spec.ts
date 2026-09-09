@@ -1,12 +1,12 @@
 import _ from "underscore";
 
 import { getMainStore } from "__support__/entities-store";
-import type { StoreDashcard } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import type { StoreDashcard } from "metabase/redux/store";
 import type {
   DashCardDataMap,
   Parameter,

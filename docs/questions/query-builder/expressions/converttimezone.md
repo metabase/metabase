@@ -231,7 +231,7 @@ convertTimezone([Client Time], "Canada/Eastern")
 
 ### Python
 
-If the [timestamp sample data](#creating-custom-report-dates) is stored in a `pandas` dataframe, you could convert the **Source Time** column to a `timestamp` object with time zone first(basically making a `timestamp without time zone` into a `timestamp with time zone`), then use `tz_convert` to change the time zone to EST:
+If the [timestamp sample data](#creating-custom-report-dates) is stored in a `pandas` dataframe, you could convert the **Source Time** column to a `timestamp` object with time zone first (basically making a `timestamp without time zone` into a `timestamp with time zone`), then use `tz_convert` to change the time zone to EST:
 
 ```
 df['Source Time (UTC)'] = pd.to_timestamp(df['Source Time'], utc=True)

@@ -12,8 +12,8 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.core :as appdb]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
-   [metabase.search.in-place.legacy :as in-place.legacy]
    [metabase.search.in-place.scoring :as in-place.scoring]
    [metabase.search.settings :as search.settings]
    [metabase.test :as mt])
@@ -131,7 +131,7 @@
                                         (fn [result _]
                                           {:result (dissoc result :score)
                                            :score  (:score result)})
-                                        in-place.legacy/results
+                                        search.db/in-place-search-reducible
                                         (fn [_]
                                           (reset! legacy-called? true)
                                           (reify clojure.lang.IReduceInit

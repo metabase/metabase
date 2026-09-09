@@ -4,7 +4,6 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -19,30 +18,17 @@
 (defn mark-stale!
   "Mark entities of `entity-type` with ids in `entity-ids` as stale for dependency recalculation.
   Creates entries if they don't exist, or sets stale=true if they do.
-  Resets retry state so previously-failed entities get a fresh chance.
-  Uses [[app-db/update-or-insert!]] for cross-database atomicity."
+  Resets retry state so previously-failed entities get a fresh chance."
   [entity-type entity-ids]
   (doseq [id entity-ids]
-    (app-db/update-or-insert!
-     :model/DependencyStatus
-     {:entity_type entity-type :entity_id id}
-     (fn [existing]
-       (if existing
-         {:stale true :fail_count 0 :next_retry_at nil :terminal false}
-         {:stale true :dependency_analysis_version 0})))))
+    (dependencies.db/mark-dependency-status-stale! entity-type id)))
 
 (defn upsert-status!
   "Upsert a dependency_status entry, setting stale=false, version to current,
-  and clearing any failure state. Uses [[app-db/update-or-insert!]] for cross-database atomicity."
+  and clearing any failure state."
   [entity-type entity-id]
-  (app-db/update-or-insert!
-   :model/DependencyStatus
-   {:entity_type entity-type :entity_id entity-id}
-   (fn [_existing]
-     {:dependency_analysis_version models.dependency/current-dependency-analysis-version
-      :stale false
-      :fail_count 0
-      :next_retry_at nil})))
+  (dependencies.db/upsert-dependency-status!
+   entity-type entity-id models.dependency/current-dependency-analysis-version))
 
 (defmulti hydrate-for-deps
   "Hydrate a batch of instances with data needed for dependency calculation.
@@ -87,12 +73,10 @@
   Increments fail_count and sets next_retry_at based on exponential backoff.
   If max retries exceeded, marks the entity as terminal.
   Creates the entry if it doesn't exist, since entities with no row yet are exactly the ones
-  [[instances-for-dependency-calculation]] picks up first.
-  Uses [[app-db/update-or-insert!]] for cross-database atomicity."
+  [[instances-for-dependency-calculation]] picks up first."
   [entity-type entity-id max-retries delay-minutes]
-  (app-db/update-or-insert!
-   :model/DependencyStatus
-   {:entity_type entity-type :entity_id entity-id}
+  (dependencies.db/record-dependency-status-failure!
+   entity-type entity-id
    (fn [existing]
      ;; An inserted row takes the column defaults for `stale` (false) and `dependency_analysis_version` (0). 0 is
      ;; below `current-dependency-analysis-version`, which is what keeps the entity eligible for the retry once

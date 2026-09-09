@@ -150,7 +150,7 @@ Only counts rows where the condition is true.
 
 Syntax: `CountIf(condition)`
 
-Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal were greater than 100.
+Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal was greater than 100.
 
 ### Distinct
 

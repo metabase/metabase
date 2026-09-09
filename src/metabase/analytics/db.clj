@@ -4,72 +4,75 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn first-user-date-joined
+(mu/defn first-user-date-joined
   "The earliest join date among all Users, or nil."
   []
   (t2/select-one-fn :min [:model/User [:%min.date_joined :min]]))
 
-(defn sample-database-exists?
+(mu/defn sample-database-exists?
   "Whether a sample Database exists."
   []
   (t2/exists? :model/Database, :is_sample true))
 
-(defn sample-database-id
+(mu/defn sample-database-id
   "The id of the sample Database, or nil."
   []
   (t2/select-one-pk :model/Database :is_sample true))
 
-(defn personal-user-stats-columns
+(mu/defn personal-user-stats-columns
   "The active, superuser, last login, and SSO source of every personal User."
   []
   (t2/select [:model/User :is_active :is_superuser :last_login :sso_source] :type :personal))
 
-(defn document-archived-flags
+(mu/defn document-archived-flags
   "The archived flag of every Document."
   []
   (t2/select [:model/Document :archived]))
 
-(defn collection-by-type
+(mu/defn collection-by-type
   "The id and location of a Collection of `collection-type`, or nil."
-  [collection-type]
+  [collection-type :- :string]
   (t2/select-one [:model/Collection :id :location] :type collection-type))
 
-(defn descendant-collection-ids
+(mu/defn descendant-collection-ids
   "The ids of the Collections whose location starts with `location-prefix`, or nil."
-  [location-prefix]
+  [location-prefix :- :string]
   (t2/select-pks-set :model/Collection :location [:like (str location-prefix "%")]))
 
-(defn published-table-count-in-collections
+(mu/defn published-table-count-in-collections
   "The number of published Tables in the Collections with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/count :model/Table {:where [:and
                                   [:= :is_published true]
                                   [:in :collection_id collection-ids]]}))
 
-(defn unarchived-metric-count-in-collections
+(mu/defn unarchived-metric-count-in-collections
   "The number of unarchived metric Cards in the Collections with `collection-ids`."
-  [collection-ids]
+  [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/count :model/Card {:where [:and
                                  [:= :type "metric"]
                                  [:= :archived false]
                                  [:in :collection_id collection-ids]]}))
 
-(defn permissions-group-count
+(mu/defn permissions-group-count
   "The number of PermissionsGroups."
   []
   (t2/count :model/PermissionsGroup))
 
-(defn dashboard-stats-columns
+(mu/defn dashboard-stats-columns
   "The creator, public uuid, parameters, and embedding columns of the non-internal Dashboards."
   []
   (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
              {:where (mi/exclude-internal-content-hsql :model/Dashboard)}))
 
-(defn dashcards-of-dashboards
+(mu/defn dashcards-of-dashboards
   "The DashboardCards of the non-internal Dashboards."
   []
   (t2/query {:select :dc.*
@@ -84,33 +87,36 @@
                       :where    [(if alerts? :not= :=) :pulse.alert_condition nil]}
                left-join? (assoc :left-join [:pulse [:= :pulse.id :pulse_id]]))))
 
-(defn pulse-channel-frequencies-by-column
+(mu/defn pulse-channel-frequencies-by-column
   "The distinct `column` values (as `:k`) and their `:count` among the PulseChannels of alerts when `alerts?`, or of
   pulses otherwise."
-  [column alerts?]
+  [column  :- :keyword
+   alerts? :- :boolean]
   (notification-frequencies-by-column* :model/PulseChannel column alerts? true))
 
-(defn pulse-frequencies-by-column
+(mu/defn pulse-frequencies-by-column
   "The distinct `column` values (as `:k`) and their `:count` among the Pulses of alerts when `alerts?`, or of pulses
   otherwise."
-  [column alerts?]
+  [column  :- :keyword
+   alerts? :- :boolean]
   (notification-frequencies-by-column* :model/Pulse column alerts? false))
 
-(defn pulse-card-frequencies-by-column
+(mu/defn pulse-card-frequencies-by-column
   "The distinct `column` values (as `:k`) and their `:count` among the PulseCards of alerts when `alerts?`, or of
   pulses otherwise."
-  [column alerts?]
+  [column  :- :keyword
+   alerts? :- :boolean]
   (notification-frequencies-by-column* :model/PulseCard column alerts? true))
 
-(defn pulse-count
+(mu/defn pulse-count
   "The number of Pulses that are not alerts."
   []
   (t2/count :model/Pulse :alert_condition nil))
 
-(defn notification-xls-or-csv-card-count
+(mu/defn notification-xls-or-csv-card-count
   "The `:count` of Notifications with at least one PulseCard with `:include_xls` or `:include_csv`, of alerts when
   `alerts?`, or of pulses otherwise."
-  [alerts?]
+  [alerts? :- :boolean]
   (t2/query-one {:select    [[[::h2x/distinct-count :pulse.id] :count]]
                  :from      [:pulse]
                  :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
@@ -120,38 +126,38 @@
                               [:= :pulse_card.include_xls true]]
                              [(if alerts? :not= :=) :alert_condition nil]]}))
 
-(defn alert-count
+(mu/defn alert-count
   "The number of Pulses that are alerts."
   []
   (t2/count :model/Pulse :alert_condition [:not= nil]))
 
-(defn first-time-only-alert-count
+(mu/defn first-time-only-alert-count
   "The number of alert Pulses that fire only once."
   []
   (t2/count :model/Pulse :alert_condition [:not= nil], :alert_first_only true))
 
-(defn above-goal-alert-count
+(mu/defn above-goal-alert-count
   "The number of alert Pulses that fire above their goal."
   []
   (t2/count :model/Pulse :alert_condition [:not= nil], :alert_above_goal true))
 
-(defn collection-count
+(mu/defn collection-count
   "The number of non-internal Collections."
   []
   (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)}))
 
-(defn card-collection-ids
+(mu/defn card-collection-ids
   "The Collection id and schema of the non-internal Cards."
   []
   (t2/select [:model/Card :collection_id :card_schema] {:where [:and (mi/exclude-internal-content-hsql :model/Card)]}))
 
-(defn database-stats-columns
+(mu/defn database-stats-columns
   "The sync, engine, and DBMS version of the non-internal Databases."
   []
   (t2/select [:model/Database :is_full_sync :engine :dbms_version]
              {:where (mi/exclude-internal-content-hsql :model/Database)}))
 
-(defn table-database-and-schema
+(mu/defn table-database-and-schema
   "The Database id and schema of the Tables of the non-internal Databases."
   []
   (t2/query {:select [:t.db_id :t.schema]
@@ -159,7 +165,7 @@
              :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
              :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
 
-(defn field-table-ids
+(mu/defn field-table-ids
   "The Table id of the Fields of the non-internal Databases."
   []
   (t2/query {:select [:f.table_id]
@@ -168,12 +174,12 @@
                     [(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
              :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
 
-(defn segment-count
+(mu/defn segment-count
   "The number of Segments."
   []
   (t2/count :model/Segment))
 
-(defn unarchived-metric-card-count
+(mu/defn unarchived-metric-card-count
   "The number of unarchived metric Cards."
   []
   (t2/count :model/Card :type :metric :archived false))
@@ -230,149 +236,151 @@
       ")"
       "SELECT q1.*, q2.* FROM query_stats_1 q1, query_stats_2 q2;"])))
 
-(defn execution-metrics
+(mu/defn execution-metrics
   "The execution statistics over the last 30 days of QueryExecutions."
   []
   (first (t2/query (execution-metrics-sql))))
 
-(defn query-cache-stats
+(mu/defn query-cache-stats
   "The average result `:length` and `:count` of the QueryCache entries."
   []
   (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]]))
 
-(defn user-count-joined-before
+(mu/defn user-count-joined-before
   "The number (up to `limit`) of non-internal Users who joined at or before `joined-before`."
-  [joined-before limit]
+  [joined-before :- ms/TemporalInstant
+   limit         :- ms/PositiveInt]
   (t2/count :model/User {:where [:and
                                  [:<= :date_joined joined-before]
                                  (mi/exclude-internal-content-hsql :model/User)]
                          :limit limit}))
 
-(defn query-execution-ids-excluding-database
+(mu/defn query-execution-ids-excluding-database
   "Up to `limit` ids of QueryExecutions not run against the Database with `database-id`."
-  [database-id limit]
+  [database-id :- [:maybe ::lib.schema.id/database]
+   limit       :- ms/PositiveInt]
   (t2/select-fn-set :id :model/QueryExecution
                     {:where [:or
                              [:not= :database_id database-id]
                              [:= :database_id nil]]
                      :limit limit}))
 
-(defn transform-count
+(mu/defn transform-count
   "The number of Transforms."
   []
   (t2/count :model/Transform))
 
-(defn transform-run-count-since
+(mu/defn transform-run-count-since
   "The number of TransformRuns started at or after `since`."
-  [since]
+  [since :- ms/TemporalInstant]
   (t2/count :model/TransformRun :start_time [:>= since]))
 
-(defn unarchived-model-count
+(mu/defn unarchived-model-count
   "The number of unarchived model Cards."
   []
   (t2/count :model/Card :type :model :archived false))
 
-(defn new-embedded-dashboard-count-since
+(mu/defn new-embedded-dashboard-count-since
   "The number of unarchived Dashboards with embedding enabled created at or after `since`."
-  [since]
+  [since :- ms/TemporalInstant]
   (t2/count :model/Dashboard :enable_embedding true :archived false :created_at [:>= since]))
 
-(defn new-active-user-count-since
+(mu/defn new-active-user-count-since
   "The number of active Users who joined at or after `since`."
-  [since]
+  [since :- ms/TemporalInstant]
   (t2/count :model/User :is_active true :date_joined [:>= since]))
 
-(defn unarchived-pivot-table-count
+(mu/defn unarchived-pivot-table-count
   "The number of unarchived pivot table Cards."
   []
   (t2/count :model/Card :display :pivot :archived false))
 
-(defn query-execution-count-since
+(mu/defn query-execution-count-since
   "The number of QueryExecutions started at or after `since`."
-  [since]
+  [since :- ms/TemporalInstant]
   (t2/count :model/QueryExecution :started_at [:>= since]))
 
-(defn new-scim-user-count-since
+(mu/defn new-scim-user-count-since
   "The number of active SCIM-provisioned Users who joined at or after `since`."
-  [since]
+  [since :- ms/TemporalInstant]
   (t2/count :model/User :sso_source :scim :is_active true :date_joined [:>= since]))
 
-(defn database-engines-among
+(mu/defn database-engines-among
   "The set of engines of the Databases whose engine is one of `engine-names`."
-  [engine-names]
+  [engine-names :- [:sequential :string]]
   (t2/select-fn-set :engine :model/Database {:where [:in :engine engine-names]}))
 
-(defn embedded-dashboard-exists?
+(mu/defn embedded-dashboard-exists?
   "Whether a Dashboard with embedding enabled exists."
   []
   (t2/exists? :model/Dashboard :enable_embedding true))
 
-(defn embedded-card-exists?
+(mu/defn embedded-card-exists?
   "Whether a Card with embedding enabled exists."
   []
   (t2/exists? :model/Card :enable_embedding true))
 
-(defn public-dashboard-exists?
+(mu/defn public-dashboard-exists?
   "Whether a publicly shared Dashboard exists."
   []
   (t2/exists? :model/Dashboard :public_uuid [:not= nil]))
 
-(defn public-card-exists?
+(mu/defn public-card-exists?
   "Whether a publicly shared Card exists."
   []
   (t2/exists? :model/Card :public_uuid [:not= nil]))
 
-(defn custom-viz-plugin-exists?
+(mu/defn custom-viz-plugin-exists?
   "Whether a CustomVizPlugin exists."
   []
   (t2/exists? :model/CustomVizPlugin))
 
-(defn uploads-database-exists?
+(mu/defn uploads-database-exists?
   "Whether a Database with uploads enabled exists."
   []
   (t2/exists? :model/Database :uploads_enabled true))
 
-(defn official-collection-exists?
+(mu/defn official-collection-exists?
   "Whether an official Collection exists."
   []
   (t2/exists? :model/Collection :authority_level "official"))
 
-(defn cache-config-exists?
+(mu/defn cache-config-exists?
   "Whether any CacheConfig exists."
   []
   (t2/exists? :model/CacheConfig))
 
-(defn preemptive-cache-config-exists?
+(mu/defn preemptive-cache-config-exists?
   "Whether a CacheConfig that refreshes automatically exists."
   []
   (t2/exists? :model/CacheConfig :refresh_automatically true))
 
-(defn database-router-exists?
+(mu/defn database-router-exists?
   "Whether a DatabaseRouter exists."
   []
   (t2/exists? :model/DatabaseRouter))
 
-(defn moderation-review-exists?
+(mu/defn moderation-review-exists?
   "Whether a ModerationReview exists."
   []
   (t2/exists? :model/ModerationReview))
 
-(defn filtered-pulse-exists?
+(mu/defn filtered-pulse-exists?
   "Whether a Pulse with parameters exists."
   []
   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]}))
 
-(defn upload-table-exists?
+(mu/defn upload-table-exists?
   "Whether an uploaded Table exists."
   []
   (t2/exists? :model/Table :is_upload true))
 
-(defn snippet-collection-exists?
+(mu/defn snippet-collection-exists?
   "Whether a snippet Collection exists."
   []
   (t2/exists? :model/Collection :namespace "snippets"))
 
-(defn starburst-database-details
+(mu/defn starburst-database-details
   "The connection details of the Starburst Databases."
   []
   (t2/select-fn-set :details :model/Database :engine "starburst"))

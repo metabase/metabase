@@ -258,11 +258,7 @@ const elements = [
     pattern: "frontend/src/types/**",
   }),
   createElement({ type: "shared", name: "urls" }),
-  createElement({
-    type: "shared",
-    name: "visualizations",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "visualizations" }),
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
@@ -387,6 +383,7 @@ const elements = [
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
     "frontend/src/metabase/static-viz/index.tsx",
+    "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>
     createElement({
       type: "app",
