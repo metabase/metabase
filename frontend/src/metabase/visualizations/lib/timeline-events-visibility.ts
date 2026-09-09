@@ -16,7 +16,6 @@ import type {
 interface ResolveOptions {
   timelines: Timeline[];
   visibility?: TimelineEventsVisibility;
-  enabled?: boolean;
 }
 
 interface VisibilitySets {
@@ -47,6 +46,10 @@ export const isSameTimelineEventsVisibility = (
   b: TimelineEventsVisibility | undefined,
 ) => _.isEqual(fromSets(toSets(a)), fromSets(toSets(b)));
 
+export const isTimelineEventsEnabled = (
+  settings: VisualizationSettings | undefined,
+) => settings?.["timeline_events.enabled"] !== false;
+
 export const getRecordedTimelineEventsVisibility = (
   settings: VisualizationSettings | undefined,
 ): TimelineEventsVisibility | undefined =>
@@ -61,11 +64,7 @@ const sortByTimestamp = (events: TimelineEvent[]) =>
 export const resolveVisibleTimelineEvents = ({
   timelines,
   visibility,
-  enabled = true,
 }: ResolveOptions): TimelineEvent[] => {
-  if (!enabled) {
-    return [];
-  }
   const sets = toSets(visibility);
   return sortByTimestamp(
     timelines

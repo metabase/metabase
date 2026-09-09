@@ -153,8 +153,8 @@ import {
   getSnippetCollectionId,
   getTableForeignKeyReferences,
   getTableForeignKeys,
+  getTimelineEventsVisibility,
   getUiControls,
-  getVisibleTimelineEvents,
   getVisualizationSettings,
   getZoomedObjectRowIndex,
   isResultsMetadataDirty,
@@ -187,7 +187,7 @@ const mapStateToProps = (state: State) => {
 
     metadata: getMetadata(state),
 
-    timelineEvents: getVisibleTimelineEvents(state),
+    timelineEventsVisibility: getTimelineEventsVisibility(state),
     selectedTimelineEventIds: getSelectedTimelineEventIds(state),
 
     result: getFirstQueryResult(state),
