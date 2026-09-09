@@ -8,7 +8,6 @@ import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
-  MetabotTransformInfo,
 } from "metabase-types/api";
 
 export type MetabotDataPart = Exclude<
@@ -26,8 +25,6 @@ export type MetabotSearchResults = {
 
 export type MetabotDataPartMetadata = {
   codeEditBuffer?: MetabotCodeEditorBufferContext;
-  editorTransform?: MetabotTransformInfo;
-  suggestionId?: string;
 };
 
 export type MetabotAgentTurnError = {

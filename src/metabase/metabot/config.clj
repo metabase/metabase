@@ -78,6 +78,6 @@
    (let [profile-id (or profile-id
                         (metabot-id->profile-id metabot-id)
                         "embedding_next")]
-     (api/check (not= profile-id "transforms_codegen")
+     (api/check (not= (some-> profile-id name) "transforms_codegen")
                 [400 "Transform code generation is no longer supported."])
      profile-id)))

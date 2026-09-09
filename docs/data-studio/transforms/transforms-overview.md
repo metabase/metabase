@@ -124,7 +124,6 @@ To create a transform:
 
    If you're writing a SQL transform, variables _must_ be wrapped in optional blocks (`[[ ]]`), or given a default value. See [variables in SQL transforms](query-transforms.md#variables-in-sql-transforms) for more details.
 
-
 6. Click **Save** in the top right corner and fill out the transform information:
 
    - **Name** (required): The name of the transform.

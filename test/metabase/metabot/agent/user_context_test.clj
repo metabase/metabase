@@ -123,10 +123,14 @@
         (is (some? result))
         (is (re-find #"no active buffers" result))))))
 
+;; These cases assert the fallback rendering that only happens when the entity is a 404, so the
+;; ids must not resolve. Small literals collide with rows other tests create in the shared app db.
+(def ^:private absent-id Integer/MAX_VALUE)
+
 (deftest ^:parallel format-viewing-context-test-2a
   (testing "formats table entity"
     (let [context {:user_is_viewing [{:type "table"
-                                      :id 123
+                                      :id absent-id
                                       :name "users"
                                       :description "User accounts"}]}
           result (user-context/format-viewing-context context)]
@@ -138,7 +142,7 @@
 (deftest ^:parallel format-viewing-context-test-2b
   (testing "formats model entity"
     (let [context {:user_is_viewing [{:type "model"
-                                      :id 456
+                                      :id absent-id
                                       :name "Revenue Model"
                                       :description "Daily revenue metrics"}]}
           result (user-context/format-viewing-context context)]
@@ -149,7 +153,7 @@
 (deftest ^:parallel format-viewing-context-test-2c
   (testing "formats question entity"
     (let [context {:user_is_viewing [{:type "question"
-                                      :id 789
+                                      :id absent-id
                                       :name "Top Customers"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -159,7 +163,7 @@
 (deftest ^:parallel format-viewing-context-test-2d
   (testing "formats metric entity"
     (let [context {:user_is_viewing [{:type "metric"
-                                      :id 111
+                                      :id absent-id
                                       :name "Total Revenue"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -169,7 +173,7 @@
 (deftest ^:parallel format-viewing-context-test-2e
   (testing "formats dashboard entity"
     (let [context {:user_is_viewing [{:type "dashboard"
-                                      :id 222
+                                      :id absent-id
                                       :name "Executive Dashboard"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -179,7 +183,7 @@
 (deftest ^:parallel format-viewing-context-test-2f
   (testing "handles keyword types in viewing context"
     (let [context {:user_is_viewing [{:type :table
-                                      :id 321
+                                      :id absent-id
                                       :name "orders"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -194,8 +198,8 @@
 
 (deftest ^:parallel format-viewing-context-test-2h
   (testing "handles multiple viewing items"
-    (let [context {:user_is_viewing [{:type "table" :id 321 :name "users"}
-                                     {:type "question" :id 2 :name "Top Users"}]}
+    (let [context {:user_is_viewing [{:type "table" :id absent-id :name "users"}
+                                     {:type "question" :id (dec absent-id) :name "Top Users"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
       (is (re-find #"users" result))

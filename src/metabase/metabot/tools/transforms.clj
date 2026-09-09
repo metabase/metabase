@@ -39,7 +39,7 @@
          (remove nil?)
          (str/join "\n"))))
 
-(defn add-output
+(defn- add-output
   "Add :output to a tool result. Handles both :structured_output and :structured-output."
   [result format-fn]
   (if-let [structured (or (:structured_output result) (:structured-output result))]

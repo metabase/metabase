@@ -1,11 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useEffect, useState } from "react";
-import { useLocation, useMount } from "react-use";
+import { useLocation } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useLazyGetTransformQuery } from "metabase/api";
+import { skipToken, useGetTransformQuery } from "metabase/api";
 import type {
   MetabotAgentDataPartMessage,
   MetabotDataPart,
@@ -20,7 +20,6 @@ import {
   Loader,
   Paper,
   Text,
-  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -41,31 +40,6 @@ export type SuggestionMessage = Omit<MetabotAgentDataPartMessage, "part"> & {
   part: Extract<MetabotDataPart, { type: "data-transform_suggestion" }>;
 };
 
-const useGetOldTransform = ({
-  editorTransform,
-  suggestedTransform,
-}: {
-  editorTransform: MetabotTransformInfo | undefined;
-  suggestedTransform: MetabotSuggestedTransform;
-}) => {
-  const [trigger, result] = useLazyGetTransformQuery();
-  useMount(() => {
-    if (!editorTransform && suggestedTransform.id) {
-      trigger(suggestedTransform.id);
-    }
-  });
-
-  if (editorTransform) {
-    return {
-      data: editorTransform,
-      isLoading: false,
-      error: undefined,
-    } as const;
-  }
-
-  return result;
-};
-
 export const AgentSuggestionMessage = ({
   message,
 }: {
@@ -76,9 +50,8 @@ export const AgentSuggestionMessage = ({
   const suggestedTransform: MetabotSuggestedTransform = {
     ...message.part.data,
     active: true,
-    suggestionId: message.metadata?.suggestionId ?? message.id,
+    suggestionId: message.id,
   };
-  const editorTransform = message.metadata?.editorTransform;
   const existingTransformId =
     typeof suggestedTransform.id === "number"
       ? suggestedTransform.id
@@ -89,13 +62,13 @@ export const AgentSuggestionMessage = ({
   const isViewing =
     url.pathname?.startsWith(getTransformUrl(suggestedTransform)) ?? false;
 
-  const isNew = !isViewing && !editorTransform && existingTransformId == null;
+  const isNew = !isViewing && existingTransformId == null;
 
   const {
     data: originalTransform,
     isLoading,
     error,
-  } = useGetOldTransform({ editorTransform, suggestedTransform });
+  } = useGetTransformQuery(existingTransformId ?? skipToken);
 
   // The preview is a separate chunk. Waiting for it inside the existing
   // "Loading preview" state means one loading state rather than two in a row.
@@ -202,18 +175,16 @@ export const AgentSuggestionMessage = ({
             h="1.375rem"
             gap="sm"
           >
-            <Tooltip label={t`Read only`}>
-              <Button
-                size="compact-xs"
-                variant="subtle"
-                fw="normal"
-                fz="sm"
-                c="text-disabled"
-                disabled
-              >
-                {isNew ? t`Create` : t`Apply`}
-              </Button>
-            </Tooltip>
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              fw="normal"
+              fz="sm"
+              c="text-disabled"
+              disabled
+            >
+              {isNew ? t`Create` : t`Apply`}
+            </Button>
           </Flex>
         </Group>
       </Collapse>
