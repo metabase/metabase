@@ -22,22 +22,6 @@ const CARD_REF: GoalValue = { type: "card", id: 9, column: "goal" };
 
 const RESOLVING = { value: null, isUnanswered: true };
 
-function answer(cols: string[], row: (number | string)[]) {
-  return createMockDatasetData({
-    referenced_entities: {
-      card: {
-        9: {
-          status: "completed",
-          data: {
-            cols: cols.map((name) => createMockColumn({ name })),
-            rows: [row],
-          },
-        },
-      },
-    },
-  });
-}
-
 function setup(data: DatasetData, value: GoalValue | null | undefined) {
   return renderHookWithProviders(
     () => useAnsweredGoalValue({ data, datasetQuery: DATASET_QUERY, value }),
@@ -72,7 +56,8 @@ describe("useAnsweredGoalValue", () => {
   it("resolves a foreign reference the dataset already answers", () => {
     const data = {
       ...DATA,
-      referenced_entities: answer(["goal"], [250]).referenced_entities,
+      referenced_entities: createReferencedEntitiesAnswer(["goal"], [250])
+        .referenced_entities,
     };
 
     expect(setup(data, CARD_REF).result.current).toEqual({ value: 250 });
@@ -80,7 +65,9 @@ describe("useAnsweredGoalValue", () => {
   });
 
   it("answers a foreign reference by re-running the query with it attached", async () => {
-    setupCardDataset({ dataset: { data: answer(["goal"], [250]) } });
+    setupCardDataset({
+      dataset: { data: createReferencedEntitiesAnswer(["goal"], [250]) },
+    });
 
     const { result } = setup(DATA, CARD_REF);
     expect(result.current).toEqual(RESOLVING);
@@ -93,7 +80,9 @@ describe("useAnsweredGoalValue", () => {
   });
 
   it("fails when the fresh answer lacks the referenced column", async () => {
-    setupCardDataset({ dataset: { data: answer(["other"], [1]) } });
+    setupCardDataset({
+      dataset: { data: createReferencedEntitiesAnswer(["other"], [1]) },
+    });
 
     const { result } = setup(DATA, CARD_REF);
 
@@ -106,7 +95,9 @@ describe("useAnsweredGoalValue", () => {
   });
 
   it("fails when the referenced value is not a number", async () => {
-    setupCardDataset({ dataset: { data: answer(["goal"], ["nope"]) } });
+    setupCardDataset({
+      dataset: { data: createReferencedEntitiesAnswer(["goal"], ["nope"]) },
+    });
 
     const { result } = setup(DATA, CARD_REF);
 
@@ -148,3 +139,22 @@ describe("useAnsweredGoalValue", () => {
     );
   });
 });
+
+function createReferencedEntitiesAnswer(
+  cols: string[],
+  row: (number | string)[],
+) {
+  return createMockDatasetData({
+    referenced_entities: {
+      card: {
+        9: {
+          status: "completed",
+          data: {
+            cols: cols.map((name) => createMockColumn({ name })),
+            rows: [row],
+          },
+        },
+      },
+    },
+  });
+}
