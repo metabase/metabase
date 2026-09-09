@@ -33,12 +33,13 @@ import {
   isGoalSelfColumnRef,
 } from "metabase-types/guards";
 
+import { ICON_BUTTON_SIZE } from "../constants";
+
 import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
 import { GoalEntityPickers } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
 import { GoalValuePill } from "./GoalValuePill";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
-import { ICON_BUTTON_SIZE } from "./constants";
 import type { ColumnOption, PickedItem } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
@@ -102,12 +103,12 @@ export const GoalValueInput = ({
     },
   );
 
-  const resolved = useAnsweredGoalValue(
-    datasetQuery,
+  const resolved = useAnsweredGoalValue({
     data,
-    value,
+    datasetQuery,
     referencedEntities,
-  );
+    value,
+  });
   const selfColumnLabel = isSelfRef
     ? (selfColumns.find((column) => column.name === value)?.label ??
       String(value))

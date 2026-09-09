@@ -4,7 +4,7 @@ import { NumberInput } from "metabase/ui";
 import type { GoalValue } from "metabase-types/api";
 import { isGoalStaticValue } from "metabase-types/guards";
 
-import { RIGHT_SECTION_WIDTH } from "./constants";
+import { RIGHT_SECTION_WIDTH } from "../constants";
 
 type Props = {
   "aria-label"?: string;

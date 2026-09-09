@@ -1,11 +1,14 @@
 import { useMemo } from "react";
 
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import type {
+  ComputedVisualizationSettings,
+  GoalValueResult,
+} from "metabase/viz-core";
 import { needsGraphGoalResolution } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 
 import type { GoalResolutionStatus } from "./use-answered-goal-data";
-import { useResolvedGoalValue } from "./use-resolved-goal-value";
+import { useAnsweredGoalValue } from "./use-answered-goal-value";
 
 /**
  * Resolves `graph.goal_value` to a number so the chart model only ever sees
@@ -18,20 +21,34 @@ export function useResolvedGoalSettings(
 ): { status: GoalResolutionStatus; settings: ComputedVisualizationSettings } {
   const needsResolving = needsGraphGoalResolution(card.display, settings);
 
-  const goal = useResolvedGoalValue(
-    card.dataset_query,
+  const goal = useAnsweredGoalValue({
     data,
-    needsResolving ? settings["graph.goal_value"] : null,
-  );
-  const goalValue = goal.status === "resolved" ? goal.value : null;
+    datasetQuery: card.dataset_query,
+    value: needsResolving ? settings["graph.goal_value"] : null,
+  });
 
   const resolvedSettings = useMemo(
     () =>
       needsResolving
-        ? { ...settings, "graph.goal_value": goalValue }
+        ? { ...settings, "graph.goal_value": goal.value }
         : settings,
-    [settings, needsResolving, goalValue],
+    [settings, needsResolving, goal.value],
   );
 
-  return { status: goal.status, settings: resolvedSettings };
+  return { status: getGoalResolutionStatus(goal), settings: resolvedSettings };
+}
+
+function getGoalResolutionStatus({
+  isUnanswered,
+  error,
+}: GoalValueResult): GoalResolutionStatus {
+  if (isUnanswered === true) {
+    return "resolving";
+  }
+
+  if (error != null) {
+    return "failed";
+  }
+
+  return "resolved";
 }

@@ -23,11 +23,14 @@ describe("getChartGoal", () => {
     ).toEqual({ value: 0.5, label: "Target" });
   });
 
-  it("returns nothing for an unset goal", () => {
-    expect(getChartGoal({ ...settings, "graph.goal_value": null })).toBeNull();
+  it("draws an unset goal at 0", () => {
+    expect(getChartGoal({ ...settings, "graph.goal_value": null })).toEqual({
+      value: 0,
+      label: "Target",
+    });
     expect(
       getChartGoal({ ...settings, "graph.goal_value": undefined }),
-    ).toBeNull();
+    ).toEqual({ value: 0, label: "Target" });
   });
 
   it("returns nothing for an unresolved reference", () => {

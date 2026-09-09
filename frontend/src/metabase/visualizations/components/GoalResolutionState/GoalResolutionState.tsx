@@ -7,19 +7,17 @@ import {
 
 type GoalResolutionStateProps = {
   className?: string;
-  height: number;
   kind: GoalSettingKind;
   status: Exclude<GoalResolutionStatus, "resolved">;
 };
 
 export function GoalResolutionState({
   className,
-  height,
   kind,
   status,
 }: GoalResolutionStateProps) {
   return (
-    <Center className={className} h={height} px="md">
+    <Center className={className} flex={1} mih={0} px="md">
       {status === "resolving" ? (
         <Loader />
       ) : (

@@ -27,22 +27,27 @@ const RESOLVING: GoalValueResult = {
  * Like `resolveGoalValue`, but a foreign reference the query can't answer is
  * answered by re-running the query with the referenced entities attached.
  */
-export function useAnsweredGoalValue(
-  query: DatasetQuery | undefined,
-  data: DatasetData,
-  value: GoalValue | null | undefined,
-  referencedEntities: ReferencedEntity[] = getUnansweredGoalEntities(data, [
-    value,
-  ]),
-): GoalValueResult {
+export function useAnsweredGoalValue({
+  data,
+  datasetQuery,
+  referencedEntities,
+  value,
+}: {
+  data: DatasetData;
+  datasetQuery: DatasetQuery | undefined;
+  referencedEntities?: ReferencedEntity[];
+  value: GoalValue | null | undefined;
+}): GoalValueResult {
   const resolved = resolveGoalValue(data, value);
   const unansweredRef =
     needsAnswer(resolved) && isGoalForeignColumnRef(value) ? value : null;
 
   const answered = useAnsweredGoalData(
-    query,
+    datasetQuery,
     data,
-    unansweredRef != null ? referencedEntities : [],
+    unansweredRef != null
+      ? (referencedEntities ?? getUnansweredGoalEntities(data, [value]))
+      : [],
   );
 
   if (unansweredRef == null) {

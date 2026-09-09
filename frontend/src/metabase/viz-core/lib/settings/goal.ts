@@ -19,7 +19,9 @@ export const getChartGoal = (
     return null;
   }
 
-  const goalValue = getNumericGoalValue(settings);
+  // an unset goal has always drawn the line at 0
+  const goalValue =
+    settings["graph.goal_value"] == null ? 0 : getNumericGoalValue(settings);
 
   if (goalValue == null) {
     return null;
