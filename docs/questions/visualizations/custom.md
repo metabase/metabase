@@ -80,7 +80,7 @@ Metabase flags a custom visualization on the **Manage visualizations** page when
 
 - **Dashboard subscriptions and alerts don't use custom visualizations**. Cards that use custom visualizations will fall back to a default visualization for the card's data shape.
 - **PDF exports of dashboards include custom visualizations**.
-- **Custom visualizations can support PNG export**, but only if its developer turned on PNG export for that visualization. PNG export is off by default.
+- **Custom visualizations can support PNG export**, but only if their developer turned on PNG export for that visualization. PNG export is off by default.
 
 ## Only add visualizations you trust
 
