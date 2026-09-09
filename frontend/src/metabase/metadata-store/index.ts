@@ -26,7 +26,11 @@ export {
   useQuestionFromCard,
   useQuestionFromOpts,
 } from "./provider";
-export type { MetadataProviderFactory } from "./provider";
+export type {
+  CardQuestionBuilder,
+  DraftQuestionBuilder,
+  MetadataProviderFactory,
+} from "./provider";
 
 export { entitiesReducer } from "./reducer";
 

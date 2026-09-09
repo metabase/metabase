@@ -7,12 +7,12 @@ import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
+import type { DraftQuestionBuilder } from "metabase/metadata-store";
 import { getShallowDatabases as getDatabases } from "metabase/metadata-store";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   ConcreteTableId,
@@ -30,12 +30,15 @@ import {
 import S from "./TableBrowser.module.css";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
-type GetTableUrl = (table: Table, metadata?: Metadata) => string;
+type GetTableUrl = (
+  table: Table,
+  buildDraftQuestion: DraftQuestionBuilder,
+) => string;
 
 type TableBrowserProps = {
   tables: Table[];
   getTableUrl: GetTableUrl;
-  metadata?: Metadata;
+  buildDraftQuestion: DraftQuestionBuilder;
   dbId: DatabaseId;
   schemaName?: string;
   xraysEnabled?: boolean;
@@ -45,7 +48,7 @@ type TableBrowserProps = {
 export const TableBrowserInner = ({
   tables,
   getTableUrl,
-  metadata,
+  buildDraftQuestion,
   dbId,
   schemaName,
   xraysEnabled,
@@ -80,7 +83,7 @@ export const TableBrowserInner = ({
             dbId={dbId}
             getTableUrl={getTableUrl}
             xraysEnabled={xraysEnabled}
-            metadata={metadata}
+            buildDraftQuestion={buildDraftQuestion}
             canEditTables={canEditTables}
           />
         ))}
@@ -93,7 +96,7 @@ type TableBrowserItemProps = {
   table: Table;
   dbId: DatabaseId;
   xraysEnabled?: boolean;
-  metadata?: Metadata;
+  buildDraftQuestion: DraftQuestionBuilder;
   getTableUrl: GetTableUrl;
   canEditTables?: boolean;
 };
@@ -102,7 +105,7 @@ const TableBrowserItem = ({
   table,
   dbId,
   xraysEnabled,
-  metadata,
+  buildDraftQuestion,
   getTableUrl,
   canEditTables,
 }: TableBrowserItemProps) => {
@@ -112,7 +115,9 @@ const TableBrowserItem = ({
 
   return (
     <BrowseCard
-      to={!isSyncInProgress(table) ? getTableUrl(table, metadata) : ""}
+      to={
+        !isSyncInProgress(table) ? getTableUrl(table, buildDraftQuestion) : ""
+      }
       icon="table"
       title={table.display_name || table.name}
       // Unjustified type cast. FIXME
