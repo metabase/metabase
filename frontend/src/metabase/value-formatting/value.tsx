@@ -60,8 +60,9 @@ type ColumnPredicatesEntry = {
 
 // each predicate fans out into several type-hierarchy lookups, and formatting a
 // table re-checks the same column for every cell, so compute them once per column.
-// Entries snapshot the type fields they were computed from: the custom-viz API
-// hands third-party code mutable column objects, so identity alone can go stale.
+// Cache entries also snapshot the type fields they were computed from because
+// the custom-viz API hands third-party code mutable column objects,
+// so identity alone can go stale.
 const columnPredicatesCache = new WeakMap<
   DatasetColumn,
   ColumnPredicatesEntry
