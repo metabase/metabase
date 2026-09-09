@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { screen, within } from "__support__/ui";
+import { fireEvent, screen, within } from "__support__/ui";
 
 import {
   getLastFeedbackCall,
@@ -199,6 +200,101 @@ describe("EmbedHomepage (OSS)", () => {
       expect(
         await screen.findByText("Your feedback was submitted, thank you."),
       ).toBeInTheDocument();
+    });
+
+    it("should keep the feedback modal open and show an error when feedback submission fails", async () => {
+      fetchMock.post("path:/api/product-feedback", { status: 400, body: {} });
+      await setupForFeedbackModal();
+
+      await userEvent.type(
+        screen.getByLabelText("Feedback"),
+        "I had an issue with X",
+      );
+
+      await userEvent.click(screen.getByText("Send"));
+
+      expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+
+      // the homepage is not dismissed while the feedback failed to submit
+      expect(queryFeedbackModal()).toBeInTheDocument();
+      expect(getLastHomepageSettingSettingCall()).toBeUndefined();
+      expect(
+        screen.queryByText("Your feedback was submitted, thank you."),
+      ).not.toBeInTheDocument();
+
+      fetchMock.post("path:/api/product-feedback", 200);
+    });
+
+    it("should show per-field validation errors under the corresponding inputs", async () => {
+      fetchMock.post("path:/api/product-feedback", {
+        status: 400,
+        body: {
+          errors: {
+            comments:
+              "nullable value must be a non-blank string with at most 300000 characters.",
+            email:
+              "nullable value must be a non-blank string with at most 320 characters.",
+          },
+        },
+      });
+      await setupForFeedbackModal();
+
+      await userEvent.type(
+        screen.getByLabelText("Feedback"),
+        "I had an issue with X",
+      );
+
+      await userEvent.click(screen.getByText("Send"));
+
+      expect(
+        await screen.findByText(
+          "nullable value must be a non-blank string with at most 300000 characters.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "nullable value must be a non-blank string with at most 320 characters.",
+        ),
+      ).toBeInTheDocument();
+
+      // the homepage is not dismissed while the feedback failed to submit
+      expect(queryFeedbackModal()).toBeInTheDocument();
+      expect(getLastHomepageSettingSettingCall()).toBeUndefined();
+      expect(
+        screen.queryByText("Your feedback was submitted, thank you."),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("An error occurred")).not.toBeInTheDocument();
+
+      fetchMock.post("path:/api/product-feedback", 200);
+    });
+
+    it("should validate the maximum input lengths client-side", async () => {
+      await setupForFeedbackModal();
+
+      // `fireEvent` sets the value in a single event; `userEvent.type` would
+      // simulate 100,001 keystrokes, causing the test to time out.
+      const feedback = screen.getByLabelText("Feedback");
+      fireEvent.change(feedback, { target: { value: "x".repeat(100_001) } });
+      fireEvent.blur(feedback);
+
+      expect(
+        await screen.findByText("must be 100000 characters or less"),
+      ).toBeInTheDocument();
+
+      const email = screen.getByLabelText("Email");
+      fireEvent.change(email, { target: { value: "x".repeat(321) } });
+      fireEvent.blur(email);
+
+      expect(
+        await screen.findByText("must be 320 characters or less"),
+      ).toBeInTheDocument();
+
+      // an invalid form is not submitted
+      await userEvent.click(screen.getByText("Send"));
+
+      expect(getLastFeedbackCall()).toBeUndefined();
+      expect(getLastHomepageSettingSettingCall()).toBeUndefined();
+      expect(queryFeedbackModal()).toBeInTheDocument();
     });
   });
 

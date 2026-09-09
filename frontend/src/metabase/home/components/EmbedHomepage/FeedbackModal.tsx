@@ -1,22 +1,26 @@
-import { useState } from "react";
 import { t } from "ttag";
+import * as Yup from "yup";
 
 import {
-  Button,
-  Group,
-  Modal,
-  Stack,
-  Text,
-  TextInput,
-  Textarea,
-  Title,
-  rem,
-} from "metabase/ui";
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { Button, Group, Modal, Stack, Text, Title, rem } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
+
+export type FeedbackModalValues = {
+  comments?: string;
+  email?: string;
+};
 
 type FeedbackModalProps = {
   opened: boolean;
   onClose: () => void;
-  onSubmit: (feedback: { comment?: string; email?: string }) => void;
+  onSubmit: (values: FeedbackModalValues) => void | Promise<unknown>;
 };
 
 export const FeedbackModal = ({
@@ -24,14 +28,6 @@ export const FeedbackModal = ({
   onClose,
   onSubmit,
 }: FeedbackModalProps) => {
-  const [comment, setComment] = useState("");
-  const [email, setEmail] = useState("");
-  const handleSubmit = () =>
-    onSubmit({
-      comment: comment.trim() || undefined,
-      email: email.trim() || undefined,
-    });
-
   return (
     <Modal
       size={rem(530)}
@@ -45,30 +41,56 @@ export const FeedbackModal = ({
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only admins can see this component */}
         <Text>{t`Please let us know what happened. We’re always looking for ways to improve Metabase.`}</Text>
 
-        <Textarea
-          label={t`Feedback`}
-          name="comment"
-          placeholder={t`Tell us what happened`}
-          onChange={(e) => setComment(e.currentTarget.value)}
-          minRows={3}
-        />
+        <FormProvider
+          key={String(opened)}
+          initialValues={{ comments: "", email: "" }}
+          validationSchema={Yup.object({
+            comments: Yup.string().optional().max(100_000, Errors.maxLength),
+            /* Maximum usable: 254 octets, cf. https://www.rfc-editor.org/info/rfc3696/#section-3 errata */
+            email: Yup.string().optional().max(320, Errors.maxLength),
+          })}
+          onSubmit={({ comments, email }) => onSubmit({ comments, email })}
+        >
+          {({ values, isSubmitting }) => {
+            const label =
+              (values.comments?.trim() ?? "") !== "" ||
+              (values.email?.trim() ?? "") !== ""
+                ? t`Send`
+                : t`Skip`;
+            return (
+              <Form>
+                <Stack gap="xl">
+                  <FormTextarea
+                    label={t`Feedback`}
+                    name="comments"
+                    placeholder={t`Tell us what happened`}
+                    minRows={3}
+                  />
 
-        <TextInput
-          label={t`Email`}
-          type="email"
-          name="email"
-          placeholder={t`Leave your email if you want us to follow up with you`}
-          onChange={(e) => setEmail(e.currentTarget.value)}
-        />
+                  <FormTextInput
+                    label={t`Email`}
+                    type="email"
+                    name="email"
+                    placeholder={t`Leave your email if you want us to follow up with you`}
+                  />
 
-        <Group justify="flex-end">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button variant="filled" onClick={handleSubmit}>
-            {comment.trim().length + email.trim().length > 0
-              ? t`Send`
-              : t`Skip`}
-          </Button>
-        </Group>
+                  <FormErrorMessage />
+
+                  <Group justify="flex-end">
+                    <Button onClick={onClose} disabled={isSubmitting}>
+                      {t`Cancel`}
+                    </Button>
+                    <FormSubmitButton
+                      variant="filled"
+                      label={label}
+                      failedLabel={label}
+                    />
+                  </Group>
+                </Stack>
+              </Form>
+            );
+          }}
+        </FormProvider>
       </Stack>
     </Modal>
   );
