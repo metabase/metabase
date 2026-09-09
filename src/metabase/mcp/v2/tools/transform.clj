@@ -22,6 +22,7 @@
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
+   [metabase.models.interface :as mi]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]))
 
@@ -289,6 +290,13 @@
       (common/throw-teaching-error
        (str "Nothing to update — pass at least one of name, description, definition, query_handle, target, "
             "collection_id, or tag_ids.")))
+    ;; The new state's gates before the target check, which opens a warehouse connection — the same
+    ;; ordering the create path states. `write-check` above covers the transform as stored; a
+    ;; `definition` naming another database is resolved with no permission check of its own, so
+    ;; until these run the caller has not been authorized against the database about to be probed.
+    (let [merged (merge transform updates)]
+      (api/check-403 (mi/can-write? merged))
+      (transforms/check-database-feature merged))
     (check-target-move! transform updates)
     (write-result (transforms/update-transform! (:id transform) updates))))
 

@@ -12,6 +12,9 @@
    ;; Registers the :transform projection the write echo projects through.
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.mcp.v2.tools.transform :as tools.transform]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
@@ -507,6 +510,46 @@
           (let [error (tool-error (write! {:method "update" :id id :name "renamed"}))]
             (is (re-find #"is a python transform" error))
             (is (re-find #"query transforms only" error))))))))
+
+(deftest transform-write-update-runs-the-permission-check-test
+  (testing "GHY-4240: the update path's counterpart to
+            `transform-write-create-runs-the-permission-check-test`, which is the suite's only other
+            non-admin test. `write-check` covers the transform AS STORED; the caller's `definition`
+            then names its own database and is resolved with no permission check of its own, so the
+            gates on the new state have to run before `check-target-move!` opens a warehouse
+            connection to it. Otherwise a data analyst holding transforms permission on the
+            transform's own database — enough to pass `write-check` — gets \"does table X exist?\"
+            answered for a database they hold nothing on, one call per guess.
+
+            `driver/table-exists?` is redefined to record whether it ran, so the ordering is asserted
+            directly: with the gates ordered after `check-target-move!` this test fails on `probed`."
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2 :name "MCP perm probe DB"}
+                       :model/Transform {id :id} (temp-transform-defaults "mcp_update_perm_probe")]
+          (mt/with-data-analyst-role! (mt/user->id :rasta)
+            (mt/with-restored-data-perms!
+              ;; Transforms permission on the transform's own database only — never on other-db-id.
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/transforms :yes)
+              (testing "the stored transform is writable, so the refusal below is about the named database"
+                (is (mt/with-current-user (mt/user->id :rasta)
+                      (mi/can-write? (t2/select-one :model/Transform :id id)))))
+              (let [probed (atom false)]
+                (with-redefs [driver/table-exists? (fn [& _] (reset! probed true) false)]
+                  (let [args  {:method     "update"
+                               :id         id
+                               :definition {:type "query" :query {:database other-db-id :type "query"
+                                                                  :query {:source-table (mt/id :venues)}}}
+                               :target     {:name "mcp_update_perm_probe_moved" :schema (venues-schema)}}
+                        error (tool-error (write! :rasta write-scopes args))]
+                    (is (false? @probed)
+                        "no warehouse connection is opened to a database the caller was never authorized against")
+                    (is (string? error))
+                    (is (= "mcp_update_perm_probe"
+                           (t2/select-one-fn #(get-in % [:target :name]) :model/Transform :id id))
+                        "and nothing is written when the check refuses")))))))))))
 
 (deftest transform-write-not-found-test
   (testing "GHY-4240: an unresolvable id collapses to the shared not-found error"
