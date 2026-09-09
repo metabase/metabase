@@ -11,6 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { mockGetBoundingClientRect } from "__support__/utils";
 import { WorktreeProvider } from "metabase/common/worktrees";
 import type { RemoteSyncEntity, RemoteSyncTask } from "metabase-types/api";
 import {
@@ -82,6 +83,9 @@ function setup({
 }
 
 describe("WorktreeHomePage", () => {
+  // jsdom reports zero-sized rects, which leaves the virtualized changes table empty.
+  mockGetBoundingClientRect({ width: 1200, height: 800 });
+
   it("shows the branch, breadcrumb and an in-sync state for a clean worktree", async () => {
     setup();
 
@@ -137,20 +141,26 @@ describe("WorktreeHomePage", () => {
     );
     expect(addedRow).toBeDefined();
     expect(within(addedRow!).getByText("Added")).toBeInTheDocument();
-    expect(
-      within(addedRow!).getByRole("link", { name: /Customer LTV/ }),
-    ).toHaveAttribute("href", "/data-studio/worktrees/7/transforms/55");
+    // The table wraps a linked row in its anchor, so the link encloses the row.
+    expect(screen.getByRole("link", { name: /Customer LTV/ })).toHaveAttribute(
+      "href",
+      "/data-studio/worktrees/7/transforms/55",
+    );
 
     const removedRow = rows.find((row) =>
       within(row).queryByText("Old rollup"),
     );
     expect(within(removedRow!).getByText("Removed")).toBeInTheDocument();
-    expect(within(removedRow!).queryByRole("link")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Old rollup/ }),
+    ).not.toBeInTheDocument();
 
     const localChanges = screen.getByTestId("worktree-local-changes");
-    expect(within(localChanges).getByText("3")).toBeInTheDocument();
     expect(
-      within(localChanges).getByText("changes to push"),
+      within(localChanges).getByText("3 changes to push"),
+    ).toBeInTheDocument();
+    expect(
+      within(localChanges).getByText("1 added, 1 modified, 1 removed"),
     ).toBeInTheDocument();
 
     expect(screen.getByText("Transforms")).toBeInTheDocument();

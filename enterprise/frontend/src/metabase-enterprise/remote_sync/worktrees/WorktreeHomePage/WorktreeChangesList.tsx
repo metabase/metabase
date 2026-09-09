@@ -1,21 +1,24 @@
-import { Fragment, useMemo } from "react";
+import type { Row } from "@tanstack/react-table";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import {
-  Box,
-  Divider,
-  FixedSizeIcon,
-  Group,
-  Loader,
-  Stack,
+  EntityNameCell,
+  type RenderRowLink,
   Text,
+  TreeTable,
+  type TreeTableColumnDef,
+  TreeTableSkeleton,
+  useTreeTableInstance,
 } from "metabase/ui";
 import type {
   Collection,
+  IconName,
   RemoteSyncEntity,
   WorktreeId,
 } from "metabase-types/api";
@@ -28,7 +31,6 @@ import {
 import { useCollectionGroups } from "../../hooks/use-collection-groups";
 import { getSyncStatusLabel } from "../../utils";
 
-import S from "./WorktreeChangesList.module.css";
 import { getEntityIcon, getWorktreeEntityUrl } from "./utils";
 
 type WorktreeChangesListProps = {
@@ -38,6 +40,32 @@ type WorktreeChangesListProps = {
   isLoading: boolean;
   error: unknown;
 };
+
+/**
+ * A row in the changes table: a collection heading, a table that only groups its dirty
+ * children, or a dirty entity.
+ */
+type ChangeNode = {
+  id: string;
+  kind: "group" | "table" | "entity";
+  name: string;
+  icon: IconName;
+  entity: RemoteSyncEntity | null;
+  href: string | null;
+  children?: ChangeNode[];
+};
+
+const ROW_TEST_IDS: Record<ChangeNode["kind"], string> = {
+  group: "worktree-change-group",
+  table: "worktree-change-table",
+  entity: "worktree-change-row",
+};
+
+const getNodeId = (node: ChangeNode) => node.id;
+const getSubRows = (node: ChangeNode) => node.children;
+const getRowProps = (row: Row<ChangeNode>) => ({
+  "data-testid": ROW_TEST_IDS[row.original.kind],
+});
 
 export function WorktreeChangesList({
   worktreeId,
@@ -51,6 +79,66 @@ export function WorktreeChangesList({
     collectionMap,
     isLoading: isLoadingGroups,
   } = useCollectionGroups(entities, { worktreeId });
+  const getIcon = useGetIcon();
+
+  const data = useMemo(
+    () => buildChangeTree(groups, { worktreeId, collectionMap, getIcon }),
+    [groups, worktreeId, collectionMap, getIcon],
+  );
+
+  const columns = useMemo<TreeTableColumnDef<ChangeNode>[]>(
+    () => [
+      {
+        id: "name",
+        accessorKey: "name",
+        header: t`Name`,
+        minWidth: 280,
+        maxAutoWidth: 800,
+        cell: ({ row }) => (
+          <EntityNameCell
+            icon={row.original.icon}
+            iconColor={
+              row.original.kind === "entity" ? "core-brand" : "text-secondary"
+            }
+            name={row.original.name}
+          />
+        ),
+      },
+      {
+        id: "change",
+        accessorFn: (node) => node.entity?.sync_status ?? "",
+        header: t`Change`,
+        minWidth: 120,
+        maxWidth: 160,
+        cell: ({ row }) =>
+          row.original.entity ? (
+            <Text c="text-secondary">
+              {getSyncStatusLabel(row.original.entity.sync_status)}
+            </Text>
+          ) : null,
+      },
+    ],
+    [],
+  );
+
+  const treeTableInstance = useTreeTableInstance({
+    data,
+    columns,
+    getNodeId,
+    getSubRows,
+    defaultExpanded: true,
+    enableSorting: false,
+  });
+
+  const renderRowLink = useCallback<RenderRowLink<ChangeNode>>(
+    (row, props) =>
+      row.original.href ? (
+        <Link to={row.original.href} {...props} />
+      ) : (
+        props.children
+      ),
+    [],
+  );
 
   return (
     <TitleSection
@@ -61,195 +149,82 @@ export function WorktreeChangesList({
       {error != null ? (
         <LoadingAndErrorWrapper error={error} />
       ) : isLoading || isLoadingGroups ? (
-        <Group justify="center" p="xl">
-          <Loader size="sm" />
-        </Group>
-      ) : entities.length === 0 ? (
-        <InSyncState branch={branch} />
+        <TreeTableSkeleton columnWidths={[0.8, 0.2]} />
       ) : (
-        <Stack gap={0}>
-          {groups.map((group, index) => (
-            <Fragment key={`${group.collectionId ?? "root"}-${index}`}>
-              {index > 0 && <Divider />}
-              <ChangeGroup
-                group={group}
-                worktreeId={worktreeId}
-                collectionMap={collectionMap}
-              />
-            </Fragment>
-          ))}
-        </Stack>
+        <TreeTable
+          instance={treeTableInstance}
+          emptyState={<ListEmptyState label={t`Everything is in sync`} />}
+          renderRowLink={renderRowLink}
+          getRowProps={getRowProps}
+          ariaLabel={t`Changes to push`}
+        />
       )}
     </TitleSection>
   );
 }
 
-function InSyncState({ branch }: { branch: string }) {
-  return (
-    <Stack align="center" gap="sm" py="xxl" px="lg" ta="center">
-      <Box className={S.inSyncIcon}>
-        <FixedSizeIcon name="check" size={20} c="feedback-positive" />
-      </Box>
-      <Text fw="bold" fz="lg">{t`Everything is in sync`}</Text>
-      <Text c="text-secondary" maw="32rem">
-        {t`The content in this worktree matches the ${branch} branch. Edits you make here will show up as changes to push.`}
-      </Text>
-    </Stack>
-  );
-}
-
-type ChangeGroupProps = {
-  group: CollectionGroup;
+type BuildContext = {
   worktreeId: WorktreeId;
   collectionMap: Map<number, Collection>;
+  getIcon: ReturnType<typeof useGetIcon>;
 };
 
-function ChangeGroup({ group, worktreeId, collectionMap }: ChangeGroupProps) {
-  const path = group.pathSegments.map((segment) => segment.name).join(" / ");
-
-  return (
-    <Box data-testid="worktree-change-group">
-      <Group
-        gap="sm"
-        wrap="nowrap"
-        px="lg"
-        py="sm"
-        bg="background_page-secondary"
-      >
-        <FixedSizeIcon
-          name={getGroupIcon(group.spec)}
-          size={14}
-          c="text-secondary"
-        />
-        <Text size="sm" fw="bold" c="text-secondary" truncate title={path}>
-          {path}
-        </Text>
-        {group.collectionEntity && (
-          <Box ml="auto">
-            <StatusLabel entity={group.collectionEntity} />
-          </Box>
-        )}
-      </Group>
-      {group.tableGroups.map((tableGroup) => (
-        <TableChangeRows
-          key={tableGroup.tableId}
-          tableGroup={tableGroup}
-          worktreeId={worktreeId}
-          collectionMap={collectionMap}
-        />
-      ))}
-      {group.items.map((entity) => (
-        <ChangeRow
-          key={`${entity.model}-${entity.id}`}
-          entity={entity}
-          worktreeId={worktreeId}
-          collectionMap={collectionMap}
-        />
-      ))}
-    </Box>
-  );
+function buildChangeTree(
+  groups: CollectionGroup[],
+  context: BuildContext,
+): ChangeNode[] {
+  return groups.map((group, index) => ({
+    id: `group-${group.collectionId ?? "root"}-${index}`,
+    kind: "group",
+    name: group.pathSegments.map((segment) => segment.name).join(" / "),
+    icon: getGroupIcon(group.spec),
+    entity: group.collectionEntity ?? null,
+    href: null,
+    children: [
+      ...group.tableGroups.map((tableGroup) =>
+        buildTableNode(tableGroup, context),
+      ),
+      ...group.items.map((entity) => buildEntityNode(entity, context)),
+    ],
+  }));
 }
 
-type TableChangeRowsProps = {
-  tableGroup: TableGroup;
-  worktreeId: WorktreeId;
-  collectionMap: Map<number, Collection>;
-};
-
-function TableChangeRows({
-  tableGroup,
-  worktreeId,
-  collectionMap,
-}: TableChangeRowsProps) {
-  return (
-    <>
-      {tableGroup.table ? (
-        <ChangeRow
-          entity={tableGroup.table}
-          worktreeId={worktreeId}
-          collectionMap={collectionMap}
-        />
-      ) : (
-        <Group gap="sm" wrap="nowrap" px="lg" py="sm">
-          <FixedSizeIcon name="table" c="text-secondary" />
-          <Text c="text-secondary">{tableGroup.tableName}</Text>
-        </Group>
-      )}
-      {tableGroup.children.map((child) => (
-        <ChangeRow
-          key={`${child.model}-${child.id}`}
-          entity={child}
-          worktreeId={worktreeId}
-          collectionMap={collectionMap}
-          isNested
-        />
-      ))}
-    </>
+function buildTableNode(
+  tableGroup: TableGroup,
+  context: BuildContext,
+): ChangeNode {
+  const children = tableGroup.children.map((child) =>
+    buildEntityNode(child, context),
   );
+  if (tableGroup.table != null) {
+    return { ...buildEntityNode(tableGroup.table, context), children };
+  }
+  return {
+    id: `table-group-${tableGroup.tableId}`,
+    kind: "table",
+    name: tableGroup.tableName,
+    icon: "table",
+    entity: null,
+    href: null,
+    children,
+  };
 }
 
-type ChangeRowProps = {
-  entity: RemoteSyncEntity;
-  worktreeId: WorktreeId;
-  collectionMap: Map<number, Collection>;
-  isNested?: boolean;
-};
-
-function ChangeRow({
-  entity,
-  worktreeId,
-  collectionMap,
-  isNested,
-}: ChangeRowProps) {
-  const getIcon = useGetIcon();
-  const iconName = useMemo(
-    () => getEntityIcon(entity, getIcon),
-    [entity, getIcon],
-  );
-  const url = useMemo(
-    () => getWorktreeEntityUrl(entity, worktreeId, collectionMap),
-    [entity, worktreeId, collectionMap],
-  );
+function buildEntityNode(
+  entity: RemoteSyncEntity,
+  { worktreeId, collectionMap, getIcon }: BuildContext,
+): ChangeNode {
   const isRemoved =
     entity.sync_status === "delete" || entity.sync_status === "removed";
-  // A removed entity has no page left to open.
-  const href = isRemoved ? null : url;
-
-  const content = (
-    <Group gap="sm" wrap="nowrap" flex={1} miw={0}>
-      <FixedSizeIcon name={iconName} c="text-secondary" className={S.rowIcon} />
-      <Text truncate title={entity.name} className={S.rowName}>
-        {entity.name}
-      </Text>
-    </Group>
-  );
-
-  return (
-    <Group
-      gap="md"
-      wrap="nowrap"
-      px="lg"
-      py="sm"
-      pl={isNested ? "3rem" : "lg"}
-      className={S.row}
-      data-testid="worktree-change-row"
-    >
-      {href ? (
-        <Link to={href} className={S.rowLink}>
-          {content}
-        </Link>
-      ) : (
-        content
-      )}
-      <StatusLabel entity={entity} />
-    </Group>
-  );
-}
-
-function StatusLabel({ entity }: { entity: RemoteSyncEntity }) {
-  return (
-    <Text size="sm" c="text-secondary" className={S.rowStatus}>
-      {getSyncStatusLabel(entity.sync_status)}
-    </Text>
-  );
+  return {
+    id: `${entity.model}-${entity.id}`,
+    kind: "entity",
+    name: entity.name,
+    icon: getEntityIcon(entity, getIcon),
+    entity,
+    // A removed entity has no page left to open.
+    href: isRemoved
+      ? null
+      : getWorktreeEntityUrl(entity, worktreeId, collectionMap),
+  };
 }

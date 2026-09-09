@@ -22,7 +22,7 @@ import type { RemoteSyncEntity, Worktree } from "metabase-types/api";
 import { useWorktreeSyncActions } from "../use-worktree-sync-actions";
 
 import { WorktreeChangesList } from "./WorktreeChangesList";
-import { WorktreeStatusCards } from "./WorktreeStatusCards";
+import { WorktreeSyncStatus } from "./WorktreeSyncStatus";
 import { countChanges } from "./utils";
 
 const NO_CHANGES: RemoteSyncEntity[] = [];
@@ -73,9 +73,9 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
   const counts = useMemo(() => countChanges(entities), [entities]);
 
   return (
-    <PageContainer data-testid="worktree-home-page" gap="xl">
+    <PageContainer data-testid="worktree-home-page">
       <PaneHeader
-        py={0}
+        icon="git_branch"
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Overview`}</DataStudioBreadcrumbs>
         }
@@ -85,7 +85,7 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
           </PanelHeaderTitle>
         }
         actions={
-          <Group gap="sm" wrap="nowrap">
+          <Group wrap="nowrap">
             <Button
               leftSection={<Icon name="arrow_down" />}
               disabled={isPullDisabled || isFetchingRemoteChanges}
@@ -108,7 +108,7 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
         }
       />
 
-      <WorktreeStatusCards
+      <WorktreeSyncStatus
         worktree={worktree}
         counts={counts}
         isLoadingChanges={isLoadingChanges}
