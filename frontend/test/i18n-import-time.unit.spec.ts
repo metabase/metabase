@@ -36,16 +36,6 @@ jest.mock("ttag", () => {
 
 const ROOT = path.resolve(__dirname, "../..");
 
-/*
- * Modules that still translate while they are imported. Each needs a change
- * this check cannot make mechanically. Do not add to this list: make the
- * module translate when it is read instead.
- */
-const KNOWN_IMPORT_TIME_TRANSLATIONS = [
-  // Redux state must stay plain, so immer reads any getter when it freezes the
-  // initial state. The admin path names belong in the component, not in state.
-  "frontend/src/metabase/admin/app/reducers.ts",
-];
 const ROOTS = (
   process.env.I18N_IMPORT_ROOTS ?? "frontend/src,enterprise/frontend/src"
 ).split(",");
@@ -141,11 +131,6 @@ describe("translation at import time", () => {
       (byModule.get(key) ?? byModule.set(key, new Set()).get(key)!).add(text);
     }
 
-    const offenders = [...byModule.keys()].filter(
-      (file) =>
-        !KNOWN_IMPORT_TIME_TRANSLATIONS.some((known) => file.includes(known)),
-    );
-
-    expect(offenders).toEqual([]);
+    expect([...byModule.keys()]).toEqual([]);
   }, 600000);
 });

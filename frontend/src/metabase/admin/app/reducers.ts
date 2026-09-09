@@ -10,47 +10,47 @@ import { isNotNull } from "metabase/utils/types";
 export const getAdminPaths: () => AdminPath[] = () => {
   const items: AdminPath[] = [
     {
-      name: t`Settings`,
+      getName: () => t`Settings`,
       path: "/admin/settings",
       key: "settings",
     },
     {
-      name: t`Databases`,
+      getName: () => t`Databases`,
       path: "/admin/databases",
       key: "databases",
     },
     {
-      name: t`Embedding`,
+      getName: () => t`Embedding`,
       path: "/admin/embedding",
       key: "embedding",
     },
     {
-      name: t`AI`,
+      getName: () => t`AI`,
       path: "/admin/metabot",
       key: "metabot",
     },
     {
-      name: t`Table Metadata`,
+      getName: () => t`Table Metadata`,
       path: "/admin/datamodel",
       key: "data-model",
     },
     {
-      name: t`People`,
+      getName: () => t`People`,
       path: "/admin/people",
       key: "people",
     },
     {
-      name: t`Permissions`,
+      getName: () => t`Permissions`,
       path: "/admin/permissions",
       key: "permissions",
     },
     {
-      name: t`Performance`,
+      getName: () => t`Performance`,
       path: "/admin/performance",
       key: "performance",
     },
     {
-      name: t`Help`,
+      getName: () => t`Help`,
       path: "/admin/help",
       key: "help",
     },
