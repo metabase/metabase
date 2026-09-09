@@ -119,17 +119,30 @@
   [tag-ids]
   (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
 
-(defn active-job-schedules-for-transforms
-  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag."
-  [transform-ids]
+(defn- job-schedule-rows
+  "Rows of Transform ID and the schedule of the TransformJobs that run it through a shared tag, narrowed
+  by `where`."
+  [where]
   (t2/select :model/TransformTransformTag
              {:select [:ttt.transform_id [:job.schedule :schedule]]
               :from   [[:transform_transform_tag :ttt]]
               :join   [[:transform_job_transform_tag :jtt] [:= :ttt.tag_id :jtt.tag_id]
                        [:transform_job :job] [:= :jtt.job_id :job.id]]
-              :where  [:and
-                       [:in :ttt.transform_id transform-ids]
-                       [:= :job.active true]]}))
+              :where  where}))
+
+(defn active-job-schedules
+  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag,
+  for every Transform such a job runs."
+  []
+  (job-schedule-rows [:= :job.active true]))
+
+(defn active-job-schedules-for-transforms
+  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag,
+  for `transform-ids`."
+  [transform-ids]
+  (job-schedule-rows [:and
+                      [:in :ttt.transform_id transform-ids]
+                      [:= :job.active true]]))
 
 (defn insert-transform-tag-links!
   "Insert the TransformTransformTag `rows`."
@@ -390,6 +403,25 @@
                          [:in :transform_id transform-ids]
                          [:= :status "succeeded"]]
               :group-by [:transform_id]}))
+
+(defn latest-run-start-times-query
+  "HoneySQL map selecting each Transform's most recent run `start_time` (any status) as `:last_start`,
+  one row per `:transform_id`; optionally restricted to `transform-ids`. The single definition of the
+  \"most recent run\" anchor — embedded as the staleness method's join subquery
+  ([[metabase.staleness.core/find-stale-query]] `:model/Transform`) and realized by [[last-start-times]]
+  for the schedule-freshness check, so the two can't drift apart."
+  ([]
+   (latest-run-start-times-query nil))
+  ([transform-ids]
+   (cond-> ^:allow-subquery {:select   [:transform_id [[:max :start_time] :last_start]]
+                             :from     [:transform_run]
+                             :group-by [:transform_id]}
+     (seq transform-ids) (assoc :where [:in :transform_id transform-ids]))))
+
+(defn last-start-times
+  "Rows of Transform ID and the latest `start_time` of its runs, any status, for `transform-ids`."
+  [transform-ids]
+  (t2/select :model/TransformRun (latest-run-start-times-query transform-ids)))
 
 (defn insert-run!
   "Insert `run` and return the new instance."
