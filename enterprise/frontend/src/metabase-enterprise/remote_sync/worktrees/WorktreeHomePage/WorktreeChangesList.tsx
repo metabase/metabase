@@ -6,7 +6,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import {
-  Badge,
   Box,
   Divider,
   FixedSizeIcon,
@@ -27,20 +26,15 @@ import {
   getGroupIcon,
 } from "../../displayGroups";
 import { useCollectionGroups } from "../../hooks/use-collection-groups";
-import { getSyncStatusBadgeColor, getSyncStatusLabel } from "../../utils";
+import { getSyncStatusLabel } from "../../utils";
 
 import S from "./WorktreeChangesList.module.css";
-import {
-  type ChangeCounts,
-  getEntityIcon,
-  getWorktreeEntityUrl,
-} from "./utils";
+import { getEntityIcon, getWorktreeEntityUrl } from "./utils";
 
 type WorktreeChangesListProps = {
   worktreeId: WorktreeId;
   branch: string;
   entities: RemoteSyncEntity[];
-  counts: ChangeCounts;
   isLoading: boolean;
   error: unknown;
 };
@@ -49,7 +43,6 @@ export function WorktreeChangesList({
   worktreeId,
   branch,
   entities,
-  counts,
   isLoading,
   error,
 }: WorktreeChangesListProps) {
@@ -63,7 +56,6 @@ export function WorktreeChangesList({
     <TitleSection
       label={t`Changes to push`}
       description={t`Content in this worktree that differs from the ${branch} branch.`}
-      actions={<ChangeCountBadges counts={counts} />}
       data-testid="worktree-changes"
     >
       {error != null ? (
@@ -89,25 +81,6 @@ export function WorktreeChangesList({
         </Stack>
       )}
     </TitleSection>
-  );
-}
-
-function ChangeCountBadges({ counts }: { counts: ChangeCounts }) {
-  if (counts.added + counts.modified + counts.removed === 0) {
-    return null;
-  }
-  return (
-    <Group gap="xs" wrap="nowrap" data-testid="worktree-change-counts">
-      {counts.added > 0 && (
-        <Badge color="positive">{t`${counts.added} added`}</Badge>
-      )}
-      {counts.modified > 0 && (
-        <Badge color="brand">{t`${counts.modified} modified`}</Badge>
-      )}
-      {counts.removed > 0 && (
-        <Badge color="negative">{t`${counts.removed} removed`}</Badge>
-      )}
-    </Group>
   );
 }
 
@@ -153,7 +126,7 @@ function ChangeGroup({ group, worktreeId, collectionMap }: ChangeGroupProps) {
         </Text>
         {group.collectionEntity && (
           <Box ml="auto">
-            <StatusBadge entity={group.collectionEntity} />
+            <StatusLabel entity={group.collectionEntity} />
           </Box>
         )}
       </Group>
@@ -268,15 +241,15 @@ function ChangeRow({
       ) : (
         content
       )}
-      <StatusBadge entity={entity} />
+      <StatusLabel entity={entity} />
     </Group>
   );
 }
 
-function StatusBadge({ entity }: { entity: RemoteSyncEntity }) {
+function StatusLabel({ entity }: { entity: RemoteSyncEntity }) {
   return (
-    <Badge color={getSyncStatusBadgeColor(entity.sync_status)}>
+    <Text size="sm" c="text-secondary" className={S.rowStatus}>
       {getSyncStatusLabel(entity.sync_status)}
-    </Badge>
+    </Text>
   );
 }

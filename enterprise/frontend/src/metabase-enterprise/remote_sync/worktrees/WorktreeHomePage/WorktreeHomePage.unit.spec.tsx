@@ -147,11 +147,6 @@ describe("WorktreeHomePage", () => {
     expect(within(removedRow!).getByText("Removed")).toBeInTheDocument();
     expect(within(removedRow!).queryByRole("link")).not.toBeInTheDocument();
 
-    const counts = screen.getByTestId("worktree-change-counts");
-    expect(within(counts).getByText("1 added")).toBeInTheDocument();
-    expect(within(counts).getByText("1 modified")).toBeInTheDocument();
-    expect(within(counts).getByText("1 removed")).toBeInTheDocument();
-
     const localChanges = screen.getByTestId("worktree-local-changes");
     expect(within(localChanges).getByText("3")).toBeInTheDocument();
     expect(

@@ -123,7 +123,6 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
         worktreeId={worktreeId}
         branch={worktree.branch}
         entities={entities}
-        counts={counts}
         isLoading={isLoadingChanges}
         error={changesError}
       />

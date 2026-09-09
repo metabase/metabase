@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import type { BadgeColor } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
   Collection,
@@ -102,20 +101,6 @@ export const getSyncStatusLabel = (status: RemoteSyncEntityStatus): string => {
       return t`Modified`;
     default:
       return t`Changed`;
-  }
-};
-
-export const getSyncStatusBadgeColor = (
-  status: RemoteSyncEntityStatus,
-): BadgeColor => {
-  switch (status) {
-    case "create":
-      return "positive";
-    case "removed":
-    case "delete":
-      return "negative";
-    default:
-      return "brand";
   }
 };
 

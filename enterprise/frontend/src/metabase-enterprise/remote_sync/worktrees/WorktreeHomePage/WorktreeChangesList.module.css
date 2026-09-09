@@ -29,3 +29,8 @@
   border-radius: 50%;
   background-color: var(--mb-color-background_page-secondary);
 }
+
+.rowStatus {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
