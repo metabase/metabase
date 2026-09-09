@@ -35,8 +35,7 @@
   ([model run-id properties]
    (finish-active-run! model
                        run-id
-                       (merge {:end_time :%now}
-                              properties
+                       (merge properties
                               {:status    :succeeded
                                :is_active nil}))))
 
@@ -45,8 +44,7 @@
   [model run-id properties]
   (finish-active-run! model
                       run-id
-                      (merge {:end_time :%now}
-                             properties
+                      (merge properties
                              {:status    :failed
                               :is_active nil})))
 
@@ -58,7 +56,6 @@
                       run-id
                       {:status    :canceled
                        :is_active nil
-                       :end_time  :%now
                        :message   "Canceled"}))
 
 (defn cancel!

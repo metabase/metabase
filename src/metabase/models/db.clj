@@ -5,6 +5,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -160,7 +161,7 @@
    [:id        ::lib.schema.id/collection]
    [:entity_id :string]
    [:location  :string]
-   [:name      [:or :string :map sequential?]]])
+   [:name      :string]])
 
 (mu/defn collection-paths-columns :- [:sequential CollectionPathsColumn]
   "The id, entity id, location, and name of every Collection."
@@ -182,7 +183,7 @@
   "Rows returned by [[document-entity-ids-and-names]]."
   [:map {:closed true}
    [:entity_id :string]
-   [:name      [:or :string :map sequential?]]])
+   [:name      :string]])
 
 (mu/defn document-entity-ids-and-names :- [:sequential DocumentEntityIdsAndName]
   "The entity id and name of every Document."
@@ -192,47 +193,8 @@
 (def ^:private FieldHierarchy
   "Rows returned by [[field-hierarchy-rows]]."
   [:map {:closed true}
-   [:id                         ::lib.schema.id/field]
-   [:created_at                 ms/TemporalInstant]
-   [:updated_at                 ms/TemporalInstant]
-   [:name                       :string]
-   [:base_type                  [:or :keyword :string :map sequential?]]
-   [:semantic_type              [:maybe [:or :keyword :string :map sequential?]]]
-   [:active                     :boolean]
-   [:description                [:maybe [:or :string :map sequential?]]]
-   [:preview_display            :boolean]
-   [:position                   :int]
-   [:table_id                   ::lib.schema.id/table]
-   [:parent_id                  [:maybe ms/PositiveInt]]
-   [:display_name               [:maybe :string]]
-   [:visibility_type            [:or :keyword :string]]
-   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
-   [:last_analyzed              [:maybe ms/TemporalInstant]]
-   [:points_of_interest         [:maybe [:or :string :map sequential?]]]
-   [:caveats                    [:maybe [:or :string :map sequential?]]]
-   [:fingerprint                [:maybe [:or :string :map sequential?]]]
-   [:fingerprint_version        :int]
-   [:database_type              [:or :keyword :string :map sequential?]]
-   [:has_field_values           [:maybe [:or :keyword :string :map sequential?]]]
-   [:settings                   [:maybe [:or :string :map sequential?]]]
-   [:database_position          :int]
-   [:custom_position            :int]
-   [:effective_type             [:maybe [:or :keyword :string :map sequential?]]]
-   [:coercion_strategy          [:maybe [:or :keyword :string :map sequential?]]]
-   [:nfc_path                   [:maybe [:or :string :map sequential?]]]
-   [:database_required          :boolean]
-   [:json_unfolding             :boolean]
-   [:database_is_auto_increment :boolean]
-   [:database_indexed           [:maybe :boolean]]
-   [:database_partitioned       [:maybe :boolean]]
-   [:is_defective_duplicate     :boolean]
-   [:unique_field_helper        [:maybe :int]]
-   [:database_is_pk             [:maybe :boolean]]
-   [:database_is_nullable       [:maybe :boolean]]
-   [:database_is_generated      [:maybe :boolean]]
-   [:database_default           [:maybe [:or :string :map sequential?]]]
-   [:dimension_interestingness  [:maybe number?]]
-   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
+   [:name     :string]
+   [:table_id ::lib.schema.id/table]])
 
 (mu/defn field-hierarchy-rows :- [:sequential FieldHierarchy]
   "The name and Table id of the Field with `field-id` and each of its ancestors, deepest first."
@@ -325,10 +287,10 @@
    [:created_at                 ms/TemporalInstant]
    [:updated_at                 ms/TemporalInstant]
    [:name                       :string]
-   [:base_type                  [:or :keyword :string :map sequential?]]
-   [:semantic_type              [:maybe [:or :keyword :string :map sequential?]]]
+   [:base_type                  :string]
+   [:semantic_type              [:maybe :string]]
    [:active                     :boolean]
-   [:description                [:maybe [:or :string :map sequential?]]]
+   [:description                [:maybe :string]]
    [:preview_display            :boolean]
    [:position                   :int]
    [:table_id                   ::lib.schema.id/table]
@@ -337,29 +299,29 @@
    [:visibility_type            [:or :keyword :string]]
    [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
    [:last_analyzed              [:maybe ms/TemporalInstant]]
-   [:points_of_interest         [:maybe [:or :string :map sequential?]]]
-   [:caveats                    [:maybe [:or :string :map sequential?]]]
-   [:fingerprint                [:maybe [:or :string :map sequential?]]]
+   [:points_of_interest         [:maybe :string]]
+   [:caveats                    [:maybe :string]]
+   [:fingerprint                [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
    [:fingerprint_version        :int]
-   [:database_type              [:or :keyword :string :map sequential?]]
-   [:has_field_values           [:maybe [:or :keyword :string :map sequential?]]]
-   [:settings                   [:maybe [:or :string :map sequential?]]]
+   [:database_type              :string]
+   [:has_field_values           [:maybe [:or :keyword :string]]]
+   [:settings                   [:maybe :map]]
    [:database_position          :int]
    [:custom_position            :int]
-   [:effective_type             [:maybe [:or :keyword :string :map sequential?]]]
-   [:coercion_strategy          [:maybe [:or :keyword :string :map sequential?]]]
-   [:nfc_path                   [:maybe [:or :string :map sequential?]]]
+   [:effective_type             [:maybe :string]]
+   [:coercion_strategy          [:maybe :string]]
+   [:nfc_path                   [:maybe [:sequential :string]]]
    [:database_required          :boolean]
    [:json_unfolding             :boolean]
    [:database_is_auto_increment :boolean]
    [:database_indexed           [:maybe :boolean]]
    [:database_partitioned       [:maybe :boolean]]
-   [:is_defective_duplicate     :boolean]
-   [:unique_field_helper        [:maybe :int]]
+   [:is_defective_duplicate     {:optional true} :boolean]
+   [:unique_field_helper        {:optional true} [:maybe :int]]
    [:database_is_pk             [:maybe :boolean]]
    [:database_is_nullable       [:maybe :boolean]]
    [:database_is_generated      [:maybe :boolean]]
-   [:database_default           [:maybe [:or :string :map sequential?]]]
+   [:database_default           [:maybe :string]]
    [:dimension_interestingness  [:maybe number?]]
    [:data_sensitivity           [:maybe [:or :keyword :string]]]])
 

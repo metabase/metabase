@@ -5,6 +5,14 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::pulse.parameter
+  "One entry of the `:parameters` column of a Pulse, decoded."
+  :map)
+
+(mr/def ::pulse.parameters
+  "The `:parameters` column of a Pulse, decoded."
+  [:sequential ::pulse.parameter])
+
 (mr/def ::pulse
   "A Pulse as selected from the app DB: every column of `:pulse`."
   [:map {:closed true}
@@ -21,7 +29,7 @@
    [:collection_position [:maybe :int]]
    [:archived            [:maybe :boolean]]
    [:dashboard_id        [:maybe ::lib.schema.id/dashboard]]
-   [:parameters          [:or :string :map sequential?]]
+   [:parameters          ::pulse.parameters]
    [:entity_id           :string]
    [:disable_links       [:maybe :boolean]]])
 
@@ -40,7 +48,7 @@
    [:collection_position {:optional true} [:maybe :int]]
    [:archived            {:optional true} [:maybe :boolean]]
    [:dashboard_id        {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:parameters          {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:parameters          {:optional true} [:maybe ::pulse.parameters]]
    [:entity_id           {:optional true} [:maybe :string]]
    [:disable_links       {:optional true} [:maybe :boolean]]])
 
@@ -71,13 +79,17 @@
    [:format_rows       {:optional true} [:maybe :boolean]]
    [:pivot_results     {:optional true} [:maybe :boolean]]])
 
+(mr/def ::pulse-channel.details
+  "The `:details` column of a PulseChannel, decoded."
+  :map)
+
 (mr/def ::pulse-channel
   "A PulseChannel as selected from the app DB: every column of `:pulse_channel`."
   [:map {:closed true}
    [:id             ms/PositiveInt]
    [:pulse_id       ::lib.schema.id/pulse]
    [:channel_type   [:or :keyword :string]]
-   [:details        [:or :string :map sequential?]]
+   [:details        ::pulse-channel.details]
    [:schedule_type  [:or :keyword :string]]
    [:schedule_hour  [:maybe :int]]
    [:schedule_day   [:maybe :string]]
@@ -93,7 +105,7 @@
   [:map {:closed true}
    [:pulse_id       {:optional true} [:maybe ::lib.schema.id/pulse]]
    [:channel_type   {:optional true} [:maybe [:or :keyword :string]]]
-   [:details        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:details        {:optional true} [:maybe ::pulse-channel.details]]
    [:schedule_type  {:optional true} [:maybe [:or :keyword :string]]]
    [:schedule_hour  {:optional true} [:maybe :int]]
    [:schedule_day   {:optional true} [:maybe :string]]

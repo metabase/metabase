@@ -38,10 +38,10 @@
    [:created_at         ms/TemporalInstant]
    [:client_id          [:maybe :string]]
    [:client_name        [:maybe :string]]
-   [:client_uri         [:maybe [:or :string :map sequential?]]]
+   [:client_uri         [:maybe :string]]
    [:registration_type  [:maybe [:or :keyword :string]]]
    [:application_type   [:maybe [:or :keyword :string]]]
-   [:redirect_uris      [:maybe [:or :string :map sequential?]]]
+   [:redirect_uris      [:maybe [:sequential :string]]]
    [:user_email         [:maybe :string]]
    [:user_first_name    [:maybe :string]]
    [:user_last_name     [:maybe :string]]])

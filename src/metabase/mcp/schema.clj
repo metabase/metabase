@@ -11,10 +11,10 @@
    [:id                ms/PositiveInt]
    [:user_id           ::lib.schema.id/user]
    [:positive          :boolean]
-   [:issue_type        [:maybe [:or :keyword :string]]]
-   [:freeform_feedback [:maybe [:or :string :map sequential?]]]
-   [:prompt            [:maybe [:or :string :map sequential?]]]
-   [:query             [:maybe [:or :string :map sequential?]]]
+   [:issue_type        [:maybe :string]]
+   [:freeform_feedback [:maybe :string]]
+   [:prompt            [:maybe :string]]
+   [:query             [:maybe :string]]
    [:created_at        ms/TemporalInstant]])
 
 (mr/def ::mcp-feedback.update
@@ -22,10 +22,10 @@
   [:map {:closed true}
    [:user_id           {:optional true} [:maybe ::lib.schema.id/user]]
    [:positive          {:optional true} [:maybe :boolean]]
-   [:issue_type        {:optional true} [:maybe [:or :keyword :string]]]
-   [:freeform_feedback {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:prompt            {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:query             {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:issue_type        {:optional true} [:maybe :string]]
+   [:freeform_feedback {:optional true} [:maybe :string]]
+   [:prompt            {:optional true} [:maybe :string]]
+   [:query             {:optional true} [:maybe :string]]
    [:created_at        {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::mcp-query-handle
@@ -34,18 +34,18 @@
    [:id              :string]
    [:mcp_session_id  :string]
    [:core_session_id [:maybe :string]]
-   [:encoded_query   [:or :string :map sequential?]]
+   [:encoded_query   :string]
    [:created_at      ms/TemporalInstant]
-   [:prompt          [:maybe [:or :string :map sequential?]]]])
+   [:prompt          [:maybe :string]]])
 
 (mr/def ::mcp-query-handle.update
   "What an update (or insert) of a McpQueryHandle accepts: every column of `:mcp_query_handle` except `id`, all optional."
   [:map {:closed true}
    [:mcp_session_id  {:optional true} [:maybe :string]]
    [:core_session_id {:optional true} [:maybe :string]]
-   [:encoded_query   {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:encoded_query   {:optional true} [:maybe :string]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:prompt          {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:prompt          {:optional true} [:maybe :string]]])
 
 (mr/def ::mcp-session-log
   "A McpSessionLog as selected from the app DB: every column of `:mcp_session_log`."
@@ -79,10 +79,10 @@
    [:created_at           ms/TemporalInstant]
    [:user_id              [:maybe ::lib.schema.id/user]]
    [:tool_name            :string]
-   [:status               [:maybe [:or :keyword :string]]]
+   [:status               [:maybe :string]]
    [:duration_ms          [:maybe :int]]
    [:error_code           [:maybe :int]]
-   [:error_message        [:maybe [:or :string :map sequential?]]]
+   [:error_message        [:maybe :string]]
    [:client_name          [:maybe :string]]
    [:client_version       [:maybe :string]]
    [:tenant_id            [:maybe ms/PositiveInt]]
@@ -96,10 +96,10 @@
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:user_id              {:optional true} [:maybe ::lib.schema.id/user]]
    [:tool_name            {:optional true} [:maybe :string]]
-   [:status               {:optional true} [:maybe [:or :keyword :string]]]
+   [:status               {:optional true} [:maybe :string]]
    [:duration_ms          {:optional true} [:maybe :int]]
    [:error_code           {:optional true} [:maybe :int]]
-   [:error_message        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:error_message        {:optional true} [:maybe :string]]
    [:client_name          {:optional true} [:maybe :string]]
    [:client_version       {:optional true} [:maybe :string]]
    [:tenant_id            {:optional true} [:maybe ms/PositiveInt]]

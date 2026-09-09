@@ -69,7 +69,7 @@
    [:status             [:or :keyword :string]]
    [:is_active          [:maybe :boolean]]
    [:progress           [:maybe number?]]
-   [:message            [:maybe [:or :string :map sequential?]]]
+   [:message            [:maybe :string]]
    [:user_id            [:maybe ::lib.schema.id/user]]
    [:start_time         ms/TemporalInstant]
    [:end_time           [:maybe ms/TemporalInstant]]])
@@ -84,7 +84,7 @@
    [:status             {:optional true} [:maybe [:or :keyword :string]]]
    [:is_active          {:optional true} [:maybe :boolean]]
    [:progress           {:optional true} [:maybe number?]]
-   [:message            {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:message            {:optional true} [:maybe :string]]
    [:user_id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:start_time         {:optional true} [:maybe ms/TemporalInstant]]
    [:end_time           {:optional true} [:maybe ms/TemporalInstant]]])

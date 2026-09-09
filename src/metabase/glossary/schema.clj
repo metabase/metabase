@@ -10,7 +10,7 @@
   [:map {:closed true}
    [:id         ms/PositiveInt]
    [:term       :string]
-   [:definition [:or :string :map sequential?]]
+   [:definition :string]
    [:created_at ms/TemporalInstant]
    [:updated_at ms/TemporalInstant]
    [:creator_id ::lib.schema.id/user]])
@@ -19,7 +19,7 @@
   "What an update (or insert) of a Glossary accepts: every column of `:glossary` except `id`, all optional."
   [:map {:closed true}
    [:term       {:optional true} [:maybe :string]]
-   [:definition {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:definition {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])

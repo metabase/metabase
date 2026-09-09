@@ -69,7 +69,8 @@
 
 (def ^:private FieldValuesEligibility
   "Rows returned by [[field-values-eligibility]]."
-  (mut/select-keys ::warehouse-schema.schema/field [:base_type :visibility_type :has_field_values :preview_display]))
+  (mut/select-keys ::warehouse-schema.schema/field
+                   [:base_type :visibility_type :has_field_values :preview_display]))
 
 (mu/defn field-values-eligibility :- [:maybe FieldValuesEligibility]
   "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
@@ -223,7 +224,8 @@
 
 (def ^:private FullFieldValuesForTable
   "Rows returned by [[full-field-values-for-tables]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/field-values [:field_id :values]) [:map [:table_id [:maybe ::lib.schema.id/table]]]))
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/field-values [:field_id :values])
+             [:map [:table_id [:maybe ::lib.schema.id/table]]]))
 
 (mu/defn full-field-values-for-tables :- [:sequential FullFieldValuesForTable]
   "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
@@ -256,7 +258,7 @@
   (t2/select-one-fn :max-last-used-at [:model/FieldValues [[:max :last_used_at] :max-last-used-at]]
                     {:where [:= :field_id field-id]}))
 
-(mu/defn full-field-values-by-field :- [:sequential ::warehouse-schema.schema/field-values]
+(mu/defn full-field-values-by-field :- [:sequential (mut/optional-keys ::warehouse-schema.schema/field-values)]
   "The `columns` of the full FieldValues of the Fields with `field-ids`."
   [columns   :- [:or :keyword [:sequential :keyword]]
    field-ids :- [:set ::lib.schema.id/field]]
@@ -277,18 +279,18 @@
                                                                   [:id                    ms/PositiveInt]
                                                                   [:created_at            ms/TemporalInstant]
                                                                   [:updated_at            ms/TemporalInstant]
-                                                                  [:values                [:maybe [:or :string :map sequential?]]]
-                                                                  [:human_readable_values [:maybe [:or :string :map sequential?]]]
+                                                                  [:values                [:maybe ms/FieldValues]]
+                                                                  [:human_readable_values [:maybe ms/FieldValues]]
                                                                   [:field_id              ::lib.schema.id/field]
                                                                   [:has_more_values       [:maybe :boolean]]
                                                                   [:type                  [:or :keyword :string]]
-                                                                  [:hash_key              [:maybe [:or :string :map sequential?]]]
+                                                                  [:hash_key              [:maybe :string]]
                                                                   [:last_used_at          ms/TemporalInstant]])
   "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, inserting one with `has-more-values`, `values`, and no
   `human_readable_values` if none exists yet."
   [field-id       :- ::lib.schema.id/field
    has-more-values :- :boolean
-   values          :- [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]]
+   values          :- [:maybe ms/FieldValues]]
   (app-db/select-or-insert! :model/FieldValues {:field_id field-id, :type :full}
                             (constantly {:has_more_values       has-more-values
                                          :values                values
@@ -385,10 +387,10 @@
   "Rows returned by [[transforms-by-id]]."
   [:map {:closed true}
    [:id                    ::lib.schema.id/transform]
-   [:name                  [:or :string :map sequential?]]
-   [:description           [:maybe [:or :string :map sequential?]]]
-   [:source                [:or :keyword :string :map sequential?]]
-   [:target                [:or :string :map sequential?]]
+   [:name                  :string]
+   [:description           [:maybe :string]]
+   [:source                :map]
+   [:target                :map]
    [:entity_id             :string]
    [:created_at            ms/TemporalInstant]
    [:updated_at            ms/TemporalInstant]
@@ -397,11 +399,11 @@
    [:source_database_id    [:maybe ::lib.schema.id/database]]
    [:collection_id         [:maybe ::lib.schema.id/collection]]
    [:owner_user_id         [:maybe ::lib.schema.id/user]]
-   [:owner_email           [:maybe [:or :string :map sequential?]]]
+   [:owner_email           [:maybe :string]]
    [:target_db_id          [:maybe ::lib.schema.id/database]]
-   [:last_checkpoint_value [:maybe [:or :string :map sequential?]]]
+   [:last_checkpoint_value [:maybe :string]]
    [:target_table_id       [:maybe ::lib.schema.id/table]]
-   [:table_dependencies    [:maybe [:or :string :map sequential?]]]])
+   [:table_dependencies    [:maybe [:sequential :map]]]])
 
 (mu/defn transforms-by-id :- [:map-of ms/PositiveInt TransformsById]
   "A map of ID to Transform for `transform-ids`."
@@ -453,7 +455,9 @@
 
 (def ^:private CardsWithModeratedStatus
   "Rows returned by [[cards-with-moderated-status]]."
-  (mut/merge (mut/select-keys ::queries.schema/card [:id :dataset_query :result_metadata :name :description :collection_id :database_id :type :source_card_id :created_at :entity_id :card_schema]) [:map [:moderated_status [:maybe [:or :keyword :string]]]]))
+  (mut/merge (mut/select-keys ::queries.schema/card
+                              [:id :dataset_query :result_metadata :name :description :collection_id :database_id :type :source_card_id :created_at :entity_id :card_schema])
+             [:map [:moderated_status [:maybe [:or :keyword :string]]]]))
 
 (mu/defn cards-with-moderated-status :- [:sequential CardsWithModeratedStatus]
   "The query-metadata columns of the Cards with `card-ids`, with their latest moderation status."

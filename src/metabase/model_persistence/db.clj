@@ -71,7 +71,15 @@
     (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/select :model/PersistedInfo hsql))))
 
-(mu/defn refreshable-persisted-infos :- [:sequential ::model-persistence.schema/persisted-info]
+(def ^:private RefreshablePersistedInfo
+  "Rows returned by [[refreshable-persisted-infos]]."
+  (mut/merge ::model-persistence.schema/persisted-info
+             [:map
+              [:type     [:maybe [:or :keyword :string]]]
+              [:archived [:maybe :boolean]]
+              [:name     [:maybe :string]]]))
+
+(mu/defn refreshable-persisted-infos :- [:sequential RefreshablePersistedInfo]
   "The PersistedInfos of the Database with `database-id` in one of `states` whose Card is an unarchived
   model, plus the Card's `:type`, `:archived`, and `:name`."
   [database-id :- ::lib.schema.id/database
@@ -135,10 +143,9 @@
                                           [:not :c.archived]]}))
 
 (mu/defn insert-persisted-info! :- ::model-persistence.schema/persisted-info
-  "Insert the PersistedInfo `row`, with `refresh_begin` and `state_change_at` defaulting to the app DB's now, and
-  return the inserted instance."
+  "Insert the PersistedInfo `row` and return the inserted instance."
   [row :- ::model-persistence.schema/persisted-info.update]
-  (t2/insert-returning-instance! :model/PersistedInfo (merge {:refresh_begin :%now, :state_change_at :%now} row)))
+  (t2/insert-returning-instance! :model/PersistedInfo row))
 
 (mu/defn insert-persisted-infos! :- :int
   "Insert the PersistedInfo `rows`, returning the number inserted."
@@ -160,10 +167,8 @@
   (t2/update! :model/PersistedInfo id {:definition      definition
                                        :query_hash      query-hash
                                        :active          false
-                                       :refresh_begin   :%now
                                        :refresh_end     nil
-                                       :state           "refreshing"
-                                       :state_change_at :%now}))
+                                       :state           "refreshing"}))
 
 (mu/defn end-persisted-info-refresh! :- :int
   "Record the outcome of the refresh of the PersistedInfo with `id`: `state` (\"persisted\" or \"error\"), whether
@@ -172,11 +177,9 @@
    active? :- :boolean
    state   :- [:enum "persisted" "error"]
    error   :- [:maybe :string]]
-  (t2/update! :model/PersistedInfo id {:active          active?
-                                       :refresh_end     :%now
-                                       :state           state
-                                       :state_change_at :%now
-                                       :error           error}))
+  (t2/update! :model/PersistedInfo id {:active active?
+                                       :state  state
+                                       :error  error}))
 
 (mu/defn deactivate-all-persisted-infos! :- :int
   "Deactivate every PersistedInfo and move it to `state`, returning the number updated."

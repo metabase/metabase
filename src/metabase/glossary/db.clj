@@ -24,7 +24,7 @@
 
 (mu/defn insert-glossary-entry! :- ::glossary.schema/glossary
   "Insert the Glossary `row` and return the inserted instance."
-  [row :- ::glossary.schema/glossary]
+  [row :- ::glossary.schema/glossary.update]
   (t2/insert-returning-instance! :model/Glossary row))
 
 (mu/defn glossary-entry :- [:maybe ::glossary.schema/glossary]

@@ -28,7 +28,8 @@
 
 (def ^:private ProxiedAiUsageTokensByModel
   "Rows returned by [[proxied-ai-usage-tokens-by-model]]."
-  (mut/merge (mut/select-keys ::metabot.schema/ai-usage-log [:model]) [:map [:tokens [:maybe number?]]]))
+  (mut/merge (mut/select-keys ::metabot.schema/ai-usage-log [:model])
+             [:map [:tokens [:maybe number?]]]))
 
 (mu/defn proxied-ai-usage-tokens-by-model :- [:sequential ProxiedAiUsageTokensByModel]
   "The model and total tokens of the proxied AiUsageLog rows on `date`, grouped by model."
@@ -121,7 +122,9 @@
    [:static_embed      :int]
    [:public_link       :int]
    [:simple_embed      :int]
-   [:internal          :int]])
+   [:internal          :int]
+   ;; added by the model's after-select hook
+   [:row_count         :int]])
 
 (mu/defn query-execution-statistics-all-time :- [:maybe QueryExecutionStatistics]
   "The QueryExecution counts per embedding client over all time."

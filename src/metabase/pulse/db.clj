@@ -134,7 +134,8 @@
 
 (def ^:private Pulse
   "Rows returned by [[pulses]]."
-  (mut/merge ::pulse.schema/pulse [:map [:lower-name [:maybe :string]]]))
+  (mut/merge ::pulse.schema/pulse
+             [:map [:lower-name [:maybe :string]]]))
 
 (mu/defn pulses :- [:sequential Pulse]
   "The dashboard-subscription Pulses (unarchived unless `archived?`), optionally narrowed to `dashboard-id` and/or
@@ -226,7 +227,16 @@
 
 (def ^:private PulseCardsForPulse
   "Rows returned by [[pulse-cards-for-pulses]]."
-  (mut/merge (mut/select-keys ::queries.schema/card [:id :name :description :collection_id :display :dashboard_id]) [:map [:include_csv [:maybe :boolean]] [:include_xls [:maybe :boolean]] [:format_rows [:maybe :boolean]] [:pivot_results [:maybe :boolean]] [:dashboard_card_id [:maybe ::lib.schema.id/card]] [:parameter_mappings :nil] [:pulse_id [:maybe ::lib.schema.id/pulse]]]))
+  (mut/merge (mut/select-keys ::queries.schema/card
+                              [:id :name :description :collection_id :display :dashboard_id])
+             [:map
+              [:include_csv        [:maybe :boolean]]
+              [:include_xls        [:maybe :boolean]]
+              [:format_rows        [:maybe :boolean]]
+              [:pivot_results      [:maybe :boolean]]
+              [:dashboard_card_id  [:maybe ::lib.schema.id/card]]
+              [:parameter_mappings :nil]
+              [:pulse_id           [:maybe ::lib.schema.id/pulse]]]))
 
 (mu/defn pulse-cards-for-pulses :- [:sequential PulseCardsForPulse]
   "The Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order. Excludes
@@ -248,7 +258,9 @@
 
 (def ^:private PulseCardRef
   "Rows returned by [[pulse-card-refs]]."
-  (mu/rename-keys (mut/select-keys ::pulse.schema/pulse-card [:card_id :include_csv :include_xls :dashboard_card_id]) {:card_id :id}))
+  (mu/rename-keys (mut/select-keys ::pulse.schema/pulse-card
+                                   [:card_id :include_csv :include_xls :dashboard_card_id])
+                  {:card_id :id}))
 
 (mu/defn pulse-card-refs :- [:sequential PulseCardRef]
   "The Card id (as `:id`), export options, and DashboardCard id of the PulseCards of the Pulse with `pulse-id`, in
@@ -378,7 +390,8 @@
 
 (def ^:private ActiveRecipientsForChannel
   "Rows returned by [[active-recipients-for-channels]]."
-  (mut/merge (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name]) [:map [:pulse_channel_id [:maybe ms/PositiveInt]]]))
+  (mut/merge (mut/select-keys ::users.schema/user [:id :email :first_name :last_name :common_name])
+             [:map [:pulse_channel_id [:maybe ms/PositiveInt]]]))
 
 (mu/defn active-recipients-for-channels :- [:sequential ActiveRecipientsForChannel]
   "The id, email, name, and PulseChannel id of the active User recipients of the PulseChannels with `channel-ids`, in

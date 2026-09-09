@@ -17,7 +17,8 @@
 
 (def ^:private TokenStatusCache
   "Rows returned by [[token-status-cache]]."
-  (mut/select-keys ::premium-features.schema/premium-features-cache [:token_status_hash :updated_at]))
+  (mut/select-keys ::premium-features.schema/premium-features-cache
+                   [:token_status_hash :updated_at]))
 
 (mu/defn token-status-cache :- [:maybe TokenStatusCache]
   "The `:token_status_hash` and `:updated_at` cached for `token-hash`, or nil."

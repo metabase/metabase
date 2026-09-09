@@ -80,7 +80,7 @@
 
 (mu/defn published-table-ids :- [:maybe [:set ::lib.schema.id/table]]
   "The IDs of the published Tables among `table-ids`."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
+  [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true))
 
 (mu/defn tables :- [:sequential ::warehouse-schema.schema/table]

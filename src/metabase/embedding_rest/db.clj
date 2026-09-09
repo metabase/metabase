@@ -56,7 +56,8 @@
 
 (def ^:private EmbeddingTheme
   "Rows returned by [[embedding-themes]]."
-  (mut/select-keys ::embedding.schema/embedding-theme [:id :entity_id :name :settings :created_at :updated_at]))
+  (mut/select-keys ::embedding.schema/embedding-theme
+                   [:id :entity_id :name :settings :created_at :updated_at]))
 
 (mu/defn embedding-themes :- [:sequential EmbeddingTheme]
   "The id, entity id, name, settings, and timestamps of every EmbeddingTheme, oldest first."

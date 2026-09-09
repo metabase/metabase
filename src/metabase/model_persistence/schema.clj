@@ -5,22 +5,26 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::persisted-info.definition
+  "The `:definition` column of a PersistedInfo, decoded."
+  :map)
+
 (mr/def ::persisted-info
   "A PersistedInfo as selected from the app DB: every column of `:persisted_info`."
   [:map {:closed true}
    [:id              ms/PositiveInt]
    [:database_id     ::lib.schema.id/database]
    [:card_id         [:maybe ::lib.schema.id/card]]
-   [:question_slug   [:or :string :map sequential?]]
-   [:table_name      [:or :string :map sequential?]]
-   [:definition      [:maybe [:or :string :map sequential?]]]
-   [:query_hash      [:maybe [:or :string :map sequential?]]]
+   [:question_slug   :string]
+   [:table_name      :string]
+   [:definition      [:maybe ::persisted-info.definition]]
+   [:query_hash      [:maybe :string]]
    [:active          :boolean]
-   [:state           [:or :string :map sequential?]]
+   [:state           :string]
    [:refresh_begin   ms/TemporalInstant]
    [:refresh_end     [:maybe ms/TemporalInstant]]
    [:state_change_at [:maybe ms/TemporalInstant]]
-   [:error           [:maybe [:or :string :map sequential?]]]
+   [:error           [:maybe :string]]
    [:created_at      ms/TemporalInstant]
    [:creator_id      [:maybe ::lib.schema.id/user]]])
 
@@ -29,15 +33,15 @@
   [:map {:closed true}
    [:database_id     {:optional true} [:maybe ::lib.schema.id/database]]
    [:card_id         {:optional true} [:maybe ::lib.schema.id/card]]
-   [:question_slug   {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:table_name      {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:definition      {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:query_hash      {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:question_slug   {:optional true} [:maybe :string]]
+   [:table_name      {:optional true} [:maybe :string]]
+   [:definition      {:optional true} [:maybe ::persisted-info.definition]]
+   [:query_hash      {:optional true} [:maybe :string]]
    [:active          {:optional true} [:maybe :boolean]]
-   [:state           {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:state           {:optional true} [:maybe :string]]
    [:refresh_begin   {:optional true} [:maybe ms/TemporalInstant]]
    [:refresh_end     {:optional true} [:maybe ms/TemporalInstant]]
    [:state_change_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:error           {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:error           {:optional true} [:maybe :string]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id      {:optional true} [:maybe ::lib.schema.id/user]]])

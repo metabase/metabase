@@ -8,7 +8,7 @@
   "A SsoRelayState as selected from the app DB: every column of `:sso_relay_state`."
   [:map {:closed true}
    [:id           :string]
-   [:continue_url [:or :string :map sequential?]]
+   [:continue_url :string]
    [:origin       [:maybe :string]]
    [:embedding    :boolean]
    [:expires_at   ms/TemporalInstant]
@@ -17,7 +17,7 @@
 (mr/def ::sso-relay-state.update
   "What an update (or insert) of a SsoRelayState accepts: every column of `:sso_relay_state` except `id`, all optional."
   [:map {:closed true}
-   [:continue_url {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:continue_url {:optional true} [:maybe :string]]
    [:origin       {:optional true} [:maybe :string]]
    [:embedding    {:optional true} [:maybe :boolean]]
    [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]

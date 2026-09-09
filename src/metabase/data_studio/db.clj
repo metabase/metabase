@@ -105,7 +105,8 @@
 
 (def ^:private SelectionColumnsForSelector
   "Rows returned by [[selection-columns-for-selectors]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :name :display_name :schema :is_published]))
+  (mut/select-keys ::warehouse-schema.schema/table
+                   [:id :db_id :name :display_name :schema :is_published]))
 
 (mu/defn selection-columns-for-selectors :- [:sequential SelectionColumnsForSelector]
   "Up to `limit` id, database, name, schema, and published flag of the Tables picked out by `selectors`."
@@ -116,7 +117,8 @@
 
 (def ^:private SelectionColumnsForTable
   "Rows returned by [[selection-columns-for-tables]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :name :display_name :schema :is_published]))
+  (mut/select-keys ::warehouse-schema.schema/table
+                   [:id :db_id :name :display_name :schema :is_published]))
 
 (mu/defn selection-columns-for-tables :- [:sequential SelectionColumnsForTable]
   "The id, database, name, schema, and published flag of the Tables with `table-ids`."

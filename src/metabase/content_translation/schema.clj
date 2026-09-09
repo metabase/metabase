@@ -9,12 +9,12 @@
   [:map {:closed true}
    [:id     ms/PositiveInt]
    [:locale :string]
-   [:msgid  [:or :string :map sequential?]]
-   [:msgstr [:or :string :map sequential?]]])
+   [:msgid  :string]
+   [:msgstr :string]])
 
 (mr/def ::content-translation.update
   "What an update (or insert) of a ContentTranslation accepts: every column of `:content_translation` except `id`, all optional."
   [:map {:closed true}
    [:locale {:optional true} [:maybe :string]]
-   [:msgid  {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:msgstr {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:msgid  {:optional true} [:maybe :string]]
+   [:msgstr {:optional true} [:maybe :string]]])

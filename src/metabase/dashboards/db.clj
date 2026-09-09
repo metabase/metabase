@@ -65,7 +65,8 @@
 
 (def ^:private DashcardsWithVisibleCardsForDashboard
   "Rows returned by [[dashcards-with-visible-cards-for-dashboards]]."
-  (mut/merge ::dashboards.schema/dashboard-card [:map [:collection_authority_level [:maybe [:or :keyword :string]]]]))
+  (mut/merge ::dashboards.schema/dashboard-card
+             [:map [:collection_authority_level [:maybe [:or :keyword :string]]]]))
 
 (mu/defn dashcards-with-visible-cards-for-dashboards :- [:sequential DashcardsWithVisibleCardsForDashboard]
   "The DashboardCards of the Dashboards with `dashboard-ids` whose Card is visible (unarchived, a dashboard question
@@ -150,7 +151,8 @@
 
 (def ^:private DashcardSerdesColumn
   "Rows returned by [[dashcard-serdes-columns]]."
-  (mut/select-keys ::dashboards.schema/dashboard-card [:id :card_id :action_id :parameter_mappings :visualization_settings]))
+  (mut/select-keys ::dashboards.schema/dashboard-card
+                   [:id :card_id :action_id :parameter_mappings :visualization_settings]))
 
 (mu/defn dashcard-serdes-columns :- [:sequential DashcardSerdesColumn]
   "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
@@ -170,7 +172,9 @@
 
 (def ^:private SeriesCardsForDashcard
   "Rows returned by [[series-cards-for-dashcards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card [:id :name :description :display :dataset_query :type :database_id :visualization_settings :collection_id :card_schema]) [:map [:dashboardcard_id [:maybe ::lib.schema.id/dashcard]]]))
+  (mut/merge (mut/select-keys ::queries.schema/card
+                              [:id :name :description :display :dataset_query :type :database_id :visualization_settings :collection_id :card_schema])
+             [:map [:dashboardcard_id [:maybe ::lib.schema.id/dashcard]]]))
 
 (mu/defn series-cards-for-dashcards :- [:sequential SeriesCardsForDashcard]
   "The series Cards of the DashboardCards with `dashcard-ids`, each with its `:dashboardcard_id`, in series order."

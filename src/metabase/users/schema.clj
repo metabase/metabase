@@ -53,6 +53,10 @@
    [:id   ms/PositiveInt]
    [:name ms/NonBlankString]])
 
+(mr/def ::user.settings
+  "The `:settings` column of a User, decoded."
+  :map)
+
 (mr/def ::user
   "A User as selected from the app DB: every column of `:core_user` that the model selects by default, plus `:common_name` added by the model's after-select hook."
   [:map {:closed true}
@@ -84,17 +88,17 @@
    [:reset_token             [:maybe :string]]
    [:reset_triggered         [:maybe :int]]
    [:is_qbnewb               :boolean]
-   [:login_attributes        [:maybe [:or :string :map sequential?]]]
+   [:login_attributes        [:maybe LoginAttributes]]
    [:updated_at              [:maybe ms/TemporalInstant]]
    [:sso_source              [:maybe [:or :keyword :string]]]
    [:locale                  [:maybe :string]]
    [:is_datasetnewb          :boolean]
-   [:settings                [:maybe [:or :string :map sequential?]]]
+   [:settings                [:maybe ::user.settings]]
    [:type                    [:or :keyword :string]]
    [:entity_id               :string]
    [:deactivated_at          [:maybe ms/TemporalInstant]]
    [:tenant_id               [:maybe ms/PositiveInt]]
-   [:jwt_attributes          [:maybe [:or :string :map sequential?]]]
+   [:jwt_attributes          [:maybe LoginAttributes]]
    [:deactivated_with_tenant [:maybe :boolean]]
    [:is_data_analyst         :boolean]
    [:common_name             {:optional true} [:maybe :string]]])
@@ -114,19 +118,23 @@
    [:reset_token             {:optional true} [:maybe :string]]
    [:reset_triggered         {:optional true} [:maybe :int]]
    [:is_qbnewb               {:optional true} [:maybe :boolean]]
-   [:login_attributes        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:login_attributes        {:optional true} [:maybe LoginAttributes]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:sso_source              {:optional true} [:maybe [:or :keyword :string]]]
    [:locale                  {:optional true} [:maybe :string]]
    [:is_datasetnewb          {:optional true} [:maybe :boolean]]
-   [:settings                {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:settings                {:optional true} [:maybe ::user.settings]]
    [:type                    {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_id               {:optional true} [:maybe :string]]
    [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]
-   [:jwt_attributes          {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:jwt_attributes          {:optional true} [:maybe LoginAttributes]]
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
    [:is_data_analyst         {:optional true} [:maybe :boolean]]])
+
+(mr/def ::user-parameter-value.value
+  "The `:value` column of a UserParameterValue, decoded."
+  [:or :string number? :boolean [:sequential [:maybe [:or :string number? :boolean]]]])
 
 (mr/def ::user-parameter-value
   "A UserParameterValue as selected from the app DB: every column of `:user_parameter_value`."
@@ -134,7 +142,7 @@
    [:id           ms/PositiveInt]
    [:user_id      ::lib.schema.id/user]
    [:parameter_id :string]
-   [:value        [:maybe [:or :string :map sequential?]]]
+   [:value        [:maybe ::user-parameter-value.value]]
    [:dashboard_id [:maybe ::lib.schema.id/dashboard]]])
 
 (mr/def ::user-parameter-value.update
@@ -142,5 +150,5 @@
   [:map {:closed true}
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:parameter_id {:optional true} [:maybe :string]]
-   [:value        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:value        {:optional true} [:maybe ::user-parameter-value.value]]
    [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]])

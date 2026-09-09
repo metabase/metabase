@@ -381,7 +381,7 @@
                   ;; in the extremely unlikely case that there already exists a table with our
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
-                  [(sync.db/archive-inactive-table! (:id table) (mi/now) new-name)]
+                  [(sync.db/archive-inactive-table! (:id table) new-name)]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)

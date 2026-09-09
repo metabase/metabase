@@ -11,7 +11,7 @@
    [:engine     [:or :keyword :string]]
    [:version    :string]
    [:index_name :string]
-   [:status     [:maybe [:or :keyword :string :map sequential?]]]
+   [:status     [:maybe [:or :keyword :string]]]
    [:created_at ms/TemporalInstant]
    [:updated_at ms/TemporalInstant]
    [:lang_code  :string]])
@@ -22,7 +22,7 @@
    [:engine     {:optional true} [:maybe [:or :keyword :string]]]
    [:version    {:optional true} [:maybe :string]]
    [:index_name {:optional true} [:maybe :string]]
-   [:status     {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:status     {:optional true} [:maybe [:or :keyword :string]]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:lang_code  {:optional true} [:maybe :string]]])

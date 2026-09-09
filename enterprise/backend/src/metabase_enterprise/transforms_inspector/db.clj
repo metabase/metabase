@@ -11,7 +11,11 @@
 
 (def ^:private TableSource
   "Rows returned by [[table-source-rows]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/table [:schema]) [:map [:table-id [:maybe ms/PositiveInt]] [:table-name [:maybe :string]] [:db-id [:maybe ::lib.schema.id/database]]]))
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/table [:schema])
+             [:map
+              [:table-id   [:maybe ms/PositiveInt]]
+              [:table-name [:maybe :string]]
+              [:db-id      [:maybe ::lib.schema.id/database]]]))
 
 (mu/defn table-source-rows :- [:sequential TableSource]
   "The ID, name, schema, and Database ID of the Tables with `table-ids`, as source info."

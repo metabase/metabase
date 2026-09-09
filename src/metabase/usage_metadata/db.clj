@@ -14,7 +14,8 @@
 
 (def ^:private QueryExecutionHashCount
   "Rows returned by [[query-execution-hash-counts]]."
-  (mut/merge (mut/select-keys ::queries.schema/query-execution [:hash]) [:map [:n [:maybe :int]]]))
+  (mut/merge (mut/select-keys ::queries.schema/query-execution [:hash :row_count])
+             [:map [:n [:maybe :int]]]))
 
 (mu/defn query-execution-hash-counts :- [:sequential QueryExecutionHashCount]
   "The `:hash` and execution count `:n` of the QueryExecutions started at or after `started-at` and before
@@ -164,7 +165,9 @@
 
 (def ^:private GroupedSegment
   "Rows returned by [[grouped-segment-rows]]."
-  (mut/merge (mut/select-keys ::usage-metadata.schema/source-segment-daily [:source_type :source_id :field_id :predicate]) [:map [:total_count [:maybe number?]]]))
+  (mut/merge (mut/select-keys ::usage-metadata.schema/source-segment-daily
+                              [:source_type :source_id :field_id :predicate])
+             [:map [:total_count [:maybe number?]]]))
 
 (mu/defn grouped-segment-rows :- [:sequential GroupedSegment]
   "The summed `source_segment_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
@@ -185,7 +188,9 @@
 
 (def ^:private GroupedMetric
   "Rows returned by [[grouped-metric-rows]]."
-  (mut/merge (mut/select-keys ::usage-metadata.schema/source-metric-daily [:source_type :source_id :agg_type :agg_field_id :temporal_field_id :temporal_unit]) [:map [:total_count [:maybe number?]]]))
+  (mut/merge (mut/select-keys ::usage-metadata.schema/source-metric-daily
+                              [:source_type :source_id :agg_type :agg_field_id :temporal_field_id :temporal_unit])
+             [:map [:total_count [:maybe number?]]]))
 
 (mu/defn grouped-metric-rows :- [:sequential GroupedMetric]
   "The summed `source_metric_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
@@ -208,7 +213,9 @@
 
 (def ^:private GroupedDimension
   "Rows returned by [[grouped-dimension-rows]]."
-  (mut/merge (mut/select-keys ::usage-metadata.schema/source-dimension-daily [:source_type :source_id :field_id :temporal_unit :binning]) [:map [:total_count [:maybe number?]]]))
+  (mut/merge (mut/select-keys ::usage-metadata.schema/source-dimension-daily
+                              [:source_type :source_id :field_id :temporal_unit :binning])
+             [:map [:total_count [:maybe number?]]]))
 
 (mu/defn grouped-dimension-rows :- [:sequential GroupedDimension]
   "The summed `source_dimension_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed
@@ -230,7 +237,9 @@
 
 (def ^:private GroupedComposite
   "Rows returned by [[grouped-composite-rows]]."
-  (mut/merge (mut/select-keys ::usage-metadata.schema/source-segment-composite-daily [:source_type :source_id :clause :atom_fingerprints :atom_count]) [:map [:total_count [:maybe number?]]]))
+  (mut/merge (mut/select-keys ::usage-metadata.schema/source-segment-composite-daily
+                              [:source_type :source_id :clause :atom_fingerprints :atom_count])
+             [:map [:total_count [:maybe number?]]]))
 
 (mu/defn grouped-composite-rows :- [:sequential GroupedComposite]
   "The summed `source_segment_composite_daily` counts optionally narrowed to `source-type`, `source-id`, and
@@ -252,7 +261,9 @@
 
 (def ^:private GroupedProfile
   "Rows returned by [[grouped-profile-rows]]."
-  (mut/merge (mut/select-keys ::usage-metadata.schema/source-dimension-profile-daily [:source_type :source_id :field_id :source_basis :observation_type :observation_value]) [:map [:total_count [:maybe number?]]]))
+  (mut/merge (mut/select-keys ::usage-metadata.schema/source-dimension-profile-daily
+                              [:source_type :source_id :field_id :source_basis :observation_type :observation_value])
+             [:map [:total_count [:maybe number?]]]))
 
 (mu/defn grouped-profile-rows :- [:sequential GroupedProfile]
   "The summed `source_dimension_profile_daily` counts optionally narrowed to `source-type`, `source-id`, and

@@ -62,32 +62,120 @@
   [card :- [:maybe :map]]
   (lib/normalize ::card card))
 
+(mr/def ::card.dataset-query
+  "The `:dataset_query` column of a Card, decoded."
+  :map)
+
+(mr/def ::card.visualization-settings
+  "The `:visualization_settings` column of a Card, decoded."
+  :map)
+
+(mr/def ::card.parameter
+  "One entry of the `:parameters` column of a Card, decoded."
+  :map)
+
+(mr/def ::card.parameters
+  "The `:parameters` column of a Card, decoded."
+  [:sequential ::card.parameter])
+
+(mr/def ::card.parameter-mapping
+  "One entry of the `:parameter_mappings` column of a Card, decoded."
+  :map)
+
+(mr/def ::card.parameter-mappings
+  "The `:parameter_mappings` column of a Card, decoded."
+  [:sequential ::card.parameter-mapping])
+
+(mr/def ::card.dimension
+  "One entry of the `:dimensions` column of a Card, decoded."
+  :map)
+
+(mr/def ::card.dimensions
+  "The `:dimensions` column of a Card, decoded."
+  [:sequential ::card.dimension])
+
+(mr/def ::card.dimension-mapping
+  "One entry of the `:dimension_mappings` column of a Card, decoded."
+  :map)
+
+(mr/def ::card.dimension-mappings
+  "The `:dimension_mappings` column of a Card, decoded."
+  [:sequential ::card.dimension-mapping])
+
+(mr/def ::card
+  "A Card as selected from the app DB: every column of `:report_card`."
+  [:map {:closed true}
+   [:id                                        ::lib.schema.id/card]
+   [:created_at                                ms/TemporalInstant]
+   [:updated_at                                ms/TemporalInstant]
+   [:name                                      :string]
+   [:description                               [:maybe :string]]
+   [:display                                   [:or :keyword :string]]
+   [:dataset_query                             ::card.dataset-query]
+   [:visualization_settings                    ::card.visualization-settings]
+   [:creator_id                                ::lib.schema.id/user]
+   [:database_id                               ::lib.schema.id/database]
+   [:table_id                                  [:maybe ::lib.schema.id/table]]
+   [:query_type                                [:maybe [:or :keyword :string]]]
+   [:archived                                  :boolean]
+   [:collection_id                             [:maybe ::lib.schema.id/collection]]
+   [:public_uuid                               [:maybe :string]]
+   [:made_public_by_id                         [:maybe ms/PositiveInt]]
+   [:enable_embedding                          :boolean]
+   [:embedding_params                          [:maybe ms/EmbeddingParams]]
+   [:cache_ttl                                 [:maybe :int]]
+   [:result_metadata                           [:maybe ::card.result-metadata]]
+   [:collection_position                       [:maybe :int]]
+   [:entity_id                                 :string]
+   [:parameters                                [:maybe ::card.parameters]]
+   [:parameter_mappings                        [:maybe ::card.parameter-mappings]]
+   [:collection_preview                        :boolean]
+   [:metabase_version                          [:maybe :string]]
+   [:type                                      [:or :keyword :string]]
+   [:initially_published_at                    [:maybe ms/TemporalInstant]]
+   [:cache_invalidated_at                      [:maybe ms/TemporalInstant]]
+   [:last_used_at                              ms/TemporalInstant]
+   [:view_count                                :int]
+   [:archived_directly                         :boolean]
+   [:dataset_query_metrics_v2_migration_backup [:maybe :string]]
+   [:source_card_id                            [:maybe ::lib.schema.id/card]]
+   [:dashboard_id                              [:maybe ::lib.schema.id/dashboard]]
+   [:card_schema                               :int]
+   [:document_id                               [:maybe ms/PositiveInt]]
+   [:legacy_query                              [:maybe :string]]
+   [:embedding_type                            [:maybe :string]]
+   [:public_uuid_prefix                        [:maybe :string]]
+   [:dimensions                                [:maybe ::card.dimensions]]
+   [:dimension_mappings                        [:maybe ::card.dimension-mappings]]
+   [:metabot_conversation_id                   [:maybe :string]]
+   [:metabot_chart_id                          [:maybe :string]]])
+
 (mr/def ::card.update
   "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
   [:map {:closed true}
    [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                                {:optional true} [:maybe ms/TemporalInstant]]
    [:name                                      {:optional true} [:maybe :string]]
-   [:description                               {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:description                               {:optional true} [:maybe :string]]
    [:display                                   {:optional true} [:maybe [:or :keyword :string]]]
-   [:dataset_query                             {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:visualization_settings                    {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:dataset_query                             {:optional true} [:maybe ::card.dataset-query]]
+   [:visualization_settings                    {:optional true} [:maybe ::card.visualization-settings]]
    [:creator_id                                {:optional true} [:maybe ::lib.schema.id/user]]
    [:database_id                               {:optional true} [:maybe ::lib.schema.id/database]]
    [:table_id                                  {:optional true} [:maybe ::lib.schema.id/table]]
    [:query_type                                {:optional true} [:maybe [:or :keyword :string]]]
    [:archived                                  {:optional true} [:maybe :boolean]]
    [:collection_id                             {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:public_uuid                               {:optional true} [:maybe [:or :string uuid?]]]
+   [:public_uuid                               {:optional true} [:maybe :string]]
    [:made_public_by_id                         {:optional true} [:maybe ms/PositiveInt]]
    [:enable_embedding                          {:optional true} [:maybe :boolean]]
-   [:embedding_params                          {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:embedding_params                          {:optional true} [:maybe ms/EmbeddingParams]]
    [:cache_ttl                                 {:optional true} [:maybe :int]]
-   [:result_metadata                           {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:result_metadata                           {:optional true} [:maybe ::card.result-metadata]]
    [:collection_position                       {:optional true} [:maybe :int]]
    [:entity_id                                 {:optional true} [:maybe :string]]
-   [:parameters                                {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:parameter_mappings                        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:parameters                                {:optional true} [:maybe ::card.parameters]]
+   [:parameter_mappings                        {:optional true} [:maybe ::card.parameter-mappings]]
    [:collection_preview                        {:optional true} [:maybe :boolean]]
    [:metabase_version                          {:optional true} [:maybe :string]]
    [:type                                      {:optional true} [:maybe [:or :keyword :string]]]
@@ -96,16 +184,16 @@
    [:last_used_at                              {:optional true} [:maybe ms/TemporalInstant]]
    [:view_count                                {:optional true} [:maybe :int]]
    [:archived_directly                         {:optional true} [:maybe :boolean]]
-   [:dataset_query_metrics_v2_migration_backup {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:dataset_query_metrics_v2_migration_backup {:optional true} [:maybe :string]]
    [:source_card_id                            {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard_id                              {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:card_schema                               {:optional true} [:maybe :int]]
    [:document_id                               {:optional true} [:maybe ms/PositiveInt]]
-   [:legacy_query                              {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:embedding_type                            {:optional true} [:maybe [:or :keyword :string]]]
+   [:legacy_query                              {:optional true} [:maybe :string]]
+   [:embedding_type                            {:optional true} [:maybe :string]]
    [:public_uuid_prefix                        {:optional true} [:maybe :string]]
-   [:dimensions                                {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:dimension_mappings                        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:dimensions                                {:optional true} [:maybe ::card.dimensions]]
+   [:dimension_mappings                        {:optional true} [:maybe ::card.dimension-mappings]]
    [:metabot_conversation_id                   {:optional true} [:maybe :string]]
    [:metabot_chart_id                          {:optional true} [:maybe :string]]
    [:verified-result-metadata?                 {:optional true} :boolean]])
@@ -131,22 +219,30 @@
    [:parameterized_object_id   {:optional true} [:maybe ms/PositiveInt]]
    [:parameter_id              {:optional true} [:maybe :string]]])
 
+(mr/def ::query.query
+  "The `:query` column of a Query, decoded."
+  :map)
+
 (mr/def ::query
   "A Query as selected from the app DB: every column of `:query`."
   [:map {:closed true}
    [:query_hash             [:or bytes? :string]]
    [:average_execution_time :int]
-   [:query                  [:maybe [:or :string :map sequential?]]]])
+   [:query                  [:maybe ::query.query]]])
 
 (mr/def ::query.update
   "What an update (or insert) of a Query accepts: every column of `:query` except `id`, all optional."
   [:map {:closed true}
    [:query_hash             {:optional true} [:maybe [:or bytes? :string]]]
    [:average_execution_time {:optional true} [:maybe :int]]
-   [:query                  {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:query                  {:optional true} [:maybe ::query.query]]])
+
+(mr/def ::query-execution.lens-params
+  "The `:lens_params` column of a QueryExecution, decoded."
+  :map)
 
 (mr/def ::query-execution
-  "A QueryExecution as selected from the app DB: every column of `:query_execution`."
+  "A QueryExecution as selected from the app DB: every column of `:query_execution`, plus `:row_count` added by the model's after-select hook."
   [:map {:closed true}
    [:id                          ms/PositiveInt]
    [:hash                        [:or bytes? :string]]
@@ -154,8 +250,8 @@
    [:running_time                :int]
    [:result_rows                 :int]
    [:native                      :boolean]
-   [:context                     [:maybe :string]]
-   [:error                       [:maybe [:or :string :map sequential?]]]
+   [:context                     [:maybe [:or :keyword :string]]]
+   [:error                       [:maybe :string]]
    [:executor_id                 [:maybe ::lib.schema.id/user]]
    [:card_id                     [:maybe ::lib.schema.id/card]]
    [:dashboard_id                [:maybe ::lib.schema.id/dashboard]]
@@ -170,12 +266,12 @@
    [:parameterized               [:maybe :boolean]]
    [:transform_id                [:maybe ::lib.schema.id/transform]]
    [:lens_id                     [:maybe :string]]
-   [:lens_params                 [:maybe [:or :string :map sequential?]]]
-   [:auth_method                 [:maybe [:or :keyword :string]]]
+   [:lens_params                 [:maybe ::query-execution.lens-params]]
+   [:auth_method                 [:maybe :string]]
    [:tenant_id                   [:maybe ms/PositiveInt]]
    [:is_impersonated             [:maybe :boolean]]
    [:is_db_routed                [:maybe :boolean]]
-   [:parameters                  [:maybe [:or :string :map sequential?]]]
+   [:parameters                  [:maybe :string]]
    [:embedding_hostname          [:maybe :string]]
    [:embedding_path              [:maybe :string]]
    [:user_agent                  [:maybe :string]]
@@ -183,7 +279,8 @@
    [:sanitized_user_agent        [:maybe :string]]
    [:embedding_route             [:maybe :string]]
    [:metabase_version            [:maybe :string]]
-   [:embedding_client_identifier [:maybe :string]]])
+   [:embedding_client_identifier [:maybe :string]]
+   [:row_count                   {:optional true} :int]])
 
 (mr/def ::query-execution.update
   "What an update (or insert) of a QueryExecution accepts: every column of `:query_execution` except `id`, all optional."
@@ -193,8 +290,8 @@
    [:running_time                {:optional true} [:maybe :int]]
    [:result_rows                 {:optional true} [:maybe :int]]
    [:native                      {:optional true} [:maybe :boolean]]
-   [:context                     {:optional true} [:maybe :string]]
-   [:error                       {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:context                     {:optional true} [:maybe [:or :keyword :string]]]
+   [:error                       {:optional true} [:maybe :string]]
    [:executor_id                 {:optional true} [:maybe ::lib.schema.id/user]]
    [:card_id                     {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard_id                {:optional true} [:maybe ::lib.schema.id/dashboard]]
@@ -209,12 +306,12 @@
    [:parameterized               {:optional true} [:maybe :boolean]]
    [:transform_id                {:optional true} [:maybe ::lib.schema.id/transform]]
    [:lens_id                     {:optional true} [:maybe :string]]
-   [:lens_params                 {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:auth_method                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:lens_params                 {:optional true} [:maybe ::query-execution.lens-params]]
+   [:auth_method                 {:optional true} [:maybe :string]]
    [:tenant_id                   {:optional true} [:maybe ms/PositiveInt]]
    [:is_impersonated             {:optional true} [:maybe :boolean]]
    [:is_db_routed                {:optional true} [:maybe :boolean]]
-   [:parameters                  {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:parameters                  {:optional true} [:maybe :string]]
    [:embedding_hostname          {:optional true} [:maybe :string]]
    [:embedding_path              {:optional true} [:maybe :string]]
    [:user_agent                  {:optional true} [:maybe :string]]
@@ -241,6 +338,14 @@
    [:schema   {:optional true} [:maybe :string]]
    [:table    {:optional true} [:maybe :string]]])
 
+(mr/def ::stored-result.dataset-query
+  "The `:dataset_query` column of a StoredResult, decoded."
+  :map)
+
+(mr/def ::stored-result.data-access-token
+  "The `:data_access_token` column of a StoredResult, decoded."
+  :map)
+
 (mr/def ::stored-result
   "A StoredResult as selected from the app DB: every column of `:stored_result`."
   [:map {:closed true}
@@ -248,8 +353,8 @@
    [:result_data       [:or bytes? :string]]
    [:creator_id        [:maybe ::lib.schema.id/user]]
    [:database_id       [:maybe ::lib.schema.id/database]]
-   [:dataset_query     [:or :string :map sequential?]]
-   [:data_access_token [:maybe [:or :string :map sequential?]]]
+   [:dataset_query     ::stored-result.dataset-query]
+   [:data_access_token [:maybe ::stored-result.data-access-token]]
    [:row_count         [:maybe :int]]
    [:created_at        ms/TemporalInstant]
    [:updated_at        ms/TemporalInstant]])
@@ -260,8 +365,8 @@
    [:result_data       {:optional true} [:maybe [:or bytes? :string]]]
    [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
    [:database_id       {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query     {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:data_access_token {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:dataset_query     {:optional true} [:maybe ::stored-result.dataset-query]]
+   [:data_access_token {:optional true} [:maybe ::stored-result.data-access-token]]
    [:row_count         {:optional true} [:maybe :int]]
    [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])

@@ -5,14 +5,22 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::auth-identity.credentials
+  "The `:credentials` column of a AuthIdentity, decoded."
+  :map)
+
+(mr/def ::auth-identity.metadata
+  "The `:metadata` column of a AuthIdentity, decoded."
+  :map)
+
 (mr/def ::auth-identity
   "A AuthIdentity as selected from the app DB: every column of `:auth_identity`."
   [:map {:closed true}
    [:id           ms/PositiveInt]
    [:user_id      ::lib.schema.id/user]
-   [:provider     [:or :keyword :string]]
-   [:credentials  [:maybe [:or :string :map sequential?]]]
-   [:metadata     [:maybe [:or :string :map sequential?]]]
+   [:provider     :string]
+   [:credentials  [:maybe ::auth-identity.credentials]]
+   [:metadata     [:maybe ::auth-identity.metadata]]
    [:provider_id  [:maybe :string]]
    [:last_used_at [:maybe ms/TemporalInstant]]
    [:expires_at   [:maybe ms/TemporalInstant]]
@@ -24,9 +32,9 @@
   "What an update (or insert) of a AuthIdentity accepts: every column of `:auth_identity` except `id`, all optional."
   [:map {:closed true}
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
-   [:provider     {:optional true} [:maybe [:or :keyword :string]]]
-   [:credentials  {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:metadata     {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:provider     {:optional true} [:maybe :string]]
+   [:credentials  {:optional true} [:maybe ::auth-identity.credentials]]
+   [:metadata     {:optional true} [:maybe ::auth-identity.metadata]]
    [:provider_id  {:optional true} [:maybe :string]]
    [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
    [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]

@@ -10,7 +10,7 @@
   [:map {:closed true}
    [:id        ms/PositiveInt]
    [:user_id   ::lib.schema.id/user]
-   [:model     [:or :keyword :string]]
+   [:model     :string]
    [:model_id  [:maybe :int]]
    [:timestamp ms/TemporalInstant]
    [:context   [:or :keyword :string]]])
@@ -19,7 +19,7 @@
   "What an update (or insert) of a RecentViews accepts: every column of `:recent_views` except `id`, all optional."
   [:map {:closed true}
    [:user_id   {:optional true} [:maybe ::lib.schema.id/user]]
-   [:model     {:optional true} [:maybe [:or :keyword :string]]]
+   [:model     {:optional true} [:maybe :string]]
    [:model_id  {:optional true} [:maybe :int]]
    [:timestamp {:optional true} [:maybe ms/TemporalInstant]]
    [:context   {:optional true} [:maybe [:or :keyword :string]]]])

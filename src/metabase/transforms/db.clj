@@ -28,17 +28,17 @@
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
 
-(mu/defn transform :- [:maybe ::transforms.schema/transform]
+(mu/defn transform :- [:maybe ::transforms.schema/transform.row]
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id transform-id))
 
-(mu/defn transforms :- [:sequential ::transforms.schema/transform]
+(mu/defn transforms :- [:sequential ::transforms.schema/transform.row]
   "The Transforms with `transform-ids`."
   [transform-ids :- [:or [:set ::lib.schema.id/transform] [:sequential ::lib.schema.id/transform]]]
   (t2/select :model/Transform :id [:in transform-ids]))
 
-(mu/defn transforms-of-source-types :- [:sequential ::transforms.schema/transform]
+(mu/defn transforms-of-source-types :- [:sequential ::transforms.schema/transform.row]
   "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID."
   [source-types :- [:set :string]
    database-id  :- [:maybe ::lib.schema.id/database]]
@@ -49,7 +49,8 @@
 
 (def ^:private TransformDependency
   "Rows returned by [[transform-dependency-rows]]."
-  (mut/select-keys ::transforms.schema/transform [:id :target :target_table_id :created_at :table_dependencies]))
+  (mut/select-keys ::transforms.schema/transform.row
+                   [:id :target :target_table_id :created_at :table_dependencies]))
 
 (mu/defn transform-dependency-rows :- [:sequential TransformDependency]
   "The ID, target, target Table ID, creation time, and table dependencies of every Transform."
@@ -58,7 +59,7 @@
 
 (def ^:private TransformSnapshot
   "Rows returned by [[transform-snapshot]]."
-  (mut/select-keys ::transforms.schema/transform [:name :entity_id :source_type]))
+  (mut/select-keys ::transforms.schema/transform.row [:name :entity_id :source_type]))
 
 (mu/defn transform-snapshot :- [:maybe TransformSnapshot]
   "The name, entity ID, and source type of the Transform with `transform-id`."
@@ -67,7 +68,7 @@
 
 (def ^:private TransformSummariesById
   "Rows returned by [[transform-summaries-by-id]]."
-  (mut/select-keys ::transforms.schema/transform [:id :name :collection_id]))
+  (mut/select-keys ::transforms.schema/transform.row [:id :name :collection_id]))
 
 (mu/defn transform-summaries-by-id :- [:map-of ::lib.schema.id/transform TransformSummariesById]
   "A map of ID to the ID, name, and Collection ID of the Transforms with `transform-ids`."
@@ -89,7 +90,7 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one-fn :collection_id :model/Transform :id transform-id))
 
-(mu/defn insert-transform! :- ::transforms.schema/transform
+(mu/defn insert-transform! :- ::transforms.schema/transform.row
   "Insert `transform` and return the new instance."
   [transform :- ::transforms.schema/transform.update]
   (t2/insert-returning-instance! :model/Transform transform))
@@ -149,7 +150,8 @@
 
 (def ^:private ActiveJobSchedulesForTransform
   "Rows returned by [[active-job-schedules-for-transforms]]."
-  (mut/merge (mut/select-keys ::transforms.schema/transform-transform-tag [:transform_id]) [:map [:schedule [:maybe [:or :string :map sequential?]]]]))
+  (mut/merge (mut/select-keys ::transforms.schema/transform-transform-tag [:transform_id])
+             [:map [:schedule [:maybe :string]]]))
 
 (mu/defn active-job-schedules-for-transforms :- [:sequential ActiveJobSchedulesForTransform]
   "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag."
@@ -447,7 +449,8 @@
 
 (def ^:private LastSuccessTime
   "Rows returned by [[last-success-times]]."
-  (mut/merge (mut/select-keys ::transforms.schema/transform-run [:transform_id]) [:map [:last_success [:maybe ms/TemporalInstant]]]))
+  (mut/merge (mut/select-keys ::transforms.schema/transform-run [:transform_id])
+             [:map [:last_success [:maybe ms/TemporalInstant]]]))
 
 (mu/defn last-success-times :- [:sequential LastSuccessTime]
   "Rows of Transform ID and the latest `end_time` of its succeeded runs for `transform-ids`."

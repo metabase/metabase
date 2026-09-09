@@ -65,7 +65,7 @@
                       [:in :has_field_values ["list" "auto-list"]]
                       [:= :semantic_type "type/Category"]]}))
 
-(mu/defn field-values-of-fields :- [:maybe [:sequential [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]]]
+(mu/defn field-values-of-fields :- [:maybe [:sequential [:maybe ms/FieldValues]]]
   "The value lists of the FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select-fn-vec :values :model/FieldValues :field_id [:in field-ids]))

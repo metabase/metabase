@@ -53,7 +53,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :parameters [:model/Card :parameters] :id card-id))
 
-(mu/defn card-dimensions :- [:maybe [:map {:closed true} [:dimensions [:maybe [:or :string :map sequential?]]]]]
+(mu/defn card-dimensions :- [:maybe [:map {:closed true} [:dimensions [:maybe [:sequential :map]]]]]
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/query-one {:select [:dimensions]
@@ -62,7 +62,10 @@
 
 (def ^:private CardDatabaseAndTableId
   "Rows returned by [[card-database-and-table-ids]]."
-  (mut/merge ::queries.schema/card [:map [:database-id [:maybe ::lib.schema.id/database]] [:table-id [:maybe ::lib.schema.id/table]]]))
+  (mut/merge ::queries.schema/card
+             [:map
+              [:database-id [:maybe ::lib.schema.id/database]]
+              [:table-id    [:maybe ::lib.schema.id/table]]]))
 
 (mu/defn card-database-and-table-ids :- [:maybe CardDatabaseAndTableId]
   "The database and primary table IDs of the Card with `card-id`, as `:database-id` and `:table-id`."
@@ -158,7 +161,7 @@
    [:card_id          [:maybe ::lib.schema.id/card]]
    [:name             [:maybe :string]]
    [:collection_id    [:maybe ::lib.schema.id/collection]]
-   [:description      [:maybe [:or :string :map sequential?]]]
+   [:description      [:maybe :string]]
    [:id               [:maybe ::lib.schema.id/dashboard]]
    [:archived         [:maybe :boolean]]
    [:enable_embedding [:maybe :boolean]]])

@@ -18,7 +18,7 @@
   [row :- [:map {:closed true}
            [:id          {:optional true} ms/PositiveInt]
            [:external_id {:optional true} [:maybe [:or :string :int]]]
-           [:upload_url  {:optional true} [:maybe [:or :string :map sequential?]]]
+           [:upload_url  {:optional true} [:maybe :string]]
            [:state       {:optional true} [:or :keyword :string]]
            [:progress    {:optional true} [:maybe :int]]
            [:created_at  {:optional true} ms/TemporalInstant]

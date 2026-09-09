@@ -167,7 +167,7 @@
    [:object       :map]
    [:is_creation  :boolean]
    [:is_reversion :boolean]
-   [:message      {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:message      {:optional true} [:maybe :string]]])
 
 (mu/defn insert-revision! :- :int
   "Insert the Revision `row`, returning the number inserted."

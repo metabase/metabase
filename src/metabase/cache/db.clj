@@ -98,7 +98,17 @@
                   [:= :model "dashboard"] [:!= :report_dashboard.id nil]
                   :else                             true]]}))
 
-(mu/defn cache-configs-page :- [:sequential ::cache.schema/cache-config]
+(def ^:private CacheConfigsPage
+  "Rows returned by [[cache-configs-page]]."
+  (mut/merge ::cache.schema/cache-config
+             [:map
+              [:item_name                  {:optional true} [:maybe :string]]
+              [:collection_id              {:optional true} [:maybe ::lib.schema.id/collection]]
+              [:collection_name            {:optional true} [:maybe :string]]
+              [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
+              [:collection_type            {:optional true} [:maybe [:or :keyword :string]]]]))
+
+(mu/defn cache-configs-page :- [:sequential CacheConfigsPage]
   "The CacheConfigs of `models` in `collection` (or of the entity with `id`), with the name and Collection of the
   configured entity, sorted by `sort-column` in `sort-direction` when given and paged by `limit` and `offset`."
   [models         :- [:sequential :string]

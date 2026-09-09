@@ -12,8 +12,8 @@
    [toucan2.core :as t2]))
 
 (mu/defn cards :- [:sequential ::queries.schema/card]
-  "The Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
+  "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
+  [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
   (t2/select :model/Card :id [:in card-ids]))
 
 (mu/defn audit-log-topic-exists? :- :boolean

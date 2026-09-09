@@ -167,7 +167,8 @@
 
 (def ^:private MaxCollectionPosition
   "Rows returned by [[max-collection-position]]."
-  (mut/merge ::queries.schema/card [:map [:max_position [:maybe :int]]]))
+  (mut/merge ::queries.schema/card
+             [:map [:max_position [:maybe :int]]]))
 
 (mu/defn max-collection-position :- [:maybe MaxCollectionPosition]
   "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."
@@ -176,7 +177,8 @@
 
 (def ^:private CardsToMoveToCollection
   "Rows returned by [[cards-to-move-to-collection]]."
-  (mut/select-keys ::queries.schema/card [:id :collection_id :collection_position :dataset_query :card_schema]))
+  (mut/select-keys ::queries.schema/card
+                   [:id :collection_id :collection_position :dataset_query :card_schema]))
 
 (mu/defn cards-to-move-to-collection :- [:sequential CardsToMoveToCollection]
   "The id, Collection, position, query, and schema of the Cards among `card-ids` not already in

@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
-   [metabase.cache.schema :as cache.schema]
    [metabase.collections.schema :as collections.schema]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.documents.schema :as documents.schema]
@@ -36,7 +35,8 @@
 
 (def ^:private PersonalUserStatsColumn
   "Rows returned by [[personal-user-stats-columns]]."
-  (mut/select-keys ::users.schema/user.full [:is_active :is_superuser :last_login :sso_source]))
+  (mut/select-keys ::users.schema/user.full
+                   [:is_active :is_superuser :last_login :sso_source :common_name]))
 
 (mu/defn personal-user-stats-columns :- [:sequential PersonalUserStatsColumn]
   "The active, superuser, last login, and SSO source of every personal User."
@@ -88,7 +88,8 @@
 
 (def ^:private DashboardStatsColumn
   "Rows returned by [[dashboard-stats-columns]]."
-  (mut/select-keys ::dashboards.schema/dashboard [:creator_id :public_uuid :parameters :enable_embedding :embedding_params]))
+  (mut/select-keys ::dashboards.schema/dashboard
+                   [:creator_id :public_uuid :parameters :enable_embedding :embedding_params]))
 
 (mu/defn dashboard-stats-columns :- [:sequential DashboardStatsColumn]
   "The creator, public uuid, parameters, and embedding columns of the non-internal Dashboards."
@@ -181,7 +182,7 @@
 
 (def ^:private DatabaseStatsColumn
   "Rows returned by [[database-stats-columns]]."
-  (mut/select-keys ::warehouses.schema/database [:is_full_sync :engine :dbms_version]))
+  (mut/select-keys ::warehouses.schema/database [:is_full_sync :engine :dbms_version :features]))
 
 (mu/defn database-stats-columns :- [:sequential DatabaseStatsColumn]
   "The sync, engine, and DBMS version of the non-internal Databases."
@@ -311,7 +312,9 @@
 
 (def ^:private QueryCacheStat
   "Rows returned by [[query-cache-stats]]."
-  (mut/merge ::cache.schema/query-cache [:map [:length [:maybe number?]] [:count [:maybe :int]]]))
+  [:map {:closed true}
+   [:length [:maybe number?]]
+   [:count  :int]])
 
 (mu/defn query-cache-stats :- [:maybe QueryCacheStat]
   "The average result `:length` and `:count` of the QueryCache entries."

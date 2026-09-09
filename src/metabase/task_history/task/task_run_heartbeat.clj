@@ -5,7 +5,6 @@
    3. Mark orphaned tasks (in :started status with no heartbeat) as :unknown"
   (:require
    [metabase.config.core :as config]
-   [metabase.models.interface :as mi]
    [metabase.run-tracking.core :as rt]
    [metabase.task-history.db :as task-history.db]
    [metabase.task.core :as task]
@@ -40,7 +39,7 @@
   (let [orphaned (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs" {}
                    (rt/reap-rows! {:model    :model/TaskRun
                                    :active   [:= :status "started"]
-                                   :terminal {:status "abandoned" :ended_at (mi/now)}
+                                   :terminal {:status "abandoned" :ended_at :%now}
                                    :stale    [:or
                                               [:< :updated_at (rt/cutoff orphan-threshold-hours :hour)]
                                               [:< :started_at (rt/cutoff max-run-duration-hours :hour)]]}))]

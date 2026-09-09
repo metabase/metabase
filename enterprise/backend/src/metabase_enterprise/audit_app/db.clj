@@ -24,9 +24,10 @@
   (t2/select-one :model/Database :name database-name :is_audit false))
 
 (mu/defn insert-database! :- :int
-  "Insert the Database `row`."
-  [row :- (mut/merge ::warehouses.schema/database.update [:map [:id {:optional true} ::lib.schema.id/database]])]
-  (t2/insert! :model/Database row))
+  "Insert the Database `row` with the fixed `id`."
+  [id  :- ::lib.schema.id/database
+   row :- ::warehouses.schema/database.update]
+  (t2/insert! :model/Database (assoc row :id id)))
 
 (mu/defn insert-returning-database! :- ::warehouses.schema/database
   "Insert the Database `row` and return the new instance."
@@ -198,7 +199,7 @@
 
 (def ^:private FirstSuperuser
   "Rows returned by [[first-superuser]]."
-  (mut/select-keys ::users.schema/user [:id :email]))
+  (mut/select-keys ::users.schema/user [:id :email :common_name]))
 
 (mu/defn first-superuser :- [:maybe FirstSuperuser]
   "The `:id` and `:email` of the oldest superuser, or nil."

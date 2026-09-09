@@ -16,7 +16,8 @@
 
 (def ^:private NonBlobPluginRow
   "Rows returned by [[non-blob-plugin]]."
-  (mut/select-keys ::custom-viz-plugin.schema/custom-viz-plugin [:id :identifier :display_name :icon :status :error_message :enabled :manifest :metabase_version :bundle_hash :dev_bundle_url :created_at :updated_at]))
+  (mut/select-keys ::custom-viz-plugin.schema/custom-viz-plugin
+                   [:id :identifier :display_name :icon :status :error_message :enabled :manifest :metabase_version :bundle_hash :dev_bundle_url :created_at :updated_at]))
 
 (mu/defn non-blob-plugin :- [:maybe NonBlobPluginRow]
   "The CustomVizPlugin with `plugin-id` without its bundle, or nil."
@@ -25,7 +26,8 @@
 
 (def ^:private NonBlobPlugin
   "Rows returned by [[non-blob-plugins]]."
-  (mut/select-keys ::custom-viz-plugin.schema/custom-viz-plugin [:id :identifier :display_name :icon :status :error_message :enabled :manifest :metabase_version :bundle_hash :dev_bundle_url :created_at :updated_at]))
+  (mut/select-keys ::custom-viz-plugin.schema/custom-viz-plugin
+                   [:id :identifier :display_name :icon :status :error_message :enabled :manifest :metabase_version :bundle_hash :dev_bundle_url :created_at :updated_at]))
 
 (mu/defn non-blob-plugins :- [:sequential NonBlobPlugin]
   "Every CustomVizPlugin without its bundle, ordered by display name."
@@ -34,7 +36,8 @@
 
 (def ^:private ActiveEnabledNonBlobPlugin
   "Rows returned by [[active-enabled-non-blob-plugins]]."
-  (mut/select-keys ::custom-viz-plugin.schema/custom-viz-plugin [:id :identifier :display_name :icon :status :error_message :enabled :manifest :metabase_version :bundle_hash :dev_bundle_url :created_at :updated_at]))
+  (mut/select-keys ::custom-viz-plugin.schema/custom-viz-plugin
+                   [:id :identifier :display_name :icon :status :error_message :enabled :manifest :metabase_version :bundle_hash :dev_bundle_url :created_at :updated_at]))
 
 (mu/defn active-enabled-non-blob-plugins :- [:sequential ActiveEnabledNonBlobPlugin]
   "The active, enabled CustomVizPlugins without their bundle, ordered by display name."

@@ -88,7 +88,7 @@
            limit offset]
     :as   options} :- [:map {:closed true}
                        [:status                  {:optional true} [:maybe [:or :keyword :string]]]
-                       [:query                   {:optional true} [:maybe [:or :string :map sequential?]]]
+                       [:query                   {:optional true} [:maybe :string]]
                        [:group-ids               {:optional true} [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
                        [:user-ids                {:optional true} [:maybe [:or [:set ::lib.schema.id/user] [:sequential ::lib.schema.id/user]]]]
                        [:include-deactivated     {:optional true} [:maybe :boolean]]
@@ -155,7 +155,9 @@
 
 (def ^:private GroupMembershipsForUser
   "Rows returned by [[group-memberships-for-users]]."
-  (mu/rename-keys (mut/select-keys ::permissions.schema/permissions-group-membership [:user_id :group_id :is_group_manager]) {:group_id :id}))
+  (mu/rename-keys (mut/select-keys ::permissions.schema/permissions-group-membership
+                                   [:user_id :group_id :is_group_manager])
+                  {:group_id :id}))
 
 (mu/defn group-memberships-for-users :- [:sequential GroupMembershipsForUser]
   "The user id, group id (as `:id`), and group manager flag of the PermissionsGroupMemberships of the Users with
@@ -236,7 +238,7 @@
   [database-id :- :int]
   (t2/exists? :model/Database :id database-id))
 
-(mu/defn admin-or-self-visible-user :- [:maybe ::lib.schema.id/user]
+(mu/defn admin-or-self-visible-user :- [:maybe (mut/optional-keys ::users.schema/user.full)]
   "The User with `id`, with the given `columns`, or nil. When `type` and/or `is-active?` are given (non-nil), also
   requires `:type` and/or `:is_active` to match."
   [columns :- [:sequential :keyword]

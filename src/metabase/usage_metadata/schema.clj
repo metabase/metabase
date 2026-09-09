@@ -122,7 +122,7 @@
    [:ownership_mode [:or :keyword :string]]
    [:field_id       ::lib.schema.id/field]
    [:temporal_unit  [:maybe [:or :keyword :string]]]
-   [:binning        [:maybe [:or :string :map sequential?]]]
+   [:binning        [:maybe :string]]
    [:bucket_date    ms/TemporalInstant]
    [:count          :int]])
 
@@ -134,7 +134,7 @@
    [:ownership_mode {:optional true} [:maybe [:or :keyword :string]]]
    [:field_id       {:optional true} [:maybe ::lib.schema.id/field]]
    [:temporal_unit  {:optional true} [:maybe [:or :keyword :string]]]
-   [:binning        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:binning        {:optional true} [:maybe :string]]
    [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
    [:count          {:optional true} [:maybe :int]]])
 
@@ -147,7 +147,7 @@
    [:field_id          ::lib.schema.id/field]
    [:source_basis      [:or :keyword :string]]
    [:observation_type  [:or :keyword :string]]
-   [:observation_value [:maybe [:or :string :map sequential?]]]
+   [:observation_value [:maybe :string]]
    [:bucket_date       ms/TemporalInstant]
    [:count             :int]])
 
@@ -159,7 +159,7 @@
    [:field_id          {:optional true} [:maybe ::lib.schema.id/field]]
    [:source_basis      {:optional true} [:maybe [:or :keyword :string]]]
    [:observation_type  {:optional true} [:maybe [:or :keyword :string]]]
-   [:observation_value {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:observation_value {:optional true} [:maybe :string]]
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
 
@@ -197,8 +197,8 @@
    [:source_type       [:maybe [:or :keyword :string]]]
    [:source_id         [:maybe ms/PositiveInt]]
    [:ownership_mode    [:or :keyword :string]]
-   [:clause            [:or :string :map sequential?]]
-   [:atom_fingerprints [:or :string :map sequential?]]
+   [:clause            :string]
+   [:atom_fingerprints :string]
    [:atom_count        :int]
    [:bucket_date       ms/TemporalInstant]
    [:count             :int]])
@@ -209,8 +209,8 @@
    [:source_type       {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id         {:optional true} [:maybe ms/PositiveInt]]
    [:ownership_mode    {:optional true} [:maybe [:or :keyword :string]]]
-   [:clause            {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:atom_fingerprints {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:clause            {:optional true} [:maybe :string]]
+   [:atom_fingerprints {:optional true} [:maybe :string]]
    [:atom_count        {:optional true} [:maybe :int]]
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
@@ -223,7 +223,7 @@
    [:source_id      [:maybe ms/PositiveInt]]
    [:ownership_mode [:or :keyword :string]]
    [:field_id       [:maybe ::lib.schema.id/field]]
-   [:predicate      [:or :string :map sequential?]]
+   [:predicate      :string]
    [:bucket_date    ms/TemporalInstant]
    [:count          :int]])
 
@@ -234,6 +234,6 @@
    [:source_id      {:optional true} [:maybe ms/PositiveInt]]
    [:ownership_mode {:optional true} [:maybe [:or :keyword :string]]]
    [:field_id       {:optional true} [:maybe ::lib.schema.id/field]]
-   [:predicate      {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:predicate      {:optional true} [:maybe :string]]
    [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
    [:count          {:optional true} [:maybe :int]]])

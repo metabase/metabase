@@ -117,7 +117,7 @@
              :%lower.schema lower-schema
              {:where sync-tables-clause}))
 
-(mu/defn tables-by-name :- [:sequential ::warehouse-schema.schema/table]
+(mu/defn tables-by-name :- [:sequential (mut/optional-keys ::warehouse-schema.schema/table)]
   "The `columns` of the Tables of the Database with `database-id` named one of `table-names`."
   [columns      :- [:sequential :keyword]
    database-id  :- ::lib.schema.id/database
@@ -231,11 +231,10 @@
   (t2/update! :model/Table :db_id database-id :schema schema {:schema new-schema}))
 
 (mu/defn archive-inactive-table! :- :int
-  "Archive the inactive Table with `table-id` at `archived-at` under `new-name`, returning the number of rows updated."
-  [table-id    :- ::lib.schema.id/table
-   archived-at :- ms/TemporalInstant
-   new-name    :- :string]
-  (t2/update! :model/Table {:id table-id :active false} {:archived_at archived-at :name new-name}))
+  "Archive the inactive Table with `table-id` now under `new-name`, returning the number of rows updated."
+  [table-id :- ::lib.schema.id/table
+   new-name :- :string]
+  (t2/update! :model/Table {:id table-id :active false} {:archived_at :%now :name new-name}))
 
 ;;; ------------------------------------------------- Field -------------------------------------------------
 
@@ -246,7 +245,8 @@
 
 (def ^:private FieldsForFieldValue
   "Rows returned by [[fields-for-field-values]]."
-  (mut/select-keys ::warehouse-schema.schema/field [:name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type :table_id :has_field_values]))
+  (mut/select-keys ::warehouse-schema.schema/field
+                   [:name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type :table_id :has_field_values]))
 
 (mu/defn fields-for-field-values :- [:sequential FieldsForFieldValue]
   "The columns needed to scan FieldValues of the Fields with `field-ids`."
@@ -321,7 +321,8 @@
 
 (def ^:private ActiveFieldsMetadataForTable
   "Rows returned by [[active-fields-metadata-for-table]]."
-  (mut/select-keys ::warehouse-schema.schema/field [:name :database_type :base_type :effective_type :coercion_strategy :semantic_type :parent_id :id :description :database_position :nfc_path :database_is_auto_increment :database_required :database_default :database_is_generated :database_is_nullable :database_is_pk :database_partitioned :json_unfolding :position :preview_display]))
+  (mut/select-keys ::warehouse-schema.schema/field
+                   [:name :database_type :base_type :effective_type :coercion_strategy :semantic_type :parent_id :id :description :database_position :nfc_path :database_is_auto_increment :database_required :database_default :database_is_generated :database_is_nullable :database_is_pk :database_partitioned :json_unfolding :position :preview_display]))
 
 (mu/defn active-fields-metadata-for-table :- [:sequential ActiveFieldsMetadataForTable]
   "The sync metadata columns of the active Fields of the Table with `table-id`, in field order."

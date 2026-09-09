@@ -60,7 +60,7 @@
    ::queries.schema/card
    ::warehouse-schema.schema/table
    ::native-query-snippets.schema/native-query-snippet
-   ::transforms.schema/transform
+   ::transforms.schema/transform.row
    ::dashboards.schema/dashboard
    ::documents.schema/document
    ::sandbox.schema/sandbox
@@ -638,7 +638,7 @@
 
 (def ^:private TransformSource
   "Rows returned by [[transform-sources]]."
-  (mut/select-keys ::transforms.schema/transform [:id :source]))
+  (mut/select-keys ::transforms.schema/transform.row [:id :source]))
 
 (mu/defn transform-sources :- [:sequential TransformSource]
   "The `:id` and `:source` of the Transforms with `transform-ids`."

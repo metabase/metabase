@@ -10,7 +10,7 @@
 
 (def ^:private UserIdAndActiveByEmail
   "Rows returned by [[user-id-and-active-by-email]]."
-  (mut/select-keys ::users.schema/user.full [:id :is_active]))
+  (mut/select-keys ::users.schema/user.full [:id :is_active :common_name]))
 
 (mu/defn user-id-and-active-by-email :- [:maybe UserIdAndActiveByEmail]
   "The `:id` and `:is_active` of the User whose email matches `email` case-insensitively, or nil."

@@ -17,9 +17,9 @@
   "A whole Channel row for insert or update."
   [:map {:closed true}
    [:name        {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:type        {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
-   [:details     {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:description {:optional true} [:maybe :string]]
+   [:type        {:optional true} [:maybe [:or :keyword :string]]]
+   [:details     {:optional true} [:maybe :map]]
    [:active      {:optional true} [:maybe :boolean]]])
 
 (mu/defn channels :- [:sequential ::channel.schema/channel]

@@ -9,7 +9,7 @@
   [:map {:closed true}
    [:id         ms/PositiveInt]
    [:path       :string]
-   [:source     [:maybe [:or :keyword :string :map sequential?]]]
+   [:source     [:maybe :string]]
    [:created_at ms/TemporalInstant]
    [:updated_at ms/TemporalInstant]
    [:entity_id  :string]])
@@ -18,7 +18,7 @@
   "What an update (or insert) of a PythonLibrary accepts: every column of `:python_library` except `id`, all optional."
   [:map {:closed true}
    [:path       {:optional true} [:maybe :string]]
-   [:source     {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:source     {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id  {:optional true} [:maybe :string]]])

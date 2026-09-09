@@ -18,7 +18,7 @@
   []
   (t2/select-fn->fn :key :value :model/Setting))
 
-(mu/defn insert-setting! :- [:sequential ::settings.schema/setting]
+(mu/defn insert-setting! :- ::settings.schema/setting
   "Insert a Setting row for `setting-key` holding `value` and return it."
   [setting-key :- [:or :keyword :string]
    value       :- :string]

@@ -18,7 +18,7 @@
    [:id               :string]
    [:user_id          ::lib.schema.id/user]
    [:created_at       ms/TemporalInstant]
-   [:anti_csrf_token  [:maybe [:or :string :map sequential?]]]
+   [:anti_csrf_token  [:maybe :string]]
    [:key_hashed       :string]
    [:auth_identity_id [:maybe ms/PositiveInt]]
    [:expires_at       [:maybe ms/TemporalInstant]]
@@ -29,7 +29,7 @@
   [:map {:closed true}
    [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
-   [:anti_csrf_token  {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:anti_csrf_token  {:optional true} [:maybe :string]]
    [:key_hashed       {:optional true} [:maybe :string]]
    [:auth_identity_id {:optional true} [:maybe ms/PositiveInt]]
    [:expires_at       {:optional true} [:maybe ms/TemporalInstant]]

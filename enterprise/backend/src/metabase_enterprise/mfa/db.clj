@@ -71,7 +71,7 @@
 
 (def ^:private LockUser
   "Rows returned by [[lock-user]]."
-  (mut/select-keys ::users.schema/user [:id]))
+  (mut/select-keys ::users.schema/user [:id :common_name]))
 
 (mu/defn lock-user :- [:maybe LockUser]
   "The `:id` row of the User with `user-id`, locked for update."
@@ -99,8 +99,8 @@
            [:id           {:optional true} ms/PositiveInt]
            [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
            [:provider     {:optional true} [:maybe [:or :keyword :string]]]
-           [:credentials  {:optional true} [:maybe [:or :string :map sequential?]]]
-           [:metadata     {:optional true} [:maybe [:or :string :map sequential?]]]
+           [:credentials  {:optional true} [:maybe :map]]
+           [:metadata     {:optional true} [:maybe :map]]
            [:provider_id  {:optional true} [:maybe :string]]
            [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
            [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
@@ -130,7 +130,13 @@
   []
   (t2/count :model/User {:where unenrolled-user-where}))
 
-(mu/defn user-list :- [:sequential ::users.schema/user]
+(def ^:private UserListRow
+  "Rows returned by [[user-list]]."
+  (mut/merge (mut/select-keys ::users.schema/user.full [:id :email :first_name :last_name :sso_source :is_active :is_superuser :common_name])
+             [:map
+              [:enrolled_at {:optional true} [:maybe ms/TemporalInstant]]]))
+
+(mu/defn user-list :- [:sequential UserListRow]
   "The name-ordered admin list of enrolled (with their enrollment time) or unenrolled Users matching `search`, paged
   by the optional `limit` and `offset`."
   [enrolled? :- :boolean

@@ -15,7 +15,8 @@
 
 (def ^:private PublicCard
   "Rows returned by [[public-card]]."
-  (mut/select-keys ::queries.schema/card [:id :dataset_query :description :display :name :parameters :visualization_settings :card_schema]))
+  (mut/select-keys ::queries.schema/card
+                   [:id :dataset_query :description :display :name :parameters :visualization_settings :card_schema]))
 
 (mu/defn public-card :- [:maybe PublicCard]
   "The non-archived Card with `card-id`, restricted to the columns safe to expose publicly, or nil. With
@@ -44,7 +45,8 @@
 
 (def ^:private PublicDashboard
   "Rows returned by [[public-dashboard]]."
-  (mut/select-keys ::dashboards.schema/dashboard [:name :description :id :parameters :auto_apply_filters :width]))
+  (mut/select-keys ::dashboards.schema/dashboard
+                   [:name :description :id :parameters :auto_apply_filters :width]))
 
 (mu/defn public-dashboard :- [:maybe PublicDashboard]
   "The non-archived Dashboard with `dashboard-id`, restricted to the columns safe to expose publicly, or nil. With
@@ -72,7 +74,8 @@
 
 (def ^:private PublicDocument
   "Rows returned by [[public-document]]."
-  (mut/select-keys ::documents.schema/document [:id :name :document :content_type :created_at :updated_at]))
+  (mut/select-keys ::documents.schema/document
+                   [:id :name :document :content_type :created_at :updated_at]))
 
 (mu/defn public-document :- [:maybe PublicDocument]
   "The non-archived Document with `document-id`, restricted to the columns safe to expose publicly."

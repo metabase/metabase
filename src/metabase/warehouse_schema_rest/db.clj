@@ -193,8 +193,8 @@
   "Update the full FieldValues of the Field with `field-id` to have `values` and `human-readable-values`, inserting
   one if none exists yet. Returns the number of rows affected."
   [field-id               :- ::lib.schema.id/field
-   values                 :- [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]
-   human-readable-values  :- [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]]
+   values                 :- [:maybe ms/FieldValues]
+   human-readable-values  :- [:maybe ms/FieldValues]]
   (app-db/update-or-insert! :model/FieldValues {:field_id field-id, :type :full}
                             (constantly {:values                values
                                          :human_readable_values human-readable-values})))

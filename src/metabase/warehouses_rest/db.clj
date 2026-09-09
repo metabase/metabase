@@ -39,7 +39,7 @@
 
 (def ^:private DatabaseEngine
   "Rows returned by [[database-engines]]."
-  (mut/select-keys ::warehouses.schema/database [:id :engine]))
+  (mut/select-keys ::warehouses.schema/database [:id :engine :features]))
 
 (mu/defn database-engines :- [:sequential DatabaseEngine]
   "The id and engine of every Database."
@@ -174,7 +174,9 @@
 
 (def ^:private AutocompleteCard
   "Rows returned by [[autocomplete-cards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card [:id :type :database_id :name :collection_id :card_schema]) [:map [:collection_name [:maybe [:or :string :map sequential?]]]]))
+  (mut/merge (mut/select-keys ::queries.schema/card
+                              [:id :type :database_id :name :collection_id :card_schema])
+             [:map [:collection_name [:maybe :string]]]))
 
 (mu/defn autocomplete-cards :- [:sequential AutocompleteCard]
   "Up to 50 unarchived Cards of the Database with `database-id` matching `search-card-slug` (see
@@ -201,7 +203,9 @@
 
 (def ^:private AutocompleteField
   "Rows returned by [[autocomplete-fields]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/field [:name :base_type :semantic_type :id :table_id]) [:map [:table_name [:maybe :string]]]))
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/field
+                              [:name :base_type :semantic_type :id :table_id])
+             [:map [:table_name [:maybe :string]]]))
 
 (mu/defn autocomplete-fields :- [:sequential AutocompleteField]
   "Up to `limit` name, type, id, and Table of the active, non-sensitive Fields of active Tables of the Database with
@@ -233,7 +237,8 @@
 
 (def ^:private NonSensitiveFieldsForTable
   "Rows returned by [[non-sensitive-fields-for-tables]]."
-  (mut/select-keys ::warehouse-schema.schema/field [:id :name :display_name :table_id :base_type :semantic_type]))
+  (mut/select-keys ::warehouse-schema.schema/field
+                   [:id :name :display_name :table_id :base_type :semantic_type]))
 
 (mu/defn non-sensitive-fields-for-tables :- [:sequential NonSensitiveFieldsForTable]
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
@@ -244,7 +249,7 @@
 
 (mu/defn insert-database! :- ::warehouses.schema/database
   "Insert the Database `row` and return the inserted instance."
-  [row :- (mut/merge ::warehouses.schema/database.update [:map [:id {:optional true} ::lib.schema.id/database]])]
+  [row :- ::warehouses.schema/database.update]
   (t2/insert-returning-instance! :model/Database row))
 
 (mu/defn sample-database :- [:maybe ::warehouses.schema/database]

@@ -86,8 +86,8 @@
   `t2/update!`, does not unwrap it)."
   [setting-key :- :string
    changes     :- [:map {:closed true}
-                   [:value          {:optional true} [:maybe [:or :string :map sequential?]]]
-                   [:value_with_aad {:optional true} [:maybe [:or :string :map sequential?]]]]]
+                   [:value          {:optional true} [:maybe :string]]
+                   [:value_with_aad {:optional true} [:maybe :string]]]]
   (t2/query {:update :setting
              :set    (select-keys changes [:value :value_with_aad])
              :where  [:= :key setting-key]}))

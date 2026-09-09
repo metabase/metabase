@@ -4,17 +4,25 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::cache-config.config
+  "The `:config` column of a CacheConfig, decoded."
+  :map)
+
+(mr/def ::cache-config.state
+  "The `:state` column of a CacheConfig, decoded."
+  :map)
+
 (mr/def ::cache-config
   "A CacheConfig as selected from the app DB: every column of `:cache_config`."
   [:map {:closed true}
    [:id                    ms/PositiveInt]
-   [:model                 [:or :keyword :string]]
+   [:model                 :string]
    [:model_id              [:maybe :int]]
    [:created_at            ms/TemporalInstant]
    [:updated_at            ms/TemporalInstant]
-   [:strategy              [:or :keyword :string :map sequential?]]
-   [:config                [:or :string :map sequential?]]
-   [:state                 [:maybe [:or :string :map sequential?]]]
+   [:strategy              [:or :keyword :string]]
+   [:config                ::cache-config.config]
+   [:state                 [:maybe ::cache-config.state]]
    [:invalidated_at        [:maybe ms/TemporalInstant]]
    [:next_run_at           [:maybe ms/TemporalInstant]]
    [:refresh_automatically [:maybe :boolean]]])
@@ -22,13 +30,13 @@
 (mr/def ::cache-config.update
   "What an update (or insert) of a CacheConfig accepts: every column of `:cache_config` except `id`, all optional."
   [:map {:closed true}
-   [:model                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:model                 {:optional true} [:maybe :string]]
    [:model_id              {:optional true} [:maybe :int]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:strategy              {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
-   [:config                {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:state                 {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:strategy              {:optional true} [:maybe [:or :keyword :string]]]
+   [:config                {:optional true} [:maybe ::cache-config.config]]
+   [:state                 {:optional true} [:maybe ::cache-config.state]]
    [:invalidated_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:next_run_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:refresh_automatically {:optional true} [:maybe :boolean]]])

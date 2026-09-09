@@ -13,7 +13,8 @@
 
 (def ^:private LoginHistoryForUser
   "Rows returned by [[login-history-for-user]]."
-  (mut/select-keys ::login-history.schema/login-history [:timestamp :session_id :device_description :ip_address]))
+  (mut/select-keys ::login-history.schema/login-history
+                   [:timestamp :session_id :device_description :ip_address]))
 
 (mu/defn login-history-for-user :- [:sequential LoginHistoryForUser]
   "The timestamp, session id, device description, and IP address of the LoginHistory of the User with `user-id`,

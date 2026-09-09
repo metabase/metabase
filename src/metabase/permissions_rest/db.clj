@@ -80,7 +80,9 @@
 
 (def ^:private GroupMembership
   "Rows returned by [[group-memberships]]."
-  (mut/merge (mut/select-keys ::permissions.schema/permissions-group-membership [:group_id :user_id :is_group_manager]) [:map [:membership_id [:maybe ms/PositiveInt]]]))
+  (mut/merge (mut/select-keys ::permissions.schema/permissions-group-membership
+                              [:group_id :user_id :is_group_manager])
+             [:map [:membership_id [:maybe ms/PositiveInt]]]))
 
 (mu/defn group-memberships :- [:sequential GroupMembership]
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally

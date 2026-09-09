@@ -5,6 +5,10 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::audit-log.details
+  "The `:details` column of a AuditLog, decoded."
+  :map)
+
 (mr/def ::audit-log
   "A AuditLog as selected from the app DB: every column of `:audit_log`."
   [:map {:closed true}
@@ -13,9 +17,9 @@
    [:timestamp     ms/TemporalInstant]
    [:end_timestamp [:maybe ms/TemporalInstant]]
    [:user_id       [:maybe ::lib.schema.id/user]]
-   [:model         [:maybe [:or :keyword :string]]]
+   [:model         [:maybe :string]]
    [:model_id      [:maybe :int]]
-   [:details       [:or :string :map sequential?]]])
+   [:details       ::audit-log.details]])
 
 (mr/def ::audit-log.update
   "What an update (or insert) of a AuditLog accepts: every column of `:audit_log` except `id`, all optional."
@@ -24,6 +28,6 @@
    [:timestamp     {:optional true} [:maybe ms/TemporalInstant]]
    [:end_timestamp {:optional true} [:maybe ms/TemporalInstant]]
    [:user_id       {:optional true} [:maybe ::lib.schema.id/user]]
-   [:model         {:optional true} [:maybe [:or :keyword :string]]]
+   [:model         {:optional true} [:maybe :string]]
    [:model_id      {:optional true} [:maybe :int]]
-   [:details       {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:details       {:optional true} [:maybe ::audit-log.details]]])

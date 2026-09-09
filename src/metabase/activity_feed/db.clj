@@ -19,7 +19,12 @@
 
 (def ^:private RecentCard
   "Rows returned by [[recent-cards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card [:id :name :collection_id :description :display :dataset_query :type :archived :card_schema :dashboard_id]) [:map [:authority_level [:maybe [:or :keyword :string]]] [:collection_name [:maybe :string]] [:dashboard_name [:maybe :string]]]))
+  (mut/merge (mut/select-keys ::queries.schema/card
+                              [:id :name :collection_id :description :display :dataset_query :type :archived :card_schema :dashboard_id])
+             [:map
+              [:authority_level [:maybe [:or :keyword :string]]]
+              [:collection_name [:maybe :string]]
+              [:dashboard_name  [:maybe :string]]]))
 
 (mu/defn recent-cards :- [:sequential RecentCard]
   "The recently viewed Cards with `ids`, with their Collection and Dashboard names."
@@ -35,7 +40,11 @@
 
 (def ^:private RecentDashboard
   "Rows returned by [[recent-dashboards]]."
-  (mut/merge (mut/select-keys ::dashboards.schema/dashboard [:id :name :collection_id :description :archived]) [:map [:authority_level [:maybe [:or :keyword :string]]] [:collection_name [:maybe :string]]]))
+  (mut/merge (mut/select-keys ::dashboards.schema/dashboard
+                              [:id :name :collection_id :description :archived])
+             [:map
+              [:authority_level [:maybe [:or :keyword :string]]]
+              [:collection_name [:maybe :string]]]))
 
 (mu/defn recent-dashboards :- [:sequential RecentDashboard]
   "The recently viewed Dashboards with `ids`, with their Collection names."
@@ -49,7 +58,11 @@
 
 (def ^:private RecentTable
   "Rows returned by [[recent-tables]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/table [:id :name :db_id :active :display_name :visibility_type]) [:map [:initial-sync-status [:maybe [:or :keyword :string]]] [:database-name [:maybe :string]]]))
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/table
+                              [:id :name :db_id :active :display_name :visibility_type])
+             [:map
+              [:initial-sync-status [:maybe [:or :keyword :string]]]
+              [:database-name       [:maybe :string]]]))
 
 (mu/defn recent-tables :- [:sequential RecentTable]
   "The recently viewed Tables with `ids`, with their Database names and sync status."
@@ -64,7 +77,8 @@
 
 (def ^:private RecentDashboardAndTableView
   "Rows returned by [[recent-dashboard-and-table-views]]."
-  (mut/merge (mut/select-keys ::activity-feed.schema/recent-views [:user_id :model :model_id]) [:map [:cnt [:maybe :int]] [:max_ts [:maybe ms/TemporalInstant]]]))
+  (mut/merge (mut/select-keys ::activity-feed.schema/recent-views [:user_id :model :model_id])
+             [:map [:cnt [:maybe :int]] [:max_ts [:maybe ms/TemporalInstant]]]))
 
 (mu/defn recent-dashboard-and-table-views :- [:sequential RecentDashboardAndTableView]
   "Up to `limit` most recently viewed unarchived, active Dashboards and Tables with their view counts and last
@@ -95,7 +109,12 @@
 
 (def ^:private RecentCardRun
   "Rows returned by [[recent-card-runs]]."
-  (mut/merge ::queries.schema/query-execution [:map [:user_id [:maybe ::lib.schema.id/user]] [:model_id [:maybe ::lib.schema.id/card]] [:cnt [:maybe :int]] [:max_ts [:maybe ms/TemporalInstant]]]))
+  (mut/merge ::queries.schema/query-execution
+             [:map
+              [:user_id  [:maybe ::lib.schema.id/user]]
+              [:model_id [:maybe ::lib.schema.id/card]]
+              [:cnt      [:maybe :int]]
+              [:max_ts   [:maybe ms/TemporalInstant]]]))
 
 (mu/defn recent-card-runs :- [:sequential RecentCardRun]
   "Up to `limit` most recently run question Cards with their run counts and last runner."
@@ -227,7 +246,14 @@
 
 (def ^:private CardsForRecentView
   "Rows returned by [[cards-for-recent-views]]."
-  (mut/merge (mut/select-keys ::queries.schema/card [:name :description :archived :id :database_id :display :card_schema :result_metadata :dataset_query :entity_id :visualization_settings :dashboard_id :collection_id]) [:map [:dashboard_name [:maybe :string]] [:entity-coll-id [:maybe ::lib.schema.id/collection]] [:moderated-status [:maybe [:or :keyword :string]]] [:collection_name [:maybe :string]] [:collection_authority_level [:maybe [:or :keyword :string]]]]))
+  (mut/merge (mut/select-keys ::queries.schema/card
+                              [:name :description :archived :id :database_id :display :card_schema :result_metadata :dataset_query :entity_id :visualization_settings :dashboard_id :collection_id])
+             [:map
+              [:dashboard_name             [:maybe :string]]
+              [:entity-coll-id             [:maybe ::lib.schema.id/collection]]
+              [:moderated-status           [:maybe [:or :keyword :string]]]
+              [:collection_name            [:maybe :string]]
+              [:collection_authority_level [:maybe [:or :keyword :string]]]]))
 
 (mu/defn cards-for-recent-views :- [:sequential CardsForRecentView]
   "The Cards with `card-ids` with their Dashboard, Collection, and moderation status."
@@ -267,7 +293,13 @@
 
 (def ^:private DashboardsForRecentView
   "Rows returned by [[dashboards-for-recent-views]]."
-  (mut/merge (mut/select-keys ::dashboards.schema/dashboard [:id :name :description :archived :collection_id]) [:map [:entity-coll-id [:maybe ::lib.schema.id/collection]] [:collection_name [:maybe [:or :string :map sequential?]]] [:collection_authority_level [:maybe [:or :keyword :string]]] [:moderated-status [:maybe [:or :keyword :string]]]]))
+  (mut/merge (mut/select-keys ::dashboards.schema/dashboard
+                              [:id :name :description :archived :collection_id])
+             [:map
+              [:entity-coll-id             [:maybe ::lib.schema.id/collection]]
+              [:collection_name            [:maybe :string]]
+              [:collection_authority_level [:maybe [:or :keyword :string]]]
+              [:moderated-status           [:maybe [:or :keyword :string]]]]))
 
 (mu/defn dashboards-for-recent-views :- [:sequential DashboardsForRecentView]
   "The Dashboards with `dashboard-ids` with their Collection and moderation status."
@@ -296,7 +328,8 @@
 
 (def ^:private UnarchivedCollectionsWithDetail
   "Rows returned by [[unarchived-collections-with-details]]."
-  (mut/select-keys ::collections.schema/collection [:id :name :description :authority_level :archived :location :type]))
+  (mut/select-keys ::collections.schema/collection
+                   [:id :name :description :authority_level :archived :location :type]))
 
 (mu/defn unarchived-collections-with-details :- [:sequential UnarchivedCollectionsWithDetail]
   "The unarchived Collections with `collection-ids`, with their location, type, and authority level."
@@ -310,7 +343,11 @@
 
 (def ^:private VisibleTablesForRecentView
   "Rows returned by [[visible-tables-for-recent-views]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/table [:id :name :description :display_name :active :visibility_type :schema :db_id]) [:map [:database-name [:maybe :string]] [:initial-sync-status [:maybe [:or :keyword :string]]]]))
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/table
+                              [:id :name :description :display_name :active :visibility_type :schema :db_id])
+             [:map
+              [:database-name       [:maybe :string]]
+              [:initial-sync-status [:maybe [:or :keyword :string]]]]))
 
 (mu/defn visible-tables-for-recent-views :- [:sequential VisibleTablesForRecentView]
   "The non-hidden Tables with `table-ids` with their Database name and sync status."
@@ -332,7 +369,8 @@
 
 (def ^:private RecentViewsWithCardType
   "Rows returned by [[recent-views-with-card-type]]."
-  (mut/merge ::activity-feed.schema/recent-views [:map [:card_type [:maybe [:or :keyword :string]]]]))
+  (mut/merge ::activity-feed.schema/recent-views
+             [:map [:card_type [:maybe [:or :keyword :string]]]]))
 
 (mu/defn recent-views-with-card-type :- [:sequential RecentViewsWithCardType]
   "The RecentViews of the User with `user-id` in `contexts`, newest first, with the type of the viewed Card. Narrowed
@@ -388,7 +426,11 @@
 
 (def ^:private DocumentsForRecentView
   "Rows returned by [[documents-for-recent-views]]."
-  (mut/merge (mut/select-keys ::documents.schema/document [:id :name :archived :collection_id]) [:map [:entity-coll-id [:maybe ::lib.schema.id/collection]] [:collection_name [:maybe [:or :string :map sequential?]]] [:collection_authority_level [:maybe [:or :keyword :string]]]]))
+  (mut/merge (mut/select-keys ::documents.schema/document [:id :name :archived :collection_id])
+             [:map
+              [:entity-coll-id             [:maybe ::lib.schema.id/collection]]
+              [:collection_name            [:maybe :string]]
+              [:collection_authority_level [:maybe [:or :keyword :string]]]]))
 
 (mu/defn documents-for-recent-views :- [:sequential DocumentsForRecentView]
   "The Documents with `document-ids` with their Collection."

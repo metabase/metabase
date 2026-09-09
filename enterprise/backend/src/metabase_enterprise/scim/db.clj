@@ -30,7 +30,7 @@
   []
   (t2/delete! :model/ApiKey :scope :scim))
 
-(mu/defn insert-api-key! :- ::api-keys.schema/api-key
+(mu/defn insert-api-key! :- ::api-keys.schema/api-key.inserted
   "Insert `api-key` and return the new instance."
   [api-key :- ::api-keys.schema/api-key.create]
   (t2/insert-returning-instance! :model/ApiKey api-key))
@@ -42,7 +42,8 @@
 
 (def ^:private ScimUserByEntityId
   "Rows returned by [[scim-user-by-entity-id]]."
-  (mut/select-keys ::users.schema/user.full [:id :first_name :last_name :email :locale :is_active :entity_id :common_name]))
+  (mut/select-keys ::users.schema/user.full
+                   [:id :first_name :last_name :email :locale :is_active :entity_id :common_name]))
 
 (mu/defn scim-user-by-entity-id :- [:maybe ScimUserByEntityId]
   "The SCIM columns of the personal User with `entity-id`, or nil."
@@ -51,7 +52,8 @@
 
 (def ^:private ScimUserByEmail
   "Rows returned by [[scim-user-by-email]]."
-  (mut/select-keys ::users.schema/user.full [:id :first_name :last_name :email :locale :is_active :entity_id :common_name]))
+  (mut/select-keys ::users.schema/user.full
+                   [:id :first_name :last_name :email :locale :is_active :entity_id :common_name]))
 
 (mu/defn scim-user-by-email :- [:maybe ScimUserByEmail]
   "The SCIM columns of the User with `email`, or nil."
@@ -60,7 +62,8 @@
 
 (def ^:private ScimUser
   "Rows returned by [[scim-users]]."
-  (mut/select-keys ::users.schema/user.full [:id :first_name :last_name :email :locale :is_active :entity_id :common_name]))
+  (mut/select-keys ::users.schema/user.full
+                   [:id :first_name :last_name :email :locale :is_active :entity_id :common_name]))
 
 (mu/defn scim-users :- [:sequential ScimUser]
   "The SCIM columns of the personal Users, narrowed to the optional `email` (case-insensitive), paged by `limit`
@@ -102,7 +105,8 @@
 
 (def ^:private UserGroupMembership
   "Rows returned by [[user-group-memberships]]."
-  (mut/merge (mut/select-keys ::permissions.schema/permissions-group-membership [:user_id]) [:map [:name [:maybe :string]] [:entity_id [:maybe :string]]]))
+  (mut/merge (mut/select-keys ::permissions.schema/permissions-group-membership [:user_id])
+             [:map [:name [:maybe :string]] [:entity_id [:maybe :string]]]))
 
 (mu/defn user-group-memberships :- [:sequential UserGroupMembership]
   "Rows of User ID, group name, and group entity ID for the memberships of the Users with `user-ids`, excluding the
@@ -160,7 +164,7 @@
   [group-name :- :string]
   (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name)))
 
-(mu/defn insert-group! :- [:sequential ::permissions.schema/permissions-group]
+(mu/defn insert-group! :- ::permissions.schema/permissions-group
   "Insert `group` and return the new instance."
   [group :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
   (first (t2/insert-returning-instances! :model/PermissionsGroup group)))
@@ -178,7 +182,8 @@
 
 (def ^:private GroupMember
   "Rows returned by [[group-members]]."
-  (mut/merge (mut/select-keys ::permissions.schema/permissions-group-membership [:group_id]) [:map [:email [:maybe :string]] [:entity_id [:maybe :string]]]))
+  (mut/merge (mut/select-keys ::permissions.schema/permissions-group-membership [:group_id])
+             [:map [:email [:maybe :string]] [:entity_id [:maybe :string]]]))
 
 (mu/defn group-members :- [:sequential GroupMember]
   "Rows of group ID, member email, and member entity ID for the memberships of the PermissionsGroups with

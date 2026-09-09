@@ -11,7 +11,7 @@
 
 ;;; ------------------------------------------------- Transforms -------------------------------------------------
 
-(mu/defn transforms-by-id :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform]
+(mu/defn transforms-by-id :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform.row]
   "A map of id to Transform, for every Transform."
   []
   (t2/select-pk->fn identity :model/Transform))

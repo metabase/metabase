@@ -217,9 +217,9 @@
   (t2/insert-returning-pk! :model/TaskHistory row))
 
 (mu/defn insert-task-run! :- ms/PositiveInt
-  "Insert the TaskRun `row`, with `started_at` and `updated_at` defaulting to the app DB's now, and return its id."
+  "Insert the TaskRun `row` and return its id."
   [row :- ::task-history.schema/task-run.update]
-  (t2/insert-returning-pk! :model/TaskRun (merge {:started_at :%now, :updated_at :%now} row)))
+  (t2/insert-returning-pk! :model/TaskRun row))
 
 (mu/defn task-statuses-for-run :- [:maybe [:set :keyword]]
   "The set of statuses of the TaskHistory rows of the TaskRun with `run-id`."

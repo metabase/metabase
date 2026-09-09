@@ -93,7 +93,7 @@
                     {:join  [:exploration_thread [:= :exploration_thread.exploration_id :exploration.id]]
                      :where [:= :exploration_thread.id thread-id]}))
 
-(mu/defn insert-exploration! :- [:sequential ::explorations.schema/exploration]
+(mu/defn insert-exploration! :- ::explorations.schema/exploration
   "Insert `exploration` and return the new instance."
   [exploration :- ::explorations.schema/exploration.update]
   (first (t2/insert-returning-instances! :model/Exploration exploration)))
@@ -207,7 +207,7 @@
              :where  [:= :id thread-id]
              :for    [:update]}))
 
-(mu/defn insert-thread! :- [:sequential ::explorations.schema/exploration-thread]
+(mu/defn insert-thread! :- ::explorations.schema/exploration-thread
   "Insert `thread` and return the new instance."
   [thread :- ::explorations.schema/exploration-thread.update]
   (first (t2/insert-returning-instances! :model/ExplorationThread thread)))
@@ -330,8 +330,8 @@
   [blocks :- (let [row [:map {:closed true}
                         [:id                    {:optional true} ms/PositiveInt]
                         [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
-                        [:metrics               {:optional true} [:maybe [:or :string :map sequential?]]]
-                        [:dimensions            {:optional true} [:maybe [:or :string :map sequential?]]]
+                        [:metrics               {:optional true} [:maybe [:sequential :map]]]
+                        [:dimensions            {:optional true} [:maybe [:sequential :map]]]
                         [:position              {:optional true} [:maybe :int]]
                         [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
                         [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]]]
@@ -464,7 +464,8 @@
 
 (def ^:private LensStampedQuery
   "Rows returned by [[lens-stamped-queries]]."
-  (mut/select-keys ::explorations.schema/exploration-query [:id :exploration_thread_id :database_id :dataset_query :data_access_token]))
+  (mut/select-keys ::explorations.schema/exploration-query
+                   [:id :exploration_thread_id :database_id :dataset_query :data_access_token]))
 
 (mu/defn lens-stamped-queries :- [:sequential LensStampedQuery]
   "The ID, thread, Database, query, and data-access token of the ExplorationQueries with a query on the
@@ -595,7 +596,9 @@
 
 (def ^:private QueryResultRowCount
   "Rows returned by [[query-result-row-counts]]."
-  (mut/merge (mut/select-keys ::explorations.schema/exploration-query-result [:exploration_query_id]) [:map [:row_count [:maybe :int]]]))
+  (mut/merge (mut/select-keys ::explorations.schema/exploration-query-result
+                              [:exploration_query_id])
+             [:map [:row_count [:maybe :int]]]))
 
 (mu/defn query-result-row-counts :- [:sequential QueryResultRowCount]
   "The query ID and stored row count of the ExplorationQueryResults of the ExplorationQueries with `query-ids`."
@@ -615,9 +618,9 @@
                     [:created_at                         {:optional true} [:maybe ms/TemporalInstant]]
                     [:interestingness_score               {:optional true} [:maybe number?]]
                     [:contextual_interestingness_score    {:optional true} [:maybe number?]]
-                    [:chart_stats                         {:optional true} [:maybe [:or :string :map sequential?]]]
-                    [:metric_description                  {:optional true} [:maybe [:or :string :map sequential?]]]
-                    [:chart_description                   {:optional true} [:maybe [:or :string :map sequential?]]]]]
+                    [:chart_stats                         {:optional true} [:maybe :map]]
+                    [:metric_description                  {:optional true} [:maybe :string]]
+                    [:chart_description                   {:optional true} [:maybe :string]]]]
   (t2/insert! :model/ExplorationQueryResult query-result))
 
 ;;; ---------------------------------------------- Stored results ----------------------------------------------
@@ -748,7 +751,8 @@
 
 (def ^:private SummaryDocumentColumn
   "Rows returned by [[summary-document-columns]]."
-  (mut/select-keys ::documents.schema/document [:id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder]))
+  (mut/select-keys ::documents.schema/document
+                   [:id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder]))
 
 (mu/defn summary-document-columns :- [:maybe SummaryDocumentColumn]
   "The wire-shape columns of the Document with `document-id`, or nil."
@@ -760,7 +764,8 @@
 
 (def ^:private SummaryDocumentsForExploration
   "Rows returned by [[summary-documents-for-explorations]]."
-  (mut/select-keys ::documents.schema/document [:id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder]))
+  (mut/select-keys ::documents.schema/document
+                   [:id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder]))
 
 (mu/defn summary-documents-for-explorations :- [:sequential SummaryDocumentsForExploration]
   "The wire-shape columns of the Summary Documents of the Explorations with `exploration-ids`, oldest first."
@@ -850,7 +855,8 @@
 
 (def ^:private MetricCardsById
   "Rows returned by [[metric-cards-by-id]]."
-  (mut/select-keys ::queries.schema/card [:id :name :description :database_id :dataset_query :card_schema :dimensions :dimension_mappings]))
+  (mut/select-keys ::queries.schema/card
+                   [:id :name :description :database_id :dataset_query :card_schema :dimensions :dimension_mappings]))
 
 (mu/defn metric-cards-by-id :- [:map-of ::lib.schema.id/card MetricCardsById]
   "A map of ID to the planner columns of the Cards with `card-ids`."

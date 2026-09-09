@@ -12,7 +12,7 @@
    [:user_id    ::lib.schema.id/user]
    [:namespace  :string]
    [:key        :string]
-   [:value      [:maybe [:or :string :map sequential?]]]
+   [:value      [:maybe :string]]
    [:created_at ms/TemporalInstant]
    [:updated_at ms/TemporalInstant]
    [:expires_at [:maybe ms/TemporalInstant]]])
@@ -23,7 +23,7 @@
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:namespace  {:optional true} [:maybe :string]]
    [:key        {:optional true} [:maybe :string]]
-   [:value      {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:value      {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:expires_at {:optional true} [:maybe ms/TemporalInstant]]])

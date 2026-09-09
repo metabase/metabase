@@ -68,7 +68,7 @@
            [:id         {:optional true} ms/PositiveInt]
            [:group_id   {:optional true} [:maybe ms/PositiveInt]]
            [:perm_type  {:optional true} [:maybe [:or :keyword :string]]]
-           [:perm_value {:optional true} [:maybe [:or :keyword :string :map sequential?]]]]]
+           [:perm_value {:optional true} [:maybe [:or :keyword :string]]]]]
   (t2/insert! :model/MetabotPermissions row))
 
 (mu/defn delete-hidden-group-permissions! :- :int
@@ -181,12 +181,12 @@
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))
 
-(mu/defn transform :- [:maybe ::transforms.schema/transform]
+(mu/defn transform :- [:maybe ::transforms.schema/transform.row]
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id transform-id))
 
-(mu/defn transforms :- [:sequential ::transforms.schema/transform]
+(mu/defn transforms :- [:sequential ::transforms.schema/transform.row]
   "The Transforms with `transform-ids`."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select :model/Transform :id [:in transform-ids]))

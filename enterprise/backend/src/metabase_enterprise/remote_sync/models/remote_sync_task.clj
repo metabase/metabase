@@ -31,7 +31,17 @@
   [task]
   (when-let [existing (current-task)]
     (throw (ex-info "A running task exists" {:existing-task existing})))
-  task)
+  (merge {:started_at (mi/now)} task))
+
+(t2/define-before-update :model/RemoteSyncTask
+  [task]
+  (let [changes (t2/changes task)]
+    (cond-> task
+      (and (contains? changes :progress) (not (contains? changes :last_progress_report_at)))
+      (assoc :last_progress_report_at (mi/now))
+
+      (and (some #(contains? changes %) [:outcome :error_message :conflicts]) (not (contains? changes :ended_at)))
+      (assoc :ended_at (mi/now)))))
 
 ;;; ------------------------------------------- Helper Functions -------------------------------------------
 
@@ -49,8 +59,7 @@
    [additional-fields :- [:map]]]
   (remote-sync.db/insert-task! (merge {:sync_task_type sync-task-type
                                        :initiated_by user-id
-                                       :progress 0
-                                       :started_at (mi/now)}
+                                       :progress 0}
                                       additional-fields)))
 
 (defn cancel-sync-task!
@@ -65,7 +74,6 @@
   [task-id]
   (remote-sync.db/update-task! task-id
                                {:cancelled true
-                                :ended_at (mi/now)
                                 :error_message "Task cancelled"}))
 
 (defn update-progress!
@@ -81,8 +89,7 @@
     (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id
                                                            :cancelled? true})))
   (remote-sync.db/update-task! task-id
-                               {:progress progress
-                                :last_progress_report_at (mi/now)}))
+                               {:progress progress}))
 
 (def ^:private default-progress-throttle-ms
   "Minimum ms between throttled (non-boundary) progress writes."
@@ -138,7 +145,6 @@
   ([task-id outcome]
    (remote-sync.db/update-task! task-id
                                 {:progress 1.0
-                                 :ended_at (mi/now)
                                  :outcome  outcome})))
 
 (defn fail-sync-task!
@@ -149,8 +155,7 @@
   Returns the number of rows updated (should be 1 if successful)."
   [task-id error-msg]
   (remote-sync.db/update-task! task-id
-                               {:ended_at (mi/now)
-                                :error_message error-msg}))
+                               {:error_message error-msg}))
 
 (defn current-task
   "Gets the current active sync task.
@@ -177,7 +182,7 @@
   []
   (let [cutoff (t/minus (t/offset-date-time)
                         (t/millis (setting/get :remote-sync-task-time-limit-ms)))]
-    (remote-sync.db/supersede-stale-tasks! cutoff (mi/now))))
+    (remote-sync.db/supersede-stale-tasks! cutoff)))
 
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.
@@ -266,8 +271,7 @@
   Returns the number of rows updated (should be 1 if successful)."
   [task-id conflicts]
   (remote-sync.db/update-task! task-id
-                               {:ended_at (mi/now)
-                                :conflicts conflicts}))
+                               {:conflicts conflicts}))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
 

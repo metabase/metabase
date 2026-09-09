@@ -96,13 +96,51 @@
    [:source [:ref ::transform-source]]
    [:target [:ref ::transform-target]]])
 
+(mr/def ::transform.source
+  "The `:source` column of a Transform, decoded."
+  :map)
+
+(mr/def ::transform.target
+  "The `:target` column of a Transform, decoded."
+  :map)
+
+(mr/def ::transform.table-dependency
+  "One entry of the `:table_dependencies` column of a Transform, decoded."
+  :map)
+
+(mr/def ::transform.table-dependencies
+  "The `:table_dependencies` column of a Transform, decoded."
+  [:sequential ::transform.table-dependency])
+
+(mr/def ::transform.row
+  "A Transform as selected from the app DB: every column of `:transform`."
+  [:map {:closed true}
+   [:id                    ::lib.schema.id/transform]
+   [:name                  :string]
+   [:description           [:maybe :string]]
+   [:source                ::transform.source]
+   [:target                ::transform.target]
+   [:entity_id             :string]
+   [:created_at            ms/TemporalInstant]
+   [:updated_at            ms/TemporalInstant]
+   [:source_type           [:or :keyword :string]]
+   [:creator_id            ::lib.schema.id/user]
+   [:source_database_id    [:maybe ::lib.schema.id/database]]
+   [:collection_id         [:maybe ::lib.schema.id/collection]]
+   [:owner_user_id         [:maybe ::lib.schema.id/user]]
+   [:owner_email           [:maybe :string]]
+   [:target_db_id          [:maybe ::lib.schema.id/database]]
+   [:last_checkpoint_value [:maybe :string]]
+   [:target_table_id       [:maybe ::lib.schema.id/table]]
+   [:table_dependencies    [:maybe ::transform.table-dependencies]]])
+
 (mr/def ::transform.update
   "What an update (or insert) of a Transform accepts: every column of `:transform` except `id`, all optional, plus `:run_trigger` consumed by the model's hooks."
   [:map {:closed true}
-   [:name                  {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:description           {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:source                {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
-   [:target                {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:name                  {:optional true} [:maybe :string]]
+   [:description           {:optional true} [:maybe :string]]
+   [:source                {:optional true} [:maybe ::transform.source]]
+   [:target                {:optional true} [:maybe ::transform.target]]
    [:entity_id             {:optional true} [:maybe :string]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
@@ -111,11 +149,11 @@
    [:source_database_id    {:optional true} [:maybe ::lib.schema.id/database]]
    [:collection_id         {:optional true} [:maybe ::lib.schema.id/collection]]
    [:owner_user_id         {:optional true} [:maybe ::lib.schema.id/user]]
-   [:owner_email           {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:owner_email           {:optional true} [:maybe :string]]
    [:target_db_id          {:optional true} [:maybe ::lib.schema.id/database]]
-   [:last_checkpoint_value {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:last_checkpoint_value {:optional true} [:maybe :string]]
    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]
-   [:table_dependencies    {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:table_dependencies    {:optional true} [:maybe ::transform.table-dependencies]]
    [:run_trigger           {:optional true} [:maybe [:or :keyword :string]]]])
 
 (mr/def ::transform-dag-run
@@ -123,7 +161,7 @@
   [:map {:closed true}
    [:id                         ms/PositiveInt]
    [:source_transform_id        [:maybe ::lib.schema.id/transform]]
-   [:source_transform_name      [:maybe [:or :string :map sequential?]]]
+   [:source_transform_name      [:maybe :string]]
    [:source_transform_entity_id [:maybe :string]]
    [:direction                  [:or :keyword :string]]
    [:transform_count            [:maybe :int]]
@@ -131,7 +169,7 @@
    [:is_active                  [:maybe :boolean]]
    [:start_time                 ms/TemporalInstant]
    [:end_time                   [:maybe ms/TemporalInstant]]
-   [:message                    [:maybe [:or :string :map sequential?]]]
+   [:message                    [:maybe :string]]
    [:user_id                    [:maybe ::lib.schema.id/user]]
    [:last_heartbeat             ms/TemporalInstant]
    [:created_at                 ms/TemporalInstant]
@@ -141,7 +179,7 @@
   "What an update (or insert) of a TransformDagRun accepts: every column of `:transform_dag_run` except `id`, all optional."
   [:map {:closed true}
    [:source_transform_id        {:optional true} [:maybe ::lib.schema.id/transform]]
-   [:source_transform_name      {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:source_transform_name      {:optional true} [:maybe :string]]
    [:source_transform_entity_id {:optional true} [:maybe :string]]
    [:direction                  {:optional true} [:maybe [:or :keyword :string]]]
    [:transform_count            {:optional true} [:maybe :int]]
@@ -149,7 +187,7 @@
    [:is_active                  {:optional true} [:maybe :boolean]]
    [:start_time                 {:optional true} [:maybe ms/TemporalInstant]]
    [:end_time                   {:optional true} [:maybe ms/TemporalInstant]]
-   [:message                    {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:message                    {:optional true} [:maybe :string]]
    [:user_id                    {:optional true} [:maybe ::lib.schema.id/user]]
    [:last_heartbeat             {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at                 {:optional true} [:maybe ms/TemporalInstant]]
@@ -159,26 +197,26 @@
   "A TransformJob as selected from the app DB: every column of `:transform_job`."
   [:map {:closed true}
    [:id              ms/PositiveInt]
-   [:name            [:or :string :map sequential?]]
-   [:description     [:maybe [:or :string :map sequential?]]]
-   [:schedule        [:or :string :map sequential?]]
+   [:name            :string]
+   [:description     [:maybe :string]]
+   [:schedule        :string]
    [:entity_id       :string]
    [:created_at      ms/TemporalInstant]
    [:updated_at      ms/TemporalInstant]
-   [:built_in_type   [:maybe [:or :keyword :string]]]
+   [:built_in_type   [:maybe :string]]
    [:ui_display_type [:or :keyword :string]]
    [:active          :boolean]])
 
 (mr/def ::transform-job.update
   "What an update (or insert) of a TransformJob accepts: every column of `:transform_job` except `id`, all optional."
   [:map {:closed true}
-   [:name            {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:description     {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:schedule        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:name            {:optional true} [:maybe :string]]
+   [:description     {:optional true} [:maybe :string]]
+   [:schedule        {:optional true} [:maybe :string]]
    [:entity_id       {:optional true} [:maybe :string]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:built_in_type   {:optional true} [:maybe [:or :keyword :string]]]
+   [:built_in_type   {:optional true} [:maybe :string]]
    [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]
    [:active          {:optional true} [:maybe :boolean]]])
 
@@ -192,11 +230,11 @@
    [:is_active      [:maybe :boolean]]
    [:start_time     ms/TemporalInstant]
    [:end_time       [:maybe ms/TemporalInstant]]
-   [:message        [:maybe [:or :string :map sequential?]]]
+   [:message        [:maybe :string]]
    [:created_at     ms/TemporalInstant]
    [:updated_at     ms/TemporalInstant]
    [:last_heartbeat ms/TemporalInstant]
-   [:job_name       [:maybe [:or :string :map sequential?]]]
+   [:job_name       [:maybe :string]]
    [:job_entity_id  [:maybe :string]]])
 
 (mr/def ::transform-job-run.update
@@ -208,11 +246,11 @@
    [:is_active      {:optional true} [:maybe :boolean]]
    [:start_time     {:optional true} [:maybe ms/TemporalInstant]]
    [:end_time       {:optional true} [:maybe ms/TemporalInstant]]
-   [:message        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:message        {:optional true} [:maybe :string]]
    [:created_at     {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at     {:optional true} [:maybe ms/TemporalInstant]]
    [:last_heartbeat {:optional true} [:maybe ms/TemporalInstant]]
-   [:job_name       {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:job_name       {:optional true} [:maybe :string]]
    [:job_entity_id  {:optional true} [:maybe :string]]])
 
 (mr/def ::transform-job-transform-tag
@@ -242,13 +280,13 @@
    [:is_active                  [:maybe :boolean]]
    [:start_time                 ms/TemporalInstant]
    [:end_time                   [:maybe ms/TemporalInstant]]
-   [:message                    [:maybe [:or :string :map sequential?]]]
+   [:message                    [:maybe :string]]
    [:user_id                    [:maybe ::lib.schema.id/user]]
    [:transform_name             [:maybe :string]]
    [:transform_entity_id        [:maybe :string]]
    [:checkpoint_filter_field_id [:maybe ::lib.schema.id/field]]
-   [:checkpoint_lo_value        [:maybe [:or :string :map sequential?]]]
-   [:checkpoint_hi_value        [:maybe [:or :string :map sequential?]]]
+   [:checkpoint_lo_value        [:maybe :string]]
+   [:checkpoint_hi_value        [:maybe :string]]
    [:metered_as                 [:maybe :string]]
    [:last_heartbeat             ms/TemporalInstant]
    [:job_run_id                 [:maybe ms/PositiveInt]]
@@ -263,13 +301,13 @@
    [:is_active                  {:optional true} [:maybe :boolean]]
    [:start_time                 {:optional true} [:maybe ms/TemporalInstant]]
    [:end_time                   {:optional true} [:maybe ms/TemporalInstant]]
-   [:message                    {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:message                    {:optional true} [:maybe :string]]
    [:user_id                    {:optional true} [:maybe ::lib.schema.id/user]]
    [:transform_name             {:optional true} [:maybe :string]]
    [:transform_entity_id        {:optional true} [:maybe :string]]
    [:checkpoint_filter_field_id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:checkpoint_lo_value        {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:checkpoint_hi_value        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:checkpoint_lo_value        {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value        {:optional true} [:maybe :string]]
    [:metered_as                 {:optional true} [:maybe :string]]
    [:last_heartbeat             {:optional true} [:maybe ms/TemporalInstant]]
    [:job_run_id                 {:optional true} [:maybe ms/PositiveInt]]
@@ -295,7 +333,7 @@
    [:entity_id     :string]
    [:created_at    ms/TemporalInstant]
    [:updated_at    ms/TemporalInstant]
-   [:built_in_type [:maybe [:or :keyword :string]]]])
+   [:built_in_type [:maybe :string]]])
 
 (mr/def ::transform-tag.update
   "What an update (or insert) of a TransformTag accepts: every column of `:transform_tag` except `id`, all optional."
@@ -304,7 +342,7 @@
    [:entity_id     {:optional true} [:maybe :string]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:built_in_type {:optional true} [:maybe [:or :keyword :string]]]])
+   [:built_in_type {:optional true} [:maybe :string]]])
 
 (mr/def ::transform-transform-tag
   "A TransformTransformTag as selected from the app DB: every column of `:transform_transform_tag`."

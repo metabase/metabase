@@ -68,7 +68,11 @@
              :id [:in collection-ids]
              :personal_owner_id [:not= nil]))
 
-(mu/defn collection-locations :- [:sequential ::collections.schema/collection]
+(def ^:private CollectionLocation
+  "Rows returned by [[collection-locations]]."
+  (mut/select-keys ::collections.schema/collection [:id :location]))
+
+(mu/defn collection-locations :- [:sequential CollectionLocation]
   "The ID and location of the raw collection rows with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:collection :id :location] :id [:in collection-ids]))

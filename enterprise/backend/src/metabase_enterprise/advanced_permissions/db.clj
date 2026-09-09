@@ -101,7 +101,9 @@
 
 (def ^:private UserGroupMembership
   "Rows returned by [[user-group-memberships]]."
-  (mu/rename-keys (mut/select-keys ::permissions.schema/permissions-group-membership [:group_id :is_group_manager]) {:group_id :id}))
+  (mu/rename-keys (mut/select-keys ::permissions.schema/permissions-group-membership
+                                   [:group_id :is_group_manager])
+                  {:group_id :id}))
 
 (mu/defn user-group-memberships :- [:sequential UserGroupMembership]
   "The group ID (as `:id`) and manager flag of the memberships of the User with `user-id`."

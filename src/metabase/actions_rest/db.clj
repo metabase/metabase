@@ -2,8 +2,6 @@
   "Application database queries for the actions REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [malli.util :as mut]
-   [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
@@ -21,7 +19,11 @@
 
 (def ^:private PublicAction
   "Rows returned by [[public-actions]]."
-  (mut/select-keys ::actions.schema/action [:name :id :public_uuid :model_id]))
+  [:map {:closed true}
+   [:name        :string]
+   [:id          ::lib.schema.id/action]
+   [:public_uuid :string]
+   [:model_id    ::lib.schema.id/card]])
 
 (mu/defn public-actions :- [:sequential PublicAction]
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."

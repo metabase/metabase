@@ -35,7 +35,7 @@
   "Insert the SsoRelayState `row`, returning the number inserted."
   [row :- [:map {:closed true}
            [:id           :string]
-           [:continue_url [:maybe [:or :string :map sequential?]]]
+           [:continue_url [:maybe :string]]
            [:origin       [:maybe :string]]
            [:embedding    :boolean]
            [:expires_at   ms/TemporalInstant]]]

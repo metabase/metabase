@@ -88,7 +88,7 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Dashboard :id [:in ids]))
 
-(mu/defn transforms-with-ids :- [:sequential ::transforms.schema/transform]
+(mu/defn transforms-with-ids :- [:sequential ::transforms.schema/transform.row]
   "The Transforms with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Transform :id [:in ids]))
@@ -130,7 +130,7 @@
    changes :- ::queries.schema/card.update]
   (t2/update! :model/Card card-id changes))
 
-(mu/defn transform :- [:maybe ::transforms.schema/transform]
+(mu/defn transform :- [:maybe ::transforms.schema/transform.row]
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id transform-id))

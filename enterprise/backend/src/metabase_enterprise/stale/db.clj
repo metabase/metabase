@@ -65,7 +65,14 @@
 
 (def ^:private StaleDashboard
   "Rows returned by [[stale-dashboards]]."
-  (mut/merge (mut/select-keys ::dashboards.schema/dashboard [:id :description :collection_id :name :entity_id :archived :collection_position]) [:map [:last_used_at [:maybe ms/TemporalInstant]] [:model [:= "dashboard"]] [:dashboard_id :nil] [:location :nil] [:database_id :nil]]))
+  (mut/merge (mut/select-keys ::dashboards.schema/dashboard
+                              [:id :description :collection_id :name :entity_id :archived :collection_position])
+             [:map
+              [:last_used_at [:maybe ms/TemporalInstant]]
+              [:model        [:= "dashboard"]]
+              [:dashboard_id :nil]
+              [:location     :nil]
+              [:database_id  :nil]]))
 
 (mu/defn stale-dashboards :- [:sequential StaleDashboard]
   "The listing columns of the Dashboards with `dashboard-ids`."

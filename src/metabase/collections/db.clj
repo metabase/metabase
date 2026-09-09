@@ -17,7 +17,7 @@
   [:map {:closed true}
    [:object      {:optional true} [:maybe :string]]
    [:group_id    {:optional true} [:maybe ms/PositiveInt]]
-   [:perm_value  {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:perm_value  {:optional true} [:maybe [:or :keyword :string]]]
    [:perm_type   {:optional true} [:maybe [:or :keyword :string]]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
 

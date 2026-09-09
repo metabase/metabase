@@ -17,8 +17,8 @@
   [:map {:closed true}
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:provider     {:optional true} [:maybe [:or :keyword :string]]]
-   [:credentials  {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:metadata     {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:credentials  {:optional true} [:maybe :map]]
+   [:metadata     {:optional true} [:maybe :map]]
    [:provider_id  {:optional true} [:maybe :string]]
    [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
    [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
@@ -94,7 +94,7 @@
 
 (def ^:private UserLoginColumn
   "Rows returned by [[user-login-columns]]."
-  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :tenant_id]))
+  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :tenant_id :common_name]))
 
 (mu/defn user-login-columns :- [:maybe UserLoginColumn]
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
@@ -103,7 +103,7 @@
 
 (def ^:private UserLoginColumnsByEmail
   "Rows returned by [[user-login-columns-by-email]]."
-  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :tenant_id]))
+  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :tenant_id :common_name]))
 
 (mu/defn user-login-columns-by-email :- [:maybe UserLoginColumnsByEmail]
   "The id, active flag, last login, and tenant id of the User whose email matches `email` case-insensitively, or
@@ -113,7 +113,7 @@
 
 (def ^:private UserLoginStatus
   "Rows returned by [[user-login-status]]."
-  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login]))
+  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :common_name]))
 
 (mu/defn user-login-status :- [:maybe UserLoginStatus]
   "The id, active flag, and last login of the User with `user-id`, or nil."
@@ -133,7 +133,7 @@
 
 (def ^:private InsertUserReturningLoginColumn
   "Rows returned by [[insert-user-returning-login-columns!]]."
-  (mut/select-keys ::users.schema/user.full [:id :last_login :is_active :tenant_id]))
+  (mut/select-keys ::users.schema/user.full [:id :last_login :is_active :tenant_id :common_name]))
 
 (mu/defn insert-user-returning-login-columns! :- InsertUserReturningLoginColumn
   "Insert the User `row` and return its id, last login, active flag, and tenant id."

@@ -5,6 +5,18 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::task-history.task-details
+  "The `:task_details` column of a TaskHistory, decoded."
+  :map)
+
+(mr/def ::task-history.log
+  "One entry of the `:logs` column of a TaskHistory, decoded."
+  :map)
+
+(mr/def ::task-history.logs
+  "The `:logs` column of a TaskHistory, decoded."
+  [:sequential ::task-history.log])
+
 (mr/def ::task-history
   "A TaskHistory as selected from the app DB: every column of `:task_history`."
   [:map {:closed true}
@@ -14,10 +26,10 @@
    [:started_at   ms/TemporalInstant]
    [:ended_at     [:maybe ms/TemporalInstant]]
    [:duration     [:maybe :int]]
-   [:task_details [:maybe [:or :string :map sequential?]]]
+   [:task_details [:maybe ::task-history.task-details]]
    [:status       [:or :keyword :string]]
    [:run_id       [:maybe ms/PositiveInt]]
-   [:logs         [:maybe [:or :string :map sequential?]]]])
+   [:logs         [:maybe ::task-history.logs]]])
 
 (mr/def ::task-history.update
   "What an update (or insert) of a TaskHistory accepts: every column of `:task_history` except `id`, all optional."
@@ -27,10 +39,10 @@
    [:started_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:ended_at     {:optional true} [:maybe ms/TemporalInstant]]
    [:duration     {:optional true} [:maybe :int]]
-   [:task_details {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:task_details {:optional true} [:maybe ::task-history.task-details]]
    [:status       {:optional true} [:maybe [:or :keyword :string]]]
    [:run_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:logs         {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:logs         {:optional true} [:maybe ::task-history.logs]]])
 
 (mr/def ::task-run
   "A TaskRun as selected from the app DB: every column of `:task_run`."

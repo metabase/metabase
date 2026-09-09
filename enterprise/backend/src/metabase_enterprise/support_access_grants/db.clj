@@ -87,7 +87,7 @@
 
 (def ^:private UserSuperuserFlagByEmail
   "Rows returned by [[user-superuser-flag-by-email]]."
-  (mut/select-keys ::users.schema/user [:id :is_superuser]))
+  (mut/select-keys ::users.schema/user [:id :is_superuser :common_name]))
 
 (mu/defn user-superuser-flag-by-email :- [:maybe UserSuperuserFlagByEmail]
   "The `:id` and `:is_superuser` of the User with `email`, or nil."
@@ -157,8 +157,8 @@
                         [:confirmed_at  {:optional true} [:maybe ms/TemporalInstant]]
                         [:created_at    {:optional true} ms/TemporalInstant]
                         [:updated_at    {:optional true} ms/TemporalInstant]
-                        [:credentials   {:optional true} [:maybe [:or :string :map sequential?]]]
-                        [:metadata      {:optional true} [:maybe [:or :string :map sequential?]]]]]
+                        [:credentials   {:optional true} [:maybe :map]]
+                        [:metadata      {:optional true} [:maybe :map]]]]
   (t2/update! :model/AuthIdentity auth-identity-id changes))
 
 (mu/defn expire-auth-identities! :- :int

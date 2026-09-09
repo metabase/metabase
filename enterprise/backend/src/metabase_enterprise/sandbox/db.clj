@@ -46,7 +46,16 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select [:model/Sandbox :id :table_id] :card_id card-id))
 
-(mu/defn user-sandboxes-with-group-ids :- [:sequential ::sandbox.schema/sandbox]
+(def ^:private UserSandboxWithGroupId
+  "Rows returned by [[user-sandboxes-with-group-ids]]."
+  [:map {:closed true}
+   [:group_id             ms/PositiveInt]
+   [:id                   [:maybe ms/PositiveInt]]
+   [:table_id             [:maybe ::lib.schema.id/table]]
+   [:card_id              [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings [:maybe :map]]])
+
+(mu/defn user-sandboxes-with-group-ids :- [:sequential UserSandboxWithGroupId]
   "The Sandboxes of the groups of the User with `user-id`, each with the `:group_id` of the membership."
   [user-id :- ::lib.schema.id/user]
   (t2/select :model/Sandbox
@@ -59,7 +68,8 @@
 
 (def ^:private SandboxesWithTableInfo
   "Rows returned by [[sandboxes-with-table-info]]."
-  (mut/merge (mut/select-keys ::sandbox.schema/sandbox [:group_id :table_id]) [:map [:db_id [:maybe ::lib.schema.id/database]] [:schema [:maybe :string]]]))
+  (mut/merge (mut/select-keys ::sandbox.schema/sandbox [:group_id :table_id])
+             [:map [:db_id [:maybe ::lib.schema.id/database]] [:schema [:maybe :string]]]))
 
 (mu/defn sandboxes-with-table-info :- [:sequential SandboxesWithTableInfo]
   "The group, Table, Database, and schema of the Sandboxes of the optional `group-id` or `group-ids` in the optional
@@ -106,14 +116,14 @@
                 [:in :sandboxes.group_id group-ids]
                 [:in :table.db_id db-ids]]}))
 
-(mu/defn insert-sandbox! :- [:sequential ::sandbox.schema/sandbox]
+(mu/defn insert-sandbox! :- ::sandbox.schema/sandbox
   "Insert `sandbox` and return the new instance."
   [sandbox :- [:map {:closed true}
                [:id                   {:optional true} ms/PositiveInt]
                [:table_id             ::lib.schema.id/table]
                [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
                [:group_id             ms/PositiveInt]
-               [:attribute_remappings {:optional true} [:maybe [:or :string :map sequential?]]]]]
+               [:attribute_remappings {:optional true} [:maybe :map]]]]
   (first (t2/insert-returning-instances! :model/Sandbox sandbox)))
 
 (mu/defn update-sandbox! :- :int
@@ -188,11 +198,7 @@
                       (when schema-only?
                         [:= :schema schema])]}))
 
-(def ^:private DatabaseOfTable
-  "Rows returned by [[database-of-table]]."
-  (mut/merge ::warehouses.schema/database [:map [:db_id [:maybe ::lib.schema.id/database]]]))
-
-(mu/defn database-of-table :- [:maybe DatabaseOfTable]
+(mu/defn database-of-table :- [:maybe ::warehouses.schema/database]
   "The Database of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Database

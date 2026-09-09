@@ -74,7 +74,7 @@
 
 (def ^:private UserByEmail
   "Rows returned by [[user-by-email]]."
-  (mut/select-keys ::users.schema/user.full [:id :sso_source :is_active]))
+  (mut/select-keys ::users.schema/user.full [:id :sso_source :is_active :common_name]))
 
 (mu/defn user-by-email :- [:maybe UserByEmail]
   "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."
@@ -88,7 +88,7 @@
 
 (def ^:private UserLoginStatus
   "Rows returned by [[user-login-status]]."
-  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :tenant_id]))
+  (mut/select-keys ::users.schema/user.full [:id :is_active :last_login :tenant_id :common_name]))
 
 (mu/defn user-login-status :- [:maybe UserLoginStatus]
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."

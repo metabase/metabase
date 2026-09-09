@@ -16,7 +16,8 @@
 
 (def ^:private NonBlobDataAppRow
   "Rows returned by [[non-blob-data-app]]."
-  (mut/select-keys ::data-apps.schema/data-app [:id :name :display_name :description :bundle_path :enabled :allowed_hosts :bundle_hash :last_synced_sha :last_synced_at :sync_error :created_at :updated_at]))
+  (mut/select-keys ::data-apps.schema/data-app
+                   [:id :name :display_name :description :bundle_path :enabled :allowed_hosts :bundle_hash :last_synced_sha :last_synced_at :sync_error :created_at :updated_at]))
 
 (mu/defn non-blob-data-app :- [:maybe NonBlobDataAppRow]
   "The DataApp with `data-app-id` without its bundle, or nil."
@@ -25,7 +26,8 @@
 
 (def ^:private NonBlobDataAppBySlug
   "Rows returned by [[non-blob-data-app-by-slug]]."
-  (mut/select-keys ::data-apps.schema/data-app [:id :name :display_name :description :bundle_path :enabled :allowed_hosts :bundle_hash :last_synced_sha :last_synced_at :sync_error :created_at :updated_at]))
+  (mut/select-keys ::data-apps.schema/data-app
+                   [:id :name :display_name :description :bundle_path :enabled :allowed_hosts :bundle_hash :last_synced_sha :last_synced_at :sync_error :created_at :updated_at]))
 
 (mu/defn non-blob-data-app-by-slug :- [:maybe NonBlobDataAppBySlug]
   "The DataApp named `slug` without its bundle, or nil."
@@ -34,7 +36,8 @@
 
 (def ^:private EnabledNonBlobDataAppBySlug
   "Rows returned by [[enabled-non-blob-data-app-by-slug]]."
-  (mut/select-keys ::data-apps.schema/data-app [:id :name :display_name :description :bundle_path :enabled :allowed_hosts :bundle_hash :last_synced_sha :last_synced_at :sync_error :created_at :updated_at]))
+  (mut/select-keys ::data-apps.schema/data-app
+                   [:id :name :display_name :description :bundle_path :enabled :allowed_hosts :bundle_hash :last_synced_sha :last_synced_at :sync_error :created_at :updated_at]))
 
 (mu/defn enabled-non-blob-data-app-by-slug :- [:maybe EnabledNonBlobDataAppBySlug]
   "The enabled DataApp named `slug` without its bundle, or nil."
@@ -43,7 +46,8 @@
 
 (def ^:private NonBlobDataApp
   "Rows returned by [[non-blob-data-apps]]."
-  (mut/select-keys ::data-apps.schema/data-app [:id :name :display_name :description :bundle_path :enabled :allowed_hosts :bundle_hash :last_synced_sha :last_synced_at :sync_error :created_at :updated_at]))
+  (mut/select-keys ::data-apps.schema/data-app
+                   [:id :name :display_name :description :bundle_path :enabled :allowed_hosts :bundle_hash :last_synced_sha :last_synced_at :sync_error :created_at :updated_at]))
 
 (mu/defn non-blob-data-apps :- [:sequential NonBlobDataApp]
   "Every DataApp without its bundle, ordered by display name; only the enabled, error-free ones when `available?`."
@@ -61,7 +65,8 @@
 
 (def ^:private DataAppsSyncInfo
   "Rows returned by [[data-apps-sync-info]]."
-  (mut/select-keys ::data-apps.schema/data-app [:name :display_name :description :allowed_hosts :bundle_path :bundle_hash :sync_error]))
+  (mut/select-keys ::data-apps.schema/data-app
+                   [:name :display_name :description :allowed_hosts :bundle_path :bundle_hash :sync_error]))
 
 (mu/defn data-apps-sync-info :- [:sequential DataAppsSyncInfo]
   "The sync-relevant columns of every DataApp."

@@ -2,6 +2,7 @@
   "Application database queries for the data-complexity-score module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [java-time.api :as t]
    [malli.util :as mut]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.app-db.core :as mdb]
@@ -79,7 +80,8 @@
 
 (def ^:private UniverseTable
   "Rows returned by [[universe-tables]]."
-  (mut/select-keys ::warehouse-schema.schema/table [:id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]))
+  (mut/select-keys ::warehouse-schema.schema/table
+                   [:id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]))
 
 (mu/defn universe-tables :- [:sequential UniverseTable]
   "The scoring columns of the active Tables outside the Database with `audit-database-id`."
@@ -121,8 +123,7 @@
   [score-entry :- (mut/select-keys ::data-complexity-score.schema/data-complexity-score.update [:fingerprint :source :score_data])]
   (t2/insert-returning-pk! :model/DataComplexityScore score-entry))
 
-(mu/defn delete-scores-created-before! :- :int
-  "Delete the DataComplexityScores created before `cutoff`, returning the number deleted. `cutoff` is a temporal
-  value (e.g. `java.sql.Timestamp`, which is not a `java.time.temporal.Temporal`), so it is typed loosely."
-  [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/DataComplexityScore {:where [:< :created_at cutoff]}))
+(mu/defn delete-scores-older-than! :- :int
+  "Delete the DataComplexityScores created more than `months` months ago, returning the number deleted."
+  [months :- ms/PositiveInt]
+  (t2/delete! :model/DataComplexityScore {:where [:< :created_at (t/minus (t/offset-date-time) (t/months months))]}))

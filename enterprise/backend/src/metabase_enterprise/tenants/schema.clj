@@ -5,6 +5,10 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::tenant.attributes
+  "The `:attributes` column of a Tenant, decoded."
+  [:map-of :string [:maybe [:or :string number? :boolean]]])
+
 (mr/def ::tenant
   "A Tenant as selected from the app DB: every column of `:tenant`."
   [:map {:closed true}
@@ -14,7 +18,7 @@
    [:is_active            :boolean]
    [:updated_at           ms/TemporalInstant]
    [:created_at           ms/TemporalInstant]
-   [:attributes           [:maybe [:or :string :map sequential?]]]
+   [:attributes           [:maybe ::tenant.attributes]]
    [:tenant_collection_id ::lib.schema.id/collection]])
 
 (mr/def ::tenant.update
@@ -25,5 +29,5 @@
    [:is_active            {:optional true} [:maybe :boolean]]
    [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:attributes           {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:attributes           {:optional true} [:maybe ::tenant.attributes]]
    [:tenant_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])

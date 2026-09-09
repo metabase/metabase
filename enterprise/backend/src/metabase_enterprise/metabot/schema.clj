@@ -36,11 +36,11 @@
    [:id         ms/PositiveInt]
    [:group_id   ms/PositiveInt]
    [:perm_type  [:or :keyword :string]]
-   [:perm_value [:or :string :map sequential?]]])
+   [:perm_value [:or :keyword :string]]])
 
 (mr/def ::metabot-permissions.update
   "What an update (or insert) of a MetabotPermissions accepts: every column of `:metabot_permissions` except `id`, all optional."
   [:map {:closed true}
    [:group_id   {:optional true} [:maybe ms/PositiveInt]]
    [:perm_type  {:optional true} [:maybe [:or :keyword :string]]]
-   [:perm_value {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:perm_value {:optional true} [:maybe [:or :keyword :string]]]])

@@ -231,7 +231,6 @@
            api
            app-db
            appearance
-           cache
            collections
            config
            dashboards

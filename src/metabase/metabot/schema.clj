@@ -113,8 +113,8 @@
   [:map {:closed true}
    [:id                    ms/PositiveInt]
    [:created_at            ms/TemporalInstant]
-   [:source                [:or :keyword :string]]
-   [:model                 [:or :keyword :string]]
+   [:source                :string]
+   [:model                 :string]
    [:prompt_tokens         :int]
    [:completion_tokens     :int]
    [:total_tokens          :int]
@@ -131,8 +131,8 @@
   "What an update (or insert) of a AiUsageLog accepts: every column of `:ai_usage_log` except `id`, all optional."
   [:map {:closed true}
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:source                {:optional true} [:maybe [:or :keyword :string]]]
-   [:model                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:source                {:optional true} [:maybe :string]]
+   [:model                 {:optional true} [:maybe :string]]
    [:prompt_tokens         {:optional true} [:maybe :int]]
    [:completion_tokens     {:optional true} [:maybe :int]]
    [:total_tokens          {:optional true} [:maybe :int]]
@@ -150,7 +150,7 @@
   [:map {:closed true}
    [:id                   ms/PositiveInt]
    [:name                 :string]
-   [:description          [:maybe [:or :string :map sequential?]]]
+   [:description          [:maybe :string]]
    [:entity_id            :string]
    [:created_at           ms/TemporalInstant]
    [:updated_at           ms/TemporalInstant]
@@ -161,7 +161,7 @@
   "What an update (or insert) of a Metabot accepts: every column of `:metabot` except `id`, all optional."
   [:map {:closed true}
    [:name                 {:optional true} [:maybe :string]]
-   [:description          {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:description          {:optional true} [:maybe :string]]
    [:entity_id            {:optional true} [:maybe :string]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]
@@ -174,7 +174,7 @@
    [:id                          :string]
    [:created_at                  ms/TemporalInstant]
    [:user_id                     ::lib.schema.id/user]
-   [:title                       [:maybe [:or :string :map sequential?]]]
+   [:title                       [:maybe :string]]
    [:ip_address                  [:maybe :string]]
    [:slack_team_id               [:maybe :string]]
    [:slack_channel_id            [:maybe :string]]
@@ -190,7 +190,7 @@
   [:map {:closed true}
    [:created_at                  {:optional true} [:maybe ms/TemporalInstant]]
    [:user_id                     {:optional true} [:maybe ::lib.schema.id/user]]
-   [:title                       {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:title                       {:optional true} [:maybe :string]]
    [:ip_address                  {:optional true} [:maybe :string]]
    [:slack_team_id               {:optional true} [:maybe :string]]
    [:slack_channel_id            {:optional true} [:maybe :string]]
@@ -206,8 +206,8 @@
   [:map {:closed true}
    [:message_id        ms/PositiveInt]
    [:positive          :boolean]
-   [:issue_type        [:maybe [:or :keyword :string]]]
-   [:freeform_feedback [:maybe [:or :string :map sequential?]]]
+   [:issue_type        [:maybe :string]]
+   [:freeform_feedback [:maybe :string]]
    [:created_at        ms/TemporalInstant]
    [:updated_at        ms/TemporalInstant]
    [:id                ms/PositiveInt]
@@ -218,21 +218,33 @@
   [:map {:closed true}
    [:message_id        {:optional true} [:maybe ms/PositiveInt]]
    [:positive          {:optional true} [:maybe :boolean]]
-   [:issue_type        {:optional true} [:maybe [:or :keyword :string]]]
-   [:freeform_feedback {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:issue_type        {:optional true} [:maybe :string]]
+   [:freeform_feedback {:optional true} [:maybe :string]]
    [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:user_id           {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::metabot-message.data
+  "The `:data` column of a MetabotMessage, decoded."
+  :map)
+
+(mr/def ::metabot-message.usage
+  "The `:usage` column of a MetabotMessage, decoded."
+  :map)
+
+(mr/def ::metabot-message.state
+  "The `:state` column of a MetabotMessage, decoded."
+  :map)
 
 (mr/def ::metabot-message
   "A MetabotMessage as selected from the app DB: every column of `:metabot_message`."
   [:map {:closed true}
    [:id                     ms/PositiveInt]
    [:created_at             ms/TemporalInstant]
-   [:profile_id             [:or :string :map sequential?]]
+   [:profile_id             :string]
    [:role                   [:or :keyword :string]]
-   [:data                   [:or :string :map sequential?]]
-   [:usage                  [:maybe [:or :string :map sequential?]]]
+   [:data                   ::metabot-message.data]
+   [:usage                  [:maybe ::metabot-message.usage]]
    [:total_tokens           :int]
    [:conversation_id        :string]
    [:slack_msg_id           [:maybe :string]]
@@ -243,9 +255,9 @@
    [:ai_proxied             [:maybe :boolean]]
    [:external_id            [:maybe :string]]
    [:finished               [:maybe :boolean]]
-   [:error                  [:maybe [:or :string :map sequential?]]]
+   [:error                  [:maybe :string]]
    [:data_version           :int]
-   [:state                  [:maybe [:or :string :map sequential?]]]
+   [:state                  [:maybe ::metabot-message.state]]
    [:forked_from_message_id [:maybe ms/PositiveInt]]
    [:context_tokens         [:maybe :int]]])
 
@@ -253,10 +265,10 @@
   "What an update (or insert) of a MetabotMessage accepts: every column of `:metabot_message` except `id`, all optional."
   [:map {:closed true}
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:profile_id             {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:profile_id             {:optional true} [:maybe :string]]
    [:role                   {:optional true} [:maybe [:or :keyword :string]]]
-   [:data                   {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:usage                  {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:data                   {:optional true} [:maybe ::metabot-message.data]]
+   [:usage                  {:optional true} [:maybe ::metabot-message.usage]]
    [:total_tokens           {:optional true} [:maybe :int]]
    [:conversation_id        {:optional true} [:maybe :string]]
    [:slack_msg_id           {:optional true} [:maybe :string]]
@@ -267,9 +279,9 @@
    [:ai_proxied             {:optional true} [:maybe :boolean]]
    [:external_id            {:optional true} [:maybe :string]]
    [:finished               {:optional true} [:maybe :boolean]]
-   [:error                  {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:error                  {:optional true} [:maybe :string]]
    [:data_version           {:optional true} [:maybe :int]]
-   [:state                  {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:state                  {:optional true} [:maybe ::metabot-message.state]]
    [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]
    [:context_tokens         {:optional true} [:maybe :int]]])
 
@@ -280,7 +292,7 @@
    [:model      [:or :keyword :string]]
    [:card_id    ::lib.schema.id/card]
    [:entity_id  :string]
-   [:prompt     [:or :string :map sequential?]]
+   [:prompt     :string]
    [:created_at ms/TemporalInstant]
    [:updated_at ms/TemporalInstant]
    [:metabot_id ms/PositiveInt]])
@@ -291,7 +303,7 @@
    [:model      {:optional true} [:maybe [:or :keyword :string]]]
    [:card_id    {:optional true} [:maybe ::lib.schema.id/card]]
    [:entity_id  {:optional true} [:maybe :string]]
-   [:prompt     {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:prompt     {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:metabot_id {:optional true} [:maybe ms/PositiveInt]]])
@@ -303,7 +315,7 @@
    [:message_id  ms/PositiveInt]
    [:user_id     ::lib.schema.id/user]
    [:source_id   ms/PositiveInt]
-   [:source_type [:or :keyword :string]]
+   [:source_type :string]
    [:positive    :boolean]
    [:created_at  ms/TemporalInstant]
    [:updated_at  ms/TemporalInstant]])
@@ -314,7 +326,7 @@
    [:message_id  {:optional true} [:maybe ms/PositiveInt]]
    [:user_id     {:optional true} [:maybe ::lib.schema.id/user]]
    [:source_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:source_type {:optional true} [:maybe [:or :keyword :string]]]
+   [:source_type {:optional true} [:maybe :string]]
    [:positive    {:optional true} [:maybe :boolean]]
    [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at  {:optional true} [:maybe ms/TemporalInstant]]])

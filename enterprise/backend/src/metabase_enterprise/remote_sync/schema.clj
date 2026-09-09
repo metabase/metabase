@@ -173,60 +173,72 @@
   "A RemoteSyncObject as selected from the app DB: every column of `:remote_sync_object`."
   [:map {:closed true}
    [:id                  ms/PositiveInt]
-   [:model_type          [:or :keyword :string]]
+   [:model_type          :string]
    [:model_id            [:maybe :int]]
-   [:status              [:or :keyword :string]]
+   [:status              :string]
    [:status_changed_at   ms/TemporalInstant]
    [:model_name          :string]
    [:model_collection_id [:maybe ::lib.schema.id/collection]]
-   [:model_display       [:maybe [:or :keyword :string]]]
+   [:model_display       [:maybe :string]]
    [:model_table_id      [:maybe ::lib.schema.id/table]]
    [:model_table_name    [:maybe :string]]
-   [:file_path           [:maybe [:or :string :map sequential?]]]
-   [:content_hash        [:maybe [:or :string :map sequential?]]]])
+   [:file_path           [:maybe :string]]
+   [:content_hash        [:maybe :string]]])
 
 (mr/def ::remote-sync-object.update
   "What an update (or insert) of a RemoteSyncObject accepts: every column of `:remote_sync_object` except `id`, all optional."
   [:map {:closed true}
-   [:model_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:model_type          {:optional true} [:maybe :string]]
    [:model_id            {:optional true} [:maybe :int]]
-   [:status              {:optional true} [:maybe [:or :keyword :string]]]
+   [:status              {:optional true} [:maybe :string]]
    [:status_changed_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:model_name          {:optional true} [:maybe :string]]
    [:model_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:model_display       {:optional true} [:maybe [:or :keyword :string]]]
+   [:model_display       {:optional true} [:maybe :string]]
    [:model_table_id      {:optional true} [:maybe ::lib.schema.id/table]]
    [:model_table_name    {:optional true} [:maybe :string]]
-   [:file_path           {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:content_hash        {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:file_path           {:optional true} [:maybe :string]]
+   [:content_hash        {:optional true} [:maybe :string]]])
+
+(mr/def ::remote-sync-task.conflict
+  "One entry of the `:conflicts` column of a RemoteSyncTask, decoded."
+  :map)
+
+(mr/def ::remote-sync-task.conflicts
+  "The `:conflicts` column of a RemoteSyncTask, decoded."
+  [:sequential ::remote-sync-task.conflict])
+
+(mr/def ::remote-sync-task.outcome
+  "The `:outcome` column of a RemoteSyncTask, decoded."
+  :map)
 
 (mr/def ::remote-sync-task
   "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."
   [:map {:closed true}
    [:id                      ms/PositiveInt]
-   [:sync_task_type          [:or :keyword :string]]
+   [:sync_task_type          :string]
    [:progress                [:maybe number?]]
    [:cancelled               :boolean]
    [:started_at              ms/TemporalInstant]
    [:ended_at                [:maybe ms/TemporalInstant]]
    [:last_progress_report_at ms/TemporalInstant]
    [:initiated_by            [:maybe ::lib.schema.id/user]]
-   [:error_message           [:maybe [:or :string :map sequential?]]]
+   [:error_message           [:maybe :string]]
    [:version                 [:maybe :string]]
-   [:conflicts               [:maybe [:or :string :map sequential?]]]
-   [:outcome                 [:maybe [:or :string :map sequential?]]]])
+   [:conflicts               [:maybe ::remote-sync-task.conflicts]]
+   [:outcome                 [:maybe ::remote-sync-task.outcome]]])
 
 (mr/def ::remote-sync-task.update
   "What an update (or insert) of a RemoteSyncTask accepts: every column of `:remote_sync_task` except `id`, all optional."
   [:map {:closed true}
-   [:sync_task_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:sync_task_type          {:optional true} [:maybe :string]]
    [:progress                {:optional true} [:maybe number?]]
    [:cancelled               {:optional true} [:maybe :boolean]]
    [:started_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:ended_at                {:optional true} [:maybe ms/TemporalInstant]]
    [:last_progress_report_at {:optional true} [:maybe ms/TemporalInstant]]
    [:initiated_by            {:optional true} [:maybe ::lib.schema.id/user]]
-   [:error_message           {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:error_message           {:optional true} [:maybe :string]]
    [:version                 {:optional true} [:maybe :string]]
-   [:conflicts               {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:outcome                 {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:conflicts               {:optional true} [:maybe ::remote-sync-task.conflicts]]
+   [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]])

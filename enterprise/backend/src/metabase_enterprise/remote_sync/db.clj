@@ -15,8 +15,8 @@
    [toucan2.core :as t2]))
 
 (def ^:private Conditions
-  "A map of column to value or Toucan 2 operator-vector value, or nil for none."
-  [:maybe [:map-of :keyword :some]])
+  "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
+  [:maybe [:map-of :keyword [:maybe [:or :string :int :boolean :keyword sequential?]]]])
 
 (def ^:private RemovalOpts
   "The `:scope-key`, `:synced-collection-ids`, `:entity-ids`, and `:removal-conditions` describing which rows an
@@ -333,7 +333,8 @@
 
 (def ^:private CollectionNameAndId
   "Rows returned by [[collection-name-and-id]]."
-  (mut/merge (mut/select-keys ::collections.schema/collection [:name]) [:map [:collection_id [:maybe ms/PositiveInt]]]))
+  (mut/merge (mut/select-keys ::collections.schema/collection [:name])
+             [:map [:collection_id [:maybe ms/PositiveInt]]]))
 
 (mu/defn collection-name-and-id :- [:maybe CollectionNameAndId]
   "The `:name` and `:collection_id` (its own ID) of the Collection with `collection-id`, or nil."
@@ -593,8 +594,8 @@
    metadata-by-id :- [:map-of ms/PositiveInt
                       [:map {:closed true}
                        [:id           {:optional true} ms/PositiveInt]
-                       [:file_path    {:optional true} [:maybe [:or :string :map sequential?]]]
-                       [:content_hash {:optional true} [:maybe [:or :string :map sequential?]]]]]
+                       [:file_path    {:optional true} [:maybe :string]]
+                       [:content_hash {:optional true} [:maybe :string]]]]
    timestamp      :- ms/TemporalInstant]
   (t2/update! :model/RemoteSyncObject
               {:id [:in (vec rso-ids)]}
@@ -712,14 +713,11 @@
   (t2/update! :model/RemoteSyncTask task-id changes))
 
 (mu/defn supersede-stale-tasks! :- [:sequential :int]
-  "Cancel and end at `now` the started, unfinished RemoteSyncTasks that last reported progress before `cutoff`."
-  [cutoff :- ms/TemporalInstant
-   ;; `now` is usually a real instant, but callers may also pass a HoneySQL raw form (e.g. `(mi/now)`), which is
-   ;; plugged straight into the update's `:set` map rather than compared, so it isn't constrained to a real instant.
-   now    :- ms/TemporalInstant]
+  "Cancel and end now the started, unfinished RemoteSyncTasks that last reported progress before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
   (t2/query {:update (t2/table-name :model/RemoteSyncTask)
              :set    {:cancelled     true
-                      :ended_at      now
+                      :ended_at      :%now
                       :error_message "Superseded after staleness timeout"}
              :where  [:and
                       [:<> :started_at nil]

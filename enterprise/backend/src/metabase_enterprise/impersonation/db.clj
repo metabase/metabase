@@ -56,7 +56,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/ConnectionImpersonation :db_id database-id))
 
-(mu/defn insert-impersonation! :- [:sequential ::impersonation.schema/connection-impersonation]
+(mu/defn insert-impersonation! :- ::impersonation.schema/connection-impersonation
   "Insert `impersonation` and return the new instance."
   [impersonation :- (mut/select-keys ::impersonation.schema/connection-impersonation.update [:db_id :group_id :attribute])]
   (first (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)))

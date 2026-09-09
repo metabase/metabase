@@ -14,14 +14,19 @@
   ;; `:type` is needed so [[user/add-attributes]] can refuse to add attributes to non-personal (API-key/internal) users
   (into [:model/User :type] user/admin-or-self-visible-columns))
 
-(mu/defn current-user :- [:maybe ::users.schema/user]
+(mu/defn current-user :- [:maybe (mut/optional-keys ::users.schema/user.full)]
   "The User with `user-id` with the columns the current user may see of themselves, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one current-user-columns :id user-id))
 
 (def ^:private CurrentUserForId
   "Rows returned by [[current-user-for-id]]."
-  (mut/merge (mut/select-keys ::users.schema/user.full [:settings]) [:map [:metabase-user-id [:maybe ms/PositiveInt]] [:is-superuser? [:maybe :boolean]] [:is-data-analyst? [:maybe :boolean]] [:user-locale [:maybe :string]]]))
+  (mut/merge (mut/select-keys ::users.schema/user.full [:settings :common_name])
+             [:map
+              [:metabase-user-id [:maybe ms/PositiveInt]]
+              [:is-superuser?    [:maybe :boolean]]
+              [:is-data-analyst? [:maybe :boolean]]
+              [:user-locale      [:maybe :string]]]))
 
 (mu/defn current-user-for-id :- [:maybe CurrentUserForId]
   "The User with `user-id` as `{:metabase-user-id :is-superuser? :is-data-analyst? :user-locale :settings}`, or nil."

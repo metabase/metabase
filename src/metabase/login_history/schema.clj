@@ -13,8 +13,8 @@
    [:user_id            ::lib.schema.id/user]
    [:session_id         [:maybe :string]]
    [:device_id          :string]
-   [:device_description [:or :string :map sequential?]]
-   [:ip_address         [:or :string :map sequential?]]])
+   [:device_description :string]
+   [:ip_address         :string]])
 
 (mr/def ::login-history.update
   "What an update (or insert) of a LoginHistory accepts: every column of `:login_history` except `id`, all optional."
@@ -23,5 +23,5 @@
    [:user_id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:session_id         {:optional true} [:maybe :string]]
    [:device_id          {:optional true} [:maybe :string]]
-   [:device_description {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:ip_address         {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:device_description {:optional true} [:maybe :string]]
+   [:ip_address         {:optional true} [:maybe :string]]])

@@ -38,7 +38,8 @@
 
 (def ^:private MostRecentModerationReviewStatuse
   "Rows returned by [[most-recent-moderation-review-statuses]]."
-  (mut/select-keys ::content-verification.schema/moderation-review [:moderated_item_id :moderated_item_type :status]))
+  (mut/select-keys ::content-verification.schema/moderation-review
+                   [:moderated_item_id :moderated_item_type :status]))
 
 (mu/defn most-recent-moderation-review-statuses :- [:sequential MostRecentModerationReviewStatuse]
   "The item id, item type, and status of the most recent ModerationReviews of the items with `item-types` and

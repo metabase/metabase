@@ -62,11 +62,12 @@
   [:map {:closed true}
    [:perm_type [:maybe [:or :keyword :string]]]
    [:db_id     [:maybe ::lib.schema.id/database]]
-   [:group_id  [:maybe ms/PositiveInt]]
-   [:gmin      [:maybe :int]]
-   [:gmax      [:maybe :int]]
-   [:dbmin     [:maybe :int]]
-   [:dbmax     [:maybe :int]]])
+   [:any_mn    [:maybe :int]]
+   [:any_mx    [:maybe :int]]
+   [:every_mn  [:maybe :int]]
+   [:every_mx  [:maybe :int]]
+   [:db_mn     [:maybe :int]]
+   [:db_mx     [:maybe :int]]])
 
 (mu/defn database-permission-rank-rows :- [:sequential DatabasePermissionRank]
   "For each `(perm-type, db-id)` of the DataPermissions rows of the User with `user-id`'s groups (narrowed to
@@ -161,7 +162,12 @@
 
 (def ^:private UserDataPermission
   "Rows returned by [[user-data-permissions]]."
-  (mut/merge ::permissions.schema/data-permissions [:map [:perm-type [:maybe [:or :keyword :string]]] [:group-id [:maybe ms/PositiveInt]] [:value [:maybe [:or :keyword :string :map sequential?]]] [:db-id [:maybe ::lib.schema.id/database]] [:table-id [:maybe ::lib.schema.id/table]]]))
+  [:map {:closed true}
+   [:perm-type [:or :keyword :string]]
+   [:group-id  ms/PositiveInt]
+   [:value     [:maybe [:or :keyword :string]]]
+   [:db-id     [:maybe ::lib.schema.id/database]]
+   [:table-id  [:maybe ::lib.schema.id/table]]])
 
 (mu/defn user-data-permissions :- [:sequential UserDataPermission]
   "The permission type, group, value, database, and table of every DataPermissions row of the groups the User with
@@ -213,7 +219,8 @@
 
 (def ^:private DistinctTableLevelPermissionValue
   "Rows returned by [[distinct-table-level-permission-values]]."
-  (mut/select-keys ::permissions.schema/data-permissions [:group_id :perm_type :schema_name :perm_value]))
+  (mut/select-keys ::permissions.schema/data-permissions
+                   [:group_id :perm_type :schema_name :perm_value]))
 
 (mu/defn distinct-table-level-permission-values :- [:sequential DistinctTableLevelPermissionValue]
   "The distinct group, permission type, schema, and value combinations of the table-level DataPermissions rows of
@@ -238,7 +245,7 @@
              {:select-distinct [:db_id :perm_type :perm_value]
               :where           [:= :group_id group-id]}))
 
-(mu/defn other-table-permission-values :- [:sequential [:map {:closed true} [:perm_value [:maybe [:or :keyword :string :map sequential?]]]]]
+(mu/defn other-table-permission-values :- [:sequential [:map {:closed true} [:perm_value [:maybe [:or :keyword :string]]]]]
   "The distinct `perm-type` values of the group with `group-id` on tables of the Database with `database-id` other
   than `table-ids`."
   [group-id    :- ms/PositiveInt
@@ -274,7 +281,7 @@
   [:map {:closed true}
    [:group_id ms/PositiveInt]
    [:perm_type [:maybe [:or :keyword :string]]]
-   [:perm_value [:maybe [:or :keyword :string :map sequential?]]]])
+   [:perm_value [:maybe [:or :keyword :string]]]])
 
 (mu/defn non-audit-permission-values-for-groups :- [:sequential NonAuditPermissionValuesForGroup]
   "The distinct group, permission type, and value combinations of the DataPermissions rows of `group-ids` for
@@ -418,16 +425,16 @@
   "The active Users in the PermissionsGroups with `group-ids`, with the optional extra `group-manager-column`."
   [group-ids            :- [:sequential ms/PositiveInt]
    group-manager-column :- [:maybe vector?]]
-  (t2/select :model/User {:select    [:u.id
-                                      [:u.id :user_id]
-                                      :u.first_name
-                                      :u.last_name
-                                      :u.email
-                                      :u.is_superuser
-                                      :u.type
-                                      :pgm.group_id
-                                      [:pgm.id :membership_id]
-                                      group-manager-column]
+  (t2/select :model/User {:select    (cond-> [:u.id
+                                              [:u.id :user_id]
+                                              :u.first_name
+                                              :u.last_name
+                                              :u.email
+                                              :u.is_superuser
+                                              :u.type
+                                              :pgm.group_id
+                                              [:pgm.id :membership_id]]
+                                       group-manager-column (conj group-manager-column))
                           :from      [[:core_user :u]]
                           :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
                           :where     [:and
@@ -540,29 +547,17 @@
 
 ;;; ------------------------------------------------ Revisions ------------------------------------------------
 
-(def ^:private LatestPermissionsRevisionId
-  "Rows returned by [[latest-permissions-revision-id]]."
-  (mut/merge ::permissions.schema/permissions-revision [:map [:id [:maybe ms/PositiveInt]]]))
-
-(mu/defn latest-permissions-revision-id :- [:maybe LatestPermissionsRevisionId]
+(mu/defn latest-permissions-revision-id :- [:maybe ms/PositiveInt]
   "The highest ID of any PermissionsRevision, or nil."
   []
   (:id (t2/select-one [:model/PermissionsRevision [:%max.id :id]])))
 
-(def ^:private LatestCollectionPermissionGraphRevisionId
-  "Rows returned by [[latest-collection-permission-graph-revision-id]]."
-  (mut/merge ::permissions.schema/collection-permission-graph-revision [:map [:id [:maybe ms/PositiveInt]]]))
-
-(mu/defn latest-collection-permission-graph-revision-id :- [:maybe LatestCollectionPermissionGraphRevisionId]
+(mu/defn latest-collection-permission-graph-revision-id :- [:maybe ms/PositiveInt]
   "The highest ID of any CollectionPermissionGraphRevision, or nil."
   []
   (:id (t2/select-one [:model/CollectionPermissionGraphRevision [:%max.id :id]])))
 
-(def ^:private LatestApplicationPermissionsRevisionId
-  "Rows returned by [[latest-application-permissions-revision-id]]."
-  (mut/merge ::permissions.schema/application-permissions-revision [:map [:id [:maybe ms/PositiveInt]]]))
-
-(mu/defn latest-application-permissions-revision-id :- [:maybe LatestApplicationPermissionsRevisionId]
+(mu/defn latest-application-permissions-revision-id :- [:maybe ms/PositiveInt]
   "The highest ID of any ApplicationPermissionsRevision, or nil."
   []
   (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]])))
@@ -571,40 +566,40 @@
   "Insert `revision` into CollectionPermissionGraphRevision."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :string :map sequential?]]]
-                [:after   {:optional true} [:maybe [:or :string :map sequential?]]]
+                [:before  {:optional true} [:maybe :map]]
+                [:after   {:optional true} [:maybe :map]]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
-                [:remark  {:optional true} [:maybe [:or :string :map sequential?]]]]]
+                [:remark  {:optional true} [:maybe :string]]]]
   (t2/insert! :model/CollectionPermissionGraphRevision revision))
 
-(mu/defn insert-collection-permission-graph-revision-returning-instance! :- [:sequential ::permissions.schema/collection-permission-graph-revision]
+(mu/defn insert-collection-permission-graph-revision-returning-instance! :- ::permissions.schema/collection-permission-graph-revision
   "Insert `revision` into CollectionPermissionGraphRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :string :map sequential?]]]
-                [:after   {:optional true} [:maybe [:or :string :map sequential?]]]
+                [:before  {:optional true} [:maybe :map]]
+                [:after   {:optional true} [:maybe :map]]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
-                [:remark  {:optional true} [:maybe [:or :string :map sequential?]]]]]
+                [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision revision)))
 
-(mu/defn insert-permissions-revision-returning-instance! :- [:sequential ::permissions.schema/permissions-revision]
+(mu/defn insert-permissions-revision-returning-instance! :- ::permissions.schema/permissions-revision
   "Insert `revision` into PermissionsRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :string :map sequential?]]]
-                [:after   {:optional true} [:maybe [:or :string :map sequential?]]]
+                [:before  {:optional true} [:maybe :map]]
+                [:after   {:optional true} [:maybe :map]]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
-                [:remark  {:optional true} [:maybe [:or :string :map sequential?]]]]]
+                [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/PermissionsRevision revision)))
 
-(mu/defn insert-application-permissions-revision-returning-instance! :- [:sequential ::permissions.schema/application-permissions-revision]
+(mu/defn insert-application-permissions-revision-returning-instance! :- ::permissions.schema/application-permissions-revision
   "Insert `revision` into ApplicationPermissionsRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :string :map sequential?]]]
-                [:after   {:optional true} [:maybe [:or :string :map sequential?]]]
+                [:before  {:optional true} [:maybe :map]]
+                [:after   {:optional true} [:maybe :map]]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
-                [:remark  {:optional true} [:maybe [:or :string :map sequential?]]]]]
+                [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/ApplicationPermissionsRevision revision)))
 
 (mu/defn update-collection-graph-revision! :- :int
@@ -770,7 +765,8 @@
 
 (def ^:private EarliestUserJoinDate
   "Rows returned by [[earliest-user-join-date]]."
-  (mut/merge ::users.schema/user [:map [:min [:maybe ms/TemporalInstant]]]))
+  (mut/merge ::users.schema/user
+             [:map [:min [:maybe ms/TemporalInstant]]]))
 
 (mu/defn earliest-user-join-date :- [:maybe EarliestUserJoinDate]
   "The earliest `date_joined` of any User, or nil."

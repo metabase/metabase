@@ -9,7 +9,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.notification.schema :as notification.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.task-history.schema :as task-history.schema]
@@ -23,7 +22,7 @@
 (def ^:private NotificationRow
   "A whole Notification row for insert."
   [:map {:closed true}
-   [:payload_type {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:payload_type {:optional true} [:maybe [:or :keyword :string]]]
    [:active       {:optional true} [:maybe :boolean]]
    [:internal_id  {:optional true} [:maybe :string]]
    [:payload_id   {:optional true} [:maybe ms/PositiveInt]]
@@ -34,13 +33,13 @@
   [:map {:closed true}
    [:card_id         {:optional true} [:maybe ::lib.schema.id/card]]
    [:send_once       {:optional true} [:maybe :boolean]]
-   [:send_condition  {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:send_condition  {:optional true} [:maybe [:or :keyword :string]]]
    [:disable_links   {:optional true} [:maybe :boolean]]])
 
 (def ^:private NotificationHandlerRow
   "A whole NotificationHandler row for insert."
   [:map {:closed true}
-   [:channel_type    {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:channel_type    {:optional true} [:maybe [:or :keyword :string]]]
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]
    [:channel_id      {:optional true} [:maybe ms/PositiveInt]]
    [:template_id     {:optional true} [:maybe ms/PositiveInt]]
@@ -50,26 +49,26 @@
   "A whole NotificationRecipient row for insert."
   [:map {:closed true}
    [:notification_handler_id {:optional true} [:maybe ms/PositiveInt]]
-   [:type                    {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:type                    {:optional true} [:maybe [:or :keyword :string]]]
    [:user_id                 {:optional true} [:maybe ::lib.schema.id/user]]
    [:permissions_group_id    {:optional true} [:maybe ms/PositiveInt]]
-   [:details                 {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:details                 {:optional true} [:maybe :map]]])
 
 (def ^:private NotificationSubscriptionRow
   "A whole NotificationSubscription row for insert."
   [:map {:closed true}
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]
-   [:type            {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
-   [:event_name      {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
+   [:type            {:optional true} [:maybe [:or :keyword :string]]]
+   [:event_name      {:optional true} [:maybe [:or :keyword :string]]]
    [:cron_schedule   {:optional true} [:maybe :string]]
-   [:ui_display_type {:optional true} [:maybe [:or :keyword :string :map sequential?]]]])
+   [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]])
 
 (def ^:private ChannelTemplateRow
   "A whole ChannelTemplate row for insert."
   [:map {:closed true}
    [:name         {:optional true} [:maybe :string]]
-   [:channel_type {:optional true} [:maybe [:or :keyword :string :map sequential?]]]
-   [:details      {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:channel_type {:optional true} [:maybe [:or :keyword :string]]]
+   [:details      {:optional true} [:maybe :map]]])
 
 (def ^:private AdminFilters
   "The filters accepted by [[admin-notifications-page]] and [[admin-notifications-count]]."
@@ -83,7 +82,7 @@
    [:channel                     {:optional true} [:maybe [:or :string [:sequential :string]]]]
    [:last_send_status            {:optional true} [:maybe [:enum :failing :successful]]]
    [:last_check_status           {:optional true} [:maybe [:enum :failing :successful]]]
-   [:query                       {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:query                       {:optional true} [:maybe :string]]
    [:sort_column                 {:optional true} [:maybe [:enum :id :last_send :last_check :card_name :creator_name :updated_at]]]
    [:sort_direction              {:optional true} [:maybe [:enum :asc :desc]]]])
 
@@ -400,35 +399,43 @@
 
 ;;; ---------------------------------------------- Task runs ----------------------------------------------
 
+(def ^:private admin-run-lookback-days
+  "How far back to consider alert-type TaskRuns / TaskHistory rows when computing run summaries."
+  90)
+
+(defn- admin-lookback-cutoff
+  "The earliest `started_at` considered for the admin notification list/detail run history:
+  [[admin-run-lookback-days]] days before now, as a Honey SQL form."
+  []
+  (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- admin-run-lookback-days) :day))
+
 (def ^:private TerminalAlertRun
   "Rows returned by [[terminal-alert-runs]]."
   (mut/select-keys ::task-history.schema/task-run [:id :status :started_at]))
 
 (mu/defn terminal-alert-runs :- [:sequential TerminalAlertRun]
   "Up to `limit` TaskRuns of `run-type` for the Notification with `notification-id` that reached one of `statuses`
-  after `cutoff`, newest first."
+  within the admin lookback window, newest first."
   [run-type        :- :string
    notification-id :- ms/PositiveInt
    statuses        :- [:sequential :string]
-   cutoff          :- ms/TemporalInstant
    limit           :- ms/PositiveInt]
   (t2/select [:model/TaskRun :id :status :started_at]
              {:where    [:and
                          [:= :run_type run-type]
                          [:= :notification_id notification-id]
                          [:in :status statuses]
-                         [:> :started_at cutoff]]
+                         [:> :started_at (admin-lookback-cutoff)]]
               :order-by [[:started_at :desc] [:id :desc]]
               :limit    limit}))
 
 (mu/defn channel-send-history-reducible
   "Reducible TaskHistory rows of `task` for the runs of `run-type` for the Notification with `notification-id`
-  started after `cutoff`, newest run first with `tr.id` as the tiebreaker so each run's rows stay adjacent, capped
-  at 500 rows."
+  started within the admin lookback window, newest run first with `tr.id` as the tiebreaker so each run's rows stay
+  adjacent, capped at 500 rows."
   [run-type        :- :string
    notification-id :- ms/PositiveInt
-   task            :- :string
-   cutoff          :- ms/TemporalInstant]
+   task            :- :string]
   (t2/reducible-select :model/TaskHistory
                        {:select   [:th.run_id :th.task_details :th.status
                                    [:tr.started_at :run_started_at]]
@@ -438,7 +445,7 @@
                                    [:= :tr.run_type        run-type]
                                    [:= :tr.notification_id notification-id]
                                    [:= :th.task            task]
-                                   [:> :tr.started_at      cutoff]]
+                                   [:> :tr.started_at      (admin-lookback-cutoff)]]
                         :order-by [[:tr.started_at :desc] [:tr.id :desc]]
                         :limit    500}))
 
@@ -477,16 +484,6 @@
 (def ^:private admin-run-type-alert "alert")
 (def ^:private admin-task-channel-send "channel-send")
 (def ^:private admin-terminal-statuses ["success" "failed" "abandoned"])
-
-(def ^:private admin-run-lookback-days
-  "How far back to consider alert-type TaskRuns / TaskHistory rows when computing run summaries."
-  90)
-
-(mu/defn admin-lookback-cutoff :- ms/TemporalInstant
-  "The earliest `started_at` considered for the admin notification list/detail run history:
-  [[admin-run-lookback-days]] days before now. A Honey SQL form, not a realized timestamp."
-  []
-  (h2x/add-interval-honeysql-form (mdb/db-type) (mi/now) (- admin-run-lookback-days) :day))
 
 (defn- latest-run-per-notification
   [lookback]

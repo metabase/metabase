@@ -19,6 +19,26 @@
      {:error/message (deferred-tru "measure definition must have a source table")}
      #(some? (lib/primary-source-table-id %))]]])
 
+(mr/def ::measure.definition
+  "The `:definition` column of a Measure, decoded."
+  :map)
+
+(mr/def ::measure.dimension
+  "One entry of the `:dimensions` column of a Measure, decoded."
+  :map)
+
+(mr/def ::measure.dimensions
+  "The `:dimensions` column of a Measure, decoded."
+  [:sequential ::measure.dimension])
+
+(mr/def ::measure.dimension-mapping
+  "One entry of the `:dimension_mappings` column of a Measure, decoded."
+  :map)
+
+(mr/def ::measure.dimension-mappings
+  "The `:dimension_mappings` column of a Measure, decoded."
+  [:sequential ::measure.dimension-mapping])
+
 (mr/def ::measure
   "A Measure as selected from the app DB: every column of `:measure`."
   [:map {:closed true}
@@ -26,14 +46,14 @@
    [:table_id           ::lib.schema.id/table]
    [:creator_id         ::lib.schema.id/user]
    [:name               :string]
-   [:description        [:maybe [:or :string :map sequential?]]]
+   [:description        [:maybe :string]]
    [:archived           :boolean]
-   [:definition         [:or :string :map sequential?]]
+   [:definition         ::measure.definition]
    [:created_at         ms/TemporalInstant]
    [:updated_at         ms/TemporalInstant]
    [:entity_id          :string]
-   [:dimensions         [:maybe [:or :string :map sequential?]]]
-   [:dimension_mappings [:maybe [:or :string :map sequential?]]]])
+   [:dimensions         [:maybe ::measure.dimensions]]
+   [:dimension_mappings [:maybe ::measure.dimension-mappings]]])
 
 (mr/def ::measure.update
   "What an update (or insert) of a Measure accepts: every column of `:measure` except `id`, all optional."
@@ -41,11 +61,11 @@
    [:table_id           {:optional true} [:maybe ::lib.schema.id/table]]
    [:creator_id         {:optional true} [:maybe ::lib.schema.id/user]]
    [:name               {:optional true} [:maybe :string]]
-   [:description        {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:description        {:optional true} [:maybe :string]]
    [:archived           {:optional true} [:maybe :boolean]]
-   [:definition         {:optional true} [:maybe [:or :string :map sequential?]]]
+   [:definition         {:optional true} [:maybe ::measure.definition]]
    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id          {:optional true} [:maybe :string]]
-   [:dimensions         {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:dimension_mappings {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:dimensions         {:optional true} [:maybe ::measure.dimensions]]
+   [:dimension_mappings {:optional true} [:maybe ::measure.dimension-mappings]]])

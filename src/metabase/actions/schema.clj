@@ -182,28 +182,46 @@
   "A HTTPAction as selected from the app DB: every column of `:http_action`."
   [:map {:closed true}
    [:action_id       ::lib.schema.id/action]
-   [:template        [:or :string :map sequential?]]
-   [:response_handle [:maybe [:or :string :map sequential?]]]
-   [:error_handle    [:maybe [:or :string :map sequential?]]]])
+   [:template        ::http-action.template]
+   [:response_handle [:maybe :string]]
+   [:error_handle    [:maybe :string]]])
 
 (mr/def ::httpaction.update
   "What an update (or insert) of a HTTPAction accepts: every column of `:http_action` except `id`, all optional."
   [:map {:closed true}
    [:action_id       {:optional true} [:maybe ::lib.schema.id/action]]
-   [:template        {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:response_handle {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:error_handle    {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:template        {:optional true} [:maybe ::http-action.template]]
+   [:response_handle {:optional true} [:maybe :string]]
+   [:error_handle    {:optional true} [:maybe :string]]])
+
+(mr/def ::implicit-action
+  "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
+  [:map {:closed true}
+   [:action_id ::lib.schema.id/action]
+   [:kind      [:or :keyword :string]]])
 
 (mr/def ::implicit-action.update
   "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
   [:map {:closed true}
    [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
-   [:kind      {:optional true} [:maybe [:or :keyword :string :map sequential?]]]])
+   [:kind      {:optional true} [:maybe [:or :keyword :string]]]])
+
+(mr/def ::query-action.dataset-query
+  "The `:dataset_query` column of a QueryAction, decoded."
+  :map)
+
+(mr/def ::query-action
+  "A QueryAction as selected from the app DB: every column of `:query_action`."
+  [:map {:closed true}
+   [:action_id     ::lib.schema.id/action]
+   [:database_id   ::lib.schema.id/database]
+   [:dataset_query ::query-action.dataset-query]
+   [:legacy_query  [:maybe :string]]])
 
 (mr/def ::query-action.update
   "What an update (or insert) of a QueryAction accepts: every column of `:query_action` except `id`, all optional."
   [:map {:closed true}
    [:action_id     {:optional true} [:maybe ::lib.schema.id/action]]
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query {:optional true} [:maybe [:or :string :map sequential?]]]
-   [:legacy_query  {:optional true} [:maybe [:or :string :map sequential?]]]])
+   [:dataset_query {:optional true} [:maybe ::query-action.dataset-query]]
+   [:legacy_query  {:optional true} [:maybe :string]]])

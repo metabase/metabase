@@ -36,15 +36,10 @@
       :created_at      :%now})))
 
 (mu/defn insert-query-handle! :- :int
-  "Insert the McpQueryHandle `row`, returning the number inserted."
-  [row :- [:map {:closed true}
-           [:id              {:optional true} ms/PositiveInt]
-           [:mcp_session_id  {:optional true} [:maybe :string]]
-           [:core_session_id {:optional true} [:maybe :string]]
-           [:encoded_query   {:optional true} [:maybe [:or :string :map sequential?]]]
-           [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
-           [:prompt          {:optional true} [:maybe [:or :string :map sequential?]]]]]
-  (t2/insert! :model/McpQueryHandle row))
+  "Insert the McpQueryHandle `row` under the client-generated `handle-id`, returning the number inserted."
+  [handle-id :- ms/UUIDString
+   row       :- ::mcp.schema/mcp-query-handle.update]
+  (t2/insert! :model/McpQueryHandle (assoc row :id handle-id)))
 
 (mu/defn query-handle-for-user :- [:maybe ::mcp.schema/mcp-query-handle]
   "The McpQueryHandle with `handle-id` whose session belongs to the User with `user-id`, or nil."

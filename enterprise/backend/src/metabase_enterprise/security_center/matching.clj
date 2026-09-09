@@ -7,7 +7,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.interface :as mi]
    [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -149,8 +148,7 @@
                                currently-unaffected
                                (some? (:acknowledged_at advisory)))]
          (security-center.db/update-advisory! (:id advisory)
-                                              (cond-> {:match_status      match-status
-                                                       :last_evaluated_at (mi/now)}
+                                              (cond-> {:match_status match-status}
                                                 reactivated? (assoc :acknowledged_at nil
                                                                     :acknowledged_by nil))))))))
 
@@ -167,5 +165,4 @@
                (catch Exception e
                  (log/warnf "Error evaluating advisory %s: %s" (:advisory_id advisory) (ex-message e))
                  (security-center.db/update-advisory! (:id advisory)
-                                                      {:match_status      :error
-                                                       :last_evaluated_at (mi/now)}))))))))
+                                                      {:match_status :error}))))))))

@@ -115,7 +115,8 @@
 
 (def ^:private PersonalUserColumn
   "Rows returned by [[personal-user-columns]]."
-  (mut/select-keys ::users.schema/user.full [:id :email :first_name :last_name :is_active :sso_source :tenant_id :common_name]))
+  (mut/select-keys ::users.schema/user.full
+                   [:id :email :first_name :last_name :is_active :sso_source :tenant_id :common_name]))
 
 (mu/defn personal-user-columns :- [:maybe PersonalUserColumn]
   "The id, email, name, active flag, SSO source, and tenant id of the personal User with `user-id`, or nil."
@@ -126,7 +127,7 @@
 
 (def ^:private ActivePersonalUserLoginColumn
   "Rows returned by [[active-personal-user-login-columns]]."
-  (mut/select-keys ::users.schema/user [:id :email :last_login]))
+  (mut/select-keys ::users.schema/user [:id :email :last_login :common_name]))
 
 (mu/defn active-personal-user-login-columns :- [:maybe ActivePersonalUserLoginColumn]
   "The id, email, and last login of the active personal User with `user-id`, or nil."
@@ -135,7 +136,7 @@
 
 (def ^:private UserActiveAndType
   "Rows returned by [[user-active-and-type]]."
-  (mut/select-keys ::users.schema/user.full [:id :is_active :type]))
+  (mut/select-keys ::users.schema/user.full [:id :is_active :type :common_name]))
 
 (mu/defn user-active-and-type :- [:maybe UserActiveAndType]
   "The id, active flag, and type of the User with `user-id`, or nil."

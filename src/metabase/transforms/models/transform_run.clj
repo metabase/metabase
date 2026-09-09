@@ -27,6 +27,16 @@
 
 (derive :model/TransformRun :metabase/model)
 
+(def ^:private terminal-statuses
+  #{:succeeded :failed :canceled :timeout})
+
+(t2/define-before-update :model/TransformRun
+  [run]
+  (let [changes (t2/changes run)]
+    (cond-> run
+      (and (contains? terminal-statuses (keyword (:status changes))) (not (contains? changes :end_time)))
+      (assoc :end_time (mi/now)))))
+
 (t2/deftransforms :model/TransformRun
   {:status     mi/transform-keyword
    :run_method mi/transform-keyword})
@@ -83,8 +93,7 @@
   ([run-id properties]
    (u/prog1 (transforms.db/finish-active-run! run-id
                                               (merge properties
-                                                     {:end_time  :%now
-                                                      :status    :succeeded
+                                                     {:status    :succeeded
                                                       :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
@@ -93,8 +102,7 @@
   [run-id properties]
   (u/prog1 (transforms.db/finish-active-run! run-id
                                              (merge properties
-                                                    {:end_time  :%now
-                                                     :status    :failed
+                                                    {:status    :failed
                                                      :is_active nil}))
     (cancel/delete-cancelation! run-id)))
 
@@ -105,8 +113,7 @@
   ([run-id properties]
    (u/prog1 (transforms.db/finish-active-run! run-id
                                               (merge properties
-                                                     {:end_time  :%now
-                                                      :status    :canceled
+                                                     {:status    :canceled
                                                       :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
@@ -128,8 +135,7 @@
   ([run-id properties]
    (u/prog1 (transforms.db/finish-active-run! run-id
                                               (merge properties
-                                                     {:end_time  :%now
-                                                      :message   "Timed out"
+                                                     {:message   "Timed out"
                                                       :status    :timeout
                                                       :is_active nil}))
      (cancel/delete-cancelation! run-id)

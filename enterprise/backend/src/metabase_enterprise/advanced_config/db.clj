@@ -36,7 +36,7 @@
   [prefix :- :string]
   (t2/exists? :model/ApiKey :key_prefix prefix))
 
-(mu/defn insert-api-key! :- ::api-keys.schema/api-key
+(mu/defn insert-api-key! :- ::api-keys.schema/api-key.inserted
   "Insert `api-key` and return the new instance. `::api-keys/unhashed-key` has a special meaning to the ApiKey
   model's before-insert hook: it is hashed into `:key` and used to derive `:key_prefix`."
   [api-key :- ::api-keys.schema/api-key.create]
@@ -77,7 +77,7 @@
 
 (mu/defn insert-database! :- ::warehouses.schema/database
   "Insert `database` and return the new instance."
-  [database :- (mut/merge ::warehouses.schema/database.update [:map [:id {:optional true} ::lib.schema.id/database]])]
+  [database :- ::warehouses.schema/database.update]
   (t2/insert-returning-instance! :model/Database database))
 
 (mu/defn update-database! :- :int

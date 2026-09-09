@@ -165,7 +165,9 @@
 
 (def ^:private FeedbackForConversation
   "Rows returned by [[feedback-for-conversation]]."
-  (mut/merge (mut/select-keys ::metabot.schema/metabot-feedback [:id :message_id :user_id :positive :issue_type :freeform_feedback :created_at :updated_at]) [:map [:external_id [:maybe :string]]]))
+  (mut/merge (mut/select-keys ::metabot.schema/metabot-feedback
+                              [:id :message_id :user_id :positive :issue_type :freeform_feedback :created_at :updated_at])
+             [:map [:external_id [:maybe :string]]]))
 
 (mu/defn feedback-for-conversation :- [:sequential FeedbackForConversation]
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."

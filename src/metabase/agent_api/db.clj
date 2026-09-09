@@ -15,7 +15,8 @@
 
 (def ^:private CollectionBreadcrumbColumn
   "Rows returned by [[collection-breadcrumb-columns]]."
-  (mut/select-keys ::collections.schema/collection [:id :name :location :personal_owner_id :namespace :archived_directly]))
+  (mut/select-keys ::collections.schema/collection
+                   [:id :name :location :personal_owner_id :namespace :archived_directly]))
 
 (mu/defn collection-breadcrumb-columns :- [:maybe CollectionBreadcrumbColumn]
   "The id, name, location, owner, namespace, and archival of the Collection with `collection-id`, or nil."

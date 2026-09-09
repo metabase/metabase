@@ -24,11 +24,7 @@
    [:next_run_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:invalidated_at {:optional true} ms/TemporalInstant]])
 
-(def ^:private CardCacheConfig
-  "Rows returned by [[card-cache-config]]."
-  (mut/select-keys ::cache.schema/cache-config [:id]))
-
-(mu/defn card-cache-config :- [:maybe CardCacheConfig]
+(mu/defn card-cache-config :- [:maybe ::cache.schema/cache-config]
   "The most specific CacheConfig applying to the Card with `card-id` on the Dashboard with `dashboard-id` in the
   Database with `database-id`, or nil."
   [card-id      :- ::lib.schema.id/card
@@ -69,7 +65,12 @@
 
 (def ^:private DurationQueriesToRerun
   "Rows returned by [[duration-queries-to-rerun]]."
-  (mut/merge (mut/select-keys ::queries.schema/query [:query]) [:map [:cache-hash [:maybe :string]] [:card-id [:maybe :string]] [:dashboard-id [:maybe :string]] [:count [:maybe :int]]]))
+  (mut/merge (mut/select-keys ::queries.schema/query [:query])
+             [:map
+              [:cache-hash   bytes?]
+              [:card-id      [:maybe ::lib.schema.id/card]]
+              [:dashboard-id [:maybe ::lib.schema.id/dashboard]]
+              [:count        :int]]))
 
 (mu/defn duration-queries-to-rerun :- [:sequential DurationQueriesToRerun]
   "The query definitions to rerun for the duration cache `scopes`, each `{:model :model-id :rerun-cutoff}`, counting
@@ -116,7 +117,8 @@
 
 (def ^:private ScheduledBaseQueryToRerun
   "Rows returned by [[scheduled-base-query-to-rerun]]."
-  (mut/merge (mut/select-keys ::queries.schema/query [:query]) [:map [:card-id [:maybe ::lib.schema.id/card]]]))
+  (mut/merge (mut/select-keys ::queries.schema/query [:query])
+             [:map [:card-id [:maybe ::lib.schema.id/card]]]))
 
 (mu/defn scheduled-base-query-to-rerun :- [:maybe ScheduledBaseQueryToRerun]
   "The unparameterized query definition of the Card with `card-id` executed most recently after `started-after`, or
@@ -138,7 +140,8 @@
 
 (def ^:private ScheduledParameterizedQueriesToRerun
   "Rows returned by [[scheduled-parameterized-queries-to-rerun]]."
-  (mut/merge (mut/select-keys ::queries.schema/query [:query]) [:map [:card-id [:maybe ::lib.schema.id/card]]]))
+  (mut/merge (mut/select-keys ::queries.schema/query [:query])
+             [:map [:card-id [:maybe ::lib.schema.id/card]]]))
 
 (mu/defn scheduled-parameterized-queries-to-rerun :- [:sequential ScheduledParameterizedQueriesToRerun]
   "The `limit` most common parameterized query definitions of the Card with `card-id` executed after `rerun-cutoff`."

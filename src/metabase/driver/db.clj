@@ -21,7 +21,8 @@
 
 (def ^:private DatabaseConnectionDetail
   "Rows returned by [[database-connection-details]]."
-  (mut/select-keys ::warehouses.schema/database [:id :engine :details :write_data_details :admin_details]))
+  (mut/select-keys ::warehouses.schema/database
+                   [:id :engine :details :write_data_details :admin_details :features]))
 
 (mu/defn database-connection-details :- [:maybe DatabaseConnectionDetail]
   "The engine and connection details of the Database with `database-id`, or nil."
