@@ -23,24 +23,17 @@ const REFERENCED_SETTINGS: VisualizationSettings = {
   "graph.goal_value": { type: "card", id: 9, column: "goal" },
 };
 
-function series(
-  data = FAILED_DATA,
-  display: VisualizationDisplay = "line",
-): Series {
-  return [createMockSingleSeries({ display }, { data })];
-}
-
 describe("validateGoalReferences", () => {
   it("accepts a static goal", () => {
     expect(() =>
-      validateGoalReferences(series(), { "graph.goal_value": 10 }),
+      validateGoalReferences(createSeries(), { "graph.goal_value": 10 }),
     ).not.toThrow();
   });
 
   it("ignores references for a display that does not resolve graph goals", () => {
     expect(() =>
       validateGoalReferences(
-        series(FAILED_DATA, "scalar"),
+        createSeries(FAILED_DATA, "scalar"),
         REFERENCED_SETTINGS,
       ),
     ).not.toThrow();
@@ -55,7 +48,7 @@ describe("validateGoalReferences", () => {
 
     it("accepts static ranges", () => {
       expect(() =>
-        validateGoalReferences(series(FAILED_DATA, "gauge"), {
+        validateGoalReferences(createSeries(FAILED_DATA, "gauge"), {
           "gauge.segments": [{ min: 0, max: 100, color: "red" }],
         }),
       ).not.toThrow();
@@ -68,13 +61,16 @@ describe("validateGoalReferences", () => {
       });
 
       expect(() =>
-        validateGoalReferences(series(data, "gauge"), REFERENCED_RANGES),
+        validateGoalReferences(createSeries(data, "gauge"), REFERENCED_RANGES),
       ).not.toThrow();
     });
 
     it("rejects a range bound the data reports as failed", () => {
       expect(() =>
-        validateGoalReferences(series(FAILED_DATA, "gauge"), REFERENCED_RANGES),
+        validateGoalReferences(
+          createSeries(FAILED_DATA, "gauge"),
+          REFERENCED_RANGES,
+        ),
       ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
   });
@@ -84,7 +80,7 @@ describe("validateGoalReferences", () => {
 
     it("ignores a failed reference when the goal line is hidden", () => {
       expect(() =>
-        validateGoalReferences(series(), {
+        validateGoalReferences(createSeries(), {
           ...REFERENCED_SETTINGS,
           "graph.show_goal": false,
         }),
@@ -98,13 +94,13 @@ describe("validateGoalReferences", () => {
       });
 
       expect(() =>
-        validateGoalReferences(series(data), REFERENCED_SETTINGS),
+        validateGoalReferences(createSeries(data), REFERENCED_SETTINGS),
       ).not.toThrow();
     });
 
     it("rejects a reference the data reports as failed", () => {
       expect(() =>
-        validateGoalReferences(series(), REFERENCED_SETTINGS),
+        validateGoalReferences(createSeries(), REFERENCED_SETTINGS),
       ).toThrow("Couldn't load the value this chart's goal line depends on.");
     });
 
@@ -113,8 +109,8 @@ describe("validateGoalReferences", () => {
         ...FAILED_DATA,
         referenced_entities: undefined,
       });
-      const transformed = Object.assign(series(transformedData), {
-        _raw: series(),
+      const transformed = Object.assign(createSeries(transformedData), {
+        _raw: createSeries(),
       });
 
       expect(() =>
@@ -123,3 +119,10 @@ describe("validateGoalReferences", () => {
     });
   });
 });
+
+function createSeries(
+  data = FAILED_DATA,
+  display: VisualizationDisplay = "line",
+): Series {
+  return [createMockSingleSeries({ display }, { data })];
+}
