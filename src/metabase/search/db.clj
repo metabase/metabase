@@ -116,52 +116,57 @@
   (t2/query (specialization/view-count-percentile-query index-table p-value)))
 
 (mu/defn drop-search-index-table-if-exists!
-  "Drop the search index table named `table-name`, if it exists."
-  [table-name :- [:or :keyword :string]]
-  (t2/query (sql.helpers/drop-table :if-exists table-name)))
+  "Drop the search index table named `table-name` on `conn`, if it exists."
+  [conn       :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   table-name :- [:or :keyword :string]]
+  (t2/query conn (sql.helpers/drop-table :if-exists table-name)))
 
 (mu/defn drop-search-index-table!
-  "Drop the search index table named `table-name`, throwing if it is already gone."
-  [table-name :- [:or :keyword :string]]
+  "Drop the search index table named `table-name` on `conn`, throwing if it is already gone."
+  [conn       :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   table-name :- [:or :keyword :string]]
   ;; `IF EXISTS` cannot reliably report whether it dropped a table.
   ;; PostgreSQL emits only a JDBC warning, which Toucan does not expose, and H2 emits nothing.
   ;; Let an absent table throw so callers can detect races.
-  (t2/query (sql.helpers/drop-table table-name)))
+  (t2/query conn (sql.helpers/drop-table table-name)))
 
 (mu/defn create-search-index-table!
-  "Create the search index table named `table-name`: the columns of `metabase.search.appdb.index-schema/base-schema`
-  as shaped by the active search engine specialization, then that specialization's post-creation statements (index
-  creation and the like)."
-  [table-name :- [:or :keyword :string]]
-  (t2/query (-> (sql.helpers/create-table table-name)
-                (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema))))
+  "Create the search index table named `table-name` on `conn`: the columns of
+  `metabase.search.appdb.index-schema/base-schema` as shaped by the active search engine specialization,
+  then that specialization's post-creation statements (index creation and the like)."
+  [conn       :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   table-name :- [:or :keyword :string]]
+  (t2/query conn (-> (sql.helpers/create-table table-name)
+                     (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema))))
   (let [table-name (name table-name)]
     (doseq [statement (specialization/post-create-statements table-name table-name)]
-      (t2/query statement))))
+      (t2/query conn statement))))
 
 (mu/defn analyze-search-index-table!
   "Run `ANALYZE` on the search index table `table-name` (Postgres only)."
   [table-name :- [:or :keyword :string]]
   (t2/query (str "ANALYZE " (name table-name))))
 
+(defn- postgres-batch-upsert-query
+  [table entries]
+  ;; The entries are not guaranteed to be homogeneous -- some may be missing nullable columns -- so
+  ;; the updated columns come from the keys of *all* of them.
+  (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
+        excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+    {:insert-into   table
+     :values        entries
+     :on-conflict   [:model :model_id]
+     :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
+                               {:allow-subquery true})}))
+
 (mu/defn postgres-batch-upsert!
-  "Upsert `entries` into the search index `table`, on conflict of `(model, model_id)` overwriting every other column
-  with the new value."
-  [table   :- [:or :keyword :string]
+  "Upsert `entries` into the search index `table` on `conn`, overwriting every other column on a
+  `(model, model_id)` conflict."
+  [conn    :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   table   :- [:or :keyword :string]
    entries :- [:sequential SearchIndexRow]]
   (when (seq entries)
-    (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
-          excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
-      (t2/query {:insert-into   table
-                 :values        entries
-                 :on-conflict   [:model :model_id]
-                 :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
-                                           {:allow-subquery true})}))))
-
-(mu/defn commit!
-  "Commit the current transaction."
-  []
-  (t2/query ["commit"]))
+    (t2/query conn (postgres-batch-upsert-query table entries))))
 
 (mu/defn user-exists?
   "Whether a User with `user-id` exists."
@@ -187,22 +192,29 @@
   (t2/select-one table :model model :model_id model-id))
 
 (mu/defn delete-all-rows!
-  "Delete every row of the search index `table`."
-  [table :- [:or :keyword :string]]
-  (t2/delete! table))
+  "Delete every row of the search index `table`, on `conn`."
+  [conn  :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   table :- [:or :keyword :string]]
+  (t2/delete! :conn conn table))
 
 (mu/defn delete-index-rows!
-  "Delete the rows of the search index `table` for `model` and `model-ids`."
-  [table      :- [:or :keyword :string]
-   model      :- [:or :keyword :string]
-   model-ids  :- [:or [:set [:or :string ms/PositiveInt]] [:sequential [:or :string ms/PositiveInt]]]]
-  (t2/delete! table :model model :model_id [:in model-ids]))
+  "Delete the rows of the search index `table` for `model` and `model-ids`, on `conn` when given."
+  ([table     :- [:or :keyword :string]
+    model     :- [:or :keyword :string]
+    model-ids :- [:or [:set [:or :string ms/PositiveInt]] [:sequential [:or :string ms/PositiveInt]]]]
+   (delete-index-rows! nil table model model-ids))
+  ([conn      :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+    table     :- [:or :keyword :string]
+    model     :- [:or :keyword :string]
+    model-ids :- [:or [:set [:or :string ms/PositiveInt]] [:sequential [:or :string ms/PositiveInt]]]]
+   (t2/delete! :conn conn table :model model :model_id [:in model-ids])))
 
 (mu/defn insert-rows!
-  "Insert `entries` into the search index `table`."
-  [table   :- [:or :keyword :string]
+  "Insert `entries` into the search index `table`, on `conn`."
+  [conn    :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   table   :- [:or :keyword :string]
    entries :- [:sequential SearchIndexRow]]
-  (t2/insert! table entries))
+  (t2/insert! :conn conn table entries))
 
 (mu/defn index-entry-count
   "The number of entries in the search index table `index-table`."
@@ -210,9 +222,10 @@
   (t2/count index-table))
 
 (mu/defn table-exists?
-  "Whether a table named `table-name` exists in the app DB."
-  [table-name :- :string]
-  (t2/exists? :information_schema.tables :table_name table-name))
+  "Whether a table named `table-name` exists in the app DB, read on `conn`."
+  [conn       :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   table-name :- :string]
+  (t2/exists? :conn conn :information_schema.tables :table_name table-name))
 
 (mu/defn orphan-index-table-names
   "The `:table_name`s of search index tables in the current schema with no SearchIndexMetadata."
@@ -260,9 +273,12 @@
                     {:order-by [[:created_at :desc]]}))
 
 (mu/defn insert-index-metadata!
-  "Insert the SearchIndexMetadata `row`."
-  [row :- ::search.schema/search-index-metadata.update]
-  (t2/insert! :model/SearchIndexMetadata row))
+  "Insert the SearchIndexMetadata `row`, on `conn` when given."
+  ([row  :- ::search.schema/search-index-metadata.update]
+   (insert-index-metadata! nil row))
+  ([conn :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+    row  :- ::search.schema/search-index-metadata.update]
+   (t2/insert! :conn conn :model/SearchIndexMetadata row)))
 
 (mu/defn delete-index-metadata-by-version!
   "Delete the SearchIndexMetadata rows of `version`."
@@ -275,13 +291,24 @@
    index-name :- :string]
   (t2/delete! :conn conn :model/SearchIndexMetadata :index_name index-name))
 
+(mu/defn delete-pending-index-metadata!
+  "Delete the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, on `conn`."
+  [conn      :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
+  (t2/delete! :conn conn :model/SearchIndexMetadata
+              :engine engine :version version :lang_code lang-code :status :pending))
+
 (mu/defn delete-non-active-index-metadata!
-  "Delete the pending or retired SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name`."
-  [engine     :- :keyword
+  "Delete the pending or retired SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name`.
+  Writes on `conn`."
+  [conn       :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine     :- :keyword
    version    :- :string
    lang-code  :- :string
    index-name :- :string]
-  (t2/delete! :model/SearchIndexMetadata
+  (t2/delete! :conn conn :model/SearchIndexMetadata
               :engine engine
               :version version
               :lang_code lang-code
@@ -289,98 +316,240 @@
               :status [:not= :active]))
 
 (mu/defn index-metadata
-  "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and
-  `lang-code`."
-  [engine    :- :keyword
+  "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`,
+  `version`, and `lang-code`, read on `conn`."
+  [conn      :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
+  (t2/select :conn conn [:model/SearchIndexMetadata :index_name :status :created_at]
              :engine engine
              :version version
              :lang_code lang-code
              :status [:in [:active :pending]]))
 
 (mu/defn delete-expired-pending-index-metadata!
-  "Delete the pending SearchIndexMetadata rows of `lang-code` created before `created-before`."
-  [lang-code      :- :string
+  "Delete the pending SearchIndexMetadata rows of `lang-code` created before `created-before`, on `conn`."
+  [conn           :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   lang-code      :- :string
    created-before :- ms/TemporalInstant]
-  (t2/delete! :model/SearchIndexMetadata
+  (t2/delete! :conn conn :model/SearchIndexMetadata
               {:where [:and
                        [:= :lang_code lang-code]
                        [:= :status "pending"]
                        [:< :created_at created-before]]}))
 
 (mu/defn pending-index-metadata-exists?
-  "Whether a pending SearchIndexMetadata row of `engine`, `version`, and `lang-code` exists."
-  [engine    :- :keyword
+  "Whether the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code` exists, read on
+  `conn`."
+  [conn      :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :pending))
+  (t2/exists? :conn conn :model/SearchIndexMetadata
+              :engine engine :version version :lang_code lang-code :status :pending))
 
 (mu/defn lock-pending-index-metadata!
   "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, if one exists.
   Must be called inside the transaction that will promote the row."
-  [engine    :- :keyword
+  [conn      :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/select-one [:model/SearchIndexMetadata :id]
+  (t2/select-one :conn conn [:model/SearchIndexMetadata :id]
                  :engine engine
                  :version version
                  :lang_code lang-code
                  :status :pending
                  {:for :update}))
 
+(mu/defn lock-named-pending-index-metadata!
+  "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, `lang-code`, and
+  `index-name`, if one exists. Must be called inside the transaction that will promote the row."
+  [conn       :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine     :- :keyword
+   version    :- :string
+   lang-code  :- :string
+   index-name :- :string]
+  (t2/select-one :conn conn [:model/SearchIndexMetadata :id]
+                 :engine engine
+                 :version version
+                 :lang_code lang-code
+                 :index_name index-name
+                 :status :pending
+                 {:for :update}))
+
 (mu/defn delete-retired-index-metadata!
-  "Delete the retired SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
-  [engine    :- :keyword
+  "Delete the retired SearchIndexMetadata rows of `engine`, `version`, and `lang-code`, on `conn`."
+  [conn      :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :retired))
+  (t2/delete! :conn conn :model/SearchIndexMetadata
+              :engine engine :version version :lang_code lang-code :status :retired))
 
 (mu/defn retire-active-index-metadata!
-  "Retire the active SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
-  [engine    :- :keyword
+  "Retire the active SearchIndexMetadata rows of `engine`, `version`, and `lang-code`, on `conn`."
+  [conn      :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code lang-code :status :active} {:status :retired}))
+  (t2/update! :conn conn :model/SearchIndexMetadata
+              {:engine engine :version version :lang_code lang-code :status :active}
+              {:status :retired}))
 
 (mu/defn activate-pending-index-metadata!
-  "Activate the pending SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
-  [engine    :- :keyword
+  "Activate the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, on `conn`.
+  The caller must have cleared the retired row and retired the active one first."
+  [conn      :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code lang-code :status :pending} {:status :active}))
+  ;; `idx_search_index_metadata_unique_status` is unique on `(engine, version, lang_code, status)`, so there is at
+  ;; most one pending row to promote -- and retiring before clearing would collide with the row already retired.
+  (t2/update! :conn conn :model/SearchIndexMetadata
+              {:engine engine, :version version, :lang_code lang-code, :status :pending}
+              {:status :active}))
+
+(mu/defn activate-named-pending-index-metadata!
+  "Activate the pending SearchIndexMetadata row of `engine`, `version`, `lang-code`, and `index-name`, on
+  `conn`."
+  [conn       :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine     :- :keyword
+   version    :- :string
+   lang-code  :- :string
+   index-name :- :string]
+  (t2/update! :conn conn :model/SearchIndexMetadata
+              {:engine engine, :version version, :lang_code lang-code, :index_name index-name, :status :pending}
+              {:status :active}))
 
 (mu/defn active-index-name
-  "The name of the active SearchIndexMetadata row of `engine`, `version`, and `lang-code`, or nil."
-  [engine    :- :keyword
+  "The name of the active SearchIndexMetadata row of `engine`, `version`, and `lang-code` on `conn`, or nil."
+  [conn      :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :active))
+  (t2/select-one-fn :index_name :conn conn :model/SearchIndexMetadata
+                    :engine engine :version version :lang_code lang-code :status :active))
+
+(defn- recent-index-versions-query [limit]
+  {:select   [:version]
+   :from     [(t2/table-name :model/SearchIndexMetadata)]
+   :group-by [:version]
+   ;; use pk as a tie-breaker
+   :order-by [[[:max :updated_at] :desc]
+              [[:max :id] :desc]]
+   :limit    limit})
 
 (mu/defn recent-index-versions
-  "The `:version`s of the `limit` most recently updated SearchIndexMetadata versions."
-  [limit :- ms/PositiveInt]
-  (t2/query {:select   [:version]
-             :from     [(t2/table-name :model/SearchIndexMetadata)]
-             :group-by [:version]
-             ;; use pk as a tie-breaker
-             :order-by [[[:max :updated_at] :desc]
-                        [[:max :id] :desc]]
-             :limit    limit}))
+  "The `:version`s of the `limit` most recently updated SearchIndexMetadata versions, read on `conn`."
+  [conn  :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   limit :- ms/PositiveInt]
+  (t2/query conn (recent-index-versions-query limit)))
+
+(defn- obsolete-index-metadata-query [recent-versions keep-versions updated-before]
+  {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
+   :where       [:or
+                 [:not-in :version recent-versions]
+                 [:and
+                  [:not-in :version keep-versions]
+                  [:< :updated_at updated-before]]]})
 
 (mu/defn delete-obsolete-index-metadata!
   "Delete the SearchIndexMetadata rows whose version is not in `recent-versions`, or not in `keep-versions` and last
-  updated before `updated-before`."
-  [recent-versions :- [:sequential :string]
+  updated before `updated-before`, on `conn`."
+  [conn            :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
+   recent-versions :- [:sequential :string]
    keep-versions   :- [:sequential :string]
    updated-before  :- ms/TemporalInstant]
-  (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
-                 :where       [:or
-                               [:not-in :version recent-versions]
-                               [:and
-                                [:not-in :version keep-versions]
-                                [:< :updated_at updated-before]]]}))
+  (t2/query-one conn (obsolete-index-metadata-query recent-versions keep-versions updated-before)))
+
+(mu/defn lease-times
+  "The app database's current time, and the lease expiry `duration-millis` later, read on `conn` without
+  converting JDBC time types."
+  [conn            :- (ms/InstanceOfClass java.sql.Connection)
+   duration-millis :- :int]
+  (t2/query-one conn
+                (case (mdb/db-type)
+                  :postgres ["SELECT CURRENT_TIMESTAMP AS now, CURRENT_TIMESTAMP + (? * INTERVAL '1 millisecond') AS expires_at"
+                             duration-millis]
+                  :mysql    ["SELECT CURRENT_TIMESTAMP AS now, TIMESTAMPADD(MICROSECOND, ?, CURRENT_TIMESTAMP) AS expires_at"
+                             (* duration-millis 1000)]
+                  :h2       ["SELECT CURRENT_TIMESTAMP AS now, DATEADD('MILLISECOND', ?, CURRENT_TIMESTAMP) AS expires_at"
+                             duration-millis])))
+
+(def ^:private LeaseCoordinate
+  [:map {:closed true}
+   [:engine :string]
+   [:version :string]
+   [:lang_code :string]])
+
+(def ^:private LeaseClaimUpdate
+  [:map {:closed true}
+   [:owner :string]
+   [:acquired_at ms/TemporalInstant]
+   [:last_renewed_at ms/TemporalInstant]
+   [:expires_at ms/TemporalInstant]])
+
+(def ^:private LeaseRow
+  [:map {:closed true}
+   [:engine :string]
+   [:version :string]
+   [:lang_code :string]
+   [:owner :string]
+   [:acquired_at ms/TemporalInstant]
+   [:last_renewed_at ms/TemporalInstant]
+   [:expires_at ms/TemporalInstant]])
+
+(mu/defn insert-lease!
+  "Insert the search index lease `row` on `conn`."
+  [conn :- (ms/InstanceOfClass java.sql.Connection)
+   row  :- LeaseRow]
+  (t2/insert! :conn conn :search_index_lease row))
+
+(mu/defn take-over-expired-lease!
+  "Take over the lease at `coordinate` on `conn`, if it expired at or before `now`, by writing `claim`.
+  Returns the number of rows updated."
+  [conn       :- (ms/InstanceOfClass java.sql.Connection)
+   coordinate :- LeaseCoordinate
+   now        :- ms/TemporalInstant
+   claim      :- LeaseClaimUpdate]
+  (t2/update! :conn conn :search_index_lease (assoc coordinate :expires_at [:<= now]) claim))
+
+(def ^:private db-now-expr
+  ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"])
+
+(defn- db-expiry-expr
+  "Honey SQL expression for the lease expiry `duration-millis` after the app database's current time."
+  [duration-millis]
+  ^:allow-raw-sql
+  [:raw (case (mdb/db-type)
+          :postgres (format "CURRENT_TIMESTAMP + (%d * INTERVAL '1 millisecond')" duration-millis)
+          :mysql    (format "TIMESTAMPADD(MICROSECOND, %d, CURRENT_TIMESTAMP)" (* duration-millis 1000))
+          :h2       (format "DATEADD('MILLISECOND', %d, CURRENT_TIMESTAMP)" duration-millis))])
+
+(mu/defn renew-lease!
+  "Extend the unexpired lease at `coordinate` held by `owner` by `duration-millis`, on `conn`.
+  Returns the number of rows updated."
+  [conn            :- (ms/InstanceOfClass java.sql.Connection)
+   coordinate      :- LeaseCoordinate
+   owner           :- :string
+   duration-millis :- :int]
+  ;; One statement, so a per-batch fence costs a single round trip.
+  (t2/update! :conn conn :search_index_lease
+              (assoc coordinate :owner owner :expires_at [:> db-now-expr])
+              {:last_renewed_at db-now-expr, :expires_at (db-expiry-expr duration-millis)}))
+
+(mu/defn delete-lease!
+  "Delete the lease of `engine`, `version`, and `lang-code` on `conn`, if `owner` still holds it.
+  Returns the number of rows deleted."
+  [conn      :- (ms/InstanceOfClass java.sql.Connection)
+   engine    :- [:maybe :string]
+   version   :- [:maybe :string]
+   lang-code :- [:maybe :string]
+   owner     :- [:maybe :string]]
+  (t2/delete! :conn conn :search_index_lease
+              :engine engine :version version :lang_code lang-code :owner owner))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, or nil."

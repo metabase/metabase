@@ -3,7 +3,6 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as ingestion]
@@ -20,7 +19,6 @@
 
 (def ^:private init-stem "metabase.task.search-index.init")
 (def ^:private reindex-stem "metabase.task.search-index.reindex")
-(def ^:private cluster-lock-name ::search-index-lock)
 
 (def init-job-key
   "Key used to define and trigger a job that ensures there is an active index."
@@ -37,14 +35,12 @@
   []
   (when (search/supports-index?)
     (tracing/with-span :search "search.task.init" {}
-      (cluster-lock/with-cluster-lock cluster-lock-name
-        (search/init-index! {:force-reset? false, :re-populate? false})))))
+      (search/init-index! {:force-reset? false, :re-populate? false}))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
-  (cluster-lock/with-cluster-lock cluster-lock-name
-    (search/reindex! {:async? false})))
+  (search/reindex! {:async? false}))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Ensure indexes exist for the active engines"}

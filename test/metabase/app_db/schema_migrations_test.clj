@@ -3406,3 +3406,21 @@
         (testing "only the columns that are non-NULL are flagged true"
           (is (=? {:description_set true, :semantic_type_set false, :fk_target_field_id_set false}
                   (t2/select-one :metabase_field_user_settings :field_id mixed-id))))))))
+
+(deftest create-search-index-lease-table-test
+  (testing "v64.2026-08-18: search reindexes get a granular renewable lease table"
+    (impl/test-migrations ["v64.2026-08-18T13:57:56" "v64.2026-08-18T13:57:57"] [migrate!]
+      (migrate!)
+      (let [row {:engine          "appdb"
+                 :version         "test-version"
+                 :lang_code       "en"
+                 :owner           (str (random-uuid))
+                 :acquired_at     :%now
+                 :last_renewed_at :%now
+                 :expires_at      :%now}]
+        (is (= 1 (t2/insert! :search_index_lease row)))
+        (is (thrown? Exception (t2/insert! :search_index_lease (assoc row :owner (str (random-uuid)))))
+            "engine/version/locale is unique")
+        (is (= (select-keys row [:engine :version :lang_code])
+               (some-> (t2/select-one :search_index_lease)
+                       (select-keys [:engine :version :lang_code]))))))))
