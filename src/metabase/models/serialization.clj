@@ -1707,12 +1707,13 @@
                                   :else cols)]
                [k updated-cols]))))))
 
+(defn- export-fks [ids model]
+  (u/keepv #(fk-elide (*export-fk* % model)) ids))
+
 (defn- export-timeline-events [settings]
   (-> settings
-      (m/update-existing :timeline.selected_timeline_ids
-                         #(u/keepv (fn [id] (fk-elide (*export-fk* id :model/Timeline))) %))
-      (m/update-existing :timeline.excluded_timeline_event_ids
-                         #(u/keepv (fn [id] (fk-elide (*export-fk* id :model/TimelineEvent))) %))))
+      (m/update-existing :timeline.selected_timeline_ids export-fks :model/Timeline)
+      (m/update-existing :timeline.excluded_timeline_event_ids export-fks :model/TimelineEvent)))
 
 (defn export-visualization-settings
   "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
@@ -1808,17 +1809,14 @@
 (defn- timeline-event-ref? [ref]
   (and (vector? ref) (= 2 (count ref)) (every? entity-id? ref)))
 
+(defn- import-fks [refs ref? model]
+  (u/keepv #(when (ref? %) (fk-elide (*import-fk* % model))) refs))
+
 (defn- import-timeline-events [settings]
   (-> settings
       ;; Keep explicit empty selections: removing the key would restore collection defaults.
-      (m/update-existing :timeline.selected_timeline_ids
-                         #(u/keepv (fn [ref]
-                                     (when (entity-id? ref)
-                                       (fk-elide (*import-fk* ref :model/Timeline)))) %))
-      (m/update-existing :timeline.excluded_timeline_event_ids
-                         #(u/keepv (fn [ref]
-                                     (when (timeline-event-ref? ref)
-                                       (fk-elide (*import-fk* ref :model/TimelineEvent)))) %))))
+      (m/update-existing :timeline.selected_timeline_ids import-fks entity-id? :model/Timeline)
+      (m/update-existing :timeline.excluded_timeline_event_ids import-fks timeline-event-ref? :model/TimelineEvent)))
 
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`

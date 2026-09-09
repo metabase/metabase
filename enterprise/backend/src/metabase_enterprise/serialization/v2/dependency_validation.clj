@@ -77,8 +77,8 @@
 
 (def ^:private optional-content-models
   "Content models whose absence from the archive is tolerated on import, so a reference to one is never a completeness
-   failure. Omitted Collections resolve to the target root; omitted Timelines resolve locally or are ignored."
-  #{"Collection" "Timeline"})
+   failure. Omitted Collections resolve to the target root; [[serdes.models/elidable-content-models]] are dropped."
+  (conj serdes.models/elidable-content-models "Collection"))
 
 (defn- unsatisfied-dependencies
   "The `deps` that won't be satisfied in the archive, each tagged with a `:reason` (see the namespace docstring for the

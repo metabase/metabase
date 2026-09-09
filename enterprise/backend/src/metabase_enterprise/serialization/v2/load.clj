@@ -55,9 +55,20 @@
                          :model  model
                          :error  ::no-known-references})))))
 
+(defn- elidable-missing-dep?
+  "True when `e` reports `dep` itself as missing from both the archive and the destination, and `dep` names a
+  [[serdes.models/elidable-content-models]] entity. A missing transitive dependency always fails, even when `dep`
+  exists locally."
+  [dep e]
+  (let [{:keys [model id]} (last dep)
+        data               (ex-data e)]
+    (and (= ::not-found (:error data))
+         (= [model id] [(:model data) (:id data)])
+         (contains? serdes.models/elidable-content-models model))))
+
 (defn- load-deps!
-  "Given a list of `deps` (hierarchies), [[load-one]] them all.
-  Timeline references may be absent from the archive; other missing dependencies must already exist locally."
+  "Given a list of `deps` (hierarchies), [[load-one]] them all. A dependency absent from the archive must already exist
+  locally unless it is [[elidable-missing-dep?]]."
   [ctx deps]
   (if (empty? deps)
     ctx
@@ -65,16 +76,8 @@
               (try
                 (load-one! ctx dep)
                 (catch Exception e
-                  (cond
-                    ;; A missing dependency of an included entity must still fail, even if the entity exists locally.
-                    (and (= (:error (ex-data e)) ::not-found)
-                         (= (select-keys (last dep) [:model :id])
-                            (select-keys (ex-data e) [:model :id]))
-                         (or (= "Timeline" (:model (last dep)))
-                             (serdes/load-find-local dep)))
+                  (if (elidable-missing-dep? dep e)
                     ctx
-
-                    :else
                     (throw e)))))]
       (reduce loader ctx deps))))
 

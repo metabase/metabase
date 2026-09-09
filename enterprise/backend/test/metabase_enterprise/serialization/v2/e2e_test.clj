@@ -1088,10 +1088,11 @@
                            :model/TimelineEvent {deleted-event-id :id}
                            {:name "Swifts return" :timeline_id timeline-id :timestamp #t "2027-05-01T00:00:00Z"}
                            :model/Card {card-eid :entity_id}
-                           {:name "Sightings over time"
+                           {:name                   "Sightings over time"
                             :visualization_settings {:graph.show_values                    true
                                                      :timeline.selected_timeline_ids       [timeline-id]
-                                                     :timeline.excluded_timeline_event_ids [event-id deleted-event-id]}}]
+                                                     :timeline.excluded_timeline_event_ids [event-id
+                                                                                            deleted-event-id]}}]
               (-> (serdes/with-cache (into [] (extract/extract {:targets [["Timeline" timeline-eid]]})))
                   (storage/store! (storage.files/file-writer timeline-dir)))
               (-> (serdes/with-cache (into [] (extract/extract {:targets [["Card" card-eid]]})))
