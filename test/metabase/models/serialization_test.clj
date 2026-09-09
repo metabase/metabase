@@ -227,6 +227,18 @@
               :timeline.excluded_timeline_event_ids []}
              (select-keys (serdes/import-visualization-settings settings) (keys settings)))))))
 
+(deftest ^:parallel export-malformed-timeline-events-settings-test
+  (testing "values that are not numeric IDs are dropped on export instead of failing it"
+    (let [settings {:timeline.selected_timeline_ids       [1 "abc" nil]
+                    :timeline.excluded_timeline_event_ids [2 -1 "xyz"]}]
+      (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))]
+        (is (= {:timeline.selected_timeline_ids       ["Timeline___1"]
+                :timeline.excluded_timeline_event_ids ["TimelineEvent___2"]}
+               (select-keys (serdes/export-visualization-settings settings) (keys settings)))))
+      (is (= #{[{:model "Timeline" :id 1}]}
+             (serdes/visualization-settings-deps true (update settings :timeline.excluded_timeline_event_ids
+                                                              (partial remove pos-int?))))))))
+
 (deftest ^:parallel import-viz-settings-test
   (binding [serdes/*import-field-fk* (constantly 3)]
     (is (= {:column_settings

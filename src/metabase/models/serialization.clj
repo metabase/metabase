@@ -1708,7 +1708,7 @@
                [k updated-cols]))))))
 
 (defn- export-fks [ids model]
-  (u/keepv #(fk-elide (*export-fk* % model)) ids))
+  (u/keepv #(when (pos-int? %) (fk-elide (*export-fk* % model))) ids))
 
 (defn- export-timeline-events [settings]
   (-> settings
@@ -1863,8 +1863,8 @@
         timeline-ids (concat
                       (filter #(or (raw-ref-id? allow-int-ids? %) (entity-id? %)) selected-ids)
                       (if allow-int-ids?
-                        (mapcat #(t2/select-fn-set :timeline_id :model/TimelineEvent :id [:in %])
-                                (partition-all query-batch-size excluded-ids))
+                        (mapcat #(t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in %])
+                                (partition-all query-batch-size (filter pos-int? excluded-ids)))
                         (map first (filter timeline-event-ref? excluded-ids))))]
     (into #{} (map (fn [id] [{:model "Timeline" :id id}])) timeline-ids)))
 

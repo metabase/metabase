@@ -3344,4 +3344,6 @@
               entity-ids (map :entity_id after)]
           (is (= before (mapv #(dissoc % :entity_id) after)))
           (is (= 2 (count (set entity-ids))))
-          (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids)))))))
+          (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids))
+          (is (thrown? Exception (t2/insert! :timeline_event event))
+              "new events must carry an entity ID"))))))
