@@ -23,7 +23,10 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
-import { ChartSettingSegmentsEditor } from "./ChartSettingSegmentsEditor";
+import {
+  ChartSettingSegmentsEditor,
+  getColorPalette,
+} from "./ChartSettingSegmentsEditor";
 
 const createMockSegment = (opts?: Partial<GoalSegment>): GoalSegment => {
   return { label: "", min: 0, max: 100, color: "red", ...opts };
@@ -505,4 +508,11 @@ describe("ChartSettingSegmentsEditor", () => {
       expect.objectContaining({ min: 0, max: 1, color: expect.anything() }),
     ]);
   });
+});
+
+it("should list each palette color once", () => {
+  const palette = getColorPalette();
+
+  expect(palette.length).toBeGreaterThan(0);
+  expect(palette).toEqual([...new Set(palette)]);
 });

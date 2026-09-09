@@ -15,7 +15,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
@@ -169,7 +168,7 @@
      (try
        (notification/send-notification! notif :notification/sync? true)
        (track-notification-sent! notif triggered-from "success")
-       (security-center.db/update-advisory! (:id advisory) {:last_notified_at (mi/now)})
+       (security-center.db/record-advisory-notification! (:id advisory))
        (catch Exception e
          (track-notification-sent! notif triggered-from "failure")
          (throw e))))))

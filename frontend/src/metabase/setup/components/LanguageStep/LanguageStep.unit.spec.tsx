@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import type { Locale, SetupStep } from "metabase/redux/store";
 import {
   createMockLocale,
   createMockSettingsState,
   createMockSetupState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders, screen } from "__support__/ui";
+import type { Locale, SetupStep } from "metabase/redux/store";
 
 import { LanguageStep } from "./LanguageStep";
 

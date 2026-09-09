@@ -1,8 +1,7 @@
-import { getIn } from "icepick";
-
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import { getChartColor } from "../../lib/color-name";
 import type { ComputedVisualizationSettings } from "../../types";
 
 export const SERIES_SETTING_KEY = "series_settings";
@@ -15,10 +14,7 @@ export const getSeriesColors = (
 ) => {
   const assignments: Record<string, string> = {};
 
-  // Unjustified type cast. FIXME
-  const seriesSettings = getIn(settings, [SERIES_SETTING_KEY]) as
-    | Record<string, { color?: string; title?: string }>
-    | undefined;
+  const seriesSettings = settings[SERIES_SETTING_KEY];
 
   if (seriesSettings) {
     for (const [key, seriesObject] of Object.entries(seriesSettings)) {
@@ -27,10 +23,15 @@ export const getSeriesColors = (
       }
 
       if (seriesObject.color != null) {
-        assignments[key] = seriesObject.color;
+        const seriesColor = getChartColor(
+          seriesObject.color,
+          seriesObject.color_name,
+        );
+
+        assignments[key] = seriesColor;
 
         if (seriesObject.title != null) {
-          assignments[seriesObject.title] = seriesObject.color;
+          assignments[seriesObject.title] = seriesColor;
         }
       }
     }

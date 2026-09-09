@@ -14,7 +14,7 @@
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
-(derive :provider/custom-oidc :provider/oidc)
+(auth-identity/derive! :provider/custom-oidc :provider/oidc)
 
 ;;; -------------------------------------------------- Configuration --------------------------------------------------
 

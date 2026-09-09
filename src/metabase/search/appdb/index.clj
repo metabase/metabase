@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
@@ -114,25 +113,32 @@
 (defn- drop-table! [table]
   (boolean
    (when table
-     (search.db/execute! (sql.helpers/drop-table :if-exists (keyword (table-name table)))))))
+     (search.db/drop-search-index-table-if-exists! (keyword (table-name table))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
        (search.db/orphan-index-table-names)))
 
-(defn- delete-obsolete-tables! []
-  ;; Delete metadata around indexes that are no longer needed.
-  (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
-  ;; Drop any indexes that are no longer referenced.
-  (let [dropped (volatile! [])]
-    (doseq [table (orphan-indexes)]
-      (try
-        (search.db/execute! (sql.helpers/drop-table table))
-        (vswap! dropped conj table)
-        ;; Deletion could fail if it races with other instances
-        (catch Exception e
-          (log/warnf "Failed to drop stale index %s: %s" table (ex-message e)))))
-    (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped)))
+(defn delete-obsolete-tables!
+  "Drop index tables that are no longer needed. Best effort: failures are logged and never propagate. Does nothing
+  while mocking tables, where the pending table is tracked in an atom and has no metadata row to find it by."
+  []
+  (when-not *mocking-tables*
+    (try
+      ;; Delete metadata around indexes that are no longer needed.
+      (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
+      ;; Drop any indexes that are no longer referenced.
+      (let [dropped (volatile! [])]
+        (doseq [table (orphan-indexes)]
+          (try
+            (search.db/drop-search-index-table! table)
+            (vswap! dropped conj table)
+            ;; Deletion could fail if it races with other instances
+            (catch Exception e
+              (log/warnf "Failed to drop stale index %s: %s" table (ex-message e)))))
+        (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped))
+      (catch Exception e
+        (log/warnf "Failed to clean up obsolete indexes: %s" (ex-message e))))))
 
 (defn- ->db-type [t]
   (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))
@@ -178,12 +184,10 @@
   ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
   ;; even when already running in a transaction
   (t2/with-transaction [_ (mdb/app-db)]
-    (-> (sql.helpers/create-table table-name)
-        (sql.helpers/with-columns (specialization/table-schema base-schema))
-        search.db/execute!)
+    (search.db/create-search-index-table! table-name (specialization/table-schema base-schema))
     (let [table-name (name table-name)]
       (doseq [stmt (specialization/post-create-statements table-name table-name)]
-        (search.db/execute! stmt)))))
+        (search.db/run-search-index-statement! stmt)))))
 
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
@@ -420,19 +424,12 @@
   []
   (search.db/active-index-created-at (search.spec/index-version-hash) (i18n/site-locale-string)))
 
-(defn search-query
-  "Query fragment for all models corresponding to a query parameter `:search-term`."
-  ([search-term search-ctx]
-   (search-query search-term search-ctx [:model_id :model]))
-  ([search-term search-ctx select-items]
-   (when-let [index-table (active-table)]
-     (specialization/base-query index-table search-term search-ctx select-items))))
-
 (defn search
   "Use the index table to search for records."
   [search-term & [search-ctx]]
-  (map (juxt :model :name)
-       (search.db/rows (search-query search-term search-ctx [:model :name]))))
+  (when-let [index-table (active-table)]
+    (map (juxt :model :name)
+         (search.db/search-index-rows index-table search-term (:search-native-query search-ctx) [:model :name]))))
 
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."

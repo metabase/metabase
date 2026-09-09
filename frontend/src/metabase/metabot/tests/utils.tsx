@@ -9,6 +9,7 @@ import {
   setupListMetabotConversationsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   type RenderWithProvidersOptions,
   act,
@@ -27,7 +28,6 @@ import {
   mockStreamedEndpoint,
 } from "metabase/api/ai-streaming/test-utils";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -52,6 +52,7 @@ import {
   metabotReducer,
   setVisible,
 } from "../state";
+import { sendAgentRequest } from "../state/actions";
 import {
   createAgentState,
   createConversationForAgent,
@@ -77,6 +78,22 @@ export const convoForAgent = (
   store: MetabotStoreLike,
   agentId: MetabotAgentId = "omnibot",
 ) => convoIn(store.getState().metabot, conversationIdForAgent(store, agentId));
+
+// starts turns without making an API request
+export const startRequestlessAgentTurn = (
+  store: { dispatch: (action: unknown) => unknown },
+  conversationId: string,
+  assistantMessageId?: string,
+) =>
+  store.dispatch({
+    type: sendAgentRequest.pending.type,
+    meta: {
+      arg: {
+        conversation_id: conversationId,
+        assistant_message_id: assistantMessageId,
+      },
+    },
+  });
 
 // make ids easer to address than production's random uuids
 export const testConversationId = (agentId: MetabotAgentId) =>
@@ -255,6 +272,14 @@ export const assertConversation = async (
     });
   });
 };
+
+export const expectContextUsage = (percent: number) =>
+  waitFor(() =>
+    expect(screen.getByTestId("metabot-context-usage-ring")).toHaveAttribute(
+      "aria-label",
+      `${percent}% of the context window used`,
+    ),
+  );
 
 export const lastReqBody = async (
   agentSpy: ReturnType<typeof mockAgentEndpoint>,

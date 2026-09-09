@@ -62,7 +62,7 @@ Your GeoJSON file should:
 - Be less than 5 MB in size.
 - Contain polygon features defining regions (not just points or coordinates)
 - Use geographic coordinates (latitude and longitude) to define region polygons. Metabase doesn't support projected coordinates, so you'll need to convert projected coordinates to geographic coordinates.
-- Accessible by a public URL. Currently, you can't upload a GeoJSON to Metabase.
+- Be accessible by a public URL. Currently, you can't upload a GeoJSON to Metabase.
 
 ### Add a custom map
 

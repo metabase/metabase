@@ -51,6 +51,8 @@ export interface PieRow {
   name: string;
   originalName: string;
   color: string;
+  /** Palette color the slice was given, so it can follow the active palette */
+  color_name?: string;
   defaultColor: boolean;
   enabled: boolean;
   hidden: boolean;
@@ -62,6 +64,8 @@ export interface TreemapRow {
   name: string;
   originalName: string;
   color: string;
+  /** Palette color the group was given, so it can follow the active palette */
+  color_name?: string;
   defaultColor: boolean;
   enabled: boolean;
   hidden: boolean;
