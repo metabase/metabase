@@ -42,6 +42,28 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
+(defn- categories-id-target
+  "The `:target` a `:param_fields` entry for `venues.category_id` carries: the
+  Categories primary key in public columns, with the `:name_field` that labels its
+  values. A public parameter widget cannot remap an FK's values without it."
+  []
+  {:id                 (mt/id :categories :id)
+   :table_id           (mt/id :categories)
+   :display_name       "ID"
+   :base_type          "type/BigInteger"
+   :name               "ID"
+   :semantic_type      "type/PK"
+   :has_field_values   "none"
+   :fk_target_field_id nil
+   :name_field         {:id                 (mt/id :categories :name)
+                        :table_id           (mt/id :categories)
+                        :display_name       "Name"
+                        :base_type          "type/Text"
+                        :name               "NAME"
+                        :semantic_type      "type/Name"
+                        :has_field_values   "list"
+                        :fk_target_field_id nil}})
+
 (defn- shared-obj []
   {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
@@ -1515,8 +1537,22 @@
                                 :semantic_type      "type/FK"
                                 :has_field_values   "none"
                                 :fk_target_field_id (mt/id :categories :id)
+                                :target             (categories-id-target)
                                 :dimensions         []}]}
                  (:param_fields (client/client :get 200 (str "public/card/" (:public_uuid card)))))))))))
+
+(deftest dashboard-param-fields-anonymous-fk-target-test
+  (testing "GET /api/public/dashboard/:uuid :param_fields carry an FK's target without a session"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-sharing-enabled-and-temp-dashcard-referencing! :orders :user_id [dashboard]
+        (testing "the target labels the FK's values, so a public widget cannot remap them without it"
+          (is (=? {:id       (mt/id :people :id)
+                   :name_field {:id (mt/id :people :name)}}
+                  (-> (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard)))
+                      :param_fields
+                      vals
+                      ffirst
+                      :target))))))))
 
 (deftest dashboard-param-fields-public-columns-test
   (testing "GET /api/public/dashboard/:uuid :param_fields only carry the public Field columns"
@@ -1541,6 +1577,7 @@
                                    :semantic_type      "type/FK"
                                    :has_field_values   "none"
                                    :fk_target_field_id (mt/id :categories :id)
+                                   :target             (categories-id-target)
                                    :dimensions         []}]}
                  (:param_fields (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard)))))))))))
 
@@ -1571,7 +1608,8 @@
                              :name               "CATEGORY_ID"
                              :semantic_type      "type/FK"
                              :has_field_values   "none"
-                             :fk_target_field_id (mt/id :categories :id)}
+                             :fk_target_field_id (mt/id :categories :id)
+                             :target             (categories-id-target)}
             categories-name {:id                 (mt/id :categories :name)
                              :table_id           (mt/id :categories)
                              :display_name       "Name"

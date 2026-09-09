@@ -1764,7 +1764,8 @@
       (let [eid       #(t2/select-one-fn :entity_id :model/Card :id %)
             extracted (into #{}
                             (map :entity_id)
-                            (serdes/extract-all "Card" {:where [:in :id [plain-card doc-card summary-card]]}))]
+                            (serdes/extract-all "Card" {:filter-column :id
+                                                        :filter-ids    [plain-card doc-card summary-card]}))]
         (is (contains? extracted (eid plain-card))
             "an ordinary card is still exported")
         (is (contains? extracted (eid doc-card))
