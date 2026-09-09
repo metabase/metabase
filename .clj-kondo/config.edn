@@ -223,7 +223,9 @@
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
-     next.jdbc/execute!}}
+     next.jdbc/execute!
+     ;; pure validator: parses a keyword and throws on a bad one, touches no state
+     metabase.mcp.v2.tools.question/check-semantic-type!}}
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning
