@@ -59,7 +59,7 @@ export const getAdminPaths: () => AdminPath[] = () => {
   return items;
 };
 
-const paths = createReducer(getAdminPaths(), (builder) => {
+const paths = createReducer(() => getAdminPaths(), (builder) => {
   builder.addMatcher(
     currentUserApi.endpoints.getCurrentUser.matchFulfilled,
     (state, { payload: user }) => {
