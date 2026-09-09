@@ -52,14 +52,20 @@ export const useMetadataProvider = (
  * function instead, memoised on the `Metadata` object so that `useSelector`
  * sees a stable value and only re-renders when the metadata really changes.
  */
-const providerFactories = new WeakMap<
-  Lib.Metadata,
-  (databaseId: DatabaseId | null) => Lib.MetadataProvider
->();
+/**
+ * Builds the provider for one database. A caller that needs providers for
+ * several databases, or that only learns the database at call time, takes this
+ * rather than a provider.
+ */
+export type MetadataProviderFactory = (
+  databaseId: DatabaseId | null,
+) => Lib.MetadataProvider;
+
+const providerFactories = new WeakMap<Lib.Metadata, MetadataProviderFactory>();
 
 export const selectMetadataProviderFactory = (
   state: State,
-): ((databaseId: DatabaseId | null) => Lib.MetadataProvider) => {
+): MetadataProviderFactory => {
   const metadata = getMetadata(state);
   const cached = providerFactories.get(metadata);
 
@@ -67,7 +73,7 @@ export const selectMetadataProviderFactory = (
     return cached;
   }
 
-  const factory = (databaseId: DatabaseId | null) =>
+  const factory: MetadataProviderFactory = (databaseId) =>
     Lib.metadataProvider(databaseId, metadata);
   providerFactories.set(metadata, factory);
 
@@ -77,9 +83,8 @@ export const selectMetadataProviderFactory = (
 /**
  * `selectMetadataProviderFactory` for components.
  */
-export const useMetadataProviderFactory = (): ((
-  databaseId: DatabaseId | null,
-) => Lib.MetadataProvider) => useSelector(selectMetadataProviderFactory);
+export const useMetadataProviderFactory = (): MetadataProviderFactory =>
+  useSelector(selectMetadataProviderFactory);
 
 /**
  * Metric providers span databases, so they take no database id.
