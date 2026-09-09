@@ -15,18 +15,29 @@ on:
     # Master only: a release forms a non-linear line whose times cannot be
     # compared against the commit before it.
     branches: [master]
+  # A `workflow_run` workflow always runs the copy on the default branch, so a
+  # change here cannot be tried out before it merges. The call lets a PR run
+  # this branch's copy against the uberjar CI already built. A called run
+  # measures and reports; it does not write rows to Stats.
+  workflow_call:
+    inputs:
+      commit:
+        description: "Commit SHA to measure."
+        type: string
+        required: false
+        default: ""
 
 concurrency:
-  group: bundle-load-stats-${{ github.event.workflow_run.head_sha }}
+  group: bundle-load-stats-${{ inputs.commit || github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:
   bundle-load-stats:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.repository == 'metabase/metabase' }}
+    if: ${{ github.repository == 'metabase/metabase' && (inputs.commit != '' || github.event.workflow_run.conclusion == 'success') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 25
     env:
-      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      HEAD_SHA: ${{ inputs.commit || github.event.workflow_run.head_sha }}
       MB_JETTY_PORT: "4000"
       SITE: http://localhost:4000
       # Loads per condition. The first is the cold reading and the rest give the
@@ -36,7 +47,7 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ env.HEAD_SHA }}
       - uses: ./.github/actions/prepare-node-bun
       - name: Prepare JDK 25
         uses: actions/setup-java@v5.2.0
@@ -51,7 +62,7 @@ jobs:
       - name: Download EE uberjar
         uses: ./.github/actions/fetch-artifact
         with:
-          commit: ${{ github.event.workflow_run.head_sha }}
+          commit: ${{ env.HEAD_SHA }}
           edition: ee
           extract-path: temp/uberjar
       - name: Start Metabase
@@ -85,6 +96,7 @@ jobs:
         if: failure()
         run: tail -100 artifacts/metabase.log || true
       - name: Import load times into Stats
+        if: ${{ inputs.commit == '' }}
         env:
           ROWS: artifacts/load-times.json
           # Passed via env (not interpolated into the shell) so the commit
