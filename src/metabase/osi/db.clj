@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.osi.schema :as osi.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -38,7 +39,7 @@
   number updated."
   [entity-type      :- :string
    entity-local-id  :- ms/PositiveInt
-   changes          :- :map]
+   changes          :- ::osi.schema/osi-ai-context.update]
   (t2/update! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id changes))
 
 (mu/defn upsert-ai-context!
@@ -46,7 +47,7 @@
   with `ai-context`, returning its `[entity_type entity_local_id]` compound key."
   [entity-type      :- :string
    entity-local-id  :- ms/PositiveInt
-   ai-context       :- :map]
+   ai-context       :- ::osi.schema/osi-ai-context.ai-context]
   (app-db/update-or-insert! :model/OsiAiContext
                             {:entity_type     entity-type
                              :entity_local_id entity-local-id}

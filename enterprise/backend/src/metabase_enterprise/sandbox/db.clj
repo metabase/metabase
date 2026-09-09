@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
+   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -128,7 +129,7 @@
 (mu/defn set-user-login-attributes!
   "Set the login attributes of the User with `user-id`, returning the number of rows updated."
   [user-id          :- ::lib.schema.id/user
-   login-attributes :- [:maybe :map]]
+   login-attributes :- [:maybe users.schema/LoginAttributes]]
   (t2/update! :model/User user-id {:login_attributes login-attributes}))
 
 (mu/defn user-attributes-reducible

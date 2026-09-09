@@ -14,7 +14,7 @@
    creator-id :- ::lib.schema.id/user
    segment-name :- :string
    description :- [:maybe :string]
-   definition :- :map]
+   definition :- ::segments.schema/segment.definition]
   (t2/insert-returning-instance! :model/Segment
                                  :table_id    table-id
                                  :creator_id  creator-id

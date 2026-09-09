@@ -4,6 +4,7 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -216,7 +217,7 @@
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- :map]
+   changes      :- ::dashboards.schema/dashboard.update]
   (t2/update! :model/Dashboard dashboard-id changes))
 
 (mu/defn dashcards-for-card
@@ -226,13 +227,13 @@
 
 (mu/defn insert-dashcard!
   "Insert `dashcard`, returning the number inserted."
-  [dashcard :- :map]
+  [dashcard :- ::dashboards.schema/dashboard-card.update]
   (t2/insert! :model/DashboardCard dashcard))
 
 (mu/defn update-dashcard!
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
   [dashcard-id :- ::lib.schema.id/dashcard
-   changes     :- :map]
+   changes     :- ::dashboards.schema/dashboard-card.update]
   (t2/update! :model/DashboardCard :id dashcard-id changes))
 
 (mu/defn delete-dashcards-for-card-on-dashboard!
@@ -363,7 +364,7 @@
 
 (mu/defn insert-parameter-card!
   "Insert `parameter-card`, returning the number inserted."
-  [parameter-card :- :map]
+  [parameter-card :- ::queries.schema/parameter-card.update]
   (t2/insert! :model/ParameterCard parameter-card))
 
 (mu/defn delete-parameter-cards-for-card!

@@ -153,7 +153,7 @@
   "Mark the PersistedInfo with `id` as refreshing `definition` (with `query-hash`), starting now, returning the number
   updated."
   [id         :- ms/PositiveInt
-   definition :- [:maybe :map]
+   definition :- [:maybe ::model-persistence.schema/persisted-info.definition]
    query-hash :- [:maybe :string]]
   (t2/update! :model/PersistedInfo id {:definition      definition
                                        :query_hash      query-hash

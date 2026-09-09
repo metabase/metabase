@@ -30,13 +30,13 @@
 
 (mu/defn set-sample-database-details!
   "Set the `details` of the sample Database, returning the ids of the updated rows."
-  [details :- :map]
+  [details :- ::warehouses.schema/database.details]
   (t2/update-returning-pks! :model/Database :is_sample true {:details details}))
 
 (mu/defn insert-sample-database!
   "Insert the sample Database and return the inserted instance."
   [database-name :- :string
-   details       :- :map
+   details       :- ::warehouses.schema/database.details
    engine        :- :keyword]
   (t2/insert-returning-instance! :model/Database
                                  :name      database-name

@@ -26,7 +26,7 @@
 (mu/defn set-table-index-structured!
   "Set the `structured` definition of the TableIndex with `id`."
   [id         :- ms/PositiveInt
-   structured :- [:maybe :map]]
+   structured :- [:maybe ::indexes.schema/table-index.structured]]
   (t2/update! :model/TableIndex id {:structured structured}))
 
 (mu/defn set-table-index-status!

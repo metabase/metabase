@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn router-database-id
@@ -35,7 +36,7 @@
 (mu/defn set-database-details!
   "Set the connection details of the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
-   details     :- :map]
+   details     :- ::warehouses.schema/database.details]
   (t2/update! :model/Database database-id {:details details}))
 
 (mu/defn set-database-provider-name!

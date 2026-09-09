@@ -4,6 +4,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -57,7 +58,7 @@
 (mu/defn set-auth-identity-credentials!
   "Set the `credentials` of the AuthIdentity with `auth-identity-id`."
   [auth-identity-id :- ms/PositiveInt
-   credentials      :- [:maybe :map]]
+   credentials      :- [:maybe ::auth-identity.schema/auth-identity.credentials]]
   (t2/update! :model/AuthIdentity auth-identity-id {:credentials credentials}))
 
 (mu/defn auth-identity-provider

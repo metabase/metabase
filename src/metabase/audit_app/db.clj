@@ -2,6 +2,7 @@
   "Application database queries for the audit app module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.audit-app.schema :as audit-app.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -40,7 +41,7 @@
 (mu/defn insert-audit-log!
   "Insert an AuditLog entry."
   [topic      :- :keyword
-   details    :- [:maybe :map]
+   details    :- [:maybe ::audit-app.schema/audit-log.details]
    model-name :- [:maybe :string]
    model-id   :- [:maybe ms/PositiveInt]
    user-id    :- [:maybe ::lib.schema.id/user]]

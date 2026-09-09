@@ -435,7 +435,7 @@
 (mu/defn finish-active-run!
   "Apply `changes` to the TransformRun with `run-id` if it is still active, returning the number of rows updated."
   [run-id  :- ms/PositiveInt
-   changes :- :map]
+   changes :- ::transforms.schema/transform-run.update]
   (t2/update! :model/TransformRun :id run-id :is_active true changes))
 
 (mu/defn cancel-active-runs!
@@ -505,14 +505,14 @@
   "Apply `changes` to the TransformJobRun with `run-id` if it is still active, returning the number of rows
   updated."
   [run-id  :- ms/PositiveInt
-   changes :- :map]
+   changes :- ::transforms.schema/transform-job-run.update]
   (t2/update! :model/TransformJobRun :id run-id :is_active true changes))
 
 (mu/defn finish-active-dag-run!
   "Apply `changes` to the TransformDagRun with `run-id` if it is still active, returning the number of rows
   updated."
   [run-id  :- ms/PositiveInt
-   changes :- :map]
+   changes :- ::transforms.schema/transform-dag-run.update]
   (t2/update! :model/TransformDagRun :id run-id :is_active true changes))
 
 (defn- job-run-where

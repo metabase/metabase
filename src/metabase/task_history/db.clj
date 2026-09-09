@@ -191,7 +191,7 @@
 (mu/defn update-task-history!
   "Apply `changes` to the TaskHistory row with `id`."
   [id      :- ms/PositiveInt
-   changes :- :map]
+   changes :- ::task-history.schema/task-history.update]
   (t2/update! :model/TaskHistory id changes))
 
 (mu/defn insert-task-history!

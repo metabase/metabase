@@ -13,7 +13,7 @@
   [creator-id   :- ::lib.schema.id/user
    measure-name :- :string
    description  :- [:maybe :string]
-   definition   :- [:maybe :map]]
+   definition   :- [:maybe ::measures.schema/measure.definition]]
   (t2/insert-returning-instance! :model/Measure
                                  :creator_id  creator-id
                                  :name        measure-name
