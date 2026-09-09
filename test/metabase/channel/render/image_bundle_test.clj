@@ -12,11 +12,18 @@
   (testing "Filename prefixes generated for attachments for EE with whitelabel feature flag uses the application name as the prefix"
     (mt/when-ee-evailable
      (mt/with-premium-features #{:whitelabel}
-       (mt/with-temporary-setting-values [application-name "Acme Analytics"]
+       (mt/with-temporary-setting-values [application-name "Zorptech Blimwix"]
          (let [bundle (image-bundle/make-image-bundle :attachment (byte-array [1 2 3]))
                filename (.getName (io/as-file (:image-url bundle)))]
-           (is (str/starts-with? filename "acme_analytics_channel_image_")))))))
+           (is (str/starts-with? filename "zorptech_blimwix_channel_image_")))))))
   (testing "Filename prefixes generated for attachments for OSS or EE-without-whitelabel feature flag defaults to Metabase as the prefix"
     (let [bundle (image-bundle/make-image-bundle :attachment (byte-array [1 2 3]))
           filename (.getName (io/as-file (:image-url bundle)))]
-      (is (str/starts-with? filename "metabase_channel_image_")))))
+      (is (str/starts-with? filename "metabase_channel_image_"))))
+  (testing "Special characters in the application name are slugified into underscores rather than leaking into the filename"
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:whitelabel}
+       (mt/with-temporary-setting-values [application-name "Zog & Blerp's!"]
+         (let [bundle (image-bundle/make-image-bundle :attachment (byte-array [1 2 3]))
+               filename (.getName (io/as-file (:image-url bundle)))]
+           (is (str/starts-with? filename "zog___blerp_s__channel_image_"))))))))
