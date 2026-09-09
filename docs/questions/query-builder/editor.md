@@ -61,7 +61,7 @@ Custom columns are helpful when you need to create a new column based on a calcu
 
 You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations.
 
-You can add custom columns after the [Pick data](#pick-data) step or after [Summarize](#summarize-and-group-data) step.
+You can add custom columns after the [Pick data](#pick-data) step or after the [Summarize](#summarize-and-group-data) step.
 
 See [Custom expressions](../query-builder/expressions.md).
 
@@ -134,4 +134,4 @@ The drill-through menu will present different options depending on what you clic
 
 ### Column heading drill-through
 
-When viewing a [table](../visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+When viewing a [table](../visualizations/table.md), clicking on the heading of a column gives you different options, depending on the column's data type. See [table](../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).

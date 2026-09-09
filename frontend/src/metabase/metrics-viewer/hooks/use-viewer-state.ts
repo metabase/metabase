@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { measureApi, metricApi, segmentApi } from "metabase/api";
-import { getMetadata } from "metabase/metadata-store";
+import { selectMetricMetadataProvider } from "metabase/metadata-store";
 import { useDispatch, useStore } from "metabase/redux";
 import { useLocation } from "metabase/router";
 import { getObjectEntries } from "metabase/utils/objects";
@@ -58,7 +58,7 @@ async function loadMetricDefinition(
   if (!result.data) {
     throw new Error(`Failed to load metric ${metricId}`);
   }
-  const provider = LibMetric.metadataProvider(getMetadata(getState()));
+  const provider = selectMetricMetadataProvider(getState());
   const meta = LibMetric.metricMetadata(provider, metricId);
   if (!meta) {
     throw new Error(`Metric ${metricId} not found in metadata`);
@@ -78,7 +78,7 @@ async function loadMeasureDefinition(
   if (!result.data) {
     throw new Error(`Failed to load measure ${measureId}`);
   }
-  const provider = LibMetric.metadataProvider(getMetadata(getState()));
+  const provider = selectMetricMetadataProvider(getState());
   const meta = LibMetric.measureMetadata(provider, measureId);
   if (!meta) {
     throw new Error(`Measure ${measureId} not found in metadata`);

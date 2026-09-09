@@ -1,5 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
-import type { QueryTransformSource, TemplateTags } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import type {
+  DatabaseId,
+  QueryTransformSource,
+  TemplateTags,
+} from "metabase-types/api";
 import {
   createMockNativeDatasetQuery,
   createMockNativeQuery,
@@ -16,6 +21,8 @@ import {
 import { isMissingIncrementalTableTag } from "./utils";
 
 const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
+const getMetadataProvider = (databaseId: DatabaseId | null) =>
+  Lib.metadataProvider(databaseId, metadata);
 
 const mbqlSource: QueryTransformSource = {
   type: "query",
@@ -43,7 +50,11 @@ describe("isMissingIncrementalTableTag", () => {
     });
 
     expect(
-      isMissingIncrementalTableTag(transform, createNativeSource(), metadata),
+      isMissingIncrementalTableTag(
+        transform,
+        createNativeSource(),
+        getMetadataProvider,
+      ),
     ).toBe(false);
   });
 
@@ -53,9 +64,9 @@ describe("isMissingIncrementalTableTag", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    expect(isMissingIncrementalTableTag(transform, mbqlSource, metadata)).toBe(
-      false,
-    );
+    expect(
+      isMissingIncrementalTableTag(transform, mbqlSource, getMetadataProvider),
+    ).toBe(false);
   });
 
   it("returns true when the edited native source has a non-table variable", () => {
@@ -72,9 +83,9 @@ describe("isMissingIncrementalTableTag", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    expect(isMissingIncrementalTableTag(transform, source, metadata)).toBe(
-      true,
-    );
+    expect(
+      isMissingIncrementalTableTag(transform, source, getMetadataProvider),
+    ).toBe(true);
   });
 
   it("returns true when the edited native source has no variables", () => {
@@ -85,9 +96,9 @@ describe("isMissingIncrementalTableTag", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    expect(isMissingIncrementalTableTag(transform, source, metadata)).toBe(
-      true,
-    );
+    expect(
+      isMissingIncrementalTableTag(transform, source, getMetadataProvider),
+    ).toBe(true);
   });
 
   it("returns false when the edited native source still has a table variable", () => {
@@ -105,8 +116,8 @@ describe("isMissingIncrementalTableTag", () => {
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
-    expect(isMissingIncrementalTableTag(transform, source, metadata)).toBe(
-      false,
-    );
+    expect(
+      isMissingIncrementalTableTag(transform, source, getMetadataProvider),
+    ).toBe(false);
   });
 });
