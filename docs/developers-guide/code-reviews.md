@@ -38,7 +38,7 @@ If someone slaps a strong :-1: on your PR, be especially patient. Dig into why t
 
 - Every PR of significant complexity needs to be :+1:’d by at least one other engineer on the team (or @salsakran) to merge
 - Add people you think should review your PR to the PR’s assignees. The reviewer can remove themselves once they have reviewed it, or decided they aren’t an appropriate reviewer
-- Code that impacts other engineer’s work should be reviewed by those engineers
+- Code that impacts other engineers’ work should be reviewed by those engineers
 - A :+1: is the default “I’m ok with this"
 - A :+0: (I made that up) is “I’m not thrilled with this, but other people saying “+1” means it can be merged
 - A :-1: is a hard veto. This should be used sparingly in run of the mill PRs, and only for things that are missing tests, flagrant violations of a style guide, or break assumptions another part of the code base depends on.

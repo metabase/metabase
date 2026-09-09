@@ -71,7 +71,7 @@ To view a model's details, visit the model and click on the **info** button in t
 
 ## Add metadata to columns in a model
 
-Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able explore the results with the query builder, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its query magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
+Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to explore the results with the query builder, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its query magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
 
 If you only set one kind of metadata, set the **Column type** to let Metabase know what kind of data it's working with.
 
@@ -107,7 +107,7 @@ You can specify whether a column should appear in the table view, or just in a d
 
 ### Surface individual records in search by matching against this column
 
-For string fields in records with integer entity keys, Metabase will give you the option make the values in that field show up when people search your Metabase. Essentially, Metabase will index these values and make them available to Metabase's search engine. This option is handy when people often want to jump straight to an individual record in your model.
+For string fields in records with integer entity keys, Metabase will give you the option to make the values in that field show up when people search your Metabase. Essentially, Metabase will index these values and make them available to Metabase's search engine. This option is handy when people often want to jump straight to an individual record in your model.
 
 For example, if you have a model with accounts, you could turn on this option for a column listing the account's name or email so that people can quickly search for specific accounts in the model from anywhere in your Metabase. When people click on a record in the search results, Metabase will jump straight to the model and the object detail for that record.
 
@@ -119,7 +119,7 @@ There are some limitations to this indexing:
 
 ## Edit a model's query
 
-You can edit a model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
+You can edit a model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're done editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
 
 ### Checking for breaking changes
 
@@ -194,7 +194,7 @@ FROM model;
 {% endraw %}
 ```
 
-Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models (for example, you could type in `{% raw %}{{#customer}}{% endraw %}` to search models, questions, and tables with the word "customer" in the title.
+Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models (for example, you could type in `{% raw %}{{#customer}}{% endraw %}` to search models, questions, and tables with the word "customer" in the title).
 
 You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click on the **book** icon.
 

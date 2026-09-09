@@ -1,20 +1,24 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
-import type { State } from "metabase/redux/store";
+import type { EntitiesState, State } from "metabase/redux/store";
 import { getSettings } from "metabase/settings";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
-import Field from "metabase-lib/v1/metadata/Field";
+import Field, {
+  type HydratedFieldDimension,
+} from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import Table from "metabase-lib/v1/metadata/Table";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import {
   getFieldValues,
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Table as ApiTable,
   Card,
@@ -35,6 +39,13 @@ import type {
 
 import { type FieldEntity, FieldSchema } from "./schema";
 
+/**
+ * The slice these selectors read. Naming it here rather than taking the global
+ * `State` keeps the shape this module depends on explicit, and lets a caller
+ * that holds only the mirror use them.
+ */
+type MetadataState = { entities: EntitiesState };
+
 type TableSelectorOpts = {
   includeHiddenTables?: boolean;
 };
@@ -45,13 +56,17 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getNormalizedDatabases = (state: State) => state.entities.databases;
-const getNormalizedSchemas = (state: State) => state.entities.schemas;
+const getNormalizedDatabases = (state: MetadataState) =>
+  state.entities.databases;
+const getNormalizedSchemas = (state: MetadataState) => state.entities.schemas;
 
-const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
+const getNormalizedTablesUnfiltered = (state: MetadataState) =>
+  state.entities.tables;
 
-const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
-  !!props?.includeHiddenTables;
+const getIncludeHiddenTables = (
+  _state: MetadataState,
+  props?: TableSelectorOpts,
+) => !!props?.includeHiddenTables;
 
 const getNormalizedTables = createSelector(
   [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
@@ -65,9 +80,12 @@ const getNormalizedTables = createSelector(
         ),
 );
 
-const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
-const getIncludeSensitiveFields = (_state: State, props?: FieldSelectorOpts) =>
-  !!props?.includeSensitiveFields;
+const getNormalizedFieldsUnfiltered = (state: MetadataState) =>
+  state.entities.fields;
+const getIncludeSensitiveFields = (
+  _state: MetadataState,
+  props?: FieldSelectorOpts,
+) => !!props?.includeSensitiveFields;
 
 const getNormalizedFields = createSelector(
   [
@@ -92,20 +110,25 @@ const getNormalizedFields = createSelector(
     ),
 );
 
-const getNormalizedSegments = (state: State) => state.entities.segments;
-const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
-const getNormalizedMetrics = (state: State) => state.entities.metrics ?? {};
-const getNormalizedQuestions = (state: State) => state.entities.questions;
-const getNormalizedSnippets = (state: State) => state.entities.snippets;
+const getNormalizedSegments = (state: MetadataState) => state.entities.segments;
+const getNormalizedMeasures = (state: MetadataState) =>
+  state.entities.measures ?? {};
+const getNormalizedMetrics = (state: MetadataState) =>
+  state.entities.metrics ?? {};
+const getNormalizedQuestions = (state: MetadataState) =>
+  state.entities.questions;
+const getNormalizedSnippets = (state: MetadataState) => state.entities.snippets;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
 
-export const getMetadata: (
+// Takes the whole `State`, not `MetadataState`: it composes `getSettings`,
+// which reads settings out of the RTK Query cache. It narrows when that does.
+const getMetadataForOpts: (
   state: State,
-  props?: MetadataSelectorOpts,
+  props: MetadataSelectorOpts,
 ) => Metadata = createSelector(
   [
     getNormalizedDatabases,
@@ -198,12 +221,26 @@ export const getMetadata: (
   },
 );
 
-export const getMetadataUnfiltered = (state: State) => {
-  return getMetadata(state, {
-    includeHiddenTables: true,
-    includeSensitiveFields: true,
-  });
+const NO_OPTS: MetadataSelectorOpts = {};
+
+/**
+ * Reselect keys its cache on the argument list, so `getMetadata(state)` and
+ * `getMetadata(state, undefined)` would build two `Metadata` objects over the
+ * same records, and with them two sets of metabase-lib caches. Callers use both
+ * shapes, so the options are canonicalised here.
+ */
+export const getMetadata = (
+  state: State,
+  props: MetadataSelectorOpts = NO_OPTS,
+): Metadata => getMetadataForOpts(state, props);
+
+const UNFILTERED_OPTS: MetadataSelectorOpts = {
+  includeHiddenTables: true,
+  includeSensitiveFields: true,
 };
+
+export const getMetadataUnfiltered = (state: State) =>
+  getMetadata(state, UNFILTERED_OPTS);
 
 export const getMetadataWithHiddenTables = (
   state: State,
@@ -366,6 +403,7 @@ function hydrateField(field: Field, metadata: Metadata) {
   field.table = hydrateFieldTable(field, metadata);
   field.target = hydrateFieldTarget(field, metadata);
   field.name_field = hydrateNameField(field, metadata);
+  field.dimensions = hydrateFieldDimensions(field, metadata);
   field.values = getFieldValues(field);
   field.remapping = new Map(getRemappings(field));
 }
@@ -413,6 +451,26 @@ function hydrateFieldTarget(
   return metadata.field(field.fk_target_field_id) ?? undefined;
 }
 
+/**
+ * Normalizing a field flattens each dimension's `human_readable_field` to an
+ * id. The API nests the field itself, so it is put back here and a store field
+ * answers a remapping question the same way an API field does.
+ */
+function hydrateFieldDimensions(
+  field: Field,
+  metadata: Metadata,
+): HydratedFieldDimension[] {
+  const dimensions = field.getPlainObject().dimensions ?? [];
+
+  return dimensions.map((dimension) => ({
+    ...dimension,
+    human_readable_field:
+      dimension.human_readable_field_id != null
+        ? (metadata.field(dimension.human_readable_field_id) ?? undefined)
+        : undefined,
+  }));
+}
+
 function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
   const nameFieldId = field.getPlainObject().name_field;
   if (nameFieldId != null) {
@@ -449,8 +507,47 @@ function hydrateMeasureTable(
  * another, so a component cannot answer this from its own result.
  */
 export function getFieldRemappings(
-  state: State,
+  state: MetadataState,
   fieldId: FieldId,
 ): FieldValue[] {
-  return state.entities.fields[fieldId]?.remappings ?? [];
+  return state.entities.fields[fieldId]?.remappings ?? NO_REMAPPINGS;
+}
+
+// a shared empty array, so a field with no remappings keeps its identity
+// between calls and a `useSelector` on it does not re-render
+const NO_REMAPPINGS: FieldValue[] = [];
+
+/**
+ * The label a field carries for `value`.
+ *
+ * It merges the values a values endpoint fetched with the remappings the
+ * client accumulated as other widgets fetched values. The store holds both, so
+ * a field a caller holds cannot answer this on its own.
+ */
+export function getRemappedFieldValue(
+  state: State,
+  field: ParameterField,
+  value: unknown,
+): string | undefined {
+  const fieldId = typeof field.id === "number" ? field.id : null;
+  const storeField =
+    fieldId == null ? undefined : state.entities.fields[fieldId];
+  const remappings =
+    fieldId == null ? NO_REMAPPINGS : getFieldRemappings(state, fieldId);
+
+  // parameter values arrive from the URL as strings
+  const key =
+    isNumeric(field) && typeof value !== "number"
+      ? parseFloat(String(value))
+      : value;
+
+  // a later entry wins, so the accumulated remappings override the field's
+  // own values
+  const labels = new Map<unknown, string | undefined>(
+    // the store's copy carries the values a values endpoint fetched, which the
+    // field a caller holds does not
+    getRemappings({ ...field, values: storeField?.values, remappings }),
+  );
+
+  return labels.get(key);
 }

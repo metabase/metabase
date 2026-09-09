@@ -35,6 +35,15 @@
                                    :post 200 "metabot/document/generate-content"
                                    {:instructions "Show me sales data"}))))))
 
+(deftest generate-content-permission-denied-body-test
+  (testing "the 403 body is the plain denial sentence, not a map carrying a stack trace"
+    (binding [scope/*current-user-metabot-permissions* {:permission/metabot             :yes
+                                                        :permission/metabot-other-tools :no}]
+      (is (= "You do not have permission to use the document-generate-content assistant."
+             (mt/user-http-request :rasta
+                                   :post 403 "metabot/document/generate-content"
+                                   {:instructions "Show me sales data"}))))))
+
 (deftest generate-content-free-limit-body-test
   (testing "the 402 body is the message and error code alone, not a map carrying a stack trace"
     (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)]

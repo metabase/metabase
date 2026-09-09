@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { QueryDefinition } from "metabase/querying/segments/components/QueryDefinition";
+import { QueryDefinition } from "metabase/segments";
 import { Icon, Transition, type TransitionProps } from "metabase/ui";
 import type { DatasetQuery, TableId } from "metabase-types/api";
 

@@ -141,6 +141,8 @@ export type LineSize = "S" | "M" | "L";
 export type SeriesSettings = {
   title?: string;
   color?: string;
+  /** Palette color the series was given, so it can follow the active palette */
+  color_name?: string;
   show_series_values?: boolean;
   display?: VisualizationDisplay;
   axis?: string;

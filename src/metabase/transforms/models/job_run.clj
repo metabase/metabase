@@ -15,6 +15,16 @@
 (derive :model/TransformJobRun :metabase/model)
 (derive :model/TransformJobRun :hook/timestamped?)
 
+(def ^:private terminal-statuses
+  #{:succeeded :failed :canceled :timeout})
+
+(t2/define-before-update :model/TransformJobRun
+  [run]
+  (let [changes (t2/changes run)]
+    (cond-> run
+      (and (contains? terminal-statuses (keyword (:status changes))) (not (contains? changes :end_time)))
+      (assoc :end_time (mi/now)))))
+
 (t2/deftransforms :model/TransformJobRun
   {:status mi/transform-keyword
    :run_method mi/transform-keyword})

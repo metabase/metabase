@@ -15,10 +15,10 @@
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register LDAP provider in the hierarchy
-(derive :provider/ldap :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/ldap :metabase.auth-identity.provider/provider)
 
 ;; LDAP is an SSO provider that auto-creates users
-(derive :provider/ldap :metabase.auth-identity.provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/ldap :metabase.auth-identity.provider/create-user-if-not-exists)
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 
