@@ -22,6 +22,7 @@
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.browse :as tools.browse]
+   [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -1061,3 +1062,91 @@
               "the queryable table keeps its values")
           (is (nil? (values-for envelope meta-f))
               "column values reached a caller who cannot query that table"))))))
+
+;;; ------------------------------------------ browse_data dispatch ------------------------------------------------
+;;; Everything above calls the handler directly. These go through [[registry/call-tool]] — the real
+;;; dispatch — so the scope gate, the `{:closed true}` args schema, and top-level nil-stripping are
+;;; all in play, and the assertions are on the response the model actually receives.
+
+(defn- dispatch-data
+  "Call `browse_data` through the registry as `:crowberto` carrying `token-scopes` (nil bypasses the
+   scope gate — this is an internal caller). Returns the whole MCP result map."
+  [token-scopes args]
+  (mt/with-test-user :crowberto
+    (registry/call-tool token-scopes nil "browse_data" args)))
+
+(defn- dispatch-text
+  "[[dispatch-data]]'s text block."
+  [token-scopes args]
+  (-> (dispatch-data token-scopes args) :content first :text))
+
+(def ^:private content-read #{metabot.scope/agent-content-read})
+
+(deftest ^:parallel browse-data-scope-gating-test
+  (testing "GHY-4138: a token without the content-read scope is refused before dispatch"
+    (are [scopes] (= "Insufficient scope to call tool: browse_data"
+                     (dispatch-text scopes {:action "list_databases"}))
+      #{metabot.scope/agent-query-run}
+      #{metabot.scope/agent-content-write}
+      #{}))
+  (testing "GHY-4138: the content-read scope, its wildcard, and an internal caller all reach the handler"
+    (are [scopes] (let [result (dispatch-data scopes {:action "list_databases"})]
+                    (and (not (:isError result))
+                         (str/starts-with? (-> result :content first :text) "{\"data\":")))
+      content-read
+      #{"agent:*"}
+      nil)))
+
+(deftest ^:parallel browse-data-tools-list-visibility-test
+  (testing "GHY-4138: tools/list visibility follows the same scope the call-time gate checks"
+    (is (some #(= "browse_data" (:name %)) (registry/list-tools content-read)))
+    (is (not (some #(= "browse_data" (:name %))
+                   (registry/list-tools #{metabot.scope/agent-query-run}))))))
+
+(deftest ^:parallel browse-data-closed-schema-test
+  (testing "GHY-4138: malformed arguments come back as a teaching message from the closed args schema, never as an internal error"
+    (are [args expected] (let [result (dispatch-data content-read args)
+                               text   (-> result :content first :text)]
+                           (and (true? (:isError result))
+                                (str/starts-with? text "Invalid arguments: ")
+                                (str/includes? text expected)))
+      {:action "list_databases" :databse_id 1}                "databse_id: disallowed key"
+      {:action "get_fields"     :table_ids "7"}               "table_ids: invalid type"
+      {:action "list_tables" :database_id (mt/id) :limit 9999} "should be at most 500"
+      {:action "list_tables" :database_id (mt/id) :limit 0}    "should be at least 1"
+      {:action "list_fields"}                                  "action: should be either")))
+
+(deftest ^:parallel browse-data-strips-top-level-nils-test
+  (testing (str "GHY-4138: a strict MCP client sends every declared property, nulling the ones it "
+                "does not populate — that call must be indistinguishable from the minimal one")
+    (let [table-id (mt/id :venues)]
+      (is (= (dispatch-data content-read {:action "get_fields" :table_ids [table-id]})
+             (dispatch-data content-read {:action          "get_fields"
+                                          :table_ids       [table-id]
+                                          :database_id     nil
+                                          :schema          nil
+                                          :search          nil
+                                          :limit           nil
+                                          :offset          nil
+                                          :response_format nil
+                                          :fields          nil
+                                          :include_hidden  nil}))))))
+
+(deftest ^:parallel browse-data-nil-stripping-feeds-per-action-validation-test
+  (testing "GHY-4138: stripping runs before `validate-args-for-action!`, which is contains?-based, so a nulled key reads as absent"
+    (is (not (:isError (dispatch-data content-read {:action "list_databases" :database_id nil})))))
+  (testing "GHY-4138: the same key carrying a real value is still rejected as inapplicable"
+    (is (= "`database_id` does not apply to action list_databases — remove it."
+           (dispatch-text content-read {:action "list_databases" :database_id 1}))))
+  (testing "GHY-4138: and a required key sent as null reads as missing, not as present-and-empty"
+    (is (= "`table_ids` is required for action get_fields."
+           (dispatch-text content-read {:action "get_fields" :table_ids nil})))))
+
+(deftest ^:parallel browse-data-nested-nils-are-not-stripped-test
+  (testing "GHY-4138: stripping is top-level only, so a null nested inside a value has to be caught by the schema rather than reaching the handler"
+    (are [args expected] (let [text (dispatch-text content-read args)]
+                           (and (str/starts-with? text "Invalid arguments: ")
+                                (str/includes? text expected)))
+      {:action "get_fields" :table_ids [nil]}   "table_ids: [0] should be an integer"
+      {:action "get_fields" :table_ids [8 nil]} "[1] should be an integer"
+      {:action "get_fields" :fields [nil]}      "fields: [0] should be a string")))
