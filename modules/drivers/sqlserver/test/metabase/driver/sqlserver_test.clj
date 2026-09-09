@@ -338,6 +338,29 @@
                                  :limit        5}
                   :limit        3}))))))))
 
+(deftest ^:parallel page-adds-order-by-when-none-present-test
+  (testing "Regression for #81988."
+    (testing "no existing ORDER BY -> synthetic ORDER BY (SELECT NULL) added"
+      (is (= {:order-by [[{:select [nil]}]]
+              :offset   [:inline 0]
+              :fetch    [:inline 200]}
+             (sql.qp/apply-top-level-clause :sqlserver :page {}
+                                            {:page {:page 1 :items 200}}))))
+    (testing "existing ORDER BY preserved"
+      (let [existing-order-by [[[:field "id" nil] :asc]]]
+        (is (= {:order-by existing-order-by
+                :offset   [:inline 0]
+                :fetch    [:inline 200]}
+               (sql.qp/apply-top-level-clause :sqlserver :page
+                                              {:order-by existing-order-by}
+                                              {:page {:page 1 :items 200}})))))
+    (testing "later pages compute OFFSET from (page - 1) * items"
+      (is (= {:order-by [[{:select [nil]}]]
+              :offset   [:inline 400]
+              :fetch    [:inline 200]}
+             (sql.qp/apply-top-level-clause :sqlserver :page {}
+                                            {:page {:page 3 :items 200}}))))))
+
 (deftest ^:parallel locale-bucketing-test
   (mt/test-driver :sqlserver
     (testing (str "Make sure datetime bucketing functions work properly with languages that format dates like "
