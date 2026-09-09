@@ -432,13 +432,6 @@ class Visualization extends PureComponent<
     }
   };
 
-  private static getQuestionForCard(
-    buildQuestion: CardQuestionBuilder,
-    card: SeriesCard | undefined,
-  ) {
-    return card ? buildQuestion(card) : undefined;
-  }
-
   // Memoized per instance. The cache keys on the arguments, and the object
   // ones are held weakly, so entries go when the click context does.
   private _getClickActionsCached = memoize(
@@ -473,7 +466,7 @@ class Visualization extends PureComponent<
       if (!isQuestionCard(card)) {
         return [];
       }
-      const question = Visualization.getQuestionForCard(buildQuestion, card);
+      const question = buildQuestion(card);
 
       return mode
         ? mode.actionsForClick(
