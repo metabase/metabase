@@ -21,6 +21,8 @@
 }
 
 .tab {
+  /* anchors the link's stretched click target to this row */
+  position: relative;
   display: flex;
   align-items: center;
   width: 100%;
@@ -49,6 +51,12 @@
     content: "";
     position: absolute;
     inset: 0;
+  }
+
+  /* keep the icon and label above the stretched target, so a click on the label hits the label itself */
+  & > * {
+    position: relative;
+    z-index: 1;
   }
 }
 
