@@ -5,9 +5,26 @@
   height: 100%;
   width: 100%;
   background: var(--mb-color-background-primary);
+  background-image: url("./metabot-ask-background.svg");
+  background-position: right bottom;
+  background-repeat: no-repeat;
+  background-size: auto 17.875rem;
   position: relative;
   padding: 2rem;
   gap: 1.5rem;
+
+  &::before {
+    position: absolute;
+    right: 90rem;
+    bottom: 0;
+    width: 90rem;
+    height: 17.875rem;
+    background: url("./metabot-ask-background.svg") right bottom / auto
+      17.875rem no-repeat;
+    content: "";
+    pointer-events: none;
+    transform: scaleX(-1);
+  }
 }
 
 .inputWrapper {
