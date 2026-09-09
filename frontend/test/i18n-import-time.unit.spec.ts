@@ -45,13 +45,6 @@ const KNOWN_IMPORT_TIME_TRANSLATIONS = [
   // Redux state must stay plain, so immer reads any getter when it freezes the
   // initial state. The admin path names belong in the component, not in state.
   "frontend/src/metabase/admin/app/reducers.ts",
-  // The plugin registry is reassigned by the enterprise build, and a getter is
-  // not writable.
-  "frontend/src/metabase/plugins/oss/collections.ts",
-  // Test fixture, never in a bundle.
-  "frontend/src/metabase-types/api/mocks/collection.ts",
-  // The static-viz registry holds a default visualization from import.
-  "frontend/src/metabase/viz-core/lib/registry.ts",
 ];
 const ROOTS = (
   process.env.I18N_IMPORT_ROOTS ?? "frontend/src,enterprise/frontend/src"
