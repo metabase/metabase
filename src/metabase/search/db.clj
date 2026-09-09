@@ -122,7 +122,7 @@
    id    :- ms/PositiveInt]
   (t2/exists? model :id id))
 
-(mu/defn any-card :- [:maybe ::queries.schema/card.row]
+(mu/defn any-card :- [:maybe ::queries.schema/card]
   "Some Card, or nil."
   []
   (t2/select-one :model/Card))

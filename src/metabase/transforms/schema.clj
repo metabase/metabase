@@ -89,14 +89,6 @@
 
 (mr/def ::id pos-int?)
 
-(mr/def ::transform
-  [:map
-   [:id ::id]
-   [:description {:optional true} [:maybe :string]]
-   [:name :string]
-   [:source [:ref ::transform-source]]
-   [:target [:ref ::transform-target]]])
-
 (mr/def ::transform.source
   "The `:source` column of a Transform, decoded."
   :map)
@@ -109,7 +101,7 @@
   "One entry of the `:table_dependencies` column of a Transform, decoded."
   :map)
 
-(mr/def ::transform.row
+(mr/def ::transform
   "A Transform as selected from the app DB: every column of `:transform`."
   [:map {:closed true}
    [:id                    ::lib.schema.id/transform]

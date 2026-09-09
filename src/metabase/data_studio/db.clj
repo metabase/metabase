@@ -82,17 +82,17 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select :model/Database :id [:in database-ids]))
 
-(mu/defn tables-matching-selectors :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn tables-matching-selectors :- [:sequential ::warehouse-schema.schema/table]
   "The Tables picked out by `selectors`, a map of `:database_ids`, `:schema_ids`, and/or `:table_ids`."
   [selectors :- TableSelectors]
   (t2/select :model/Table {:where (table-selectors-where selectors)}))
 
-(mu/defn tables-matching-selectors-in-id-order :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn tables-matching-selectors-in-id-order :- [:sequential ::warehouse-schema.schema/table]
   "The Tables picked out by `selectors`, in id order."
   [selectors :- TableSelectors]
   (t2/select :model/Table {:where (table-selectors-where selectors), :order-by [[:id]]}))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
@@ -105,7 +105,7 @@
 
 (def ^:private SelectionColumnsForSelector
   "Rows returned by [[selection-columns-for-selectors]]."
-  (mut/select-keys ::warehouse-schema.schema/table.row
+  (mut/select-keys ::warehouse-schema.schema/table
                    [:id :db_id :name :display_name :schema :is_published]))
 
 (mu/defn selection-columns-for-selectors :- [:sequential SelectionColumnsForSelector]
@@ -117,7 +117,7 @@
 
 (def ^:private SelectionColumnsForTable
   "Rows returned by [[selection-columns-for-tables]]."
-  (mut/select-keys ::warehouse-schema.schema/table.row
+  (mut/select-keys ::warehouse-schema.schema/table
                    [:id :db_id :name :display_name :schema :is_published]))
 
 (mu/defn selection-columns-for-tables :- [:sequential SelectionColumnsForTable]

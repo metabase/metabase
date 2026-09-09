@@ -67,7 +67,7 @@
 
 (def ^:private UniverseCard
   "Rows returned by [[universe-cards]]."
-  (mut/select-keys ::queries.schema/card.row [:id :name :type :collection_id :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :name :type :collection_id :card_schema]))
 
 (mu/defn universe-cards :- [:sequential UniverseCard]
   "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with
@@ -80,7 +80,7 @@
 
 (def ^:private UniverseTable
   "Rows returned by [[universe-tables]]."
-  (mut/select-keys ::warehouse-schema.schema/table.row
+  (mut/select-keys ::warehouse-schema.schema/table
                    [:id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]))
 
 (mu/defn universe-tables :- [:sequential UniverseTable]

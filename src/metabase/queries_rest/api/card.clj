@@ -445,7 +445,7 @@
 
 (mu/defn- check-if-card-can-be-saved
   [dataset-query :- [:maybe ::lib-be.schema/maybe-legacy-query]
-   card-type     :- [:maybe ::queries.schema/card-type]]
+   card-type     :- [:maybe ::queries.schema/card.type]]
   (when (and (seq dataset-query) (= card-type :metric))
     (when-not (lib/can-save? dataset-query card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
@@ -483,7 +483,7 @@
   "Schema for creating a new card"
   [:map
    [:name                   ms/NonBlankString]
-   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
    [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
@@ -568,8 +568,8 @@
 
 (mu/defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
-  [card-before-updates :- ::queries.schema/card
-   card-updates        :- ::queries.schema/card]
+  [card-before-updates :- ::queries.schema/card.update
+   card-updates        :- ::queries.schema/card.update]
   (when (api/column-will-change? :dataset_query card-before-updates card-updates)
     (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
 
@@ -584,15 +584,15 @@
     (api/check-superuser)))
 
 (mu/defn- check-allowed-to-move
-  [card-before-update :- ::queries.schema/card
-   card-updates       :- ::queries.schema/card]
+  [card-before-update :- ::queries.schema/card.update
+   card-updates       :- ::queries.schema/card.update]
   (when (api/column-will-change? :dashboard_id card-before-update card-updates)
     (check-allowed-to-remove-from-existing-dashboards card-before-update))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
 (mu/defn- check-update-result-metadata-data-perms
-  [card-before-updates :- ::queries.schema/card
-   card-updates        :- ::queries.schema/card]
+  [card-before-updates :- ::queries.schema/card.update
+   card-updates        :- ::queries.schema/card.update]
   (when (api/column-will-change? :result_metadata card-before-updates card-updates)
     (let [database-id (some :database_id [card-before-updates card-updates])
           result-metadata (:result_metadata card-updates)]
@@ -605,7 +605,7 @@
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
-   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:visualization_settings {:optional true} [:maybe ms/Map]]

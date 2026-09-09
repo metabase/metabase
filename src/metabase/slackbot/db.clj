@@ -76,7 +76,7 @@
                     :slack_msg_id slack-msg-id
                     :role         "assistant"))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))

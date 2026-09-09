@@ -86,7 +86,7 @@
 
 (def ^:private UnarchivedModelsForTable
   "Rows returned by [[unarchived-models-for-table]]."
-  (mut/select-keys ::queries.schema/card.row [:id :dataset_query :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :dataset_query :card_schema]))
 
 (mu/defn unarchived-models-for-table :- [:sequential UnarchivedModelsForTable]
   "The id, query, and schema of the unarchived model Cards of the Table with `table-id`."
@@ -98,7 +98,7 @@
 
 (def ^:private CardQueryAndMetadata
   "Rows returned by [[card-query-and-metadata]]."
-  (mut/select-keys ::queries.schema/card.row [:dataset_query :result_metadata :card_schema]))
+  (mut/select-keys ::queries.schema/card [:dataset_query :result_metadata :card_schema]))
 
 (mu/defn card-query-and-metadata :- [:maybe CardQueryAndMetadata]
   "The query, result metadata, and schema of the Card with `card-id`, or nil."
@@ -121,12 +121,12 @@
   [table-id :- ::lib.schema.id/table]
   (t2/update-returning-pks! :model/Card {:table_id table-id :archived false} {:archived true}))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))

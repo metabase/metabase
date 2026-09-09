@@ -79,7 +79,7 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/LoginHistory :timestamp] :user_id user-id {:order-by [[:timestamp :asc]]}))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. when no custom homepage dashboard is
   configured) or a stale/invalid id (e.g. a deleted custom homepage Dashboard) that matches no Dashboard, in which
   case the result is nil."

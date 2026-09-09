@@ -32,15 +32,11 @@
   {:in  (comp mi/json-in normalize-attribute-remappings)
    :out (comp normalize-attribute-remappings mi/json-out-without-keywordization)})
 
-(mr/def ::sandbox
-  [:map
-   [:id ::lib.schema.id/sandbox]])
-
 (mr/def ::sandbox.attribute-remappings
   "The `:attribute_remappings` column of a Sandbox, decoded."
   :map)
 
-(mr/def ::sandbox.row
+(mr/def ::sandbox
   "A Sandbox as selected from the app DB: every column of `:sandboxes`."
   [:map {:closed true}
    [:id                   ms/PositiveInt]

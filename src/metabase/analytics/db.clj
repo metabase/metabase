@@ -45,7 +45,7 @@
 
 (def ^:private DocumentArchivedFlag
   "Rows returned by [[document-archived-flags]]."
-  (mut/select-keys ::documents.schema/document.row [:archived]))
+  (mut/select-keys ::documents.schema/document [:archived]))
 
 (mu/defn document-archived-flags :- [:sequential DocumentArchivedFlag]
   "The archived flag of every Document."
@@ -88,7 +88,7 @@
 
 (def ^:private DashboardStatsColumn
   "Rows returned by [[dashboard-stats-columns]]."
-  (mut/select-keys ::dashboards.schema/dashboard.row
+  (mut/select-keys ::dashboards.schema/dashboard
                    [:creator_id :public_uuid :parameters :enable_embedding :embedding_params]))
 
 (mu/defn dashboard-stats-columns :- [:sequential DashboardStatsColumn]
@@ -179,7 +179,7 @@
 
 (def ^:private CardCollectionId
   "Rows returned by [[card-collection-ids]]."
-  (mut/select-keys ::queries.schema/card.row [:collection_id :card_schema]))
+  (mut/select-keys ::queries.schema/card [:collection_id :card_schema]))
 
 (mu/defn card-collection-ids :- [:sequential CardCollectionId]
   "The Collection id and schema of the non-internal Cards."

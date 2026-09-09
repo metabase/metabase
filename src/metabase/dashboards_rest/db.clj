@@ -17,7 +17,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn dashboards :- [:sequential ::dashboards.schema/dashboard.row]
+(mu/defn dashboards :- [:sequential ::dashboards.schema/dashboard]
   "The archived or unarchived (`archived?`) Dashboards, restricted to those created by `creator-id` when given, in
   case-insensitive name order."
   [archived?  :- :boolean
@@ -27,14 +27,14 @@
                                           [:= :archived archived?]]
                                :order-by [:%lower.name]}))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
 (def ^:private DashboardParameter
   "Rows returned by [[dashboard-parameters]]."
-  (mut/select-keys ::dashboards.schema/dashboard.row [:id :parameters]))
+  (mut/select-keys ::dashboards.schema/dashboard [:id :parameters]))
 
 (mu/defn dashboard-parameters :- [:maybe DashboardParameter]
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
@@ -43,7 +43,7 @@
 
 (def ^:private DashboardNameColumn
   "Rows returned by [[dashboard-name-columns]]."
-  (mut/select-keys ::dashboards.schema/dashboard.row [:name :description :creator_id]))
+  (mut/select-keys ::dashboards.schema/dashboard [:name :description :creator_id]))
 
 (mu/defn dashboard-name-columns :- [:maybe DashboardNameColumn]
   "The name, description, and creator of the Dashboard with `dashboard-id`, or nil."
@@ -57,7 +57,7 @@
 
 (def ^:private PublicDashboard
   "Rows returned by [[public-dashboards]]."
-  (mut/select-keys ::dashboards.schema/dashboard.row [:name :id :public_uuid]))
+  (mut/select-keys ::dashboards.schema/dashboard [:name :id :public_uuid]))
 
 (mu/defn public-dashboards :- [:sequential PublicDashboard]
   "The name, id, and public uuid of the unarchived Dashboards that are publicly shared."
@@ -66,14 +66,14 @@
 
 (def ^:private EmbeddableDashboard
   "Rows returned by [[embeddable-dashboards]]."
-  (mut/select-keys ::dashboards.schema/dashboard.row [:name :id]))
+  (mut/select-keys ::dashboards.schema/dashboard [:name :id]))
 
 (mu/defn embeddable-dashboards :- [:sequential EmbeddableDashboard]
   "The name and id of the unarchived Dashboards with embedding enabled."
   []
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
-(mu/defn insert-dashboard! :- ::dashboards.schema/dashboard.row
+(mu/defn insert-dashboard! :- ::dashboards.schema/dashboard
   "Insert the Dashboard `row` and return the inserted instance."
   [row :- ::dashboards.schema/dashboard.update]
   (t2/insert-returning-instance! :model/Dashboard row))
@@ -155,7 +155,7 @@
   [query-hashes :- [:sequential bytes?]]
   (t2/select-fn->fn :query_hash :average_execution_time :model/Query :query_hash [:in query-hashes]))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))

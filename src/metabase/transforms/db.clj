@@ -28,17 +28,17 @@
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
 
-(mu/defn transform :- [:maybe ::transforms.schema/transform.row]
+(mu/defn transform :- [:maybe ::transforms.schema/transform]
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id transform-id))
 
-(mu/defn transforms :- [:sequential ::transforms.schema/transform.row]
+(mu/defn transforms :- [:sequential ::transforms.schema/transform]
   "The Transforms with `transform-ids`."
   [transform-ids :- [:or [:set ::lib.schema.id/transform] [:sequential ::lib.schema.id/transform]]]
   (t2/select :model/Transform :id [:in transform-ids]))
 
-(mu/defn transforms-of-source-types :- [:sequential ::transforms.schema/transform.row]
+(mu/defn transforms-of-source-types :- [:sequential ::transforms.schema/transform]
   "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID."
   [source-types :- [:set :string]
    database-id  :- [:maybe ::lib.schema.id/database]]
@@ -49,7 +49,7 @@
 
 (def ^:private TransformDependency
   "Rows returned by [[transform-dependency-rows]]."
-  (mut/select-keys ::transforms.schema/transform.row
+  (mut/select-keys ::transforms.schema/transform
                    [:id :target :target_table_id :created_at :table_dependencies]))
 
 (mu/defn transform-dependency-rows :- [:sequential TransformDependency]
@@ -59,7 +59,7 @@
 
 (def ^:private TransformSnapshot
   "Rows returned by [[transform-snapshot]]."
-  (mut/select-keys ::transforms.schema/transform.row [:name :entity_id :source_type]))
+  (mut/select-keys ::transforms.schema/transform [:name :entity_id :source_type]))
 
 (mu/defn transform-snapshot :- [:maybe TransformSnapshot]
   "The name, entity ID, and source type of the Transform with `transform-id`."
@@ -68,7 +68,7 @@
 
 (def ^:private TransformSummariesById
   "Rows returned by [[transform-summaries-by-id]]."
-  (mut/select-keys ::transforms.schema/transform.row [:id :name :collection_id]))
+  (mut/select-keys ::transforms.schema/transform [:id :name :collection_id]))
 
 (mu/defn transform-summaries-by-id :- [:map-of ::lib.schema.id/transform TransformSummariesById]
   "A map of ID to the ID, name, and Collection ID of the Transforms with `transform-ids`."
@@ -90,7 +90,7 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one-fn :collection_id :model/Transform :id transform-id))
 
-(mu/defn insert-transform! :- ::transforms.schema/transform.row
+(mu/defn insert-transform! :- ::transforms.schema/transform
   "Insert `transform` and return the new instance."
   [transform :- ::transforms.schema/transform.update]
   (t2/insert-returning-instance! :model/Transform transform))
@@ -815,7 +815,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database database-id))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table table-id))
@@ -830,7 +830,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))

@@ -32,17 +32,17 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :dataset_query :model/Card :id card-id))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn cards :- [:sequential ::queries.schema/card.row]
+(mu/defn cards :- [:sequential ::queries.schema/card]
   "The Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids]))
 
-(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card.row]
+(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card]
   "A map of Card id to Card for the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
@@ -52,12 +52,12 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :type [:model/Card :type :card_schema] :id card-id))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
@@ -227,7 +227,7 @@
 
 (def ^:private CardScopeColumn
   "Rows returned by [[card-scope-columns]]."
-  (mut/select-keys ::queries.schema/card.row [:dataset_query :collection_id :database_id :display]))
+  (mut/select-keys ::queries.schema/card [:dataset_query :collection_id :database_id :display]))
 
 (mu/defn card-scope-columns :- [:maybe CardScopeColumn]
   "The query, Collection id, Database id, and display of the Card with `card-id`, or nil."

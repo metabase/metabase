@@ -45,7 +45,7 @@
    changes :- (mut/select-keys ::segments.schema/segment.update [:description :caveats :points_of_interest :archived :definition :name :show_in_getting_started])]
   (t2/update! :model/Segment id changes))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
@@ -57,7 +57,7 @@
 
 (def ^:private TablePermsColumn
   "Rows returned by [[table-perms-columns]]."
-  (mut/select-keys ::warehouse-schema.schema/table.row [:db_id :schema :id]))
+  (mut/select-keys ::warehouse-schema.schema/table [:db_id :schema :id]))
 
 (mu/defn table-perms-columns :- [:maybe TablePermsColumn]
   "The Database id, schema, and id of the Table with `table-id`, or nil."

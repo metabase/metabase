@@ -57,13 +57,13 @@
 (def ^:private AnyDependencyInstance
   "A Toucan instance of any of the models the dependencies module tracks."
   [:or
-   ::queries.schema/card.row
-   ::warehouse-schema.schema/table.row
-   ::native-query-snippets.schema/native-query-snippet.row
-   ::transforms.schema/transform.row
-   ::dashboards.schema/dashboard.row
-   ::documents.schema/document.row
-   ::sandbox.schema/sandbox.row
+   ::queries.schema/card
+   ::warehouse-schema.schema/table
+   ::native-query-snippets.schema/native-query-snippet
+   ::transforms.schema/transform
+   ::dashboards.schema/dashboard
+   ::documents.schema/document
+   ::sandbox.schema/sandbox
    ::segments.schema/segment
    ::measures.schema/measure])
 
@@ -590,7 +590,7 @@
    id          :- ::deps.dependency-types/entity-id]
   (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns) :id id))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
@@ -602,7 +602,7 @@
 
 (def ^:private CardDatabaseId
   "Rows returned by [[card-database-ids]]."
-  (mut/select-keys ::queries.schema/card.row [:id :database_id :card_schema]))
+  (mut/select-keys ::queries.schema/card [:id :database_id :card_schema]))
 
 (mu/defn card-database-ids :- [:sequential CardDatabaseId]
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
@@ -615,14 +615,14 @@
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
   (t2/update! :model/Card card-id {:result_metadata result-metadata}))
 
-(mu/defn tables :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn tables :- [:sequential ::warehouse-schema.schema/table]
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
 (def ^:private TableDatabaseId
   "Rows returned by [[table-database-ids]]."
-  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id]))
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id]))
 
 (mu/defn table-database-ids :- [:sequential TableDatabaseId]
   "The `:id` and `:db_id` of the Tables with `table-ids`."
@@ -638,7 +638,7 @@
 
 (def ^:private TransformSource
   "Rows returned by [[transform-sources]]."
-  (mut/select-keys ::transforms.schema/transform.row [:id :source]))
+  (mut/select-keys ::transforms.schema/transform [:id :source]))
 
 (mu/defn transform-sources :- [:sequential TransformSource]
   "The `:id` and `:source` of the Transforms with `transform-ids`."

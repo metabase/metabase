@@ -6,17 +6,6 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::native-query-snippet
-  "Schema for an instance of a `:model/NativeQuerySnippet`."
-  [:map
-   [:id ::lib.schema.id/snippet]
-   [:name :string]
-   [:content :string]
-   [:description {:optional true} [:maybe :string]]
-   [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
-   [:template_tags [:ref ::lib.schema.template-tag/template-tag-map]]])
-
-(mr/def ::native-query-snippet.row
   "A NativeQuerySnippet as selected from the app DB: every column of `:native_query_snippet`."
   [:map {:closed true}
    [:id            ::lib.schema.id/native-query-snippet]

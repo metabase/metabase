@@ -73,22 +73,22 @@
                :end_time  :%now
                :message   "Timed out by metabase"}))
 
-(mu/defn cards-with-ids :- [:sequential ::queries.schema/card.row]
+(mu/defn cards-with-ids :- [:sequential ::queries.schema/card]
   "The Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Card :id [:in ids]))
 
-(mu/defn tables-with-ids :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn tables-with-ids :- [:sequential ::warehouse-schema.schema/table]
   "The Tables with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Table :id [:in ids]))
 
-(mu/defn dashboards-with-ids :- [:sequential ::dashboards.schema/dashboard.row]
+(mu/defn dashboards-with-ids :- [:sequential ::dashboards.schema/dashboard]
   "The Dashboards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Dashboard :id [:in ids]))
 
-(mu/defn transforms-with-ids :- [:sequential ::transforms.schema/transform.row]
+(mu/defn transforms-with-ids :- [:sequential ::transforms.schema/transform]
   "The Transforms with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Transform :id [:in ids]))
@@ -103,12 +103,12 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Measure :id [:in ids]))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card.row]
+(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card]
   "A map of Card ID to Card for `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
@@ -130,7 +130,7 @@
    changes :- ::queries.schema/card.update]
   (t2/update! :model/Card card-id changes))
 
-(mu/defn transform :- [:maybe ::transforms.schema/transform.row]
+(mu/defn transform :- [:maybe ::transforms.schema/transform]
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id transform-id))
@@ -163,7 +163,7 @@
    changes    :- ::measures.schema/measure.update]
   (t2/update! :model/Measure measure-id changes))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))

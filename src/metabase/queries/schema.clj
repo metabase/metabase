@@ -16,7 +16,7 @@
  [lib.schema.metadata
   card-types])
 
-(mr/def ::card-type
+(mr/def ::card.type
   ::lib.schema.metadata/card.type)
 
 (mr/def ::card.result-metadata
@@ -35,32 +35,10 @@
                              nil)))}
     :any]])
 
-;;; TODO (Cam 9/29/25) -- fill this out more, `:metabase.lib.schema.metadata/card` has a lot of stuff and there's also
-;;; stuff sprinkled throughout this module. For example [[metabase.queries-rest.api.card/CardUpdateSchema]] should get merged
-;;; into this
-;;;
-;;; TODO (Cam 9/30/25) -- consider renaming this to `:model/Card` so it can serve as the "official" schema of a Card
-;;; instance
-(mr/def ::card
-  "Schema for an instance of a `:model/Card` (everything is optional to support updates)."
-  [:map
-   [:id                 {:optional true} [:maybe ::lib.schema.id/card]]
-   [:collection_id      {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:dashboard_id       {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
-   [:document_id        {:optional true} [:maybe ::documents.schema/document.id]]
-   [:dataset_query      {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
-   [:description        {:optional true} [:maybe :string]]
-   [:name               {:optional true} [:maybe :string]]
-   [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
-   [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:type               {:optional true} [:maybe ::lib.schema.metadata/card.type]]
-   [:result_metadata    {:optional true} [:maybe [:ref ::card.result-metadata]]]])
-
-(mu/defn normalize-card :- [:maybe ::card]
-  "Normalize a `card` so it satisfies the `::card` schema."
+(mu/defn normalize-card :- [:maybe ::card.update]
+  "Normalize a `card` so it satisfies the `::card.update` schema."
   [card :- [:maybe :map]]
-  (lib/normalize ::card card))
+  (lib/normalize ::card.update card))
 
 (mr/def ::card.dataset-query
   "The `:dataset_query` column of a Card, decoded."
@@ -86,7 +64,7 @@
   "One entry of the `:dimension_mappings` column of a Card, decoded."
   :map)
 
-(mr/def ::card.row
+(mr/def ::card
   "A Card as selected from the app DB: every column of `:report_card`."
   [:map {:closed true}
    [:id                                        ::lib.schema.id/card]
@@ -115,7 +93,7 @@
    [:parameter_mappings                        [:maybe [:sequential :map]]]
    [:collection_preview                        :boolean]
    [:metabase_version                          [:maybe :string]]
-   [:type                                      [:or :keyword :string]]
+   [:type                                      ::lib.schema.metadata/card.type]
    [:initially_published_at                    [:maybe ms/TemporalInstant]]
    [:cache_invalidated_at                      [:maybe ms/TemporalInstant]]
    [:last_used_at                              ms/TemporalInstant]
@@ -142,7 +120,7 @@
    [:name                                      {:optional true} [:maybe :string]]
    [:description                               {:optional true} [:maybe :string]]
    [:display                                   {:optional true} [:maybe [:or :keyword :string]]]
-   [:dataset_query                             {:optional true} [:maybe ::card.dataset-query]]
+   [:dataset_query                             {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
    [:visualization_settings                    {:optional true} [:maybe ::card.visualization-settings]]
    [:creator_id                                {:optional true} [:maybe ::lib.schema.id/user]]
    [:database_id                               {:optional true} [:maybe ::lib.schema.id/database]]
@@ -155,14 +133,14 @@
    [:enable_embedding                          {:optional true} [:maybe :boolean]]
    [:embedding_params                          {:optional true} [:maybe ms/EmbeddingParams]]
    [:cache_ttl                                 {:optional true} [:maybe :int]]
-   [:result_metadata                           {:optional true} [:maybe ::card.result-metadata]]
+   [:result_metadata                           {:optional true} [:maybe [:ref ::card.result-metadata]]]
    [:collection_position                       {:optional true} [:maybe :int]]
    [:entity_id                                 {:optional true} [:maybe :string]]
-   [:parameters                                {:optional true} [:maybe [:sequential :map]]]
-   [:parameter_mappings                        {:optional true} [:maybe [:sequential :map]]]
+   [:parameters                                {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
+   [:parameter_mappings                        {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
    [:collection_preview                        {:optional true} [:maybe :boolean]]
    [:metabase_version                          {:optional true} [:maybe :string]]
-   [:type                                      {:optional true} [:maybe [:or :keyword :string]]]
+   [:type                                      {:optional true} [:maybe ::lib.schema.metadata/card.type]]
    [:initially_published_at                    {:optional true} [:maybe ms/TemporalInstant]]
    [:cache_invalidated_at                      {:optional true} [:maybe ms/TemporalInstant]]
    [:last_used_at                              {:optional true} [:maybe ms/TemporalInstant]]
@@ -172,7 +150,7 @@
    [:source_card_id                            {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard_id                              {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:card_schema                               {:optional true} [:maybe :int]]
-   [:document_id                               {:optional true} [:maybe ms/PositiveInt]]
+   [:document_id                               {:optional true} [:maybe ::documents.schema/document.id]]
    [:legacy_query                              {:optional true} [:maybe :string]]
    [:embedding_type                            {:optional true} [:maybe [:or :keyword :string]]]
    [:public_uuid_prefix                        {:optional true} [:maybe :string]]

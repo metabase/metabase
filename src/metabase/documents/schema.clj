@@ -8,16 +8,11 @@
   "Valid Document ID"
   pos-int?)
 
-(mr/def ::document
-  "Schema for an instance of a `:model/Document`."
-  [:map
-   [:id ::document.id]])
-
 (mr/def ::document.document
   "The `:document` column of a Document, decoded."
   :map)
 
-(mr/def ::document.row
+(mr/def ::document
   "A Document as selected from the app DB: every column of `:document`."
   [:map {:closed true}
    [:id                  ms/PositiveInt]

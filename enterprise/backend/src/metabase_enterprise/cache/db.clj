@@ -48,7 +48,7 @@
                                          :order-by :ordering
                                          :limit    [:inline 1]})))
 
-(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card.row]
+(mu/defn cards-by-id :- [:map-of ::lib.schema.id/card ::queries.schema/card]
   "A map of ID to Card for `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
@@ -170,7 +170,7 @@
   [query-hashes :- [:sequential bytes?]]
   (t2/delete! :model/QueryCache :query_hash [:in query-hashes]))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))

@@ -15,12 +15,12 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
-(mu/defn insert-dashboard! :- ::dashboards.schema/dashboard.row
+(mu/defn insert-dashboard! :- ::dashboards.schema/dashboard
   "Insert the Dashboard `row` and return the inserted instance."
   [row :- ::dashboards.schema/dashboard.update]
   (t2/insert-returning-instance! :model/Dashboard row))
@@ -120,14 +120,14 @@
    collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/update! :model/Card :dashboard_id dashboard-id {:collection_id collection-id}))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
 (def ^:private CardQueryColumn
   "Rows returned by [[card-query-columns]]."
-  (mut/select-keys ::queries.schema/card.row [:dataset_query :card_schema]))
+  (mut/select-keys ::queries.schema/card [:dataset_query :card_schema]))
 
 (mu/defn card-query-columns :- [:maybe CardQueryColumn]
   "The query and schema of the Card with `card-id`, or nil."
@@ -139,12 +139,12 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
 
-(mu/defn document-cards-among :- [:sequential ::queries.schema/card.row]
+(mu/defn document-cards-among :- [:sequential ::queries.schema/card]
   "The Cards among `card-ids` that belong to a Document."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids] :document_id [:<> nil]))
 
-(mu/defn insert-card! :- ::queries.schema/card.row
+(mu/defn insert-card! :- ::queries.schema/card
   "Insert the Card `row` and return the inserted instance."
   [row :- ::queries.schema/card.update]
   (t2/insert-returning-instance! :model/Card row))
@@ -172,7 +172,7 @@
 
 (def ^:private SeriesCardsForDashcard
   "Rows returned by [[series-cards-for-dashcards]]."
-  (mut/merge (mut/select-keys ::queries.schema/card.row
+  (mut/merge (mut/select-keys ::queries.schema/card
                               [:id :name :description :display :dataset_query :type :database_id :visualization_settings :collection_id :card_schema])
              [:map [:dashboardcard_id [:maybe ::lib.schema.id/dashcard]]]))
 

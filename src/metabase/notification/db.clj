@@ -704,12 +704,12 @@
    id    :- ms/PositiveInt]
   (t2/select-one model id))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
 
-(mu/defn unarchived-card :- [:maybe ::queries.schema/card.row]
+(mu/defn unarchived-card :- [:maybe ::queries.schema/card]
   "The Card with `card-id` if it is not archived, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id :archived false))
@@ -719,7 +719,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :name :model/Card card-id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard dashboard-id))

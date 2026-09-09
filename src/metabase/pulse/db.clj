@@ -15,7 +15,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
@@ -25,7 +25,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :dataset_query [:model/Card :dataset_query] card-id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. a legacy Pulse with no Dashboard), in
   which case the result is nil."
   [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
@@ -227,7 +227,7 @@
 
 (def ^:private PulseCardsForPulse
   "Rows returned by [[pulse-cards-for-pulses]]."
-  (mut/merge (mut/select-keys ::queries.schema/card.row
+  (mut/merge (mut/select-keys ::queries.schema/card
                               [:id :name :description :collection_id :display :dashboard_id])
              [:map
               [:include_csv        [:maybe :boolean]]

@@ -69,31 +69,31 @@
 
 ;;; ------------------------------------------------- Table -------------------------------------------------
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn table-in-database :- [:maybe ::warehouse-schema.schema/table.row]
+(mu/defn table-in-database :- [:maybe ::warehouse-schema.schema/table]
   "The Table with `table-id` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-id    :- ::lib.schema.id/table]
   (t2/select-one :model/Table :db_id database-id :id table-id))
 
-(mu/defn table-by-name :- [:maybe ::warehouse-schema.schema/table.row]
+(mu/defn table-by-name :- [:maybe ::warehouse-schema.schema/table]
   "The Table named `table-name` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-name  :- :string]
   (t2/select-one :model/Table :db_id database-id :name table-name))
 
-(mu/defn table-by-schema-and-name :- [:maybe ::warehouse-schema.schema/table.row]
+(mu/defn table-by-schema-and-name :- [:maybe ::warehouse-schema.schema/table]
   "The Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
   (t2/select-one :model/Table :db_id database-id :name table-name :schema schema))
 
-(mu/defn inactive-table-by-schema-and-name :- [:maybe ::warehouse-schema.schema/table.row]
+(mu/defn inactive-table-by-schema-and-name :- [:maybe ::warehouse-schema.schema/table]
   "The inactive Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
@@ -106,7 +106,7 @@
    table-name  :- :string]
   (t2/select-one-pk :model/Table :db_id database-id :name table-name :active true))
 
-(mu/defn sync-tables-by-lower-name-and-schema :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn sync-tables-by-lower-name-and-schema :- [:sequential ::warehouse-schema.schema/table]
   "The synced Tables of the Database with `database-id` whose lower-cased name and schema match."
   [database-id  :- ::lib.schema.id/database
    lower-name   :- :string
@@ -117,14 +117,14 @@
              :%lower.schema lower-schema
              {:where sync-tables-clause}))
 
-(mu/defn tables-by-name :- [:sequential (mut/optional-keys ::warehouse-schema.schema/table.row)]
+(mu/defn tables-by-name :- [:sequential (mut/optional-keys ::warehouse-schema.schema/table)]
   "The `columns` of the Tables of the Database with `database-id` named one of `table-names`."
   [columns      :- [:sequential :keyword]
    database-id  :- ::lib.schema.id/database
    table-names  :- [:sequential :string]]
   (t2/select columns :db_id database-id :name [:in table-names]))
 
-(mu/defn tables-to-archive :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn tables-to-archive :- [:sequential ::warehouse-schema.schema/table]
   "The inactive, unarchived, non-transform-target Tables of the Database with `database-id` deactivated more than
   `amount` `unit`s (e.g. `-14 :day`) before the app DB's now."
   [database-id :- ::lib.schema.id/database
@@ -201,7 +201,7 @@
                         :where     [:and sync-tables-clause [:= :t.db_id database-id]]
                         :order-by  [[:sub.earliest_last_analyzed :asc]]}))
 
-(mu/defn insert-table! :- ::warehouse-schema.schema/table.row
+(mu/defn insert-table! :- ::warehouse-schema.schema/table
   "Insert `table` and return the new instance."
   [table :- ::warehouse-schema.schema/table.update]
   (t2/insert-returning-instance! :model/Table table))

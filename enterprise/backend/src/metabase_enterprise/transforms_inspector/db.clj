@@ -11,7 +11,7 @@
 
 (def ^:private TableSource
   "Rows returned by [[table-source-rows]]."
-  (mut/merge (mut/select-keys ::warehouse-schema.schema/table.row [:schema])
+  (mut/merge (mut/select-keys ::warehouse-schema.schema/table [:schema])
              [:map
               [:table-id   [:maybe ms/PositiveInt]]
               [:table-name [:maybe :string]]

@@ -810,7 +810,7 @@
 
 (def ^:private TableLocation
   "Rows returned by [[table-location]]."
-  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
 
 (mu/defn table-location :- [:maybe TableLocation]
   "The ID, Database ID, and schema of the Table with `table-id`."
@@ -824,7 +824,7 @@
 
 (def ^:private TableDatabaseId
   "Rows returned by [[table-database-ids]]."
-  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id]))
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id]))
 
 (mu/defn table-database-ids :- [:sequential TableDatabaseId]
   "The ID and Database ID of the Tables with `table-ids`."
@@ -833,7 +833,7 @@
 
 (def ^:private ActiveTableLocationsForDatabase
   "Rows returned by [[active-table-locations-for-database]]."
-  (mut/select-keys ::warehouse-schema.schema/table.row [:id :db_id :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table [:id :db_id :schema]))
 
 (mu/defn active-table-locations-for-database :- [:sequential ActiveTableLocationsForDatabase]
   "The ID, Database ID, and schema of the active Tables of the Database with `database-id`."
@@ -842,7 +842,7 @@
 
 (def ^:private TableIdsAndSchemasExcluding
   "Rows returned by [[table-ids-and-schemas-excluding]]."
-  (mut/select-keys ::warehouse-schema.schema/table.row [:id :schema]))
+  (mut/select-keys ::warehouse-schema.schema/table [:id :schema]))
 
 (mu/defn table-ids-and-schemas-excluding :- [:sequential TableIdsAndSchemasExcluding]
   "The ID and schema of the Tables of the Database with `database-id` other than `excluded-table-ids`."

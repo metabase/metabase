@@ -11,7 +11,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
@@ -23,14 +23,14 @@
 
 (def ^:private CardEmbeddingFlag
   "Rows returned by [[card-embedding-flags]]."
-  (mut/select-keys ::queries.schema/card.row [:enable_embedding :archived]))
+  (mut/select-keys ::queries.schema/card [:enable_embedding :archived]))
 
 (mu/defn card-embedding-flags :- [:maybe CardEmbeddingFlag]
   "The embedding-enabled and archived flags of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :enable_embedding :archived] :id card-id))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard.row]
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard dashboard-id))
@@ -42,7 +42,7 @@
 
 (def ^:private DashboardEmbeddingFlag
   "Rows returned by [[dashboard-embedding-flags]]."
-  (mut/select-keys ::dashboards.schema/dashboard.row [:enable_embedding :archived]))
+  (mut/select-keys ::dashboards.schema/dashboard [:enable_embedding :archived]))
 
 (mu/defn dashboard-embedding-flags :- [:maybe DashboardEmbeddingFlag]
   "The embedding-enabled and archived flags of the Dashboard with `dashboard-id`, or nil."

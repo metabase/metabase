@@ -13,7 +13,7 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :is_superuser :model/User :id user-id))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))

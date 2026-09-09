@@ -12,17 +12,17 @@
   []
   (t2/select-one-fn :id :model/Database :is_attached_dwh true))
 
-(mu/defn non-upload-tables-for-database :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn non-upload-tables-for-database :- [:sequential ::warehouse-schema.schema/table]
   "The active Tables of the Database with `database-id` that were not uploaded."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Table :db_id database-id :active true :is_upload false))
 
-(mu/defn upload-tables :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn upload-tables :- [:sequential ::warehouse-schema.schema/table]
   "The active uploaded Tables, ordered by name."
   []
   (t2/select :model/Table :active true :is_upload true {:order-by [[:name :asc]]}))
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table.row]
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table table-id))

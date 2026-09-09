@@ -313,7 +313,7 @@
   deleted)."
   ([card]
    (populate-query-fields card true))
-  ([{query :dataset_query, :as card} :- ::queries.schema/card
+  ([{query :dataset_query, :as card} :- ::queries.schema/card.update
     clear-stale-table-id? :- :boolean]
    (merge
     card
@@ -356,7 +356,7 @@
   "Transforms native query's `template-tags` into `parameters`.
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
-  [card :- [:maybe ::queries.schema/card]]
+  [card :- [:maybe ::queries.schema/card.update]]
   (for [{tag-type :type, widget-type :widget-type, :as tag} (some-> card :dataset_query not-empty lib/all-template-tags)
         :when                         (parameter-template-tag? tag)]
     {:id       (:id tag)
@@ -403,7 +403,7 @@
 
 (mu/defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{query :dataset_query, card-type :type, source-card :source_card_id, :as _card} :- [:maybe ::queries.schema/card]]
+  [{query :dataset_query, card-type :type, source-card :source_card_id, :as _card} :- [:maybe ::queries.schema/card.update]]
   (assert (not (and (query/query-is-native? query)
                     (some? source-card)))
           "A native SQL question cannot have a source card.")
@@ -417,7 +417,7 @@
   nil)
 
 (mu/defn- assert-not-native-audit-db-query
-  [{query :dataset_query, :as _card} :- [:maybe ::queries.schema/card]]
+  [{query :dataset_query, :as _card} :- [:maybe ::queries.schema/card.update]]
   (when (and (seq query)
              (= (:database query) audit/audit-db-id)
              (lib/any-native-stage? query))
@@ -489,7 +489,7 @@
 ;; TODO (Cam 7/18/25) -- weird/offputting to have half of the before-insert logic live here and then the other half live
 ;; in `define-before-insert`... we should consolidate it so it all lives in one or the other.
 (defn- pre-insert [card]
-  (let [card     (lib/normalize ::queries.schema/card card)
+  (let [card     (lib/normalize ::queries.schema/card.update card)
         defaults {:parameters         []
                   :parameter_mappings []
                   :card_schema        current-schema-version}
@@ -575,7 +575,7 @@
   meaning there are no clauses such as filter, limit, breakout...
 
   It should be the opposite of [[metabase.lib.stage/has-clauses]] but for all stages."
-  [{query :dataset_query :as _card} :- ::queries.schema/card]
+  [{query :dataset_query :as _card} :- ::queries.schema/card.update]
   (and (seq query)
        (every? (fn [stage-number]
                  (and (lib/mbql-stage? query stage-number)
@@ -718,7 +718,7 @@
       (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
     card))
 
-(mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
+(mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card.update
   [card :- :map]
   (-> (if (and (:id card)
                (or (:dataset_query card)
@@ -1193,8 +1193,8 @@
   First mappings of _identifier_ -> _action_ are generated. _identifier_ is described
   eg. in [[breakouts->identifier->action]] docstring. Then, dashcards are fetched and updates are generated
   by [[updates-for-dashcards]]. Updates are then executed."
-  [card-before :- ::queries.schema/card
-   card-after  :- ::queries.schema/card]
+  [card-before :- ::queries.schema/card.update
+   card-after  :- ::queries.schema/card.update]
   (let [card->breakouts  #(some-> % :dataset_query not-empty lib/breakouts)
         breakouts-before (card->breakouts card-before)
         breakouts-after  (card->breakouts card-after)]

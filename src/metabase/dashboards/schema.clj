@@ -10,7 +10,7 @@
 (mr/def ::dashcard
   [:map
    [:id   {:optional true} ::lib.schema.id/dashcard]
-   [:card {:optional true} [:ref ::queries.schema/card]]])
+   [:card {:optional true} [:ref ::queries.schema/card.update]]])
 
 (mr/def ::parameters
   [:sequential
@@ -20,17 +20,11 @@
     [:map
      [:type {:optional true} [:ref ::lib.schema.parameter/type]]]]])
 
-(mr/def ::dashboard
-  [:map
-   [:id         {:optional true} ::lib.schema.id/dashboard]
-   [:parameters {:optional true} [:maybe ::parameters]]
-   [:dashcards  {:optional true} [:maybe [:sequential ::dashcard]]]])
-
 (mr/def ::dashboard.parameter
   "One entry of the `:parameters` column of a Dashboard, decoded."
   :map)
 
-(mr/def ::dashboard.row
+(mr/def ::dashboard
   "A Dashboard as selected from the app DB: every column of `:report_dashboard`."
   [:map {:closed true}
    [:id                      ::lib.schema.id/dashboard]

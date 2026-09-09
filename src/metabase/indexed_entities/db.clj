@@ -35,7 +35,7 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/ModelIndex id))
 
-(mu/defn card :- [:maybe ::queries.schema/card.row]
+(mu/defn card :- [:maybe ::queries.schema/card]
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))

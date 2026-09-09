@@ -26,7 +26,7 @@
        [:= [:lower :schema] (u/lower-case-en schema)]]
       [:= [:lower :name] table-lower])))
 
-(mu/defn active-tables-matching :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn active-tables-matching :- [:sequential ::warehouse-schema.schema/table]
   "The active Tables of the Database with `database-id` matching one of `tables` (each a map of `:table` and
   optional `:schema`), by case-insensitive name/schema."
   [database-id :- ::lib.schema.id/database
@@ -39,7 +39,7 @@
                       [:= :active true]
                       (into [:or] (map table-match-clause) tables)]}))
 
-(mu/defn visible-tables :- [:sequential ::warehouse-schema.schema/table.row]
+(mu/defn visible-tables :- [:sequential ::warehouse-schema.schema/table]
   "The active, visible Tables among `table-ids` of the Database with `database-id` that `user-id` (or a
   superuser) can access for querying, requiring unrestricted view-data and query-builder-or-native create
   permissions."
@@ -60,7 +60,7 @@
                (cond-> {:where clause}
                  with (assoc :with with)))))
 
-(mu/defn unarchived-cards :- [:sequential ::queries.schema/card.row]
+(mu/defn unarchived-cards :- [:sequential ::queries.schema/card]
   "The unarchived Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids] :archived false))

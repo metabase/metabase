@@ -16,7 +16,7 @@
    [metabase.util.malli.schema :as ms]))
 
 (mu/defn- get-param-or-throw :- ::parameters.schema/parameter
-  [card      :- ::queries.schema/card
+  [card      :- ::queries.schema/card.update
    param-key :- ::lib.schema.parameter/id]
   (u/prog1 (m/find-first #(= (:id %) param-key)
                          (or (seq (:parameters card))
@@ -27,7 +27,7 @@
                       {:status-code 400})))))
 
 (mu/defn- param->field-id :- [:maybe ::lib.schema.id/field]
-  [card  :- ::queries.schema/card
+  [card  :- ::queries.schema/card.update
    param :- ::parameters.schema/parameter]
   (params/param-target->field-id (:target param) card))
 
@@ -39,7 +39,7 @@
 
   Note this only reaches parameters whose values come from a Field -- one drawing values from a static list or from
   another card is returned in full, as it is on a dashboard."
-  [card        :- ::queries.schema/card
+  [card        :- ::queries.schema/card.update
    slug->value :- [:maybe [:map-of :any :any]]]
   (let [;; the same source [[get-param-or-throw]] uses: a native card may carry no `:parameters` at all and be
         ;; described entirely by its template tags
@@ -68,7 +68,7 @@
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
   dashcards to worry about. With `constraints`, values are chain-filtered to the rows those constraints match, the
   same way the dashboard version filters on its other parameter values."
-  [card         :- ::queries.schema/card
+  [card         :- ::queries.schema/card.update
    param        :- ::parameters.schema/parameter
    query-string :- [:maybe :string]
    constraints  :- [:maybe ::chain-filter/constraints]]
@@ -104,7 +104,7 @@
   ([card param-key value]
    (card-param-remapped-value card param-key value nil))
 
-  ([card        :- ::queries.schema/card
+  ([card        :- ::queries.schema/card.update
     param-key   :- ::lib.schema.parameter/id
     value
     constraints :- [:maybe ::chain-filter/constraints]]

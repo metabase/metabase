@@ -160,7 +160,7 @@
   "Fetch dependent metadata for cards.
 
   Models and native queries need their definitions walked as well as their own, card-level metadata."
-  [cards :- [:sequential ::queries.schema/card]]
+  [cards :- [:sequential ::queries.schema/card.update]]
   (let [;; remove any Cards with empty queries
         cards (remove #(empty? (:dataset_query %)) cards)
         ;; All the queries on all the cards
@@ -228,7 +228,7 @@
                   [:map {:optional true} [:dashcards
                                           [:sequential
                                            [:map
-                                            [:card   {:optional true} [:maybe ::queries.schema/card]]
+                                            [:card   {:optional true} [:maybe ::queries.schema/card.update]]
                                             [:series {:optional true} [:maybe [:sequential [:map
                                                                                             [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]]]]]]]]]
   (let [dashcards (mapcat :dashcards dashboards)

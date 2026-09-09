@@ -5,15 +5,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::table
-  "Schema for an instance of a `:model/Table`."
-  [:map
-   [:id ::lib.schema.id/table]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:schema {:optional true} [:maybe :string]]
-   [:db_id ::lib.schema.id/database]])
-
 (mr/def ::dimension
   "A Dimension as selected from the app DB: every column of `:dimension`."
   [:map {:closed true}
@@ -202,7 +193,7 @@
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mr/def ::table.row
+(mr/def ::table
   "A Table as selected from the app DB: every column of `:metabase_table`."
   [:map {:closed true}
    [:id                      ::lib.schema.id/table]

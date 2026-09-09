@@ -9,7 +9,7 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn unarchived-models-visible-to-user :- [:sequential ::queries.schema/card.row]
+(mu/defn unarchived-models-visible-to-user :- [:sequential ::queries.schema/card]
   "The unarchived model Cards in Collections the current user can read."
   []
   (t2/select :model/Card {:where [:and

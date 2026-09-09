@@ -18,19 +18,19 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-one :model/Database :id [:in ids]))
 
-(mu/defn dashboard-with-ids :- [:maybe ::dashboards.schema/dashboard.row]
+(mu/defn dashboard-with-ids :- [:maybe ::dashboards.schema/dashboard]
   "A Dashboard whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-one :model/Dashboard :id [:in ids]))
 
-(mu/defn card-with-ids :- [:maybe ::queries.schema/card.row]
+(mu/defn card-with-ids :- [:maybe ::queries.schema/card]
   "A Card whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-one :model/Card :id [:in ids]))
 
 (def ^:private DashboardCollectionId
   "Rows returned by [[dashboard-collection-id]]."
-  (mut/select-keys ::dashboards.schema/dashboard.row [:collection_id]))
+  (mut/select-keys ::dashboards.schema/dashboard [:collection_id]))
 
 (mu/defn dashboard-collection-id :- [:maybe DashboardCollectionId]
   "The `:collection_id` of the Dashboard with `dashboard-id`, or nil."
@@ -39,7 +39,7 @@
 
 (def ^:private CardCollectionId
   "Rows returned by [[card-collection-id]]."
-  (mut/select-keys ::queries.schema/card.row [:collection_id]))
+  (mut/select-keys ::queries.schema/card [:collection_id]))
 
 (mu/defn card-collection-id :- [:maybe CardCollectionId]
   "The `:collection_id` of the Card with `card-id`, or nil."

@@ -19,7 +19,7 @@
 
 (def ^:private CardTableAndDatabaseId
   "Rows returned by [[card-table-and-database-id]]."
-  (mut/select-keys ::queries.schema/card.row [:table_id :database_id]))
+  (mut/select-keys ::queries.schema/card [:table_id :database_id]))
 
 (mu/defn card-table-and-database-id :- [:maybe CardTableAndDatabaseId]
   "The `:table_id` and `:database_id` of the Card with `card-id`, or nil."

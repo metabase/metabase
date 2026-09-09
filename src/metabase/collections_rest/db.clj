@@ -195,7 +195,7 @@
                      [:= :archived false]
                      [:in :collection_id collection-ids]]}))
 
-(mu/defn top-level-cards-in-collection :- [:sequential ::queries.schema/card.row]
+(mu/defn top-level-cards-in-collection :- [:sequential ::queries.schema/card]
   "The Cards in the Collection with `collection-id` that belong to no Dashboard, newest first."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select :model/Card {:where [:and
@@ -203,7 +203,7 @@
                                   [:= :dashboard_id nil]]
                           :order-by [[:id :desc]]}))
 
-(mu/defn cards-in-collection :- [:sequential ::queries.schema/card.row]
+(mu/defn cards-in-collection :- [:sequential ::queries.schema/card]
   "The Cards in the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select :model/Card :collection_id collection-id))
