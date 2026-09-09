@@ -21,7 +21,11 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 
-import { initialState, remoteSyncReducer } from "../sync-task-slice";
+import {
+  initialState,
+  remoteSyncReducer,
+  taskStarted,
+} from "../sync-task-slice";
 
 import { remoteSyncListenerMiddleware } from "./remote-sync-listener-middleware";
 
@@ -300,6 +304,43 @@ describe("remote-sync-listener-middleware", () => {
       expect(store.getState().remoteSyncPlugin?.currentTask?.worktree_id).toBe(
         5,
       );
+    });
+
+    it("keeps another scope's running task when the import is rejected", async () => {
+      // The backend allows one sync task instance-wide: a pull for worktree 7 while worktree 5's
+      // task runs gets a 400. Neither the start nor the rejection may disturb worktree 5's task, or
+      // its progress and the cache invalidation when it ends would be lost.
+      fetchMock.post("path:/api/ee/remote-sync/import", {
+        status: 400,
+        body: "Remote sync in progress",
+      });
+
+      const store = createTestStore();
+      store.dispatch(taskStarted({ taskType: "import", worktreeId: 5 }));
+
+      store.dispatch(
+        remoteSyncApi.endpoints.importChanges.initiate({
+          expected_branch: "other-branch",
+          worktree_id: 7,
+        }),
+      );
+
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("path:/api/ee/remote-sync/import"),
+      );
+
+      await waitFor(() => {
+        const mutations = store.getState()[Api.reducerPath].mutations;
+        expect(
+          Object.values(mutations).some(
+            (mutation) => mutation?.status === "rejected",
+          ),
+        ).toBe(true);
+      });
+      expect(store.getState().remoteSyncPlugin?.currentTask?.worktree_id).toBe(
+        5,
+      );
+      expect(store.getState().remoteSyncPlugin?.showModal).toBe(true);
     });
 
     it("does NOT open the setup modal when a worktree import task ends in conflict", async () => {

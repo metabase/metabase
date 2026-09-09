@@ -15,6 +15,15 @@ export const getCurrentTask = createSelector(
   (state) => state.currentTask,
 );
 
+/**
+ * Whether a sync task is running in any scope (the main app or any worktree). The backend runs one
+ * sync task at a time instance-wide, so while this is true no scope can start another.
+ */
+export const getIsAnyTaskRunning = createSelector(
+  getCurrentTask,
+  (task) => task !== null && task.ended_at === null,
+);
+
 export const getShowModal = createSelector(
   getRemoteSyncState,
   (state) => state.showModal,

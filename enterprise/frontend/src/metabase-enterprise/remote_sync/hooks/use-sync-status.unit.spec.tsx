@@ -67,7 +67,9 @@ describe("useSyncStatus", () => {
     });
   });
 
-  it("does not render another scope's progress modal", async () => {
+  it("renders a worktree task's progress modal from the app-wide instance, without reporting it as its own", async () => {
+    // The worktree's own UI can be left while its task runs, so the app-wide instance owns the
+    // modal for whichever scope the task belongs to.
     const { result, store } = setup();
 
     act(() => {
@@ -80,8 +82,41 @@ describe("useSyncStatus", () => {
       ).toBe(true);
     });
 
-    expect(result.current.progressModal).toBeNull();
+    expect(result.current.progressModal).not.toBeNull();
     expect(result.current.isRunning).toBe(false);
+    expect(result.current.isAnyTaskRunning).toBe(true);
+  });
+
+  it("renders no progress modal from a worktree's instance, even for its own task", async () => {
+    const { result, store } = setup({ worktreeId: 5 });
+
+    act(() => {
+      store.dispatch(taskStarted({ taskType: "import", worktreeId: 5 }));
+    });
+
+    await waitFor(() => {
+      expect(result.current.isRunning).toBe(true);
+    });
+
+    expect(result.current.progressModal).toBeNull();
+    expect(result.current.isAnyTaskRunning).toBe(true);
+  });
+
+  it("reports another scope's running task as blocking without reporting it as its own", async () => {
+    const { result, store } = setup({ worktreeId: 7 });
+
+    act(() => {
+      store.dispatch(taskStarted({ taskType: "import", worktreeId: 5 }));
+    });
+
+    await waitFor(() => {
+      expect(result.current.isAnyTaskRunning).toBe(true);
+    });
+
+    expect(result.current.isRunning).toBe(false);
+    expect(result.current.isIdle).toBe(true);
+    // Only the app-wide instance polls a task of another scope.
+    expect(currentTaskCalls()).toHaveLength(0);
   });
 
   it("polls the main app's task without a worktree-id", async () => {

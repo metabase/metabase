@@ -20,6 +20,7 @@ import {
   useGetBranchesQuery,
   useImportChangesMutation,
 } from "metabase-enterprise/api";
+import type { Worktree } from "metabase-types/api";
 
 type NewWorktreeModalProps = {
   onClose: () => void;
@@ -41,6 +42,23 @@ export function NewWorktreeModal({ onClose }: NewWorktreeModalProps) {
   const isNewBranch =
     trimmedBranch.length > 0 && !branches.includes(trimmedBranch);
 
+  // Materializes the branch's content into the worktree so it doesn't open
+  // empty. The worktree already exists by now, so a failed pull is reported
+  // without blocking navigation: the worktree home page offers Pull to retry.
+  const pullIntoWorktree = async (worktree: Worktree) => {
+    try {
+      await importChanges({
+        expected_branch: trimmedBranch,
+        worktree_id: worktree.id,
+      }).unwrap();
+    } catch (error) {
+      sendToast({
+        message: t`Worktree created, but pulling "${trimmedBranch}" failed: ${getErrorMessage(error)}`,
+        icon: "warning",
+      });
+    }
+  };
+
   const handleCreate = async () => {
     setIsCreating(true);
     try {
@@ -48,12 +66,7 @@ export function NewWorktreeModal({ onClose }: NewWorktreeModalProps) {
         await createBranch({ name: trimmedBranch, checkout: false }).unwrap();
       }
       const worktree = await createWorktree({ branch: trimmedBranch }).unwrap();
-      // Materialize the branch's content into the worktree right away, so it
-      // doesn't open empty.
-      await importChanges({
-        expected_branch: trimmedBranch,
-        worktree_id: worktree.id,
-      });
+      await pullIntoWorktree(worktree);
       onClose();
       navigate(Urls.transformList({ worktreeId: worktree.id }));
     } catch (error) {
@@ -70,7 +83,7 @@ export function NewWorktreeModal({ onClose }: NewWorktreeModalProps) {
     <Modal title={t`New worktree`} opened padding="xl" onClose={onClose}>
       <Stack gap="lg" mt="sm">
         <Text c="text-secondary">
-          {t`A worktree checks out a branch's transforms so you can work on them without affecting the instance.`}
+          {t`A worktree checks out a branch's content so you can work on it without affecting the instance.`}
         </Text>
         <Autocomplete
           label={t`Branch`}

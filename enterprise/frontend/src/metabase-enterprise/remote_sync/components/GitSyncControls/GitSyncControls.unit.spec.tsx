@@ -12,7 +12,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { taskUpdated } from "../../sync-task-slice";
+import { taskStarted, taskUpdated } from "../../sync-task-slice";
 
 import { GitSyncControls } from "./GitSyncControls";
 import {
@@ -442,6 +442,60 @@ describe("GitSyncControls", () => {
         expect(messages.some((m) => /changed before your push/i.test(m))).toBe(
           true,
         );
+      });
+    });
+  });
+  // Also needs the plugin reducer, so it stays down here with the conflict toast test.
+  describe("instance-wide sync lock", () => {
+    it("disables the controls while a worktree's task runs, and re-enables them once it ends", async () => {
+      // The backend runs one sync task at a time instance-wide, so a worktree's pull blocks the app
+      // bar's push/pull just like the main app's own task would.
+      const settings = mockSettings({
+        "token-features": createMockTokenFeatures({ remote_sync: true }),
+        "remote-sync-enabled": true,
+        "remote-sync-branch": "main",
+        "remote-sync-type": "read-write",
+      });
+      setupEnterprisePlugins();
+      setupRemoteSyncEndpoints({
+        branches: ["main"],
+        dirty: [],
+        hasRemoteChanges: false,
+      });
+      setupCollectionEndpoints();
+      setupSessionEndpoints({});
+
+      const { store } = renderWithProviders(<GitSyncControls />, {
+        storeInitialState: createMockState({
+          currentUser: createMockUser({ is_superuser: true }),
+          settings,
+        }),
+      });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeEnabled();
+      });
+
+      store.dispatch(taskStarted({ taskType: "import", worktreeId: 5 }));
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeDisabled();
+      });
+
+      store.dispatch(
+        taskUpdated(
+          createMockRemoteSyncTask({
+            id: 12,
+            worktree_id: 5,
+            sync_task_type: "import",
+            status: "successful",
+            ended_at: "2026-01-01T00:00:01Z",
+          }),
+        ),
+      );
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeEnabled();
       });
     });
   });

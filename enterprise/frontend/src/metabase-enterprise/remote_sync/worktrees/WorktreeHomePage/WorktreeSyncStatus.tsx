@@ -2,11 +2,13 @@ import type { ReactNode } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { getHowLongAgo } from "metabase/common/components/LastEditInfoLabel/LastEditInfoLabel";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
-import { Box, Divider, Group, Icon, Loader, Stack } from "metabase/ui";
+import { Box, Group, Icon, Loader, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName, RemoteSyncTask, Worktree } from "metabase-types/api";
 
+import S from "./WorktreeSyncStatus.module.css";
 import {
   type ChangeCounts,
   getSyncTaskSummary,
@@ -35,29 +37,24 @@ export function WorktreeSyncStatus({
   isLoadingLastTask,
 }: WorktreeSyncStatusProps) {
   return (
-    <TitleSection
-      label={t`Sync status`}
-      description={t`How this worktree compares to the ${worktree.branch} branch on the remote.`}
-      data-testid="worktree-sync-status"
-    >
-      <Stack gap={0}>
+    <TitleSection label={t`Sync status`} data-testid="worktree-sync-status">
+      {/* Three columns on wide screens, stacked with separators between them on narrow ones. */}
+      <Box className={S.grid}>
         <LocalChangesStatus
           counts={counts}
           isLoading={isLoadingChanges}
           isSyncing={isSyncing}
         />
-        <Divider />
         <RemoteBranchStatus
           hasRemoteChanges={hasRemoteChanges}
           isChecking={isCheckingRemote}
         />
-        <Divider />
         <LastSyncStatus
           worktree={worktree}
           task={lastTask}
           isLoading={isLoadingLastTask}
         />
-      </Stack>
+      </Box>
     </TitleSection>
   );
 }
@@ -72,7 +69,7 @@ type StatusRowProps = {
 };
 
 // The same shape as the run status line on a transform's run page: an icon, a sentence, and
-// optional secondary detail after it.
+// optional secondary detail after it. The detail wraps under the sentence when the column is narrow.
 function StatusRow({
   icon = "info",
   color = "text-secondary",
@@ -82,10 +79,19 @@ function StatusRow({
   "data-testid": dataTestId,
 }: StatusRowProps) {
   return (
-    <Group p="xl" gap="sm" wrap="nowrap" data-testid={dataTestId}>
+    <Group
+      p="xl"
+      gap="sm"
+      wrap="nowrap"
+      align="flex-start"
+      className={S.cell}
+      data-testid={dataTestId}
+    >
       {isPending ? <Loader size="xs" /> : <Icon name={icon} c={color} />}
-      <Box>{children}</Box>
-      {detail != null && <Box c="text-secondary">{detail}</Box>}
+      <Group gap="sm" miw={0}>
+        <Box>{children}</Box>
+        {detail != null && <Box c="text-secondary">{detail}</Box>}
+      </Group>
     </Group>
   );
 }
@@ -221,7 +227,7 @@ function LastSyncStatus({ worktree, task, isLoading }: LastSyncStatusProps) {
             t`Created by ${creatorName}`
           ) : (
             <>
-              {t`Created`} <DateTime value={worktree.created_at} />
+              {t`Created`} <RelativeTime value={worktree.created_at} />
             </>
           )
         }
@@ -243,10 +249,19 @@ function LastSyncStatus({ worktree, task, isLoading }: LastSyncStatusProps) {
     <StatusRow
       icon={isFailed ? "warning" : "check_filled"}
       color={isFailed ? "feedback-negative" : "feedback-positive"}
-      detail={<DateTime value={task.ended_at} />}
+      detail={<RelativeTime value={task.ended_at} />}
       data-testid={testId}
     >
       {getSyncTaskSummary(task)}
     </StatusRow>
+  );
+}
+
+/** "2 hours ago", with the full date on hover, the way the last-edit labels show it. */
+function RelativeTime({ value }: { value: string }) {
+  return (
+    <Tooltip label={<DateTime value={value} />}>
+      <span>{getHowLongAgo(value)}</span>
+    </Tooltip>
   );
 }

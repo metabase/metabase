@@ -76,7 +76,6 @@ function addSyntheticCollectionToRoot({
     can_write: false,
     can_restore: false,
     can_delete: false,
-    worktree_id: null,
     namespace,
     location: null,
     path: [COLLECTIONS_TOP_LEVEL_ID],

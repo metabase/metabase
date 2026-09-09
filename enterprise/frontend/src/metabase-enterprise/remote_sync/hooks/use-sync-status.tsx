@@ -9,6 +9,7 @@ import { REMOTE_SYNC_KEY } from "../constants";
 import {
   getCurrentTask,
   getHasPendingMutation,
+  getIsAnyTaskRunning,
   getShowModal,
 } from "../selectors";
 import { modalDismissed } from "../sync-task-slice";
@@ -20,6 +21,17 @@ interface UseSyncStatusOptions {
   worktreeId?: WorktreeId | null;
 }
 
+/**
+ * The sync task state as seen from one scope (the main app or a worktree).
+ *
+ * The main app's instance is mounted app-wide (by StatusListing), while a worktree's is mounted only
+ * by that worktree's own UI, which the user can leave while its task runs. So the app-wide instance
+ * tracks whichever scope the current task belongs to: it polls the task to its terminal state (which
+ * invalidates the stale caches) and renders the progress modal for it, so the modal survives leaving
+ * the UI that started the task. A worktree instance reports only its own scope's task and renders no
+ * modal, so a task is never shown twice. Both subscribe to the same query cache entry, so tracking
+ * from two instances costs no extra requests.
+ */
 export const useSyncStatus = ({
   worktreeId = null,
 }: UseSyncStatusOptions = {}) => {
@@ -27,50 +39,26 @@ export const useSyncStatus = ({
   const dispatch = useDispatch();
 
   const currentTask = useSelector(getCurrentTask);
+  const isAnyTaskRunning = useSelector(getIsAnyTaskRunning);
   const isModalShown = useSelector(getShowModal);
   const hasPendingMutation = useSelector(getHasPendingMutation);
 
-  // A task belonging to another scope (main app vs. some worktree) is invisible here: its progress
-  // is rendered by that scope's own UI.
-  const task =
+  const isAppWide = worktreeId === null;
+  const ownTask =
     currentTask !== null && (currentTask.worktree_id ?? null) === worktreeId
       ? currentTask
       : null;
+  const trackedTask = isAppWide ? currentTask : ownTask;
 
-  const isRunning = task !== null && task.ended_at === null;
-  const showModal = isModalShown && task !== null;
-  const taskType = task?.sync_task_type;
-  const progress = task?.progress ?? 0;
-  const isError = task?.status === "errored";
-  const isStalled = task?.status === "timed-out";
-  const lastProgressReportAt = task?.last_progress_report_at ?? null;
-  const errorMessage = task?.error_message ?? "";
-  const isSuccess = task?.status === "successful";
-  const outcome = task?.outcome ?? null;
-
-  const minutesSinceLastUpdate = lastProgressReportAt
-    ? dayjs().diff(dayjs(lastProgressReportAt), "minute")
-    : null;
-
-  // The main app's instance is mounted app-wide, while a worktree's is mounted only by that
-  // worktree's own UI. So the app-wide instance polls whichever scope the tracked task belongs to:
-  // a worktree task still reaches a terminal state (closing out the modal and invalidating the
-  // stale caches) when the UI that started it is no longer on screen. It still *renders* only its
-  // own scope's modal, so the two instances never show the task twice, and both subscribe to the
-  // same query cache entry, so this costs no extra requests.
-  const tracksEveryScope = worktreeId == null;
-  const trackedTask = tracksEveryScope ? currentTask : task;
+  const isRunning = ownTask !== null && ownTask.ended_at === null;
   const isTrackedTaskRunning =
     trackedTask !== null && trackedTask.ended_at === null;
-  const pollWorktreeId = tracksEveryScope
-    ? (trackedTask?.worktree_id ?? null)
-    : worktreeId;
-
   const shouldPoll =
     isTrackedTaskRunning && isModalShown && !hasPendingMutation;
+  const pollWorktreeId = trackedTask?.worktree_id ?? null;
 
   useGetRemoteSyncCurrentTaskQuery(
-    pollWorktreeId != null ? { "worktree-id": pollWorktreeId } : undefined,
+    pollWorktreeId !== null ? { "worktree-id": pollWorktreeId } : undefined,
     {
       pollingInterval: shouldPoll ? SYNC_STATUS_POLL_INTERVAL : undefined,
       skipPollingIfUnfocused: true,
@@ -78,28 +66,40 @@ export const useSyncStatus = ({
     },
   );
 
+  const lastProgressReportAt = trackedTask?.last_progress_report_at ?? null;
+  const minutesSinceLastUpdate = lastProgressReportAt
+    ? dayjs().diff(dayjs(lastProgressReportAt), "minute")
+    : null;
+
   const progressModal =
-    showModal && taskType ? (
+    isAppWide && isModalShown && trackedTask !== null ? (
       <SyncProgressModal
-        taskType={taskType}
-        progress={progress}
-        isStalled={isStalled}
+        taskType={trackedTask.sync_task_type}
+        progress={trackedTask.progress ?? 0}
+        isStalled={trackedTask.status === "timed-out"}
         minutesSinceLastUpdate={minutesSinceLastUpdate}
-        isError={isError}
-        errorMessage={errorMessage}
-        isSuccess={isSuccess}
-        outcome={outcome}
-        worktreeId={worktreeId}
+        isError={trackedTask.status === "errored"}
+        errorMessage={trackedTask.error_message ?? ""}
+        isSuccess={trackedTask.status === "successful"}
+        outcome={trackedTask.outcome ?? null}
+        worktreeId={trackedTask.worktree_id ?? null}
         onDismiss={() => dispatch(modalDismissed())}
       />
     ) : null;
 
   return {
     isIdle: !isRunning,
+    /** A task of this scope is running. */
     isRunning,
-    taskType,
-    progress,
-    message: errorMessage,
+    /**
+     * A task is running in any scope. The backend runs one sync task at a time instance-wide, so
+     * no scope can start another while this is true.
+     */
+    isAnyTaskRunning,
+    taskType: ownTask?.sync_task_type,
+    progress: ownTask?.progress ?? 0,
+    message: ownTask?.error_message ?? "",
+    /** Rendered by the app-wide instance only, for whichever scope's task is tracked. */
     progressModal,
   };
 };

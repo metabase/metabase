@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -11,7 +11,8 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useWorktreeId } from "metabase/common/worktrees";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { Button, Group, Icon } from "metabase/ui";
+import { useDispatch } from "metabase/redux";
+import { Button, Group, Icon, Tooltip } from "metabase/ui";
 import {
   useGetRemoteSyncChangesQuery,
   useGetRemoteSyncLastTaskQuery,
@@ -19,6 +20,8 @@ import {
 } from "metabase-enterprise/api";
 import type { RemoteSyncEntity, Worktree } from "metabase-types/api";
 
+import { runningTaskAdopted } from "../../sync-task-slice";
+import { useDeleteWorktree } from "../use-delete-worktree";
 import { useWorktreeSyncActions } from "../use-worktree-sync-actions";
 
 import { WorktreeChangesList } from "./WorktreeChangesList";
@@ -42,6 +45,7 @@ export function WorktreeHomePage() {
 
 function WorktreeOverview({ worktree }: { worktree: Worktree }) {
   const worktreeId = worktree.id;
+  const dispatch = useDispatch();
 
   const {
     data: changesData,
@@ -57,6 +61,15 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
       { refetchOnMountOrArgChange: true },
     );
 
+  // A task still running when the page loads (after a reload, or started from another session) is
+  // unknown to the client's task state, which would leave the card frozen on "Pulling changes" with
+  // live buttons. Adopting it makes the sync status track and poll it like one started here.
+  useEffect(() => {
+    if (lastTask != null && lastTask.ended_at === null) {
+      dispatch(runningTaskAdopted(lastTask));
+    }
+  }, [lastTask, dispatch]);
+
   const {
     hasRemoteChanges,
     isFetchingRemoteChanges,
@@ -67,6 +80,7 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
     push,
     modals,
   } = useWorktreeSyncActions(worktree);
+  const { openDeleteModal, deleteModal } = useDeleteWorktree(worktree);
 
   const entities = changesData?.dirty ?? NO_CHANGES;
   const counts = useMemo(() => countChanges(entities), [entities]);
@@ -85,6 +99,13 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
         }
         actions={
           <Group wrap="nowrap">
+            <Tooltip label={t`Delete worktree`}>
+              <Button
+                aria-label={t`Delete worktree`}
+                leftSection={<Icon name="trash" />}
+                onClick={openDeleteModal}
+              />
+            </Tooltip>
             <Button
               leftSection={<Icon name="arrow_down" />}
               disabled={isPullDisabled || isFetchingRemoteChanges}
@@ -125,6 +146,7 @@ function WorktreeOverview({ worktree }: { worktree: Worktree }) {
       />
 
       {modals}
+      {deleteModal}
     </PageContainer>
   );
 }

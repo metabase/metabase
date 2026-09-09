@@ -40,20 +40,22 @@ type UseWorktreeSyncActionsOptions = {
    */
   enabled?: boolean;
   /**
-   * Render the task progress modal and report a task that ended in conflict. That feedback comes
-   * from the shared task state, so when two instances for the same worktree are mounted at once
-   * (the sidebar menu and the worktree home page), exactly one of them should keep this on.
+   * Report a task that ended in conflict. That feedback comes from the shared task state, so when
+   * two instances for the same worktree are mounted at once (the sidebar menu and the worktree home
+   * page), exactly one of them should keep this on.
    */
   showsTaskFeedback?: boolean;
 };
 
 /**
  * Pull/push flow for a worktree: sync status, the preflight-first pull/push handlers, and the modals
- * they open (including the task progress modal and conflict feedback). The equivalent of
- * GitSyncControls' logic for the main app, minus branch management: a worktree is pinned to its
- * branch for its whole life, so there is no branch switching and no branch-mismatch handling.
+ * they open (the push form and conflict feedback). The equivalent of GitSyncControls' logic for the
+ * main app, minus branch management: a worktree is pinned to its branch for its whole life, so there
+ * is no branch switching and no branch-mismatch handling. The task progress modal is not among the
+ * modals: the app-wide sync status (StatusListing) renders it for whichever scope's task is running,
+ * so it stays up when the user leaves the worktree's pages.
  * Render `modals` next to whatever triggers the actions. Mount at most one instance per worktree
- * with `showsTaskFeedback` on, or the task modals and conflict toasts double up.
+ * with `showsTaskFeedback` on, or the conflict feedback doubles up.
  */
 export function useWorktreeSyncActions(
   worktree: Worktree,
@@ -87,7 +89,7 @@ export function useWorktreeSyncActions(
     useImportChangesMutation();
   const [runExportPreflight] = useLazyGetExportPreflightQuery();
 
-  const { isRunning: isSyncTaskRunning, progressModal } = useSyncStatus({
+  const { isRunning: isSyncTaskRunning, isAnyTaskRunning } = useSyncStatus({
     worktreeId,
   });
 
@@ -102,6 +104,10 @@ export function useWorktreeSyncActions(
   const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
 
   const isSyncing = isSyncTaskRunning || isImporting || isCheckingPreflight;
+  // The backend runs one sync task at a time instance-wide, so another scope's running task (the
+  // main app's or another worktree's) blocks this worktree's push/pull too. It isn't this
+  // worktree's activity, though, so it doesn't show as `isSyncing`.
+  const isSyncBlocked = isSyncing || isAnyTaskRunning;
 
   // A task that ends in conflict is otherwise silent (the middleware can't toast). An export conflict
   // means the push lost the preflight->execute race; an import conflict means the pull ran into local
@@ -124,7 +130,7 @@ export function useWorktreeSyncActions(
       setConflictPreflight(null);
       setConflictVariant("pull");
     }
-    dispatch(taskCleared());
+    dispatch(taskCleared({ worktreeId }));
   }, [currentTask, worktreeId, showsTaskFeedback, sendToast, dispatch]);
 
   const push = useCallback(async () => {
@@ -234,8 +240,6 @@ export function useWorktreeSyncActions(
           historyRewritten={conflictPreflight?.reason === "history-rewritten"}
         />
       )}
-
-      {showsTaskFeedback && progressModal}
     </>
   );
 
@@ -244,8 +248,8 @@ export function useWorktreeSyncActions(
     hasRemoteChanges,
     isFetchingRemoteChanges,
     isSyncing,
-    isPullDisabled: isSyncing || !hasRemoteChanges,
-    isPushDisabled: isSyncing || !isDirty,
+    isPullDisabled: isSyncBlocked || !hasRemoteChanges,
+    isPushDisabled: isSyncBlocked || !isDirty,
     pull,
     push,
     modals,

@@ -78,10 +78,17 @@ remoteSyncListenerMiddleware.startListening({
   },
 });
 
+// A rejection clears only the task the mutation started: with a task already running in another
+// scope, `taskStarted` keeps tracking that one, and the rejection (400 "Remote sync in progress")
+// must leave it alone.
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.exportChanges.matchRejected,
-  effect: async (_action, { dispatch }) => {
-    dispatch(taskCleared());
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskCleared({
+        worktreeId: action.meta.arg.originalArgs.worktree_id ?? null,
+      }),
+    );
   },
 });
 
@@ -110,8 +117,12 @@ remoteSyncListenerMiddleware.startListening({
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchRejected,
-  effect: async (_action, { dispatch }) => {
-    dispatch(taskCleared());
+  effect: async (action, { dispatch }) => {
+    dispatch(
+      taskCleared({
+        worktreeId: action.meta.arg.originalArgs.worktree_id ?? null,
+      }),
+    );
   },
 });
 
@@ -127,7 +138,7 @@ remoteSyncListenerMiddleware.startListening({
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.switchBranch.matchRejected,
   effect: async (_action, { dispatch }) => {
-    dispatch(taskCleared());
+    dispatch(taskCleared({ worktreeId: null }));
   },
 });
 
@@ -142,7 +153,7 @@ remoteSyncListenerMiddleware.startListening({
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.stashChanges.matchRejected,
   effect: async (_action, { dispatch }) => {
-    dispatch(taskCleared());
+    dispatch(taskCleared({ worktreeId: null }));
   },
 });
 

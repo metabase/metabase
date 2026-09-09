@@ -19,6 +19,7 @@
   "Schema for a remote sync task object."
   [:map
    [:id pos-int?]
+   [:worktree_id [:maybe ::lib.schema.id/worktree]]
    [:sync_task_type TaskType]
    [:initiated_by {:optional true} [:maybe pos-int?]]
    [:progress [:maybe [:float {:min 0.0 :max 1.0}]]]

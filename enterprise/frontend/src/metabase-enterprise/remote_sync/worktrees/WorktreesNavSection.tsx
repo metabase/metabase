@@ -2,13 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useHasTokenFeature, useToast } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { canAccessRemoteSync } from "metabase/current-user";
 import { AreaTab, AreaTabGroup } from "metabase/nav/components/AreaLayout";
 import type { DataStudioWorktreesSectionProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { useLocation, useNavigate } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
@@ -19,21 +18,23 @@ import {
   Loader,
   Menu,
   Stack,
+  Text,
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import {
-  useDeleteWorktreeMutation,
   useGetLibraryCollectionQuery,
-  useGetRemoteSyncHasChangesQuery,
   useListWorktreesQuery,
 } from "metabase-enterprise/api";
-import type { Worktree, WorktreeId } from "metabase-types/api";
-
-import { CollectionSyncStatusBadge } from "../components/SyncedCollectionsSidebarSection";
+import type { Worktree } from "metabase-types/api";
 
 import { NewWorktreeModal } from "./NewWorktreeModal";
+import { WorktreeDirtyBadge } from "./WorktreeDirtyBadge";
+import { WorktreeFilterInput, useWorktreeFilter } from "./WorktreeFilter";
+import { WorktreesRailItem } from "./WorktreesRailItem";
+import { useDeleteWorktree } from "./use-delete-worktree";
 import { useWorktreeSyncActions } from "./use-worktree-sync-actions";
+import { isWithin } from "./utils";
 
 export function WorktreesNavSection({
   isNavbarOpened,
@@ -47,6 +48,8 @@ export function WorktreesNavSection({
   });
   const [isNewModalOpened, { open: openNewModal, close: closeNewModal }] =
     useDisclosure();
+  const { filter, setFilter, isFilterable, visibleWorktrees } =
+    useWorktreeFilter(worktrees);
 
   if (!canUseWorktrees) {
     return null;
@@ -68,31 +71,35 @@ export function WorktreesNavSection({
         </Tooltip>
       }
     >
-      {/* an expanded worktree's pages would otherwise sit flush against the next worktree row */}
-      <Stack gap="xs">
-        {worktrees.map((worktree) => (
-          <WorktreeNavItem
-            key={worktree.id}
-            worktree={worktree}
-            isNavbarOpened={isNavbarOpened}
-          />
-        ))}
-      </Stack>
+      {isNavbarOpened ? (
+        <Stack gap={0}>
+          {isFilterable && (
+            <Box px="sm" py="xs">
+              <WorktreeFilterInput value={filter} onChange={setFilter} />
+            </Box>
+          )}
+          {isFilterable && visibleWorktrees.length === 0 && (
+            <Text c="text-secondary" ta="center" py="sm">
+              {t`No worktrees found`}
+            </Text>
+          )}
+          {visibleWorktrees.map((worktree) => (
+            <WorktreeNavItem key={worktree.id} worktree={worktree} />
+          ))}
+        </Stack>
+      ) : (
+        <WorktreesRailItem worktrees={worktrees} onNewWorktree={openNewModal} />
+      )}
       {isNewModalOpened && <NewWorktreeModal onClose={closeNewModal} />}
     </AreaTabGroup>
   );
 }
 
-function isWithin(pathname: string, url: string) {
-  return pathname === url || pathname.startsWith(`${url}/`);
-}
-
 type WorktreeNavItemProps = {
   worktree: Worktree;
-  isNavbarOpened: boolean;
 };
 
-function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
+function WorktreeNavItem({ worktree }: WorktreeNavItemProps) {
   const { pathname } = useLocation();
   const homeUrl = Urls.dataStudioWorktree(worktree.id);
   const transformsUrl = Urls.transformList({ worktreeId: worktree.id });
@@ -109,19 +116,6 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
     { skip: !hasLibraryFeature },
   );
   const hasLibrary = libraryCollection != null && "name" in libraryCollection;
-
-  if (!isNavbarOpened) {
-    return (
-      <AreaTab
-        label={worktree.branch}
-        icon="git_branch"
-        to={homeUrl}
-        isSelected={isInsideWorktree}
-        showLabel={false}
-        rightSection={<WorktreeDirtyBadge worktreeId={worktree.id} />}
-      />
-    );
-  }
 
   const childrenId = `worktree-${worktree.id}-pages`;
 
@@ -151,16 +145,13 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
         rightSection={
           <Group gap="xs" wrap="nowrap">
             <WorktreeDirtyBadge worktreeId={worktree.id} />
-            <WorktreeMenu
-              worktree={worktree}
-              isInsideWorktree={isInsideWorktree}
-              isOnHomePage={isOnHomePage}
-            />
+            <WorktreeMenu worktree={worktree} isOnHomePage={isOnHomePage} />
           </Group>
         }
       />
       <Collapse in={isExpanded} id={childrenId}>
-        <Box pl="xl">
+        {/* the pages would otherwise sit flush against the next worktree row */}
+        <Box pl="xl" pb="xs">
           {hasLibrary && (
             <AreaTab
               label={t`Library`}
@@ -192,33 +183,14 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
   );
 }
 
-function WorktreeDirtyBadge({ worktreeId }: { worktreeId: WorktreeId }) {
-  const { data } = useGetRemoteSyncHasChangesQuery({
-    "worktree-id": worktreeId,
-  });
-  return data?.is_dirty ? <CollectionSyncStatusBadge /> : null;
-}
-
 type WorktreeMenuProps = {
   worktree: Worktree;
-  isInsideWorktree: boolean;
   isOnHomePage: boolean;
 };
 
-function WorktreeMenu({
-  worktree,
-  isInsideWorktree,
-  isOnHomePage,
-}: WorktreeMenuProps) {
+function WorktreeMenu({ worktree, isOnHomePage }: WorktreeMenuProps) {
   const [isMenuOpened, setIsMenuOpened] = useState(false);
-  const [
-    isDeleteModalOpened,
-    { open: openDeleteModal, close: closeDeleteModal },
-  ] = useDisclosure();
-  const [deleteWorktree, { isLoading: isDeleting }] =
-    useDeleteWorktreeMutation();
-  const [sendToast] = useToast();
-  const navigate = useNavigate();
+  const { openDeleteModal, deleteModal } = useDeleteWorktree(worktree);
 
   const {
     isDirty,
@@ -232,24 +204,9 @@ function WorktreeMenu({
   } = useWorktreeSyncActions(worktree, {
     // Only check statuses while the menu is open, so a long sidebar doesn't query per worktree.
     enabled: isMenuOpened,
-    // The home page mounts its own instance and reports task progress itself while it is shown.
+    // The home page mounts its own instance and reports conflicts itself while it is shown.
     showsTaskFeedback: !isOnHomePage,
   });
-
-  const handleDelete = async () => {
-    try {
-      await deleteWorktree(worktree.id).unwrap();
-      closeDeleteModal();
-      if (isInsideWorktree) {
-        navigate(Urls.transformList());
-      }
-    } catch {
-      sendToast({
-        message: t`Failed to delete worktree`,
-        icon: "warning",
-      });
-    }
-  };
 
   return (
     <>
@@ -302,15 +259,7 @@ function WorktreeMenu({
         </Menu.Dropdown>
       </Menu>
       {modals}
-      <ConfirmModal
-        opened={isDeleteModalOpened}
-        title={t`Delete the worktree for "${worktree.branch}"?`}
-        message={t`All content checked out into this worktree will be deleted. The branch itself is not affected.`}
-        confirmButtonText={t`Delete worktree`}
-        confirmButtonProps={{ loading: isDeleting }}
-        onConfirm={handleDelete}
-        onClose={closeDeleteModal}
-      />
+      {deleteModal}
     </>
   );
 }

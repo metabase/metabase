@@ -1,0 +1,19 @@
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cell + .cell {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+@media screen and (--breakpoint-min-md) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cell + .cell {
+    border-top: none;
+    border-left: 1px solid var(--mb-color-border-neutral);
+  }
+}

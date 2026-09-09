@@ -51,7 +51,9 @@ export const GitSyncControls = () => {
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
   const [runExportPreflight] = useLazyGetExportPreflightQuery();
-  const { isRunning: isSyncTaskRunning } = useSyncStatus();
+  // The backend runs one sync task at a time instance-wide, so a worktree's task blocks the main
+  // app's push/pull just like the main app's own would.
+  const { isAnyTaskRunning } = useSyncStatus();
 
   // Set when a push or pull needs the conflict modal; carries whether a clean merge is available.
   const [conflictPreflight, setConflictPreflight] =
@@ -85,7 +87,7 @@ export const GitSyncControls = () => {
         icon: "warning",
         message: t`The remote branch changed before your push finished. Pull the latest changes, then push again.`,
       });
-      dispatch(taskCleared());
+      dispatch(taskCleared({ worktreeId: null }));
     }
   }, [currentTask, sendToast, dispatch]);
 
@@ -99,7 +101,7 @@ export const GitSyncControls = () => {
   });
   const { has_changes: hasRemoteChanges } = hasRemoteChangesData || {};
 
-  const isLoading = isSyncTaskRunning || isImporting || isCheckingPreflight;
+  const isLoading = isAnyTaskRunning || isImporting || isCheckingPreflight;
 
   // If `error` is a branch-mismatch rejection (another session switched branches), open the
   // out-of-date modal prompting a refresh and return true so the caller can stop. Returns false for

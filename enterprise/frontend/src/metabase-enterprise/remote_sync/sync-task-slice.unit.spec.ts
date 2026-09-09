@@ -2,7 +2,10 @@ import { createMockRemoteSyncTask } from "metabase-types/api/mocks";
 
 import {
   initialState,
+  modalDismissed,
   remoteSyncReducer,
+  runningTaskAdopted,
+  taskCleared,
   taskStarted,
   taskUpdated,
 } from "./sync-task-slice";
@@ -167,6 +170,181 @@ describe("sync-task-slice", () => {
       expect(state.currentTask?.sync_task_type).toBe("export");
       expect(state.currentTask?.id).toBe(1);
       expect(state.currentTask?.status).toBe("successful");
+    });
+  });
+  describe("taskStarted across scopes", () => {
+    // The backend runs one sync task at a time instance-wide, so a start while another scope's task
+    // is running is rejected with a 400; the client must keep tracking the task that is running.
+    it("keeps a running task of another scope instead of replacing it", () => {
+      let state = remoteSyncReducer(
+        initialState,
+        taskStarted({ taskType: "import", worktreeId: 5 }),
+      );
+
+      state = remoteSyncReducer(
+        state,
+        taskStarted({ taskType: "import", worktreeId: 7 }),
+      );
+      expect(state.currentTask?.worktree_id).toBe(5);
+
+      state = remoteSyncReducer(state, taskStarted({ taskType: "import" }));
+      expect(state.currentTask?.worktree_id).toBe(5);
+      expect(state.showModal).toBe(true);
+    });
+
+    it("keeps the main app's running task when a worktree task starts", () => {
+      let state = remoteSyncReducer(
+        initialState,
+        taskStarted({ taskType: "export" }),
+      );
+
+      state = remoteSyncReducer(
+        state,
+        taskStarted({ taskType: "import", worktreeId: 5 }),
+      );
+
+      expect(state.currentTask?.worktree_id).toBeNull();
+      expect(state.currentTask?.sync_task_type).toBe("export");
+    });
+
+    it("replaces another scope's task once it has ended", () => {
+      let state = remoteSyncReducer(
+        initialState,
+        taskUpdated(
+          createMockRemoteSyncTask({
+            worktree_id: 5,
+            sync_task_type: "import",
+            status: "successful",
+            ended_at: "2000-01-01T00:00:01Z",
+          }),
+        ),
+      );
+
+      state = remoteSyncReducer(state, taskStarted({ taskType: "import" }));
+
+      expect(state.currentTask?.worktree_id).toBeNull();
+      expect(state.currentTask?.status).toBe("running");
+      expect(state.showModal).toBe(true);
+    });
+
+    it("replaces a running task of the same scope", () => {
+      let state = remoteSyncReducer(
+        initialState,
+        taskStarted({ taskType: "export", worktreeId: 5 }),
+      );
+
+      state = remoteSyncReducer(
+        state,
+        taskStarted({ taskType: "import", worktreeId: 5 }),
+      );
+
+      expect(state.currentTask?.sync_task_type).toBe("import");
+      expect(state.currentTask?.worktree_id).toBe(5);
+    });
+  });
+
+  describe("taskCleared", () => {
+    it("clears the current task when it belongs to the given scope", () => {
+      let state = remoteSyncReducer(
+        initialState,
+        taskStarted({ taskType: "import", worktreeId: 5 }),
+      );
+
+      state = remoteSyncReducer(state, taskCleared({ worktreeId: 5 }));
+
+      expect(state.currentTask).toBeNull();
+      expect(state.showModal).toBe(false);
+    });
+
+    it("leaves another scope's task alone", () => {
+      // The rejection of a start that `taskStarted` refused (another scope's task was running)
+      // must not clear the task that is actually running.
+      let state = remoteSyncReducer(
+        initialState,
+        taskStarted({ taskType: "import", worktreeId: 5 }),
+      );
+
+      state = remoteSyncReducer(state, taskCleared({ worktreeId: 7 }));
+      expect(state.currentTask?.worktree_id).toBe(5);
+
+      state = remoteSyncReducer(state, taskCleared({ worktreeId: null }));
+      expect(state.currentTask?.worktree_id).toBe(5);
+      expect(state.showModal).toBe(true);
+    });
+
+    it("is a no-op with no current task", () => {
+      const state = remoteSyncReducer(
+        initialState,
+        taskCleared({ worktreeId: null }),
+      );
+
+      expect(state).toEqual(initialState);
+    });
+  });
+
+  describe("runningTaskAdopted", () => {
+    const runningWorktreeTask = createMockRemoteSyncTask({
+      id: 9,
+      worktree_id: 5,
+      sync_task_type: "import",
+      status: "running",
+      ended_at: null,
+    });
+
+    it("tracks a running task and opens the modal when nothing is tracked", () => {
+      const state = remoteSyncReducer(
+        initialState,
+        runningTaskAdopted(runningWorktreeTask),
+      );
+
+      expect(state.currentTask?.id).toBe(9);
+      expect(state.showModal).toBe(true);
+    });
+
+    it("replaces a tracked task that has ended", () => {
+      let state = remoteSyncReducer(
+        initialState,
+        taskUpdated(
+          createMockRemoteSyncTask({
+            id: 1,
+            worktree_id: null,
+            status: "successful",
+            ended_at: "2000-01-01T00:00:01Z",
+          }),
+        ),
+      );
+      state = remoteSyncReducer(state, modalDismissed());
+
+      state = remoteSyncReducer(state, runningTaskAdopted(runningWorktreeTask));
+
+      expect(state.currentTask?.id).toBe(9);
+      expect(state.showModal).toBe(true);
+    });
+
+    it("does not replace a task that is already tracked as running", () => {
+      let state = remoteSyncReducer(
+        initialState,
+        taskStarted({ taskType: "export" }),
+      );
+
+      state = remoteSyncReducer(state, runningTaskAdopted(runningWorktreeTask));
+
+      expect(state.currentTask?.worktree_id).toBeNull();
+      expect(state.currentTask?.sync_task_type).toBe("export");
+    });
+
+    it("ignores a task that has already ended", () => {
+      const state = remoteSyncReducer(
+        initialState,
+        runningTaskAdopted(
+          createMockRemoteSyncTask({
+            status: "successful",
+            ended_at: "2000-01-01T00:00:01Z",
+          }),
+        ),
+      );
+
+      expect(state).toEqual(initialState);
     });
   });
 });

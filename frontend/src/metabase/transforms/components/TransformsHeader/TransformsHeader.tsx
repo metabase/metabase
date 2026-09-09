@@ -7,6 +7,7 @@ import {
 } from "metabase/common/components/PillTabNavigation";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { useWorktreeId } from "metabase/common/worktrees";
 import * as Urls from "metabase/urls";
 
 import {
@@ -24,6 +25,9 @@ export const TransformsHeader = memo(function TransformsHeader({
   showMetabotButton,
   showTabs = true,
 }: TransformsHeaderProps) {
+  // A worktree only checks out transforms: its jobs never run and there is no run
+  // history, so the section has nothing to switch between.
+  const isInsideWorktree = useWorktreeId() != null;
   const tabs: PillTab[] = [
     {
       label: t`Transforms`,
@@ -51,7 +55,11 @@ export const TransformsHeader = memo(function TransformsHeader({
       breadcrumbs={
         <DataStudioBreadcrumbs>{t`Data transformation`}</DataStudioBreadcrumbs>
       }
-      tabs={showTabs ? <PillTabNavigation tabs={tabs} /> : undefined}
+      tabs={
+        showTabs && !isInsideWorktree ? (
+          <PillTabNavigation tabs={tabs} />
+        ) : undefined
+      }
       py={0}
       mb="lg"
       showMetabotButton={showMetabotButton}

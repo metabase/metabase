@@ -37,6 +37,7 @@ type SetupOpts = {
   worktreeHasLibrary?: boolean;
   hasDependenciesFeature?: boolean;
   initialRoute?: string;
+  isNavbarOpened?: boolean;
 };
 
 function setup({
@@ -53,6 +54,7 @@ function setup({
   worktreeHasLibrary = false,
   hasDependenciesFeature = false,
   initialRoute = "/",
+  isNavbarOpened = true,
 }: SetupOpts = {}) {
   setupRemoteSyncEndpoints({
     worktrees,
@@ -98,7 +100,7 @@ function setup({
   // (mockSettings, above) before the EE plugins register their selectors.
   setupEnterprisePlugins();
 
-  renderWithProviders(<WorktreesNavSection isNavbarOpened />, {
+  renderWithProviders(<WorktreesNavSection isNavbarOpened={isNavbarOpened} />, {
     storeInitialState: state,
     withRouter: true,
     initialRoute,
@@ -469,5 +471,174 @@ describe("WorktreesNavSection", () => {
       worktrees: [createMockWorktree()],
     });
     expect(await screen.findByText("Worktrees")).toBeInTheDocument();
+  });
+
+  describe("worktree filter in the expanded navbar", () => {
+    const manyWorktrees = Array.from({ length: 11 }, (_, index) =>
+      createMockWorktree({ id: index + 1, branch: `wt-${index + 1}` }),
+    );
+
+    it("filters the list once there are many worktrees", async () => {
+      setup({ worktrees: manyWorktrees });
+
+      const filter = await screen.findByRole("textbox", {
+        name: "Find a worktree",
+      });
+      expect(screen.getAllByRole("link", { name: /^wt-/ })).toHaveLength(11);
+
+      await userEvent.type(filter, "wt-3");
+
+      expect(screen.getAllByRole("link", { name: /^wt-/ })).toHaveLength(1);
+      expect(screen.getByRole("link", { name: "wt-3" })).toBeInTheDocument();
+
+      await userEvent.type(filter, "-nope");
+
+      expect(screen.getByText("No worktrees found")).toBeInTheDocument();
+    });
+
+    it("offers no filter for a short list", async () => {
+      setup({ worktrees: [createMockWorktree()] });
+      await screen.findByText("feature-branch");
+
+      expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("collapsed navbar", () => {
+    const worktrees = [
+      createMockWorktree({ id: 1, branch: "feature/customer-ltv" }),
+      createMockWorktree({ id: 2, branch: "fix/warehouse-sync" }),
+    ];
+
+    async function openFlyout() {
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Worktrees" }),
+      );
+    }
+
+    it("shows one Worktrees button instead of a row per worktree", async () => {
+      setup({ isNavbarOpened: false, worktrees });
+
+      expect(
+        await screen.findByRole("button", { name: "Worktrees" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.called("path:/api/ee/remote-sync/is-dirty"),
+      ).toBe(false);
+    });
+
+    it("lists the worktrees in a flyout and closes it after choosing one", async () => {
+      setup({ isNavbarOpened: false, worktrees });
+
+      await openFlyout();
+
+      const link = await screen.findByRole("link", {
+        name: "feature/customer-ltv",
+      });
+      expect(link).toHaveAttribute("href", "/data-studio/worktrees/1");
+      expect(
+        screen.getByRole("link", { name: "fix/warehouse-sync" }),
+      ).toHaveAttribute("href", "/data-studio/worktrees/2");
+
+      await userEvent.click(link);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("link", { name: "fix/warehouse-sync" }),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("marks the button current inside a worktree and lists that worktree first", async () => {
+      setup({
+        isNavbarOpened: false,
+        worktrees,
+        initialRoute: "/data-studio/worktrees/2/transforms",
+      });
+
+      const button = await screen.findByRole("button", { name: "Worktrees" });
+      await waitFor(() => {
+        expect(button).toHaveAttribute("aria-current", "true");
+      });
+
+      await openFlyout();
+
+      const links = await screen.findAllByRole("link");
+      expect(links.map((link) => link.textContent)).toEqual([
+        "fix/warehouse-sync",
+        "feature/customer-ltv",
+      ]);
+      expect(links[0]).toHaveAttribute("aria-current", "page");
+      expect(links[1]).not.toHaveAttribute("aria-current");
+    });
+
+    it("does not mark the button current outside a worktree", async () => {
+      setup({ isNavbarOpened: false, worktrees });
+
+      expect(
+        await screen.findByRole("button", { name: "Worktrees" }),
+      ).not.toHaveAttribute("aria-current");
+    });
+
+    it("shows the dirty badge on the button for the current worktree", async () => {
+      setup({
+        isNavbarOpened: false,
+        worktrees,
+        isDirty: true,
+        initialRoute: "/data-studio/worktrees/2",
+      });
+
+      expect(
+        await screen.findByTestId("remote-sync-status"),
+      ).toBeInTheDocument();
+      const request = fetchMock.callHistory.lastCall(
+        "path:/api/ee/remote-sync/is-dirty",
+      )?.request;
+      expect(request?.url).toContain("worktree-id=2");
+    });
+
+    it("opens the New worktree modal from the flyout", async () => {
+      setup({ isNavbarOpened: false, worktrees });
+
+      await openFlyout();
+      await userEvent.click(
+        await screen.findByRole("button", { name: "New worktree" }),
+      );
+
+      expect(
+        await screen.findByRole("dialog", { name: "New worktree" }),
+      ).toBeInTheDocument();
+    });
+
+    it("offers a filter once there are many worktrees", async () => {
+      setup({
+        isNavbarOpened: false,
+        worktrees: Array.from({ length: 11 }, (_, index) =>
+          createMockWorktree({ id: index + 1, branch: `wt-${index + 1}` }),
+        ),
+      });
+
+      await openFlyout();
+
+      const filter = await screen.findByRole("textbox", {
+        name: "Find a worktree",
+      });
+      expect(screen.getAllByRole("link")).toHaveLength(11);
+
+      await userEvent.type(filter, "wt-3");
+
+      expect(screen.getAllByRole("link")).toHaveLength(1);
+      expect(screen.getByRole("link", { name: "wt-3" })).toBeInTheDocument();
+    });
+
+    it("offers no filter for a short list", async () => {
+      setup({ isNavbarOpened: false, worktrees });
+
+      await openFlyout();
+      await screen.findByRole("link", { name: "feature/customer-ltv" });
+
+      expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    });
   });
 });

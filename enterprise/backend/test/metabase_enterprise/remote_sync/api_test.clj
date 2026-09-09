@@ -793,6 +793,29 @@
                :error_message "Task cancelled"}
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
+(deftest current-task-returns-worktree-id-test
+  (testing "GET /api/ee/remote-sync/current-task reports which worktree the task belongs to"
+    (mt/with-temp [:model/Worktree {worktree-id :id} {}
+                   :model/RemoteSyncTask {main-task-id :id} {:sync_task_type "export"
+                                                             :last_progress_report_at :%now
+                                                             :started_at :%now}]
+      ;; only one task may be running at a time, so finish the main app's before starting the worktree's
+      (remote-sync.task/complete-sync-task! main-task-id)
+      (mt/with-temp [:model/RemoteSyncTask {worktree-task-id :id} {:sync_task_type "import"
+                                                                   :worktree_id worktree-id
+                                                                   :last_progress_report_at :%now
+                                                                   :started_at :%now}]
+        (testing "a worktree-scoped task carries its worktree id"
+          (is (=? {:id worktree-task-id
+                   :worktree_id worktree-id}
+                  (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"
+                                        :worktree-id worktree-id))))
+        (testing "a main-app task names the key with a nil value"
+          (let [task (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")]
+            (is (=? {:id main-task-id} task))
+            (is (contains? task :worktree_id))
+            (is (nil? (:worktree_id task)))))))))
+
 ;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
 
 (deftest cancel-task-requires-superuser-test
@@ -834,6 +857,7 @@
                                                    :last_progress_report_at :%now
                                                    :started_at :%now}]
       (is (=? {:id id
+               :worktree_id nil
                :cancelled true
                :error_message "Task cancelled"}
               (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel")))
@@ -850,6 +874,7 @@
         (is (= "No active task to cancel"
                (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel"))))
       (is (=? {:id worktree-task-id
+               :worktree_id worktree-id
                :cancelled true}
               (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel"
                                     {:worktree_id worktree-id})))

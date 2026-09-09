@@ -23,6 +23,8 @@ import {
   createMockWorktree,
 } from "metabase-types/api/mocks";
 
+import { getCurrentTask } from "../../selectors";
+
 import { WorktreeHomePage } from "./WorktreeHomePage";
 
 const WORKTREE = createMockWorktree({
@@ -68,7 +70,7 @@ function setup({
   const settingsState = mockSettings(settings);
   setupEnterprisePlugins();
 
-  renderWithProviders(
+  return renderWithProviders(
     <WorktreeProvider worktreeId={WORKTREE.id}>
       <WorktreeHomePage />
     </WorktreeProvider>,
@@ -183,6 +185,38 @@ describe("WorktreeHomePage", () => {
     ).toBeInTheDocument();
   });
 
+  it("adopts a task found running on load, so it is tracked and the actions are blocked", async () => {
+    // After a reload the client's task state is empty while the server's task still runs: the
+    // page must pick it up instead of showing "Pulling changes" next to live buttons.
+    const { store } = setup({
+      hasRemoteChanges: true,
+      lastTask: createMockRemoteSyncTask({
+        id: 42,
+        worktree_id: WORKTREE.id,
+        sync_task_type: "import",
+        status: "running",
+        progress: 0.5,
+        ended_at: null,
+      }),
+    });
+
+    const lastSync = await screen.findByTestId("worktree-last-sync");
+    expect(
+      await within(lastSync).findByText("Pulling changes"),
+    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(getCurrentTask(store.getState())?.id).toBe(42);
+    });
+    expect(screen.getByRole("button", { name: /Pull changes/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Push changes/ })).toBeDisabled();
+    expect(
+      within(screen.getByTestId("worktree-local-changes")).getByText(
+        "Syncing…",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("says the worktree has never synced when there is no task", async () => {
     setup({ lastTask: null });
 
@@ -240,5 +274,36 @@ describe("WorktreeHomePage", () => {
     expect(
       screen.getByRole("button", { name: /Push changes/ }),
     ).toBeInTheDocument();
+  });
+
+  it("deletes the worktree after confirming and leaves its pages", async () => {
+    setup();
+    fetchMock.delete(`path:/api/ee/remote-sync/worktree/${WORKTREE.id}`, 204);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Delete worktree" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(
+        'Delete the worktree for "feature/customer-ltv"?',
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete worktree" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          `path:/api/ee/remote-sync/worktree/${WORKTREE.id}`,
+          { method: "DELETE" },
+        ),
+      ).toBe(true);
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 });

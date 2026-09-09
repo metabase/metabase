@@ -82,7 +82,6 @@ function buildSectionTree(
     can_write: false,
     can_restore: false,
     can_delete: false,
-    worktree_id: null,
   };
 }
 

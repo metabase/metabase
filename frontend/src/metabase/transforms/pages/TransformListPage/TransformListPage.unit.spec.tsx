@@ -118,6 +118,24 @@ describe("TransformListPage", () => {
   });
 
   describe("worktree scoping", () => {
+    it("hides the Jobs and Runs tabs inside a worktree, where transforms never run", async () => {
+      await setup({ worktreeId: 7 });
+
+      expect(
+        screen.queryByRole("link", { name: /Jobs/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /Runs/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the Jobs and Runs tabs outside a worktree", async () => {
+      await setup();
+
+      expect(screen.getByRole("link", { name: /Jobs/ })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Runs/ })).toBeInTheDocument();
+    });
+
     it("requests transforms and collections scoped to the worktree", async () => {
       await setup({ worktreeId: 7 });
 

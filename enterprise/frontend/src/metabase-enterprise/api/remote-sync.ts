@@ -205,7 +205,7 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       ],
     }),
     getRemoteSyncCurrentTask: builder.query<
-      RemoteSyncTask,
+      RemoteSyncTask | null,
       { "worktree-id": WorktreeId } | void
     >({
       query: (params) => ({

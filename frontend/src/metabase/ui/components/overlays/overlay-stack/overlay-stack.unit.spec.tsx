@@ -2,7 +2,14 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { render, screen, waitFor } from "__support__/ui";
-import { Button, Menu, Modal, Popover } from "metabase/ui";
+import {
+  Autocomplete,
+  Button,
+  Menu,
+  Modal,
+  Popover,
+  Select,
+} from "metabase/ui";
 
 const OVERLAY_TESTID = "modal-overlay";
 const UPPER_CONTENT = "upper overlay content";
@@ -114,4 +121,34 @@ describe("Modal stacked under another modal", () => {
     expect(onCloseTop).toHaveBeenCalled();
     expect(onCloseBase).not.toHaveBeenCalled();
   });
+});
+
+describe("Modal with a closed dropdown input inside it", () => {
+  const CLOSED_DROPDOWN_INPUTS = [
+    {
+      name: "Autocomplete",
+      // the modal's focus trap lands on the input; keep its dropdown closed so it is the modal that escape reaches
+      node: (
+        <Autocomplete
+          data={["alpha"]}
+          placeholder="autocomplete"
+          openOnFocus={false}
+        />
+      ),
+    },
+    { name: "Select", node: <Select data={["alpha"]} placeholder="select" /> },
+  ];
+
+  it.each(CLOSED_DROPDOWN_INPUTS)(
+    "closes on escape and on the backdrop with a closed $name inside",
+    async ({ node }) => {
+      const { onClose } = setup(node);
+
+      await userEvent.keyboard("{Escape}");
+      expect(onClose).toHaveBeenCalledTimes(1);
+
+      await userEvent.click(screen.getByTestId(OVERLAY_TESTID));
+      expect(onClose).toHaveBeenCalledTimes(2);
+    },
+  );
 });

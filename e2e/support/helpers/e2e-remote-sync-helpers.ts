@@ -1,6 +1,10 @@
 import yaml from "js-yaml";
 
-import type { Collection, RemoteSyncTask } from "metabase-types/api";
+import type {
+  Collection,
+  RemoteSyncTask,
+  WorktreeId,
+} from "metabase-types/api";
 
 import { openCollectionItemMenu } from "./e2e-collection-helpers";
 import {
@@ -415,5 +419,40 @@ export const pollForTask = (
 
       // Reached the expected terminal status!
       return cy.wrap(body);
+    });
+};
+
+// Poll a worktree's most recent sync task until it succeeds. Worktree tasks are scoped by the
+// `worktree-id` query param, which `interceptTask`/`waitForTask` (main app only) do not match.
+export const pollForWorktreeTask = (
+  {
+    worktreeId,
+    taskName,
+  }: { worktreeId: WorktreeId; taskName: "import" | "export" },
+  retries = 0,
+): Cypress.Chainable => {
+  if (retries > TASK_POLL_LIMIT) {
+    throw Error(`Too many retries waiting for worktree ${taskName}`);
+  }
+
+  return cy
+    .request<RemoteSyncTask | null>({
+      method: "GET",
+      url: "/api/ee/remote-sync/current-task",
+      qs: { "worktree-id": worktreeId },
+    })
+    .then(({ body }) => {
+      if (body?.sync_task_type === taskName && body.status === "successful") {
+        return cy.wrap(body);
+      }
+
+      if (body?.sync_task_type === taskName && body.status !== "running") {
+        throw Error(
+          `Worktree task ${taskName} ended with status ${body.status}: ${body.error_message || "Unknown error"}`,
+        );
+      }
+
+      cy.wait(500);
+      return pollForWorktreeTask({ worktreeId, taskName }, retries + 1);
     });
 };

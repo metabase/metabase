@@ -84,7 +84,7 @@ export interface Collection {
   here?: CollectionContentModel[];
   below?: CollectionContentModel[];
 
-  worktree_id: WorktreeId | null;
+  worktree_id?: WorktreeId | null;
 
   // Assigned on FE
   originalName?: string;

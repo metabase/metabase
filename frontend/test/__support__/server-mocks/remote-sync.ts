@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import type { RemoteSyncEntity, Worktree } from "metabase-types/api";
+import { createMockWorktree } from "metabase-types/api/mocks";
 
 export interface RemoteSyncDirtyResponse {
   dirty: RemoteSyncEntity[];
@@ -44,6 +45,26 @@ export const setupRemoteSyncWorktreesEndpoint = (
   fetchMock.get("path:/api/ee/remote-sync/worktree", worktrees, {
     name: "remote-sync-worktrees",
   });
+};
+
+/**
+ * Setup the remote-sync worktree create POST endpoint
+ */
+export const setupRemoteSyncCreateWorktreeEndpoint = ({
+  worktree = createMockWorktree(),
+  error,
+}: {
+  worktree?: Worktree;
+  error?: { status: number; message: string };
+} = {}) => {
+  fetchMock.removeRoute("remote-sync-create-worktree");
+  fetchMock.post(
+    "path:/api/ee/remote-sync/worktree",
+    error
+      ? { status: error.status, body: { message: error.message } }
+      : worktree,
+    { name: "remote-sync-create-worktree" },
+  );
 };
 
 /**
@@ -111,11 +132,18 @@ export const setupRemoteSyncSettingsEndpoint = ({
 export const setupRemoteSyncImportEndpoint = ({
   status = "running",
   task_id = 456,
-}: { status?: string; task_id?: number } = {}) => {
+  error,
+}: {
+  status?: string;
+  task_id?: number;
+  error?: { status: number; message: string };
+} = {}) => {
   fetchMock.removeRoute("remote-sync-import");
   fetchMock.post(
     "path:/api/ee/remote-sync/import",
-    { status, task_id },
+    error
+      ? { status: error.status, body: { message: error.message } }
+      : { status, task_id },
     { name: "remote-sync-import" },
   );
 };

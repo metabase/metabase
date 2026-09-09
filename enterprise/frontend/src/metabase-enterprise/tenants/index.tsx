@@ -301,7 +301,6 @@ export function initializePlugin() {
           can_write: true,
           can_restore: false,
           can_delete: false,
-          worktree_id: null,
           archived: false,
           namespace: null,
           location: "/",
