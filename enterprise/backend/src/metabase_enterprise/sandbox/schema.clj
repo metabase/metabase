@@ -32,6 +32,23 @@
   {:in  (comp mi/json-in normalize-attribute-remappings)
    :out (comp normalize-attribute-remappings mi/json-out-without-keywordization)})
 
+(mr/def ::sandbox.attribute-remappings
+  "The `:attribute_remappings` column of a Sandbox, decoded."
+  :map)
+
 (mr/def ::sandbox
-  [:map
-   [:id ::lib.schema.id/sandbox]])
+  "A Sandbox as selected from the app DB: every column of `:sandboxes`."
+  [:map {:closed true}
+   [:id                   ms/PositiveInt]
+   [:group_id             ms/PositiveInt]
+   [:table_id             ::lib.schema.id/table]
+   [:card_id              [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings [:maybe ::sandbox.attribute-remappings]]])
+
+(mr/def ::sandbox.update
+  "What an update (or insert) of a Sandbox accepts: every column of `:sandboxes` except `id`, all optional."
+  [:map {:closed true}
+   [:group_id             {:optional true} [:maybe ms/PositiveInt]]
+   [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
+   [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]])

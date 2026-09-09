@@ -1,14 +1,11 @@
 import type { StoryFn } from "@storybook/react";
 
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   SdkVisualizationWrapper,
   VisualizationWrapper,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualization } from "metabase/viz-core";

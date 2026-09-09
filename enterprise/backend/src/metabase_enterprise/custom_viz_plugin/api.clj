@@ -214,7 +214,7 @@
         plugins   (custom-viz-plugin.db/active-enabled-non-blob-plugins)]
     (->> plugins
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))
-         ;; An identifier containing ":" would collide with another plugin's `custom-viz:<id>:`
+         ;; An identifier containing ":" would collide with another plugin's `custom:<id>:`
          ;; settings prefix on the frontend. Colons are rejected at registration now; skip any
          ;; legacy row that predates that check instead of serving it.
          (remove #(manifest/identifier-error (:identifier %)))

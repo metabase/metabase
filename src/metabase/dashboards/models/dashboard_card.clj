@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.app-db.core :as mdb]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -159,15 +158,7 @@
 
   This is also different from having multiple series displayed on Line, Area, or Bar Questions."
   [dashcard]
-  (mdb/query {:select    [:newcard.*]
-              :from      [[:report_dashboardcard :dashcard]]
-              :left-join [[:dashboardcard_series :dashcardseries]
-                          [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                          [:report_card :newcard]
-                          [:= :dashcardseries.card_id :newcard.id]]
-              :where     [:and
-                          [:= :newcard.archived false]
-                          [:= :dashcard.id (:id dashcard)]]}))
+  (dashboards.db/multi-cards-for-dashcard (:id dashcard)))
 
 (defn update-dashboard-cards-series!
   "Batch update the DashboardCardSeries for multiple DashboardCards.

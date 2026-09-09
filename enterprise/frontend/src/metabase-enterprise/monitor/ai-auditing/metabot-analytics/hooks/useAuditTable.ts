@@ -5,8 +5,7 @@ import {
   useGetAdhocQueryMetadataQuery,
   useGetDatabaseMetadataQuery,
 } from "metabase/api";
-import { getMetadataUnfiltered } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
 import type {
   CardMetadata,
   MetadataProvider,
@@ -41,12 +40,7 @@ export function useAuditTable(viewName: string): UseAuditTableResult {
     return typeof table?.id === "number" ? table.id : undefined;
   }, [database, viewName]);
 
-  const metadata = useSelector(getMetadataUnfiltered);
-
-  const provider = useMemo(
-    () => Lib.metadataProvider(AUDIT_DB_ID, metadata),
-    [metadata],
-  );
+  const provider = useMetadataProviderUnfiltered(AUDIT_DB_ID);
 
   const table = useMemo(
     () => (tableId == null ? null : Lib.tableOrCardMetadata(provider, tableId)),

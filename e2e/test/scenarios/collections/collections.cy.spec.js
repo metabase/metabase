@@ -25,7 +25,7 @@ describe("scenarios > collection defaults", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
+    cy.intercept("GET", "/api/**/items?pinned-state*").as("getPinnedItems");
     cy.intercept("GET", "/api/collection/tree**").as("getTree");
     cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
   });
@@ -1208,6 +1208,14 @@ describe("scenarios > collection items listing", () => {
       H.createCollection({
         name: "Quarterly revenue",
       });
+      // Enough items to keep the search input and type filters visible.
+      _.times(10, (i) =>
+        H.createQuestion({
+          name: `Extra question ${i + 1}`,
+          collection_position: null,
+          query: TEST_QUESTION_QUERY,
+        }),
+      );
 
       cy.signIn("normal");
       H.createQuestion({
@@ -1299,9 +1307,17 @@ describe("scenarios > collection items listing", () => {
         collection_position: null,
         query: TEST_QUESTION_QUERY,
       });
+      // Enough items to keep the search input and type filters visible.
+      _.times(10, (i) =>
+        H.createQuestion({
+          name: `Extra question ${i + 1}`,
+          collection_position: null,
+          query: TEST_QUESTION_QUERY,
+        }),
+      );
     });
 
-    it("should filter collection items by the available types", () => {
+    it("should filter collection items by the checked types", () => {
       cy.intercept(
         {
           method: "GET",
@@ -1321,13 +1337,15 @@ describe("scenarios > collection items listing", () => {
 
       cy.findByRole("button", { name: "Filter" }).click();
       H.popover().within(() => {
-        cy.findAllByRole("checkbox").should("have.length", 3);
-        cy.findByLabelText("Collection").should("be.checked");
-        cy.findByLabelText("Dashboard").should("be.checked");
-        cy.findByLabelText("Question").should("be.checked");
-        cy.findByLabelText("Model").should("not.exist");
+        cy.findAllByRole("checkbox").should("have.length", 8);
+        cy.findByLabelText("Collection").should("not.be.checked");
+        cy.findByLabelText("Dashboard").should("not.be.checked");
+        cy.findByLabelText("Question").should("not.be.checked");
+        cy.findByLabelText("Model").should("be.disabled");
+        cy.findByLabelText("Metric").should("be.disabled");
         cy.findByRole("button", { name: "Apply" }).should("not.exist");
-        cy.findByLabelText("Dashboard").click();
+        cy.findByLabelText("Question").click();
+        cy.findByLabelText("Collection").click();
       });
 
       cy.wait("@getTypeFilteredCollectionItems").then(({ request }) => {
@@ -1347,7 +1365,8 @@ describe("scenarios > collection items listing", () => {
         .find('[class*="Indicator-indicator"]')
         .should("exist");
 
-      H.popover().findByLabelText("Dashboard").click();
+      H.popover().findByLabelText("Question").click();
+      H.popover().findByLabelText("Collection").click();
 
       cy.findByTestId("collection-table")
         .should("contain", "Revenue dashboard")

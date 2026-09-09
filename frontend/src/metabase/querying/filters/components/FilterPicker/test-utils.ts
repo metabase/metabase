@@ -1,9 +1,9 @@
 /* istanbul ignore file */
 
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { dayjs } from "metabase/dayjs";
 import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
