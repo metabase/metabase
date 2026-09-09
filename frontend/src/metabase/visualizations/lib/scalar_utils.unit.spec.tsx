@@ -81,13 +81,12 @@ describe("scalar utils", () => {
       const value = 45000.1343;
       const width = 200;
 
-      // Unjustified type cast. FIXME
       const { displayValue, fullScalarValue } = compactifyValue(
         value,
         width,
         fontSize,
         formatOptions,
-      ) as { displayValue: string; fullScalarValue: string };
+      );
 
       expect(displayValue).toBe(fullScalarValue);
       expect(fullScalarValue).toBe("45,000.13");
@@ -97,13 +96,12 @@ describe("scalar utils", () => {
       const value = 45000.1343;
       const width = 140;
 
-      // Unjustified type cast. FIXME
       const { displayValue, fullScalarValue } = compactifyValue(
         value,
         width,
         fontSize,
         formatOptions,
-      ) as { displayValue: string; fullScalarValue: string };
+      );
 
       expect(displayValue).not.toBe(fullScalarValue);
       expect(displayValue).toBe("45.0k");
@@ -113,11 +111,10 @@ describe("scalar utils", () => {
       const value = 45000.1343;
       const width = 1000;
 
-      // Unjustified type cast. FIXME
       const { displayValue } = compactifyValue(value, width, fontSize, {
         ...formatOptions,
         compact: true,
-      }) as { displayValue: string };
+      });
 
       expect(displayValue).toBe("45.0k");
     });
