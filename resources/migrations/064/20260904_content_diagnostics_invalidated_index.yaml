@@ -1,0 +1,15 @@
+## Content Diagnostics - index invalidated_at, the column the finding trimmer's DELETE predicate scans.
+## Append-only, on the `content_diagnostics_finding` table created in 064/20260708_content_diagnostics.yaml.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.9j858o
+      author: yb
+      comment: Content Diagnostics - index findings by invalidated_at
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_invalidated
+            columns:
+              - column:
+                  name: invalidated_at

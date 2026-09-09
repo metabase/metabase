@@ -27,6 +27,7 @@ content-diagnostics-crowded-collection-threshold-items: null
 content-diagnostics-crowded-dashboard-threshold-dashcards-per-tab: null
 content-diagnostics-crowded-dashboard-threshold-tabs: null
 content-diagnostics-crowded-document-threshold-cards: null
+content-diagnostics-finding-retention-days: null
 content-diagnostics-slow-card-threshold-seconds: null
 content-diagnostics-slow-transform-threshold-seconds: null
 content-diagnostics-sparse-collection-threshold-items: null
