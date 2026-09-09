@@ -283,6 +283,17 @@
           dc (first dashcards)]
       (is (= [0 0 8 2] [(:row dc) (:col dc) (:size_x dc) (:size_y dc)])))))
 
+(deftest move-without-a-position-keeps-its-own-slot-test
+  (testing "GHY-4147: move without a position autoplaces against the *other* cards on the tab. The
+            moved card is not its own sibling — counting it means the search can never return the
+            slot it already occupies, so a card alone on a tab is displaced by its own footprint"
+    (let [wide {:id 7 :card_id 9 :row 0 :col 0 :size_x 24 :size_y 4 :dashboard_tab_id nil}
+          {:keys [dashcards]} (dashboard-ops/compile-ops
+                               (dash-with [wide])
+                               [{:op "move" :dashcard_id 7}])
+          dc (first dashcards)]
+      (is (= [0 0] [(:row dc) (:col dc)])))))
+
 (deftest remove-test
   (testing "GHY-4147: remove drops the dashcard from the payload, which deletes it on save"
     (let [{:keys [dashcards]} (dashboard-ops/compile-ops

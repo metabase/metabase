@@ -342,7 +342,10 @@
                          {:dashboard_tab_id tab-id}
                          (if position
                            {:row (:row position) :col (:col position)}
-                           (select-keys (placement state
+                           ;; autoplace against the other cards on the tab: the card being moved is
+                           ;; not its own sibling, or the search can never return the slot it holds
+                           (select-keys (placement (update state :dashcards
+                                                           (partial filterv #(not= dashcard_id (:id %))))
                                                    {:size (select-keys dc [:size_x :size_y])}
                                                    tab-id
                                                    :table)
