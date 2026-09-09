@@ -23,16 +23,18 @@
       path)))
 
 (defn- declarations
-  "Every `[namespace file]` pair `platform` can load from the classpath directories.
+  "Every `[namespace relative-path]` pair `platform` can load from the classpath directories.
 
   `platform` is [[ns.find/clj]] or [[ns.find/cljs]]; each includes `.cljc`, so a `.cljc` file is
-  reported under both."
+  reported under both. `local/src` is skipped: the `:dev` profile puts it on the classpath precisely so a
+  developer can shadow a project namespace locally."
   [platform]
-  (for [dir  (classpath/classpath-directories)
+  (for [dir  (remove #(str/starts-with? (relative-path %) "local/")
+                     (classpath/classpath-directories))
         file (ns.find/find-sources-in-dir dir platform)
         :let [decl (ns.file/read-file-ns-decl file (:read-opts platform))]
         :when decl]
-    [(second decl) file]))
+    [(ns.parse/name-from-ns-decl decl) (relative-path file)]))
 
 (defn- collisions
   "Namespaces `platform` can load from more than one file, as `{namespace [path ...]}`."
