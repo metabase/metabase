@@ -215,11 +215,12 @@ export function DashCardVisualization({
 
   const {
     isEnabled: isTimelineEventsEnabled,
-    timelineEvents,
+    timelineEventsVisibility,
     selectedTimelineEventIds,
     onOpenTimelines,
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
+    onTimelineEventsShown,
   } = useDashCardTimelineEvents(dashcard);
 
   const inlineParameters = useSelector((state) =>
@@ -655,11 +656,12 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
-          timelineEvents={timelineEvents}
+          timelineEventsVisibility={timelineEventsVisibility}
           selectedTimelineEventIds={selectedTimelineEventIds}
           onOpenTimelines={onOpenTimelines}
           onSelectTimelineEvents={onSelectTimelineEvents}
           onDeselectTimelineEvents={onDeselectTimelineEvents}
+          onTimelineEventsShown={onTimelineEventsShown}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
           autoAdjustSettings

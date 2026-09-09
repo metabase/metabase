@@ -6,8 +6,7 @@ import {
   updateDashCardsTimelineEventsVisibility,
 } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { getDashboardCollectionId } from "metabase/dashboard/timeline-events";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import {
   TimelineSidebar,
   type TimelineSidebarProps,
@@ -43,8 +42,7 @@ export function EventsPanel({
   onShowAllEvents,
 }: EventsPanelProps) {
   const dispatch = useDispatch();
-  const { closeSidebar } = useDashboardContext();
-  const collectionId = useSelector(getDashboardCollectionId);
+  const { dashboard, closeSidebar } = useDashboardContext();
 
   const handleUpdateVisibility = useCallback(
     (update: TimelineEventsVisibilityUpdate) =>
@@ -68,7 +66,7 @@ export function EventsPanel({
 
   return (
     <TimelineSidebar
-      collectionId={collectionId}
+      collectionId={dashboard?.collection_id}
       timelines={timelines}
       visibleEventIds={visibleEventIds}
       partiallyVisibleEventIds={partiallyVisibleEventIds}

@@ -28,7 +28,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
     createEvent("RC1", "10/20/2027");
 
     eventsSidebar().within(() => {
-      timelineVisibility("Our analytics events").should("be.checked");
+      H.timelineVisibility("Our analytics events").should("be.checked");
       H.timelineEventVisibility("RC1").should("be.checked");
     });
     H.timelineEventChip("RC1").should("be.visible");
@@ -68,7 +68,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
     createEvent("RC2", "10/30/2027");
 
     eventsSidebar().within(() => {
-      timelineVisibility("Releases").should("be.checked");
+      H.timelineVisibility("Releases").should("be.checked");
       H.timelineEventVisibility("RC1").should("be.checked");
       H.timelineEventVisibility("RC2").should("be.checked");
     });
@@ -132,7 +132,7 @@ function expectEventsShownOnce() {
 }
 
 function toggleEventVisibility(eventName) {
-  eventsSidebar().within(() => H.timelineEventVisibility(eventName).click());
+  eventsSidebar().within(() => H.toggleTimelineEventVisibility(eventName));
 }
 
 function openEventsSidebar() {
@@ -153,11 +153,4 @@ function createEvent(name, date) {
   cy.wait("@createEvent");
   H.modal().should("not.exist");
   H.waitForTimelinesAfterCreatingAnEvent(name);
-}
-
-function timelineVisibility(timelineName) {
-  return cy
-    .findByText(timelineName)
-    .closest("[aria-label='Timeline card header']")
-    .findByRole("checkbox");
 }
