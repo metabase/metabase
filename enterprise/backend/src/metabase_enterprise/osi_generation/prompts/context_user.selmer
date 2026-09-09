@@ -8,6 +8,12 @@ Name: {{name}}
 {% endif %}{% if field-names %}
 Fields (supporting structural evidence):
 {% for f in field-names %}- {{f}}
+{% endfor %}{% endif %}{% if measures %}
+Measures defined on this entity (authored calculations; supporting evidence for what it is used to compute):
+{% for m in measures %}- {{m.name}}{% if m.description %}: {{m.description}}{% endif %}
+{% endfor %}{% endif %}{% if segments %}
+Segments defined on this entity (authored subsets; supporting evidence for how it is sliced):
+{% for s in segments %}- {{s.name}}{% if s.description %}: {{s.description}}{% endif %}
 {% endfor %}{% endif %}
 {% if existing %}
 # Existing metadata

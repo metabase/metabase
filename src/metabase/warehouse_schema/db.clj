@@ -503,6 +503,14 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Measure :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
 
+(defn table-child-summaries
+  "The `:table_id`, `:name` and `:description` of the unarchived `model` rows (`:model/Measure` or
+  `:model/Segment`) belonging to the Tables with `table-ids`.
+  Deliberately unordered, unlike the two `unarchived-*-for-tables` queries above: its caller stamps the
+  result into a stored basis and needs an order that does not depend on the app db's collation."
+  [model table-ids]
+  (t2/select [model :table_id :name :description] :table_id [:in table-ids] :archived false))
+
 (mu/defn measure-ids-for-table
   "The IDs of the Measures of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
   [table-id       :- ::lib.schema.id/table
