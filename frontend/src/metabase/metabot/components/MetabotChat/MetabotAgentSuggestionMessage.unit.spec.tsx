@@ -66,17 +66,14 @@ const createMockTransformSuggestionMessage = (overrides: {
   };
 };
 
-const setup = (message: SuggestionMessage, readonly = false) => {
+const setup = (message: SuggestionMessage) => {
   setupEnterprisePlugins();
-  return renderWithProviders(
-    <AgentSuggestionMessage message={message} readonly={readonly} />,
-    {
-      storeInitialState: createMockState({
-        settings: mockSettings(),
-        currentUser: createMockUser(),
-      }),
-    },
-  );
+  return renderWithProviders(<AgentSuggestionMessage message={message} />, {
+    storeInitialState: createMockState({
+      settings: mockSettings(),
+      currentUser: createMockUser(),
+    }),
+  });
 };
 
 describe("AgentSuggestionMessage", () => {
@@ -133,7 +130,7 @@ describe("AgentSuggestionMessage", () => {
     ).toBeInTheDocument();
   });
 
-  it("should disable the action button and show a read-only tooltip when readonly", async () => {
+  it("should always disable the action button and show a read-only tooltip", async () => {
     setup(
       createMockTransformSuggestionMessage({
         payload: {
@@ -147,7 +144,6 @@ describe("AgentSuggestionMessage", () => {
           }),
         },
       }),
-      true,
     );
 
     const button = await screen.findByRole("button", { name: /Create/ });

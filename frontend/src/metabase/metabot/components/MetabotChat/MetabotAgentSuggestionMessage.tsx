@@ -1,22 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useLazyGetTransformQuery } from "metabase/api";
-import { useMetadataToasts } from "metabase/common/hooks";
-import { MetabotContext } from "metabase/metabot/context";
-import {
-  type MetabotAgentDataPartMessage,
-  type MetabotDataPart,
-  activateSuggestedTransform,
-  getIsSuggestedTransformActive,
+import type {
+  MetabotAgentDataPartMessage,
+  MetabotDataPart,
 } from "metabase/metabot/state";
 import { useMetadataProviderFactory } from "metabase/metadata-store";
-import { useDispatch, useSelector } from "metabase/redux";
-import { useNavigate } from "metabase/router";
 import {
   Button,
   Collapse,
@@ -74,18 +68,10 @@ const useGetOldTransform = ({
 
 export const AgentSuggestionMessage = ({
   message,
-  readonly,
 }: {
   message: SuggestionMessage;
-  readonly?: boolean;
 }) => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
   const getMetadataProvider = useMetadataProviderFactory();
-  const { suggestionActions } = useContext(MetabotContext);
-  const { sendErrorToast } = useMetadataToasts();
-  const [isApplying, setIsApplying] = useState(false);
-  const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
 
   const suggestedTransform: MetabotSuggestedTransform = {
     ...message.part.data,
@@ -97,28 +83,13 @@ export const AgentSuggestionMessage = ({
     typeof suggestedTransform.id === "number"
       ? suggestedTransform.id
       : undefined;
-  const isActive = useSelector((state) =>
-    getIsSuggestedTransformActive(state, suggestedTransform.suggestionId),
-  );
-
   const [opened, { toggle }] = useDisclosure(true);
 
   const url = useLocation();
   const isViewing =
     url.pathname?.startsWith(getTransformUrl(suggestedTransform)) ?? false;
 
-  const canApply = suggestionActions
-    ? !hasAppliedInContext && !isApplying
-    : !isViewing || !isActive;
-
   const isNew = !isViewing && !editorTransform && existingTransformId == null;
-
-  const applyBtnText = match({ isApplying, isNew, canApply })
-    .with({ isApplying: true }, () => t`Applying...`)
-    .with({ canApply: false }, () => t`Applied`)
-    .with({ isNew: true }, () => t`Create`)
-    .with({ canApply: true }, () => t`Apply`)
-    .exhaustive();
 
   const {
     data: originalTransform,
@@ -145,30 +116,6 @@ export const AgentSuggestionMessage = ({
     ? getSourceCode(originalTransform, getMetadataProvider)
     : "";
   const newSource = getSourceCode(suggestedTransform, getMetadataProvider);
-
-  const handleApply = async () => {
-    dispatch(activateSuggestedTransform(suggestedTransform));
-
-    if (suggestionActions) {
-      setIsApplying(true);
-      try {
-        const result = await suggestionActions.applySuggestion({
-          editorTransform,
-          suggestedTransform,
-        });
-        if (result.status === "applied") {
-          setHasAppliedInContext(true);
-        } else {
-          sendErrorToast(result.message);
-        }
-      } finally {
-        setIsApplying(false);
-      }
-      return;
-    }
-
-    navigate(getTransformUrl(suggestedTransform));
-  };
 
   return (
     <Paper
@@ -255,19 +202,16 @@ export const AgentSuggestionMessage = ({
             h="1.375rem"
             gap="sm"
           >
-            <Tooltip label={t`Read only`} disabled={!readonly}>
+            <Tooltip label={t`Read only`}>
               <Button
                 size="compact-xs"
                 variant="subtle"
                 fw="normal"
                 fz="sm"
-                c={
-                  canApply && !readonly ? "feedback-positive" : "text-disabled"
-                }
-                disabled={!canApply || readonly}
-                onClick={handleApply}
+                c="text-disabled"
+                disabled
               >
-                {applyBtnText}
+                {isNew ? t`Create` : t`Apply`}
               </Button>
             </Tooltip>
           </Flex>

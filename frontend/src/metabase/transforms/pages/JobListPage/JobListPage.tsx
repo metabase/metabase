@@ -119,7 +119,7 @@ export const JobListPage = () => {
 
   return (
     <PageContainer data-testid="transforms-job-list" gap={0}>
-      <TransformsHeader showMetabotButton />
+      <TransformsHeader />
       <Stack style={{ overflow: "hidden" }}>
         {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="0.5rem">

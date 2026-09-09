@@ -61,7 +61,7 @@
 
 (defn native-query-transform?
   "Check if this is a native query transform.
-  Note: The transform should be normalized (via `normalize-transform`) before calling this function."
+  For query sources, `:query` must be in MBQL 5 format."
   [transform]
   (when (query-transform? transform)
     (let [query (-> transform :source :query)]
@@ -152,20 +152,10 @@
 
 ;;; ------------------------------------------------- Transform Normalization -------------------------------------------------
 
-(defn normalize-transform
-  "Normalize a transform's source query, similar to how transforms are normalized when read from the database.
-  This should be called on transforms before processing them to ensure queries are in the expected format."
-  [transform]
-  (if (and (map? transform)
-           (type-is? transform :transform)
-           (get-in transform [:source :query]))
-    (update-in transform [:source :query] lib-be/normalize-query)
-    transform))
-
 (defn transform-source-type
   "Returns the type of a transform's source: :python, :native, or :mbql.
   Throws if the source type cannot be detected.
-  Note: The transform should be normalized (via `normalize-transform`) before calling this function."
+  For query sources, `:query` must be in MBQL 5 format."
   [source]
   (cond
     (type-is? source :python) :python

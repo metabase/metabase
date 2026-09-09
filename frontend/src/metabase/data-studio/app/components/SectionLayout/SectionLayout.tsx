@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { MetabotDataStudioSidebar } from "metabase/metabot/components/MetabotDataStudioSidebar";
 import { Flex, Stack } from "metabase/ui";
 
 type SectionLayoutProps = {
@@ -14,7 +13,6 @@ export function SectionLayout({ children }: SectionLayoutProps) {
         <Stack flex={1} miw={0} gap={0}>
           {children}
         </Stack>
-        <MetabotDataStudioSidebar />
       </Flex>
     </Stack>
   );

@@ -129,12 +129,12 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - `metabase://transform/{id}/target` — target database and table this transform writes to
 
 **Examples:**
-- Want to inspect a `query` transform's SQL/MBQL before editing it? → `metabase://transform/42`
+- Want to inspect a `query` transform's SQL/MBQL? → `metabase://transform/42`
 - "What does this transform read?" → `metabase://transform/42/sources`
 - "Where does this transform write?" → `metabase://transform/42/target`
 
 **Best Practices:**
-- Fetch a transform's details before modifying it so you have the current target configuration and — for `query` transforms — the current source query.
+- Fetch a transform's details to inspect its target configuration and — for `query` transforms — its source query.
 - Check the returned source type (`query` or `python`) first: it decides both how the transform is implemented and how much lineage you can see.
 - **Lineage is asymmetric between the two source types.** A `python` transform declares its inputs explicitly, so `/sources` lists its source tables and those tables' `/derived` lists it back. A `query` transform's inputs live inside its query, which is not walked — so `/sources` returns only its database with no tables, and it never shows up under any table's `/derived`, even when its SQL plainly reads that table.
 - Because of that asymmetry, a table's `/derived` is not proof that nothing reads it. When it matters whether a `query` transform touches a table, fetch the candidate transforms' details and read their source queries rather than trusting `/derived` to be complete.

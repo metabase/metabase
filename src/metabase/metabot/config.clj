@@ -70,11 +70,14 @@
       internal-metabot-id))
 
 (defn resolve-dynamic-profile-id
-  "Resolve the ultimate ai-service profile ID with logical fall backs
-   Precedence: explicit profile_id > env profile_id > metabot-id->profile-id > default (embedding_next)"
+  "Resolve the profile ID: explicit profile-id > metabot-id->profile-id > embedding_next.
+   Throws a 400 for retired profiles without a replacement."
   ([profile-id]
    (resolve-dynamic-profile-id profile-id (resolve-dynamic-metabot-id nil)))
   ([profile-id metabot-id]
-   (or profile-id
-       (metabot-id->profile-id metabot-id)
-       "embedding_next")))
+   (let [profile-id (or profile-id
+                        (metabot-id->profile-id metabot-id)
+                        "embedding_next")]
+     (api/check (not= profile-id "transforms_codegen")
+                [400 "Transform code generation is no longer supported."])
+     profile-id)))

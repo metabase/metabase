@@ -14,7 +14,6 @@
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -63,7 +62,6 @@
   (into item-types-qc
         #{"document"
           "dashboard"
-          "transform"
           "code_editor"}))
 
 (def ^:private item-type-schema
@@ -115,14 +113,9 @@
     [:user_is_viewing {:optional true} [:vector ViewingItemSchema]]]])
 
 (defn- query-for-sql-parsing
-  "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
-  from it, otherwise nil."
+  "Return the native query in a viewing-context item, or nil."
   [item]
-  (when-let [query (case (:type item)
-                     "transform" (-> item :source :query)
-                     "adhoc" (-> item :query)
-                     (-> item :query))]
-    ;; Draft transforms might not have a database yet. Check this before attempting to normalize the query.
+  (when-let [query (:query item)]
     (when (:database query)
       (when-let [normalized-query (lib-be/normalize-query query)]
         (when (lib/native-only-query? normalized-query)
@@ -155,26 +148,6 @@
       [])
     (catch Exception e
       (log/errorf "Error getting database tables for context: %s" (ex-message e))
-      [])))
-
-(defn- python-transform-db-and-table-ids
-  "Returns a map with :database-id and :table-ids, or nil if not a Python transform."
-  [item]
-  (when (and (= (:type item) "transform")
-             (= (get-in item [:source :type]) "python"))
-    (when-let [source-database (get-in item [:source :source-database])]
-      (when-let [source-tables (not-empty (get-in item [:source :source-tables]))]
-        {:database-id source-database
-         :table-ids (map :table_id source-tables)}))))
-
-(defn- python-transform-tables-for-context
-  "Get tables for Python transform formatted for metabot context."
-  [{:keys [database-id table-ids]}]
-  (try
-    (when (and database-id (seq table-ids))
-      (not-empty (mapv table-stub (table-utils/used-tables-from-ids database-id table-ids))))
-    (catch Exception e
-      (log/errorf "Error getting Python transform tables for context: %s" (ex-message e))
       [])))
 
 (defn- mbql-source-table-ids
@@ -214,13 +187,13 @@
       nil)))
 
 (defn- enhance-context-with-schema
-  "Enhance context by adding table schema information for native queries, MBQL queries, SQL transforms, and Python transforms."
+  "Enhance context by adding table schema information for native and MBQL queries."
   [context]
   (if-let [user-viewing (get context :user_is_viewing)]
     (let [enhanced-viewing
           (mapv (fn [item]
                   (or
-                   ;; Handle native queries and SQL transforms
+                   ;; Handle native queries
                    (when-let [query (query-for-sql-parsing item)]
                      (when-let [tables (seq (database-tables-for-context {:query query}))]
                        (assoc item :used_tables tables)))
@@ -228,34 +201,10 @@
                    (when-let [db-and-table-ids (mbql-source-table-ids item)]
                      (when-let [tables (seq (mbql-source-tables-for-context db-and-table-ids))]
                        (assoc item :used_tables tables)))
-                   ;; Handle Python transforms
-                   (when-let [db-and-table-ids (python-transform-db-and-table-ids item)]
-                     (when-let [tables (seq (python-transform-tables-for-context db-and-table-ids))]
-                       (assoc item :used_tables tables)))
                    ;; Unknown item: return unchanged
                    item))
                 user-viewing)]
       (assoc context :user_is_viewing enhanced-viewing))
-    context))
-
-(defn- annotate-transform-source-types
-  "Annotate transforms in context with source types if not already present (e.g. for draft transforms not yet saved)"
-  [context]
-  (if-let [user-viewing (get context :user_is_viewing)]
-    (let [annotated-viewing
-          (mapv (fn [item]
-                  (try
-                    (if (and (= (:type item) "transform")
-                             (not (:source_type item)))
-                      (let [transform (transforms-base.u/normalize-transform item)]
-                        (assoc transform
-                               :source_type (transforms-base.u/transform-source-type (:source transform))))
-                      item)
-                    (catch Exception e
-                      (log/errorf "Error annotating transform source type for metabot context: %s" (ex-message e))
-                      item)))
-                user-viewing)]
-      (assoc context :user_is_viewing annotated-viewing))
     context))
 
 (defn- get-metabot
@@ -339,6 +288,5 @@
    (metabot.perms/with-cache
      (-> context
          enhance-context-with-schema
-         annotate-transform-source-types
          (add-recent-views (or opts {}))
          (set-user-time opts)))))

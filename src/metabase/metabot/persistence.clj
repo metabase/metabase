@@ -633,9 +633,8 @@
 (def ^:private placeholder-grace-period-ms
   "How long an unfinished placeholder row is treated as an in-flight stream rather
   than a crashed/aborted turn. Generous enough to cover any plausible live agent
-  loop — the `transforms_codegen` profile allows 30 iterations and there is no
-  client-independent LLM timeout, so a long-running turn can easily exceed
-  several minutes. Readers older than this expose an aborted status.
+  loop — there is no client-independent LLM timeout, so a long-running turn can
+  easily exceed several minutes. Readers older than this expose an aborted status.
 
   Bias: this is the 'show a still-running stream as aborted' window vs. the
   'show a crashed turn as absent' window. The first is more user-visible (a

@@ -60,7 +60,6 @@ export function TransformHeader({
           {transform.name}
         </DataStudioBreadcrumbs>
       }
-      showMetabotButton
       {...restProps}
     />
   );

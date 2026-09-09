@@ -131,22 +131,6 @@
                     #'tools/analyze-chart-tool
                     #'tools/save-entity-tool]})
 
-(register-profile!
- {:name            :transforms_codegen
-  :prompt-template "transform-codegen.selmer"
-  :max-iterations  30
-  :tools           [#'tools/transform-search-tool
-                    #'tools/get-transform-details-tool
-                    #'tools/get-transform-python-library-details-tool
-                    #'tools/write-transform-sql-tool
-                    #'tools/write-transform-python-tool
-                    #'tools/list-snippets-tool
-                    #'tools/get-snippet-details-tool
-                    #'tools/list-available-fields-tool
-                    #'tools/get-field-values-tool
-                    #'tools/todo-write-tool
-                    #'tools/todo-read-tool]})
-
 ;; SQL responses are rendered from tool results in the native port, so this
 ;; profile must always end with a tool call rather than free-form assistant text.
 (register-profile!

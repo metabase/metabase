@@ -19,7 +19,6 @@ import { loadQueryEditorWithParameters } from "metabase/parameters/components/Qu
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { type Location, useNavigate, useParams } from "metabase/router";
-import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -37,7 +36,6 @@ import { getValidationResult, isCompleteSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import {
-  getDefaultValues,
   getInitialCardSource,
   getInitialNativeSource,
   getInitialPythonSource,
@@ -101,24 +99,14 @@ function NewTransformPageBody({
   initialSource,
   databases,
 }: NewTransformPageBodyProps) {
-  const {
-    source,
-    proposedSource,
-    suggestedTransform,
-    isDirty,
-    setSourceAndRejectProposed,
-    acceptProposed,
-    rejectProposed,
-  } = useSourceState({ initialSource });
-  const [name, setName] = useState(suggestedTransform?.name ?? "");
+  const { source, isDirty, setSource } = useSourceState({ initialSource });
+  const [name, setName] = useState("");
   const [uiState, setUiState] = useState(getInitialUiState);
   const getMetadataProvider = useMetadataProviderFactory();
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const [isLeaveWarningOpen, setIsLeaveWarningOpen] = useState(false);
   const navigate = useNavigate();
-  const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
-  useRegisterMetabotTransformContext(undefined, source, dryRunError);
 
   const validationResult = useMemo(() => {
     return source.type === "query"
@@ -177,7 +165,6 @@ function NewTransformPageBody({
               {t`New transform`}
             </DataStudioBreadcrumbs>
           }
-          showMetabotButton
         />
         <Box
           w="100%"
@@ -192,28 +179,17 @@ function NewTransformPageBody({
           {source.type === "python" ? (
             <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
               source={source}
-              proposedSource={
-                proposedSource?.type === "python" ? proposedSource : undefined
-              }
               isEditMode
-              onChangeSource={setSourceAndRejectProposed}
-              onAcceptProposed={acceptProposed}
-              onRejectProposed={rejectProposed}
-              onDryRunErrorChange={setDryRunError}
+              onChangeSource={setSource}
             />
           ) : (
             <TransformEditor
               isEditMode
               source={source}
-              proposedSource={
-                proposedSource?.type === "query" ? proposedSource : undefined
-              }
               uiState={uiState}
               databases={databases}
-              onChangeSource={setSourceAndRejectProposed}
+              onChangeSource={setSource}
               onChangeUiState={setUiState}
-              onAcceptProposed={acceptProposed}
-              onRejectProposed={rejectProposed}
             />
           )}
         </Box>
@@ -221,7 +197,7 @@ function NewTransformPageBody({
       {isModalOpened && isCompleteSource(source) && (
         <CreateTransformModal
           source={source}
-          defaultValues={getDefaultValues(name, suggestedTransform)}
+          defaultValues={{ name }}
           closeOnEscape={!isLeaveWarningOpen}
           onCreate={handleCreate}
           onClose={closeModal}
@@ -230,7 +206,6 @@ function NewTransformPageBody({
       <LeaveRouteConfirmModal
         isEnabled={isDirty}
         isLocationAllowed={isLocationAllowed}
-        onConfirm={rejectProposed}
         onOpenChange={setIsLeaveWarningOpen}
       />
     </>

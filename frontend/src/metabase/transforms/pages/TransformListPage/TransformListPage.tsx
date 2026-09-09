@@ -324,7 +324,7 @@ export const TransformListPage = () => {
 
   return (
     <PageContainer data-testid="transforms-list" gap={0}>
-      <TransformsHeader showMetabotButton />
+      <TransformsHeader />
       <Stack className={CS.overflowHidden}>
         {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="lg">
