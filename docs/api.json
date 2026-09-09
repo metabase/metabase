@@ -29659,6 +29659,83 @@
         "tags" : [ "/api/ee/data-studio/table" ]
       }
     },
+    "/api/ee/data-studio/table/{id}/publishing-info" : {
+      "get" : {
+        "operationId" : "get-api-ee-data-studio-table-id-publishing-info",
+        "summary" : "GET /api/ee/data-studio/table/{id}/publishing-info",
+        "description" : "Return the latest valid publishing information for a published table, or no content when unavailable.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "type" : "object",
+                    "properties" : {
+                      "published_at" : {
+                        "type" : "string",
+                        "format" : "date-time"
+                      },
+                      "published_by" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "common_name" : {
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "required" : [ "id", "common_name" ],
+                          "additionalProperties" : false
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "published_at", "published_by" ],
+                    "additionalProperties" : false
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
     "/api/ee/database-replication/connection/{database-id}" : {
       "post" : {
         "operationId" : "post-api-ee-database-replication-connection-database-id",
@@ -34973,7 +35050,7 @@
                       "minimum" : 1
                     }
                   },
-                  "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                  "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                   "additionalProperties" : false
                 }
               }
@@ -35086,7 +35163,7 @@
                             "minimum" : 1
                           }
                         },
-                        "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                        "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                         "additionalProperties" : false
                       }
                     }
@@ -35177,7 +35254,7 @@
                       "minimum" : 1
                     }
                   },
-                  "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                  "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                   "additionalProperties" : false
                 }
               }
@@ -35290,7 +35367,7 @@
                       "minimum" : 1
                     }
                   },
-                  "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                  "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                   "additionalProperties" : false
                 }
               }
@@ -39894,6 +39971,15 @@
                           "required" : [ "id", "display_name" ]
                         }
                       },
+                      "requires" : {
+                        "type" : "object",
+                        "additionalProperties" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }
+                      },
                       "available" : {
                         "type" : "boolean"
                       },
@@ -39907,7 +39993,7 @@
                         }
                       }
                     },
-                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "fields" ]
+                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "requires", "fields" ]
                   }
                 }
               }
