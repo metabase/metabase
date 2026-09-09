@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.encryption-test-util :as encryption-tu]
-   [metabase.channel.settings :as channel.settings]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.test-util :as tu]
    [metabase.slackbot.uploads :as slackbot.uploads]
@@ -280,24 +279,64 @@
                     (is (some #(= "You don't have permission to upload files." %)
                               @append-text-calls))))))))))))
 
+(def ^:private test-client
+  {:token "xoxb-fake"})
+
+(def ^:private test-target
+  {:db {:id 1} :schema-name nil :table-prefix nil})
+
 (deftest process-csv-file-streams-to-temp-file-test
   (testing "process-csv-file streams download content through a temp file to the upload fn"
     (let [csv-content   "col1,col2\nfoo,bar\nbaz,qux"
-          uploaded-file (atom nil)]
+          uploaded-file (atom nil)
+          temp-file     (atom nil)]
       (mt/with-dynamic-fn-redefs
         [slackbot.client/download-file-stream (fn [_client _url]
                                                 (io/input-stream (.getBytes csv-content)))
          upload.impl/create-csv-upload!       (fn [{:keys [file] :as _params}]
+                                                (reset! temp-file file)
                                                 (reset! uploaded-file (slurp file))
-                                                {:id 1 :name "test"})
-         ;; stub out the token lookup
-         channel.settings/unobfuscated-slack-app-token (constantly "xoxb-fake")]
-        (let [result (#'slackbot.uploads/process-csv-file
-                      {:db_id 1 :schema_name nil :table_prefix nil}
-                      {:name "test.csv" :url_private "https://example.com/test.csv" :size 100})]
-          (is (= 1 (:model-id result)))
-          (testing "file content was streamed correctly through temp file"
-            (is (= csv-content @uploaded-file))))))))
+                                                {:id 1 :name "test"})]
+        (is (=? {:filename   "test.csv"
+                 :model-id   1
+                 :model-name "test"}
+                (#'slackbot.uploads/process-csv-file
+                 test-client
+                 test-target
+                 {:name "test.csv" :url_private "https://example.com/test.csv" :size 100})))
+        (testing "file content was streamed correctly through temp file"
+          (is (= csv-content @uploaded-file)))
+        (testing "the temp file is cleaned up"
+          (is (false? (.exists ^java.io.File @temp-file))))))))
+
+(deftest process-csv-file-temp-file-failure-test
+  (testing "a file that cannot be staged on disk is reported as a failed file, not thrown"
+    (mt/with-dynamic-fn-redefs
+      [slackbot.client/download-file-stream (fn [_client _url]
+                                              (io/input-stream (.getBytes "col1,col2\nval1,val2")))]
+      ;; `File/createTempFile` refuses a suffix containing a path separator, and Slack's `name` is whatever the
+      ;; uploader called the file.
+      (is (=? {:filename "nested/data.csv"
+               :error    #"Unable to create temporary file.*"}
+              (#'slackbot.uploads/process-csv-file
+               test-client
+               test-target
+               {:name "nested/data.csv" :url_private "https://example.com/x.csv" :size 100}))))))
+
+(deftest handle-file-uploads-nothing-attempted-test
+  (testing "no files at all"
+    (is (nil? (slackbot.uploads/handle-file-uploads test-client []))))
+  (testing "no database is configured for uploads"
+    (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly nil)]
+      (is (=? {:system-messages [{:role    :assistant
+                                  :content #"CSV uploads are not enabled\..*"}]}
+              (slackbot.uploads/handle-file-uploads test-client [tu/slack-csv-file])))))
+  (testing "the user cannot upload to the configured database"
+    (mt/with-dynamic-fn-redefs [upload.db/current-database     (constantly {:id 1})
+                                upload.impl/can-create-upload? (constantly false)]
+      (is (=? {:system-messages [{:role    :assistant
+                                  :content #"You don't have permission to upload files\..*"}]}
+              (slackbot.uploads/handle-file-uploads test-client [tu/slack-csv-file]))))))
 
 (deftest ^:parallel csv-file-detection-test
   (testing "csv-file? correctly identifies CSV/TSV files"
@@ -317,7 +356,8 @@
   (testing "a remote CSV is refused for being remote, not reported as an unsupported filetype"
     (let [{:keys [skipped remote results]}
           (#'slackbot.uploads/process-file-uploads
-           {:db_id 1}
+           nil
+           {:db {:id 1}}
            [{:name "evil.csv" :filetype "csv" :mode "external" :url_private "https://evil.test/x.csv" :size 0}
             {:name "notes.pdf" :filetype "pdf" :mode "hosted" :url_private "https://files.slack.com/notes.pdf" :size 10}])]
       (is (= ["evil.csv"] remote))

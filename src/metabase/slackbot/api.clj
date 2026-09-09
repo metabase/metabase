@@ -187,31 +187,17 @@
   "Process a file_share message - handles CSV uploads"
   [client :- slackbot.client/SlackClient
    event  :- slackbot.events/SlackMessageFileShareEvent]
-  (let [files         (:files event)
-        text          (:text event)
-        has-text?     (not (str/blank? text))
-        file-handling (when (seq files)
-                        (slackbot.uploads/handle-file-uploads files))
-        extra-history (cond
-                        ;; Pre-flight error (uploads disabled, no permission)
-                        (:error file-handling)
-                        [{:role :assistant
-                          :content (:error file-handling)}]
-
-                        ;; Upload results to communicate to AI
-                        (:system-messages file-handling)
-                        (:system-messages file-handling))
-        all-skipped?    (all-files-skipped? file-handling)
+  (let [file-handling   (slackbot.uploads/handle-file-uploads client (:files event))
+        has-text?       (not (str/blank? (:text event)))
         should-skip-ai? (and (not has-text?)
-                             (not (:error file-handling))
-                             all-skipped?)]
+                             (all-files-skipped? file-handling))]
     ;; If nothing could be uploaded and there's no text, respond directly
     ;; without calling the AI to avoid sending an empty prompt
     (if should-skip-ai?
       (slackbot.client/post-message client
                                     (merge (slackbot.events/event->reply-context event)
                                            {:text (refused-files-message (:upload-result file-handling))}))
-      (slackbot.streaming/send-response client event extra-history))))
+      (slackbot.streaming/send-response client event (:system-messages file-handling)))))
 
 (defmethod analytics.core/known-labels :metabase-slackbot/responses-generated [_]
   [{:source "dm"      :result "success"}
