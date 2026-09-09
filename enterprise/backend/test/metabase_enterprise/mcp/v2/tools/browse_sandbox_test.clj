@@ -1,6 +1,9 @@
 (ns metabase-enterprise.mcp.v2.tools.browse-sandbox-test
   "Row-restriction tests for `browse_data`'s `get_fields` action. Fingerprints are computed at sync
    time over every row of the table, so they must not reach a user whose row access is narrowed."
+  ;; A gtap `:query` is persisted as a card's legacy `dataset_query`, so building these in Lib would
+  ;; only round-trip back through `lib.convert/->legacy-MBQL`.
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.mcp.v2.tools.browse-sandbox-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
