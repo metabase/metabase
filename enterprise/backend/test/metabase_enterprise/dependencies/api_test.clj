@@ -2824,3 +2824,34 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 "ee/dependencies/graph"
                                          :id wt-tf-id :type "transform")))))))))
+
+(deftest ^:synchronized unreferenced-worktree-id-lists-collection-content-test
+  (testing "GET .../unreferenced :worktree-id lists the cards a worktree holds in its own collections"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Worktree   {wt-id :id}      {}
+                       :model/Collection {wt-coll-id :id} {:name        "worktree collection"
+                                                           :worktree_id wt-id}
+                       :model/Card       {wt-card-id :id} {:name          "Worktree Card - wtdeps"
+                                                           :type          :question
+                                                           :collection_id wt-coll-id
+                                                           :worktree_id   wt-id
+                                                           :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                       :model/Card       {main-card-id :id} {:name          "Main Card - wtdeps"
+                                                             :type          :question
+                                                             :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}]
+          (deps.test/synchronously-run-backfill!)
+          (let [ids-for (fn [& kvs]
+                          (into #{}
+                                (comp (filter #(= "card" (:type %))) (map :id))
+                                (:data (apply mt/user-http-request :crowberto :get 200
+                                              "ee/dependencies/graph/unreferenced"
+                                              :types "card" :query "wtdeps" kvs))))]
+            (testing "the worktree's card is listed for its worktree"
+              (let [ids (ids-for :worktree-id wt-id)]
+                (is (contains? ids wt-card-id))
+                (is (not (contains? ids main-card-id)))))
+            (testing "and the main app's list is unchanged"
+              (let [ids (ids-for)]
+                (is (contains? ids main-card-id))
+                (is (not (contains? ids wt-card-id)))))))))))

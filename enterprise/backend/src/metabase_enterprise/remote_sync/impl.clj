@@ -77,11 +77,16 @@
   [synced-collection-ids {:keys [by-entity-id]}]
   (doseq [[model-key model-spec] (spec/specs-for-deletion)
           :when (spec/reconcilable-in-scope? model-spec)
-          :let [entity-ids (spec/local-imported-ids model-spec
-                                                    (get by-entity-id (:model-type model-spec) []))]]
-    (remote-sync.db/delete-removed-instances!
-     model-key
-     (spec/removal-opts model-spec synced-collection-ids entity-ids))))
+          :let [entity-ids   (spec/local-imported-ids model-spec
+                                                      (get by-entity-id (:model-type model-spec) []))
+                removal-opts (spec/removal-opts model-spec synced-collection-ids entity-ids)
+                ;; a remapping outlives the row it names, and the branch id it pairs with may only ever name one
+                ;; local row -- so read what is about to go and forget it, or the next pull of the same entity
+                ;; would try to record that branch id a second time
+                removed      (when serdes/*worktree-id*
+                               (remote-sync.db/removed-instance-entity-ids model-key removal-opts))]]
+    (remote-sync.db/delete-removed-instances! model-key removal-opts)
+    (serdes/forget-remappings! (:model-type model-spec) removed)))
 
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
@@ -1018,11 +1023,19 @@
     (if i (subs path 0 i) path)))
 
 (defn- disabled-content-dirs
-  "Top-level repo directories whose content is disabled by the current settings."
+  "Top-level repo directories whose content the scope being pushed does not sync, and whose files a push therefore
+  stages for deletion.
+
+  Nothing is disabled inside a worktree: both settings describe the main app -- they are set from what the main
+  branch holds -- while a worktree syncs whatever it checked out, however the main app is configured (see
+  [[spec/transforms-synced?]]). Reading them there would stage the feature branch's whole transforms and snippets
+  trees for deletion on the first push."
   []
-  (cond-> #{}
-    (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
-    (not (settings/library-is-remote-synced?)) (conj "snippets")))
+  (if (some? serdes/*worktree-id*)
+    #{}
+    (cond-> #{}
+      (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
+      (not (settings/library-is-remote-synced?)) (conj "snippets"))))
 
 (defn- stage-write [commit opts [row entity]]
   (let [path    (or (:file_path row) (source/entity->path opts entity))

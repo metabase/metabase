@@ -205,9 +205,10 @@
   (t2/count :model/Collection :id collection-id :type [:in types]))
 
 (mu/defn remote-synced-collection-count
-  "The number of remote-synced Collections."
+  "The number of remote-synced main-app Collections. A worktree's collections are all remote-synced -- a worktree is
+  a checkout of a branch -- and say nothing about whether the main app syncs."
   []
-  (t2/count :model/Collection :is_remote_synced true))
+  (t2/count :model/Collection :is_remote_synced true :worktree_id nil))
 
 (mu/defn collection-ids-with-location-like
   "The IDs of the Collections whose location matches the SQL `pattern`."
@@ -284,9 +285,11 @@
   (t2/update! :model/Collection collection-id changes))
 
 (mu/defn clear-remote-synced-flags!
-  "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
+  "Mark every remote-synced main-app ::collections.schema/collection as not remote-synced, returning the number
+  updated. A worktree's collections keep the flag: they are a checkout of a branch, and turning the main app's
+  remote sync off does not un-check-them-out."
   []
-  (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false}))
+  (t2/update! :model/Collection :is_remote_synced true :worktree_id nil {:is_remote_synced false}))
 
 (mu/defn archive-descendant-collections!
   "Archive, as part of the archive operation with `archive-operation-id`, the unarchived Collections whose location

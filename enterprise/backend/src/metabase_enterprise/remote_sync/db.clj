@@ -87,15 +87,31 @@
       worktree-scoped? (conj [:= :worktree_id worktree-id])
       :always          (into (removal-condition-exprs removal-conditions)))))
 
+(defn- removal-where
+  "The single `:where` fragment combining [[removal-exprs]]'s fragments, or nil when nothing restricts the removal."
+  [exprs]
+  (when (seq exprs)
+    (if (= 1 (count exprs)) (first exprs) (into [:and] exprs))))
+
 (mu/defn delete-removed-instances!
   "Deletes the `model-key` rows an import removes (see [[removal-exprs]]); a no-op for a scoped model with no
   synced collections, and a delete of every row when nothing restricts it."
   [model-key    :- :keyword
    removal-opts :- RemovalOpts]
   (when-let [exprs (removal-exprs removal-opts)]
-    (if (seq exprs)
-      (t2/delete! model-key {:where (if (= 1 (count exprs)) (first exprs) (into [:and] exprs))})
+    (if-let [where (removal-where exprs)]
+      (t2/delete! model-key {:where where})
       (t2/delete! model-key))))
+
+(mu/defn removed-instance-entity-ids :- [:maybe [:set :string]]
+  "The `entity_id`s of the rows [[delete-removed-instances!]] would delete, read before the delete so a caller can
+  clean up what hangs off them."
+  [model-key    :- :keyword
+   removal-opts :- RemovalOpts]
+  (when-let [exprs (removal-exprs removal-opts)]
+    (if-let [where (removal-where exprs)]
+      (t2/select-fn-set :entity_id model-key {:where where})
+      (t2/select-fn-set :entity_id model-key))))
 
 (defn- unsynced-anti-join-expr
   "A `[:not [:exists ...]]` fragment keeping only rows with no RemoteSyncObject of `model-type` in 'synced'

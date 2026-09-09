@@ -15,6 +15,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.test-util :as api.test-util]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1221,6 +1222,47 @@
                             (mt/with-current-user user-id
                               (mt/user-http-request user-id :post "dataset"
                                                     (mt/mbql-query venues {:limit 1})))))))))))))
+
+(deftest query-metadata-snippets-test
+  (testing "POST /api/dataset/query_metadata returns the snippets a native query's template tags name"
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id, snippet-name :name} {:name    (mt/random-name)
+                                                                                   :content "venues"}]
+      (let [query {:database (mt/id)
+                   :type     :native
+                   :native   {:query          (format "SELECT * FROM {{snippet: %s}}" snippet-name)
+                              :template-tags  {(str "snippet: " snippet-name)
+                                               {:name         (str "snippet: " snippet-name)
+                                                :display-name (str "Snippet: " snippet-name)
+                                                :type         :snippet
+                                                :snippet-name snippet-name
+                                                :snippet-id   snippet-id}}}}]
+        (is (=? {:snippets [{:id snippet-id :name snippet-name}]}
+                (mt/user-http-request :crowberto :post 200 "dataset/query_metadata" query)))))))
+
+;;; A worktree is an enterprise concept, so this needs `:model/Worktree` on the classpath. The endpoint is OSS.
+(deftest query-metadata-worktree-id-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree   {wt-id :id}   {}
+                   :model/Collection {coll-id :id} {:name "worktree collection" :worktree_id wt-id}
+                   :model/Card       {wt-card :id} {:name          "worktree card"
+                                                    :collection_id coll-id
+                                                    :worktree_id   wt-id
+                                                    :dataset_query (mt/mbql-query venues)}]
+      (let [query      {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (str "card__" wt-card)}}
+            table-ids  (fn [response] (into #{} (map :id) (:tables response)))]
+        (testing "worktree_id survives request decoding and scopes the source card lookup"
+          (is (contains? (table-ids (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                                          (assoc query :worktree_id wt-id)))
+                         (str "card__" wt-card))))
+        (testing "without it the worktree's card is not visible"
+          (is (not (contains? (table-ids (mt/user-http-request :crowberto :post 200 "dataset/query_metadata" query))
+                              (str "card__" wt-card)))))
+        (testing "and it is admin-only"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "dataset/query_metadata"
+                                       (assoc query :worktree_id wt-id)))))))))
 
 (deftest query-metadata-sensitive-fields-test
   (testing "POST /api/dataset/query_metadata"

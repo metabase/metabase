@@ -3,10 +3,15 @@
   and what deleting a worktree takes with it. The rules that pin a piece of content to one worktree are tested
   alongside the models they guard."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -69,6 +74,7 @@
 (def ^:private branch-eid "branch-side-entity-id")
 (def ^:private local-eid "worktree-local-entity")
 (def ^:private fresh-eid "created-in-a-worktree")
+(def ^:private second-local-eid "second-local-copy-xxx")
 
 (deftest entity-id-remapping-test
   (mt/with-temp [:model/Worktree {wt-id :id} {}]
@@ -86,6 +92,16 @@
       (testing "ensure-remapping! is idempotent"
         (is (= branch-eid (serdes/ensure-remapping! "Transform" local-eid)))
         (is (= 1 (t2/count :model/WorktreeRemapping :worktree_id wt-id))))
+      (testing "a branch id whose local row is gone is re-pointed rather than recorded twice"
+        (is (= branch-eid (serdes/ensure-remapping! "Transform" second-local-eid branch-eid)))
+        (is (= 1 (t2/count :model/WorktreeRemapping :worktree_id wt-id)))
+        (is (= second-local-eid (serdes/local-entity-id "Transform" branch-eid)))
+        (is (= local-eid (serdes/source-entity-id "Transform" local-eid))
+            "the id it used to name is no longer remapped"))
+      (testing "forgetting a remapping frees the branch id for the next pull"
+        (serdes/forget-remappings! "Transform" [second-local-eid])
+        (is (zero? (t2/count :model/WorktreeRemapping :worktree_id wt-id :type "Transform")))
+        (is (= branch-eid (serdes/ensure-remapping! "Transform" local-eid branch-eid))))
       (testing "content created inside the worktree gets a branch id of its own"
         (let [source (serdes/ensure-remapping! "Transform" fresh-eid)]
           (is (some? source))
@@ -146,17 +162,24 @@
            (rs.test/generate-card-yaml pull-card-eid "WT Pull Card" pull-coll-eid)}})
 
 (defn- pull!
-  "Runs a pull of [[pull-files]] into `worktree-id` (nil is the main app)."
-  [worktree-id]
-  (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
-                                         {:sync_task_type "import"
-                                          :initiated_by   (mt/user->id :crowberto)
-                                          :worktree_id    worktree-id})]
-    (binding [serdes/*worktree-id* worktree-id]
-      (let [result (impl/import! (source.p/snapshot (rs.test/create-mock-source :initial-files (pull-files)))
-                                 task-id)]
-        (impl/handle-task-result! result task-id)
-        result))))
+  "Runs a pull of `files` (by default [[pull-files]]) into `worktree-id` (nil is the main app), passing `opts`
+  (`:force?` and friends) on to the import."
+  ([worktree-id]
+   (pull! worktree-id (pull-files)))
+  ([worktree-id files]
+   (pull! worktree-id files nil))
+  ([worktree-id files opts]
+   (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                          {:sync_task_type "import"
+                                           :initiated_by   (mt/user->id :crowberto)
+                                           :worktree_id    worktree-id})]
+     (binding [serdes/*worktree-id* worktree-id]
+       (let [result (apply impl/import!
+                           (source.p/snapshot (rs.test/create-mock-source :initial-files files))
+                           task-id
+                           (mapcat identity opts))]
+         (impl/handle-task-result! result task-id)
+         result)))))
 
 (deftest pull-checks-out-cards-into-the-worktree-test
   (testing "a worktree pull checks out the branch's cards as its own copies"
@@ -187,3 +210,132 @@
                                                :id (:collection_id (first wt-cards)))))))
             (testing "the main app's card is left alone"
               (is (= main-card (t2/select-one :model/Card :id (:id main-card)))))))))))
+
+(def ^:private public-card-eid "wt-public-cardxxxxxxx")
+(def ^:private branch-public-uuid "0e5f6a3b-1c2d-4e5f-8a9b-0c1d2e3f4a5b")
+
+(defn- public-card-files
+  "A branch holding one collection with one publicly shared card in it."
+  []
+  {"main" {"collections/wt_pull_collection/wt_pull_collection.yaml"
+           (rs.test/generate-collection-yaml pull-coll-eid "WT Pull Collection")
+
+           "collections/wt_pull_collection/cards/wt_public_card.yaml"
+           (str/replace (rs.test/generate-card-yaml public-card-eid "WT Public Card" pull-coll-eid)
+                        "public_uuid: null"
+                        (str "public_uuid: " branch-public-uuid))}})
+
+(deftest worktree-copy-drops-public-sharing-test
+  (testing "a worktree's copy of a publicly shared card does not take the branch's public_uuid"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (mt/with-temp [:model/Worktree {wt-id :id} {}]
+          (mt/id)
+          (is (= :success (:status (pull! nil (public-card-files)))) "the main app pulls the branch first")
+          (is (= branch-public-uuid (t2/select-one-fn :public_uuid :model/Card :entity_id public-card-eid))
+              "the main app's card is the publicly shared one")
+          (is (= :success (:status (pull! wt-id (public-card-files))))
+              "checking the same branch out into a worktree does not collide on the unique public_uuid")
+          (let [wt-card (t2/select-one :model/Card :worktree_id wt-id)]
+            (is (some? wt-card))
+            (is (nil? (:public_uuid wt-card)))
+            (is (nil? (:made_public_by_id wt-card)))
+            (is (false? (:enable_embedding wt-card)))))))))
+
+(deftest re-pull-after-local-delete-test
+  (testing "a branch entity whose worktree copy was deleted can be pulled again"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (mt/with-temp [:model/Worktree {wt-id :id} {}]
+          (mt/id)
+          (is (= :success (:status (pull! wt-id))))
+          (let [first-copy (t2/select-one :model/Card :worktree_id wt-id)]
+            (is (some? first-copy))
+            ;; the admin throws the worktree's copy away, but its remapping stays behind
+            (t2/delete! :model/Card :id (:id first-copy))
+            (is (= :success (:status (pull! wt-id (pull-files) {:force? true})))
+                "the branch can be pulled again")
+            (let [second-copy (t2/select-one :model/Card :worktree_id wt-id)]
+              (is (some? second-copy))
+              (is (not= (:id first-copy) (:id second-copy)))
+              (testing "and the branch id names the new copy, once"
+                (is (= [(:entity_id second-copy)]
+                       (t2/select-fn-vec :local_entity_id :model/WorktreeRemapping
+                                         :worktree_id      wt-id
+                                         :type             "Card"
+                                         :source_entity_id pull-card-eid)))))))))))
+
+;;; ------------------------------------------- Pushing from a worktree -------------------------------------------
+
+(deftest worktree-push-stages-no-deletions-test
+  (testing "a worktree push leaves the branch alone when nothing is dirty, whatever the main app syncs"
+    (mt/with-premium-features #{:remote-sync}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                         remote-sync-transforms false]
+        (mt/with-temp [:model/Worktree {wt-id :id} {}]
+          (let [files   {"main" {"transforms/my_transform.yaml"       "name: My Transform\n"
+                                 "python-libraries/common.py"         "x = 1\n"
+                                 "snippets/my_snippet.yaml"           "name: My Snippet\n"}}
+                mock    (rs.test/create-mock-source :initial-files files)
+                task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                                 {:sync_task_type "export"
+                                                  :initiated_by   (mt/user->id :crowberto)
+                                                  :worktree_id    wt-id})
+                result  (binding [serdes/*worktree-id* wt-id]
+                          (impl/export! (source.p/snapshot mock) task-id "nothing to push"))]
+            (is (= :success (:status result)))
+            (is (= "push-skipped" (:kind (:outcome result))))
+            (is (= (get files "main") (get @(:files-atom mock) "main"))
+                "the branch's transforms, python libraries and snippets are still there")))))))
+
+(deftest worktree-content-eligibility-comes-from-the-row-test
+  (testing "a worktree's transforms collection is tracked at event time, when no sync scope is bound"
+    (mt/with-premium-features #{:remote-sync :transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms false]
+        (mt/with-temp [:model/Worktree {wt-id :id} {}
+                       :model/Collection wt-coll {:name        "WT Transforms"
+                                                  :namespace   collection/transforms-ns
+                                                  :location    "/"
+                                                  :worktree_id wt-id}
+                       :model/Collection main-coll {:name      "Main Transforms"
+                                                    :namespace collection/transforms-ns
+                                                    :location  "/"}]
+          (is (nil? serdes/*worktree-id*) "event-time tracking runs outside any sync")
+          (let [coll-spec (spec/spec-for-model-key :model/Collection)]
+            (is (true? (spec/check-eligibility coll-spec wt-coll))
+                "the worktree syncs its own transform content whatever the main app's setting says")
+            (is (false? (spec/check-eligibility coll-spec main-coll))
+                "and the main app's is still decided by the setting")))))))
+
+;;; ------------------------------------ References out of a worktree ------------------------------------
+
+(deftest worktree-export-keeps-main-app-references-test
+  (testing "a worktree's content names the main-app rows it references by their own entity_id"
+    (mt/with-premium-features #{:remote-sync :transforms-basic}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Card {main-card-id :id main-card-eid :entity_id}
+                     {:name          "Main Source Card"
+                      :dataset_query (let [mp (mt/metadata-provider)]
+                                       (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+                     :model/Collection {coll-id :id} {:name        "WT Transforms"
+                                                      :namespace   collection/transforms-ns
+                                                      :location    "/"
+                                                      :worktree_id wt-id}
+                     :model/Transform transform {:name          "WT Transform"
+                                                 :collection_id coll-id
+                                                 :worktree_id   wt-id
+                                                 :source        {:type  "query"
+                                                                 :query (let [mp (mt/metadata-provider)]
+                                                                          (lib/query mp (lib.metadata/card mp main-card-id)))}}]
+        (let [extracted (binding [serdes/*worktree-id* wt-id]
+                          (serdes/extract-one "Transform" {} (t2/hydrate transform :tags :indexes)))
+              strings   (into #{} (filter string?) (tree-seq coll? seq extracted))]
+          (testing "the reference is the main app's own entity_id"
+            (is (contains? strings main-card-eid)))
+          (testing "and nothing was minted for it"
+            (is (not (t2/exists? :model/WorktreeRemapping :worktree_id wt-id :type "Card"))))
+          (testing "while the worktree's own row is still remapped to what the branch calls it"
+            (is (t2/exists? :model/WorktreeRemapping
+                            :worktree_id     wt-id
+                            :type            "Transform"
+                            :local_entity_id (:entity_id transform)))))))))

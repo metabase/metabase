@@ -8,6 +8,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -125,21 +126,27 @@
    (mi/can-read? (api/check-404 (native-query-snippets.db/snippet pk)))))
 
 (defmethod mi/can-write? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-write? args))
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (snippet.perms/can-write? instance)))
+  ([_model pk]
+   (mi/can-write? (api/check-404 (native-query-snippets.db/snippet pk)))))
 
 (defmethod mi/can-create? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-create? args))
+  [model m]
+  (and (remote-sync/worktree-accessible? m)
+       (snippet.perms/can-create? model m)))
 
 (defmethod mi/can-update? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-update? args))
+  [instance changes]
+  (and (remote-sync/worktree-accessible? instance)
+       (snippet.perms/can-update? instance changes)))
 
 (defmethod mi/visible-filter-clause :model/NativeQuerySnippet
   [_model column-or-exp user-info _perm-type->perm-level & [opts]]
   ;; a sandboxed user, or one who cannot write native queries at all, sees no snippets whatever their collections say
-  {:clause (if (snippet.perms/has-any-native-permissions?)
+  {:clause (if (and (not (perms/sandboxed-user?))
+                    (snippet.perms/has-any-native-permissions?))
              [:in column-or-exp (collection/visible-collection-content-select :native_query_snippet user-info opts)]
              [:= [:inline 0] [:inline 1]])})
 

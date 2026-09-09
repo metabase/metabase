@@ -164,18 +164,36 @@
   and returns `source`. When `source` is nil -- content created inside the worktree, which the branch has never
   seen -- a fresh id is minted for it, so what the worktree pushes can never collide with the row the main app
   holds. A no-op outside a worktree, when the pair is already recorded, and when handed an id that is already a
-  source id for this worktree, so calling it twice on the way out never mints a second id."
+  source id for this worktree, so calling it twice on the way out never mints a second id.
+
+  A `source` this worktree already has a remapping for is re-pointed at `local-entity-id` rather than recorded
+  twice: the row it named is gone (deleted on the branch, then restored; or deleted locally before a pull), and
+  the branch id may only ever name one local row."
   ([model-name local-entity-id]
    (ensure-remapping! model-name local-entity-id nil))
   ([model-name local-entity-id source]
    (if-not (and *worktree-id* local-entity-id)
      (or source local-entity-id)
-     (or (models.db/worktree-remapping-source-entity-id *worktree-id* (name model-name) local-entity-id)
-         (when (models.db/worktree-remapping-source-exists? *worktree-id* (name model-name) local-entity-id)
-           local-entity-id)
-         (let [source (or source (u/generate-nano-id))]
-           (models.db/insert-worktree-remapping! *worktree-id* (name model-name) source local-entity-id)
-           source)))))
+     (let [worktree-id *worktree-id*
+           model-name  (name model-name)]
+       (or (models.db/worktree-remapping-source-entity-id worktree-id model-name local-entity-id)
+           (when (models.db/worktree-remapping-source-exists? worktree-id model-name local-entity-id)
+             local-entity-id)
+           (when (and source
+                      (pos? (models.db/update-worktree-remapping-local-entity-id!
+                             worktree-id model-name source local-entity-id)))
+             source)
+           (let [source (or source (u/generate-nano-id))]
+             (models.db/insert-worktree-remapping! worktree-id model-name source local-entity-id)
+             source))))))
+
+(defn forget-remappings!
+  "Drop this worktree's `model-name` remappings for `local-entity-ids`, whose rows have just been deleted: the
+  branch id they paired with must be free to name whatever a later pull checks the entity out into. A no-op
+  outside a worktree and for models the worktree does not scope."
+  [model-name local-entity-ids]
+  (when (and *worktree-id* (worktree-scoped? model-name) (seq local-entity-ids))
+    (models.db/delete-worktree-remappings! *worktree-id* (name model-name) (vec local-entity-ids))))
 
 (mr/def ::model-keyword
   [:and
@@ -302,11 +320,17 @@
   Inside a worktree the id is the entity's *source* id -- what the branch calls it -- so what gets written, and
   every reference to it, matches the rest of the branch rather than naming the worktree's private copy. The
   mapping is recorded if it does not exist yet: a reference can be serialized before the entity it points at, and
-  both have to name it the same way."
+  both have to name it the same way.
+
+  Only the worktree's own rows are remapped. A worktree's content may point at main-app rows it merely
+  references -- a source card, a snippet -- and those keep the id everyone already knows them by."
   [model-name entity]
   (let [eid (entity-id model-name entity)]
     {:model model-name
-     :id    (if (worktree-scoped? model-name) (ensure-remapping! model-name eid) eid)}))
+     :id    (if (and (worktree-scoped? model-name)
+                     (= (:worktree_id entity) *worktree-id*))
+              (ensure-remapping! model-name eid)
+              eid)}))
 
 (defn maybe-labeled
   "Common helper for defining [[generate-path]] for an entity that is
@@ -773,18 +797,34 @@
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
   Inside a worktree the incoming `entity_id` names the branch's entity, so it is dropped: the local row keeps the id
-  of the copy this worktree checked out, and the remapping table already pairs the two.
+  of the copy this worktree checked out, and the remapping table already pairs the two. So are the columns naming
+  one instance of a shared thing; see [[worktree-copy-skipped-keys]].
 
   Returns the updated entity."
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
+(def ^:private worktree-copy-skipped-keys
+  "Columns a worktree's copy of an entity must not take from the branch. Public sharing and embedding identify one
+  instance of a thing: `public_uuid` is unique, so a worktree copy of a publicly shared card would abort the load
+  (or, with two rows sharing a uuid, make the public route ambiguous), and a worktree checkout is a working copy
+  rather than the shared thing itself."
+  [:public_uuid :made_public_by_id :enable_embedding :embedding_params])
+
+(defn- worktree-copy
+  "`ingested` as a worktree's own copy of the branch's entity: the branch's `entity_id` is dropped (the local row
+  keeps the id of the copy this worktree checked out, and the remapping table pairs the two), as is everything in
+  [[worktree-copy-skipped-keys]]. Returns `ingested` untouched outside a worktree."
+  [model-name ingested]
+  (if (and *worktree-id* (worktree-scoped? model-name))
+    (apply dissoc ingested :entity_id worktree-copy-skipped-keys)
+    ingested))
+
 (defmethod load-update! :default [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (first (t2/primary-keys model))
         id       (get local pk)
-        ingested (cond-> ingested
-                   (and *worktree-id* (worktree-scoped? model-name)) (dissoc :entity_id))]
+        ingested (worktree-copy model-name ingested)]
     (log/tracef "Upserting %s %d" model-name id)
     (models.db/update-entity! model id ingested)
     (models.db/entity-by-pk model pk id)))
@@ -805,7 +845,8 @@
   A worktree-scoped row is stamped with the worktree being loaded into (`nil` for the plain serdes API, which only
   ever loads into the main app). Inside a worktree the incoming `entity_id` names the branch's entity, which the
   main app may already hold, so the row is inserted without one -- the insert hook mints a fresh id -- and the pair
-  is recorded in the remapping table for every later export and load to resolve through.
+  is recorded in the remapping table for every later export and load to resolve through. The columns naming one
+  instance of a shared thing are dropped along with it; see [[worktree-copy-skipped-keys]].
 
   Returns the newly inserted entity."
   {:arglists '([model ingested])}
@@ -816,9 +857,8 @@
   (let [model   (t2.model/resolve-model (symbol model-name))
         scoped? (worktree-scoped? model-name)
         source  (:entity_id ingested)
-        row     (cond-> ingested
-                  scoped?                     (assoc :worktree_id *worktree-id*)
-                  (and scoped? *worktree-id*) (dissoc :entity_id))]
+        row     (cond-> (worktree-copy model-name ingested)
+                  scoped? (assoc :worktree_id *worktree-id*))]
     (u/prog1 (models.db/insert-entity! model row)
       (when scoped?
         (ensure-remapping! model-name (:entity_id <>) source)))))

@@ -130,9 +130,7 @@
     :model/TransformTag
     :model/TransformTransformTag
     :model/Undo
-    :model/UserKeyValue
-    :model/Worktree
-    :model/WorktreeRemapping})
+    :model/UserKeyValue})
 
 (defn- all-model-names []
   (into (sorted-set)

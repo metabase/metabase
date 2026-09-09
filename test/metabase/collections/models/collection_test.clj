@@ -1770,7 +1770,15 @@
   (testing "Returns false after clearing remote-synced collections"
     (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
       (collection/clear-remote-synced-collection!)
-      (is (false? (collection/has-remote-synced-collection?))))))
+      (is (false? (collection/has-remote-synced-collection?)))))
+  ;; a worktree is an enterprise concept, so this needs `:model/Worktree` on the classpath
+  (when config/ee-available?
+    (testing "A worktree's collections say nothing about the main app, and clearing leaves them checked out"
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Collection wt-coll {:name "Worktree" :is_remote_synced true :worktree_id wt-id}]
+        (is (false? (collection/has-remote-synced-collection?)))
+        (collection/clear-remote-synced-collection!)
+        (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id wt-coll))))))))
 
 (deftest non-remote-synced-dependencies-no-dependencies-test
   (testing "when model has no dependencies"

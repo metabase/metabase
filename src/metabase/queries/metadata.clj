@@ -153,9 +153,10 @@
                              [id ""]
                              [Integer/MAX_VALUE (str id)]))
                          tables)
-     ;; Snippets themselves are not returned -- no client reads them off this endpoint -- but the fields their
-     ;; template tags reference are, since a native query built on a snippet still needs them.
-     :fields    (sort-by :id (schema.field/get-fields all-field-ids))}))
+     :fields    (sort-by :id (schema.field/get-fields all-field-ids))
+     ;; the only source of snippets while a client initializes an unsaved native question, so a query whose
+     ;; template tags come from a snippet still resolves them
+     :snippets  (sort-by :id snippets)}))
 
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries.

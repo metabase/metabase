@@ -341,6 +341,30 @@
               :type             model-name
               :source_entity_id source-entity-id))
 
+(mu/defn update-worktree-remapping-local-entity-id!
+  "Point the remote-sync worktree's `model-name` remapping for `source-entity-id` at `local-entity-id`, returning the
+  number updated (0 when the worktree has no remapping for that source yet)."
+  [worktree-id      :- ::lib.schema.id/worktree
+   model-name       :- :string
+   source-entity-id :- :string
+   local-entity-id  :- :string]
+  (t2/update! :model/WorktreeRemapping
+              :worktree_id      worktree-id
+              :type             model-name
+              :source_entity_id source-entity-id
+              {:local_entity_id local-entity-id}))
+
+(mu/defn delete-worktree-remappings!
+  "Delete the remote-sync worktree's `model-name` remappings for `local-entity-ids` -- the rows it checked those
+  entities out into are gone."
+  [worktree-id      :- ::lib.schema.id/worktree
+   model-name       :- :string
+   local-entity-ids :- [:sequential {:min 1} :string]]
+  (t2/delete! :model/WorktreeRemapping
+              :worktree_id     worktree-id
+              :type            model-name
+              :local_entity_id [:in local-entity-ids]))
+
 (mu/defn insert-worktree-remapping!
   "Record that the remote-sync worktree with `worktree-id` holds the branch's `model-name` entity `source-entity-id`
   as the local row with `local-entity-id`."

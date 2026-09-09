@@ -399,7 +399,10 @@
   (let [descendant-collections (collection/descendants-flat parent-coll nil
                                                             (collection/visible-collection-filter-clause
                                                              :id
-                                                             {:include-archived-items :all}))
+                                                             ;; descendants live in the same scope as the
+                                                             ;; collection they hang off
+                                                             {:include-archived-items :all
+                                                              :worktree-id (:worktree_id parent-coll)}))
 
         descendant-collection-ids (mapv u/the-id descendant-collections)
 

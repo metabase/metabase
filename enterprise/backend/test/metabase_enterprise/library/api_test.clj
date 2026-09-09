@@ -107,13 +107,21 @@
                                               :location (format "/%d/" (:id main-library)))]
            (worktree-library-fixture
             wt-id main-data-id
-            (fn [{wt-library :library}]
+            (fn [{wt-library :library wt-data :data}]
               (testing "worktree-id gets that worktree's Library, not the main app's"
-                (is (= (:id wt-library)
-                       (:id (mt/user-http-request :crowberto :get 200 "ee/library" :worktree-id wt-id)))))
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/library" :worktree-id wt-id)]
+                  (is (= (:id wt-library) (:id response)))
+                  (testing "hydrated with the worktree's own children"
+                    (is (= #{(:id wt-data)}
+                           (into #{} (map :id) (:effective_children response)))))))
               (testing "and the main-app call still gets the main app's"
-                (is (= (:id main-library)
-                       (:id (mt/user-http-request :crowberto :get 200 "ee/library")))))
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/library")]
+                  (is (= (:id main-library) (:id response)))
+                  (is (= #{main-data-id
+                           (t2/select-one-pk :model/Collection
+                                             :type collection/library-metrics-collection-type
+                                             :location (format "/%d/" (:id main-library)))}
+                         (into #{} (map :id) (:effective_children response))))))
               (testing "the tree is scoped the same way"
                 (is (= #{(:id wt-library)}
                        (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "ee/library/tree"

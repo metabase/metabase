@@ -982,19 +982,23 @@
   [table-name :- :keyword
    {:keys [user-id is-superuser?]} :- perms/UserInfo
    {:keys [include-archived-items worktree-id] :or {include-archived-items :exclude}}]
-  ^:allow-subquery
-  {:select [:id]
-   :from   [table-name]
-   :where  [:and
-            (visible-collection-filter-clause (u/qualified-key table-name :collection_id)
-                                              {:include-archived-items include-archived-items}
-                                              {:current-user-id user-id
-                                               :is-superuser?   is-superuser?})
-            (case include-archived-items
-              :exclude [:= (u/qualified-key table-name :archived) false]
-              :only    [:= (u/qualified-key table-name :archived) true]
-              :all     nil)
-            [:= (u/qualified-key table-name :worktree_id) (when is-superuser? worktree-id)]]})
+  ;; the row's collection has to be in the same scope as the row itself, or nothing matches: a worktree's content
+  ;; sits in the worktree's collections, and the main app's in the main app's
+  (let [worktree-id (when is-superuser? worktree-id)]
+    ^:allow-subquery
+    {:select [:id]
+     :from   [table-name]
+     :where  [:and
+              (visible-collection-filter-clause (u/qualified-key table-name :collection_id)
+                                                {:include-archived-items include-archived-items
+                                                 :worktree-id            worktree-id}
+                                                {:current-user-id user-id
+                                                 :is-superuser?   is-superuser?})
+              (case include-archived-items
+                :exclude [:= (u/qualified-key table-name :archived) false]
+                :only    [:= (u/qualified-key table-name :archived) true]
+                :all     nil)
+              [:= (u/qualified-key table-name :worktree_id) worktree-id]]}))
 
 (defn- effective-child-of-filter-clause
   [parent-coll collection-table-alias visibility-config]
@@ -1269,11 +1273,14 @@
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (collections.db/effective-children-where (apply effective-children-where-clause
-                                                       collection
-                                                       (t2/table-name :model/Collection)
-                                                       default-visibility-config
-                                                       additional-honeysql-where-clauses))))
+  (set (collections.db/effective-children-where
+        (apply effective-children-where-clause
+               collection
+               (t2/table-name :model/Collection)
+               ;; children live in the same scope as their parent: a worktree collection's children are the
+               ;; worktree's, and the main app's are the main app's
+               (assoc default-visibility-config :worktree-id (:worktree_id collection))
+               additional-honeysql-where-clauses))))
 
 (mi/define-simple-hydration-method effective-children
   :effective_children

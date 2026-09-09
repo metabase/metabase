@@ -3934,12 +3934,17 @@
                                                           :location    (format "/%d/" parent-id)}
                        :model/Transform  {tf-id :id}     {:name          "transform in worktree collection"
                                                           :collection_id parent-id
+                                                          :worktree_id   wt-id}
+                       :model/Transform  _               {:name          "transform in the child collection"
+                                                          :collection_id child-id
                                                           :worktree_id   wt-id}]
-          (testing "a worktree collection's items include its child collections and transforms"
-            (is (= #{["collection" child-id] ["transform" tf-id]}
-                   (->> (mt/user-http-request :crowberto :get 200 (str "collection/" parent-id "/items"))
-                        :data
-                        (into #{} (map (juxt :model :id))))))))))))
+          (let [items (:data (mt/user-http-request :crowberto :get 200 (str "collection/" parent-id "/items")))]
+            (testing "a worktree collection's items include its child collections and transforms"
+              (is (= #{["collection" child-id] ["transform" tf-id]}
+                     (into #{} (map (juxt :model :id)) items))))
+            (testing "and a child collection is annotated with what the worktree holds inside it"
+              (is (= ["transform"]
+                     (:here (some #(when (= ["collection" child-id] ((juxt :model :id) %)) %) items)))))))))))
 
 (deftest worktree-collection-lists-its-counterpart-published-tables-test
   (when config/ee-available?

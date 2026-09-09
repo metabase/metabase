@@ -189,19 +189,19 @@
   from that worktree instead of the main app (admin only)."
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-query]
-  ;; `worktree_id` rides along on the query body; query normalization kebab-cases top-level keys, so accept either
-  ;; spelling and strip both before the query is used.
-  (let [worktree-id (or (:worktree_id query) (:worktree-id query))
-        query       (dissoc query :worktree_id :worktree-id)]
-    (when (some? worktree-id)
-      (api/check-400 (pos-int? worktree-id) (tru "worktree_id must be a positive integer."))
-      (api/check-superuser))
+   ;; `worktree_id` rides along on the query body, so the body has to stay open: a declared map drops every key it
+   ;; doesn't name, and the query's own schema names none of ours. The query is normalized by hand below instead.
+   {:keys [worktree_id] :as body} :- [:map
+                                      {:closed false}
+                                      [:worktree_id {:optional true} [:maybe ::lib.schema.id/worktree]]]]
+  (when (some? worktree_id)
+    (api/check-superuser))
+  (let [query (lib-be/normalize-query (dissoc body :worktree_id))]
     (queries/batch-fetch-query-metadata
      [query]
      (cond-> {}
-       (some? worktree-id)
-       (assoc :worktree-id worktree-id)
+       (some? worktree_id)
+       (assoc :worktree-id worktree_id)
 
        (some? (get-in query [:settings :include-sensitive-fields]))
        (assoc :include-sensitive-fields? (get-in query [:settings :include-sensitive-fields]))))))

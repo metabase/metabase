@@ -154,7 +154,11 @@
     ;; 63+
     :model/McpFeedback]
    (when config/ee-available?
-     [:model/MetabotGroupLimit
+     ;; every content table carries a `worktree_id` FK to `worktree`, so these have to be copied too -- the load
+     ;; runs with constraints disabled, so they need not precede the tables referencing them
+     [:model/Worktree
+      :model/WorktreeRemapping
+      :model/MetabotGroupLimit
       :model/MetabotInstanceLimit
       :model/Sandbox
       :model/Tenant

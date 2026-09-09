@@ -317,10 +317,18 @@
   anything whenever the main branch happens to have no transforms.
 
   This reads the ambient sync scope, so it only answers for a pull or push. Event-time tracking runs outside one
-  and takes the scope from the row instead (see [[check-eligibility]])."
+  and takes the scope from the row instead (see [[transforms-synced-for-row?]])."
   []
   (or (some? serdes/*worktree-id*)
       (rs-settings/remote-sync-transforms)))
+
+(defn transforms-synced-for-row?
+  "Whether transform content syncs for `row` -- the same question [[transforms-synced?]] answers for a running
+  sync, but decided by the row's own `worktree_id`. Event-time tracking runs outside any sync, so the ambient
+  scope is `nil` there and a worktree's own rows would otherwise be judged by the main app's setting."
+  [row]
+  (or (some? (:worktree_id row))
+      (transforms-synced?)))
 
 (defn spec-enabled?
   "Returns true if the spec is currently enabled based on its :enabled? value.
@@ -686,7 +694,7 @@
    or snippets-namespace with Library synced."
   [collection]
   (or (collections/remote-synced-collection? collection)
-      (and (transforms-synced?)
+      (and (transforms-synced-for-row? collection)
            (transforms-namespace-collection? collection))
       (and (rs-settings/library-is-remote-synced?)
            (snippets-namespace-collection? collection))))
@@ -787,7 +795,7 @@
       (collections/remote-synced-collection? collection-id)
 
       :transforms-namespace
-      (and (transforms-synced?)
+      (and (transforms-synced-for-row? object)
            (transforms-namespace-collection? object))
 
       :snippets-namespace
@@ -796,7 +804,7 @@
 
       :any
       (or (collections/remote-synced-collection? (or collection-id object))
-          (and (transforms-synced?)
+          (and (transforms-synced-for-row? object)
                (transforms-namespace-collection? object))
           (and (rs-settings/library-is-remote-synced?)
                (snippets-namespace-collection? object)))
