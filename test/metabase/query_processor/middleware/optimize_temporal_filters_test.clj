@@ -571,6 +571,32 @@
                              [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit unit}]
                              [:absolute-datetime #t "2014-05-08" unit]]}))))))))
 
+(deftest ^:parallel optimize-date-not-equals-null-semantics-test
+  (testing (str "`!=` against a DATE column bucketed by `day` is NOT interchangeable between "
+                "bucket-on-the-ref and bucket-on-the-literal: only the former keeps the `!=`, and "
+                "so the `IS NULL` disjunct `sql.qp` adds to every `!=`. Pass 2.95 in agent-lib "
+                "repair hoists the bucket onto the ref for exactly this reason (BOT-2095).")
+    (testing "bucket on the ref: stays `!=`, so NULL rows are included"
+      (is (=? {:query {:filter [:!=
+                                [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit :default}]
+                                [:absolute-datetime #t "2014-05-08" :default]]}}
+              (optimize-query
+               (lib.tu.macros/mbql-query checkins
+                 {:filter [:!=
+                           [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit :day}]
+                           [:absolute-datetime #t "2014-05-08" :day]]})))))
+    (testing "bucket on the literal: becomes a negated range, which excludes NULL rows"
+      (is (=? {:query {:filter [:or
+                                [:<  [:field (meta/id :checkins :date) {:base-type :type/Date}]
+                                 [:absolute-datetime #t "2014-05-08" :default]]
+                                [:>= [:field (meta/id :checkins :date) {:base-type :type/Date}]
+                                 [:absolute-datetime #t "2014-05-09" :default]]]}}
+              (optimize-query
+               (lib.tu.macros/mbql-query checkins
+                 {:filter [:!=
+                           [:field (meta/id :checkins :date) {:base-type :type/Date}]
+                           [:absolute-datetime #t "2014-05-08" :day]]})))))))
+
 (deftest ^:parallel do-not-change-unit-of-relative-datetime-to-default-test
   (testing "Never change the unit of a relative datetime to :default. That would not make any sense."
     (is (= {:database (meta/id)

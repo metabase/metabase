@@ -918,13 +918,21 @@
 ;;; schema cannot decode it back for `absolute-datetime` / `during`, so the page 400s. A
 ;;; `temporal-unit` on a ref decodes fine (`legacy-json-round-trip-temporal-filters-test`).
 ;;;
-;;; Only inside a stage's `filters`, where both forms compile to the same range predicate
-;;; (`optimize-temporal-filters` reads the unit from either side). In `count-where`, `case` or a
-;;; join condition the bucket would truncate the column instead, so those stay as written. So do a
-;;; unit the literal cannot carry (`hour` on a date, `month-of-year`), a ref that already has a
-;;; `temporal-unit`, `between` bounds with different buckets, and an unparseable literal (resolve's
-;;; `:invalid-temporal-literal` check still needs to see it). The third example drops the wrapper
-;;; anyway: `day` on a date adds nothing, and the bound ends up as the query builder writes it.
+;;; Only inside a stage's `filters`, where `optimize-temporal-filters` reads the unit from either
+;;; side. In `count-where`, `case` or a join condition the bucket would truncate the column instead,
+;;; so those stay as written. So do a unit the literal cannot carry (`hour` on a date,
+;;; `month-of-year`), a ref that already has a `temporal-unit`, `between` bounds with different
+;;; buckets, and an unparseable literal (resolve's `:invalid-temporal-literal` check still needs to
+;;; see it). The third example drops the wrapper anyway: `day` on a date adds nothing, and the bound
+;;; ends up as the query builder writes it.
+;;;
+;;; Both forms then select the same rows, with one exception: `!=` / `not-in` on a `:type/Date`
+;;; column bucketed by `day`. Only the hoisted form reaches `date-field-with-day-bucketing?`, so the
+;;; literal-side form becomes a negated range (`d < x OR d >= x+1`, dropping NULL rows) while the
+;;; hoisted one stays an `!=` and gets the `IS NULL` disjunct `sql.qp` adds to every other `!=`
+;;; (`correct-null-behaviour`). Hoisting is the only option here, not just the better one: every
+;;; `!=` shape that survives the JSON hop compiles to `<> ... OR ... IS NULL`, and the one shape
+;;; that does not is the 400 above. Pinned by `optimize-date-not-equals-null-semantics-test`.
 ;;;
 ;;; Column types are unknown here, so a bucket can land on a text column;
 ;;; [[assert-temporal-buckets-on-temporal-columns!]] rejects that after resolve. Runs after Pass 2.9,
