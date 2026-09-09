@@ -140,7 +140,7 @@
         (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude)))
   (is (apply distinct? (map t2/table-name copy/entities))))
 
-(def ^:private known-uncopied-fk-parents
+(def ^:private foreign-key-coverage-exceptions
   "Known exceptions to foreign-key coverage."
   ;; OSS cannot create tenants and does not copy them, so only EE-created dumps are affected.
   #{{:child_table "core_user", :parent_table "tenant"}})
@@ -156,8 +156,8 @@
        ON parent.CONSTRAINT_NAME = rc.UNIQUE_CONSTRAINT_NAME
       AND parent.CONSTRAINT_SCHEMA = rc.UNIQUE_CONSTRAINT_SCHEMA")
 
-(deftest copied-tables-have-copied-fk-parents-test
-  (testing "every FK parent of a copied table is copied too (#78704)"
+(deftest copied-tables-include-foreign-key-targets-test
+  (testing "every foreign key from a copied table references another copied table"
     (let [source (h2-data-source)]
       (try
         (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
@@ -166,7 +166,7 @@
               dangling (for [{:keys [child_table parent_table] :as edge} edges
                              :when (and (copied child_table)
                                         (not (copied parent_table))
-                                        (not (known-uncopied-fk-parents edge)))]
+                                        (not (foreign-key-coverage-exceptions edge)))]
                          edge)]
           (testing "the metadata query includes app tables"
             (is (some #(= "metabase_table" (:child_table %)) edges)))
