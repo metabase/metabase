@@ -14,6 +14,7 @@
    [metabase.metabot.tools.resources :as resource-tools]
    [metabase.metabot.tools.search :as search-tools]
    [metabase.search.core :as search]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -204,7 +205,8 @@
 (deftest search-tool-structured-output-formats-correctly-test
   (testing "search tool :structured-output formats to clean XML via format-structured-result"
     (mt/test-driver :h2
-      (search/init-index! {:force-reset? false :re-populate? true})
+      (search.tu/with-sync-search-indexing
+        (search/init-index! {:force-reset? false :re-populate? true}))
       (mt/with-current-user (mt/user->id :crowberto)
         (let [result (test-util/call-tool search-tools/search-tool
                                           {:semantic_queries ["orders"]
@@ -215,7 +217,8 @@
 (deftest search-tool-with-models-structured-output-test
   (testing "search tool with model results formats correctly"
     (mt/test-driver :h2
-      (search/init-index! {:force-reset? false :re-populate? true})
+      (search.tu/with-sync-search-indexing
+        (search/init-index! {:force-reset? false :re-populate? true}))
       (mt/with-current-user (mt/user->id :crowberto)
         (let [model-query (-> (lib/query (mt/metadata-provider)
                                          (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
@@ -225,7 +228,8 @@
                                                       :database_id   (mt/id)
                                                       :name          "Searchable Test Model"
                                                       :type          :model}]
-            (search/init-index! {:force-reset? false :re-populate? true})
+            (search.tu/with-sync-search-indexing
+              (search/init-index! {:force-reset? false :re-populate? true}))
             (let [result (test-util/call-tool search-tools/search-tool
                                               {:semantic_queries ["Searchable Test Model"]
                                                :keyword_queries  ["Searchable Test Model"]
