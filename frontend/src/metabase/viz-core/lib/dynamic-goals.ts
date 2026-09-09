@@ -211,7 +211,7 @@ export const getUnresolvedGoalMessage = (kind: GoalSettingKind) =>
   match(kind)
     .with(
       "value",
-      () => t`Couldn't load the value this chart's goal line depends on.`,
+      () => t`Couldn't load the value this chart's goal depends on.`,
     )
     .with(
       "segments",

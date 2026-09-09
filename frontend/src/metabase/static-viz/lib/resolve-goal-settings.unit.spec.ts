@@ -62,7 +62,7 @@ describe("resolveGoalSettings", () => {
       const series = createSeries(createData({}));
 
       expect(() => resolveGoalSettings(series, REFERENCED_SETTINGS)).toThrow(
-        "Couldn't load the value this chart's goal line depends on.",
+        "Couldn't load the value this chart's goal depends on.",
       );
     });
 
@@ -73,7 +73,7 @@ describe("resolveGoalSettings", () => {
       const series = createSeries(failed);
 
       expect(() => resolveGoalSettings(series, REFERENCED_SETTINGS)).toThrow(
-        "Couldn't load the value this chart's goal line depends on.",
+        "Couldn't load the value this chart's goal depends on.",
       );
     });
   });

@@ -101,7 +101,7 @@ describe("validateGoalReferences", () => {
     it("rejects a reference the data reports as failed", () => {
       expect(() =>
         validateGoalReferences(createSeries(), REFERENCED_SETTINGS),
-      ).toThrow("Couldn't load the value this chart's goal line depends on.");
+      ).toThrow("Couldn't load the value this chart's goal depends on.");
     });
 
     it("reads the raw series when given a transformed one", () => {
