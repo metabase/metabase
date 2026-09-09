@@ -126,13 +126,19 @@
   (count (take-while #(cells-free? occupied rows [%])
                      (range right-edge autoplace/default-grid-width))))
 
+(defn- fits? [occupied tiles]
+  (every? (fn [{:keys [row col size_x size_y]}]
+            (cells-free? occupied (range row (+ row size_y)) (range col (+ col size_x))))
+          tiles))
+
 (defn- contiguous? [tiles]
   (every? (fn [[left right]] (= (+ (:col left) (:size_x left)) (:col right)))
           (partition 2 1 tiles)))
 
 (defn- widen-row
   "Widen the side-by-side `tiles` into the free columns to their right, preserving
-  their relative widths."
+  their relative widths. Left as placed when the shifted tiles would run into a
+  tile packed under a shorter neighbour."
   [others tiles]
   (let [last-tile (peek tiles)
         top       (:row last-tile)
@@ -142,12 +148,13 @@
                                          (+ (:col last-tile) (:size_x last-tile)))
         total     (transduce (map :size_x) + 0 tiles)
         grow      (map #(quot (* extra (:size_x %)) total) tiles)
-        leftover  (- extra (reduce + grow))]
-    (first (reduce (fn [[out col] [tile g bonus]]
-                     (let [width (+ (:size_x tile) g bonus)]
-                       [(conj out (assoc tile :col col :size_x width)) (+ col width)]))
-                   [[] (:col (first tiles))]
-                   (map vector tiles grow (concat (repeat leftover 1) (repeat 0)))))))
+        leftover  (- extra (reduce + grow))
+        widened   (first (reduce (fn [[out col] [tile g bonus]]
+                                   (let [width (+ (:size_x tile) g bonus)]
+                                     [(conj out (assoc tile :col col :size_x width)) (+ col width)]))
+                                 [[] (:col (first tiles))]
+                                 (map vector tiles grow (concat (repeat leftover 1) (repeat 0)))))]
+    (if (fits? others widened) widened tiles)))
 
 (defn- equalize-heights
   "Grow the shorter `tiles` of a row down to the row's tallest tile wherever the

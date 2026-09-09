@@ -95,6 +95,14 @@
                            :tiles [{:chart_id "c-1" :title "Bar"}
                                    {:chart_id "c-1" :title "Bar 2"}
                                    {:query_id "q-1" :title "Table"}]}))))
+    (testing "a row is left alone when widening it would run into a tile packed under a shorter neighbour"
+      (is (= [{:title "Tall" :row 0 :col 0 :size_x 9 :size_y 12}
+              {:title "Bar" :row 0 :col 9 :size_x 12 :size_y 6}
+              {:title "Bar 2" :row 6 :col 9 :size_x 15 :size_y 6}]
+             (state-tiles {:name  "Packed"
+                           :tiles [{:chart_id "c-1" :title "Tall" :size "tall"}
+                                   {:chart_id "c-1" :title "Bar"}
+                                   {:chart_id "c-1" :title "Bar 2"}]}))))
     (testing "side-by-side tiles share a row's slack in proportion to their widths and its height"
       (is (= [{:title "Total" :row 0 :col 0 :size_x 8 :size_y 6}
               {:title "Bar" :row 0 :col 8 :size_x 16 :size_y 6}]
