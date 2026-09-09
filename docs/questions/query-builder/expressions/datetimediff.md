@@ -4,7 +4,7 @@ title: DatetimeDiff
 
 # DatetimeDiff
 
-`datetimeDiff` gets the amount of time between two datetime values, using the specified unit of time. Note that the difference is calculated in _whole_ units (see the example below). For "day" and larger units, Metabase counts calendar units in the [report time zone](../../../configuring-metabase/timezones.md), so a daylight saving time change doesn't affect the result.
+`datetimeDiff` gets the amount of time between two datetime values, using the specified unit of time. Note that the difference is calculated in _whole_ units (see the example below).
 
 | Syntax                                                                                                   | Example                                             |
 | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
