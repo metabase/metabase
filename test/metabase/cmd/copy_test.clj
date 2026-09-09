@@ -2,7 +2,6 @@
   (:require
    [clojure.java.classpath :as classpath]
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.namespace.find :as ns.find]
@@ -10,7 +9,6 @@
    [metabase.app-db.setup :as mdb.setup]
    [metabase.classloader.core :as classloader]
    [metabase.cmd.copy :as copy]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
@@ -143,15 +141,13 @@
   (is (apply distinct? (map t2/table-name copy/entities))))
 
 (def ^:private known-uncopied-fk-parents
-  "FK edges whose parent table this build legitimately does not copy."
-  ;; An OSS build cannot create a tenant, so its own dumps hold no tenanted users.
-  ;; Copying an EE-created app DB with an OSS build does hit this -- the same shape as #78414.
-  #{{:child_table "core_user" :parent_table "tenant"}})
+  "Known exceptions to foreign-key coverage."
+  ;; OSS cannot create tenants and does not copy them, so only EE-created dumps are affected.
+  #{{:child_table "core_user", :parent_table "tenant"}})
 
 (def ^:private fk-graph-sql
-  "SQL returning every app DB foreign key as `child_table` -> `parent_table`."
-  ;; reads H2 metadata so the test checks the throwaway DB it migrates itself, whatever the ambient app DB is
-  "SELECT DISTINCT child.TABLE_NAME AS child_table, parent.TABLE_NAME AS parent_table
+  "Foreign keys from the test's H2 database."
+  "SELECT DISTINCT LOWER(child.TABLE_NAME) AS child_table, LOWER(parent.TABLE_NAME) AS parent_table
      FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
      JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS child
        ON child.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
@@ -166,18 +162,15 @@
       (try
         (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
         (let [copied   (into #{} (map (comp name t2/table-name)) copy/entities)
-              edges    (for [{:keys [child_table parent_table]} (jdbc/query {:datasource source} [fk-graph-sql])]
-                         {:child_table (u/lower-case-en child_table) :parent_table (u/lower-case-en parent_table)})
-              dangling (into #{}
-                             (filter (fn [{:keys [child_table parent_table]}]
-                                       (and (contains? copied child_table)
-                                            (not (contains? copied parent_table)))))
-                             edges)]
-          (testing "the throwaway DB was migrated before we check for dangling FKs"
-            (is (contains? (set (map :child_table edges)) "metabase_table")))
-          ;; a set difference, not an equality: EE copies `tenant`, so the known exception only dangles on OSS
-          (is (= #{} (set/difference dangling known-uncopied-fk-parents))
-              (format "these tables are copied but their FK parents are not: add the parent to %s, or the FK to %s"
-                      `copy/entities `known-uncopied-fk-parents)))
+              edges    (jdbc/query {:datasource source} [fk-graph-sql])
+              dangling (for [{:keys [child_table parent_table] :as edge} edges
+                             :when (and (copied child_table)
+                                        (not (copied parent_table))
+                                        (not (known-uncopied-fk-parents edge)))]
+                         edge)]
+          (testing "the metadata query includes app tables"
+            (is (some #(= "metabase_table" (:child_table %)) edges)))
+          (is (empty? dangling)
+              "Copied tables reference tables that are not copied"))
         (finally
           (shutdown! source))))))
