@@ -259,16 +259,15 @@
   [_driver dbdef]
   (let [database-name (qualified-db-name dbdef)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
-    ;; static datasets are shared by every CI job; [[get-or-create/create-database!]] calls this on a failed load or
-    ;; sync, and dropping one would take the dataset away from all of them
-    (if (str/starts-with? database-name "sha_")
-      (log/warnf "[Snowflake] refusing to drop static dataset %s" database-name)
-      (do
-        (log/infof "[Snowflake] %s" sql)
-        ;; test-harness cleanup output goes to the CI console, not the app log
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (println "[Snowflake] destroy database " database-name (:database-name dbdef))
-        (jdbc/execute! (no-db-connection-spec) [sql])))))
+    ;; static datasets are shared by every CI job, so dropping one is always a mistake
+    (when (str/starts-with? database-name "sha_")
+      (throw (ex-info (str "refusing to drop static dataset " database-name)
+                      {:database-name database-name})))
+    (log/infof "[Snowflake] %s" sql)
+    ;; test-harness cleanup output goes to the CI console, not the app log
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "[Snowflake] destroy database " database-name (:database-name dbdef))
+    (jdbc/execute! (no-db-connection-spec) [sql])))
 
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
 ;; INSERT statements, even though the documentation suggests it should. Just go ahead and deparameterize all the
@@ -340,8 +339,9 @@
                  (fn [^java.sql.Connection conn]
                    (and (database-exists?! conn driver db-def)
                         (dataset-rows-ok?! conn db-def))))]
-    ;; this is the one place the harness touches a database it did not create this run; [[tx/create-db!]] covers the
-    ;; ones it did
+    ;; the harness only calls [[tx/create-db!]] when this probe says a dataset is not loaded, and static datasets
+    ;; are already loaded on nearly every run. So this is the only hook that fires for a database this run did not
+    ;; create, and the only place its session schema can be made.
     (when loaded?
       (ensure-session-schema! (qualified-db-name db-def)))
     loaded?))
@@ -461,6 +461,10 @@
 (defmethod driver/database-supports? [:snowflake :test/use-fake-sync]
   [_driver _feature _database]
   (not (tx/on-master-or-release-branch?)))
+
+;; too much contention here causing unreliable tests
+(defmethod driver/database-supports? [:snowflake :test/dynamic-dataset-loading]
+  [_driver _feature _database] false)
 
 (defmethod tx/fake-sync-schema :snowflake
   [_driver]

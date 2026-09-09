@@ -88,23 +88,20 @@
 (defn do-with-dataset-definition
   "Impl for [[with-temp-test-data]] and [[with-actions-test-data]] macros."
   [dataset-definition thunk]
-  (when (and driver/*driver*
-             (not (driver.u/supports? driver/*driver* :test/dynamic-dataset-loading nil)))
-    (throw (ex-info (format "%s cannot load a temporary dataset; gate the test on :test/dynamic-dataset-loading"
-                            driver/*driver*)
-                    {:driver driver/*driver*})))
   ;; use a unique DB name each time so this is thread-safe
   (let [db                 (atom nil)
         dataset-definition (tx/map->DatabaseDefinition (into {} (tx/get-dataset-definition dataset-definition)))
         dataset-definition (update dataset-definition :database-name #(str % "-" (u.random/random-name)))]
-    (try
-      (data/dataset dataset-definition
-        (reset! db (data/db))
-        (thunk))
-      (finally
-        (when-let [{driver :engine, db-id :id} @db]
-          (tx/destroy-db! driver dataset-definition)
-          (t2/delete! :model/Database :id db-id))))))
+    (when (or (nil? driver/*driver*)
+              (driver.u/supports? driver/*driver* :test/dynamic-dataset-loading nil))
+      (try
+        (data/dataset dataset-definition
+          (reset! db (data/db))
+          (thunk))
+        (finally
+          (when-let [{driver :engine, db-id :id} @db]
+            (tx/destroy-db! driver dataset-definition)
+            (t2/delete! :model/Database :id db-id)))))))
 
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
@@ -138,7 +135,8 @@
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
    Use this to test destructive actions that may modify the data.
-   Throws for drivers without `:test/dynamic-dataset-loading`, which reuse one database for every test."
+   WARNING: this doesn't actually create and destroy a temporary database for cloud databases (like redshift) that
+   reuse a single database for all tests."
   {:style/indent :defn}
   [& body]
   `(do-with-dataset-definition (tx/dataset-definition "empty-test-db" []) (fn [] ~@body)))

@@ -851,24 +851,25 @@
 
 (deftest sync-update-require-partition-option-test
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "changing the partition option should be updated during sync"
-      (mt/with-model-cleanup [:model/Table]
-        (let [table-name (format "partitioned_table_%s" (mt/random-name))]
-          (try
-            (bigquery.tx/execute! (format "CREATE TABLE %s (customer_id INT64)
-                                           PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10));"
-                                          (fmt-table-name table-name)))
-            (testing "sanity check that it's not required at first"
-              (sync/sync-database! (mt/db) {:scan :schema})
-              (is (false? (t2/select-one-fn :database_require_filter :model/Table :name table-name))))
-            (testing "sync should update require filter and set it to true"
-              (bigquery.tx/execute! (format "ALTER TABLE IF EXISTS %s
-                                             SET OPTIONS(require_partition_filter = true);"
-                                            (fmt-table-name table-name)))
-              (sync/sync-database! (mt/db) {:scan :schema})
-              (is (true? (t2/select-one-fn :database_require_filter :model/Table :name table-name :db_id (mt/id)))))
-            (finally
-              (drop-table-if-exists! table-name))))))))
+    (mt/with-temp-test-data []
+      (testing "changing the partition option should be updated during sync"
+        (mt/with-model-cleanup [:model/Table]
+          (let [table-name "partitioned_table"]
+            (try
+              (bigquery.tx/execute! (format "CREATE TABLE %s (customer_id INT64)
+                                             PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10));"
+                                            (fmt-table-name "partitioned_table")))
+              (testing "sanity check that it's not required at first"
+                (sync/sync-database! (mt/db) {:scan :schema})
+                (is (false? (t2/select-one-fn :database_require_filter :model/Table :name table-name))))
+              (testing "sync should update require filter and set it to true"
+                (bigquery.tx/execute! (format "ALTER TABLE IF EXISTS %s
+                                               SET OPTIONS(require_partition_filter = true);"
+                                              (fmt-table-name table-name)))
+                (sync/sync-database! (mt/db) {:scan :schema})
+                (is (true? (t2/select-one-fn :database_require_filter :model/Table :name table-name :db_id (mt/id)))))
+              (finally
+                (drop-table-if-exists! table-name)))))))))
 
 (deftest ^:synchronized sync-fields-grouped-by-table!-on-partitioned-bigquery-table-test
   (testing "Partitioned BigQuery tables that require a partition filter can't go through
@@ -1099,9 +1100,9 @@
   (testing "Table with decimal types"
     (mt/test-driver
       :bigquery-cloud-sdk
-      (mt/db)
-      (let [tbl-nm (format "table_%s" (mt/random-name))]
-        (try
+      (mt/with-temp-test-data []
+        (mt/db)
+        (let [tbl-nm (format "table_%s" (mt/random-name))]
           (bigquery.tx/execute!
            "CREATE TABLE `%s.%s`
              (numeric_col NUMERIC,
@@ -1217,16 +1218,14 @@
                                                :type   :number/=
                                                :target [:field (mt/id tbl-nm col-nm)]
                                                :value  [param-v]}]}))
-                           first))))))
-          (finally
-            (drop-table-if-exists! tbl-nm)))))))
+                           first)))))))))))
 
 (deftest sync-table-with-array-test
   (mt/test-driver
     :bigquery-cloud-sdk
     (testing "Tables with RECORD and ARRAY (REPEATED) columns can be synced successfully"
-      (let [tbl-nm (format "table_array_type_%s" (mt/random-name))]
-        (try
+      (mt/with-temp-test-data []
+        (let [tbl-nm (format "table_array_type_%s" (mt/random-name))]
           (doseq [sql [(format "CREATE TABLE `%s.%s` AS SELECT 1 AS int_col,
                                 GENERATE_ARRAY(1,10) AS array_col,
                                 STRUCT('Sam' AS name) AS primary,
@@ -1260,9 +1259,7 @@
                    :database-partitioned false,
                    :database-position 3}]
                  (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]})))
-              "`describe-fields` should detect the correct base-type for array type columns")
-          (finally
-            (drop-table-if-exists! tbl-nm)))))))
+              "`describe-fields` should detect the correct base-type for array type columns"))))))
 
 (deftest sync-inactivates-old-duplicate-tables
   (testing "If on the new driver, then downgrade, then upgrade again (#21981)"
