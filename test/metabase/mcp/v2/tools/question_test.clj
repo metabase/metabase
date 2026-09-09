@@ -20,6 +20,17 @@
 
 (comment v2.question/keep-me)
 
+(defn- call-tool
+  "Dispatch a v2 tool and hand back the MCP content, whether the handler produced it or the
+   registry refused before dispatch. [[registry/call-tool]] returns `{:result …}` or `{:error …}`;
+   a registry refusal is an error the caller sees as a failed tool call just the same, so it is
+   rendered into the same `{:isError true :content …}` shape the assertions here read."
+  [scopes session-id tool-name args]
+  (let [{:keys [result error]} (registry/call-tool scopes session-id tool-name args)]
+    (or result
+        {:isError true
+         :content [{:type "text" :text (:message error)}]})))
+
 (defn- orders-query
   "A Lib query over ORDERS — a runnable `:dataset_query` for fixtures that only need the card to
    have one."
@@ -54,12 +65,12 @@
             is not in the eid-translation map, so a string could only ever fail — as a sanitized \"Internal
             error\", for an input the published inputSchema said was valid."
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                       {:method "create" :name "Tag probe"
-                                        :native {:database_id (mt/id)
-                                                 :sql "SELECT * FROM VENUES WHERE PRICE = {{d}}"
-                                                 :template_tags {"d" {:type "dimension" :widget_type "number/="
-                                                                      :field_id "AbCdEfGhIjKlMnOpQrStU"}}}})
+      (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                              {:method "create" :name "Tag probe"
+                               :native {:database_id (mt/id)
+                                        :sql "SELECT * FROM VENUES WHERE PRICE = {{d}}"
+                                        :template_tags {"d" {:type "dimension" :widget_type "number/="
+                                                             :field_id "AbCdEfGhIjKlMnOpQrStU"}}}})
             text   (-> result :content first :text)]
         (is (:isError result))
         (is (not (re-find #"(?i)internal error" text))
@@ -179,7 +190,7 @@
                     :name "Agent Q"
                     :query {:database (mt/id)
                             :stages [{:source-table (mt/id :orders)}]}}
-            result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
+            result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (not (:isError result)) (-> result :content first :text))
         (let [card-id (:id (:structuredContent result))]
           (is (int? card-id))
@@ -211,8 +222,8 @@
                                  :aggregation  [["count" {}]]
                                  :breakout     [["field" {:temporal-unit "month"}
                                                  (mt/id :orders :created_at)]]}]})
-            result (registry/call-tool #{"agent:content:write"} sid "question_write"
-                                       {:method "create" :name "From Handle" :query_handle handle})]
+            result (call-tool #{"agent:content:write"} sid "question_write"
+                              {:method "create" :name "From Handle" :query_handle handle})]
         (is (not (:isError result)) (-> result :content first :text))
         (let [card-id (:id (:structuredContent result))]
           (is (int? card-id))
@@ -232,8 +243,8 @@
                       sid (mt/user->id :crowberto)
                       (v2.queries/encode-serialized-query
                        (lib/prepare-for-serialization (lib/native-query mp "SELECT 1"))))
-              result (registry/call-tool #{"agent:content:write"} sid "question_write"
-                                         {:method "create" :name "From SQL Handle" :query_handle handle})]
+              result (call-tool #{"agent:content:write"} sid "question_write"
+                                {:method "create" :name "From SQL Handle" :query_handle handle})]
           (is (not (:isError result)) (-> result :content first :text))
           (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
                   (t2/select-one-fn :dataset_query :model/Card
@@ -241,8 +252,8 @@
 
 (deftest create-question-name-required-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (let [result (registry/call-tool #{"agent:content:write"} nil "question_write"
-                                     {:method "create" :query {:database (mt/id) :stages [{}]}})]
+    (let [result (call-tool #{"agent:content:write"} nil "question_write"
+                            {:method "create" :query {:database (mt/id) :stages [{}]}})]
       (is (:isError result))
       (is (re-find #"`name` is required" (-> result :content first :text))))))
 
@@ -252,15 +263,15 @@
       (let [base-args {:method "create"
                        :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}]
         (testing "collection_id: \"root\" saves to the root collection"
-          (let [result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
-                                           (assoc base-args :name "Agent Q root" :collection_id "root"))]
+          (let [result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
+                                  (assoc base-args :name "Agent Q root" :collection_id "root"))]
             (is (not (:isError result)) (-> result :content first :text))
             (is (nil? (t2/select-one-fn :collection_id :model/Card
                                         :id (:id (:structuredContent result)))))))
         (testing "omitted collection_id saves to the caller's personal collection"
           (let [personal-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
-                result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
-                                           (assoc base-args :name "Agent Q personal"))]
+                result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
+                                  (assoc base-args :name "Agent Q personal"))]
             (is (not (:isError result)) (-> result :content first :text))
             (is (= personal-id (t2/select-one-fn :collection_id :model/Card
                                                  :id (:id (:structuredContent result)))))))))))
@@ -271,8 +282,8 @@
   [extra-args]
   (let [base-args {:method "create" :card_type "model"
                    :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-        result    (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
-                                      (merge base-args extra-args))]
+        result    (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
+                             (merge base-args extra-args))]
     (is (not (:isError result)) (-> result :content first :text))
     (t2/select-one-fn :result_metadata :model/Card :id (:id (:structuredContent result)))))
 
@@ -300,7 +311,7 @@
                   :name "Agent Model Bad Column"
                   :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
                   :column_metadata [{:name "NOT_A_REAL_COLUMN" :display_name "whoops"}]}
-          result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
+          result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
       (is (:isError result))
       (is (re-find #"\"NOT_A_REAL_COLUMN\" is not in the query results"
                    (-> result :content first :text))))))
@@ -314,8 +325,8 @@
                       :name "Native Model With CM"
                       :native {:database_id (mt/id) :sql "SELECT * FROM orders"}
                       :column_metadata [{:name "TOTAL" :display_name "Total $"}]}
-              result (registry/call-tool #{"agent:content:write" "agent:sql:run"} (str (random-uuid))
-                                         "question_write" args)]
+              result (call-tool #{"agent:content:write" "agent:sql:run"} (str (random-uuid))
+                                "question_write" args)]
           (is (:isError result))
           (is (re-find #"column_metadata isn't supported for models built from a native \(SQL\) query"
                        (-> result :content first :text)))))
@@ -324,8 +335,8 @@
                       :card_type "model"
                       :name "Native Model No CM"
                       :native {:database_id (mt/id) :sql "SELECT * FROM orders"}}
-              result (registry/call-tool #{"agent:content:write" "agent:sql:run"} (str (random-uuid))
-                                         "question_write" args)]
+              result (call-tool #{"agent:content:write" "agent:sql:run"} (str (random-uuid))
+                                "question_write" args)]
           (is (not (:isError result)) (-> result :content first :text))
           (is (= :model (t2/select-one-fn :type :model/Card :id (:id (:structuredContent result))))))))))
 
@@ -337,7 +348,7 @@
                       :name "Dash Q"
                       :dashboard_id (:id dash)
                       :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-              result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
+              result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
           (is (not (:isError result)) (-> result :content first :text))
           (let [card-id (:id (:structuredContent result))]
             (is (= (:id dash) (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))))
@@ -350,7 +361,7 @@
                     :name "Dash Model"
                     :dashboard_id (:id dash)
                     :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-            result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
+            result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (:isError result))
         (is (re-find #"Invalid dashboard-internal card" (-> result :content first :text)))))))
 
@@ -363,7 +374,7 @@
                     :dashboard_id (:id dash)
                     :collection_id (:id coll)
                     :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-            result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
+            result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (:isError result))
         (is (re-find #"Pass either collection_id or dashboard_id, not both"
                      (-> result :content first :text)))))))
@@ -376,7 +387,7 @@
                     :name "Dash Q Bad Numeric Id"
                     :dashboard_id 999999999
                     :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-            result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
+            result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (:isError result))
         (is (re-find #"Dashboard 999999999 not found"
                      (-> result :content first :text)))))))
@@ -386,8 +397,8 @@
 (deftest update-question-rename-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card card {:name "Before" :dataset_query (orders-query)}]
-      (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                       {:method "update" :id (:id card) :description "new desc"})]
+      (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                              {:method "update" :id (:id card) :description "new desc"})]
         (is (not (:isError result)) (-> result :content first :text))
         (is (= "new desc" (t2/select-one-fn :description :model/Card :id (:id card))))))))
 
@@ -404,11 +415,11 @@
             downstream — the save-cycle graph and the readback select, not just the write check"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {:name "By eid" :dataset_query (orders-query)}]
-        (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                         {:method "update"
-                                          :id     (:entity_id card)
-                                          :query  {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
-                                          :name   "By eid, renamed"})]
+        (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                {:method "update"
+                                 :id     (:entity_id card)
+                                 :query  {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
+                                 :name   "By eid, renamed"})]
           (is (not (:isError result)) (-> result :content first :text))
           (is (= (:id card) (:id (:structuredContent result))))
           (is (= "By eid, renamed" (t2/select-one-fn :name :model/Card :id (:id card)))))))))
@@ -420,13 +431,13 @@
     (mt/with-temp [:model/Card card {:name "Mine" :creator_id (mt/user->id :rasta) :dataset_query (orders-query)}]
       (mt/with-no-data-perms-for-all-users!
         (mt/with-current-user (mt/user->id :rasta)
-          (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                           {:method          "update"
-                                            :id              (:id card)
-                                            ;; a different table than the stored query's, so this is a query
-                                            ;; modification and the run-permission check applies to it
-                                            :query           {:database (mt/id) :stages [{:source-table (mt/id :venues)}]}
-                                            :column_metadata [{:name "NOT_A_COLUMN" :description "guess"}]})
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method          "update"
+                                   :id              (:id card)
+                                   ;; a different table than the stored query's, so this is a query
+                                   ;; modification and the run-permission check applies to it
+                                   :query           {:database (mt/id) :stages [{:source-table (mt/id :venues)}]}
+                                   :column_metadata [{:name "NOT_A_COLUMN" :description "guess"}]})
                 text   (-> result :content first :text)]
             (is (:isError result))
             (is (not (re-find #"not in the query results" text))
@@ -435,17 +446,17 @@
 (deftest update-archive-restore-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card card {:archived false :dataset_query (orders-query)}]
-      (let [archive-result (registry/call-tool #{::scope/unrestricted} nil "question_write" {:method "update" :id (:id card) :archived true})]
+      (let [archive-result (call-tool #{::scope/unrestricted} nil "question_write" {:method "update" :id (:id card) :archived true})]
         (is (not (:isError archive-result)) (-> archive-result :content first :text)))
       (is (true? (t2/select-one-fn :archived :model/Card :id (:id card))))
-      (let [restore-result (registry/call-tool #{::scope/unrestricted} nil "question_write" {:method "update" :id (:id card) :archived false})]
+      (let [restore-result (call-tool #{::scope/unrestricted} nil "question_write" {:method "update" :id (:id card) :archived false})]
         (is (not (:isError restore-result)) (-> restore-result :content first :text)))
       (is (false? (t2/select-one-fn :archived :model/Card :id (:id card)))))))
 
 (deftest update-not-found-collapses-test
   (mt/with-current-user (mt/user->id :rasta)
-    (let [result (registry/call-tool #{::scope/unrestricted} nil "question_write"
-                                     {:method "update" :id 999999999 :name "x"})]
+    (let [result (call-tool #{::scope/unrestricted} nil "question_write"
+                            {:method "update" :id 999999999 :name "x"})]
       (is (:isError result))
       (is (re-find #"not found" (-> result :content first :text))))))
 
@@ -453,8 +464,8 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card card {:dataset_query (orders-query)}]
       (let [new-query {:database (mt/id) :stages [{:source-table (mt/id :products)}]}
-            result    (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                          {:method "update" :id (:id card) :query new-query})]
+            result    (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                 {:method "update" :id (:id card) :query new-query})]
         (is (not (:isError result)) (-> result :content first :text))
         (is (=? {:stages [{:source-table (mt/id :products)}]}
                 (t2/select-one-fn :dataset_query :model/Card :id (:id card))))))))
@@ -470,8 +481,8 @@
                       {:lib/type "mbql/query"
                        :stages   [{:lib/type     "mbql.stage/mbql"
                                    :source-table (mt/id :products)}]})
-              result (registry/call-tool #{::scope/unrestricted} sid "question_write"
-                                         {:method "update" :id (:id card) :query_handle handle})]
+              result (call-tool #{::scope/unrestricted} sid "question_write"
+                                {:method "update" :id (:id card) :query_handle handle})]
           (is (not (:isError result)) (-> result :content first :text))
           (is (=? {:stages [{:source-table (mt/id :products)}]}
                   (t2/select-one-fn :dataset_query :model/Card :id (:id card)))))))))
@@ -480,15 +491,15 @@
   (mt/with-model-cleanup [:model/Card]
     (mt/with-current-user (mt/user->id :crowberto)
       (let [baseline (create-model-result-metadata {:name "Update Model Baseline"})
-            create-result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
-                                              {:method "create" :card_type "model"
-                                               :name "Update Model"
-                                               :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
+            create-result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
+                                     {:method "create" :card_type "model"
+                                      :name "Update Model"
+                                      :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
             card-id (:id (:structuredContent create-result))
-            update-result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                              {:method "update" :id card-id
-                                               :column_metadata [{:name "TOTAL" :display_name "Total $"
-                                                                  :semantic_type "type/Currency"}]})
+            update-result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                     {:method "update" :id card-id
+                                      :column_metadata [{:name "TOTAL" :display_name "Total $"
+                                                         :semantic_type "type/Currency"}]})
             result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
             by-name (into {} (map (juxt :name identity)) result-metadata)]
         (is (not (:isError update-result)) (-> update-result :content first :text))
@@ -505,14 +516,14 @@
   (testing "a second partial column_metadata update keeps overrides set by an earlier one (GHY-4145)"
     (mt/with-model-cleanup [:model/Card]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [create-result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
-                                                {:method "create" :card_type "model"
-                                                 :name "Iteratively Annotated Model"
-                                                 :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
+        (let [create-result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
+                                       {:method "create" :card_type "model"
+                                        :name "Iteratively Annotated Model"
+                                        :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
               card-id       (:id (:structuredContent create-result))
               annotate!     (fn [column_metadata]
-                              (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                                  {:method "update" :id card-id :column_metadata column_metadata}))]
+                              (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                         {:method "update" :id card-id :column_metadata column_metadata}))]
           ;; first annotate TOTAL, then — in a separate call that never mentions TOTAL — annotate ID
           (is (not (:isError (annotate! [{:name "TOTAL" :display_name "Total $" :semantic_type "type/Currency"}]))))
           (is (not (:isError (annotate! [{:name "ID" :display_name "Order ID"}]))))
@@ -528,15 +539,15 @@
   (testing "an explicit null semantic_type clears a previously-set override, not just an omitted key (GHY-4352)"
     (mt/with-model-cleanup [:model/Card]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [create-result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
-                                                {:method "create" :card_type "model"
-                                                 :name "Clearable Override Model"
-                                                 :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
-                                                 :column_metadata [{:name "TOTAL" :semantic_type "type/Currency"}]})
+        (let [create-result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
+                                       {:method "create" :card_type "model"
+                                        :name "Clearable Override Model"
+                                        :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
+                                        :column_metadata [{:name "TOTAL" :semantic_type "type/Currency"}]})
               card-id       (:id (:structuredContent create-result))
-              clear-result  (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                                {:method "update" :id card-id
-                                                 :column_metadata [{:name "TOTAL" :semantic_type nil}]})]
+              clear-result  (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                       {:method "update" :id card-id
+                                        :column_metadata [{:name "TOTAL" :semantic_type nil}]})]
           (is (not (:isError clear-result)) (-> clear-result :content first :text))
           (let [by-name (into {} (map (juxt :name identity))
                               (t2/select-one-fn :result_metadata :model/Card :id card-id))]
@@ -549,7 +560,7 @@
                     :name "Bad Semantic Type Model"
                     :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
                     :column_metadata [{:name "TOTAL" :semantic_type "Currency"}]}
-            result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
+            result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (:isError result))
         (is (re-find #"Invalid semantic_type \"Currency\""
                      (-> result :content first :text)))))))
@@ -561,7 +572,7 @@
                     :name "Bad Visibility Type Model"
                     :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
                     :column_metadata [{:name "TOTAL" :visibility_type "bogus"}]}
-            result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
+            result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (:isError result))
         (is (re-find #"visibility_type"
                      (-> result :content first :text)))))))
@@ -572,8 +583,8 @@
       (mt/with-temp [:model/Collection dash-coll {}
                      :model/Dashboard dash {:collection_id (:id dash-coll)}
                      :model/Card card {:dataset_query (orders-query) :collection_id nil}]
-        (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                         {:method "update" :id (:id card) :dashboard_id (:id dash)})]
+        (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                {:method "update" :id (:id card) :dashboard_id (:id dash)})]
           (is (not (:isError result)) (-> result :content first :text))
           (is (= (:id dash) (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))
           (testing "the card's collection follows the dashboard's, matching create"
@@ -586,8 +597,8 @@
         (mt/with-temp [:model/Collection dash-coll {}
                        :model/Dashboard dash {:collection_id (:id dash-coll)}
                        :model/Card card {:archived true :archived_directly true :dataset_query (orders-query)}]
-          (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                           {:method "update" :id (:id card) :dashboard_id (:id dash)})]
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method "update" :id (:id card) :dashboard_id (:id dash)})]
             (is (not (:isError result)) (-> result :content first :text))
             (is (=? {:archived          false
                      :archived_directly false
@@ -602,8 +613,8 @@
       (mt/with-temp [:model/Collection dash-coll {}
                      :model/Dashboard dash {:collection_id (:id dash-coll)}
                      :model/Card card {:archived false :dataset_query (orders-query)}]
-        (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                         {:method "update" :id (:id card) :dashboard_id (:id dash) :archived true})]
+        (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                {:method "update" :id (:id card) :dashboard_id (:id dash) :archived true})]
           (is (:isError result))
           (is (re-find #"Can't move a card into a dashboard while also archiving it"
                        (-> result :content first :text)))
@@ -615,8 +626,8 @@
   (testing "a numeric dashboard_id with no matching row is a clean not-found on update too (GHY-4352)"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {:dataset_query (orders-query)}]
-        (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                         {:method "update" :id (:id card) :dashboard_id 999999999})]
+        (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                {:method "update" :id (:id card) :dashboard_id 999999999})]
           (is (:isError result))
           (is (re-find #"Dashboard 999999999 not found"
                        (-> result :content first :text)))
@@ -628,9 +639,9 @@
     (mt/with-temp [:model/Dashboard dash {:collection_id nil}
                    :model/Collection coll {}
                    :model/Card card {:dataset_query (orders-query)}]
-      (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                       {:method "update" :id (:id card)
-                                        :dashboard_id (:id dash) :collection_id (:id coll)})]
+      (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                              {:method "update" :id (:id card)
+                               :dashboard_id (:id dash) :collection_id (:id coll)})]
         (is (:isError result))
         (is (re-find #"Pass either collection_id or dashboard_id, not both"
                      (-> result :content first :text)))
@@ -648,8 +659,8 @@
       ;; the write requirement on the dashboard's collection) still runs for a dashboard move.
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-b)
       (mt/with-current-user (mt/user->id :rasta)
-        (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                         {:method "update" :id (:id card) :dashboard_id (:id dash-b)})]
+        (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                {:method "update" :id (:id card) :dashboard_id (:id dash-b)})]
           (is (:isError result))
           (is (re-find #"You don't have permissions to do that"
                        (-> result :content first :text)))
@@ -671,19 +682,19 @@
                                               :dataset_query (count-metric-query)}]
       (mt/with-current-user (mt/user->id :crowberto)
         (testing "a field update is refused, naming the card's type and the tool that owns it"
-          (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                           {:method "update" :id card-id :name "nope"})
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method "update" :id card-id :name "nope"})
                 msg    (-> result :content first :text)]
             (is (:isError result))
             (is (str/includes? msg "metric_write"))
             (is (str/includes? msg "metric"))))
         (testing "a card_type that would retype the metric is refused, not honored"
-          (is (:isError (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                            {:method "update" :id card-id :card_type "question"}))))
+          (is (:isError (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                   {:method "update" :id card-id :card_type "question"}))))
         (testing "storing a native query on the metric is refused rather than corrupting it"
-          (is (:isError (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                            {:method "update" :id card-id
-                                             :native {:database_id (mt/id) :sql "SELECT 1"}}))))
+          (is (:isError (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                   {:method "update" :id card-id
+                                    :native {:database_id (mt/id) :sql "SELECT 1"}}))))
         (testing "the card is untouched"
           (is (=? {:type :metric :name "question-test not a question"}
                   (t2/select-one [:model/Card :type :name] :id card-id))))))))
@@ -698,8 +709,8 @@
           (with-redefs [queries/check-card-can-be-saved! (fn [query card-type]
                                                            (reset! seen card-type)
                                                            (original query card-type))]
-            (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
-                                             {:method "update" :id card-id :name "renamed"})]
+            (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                    {:method "update" :id card-id :name "renamed"})]
               (is (not (:isError result)) (-> result :content first :text))))
           (is (= :model @seen)))))))
 
@@ -714,12 +725,12 @@
               create-args {:method "create" :name "Native Q"
                            :native {:database_id (mt/id) :sql "SELECT 1"}}]
           (testing "create with only the write scope is refused, naming the missing scope"
-            (let [result (registry/call-tool write-only (str (random-uuid)) "question_write" create-args)]
+            (let [result (call-tool write-only (str (random-uuid)) "question_write" create-args)]
               (is (:isError result))
               (is (re-find #"agent:sql:run" (-> result :content first :text)))
               (is (zero? (t2/count :model/Card :name "Native Q")))))
           (testing "the identical call goes through once the token carries the SQL scope"
-            (let [result (registry/call-tool with-sql (str (random-uuid)) "question_write" create-args)]
+            (let [result (call-tool with-sql (str (random-uuid)) "question_write" create-args)]
               (is (not (:isError result)) (-> result :content first :text))
               (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
                       (t2/select-one-fn :dataset_query :model/Card
@@ -728,13 +739,13 @@
             (mt/with-temp [:model/Card card {:dataset_query (orders-query)}]
               (let [update-args {:method "update" :id (:id card)
                                  :native {:database_id (mt/id) :sql "SELECT 2"}}
-                    refused     (registry/call-tool write-only (str (random-uuid)) "question_write" update-args)]
+                    refused     (call-tool write-only (str (random-uuid)) "question_write" update-args)]
                 (is (:isError refused))
                 (is (re-find #"agent:sql:run" (-> refused :content first :text)))
                 (is (=? {:stages [{:lib/type :mbql.stage/mbql}]}
                         (t2/select-one-fn :dataset_query :model/Card :id (:id card))))
                 (testing "and goes through with the SQL scope"
-                  (let [ok (registry/call-tool with-sql (str (random-uuid)) "question_write" update-args)]
+                  (let [ok (call-tool with-sql (str (random-uuid)) "question_write" update-args)]
                     (is (not (:isError ok)) (-> ok :content first :text))
                     (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 2"}]}
                             (t2/select-one-fn :dataset_query :model/Card :id (:id card))))))))))))))
@@ -752,20 +763,20 @@
                              :query {:database (mt/id)
                                      :stages [{:native "SELECT 1"}]}}]
           (testing "the write scope alone is refused, naming the missing SQL scope"
-            (let [result (registry/call-tool write-only (str (random-uuid)) "question_write" native-inline)]
+            (let [result (call-tool write-only (str (random-uuid)) "question_write" native-inline)]
               (is (:isError result))
               (is (re-find #"agent:sql:run" (-> result :content first :text)))
               (is (zero? (t2/count :model/Card :name "Backdoor Q")))))
           (testing "the identical call goes through with the SQL scope, storing the native query"
-            (let [result (registry/call-tool with-sql (str (random-uuid)) "question_write" native-inline)]
+            (let [result (call-tool with-sql (str (random-uuid)) "question_write" native-inline)]
               (is (not (:isError result)) (-> result :content first :text))
               (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
                       (t2/select-one-fn :dataset_query :model/Card :id (:id (:structuredContent result)))))))
           (testing "a plain inline MBQL query is unaffected — still creatable with the write scope only"
-            (let [result (registry/call-tool write-only (str (random-uuid)) "question_write"
-                                             {:method "create" :name "Plain MBQL Q"
-                                              :query {:database (mt/id)
-                                                      :stages [{:source-table (mt/id :orders)}]}})]
+            (let [result (call-tool write-only (str (random-uuid)) "question_write"
+                                    {:method "create" :name "Plain MBQL Q"
+                                     :query {:database (mt/id)
+                                             :stages [{:source-table (mt/id :orders)}]}})]
               (is (not (:isError result)) (-> result :content first :text)))))))))
 
 ;; not ^:parallel: mt/with-temporary-setting-values on the shared kill-switch setting
@@ -776,10 +787,10 @@
     (mt/with-model-cleanup [:model/Card]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
-          (let [result (registry/call-tool #{"agent:content:write" "agent:sql:run"} (str (random-uuid))
-                                           "question_write"
-                                           {:method "create" :name "Killed Native Q"
-                                            :native {:database_id (mt/id) :sql "SELECT 1"}})]
+          (let [result (call-tool #{"agent:content:write" "agent:sql:run"} (str (random-uuid))
+                                  "question_write"
+                                  {:method "create" :name "Killed Native Q"
+                                   :native {:database_id (mt/id) :sql "SELECT 1"}})]
             (is (:isError result))
             (is (str/includes? (-> result :content first :text) "mcp-execute-sql-enabled"))
             (is (zero? (t2/count :model/Card :name "Killed Native Q")))))))))
@@ -791,15 +802,15 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (let [args  {:method "create" :name "Ack Q"
                      :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-              acked (:structuredContent (registry/call-tool #{"agent:content:write"}
-                                                            (str (random-uuid)) "question_write" args))]
+              acked (:structuredContent (call-tool #{"agent:content:write"}
+                                                   (str (random-uuid)) "question_write" args))]
           (is (pos-int? (:id acked)))
           (is (re-find #"agent:content:read" (:note acked)))
           (is (not (contains? acked :name)))
           (testing "with the read scope the full response comes back"
-            (let [full (:structuredContent (registry/call-tool #{"agent:content:write" "agent:content:read"}
-                                                               (str (random-uuid)) "question_write"
-                                                               (assoc args :name "Full Q")))]
+            (let [full (:structuredContent (call-tool #{"agent:content:write" "agent:content:read"}
+                                                      (str (random-uuid)) "question_write"
+                                                      (assoc args :name "Full Q")))]
               (is (= "Full Q" (:name full))))))))))
 
 (deftest question-write-scopes-registered-test

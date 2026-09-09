@@ -11,6 +11,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.queries :as v2.queries]
@@ -193,9 +194,9 @@
   [collection-id]
   (if-not collection-id
     (:name (collection/root-collection-with-ui-details nil))
-    (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
-                                    :namespace :archived_directly]
-                                   collection-id)
+    (let [coll      (mcp.db/select-one-by-id [:model/Collection :id :name :location :personal_owner_id
+                                              :namespace :archived_directly]
+                                             collection-id)
           ancestors (cond->> (:effective_ancestors (t2/hydrate coll :effective_ancestors))
                       (collection/is-personal-collection-or-descendant-of-one? coll)
                       (remove #(= "root" (:id %))))
@@ -298,7 +299,7 @@
   [dashboard_id]
   (when dashboard_id
     (let [id  (v2.resolve/resolve-id-or-404 :model/Dashboard dashboard_id)
-          row (t2/select-one [:model/Dashboard :collection_id] :id id)]
+          row (mcp.db/select-one-by-id [:model/Dashboard :collection_id] id)]
       (when-not row
         (common/throw-not-found :model/Dashboard dashboard_id))
       {:dashboard-id id :collection-id (:collection_id row)})))
@@ -439,7 +440,7 @@
                              :card-updates          card-updates
                              :actor                 @api/*current-user*
                              :delete-old-dashcards? false}))
-    (update-card-response (t2/select-one :model/Card :id card-id))))
+    (update-card-response (mcp.db/select-one-by-id :model/Card card-id))))
 
 (def ^:private question-write-args-schema
   [:map {:closed true}
