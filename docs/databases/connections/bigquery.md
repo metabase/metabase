@@ -54,7 +54,7 @@ The display name for the database in the Metabase interface.
 
 ### Project ID
 
-Each BigQuery dataset will have a **Project ID**. You can find this ID via the [Google Cloud Console](https://console.cloud.google.com/). If you're not sure where to find the **Project ID**, see Google's documentation on [getting information on datasets](https://cloud.google.com/bigquery/docs/dataset-metadata#getting_dataset_information).
+Each BigQuery dataset will have a **Project ID**. You can find this ID via the [Google Cloud Console](https://console.cloud.google.com/). If you're not sure where to find the **Project ID**, see Google's documentation on [getting information on datasets](https://cloud.google.com/bigquery/docs/dataset-metadata#get_information_about_datasets).
 
 > When entering the **Project ID**, omit the Project ID prefix. For example, if your ID is `project_name:project_id`, only enter `project_id`.
 
@@ -139,7 +139,7 @@ Choose **Viewer** from the dropdown, uncheck the **Notify people** option, and c
 
 If you don't already have a BigQuery dataset, [create one](https://cloud.google.com/bigquery/docs/datasets).
 
-Next, using the Google Cloud Console, [create an external table](https://cloud.google.com/bigquery/external-data-drive?hl=en#creating_and_querying_a_permanent_external_table) within your BigQuery dataset that points to your Google Sheet.
+Next, using the Google Cloud Console, [create an external table](https://cloud.google.com/bigquery/docs/external-data-drive#create_external_tables) within your BigQuery dataset that points to your Google Sheet.
 
 Be sure to specify the correct **Drive URI** and file format.
 

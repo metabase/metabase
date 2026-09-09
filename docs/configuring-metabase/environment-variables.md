@@ -2174,7 +2174,7 @@ Git synchronization type - :read-write or :read-only.
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-url`
 
-The location of your git repository, e.g. https://github.com/acme-inco/metabase.git.
+The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`.
 
 ### `MB_REPORT_TIMEZONE`
 

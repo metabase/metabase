@@ -171,11 +171,11 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [data-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-permissions
 [groups]: ../people-and-groups/managing.md#groups
 [jwt-auth]: ../people-and-groups/authenticating-with-jwt.md
-[locked-parameters]: https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards#hide-or-lock-parameters-to-restrict-what-data-is-shown
+[locked-parameters]: ../embedding/guest-embedding.md#locked-parameters
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-permissions
 [public-sharing]: ../embedding/public-links.md
 [row-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [row-and-column-security]: ../permissions/row-and-column-security.md
-[static-embedding]: https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards#enable-embedding-in-other-applications
+[static-embedding]: ../embedding/guest-embedding.md
 [troubleshooting-permissions]: ./permissions.md
 [unsupported-databases]: ../permissions/row-and-column-security.md#limitations-of-row-and-column-security

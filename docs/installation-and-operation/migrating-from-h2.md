@@ -37,7 +37,7 @@ We recommend using PostgreSQL for your application database.
 
 ## How can I tell if my Metabase instance uses H2?
 
-As a Metabase admin, call the [`GET /api/bug-reporting/details`](https://www.metabase.com/docs/latest/api#tag/apibug-reporting/get/api/bug-reporting/details) API endpoint. This will return something like this:
+As a Metabase admin, call the [`GET /api/bug-reporting/details`](https://www.metabase.com/docs/latest/api) API endpoint. This will return something like this:
 
 ```json
 {

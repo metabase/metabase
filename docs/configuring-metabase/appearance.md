@@ -130,9 +130,9 @@ Keep in mind that if you hide documentation links, people using your Metabase mi
 
 ### Help link in the settings menu
 
-The Settings menu (the "grid" menu in the upper right of your Metabase) includes a **Help** option that links to a [Metabase help page](https://www.metabase.com/help/) by default. You can change this menu Help item by selecting one of the following options:
+The Settings menu (the "grid" menu in the upper right of your Metabase) includes a **Help** option that links to a [Metabase help page](https://www.metabase.com/help) by default. You can change this menu Help item by selecting one of the following options:
 
-- Link to [Metabase help](https://www.metabase.com/help/) (default)
+- Link to [Metabase help](https://www.metabase.com/help) (default)
 - Hide it (the Settings menu won't display the Help option at all).
 - Go to a custom destination. Enter a URL that the Settings menu's Help option should link to. Valid URLs include http, https, and mailto URLs.
 

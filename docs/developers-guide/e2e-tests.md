@@ -246,7 +246,7 @@ If you navigate to the `/admin/settings/license` page, the license input field s
 
 ## Tags
 
-Cypress allows us to [tag](https://github.com/cypress-io/cypress/tree/develop/npm/grep#tags-in-the-test-config-object) tests, to easily find certain categories of tags. For example, we can tag all tests that require an external database with `@external` and then run only those tests with `bun run test-cypress --env grepTags="@external"`. Tags should start with `@` just to make it easier to distinguish them from other strings in searches.
+Cypress allows us to [tag](https://github.com/cypress-io/cypress/tree/develop/npm/grep#filter-by-tags) tests, to easily find certain categories of tags. For example, we can tag all tests that require an external database with `@external` and then run only those tests with `bun run test-cypress --env grepTags="@external"`. Tags should start with `@` just to make it easier to distinguish them from other strings in searches.
 
 These are the tags currently in use:
 
