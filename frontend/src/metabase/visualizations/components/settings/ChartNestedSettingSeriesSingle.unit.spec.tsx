@@ -199,8 +199,8 @@ describe("ChartNestedSettingSeriesSingle", () => {
     expect(
       within(
         screen.getByTestId("chart-settings-widget-series_settings"),
-      ).getByTestId("chart-settings-widget-show_series_values"),
-    ).toHaveAttribute("hidden");
+      ).queryByTestId("chart-settings-widget-show_series_values"),
+    ).not.toBeInTheDocument();
   });
 
   it("should render the `Show values for this series` switch when stackable.stack_type is null (metabase#58552)", async () => {
@@ -253,8 +253,8 @@ describe("ChartNestedSettingSeriesSingle", () => {
     expect(
       within(
         screen.getByTestId("chart-settings-widget-series_settings"),
-      ).getByTestId("chart-settings-widget-show_series_trendline"),
-    ).toHaveAttribute("hidden");
+      ).queryByTestId("chart-settings-widget-show_series_trendline"),
+    ).not.toBeInTheDocument();
   });
 
   it("should not render the `Show trend line for this series` switch for a single series", async () => {
@@ -272,7 +272,7 @@ describe("ChartNestedSettingSeriesSingle", () => {
     expect(
       within(
         screen.getByTestId("chart-settings-widget-series_settings"),
-      ).getByTestId("chart-settings-widget-show_series_trendline"),
-    ).toHaveAttribute("hidden");
+      ).queryByTestId("chart-settings-widget-show_series_trendline"),
+    ).not.toBeInTheDocument();
   });
 });

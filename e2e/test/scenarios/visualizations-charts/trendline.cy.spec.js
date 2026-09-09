@@ -104,10 +104,10 @@ describe("scenarios > question > trendline", () => {
     H.popover().findByText("Show trend line for this series").click();
     H.trendLine().should("have.length", 1);
     H.leftSidebar().findByTestId("settings-avg").click();
-    // hidden nested settings stay in the popover DOM with a hidden attribute
     H.popover().within(() => {
-      cy.findByText("Trend line color").should("not.be.visible");
-      cy.findByText("Trend line style").should("not.be.visible");
+      cy.findByText("Show trend line for this series").should("be.visible");
+      cy.findByText("Trend line color").should("not.exist");
+      cy.findByText("Trend line style").should("not.exist");
     });
   });
 
