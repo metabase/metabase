@@ -83,7 +83,7 @@ describe("Data Studio index redirect", () => {
     expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
   });
 
-  it("does not redirect over a navigation the user already started", async () => {
+  it("lets a navigation the user already started finish", async () => {
     const hasSeenGuide = deferred<boolean>();
     const transformsModule = deferred<void>();
 
@@ -105,8 +105,7 @@ describe("Data Studio index redirect", () => {
           path="data-studio"
           element={
             <>
-              {/* Stands in for the Data Studio nav, which the layout renders
-                  around the index route while the redirect is still deciding. */}
+              {/* Stands in for the Data Studio nav */}
               <Link to="/data-studio/transforms">Transforms</Link>
               <Outlet />
             </>
@@ -136,9 +135,7 @@ describe("Data Studio index redirect", () => {
 
     await userEvent.click(await screen.findByText("Transforms"));
 
-    // The redirect makes up its mind while the lazy destination is still loading.
-    // Give it a full render to act on that decision before the destination lands:
-    // that window is where the navigation used to be lost.
+    // The redirect resolves while the lazy route is still loading.
     hasSeenGuide.resolve(false);
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));

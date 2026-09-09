@@ -156,11 +156,7 @@ export function getDataStudioDependencyDiagnosticsRedirects() {
 
 export function DataStudioIndexRedirect() {
   const indexPath = useSelector(getIndexPath);
-  // The Data Studio layout renders its nav around this index route, so the user can
-  // click through to a section while `hasSeenGuide` is still in flight. Redirecting
-  // once it lands would replace that pending navigation and drop the user on the
-  // guide instead of where they asked to go (GDGT-3169), so sit the window out: the
-  // navigation that is already under way unmounts us anyway.
+  // Let a navigation the user already started finish; it takes over this route.
   const isNavigating = useIsNavigating();
   const { value: hasSeenGuide, isLoading } = useUserKeyValue({
     namespace: "data_studio",

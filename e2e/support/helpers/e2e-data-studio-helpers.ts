@@ -22,10 +22,8 @@ export const DataStudio = {
   /**
    * Visits Data Studio and waits for its index redirect to land.
    *
-   * `/data-studio` is an index route that redirects asynchronously: the nav is up
-   * right away, but the target is only known once the `hasSeenGuide` user key-value
-   * request comes back. Driving the nav from that half-settled state is what made
-   * GDGT-3169 flaky, so land on the real page first.
+   * `/data-studio` redirects asynchronously: the nav renders right away, but the
+   * target resolves once the `hasSeenGuide` user key-value request comes back.
    */
   visit: () => {
     cy.visit("/data-studio");
