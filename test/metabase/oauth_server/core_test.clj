@@ -5,6 +5,7 @@
    ;; load-bearing: the advertised scope sets are derived from the agent-api routes and the v2 tool
    ;; registry, so both must be loaded for these assertions to see the real surface
    [metabase.agent-api.api]
+   [metabase.mcp.core :as mcp]
    [metabase.mcp.v2.api :as v2.api]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.test-util :as oauth-server.tu]
@@ -25,8 +26,8 @@
             advertised sets and from the default DCR grant, so no client is led toward it and none
             can request it without having registered for it explicitly."
     (is (not (contains? (set (oauth-server/supported-scopes)) "mb:full")))
-    (is (not (contains? (set (oauth-server/protected-resource-scopes)) "mb:full")))
-    (is (not (contains? (set (oauth-server/mcp-resource-scopes)) "mb:full")))
+    (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))) "mb:full")))
+    (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-v2-path))) "mb:full")))
     (is (not (contains? (set (oauth-server/default-grant-scopes)) "mb:full")))))
 
 (deftest default-grant-covers-everything-advertised-test
@@ -37,8 +38,8 @@
             what Claude and ChatGPT both do."
     (let [ceiling (set (oauth-server/default-grant-scopes))]
       (doseq [[metadata scopes] {"authorization-server" (oauth-server/supported-scopes)
-                                 "protected-resource"   (oauth-server/protected-resource-scopes)
-                                 "mcp-resource"          (oauth-server/mcp-resource-scopes)}]
+                                 "protected-resource"   (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))
+                                 "mcp-resource"          (oauth-server/mcp-resource-scopes (mcp/mcp-v2-path))}]
         (testing metadata
           (is (empty? (remove ceiling scopes))))))))
 
@@ -47,7 +48,7 @@
             nothing else. Asking for less does not degrade gracefully: `list-tools` filters by token
             scopes, so an unasked-for write scope removes those tools from `tools/list` entirely, with
             no in-product way for the user to request them afterwards."
-    (is (= (set (oauth-server/mcp-resource-scopes))
+    (is (= (set (oauth-server/mcp-resource-scopes (mcp/mcp-v2-path)))
            (set @#'v2.api/default-ask-scopes))
         "the ask and the accepted set are the same — a scope in one but not the other is a bug in whichever moved")
     (testing "every asked scope is inside the ceiling, or the ask itself would be rejected"
@@ -65,7 +66,7 @@
             grant with the opt-in scopes, so a scope declared in both buckets would be advertised
             twice. Duplicates also mean a mandatory scope was filed as opt-in."
     (doseq [[metadata scopes] {"authorization-server" (oauth-server/supported-scopes)
-                               "protected-resource"   (oauth-server/protected-resource-scopes)}]
+                               "protected-resource"   (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))}]
       (testing metadata
         (is (= (count (distinct scopes)) (count scopes))
             (str "duplicate scopes: "
@@ -87,8 +88,8 @@
             the MCP resource accepts the rationalized scopes its tool registry gates on, while the
             wider set also carries every agent-API endpoint scope. Advertising the union for MCP is
             what makes a client's consent screen list per-entity scopes the MCP tools never use."
-    (let [mcp  (set (oauth-server/mcp-resource-scopes))
-          wide (set (oauth-server/protected-resource-scopes))]
+    (let [mcp  (set (oauth-server/mcp-resource-scopes (mcp/mcp-v2-path)))
+          wide (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))]
       (testing "the five rationalized scopes are advertised for MCP"
         (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
                        "agent:sql:run" "agent:delivery:write"]]
@@ -243,3 +244,64 @@
                              "not-a-uri"]]
             (testing (str "leaves scope alone for " (pr-str indicator))
               (is (= wide (oauth-server/narrow-scope-to-resource [indicator] wide))))))))))
+
+(deftest narrow-scope-to-resource-multiple-indicators-test
+  (testing "RFC 8707 allows several `resource` indicators, and a token has to work against each. The
+            accepted set is therefore the UNION of what the named resources accept. Taking whichever one
+            is checked first drops the v1-only scopes when a v1 alias is named alongside v2 -- silently
+            shrinking a grant the client asked for and the user then approves."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [v1     "http://localhost:3000/api/metabase-mcp"
+            alias1 "http://localhost:3000/api/mcp"
+            v2     "http://localhost:3000/api/metabase-mcp/v2"
+            wide   "mb:full agent:content:read agent:question:create agent:sql:execute"
+            scopes #(set (some-> % (str/split #"\s+")))]
+        (testing "one indicator each, for reference"
+          (is (contains? (scopes (oauth-server/narrow-scope-to-resource [v1] wide)) "agent:question:create"))
+          (is (not (contains? (scopes (oauth-server/narrow-scope-to-resource [v2] wide)) "agent:question:create"))))
+        (testing "naming a v1 alias alongside v2 keeps the v1-only scopes, in either order"
+          (doseq [indicators [[v1 v2] [v2 v1] [alias1 v2] [v2 alias1]]]
+            (testing (pr-str indicators)
+              (let [narrowed (scopes (oauth-server/narrow-scope-to-resource indicators wide))]
+                (is (contains? narrowed "agent:question:create"))
+                (is (contains? narrowed "agent:sql:execute"))
+                (is (contains? narrowed "agent:content:read"))))))
+        (testing "the union never re-admits a scope no named surface accepts"
+          (doseq [indicators [[v1] [v2] [v1 v2] [v2 v1] [alias1 v2]]]
+            (testing (pr-str indicators)
+              (is (not (contains? (scopes (oauth-server/narrow-scope-to-resource indicators wide))
+                                  "mb:full"))))))))))
+
+(deftest narrow-scope-to-resource-bare-string-test
+  (testing "a lone indicator may arrive as a bare string -- the endpoint schema allows one. `keep` over a
+            String iterates characters, none of which canonicalize, so an un-normalized argument would skip
+            narrowing entirely and hand back the wide scope. Narrowing must not depend on the caller having
+            vectorized."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [v2   "http://localhost:3000/api/metabase-mcp/v2"
+            wide "mb:full agent:content:read agent:question:create"]
+        (is (= (oauth-server/narrow-scope-to-resource [v2] wide)
+               (oauth-server/narrow-scope-to-resource v2 wide)))
+        (is (= "agent:content:read" (oauth-server/narrow-scope-to-resource v2 wide)))))))
+
+(deftest narrow-scope-to-resource-underscore-host-test
+  (testing "`java.net.URI/getHost` is nil for a host it considers non-conformant -- notably one containing an
+            underscore, which is routine for Docker Compose and internal k8s service names, and which
+            Metabase's own `u/url?` accepts as a Site URL. Reading the host alone made canonicalization
+            return nil on such an instance, so no indicator ever matched and narrowing was disabled
+            instance-wide, silently."
+    (mt/with-temporary-setting-values [site-url "http://metabase_internal:3000"]
+      (let [v2   "http://metabase_internal:3000/api/metabase-mcp/v2"
+            wide "mb:full agent:content:read agent:question:create"]
+        (is (= "agent:content:read" (oauth-server/narrow-scope-to-resource [v2] wide))
+            "narrowing still applies when the Site URL host contains an underscore")))
+    (testing "canonicalization keeps the properties it had for conformant hosts"
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (let [wide     "agent:content:read agent:question:create"
+              narrowed "agent:content:read"]
+          (testing "userinfo is still stripped rather than compared"
+            (is (= narrowed (oauth-server/narrow-scope-to-resource
+                             ["http://user:pass@localhost:3000/api/metabase-mcp/v2"] wide))))
+          (testing "host case is still folded and the default port still elided"
+            (is (= narrowed (oauth-server/narrow-scope-to-resource
+                             ["HTTP://LocalHost:3000/api/metabase-mcp/v2"] wide)))))))))
