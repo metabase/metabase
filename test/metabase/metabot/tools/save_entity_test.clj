@@ -288,6 +288,20 @@
               (is (= {:type "collection" :id (:id coll)}
                      (get-in part [:data :destination]))))))))))
 
+(deftest save-generated-dashboard-twice-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card :model/Dashboard]
+      (mt/with-temp [:model/Collection coll {:name "Ops"}
+                     :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+        (let [memory      (doto (dashboard-memory) (swap! assoc :conversation-id convo-id))
+              destination {:target_type "collection" :collection_id (:id coll)}
+              first-id    (get-in (save-dashboard! memory destination) [:structured-output :dashboard-id])
+              second-id   (get-in (save-dashboard! memory destination) [:structured-output :dashboard-id])]
+          (testing "saving the same generated dashboard again reuses the saved dashboard"
+            (is (some? first-id))
+            (is (= first-id second-id))
+            (is (= 1 (t2/count :model/Dashboard :metabot_conversation_id convo-id)))))))))
+
 (deftest save-blank-generated-dashboard-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/Dashboard]

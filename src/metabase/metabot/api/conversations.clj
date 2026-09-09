@@ -139,7 +139,7 @@
 
 (def ^:private SaveDashboardBody
   [:map
-   [:dashboard_id ms/NonBlankString]
+   [:dashboard_id [:and ms/NonBlankString [:string {:max 36}]]]
    [:dashboard    [:map
                    [:name          ms/NonBlankString]
                    [:description   {:optional true} [:maybe :string]]

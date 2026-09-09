@@ -705,6 +705,29 @@
                                                          :row 0 :col 0 :size_x 12 :size_y 6 :card_id card-id}]}})
           (is (zero? (t2/count :model/Dashboard :name "Borrowed"))))))))
 
+(deftest record-saved-dashboard-twice-test
+  (testing "saving the same generated dashboard again returns the dashboard already saved from the conversation"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
+          (let [body    {:dashboard_id "d-twice"
+                         :dashboard    {:name "Twice" :tiles []}}
+                first   (mt/user-http-request :crowberto :post 200
+                                              (str "metabot/conversations/" convo-id "/saved-dashboard") body)
+                second  (mt/user-http-request :crowberto :post 200
+                                              (str "metabot/conversations/" convo-id "/saved-dashboard") body)]
+            (is (= (:id first) (:id second)))
+            (is (= 1 (t2/count :model/Dashboard :metabot_conversation_id convo-id :metabot_dashboard_id "d-twice"))))))))
+  (testing "a generated dashboard id longer than its column is rejected"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
+        (mt/user-http-request :crowberto :post 400
+                              (str "metabot/conversations/" convo-id "/saved-dashboard")
+                              {:dashboard_id (apply str (repeat 37 "d"))
+                               :dashboard    {:name "Too long" :tiles []}})))))
+
 (deftest record-saved-blank-dashboard-test
   (testing "a blank dashboard saves with no cards"
     (let [user-id (mt/user->id :crowberto)]
