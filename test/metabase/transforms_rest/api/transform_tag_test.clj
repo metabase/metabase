@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.models.transform-tag]
@@ -134,32 +135,35 @@
                    (mt/user-http-request :lucky :get 403 "transform-tag" :worktree-id wt-id)))))))))
 
 (deftest worktree-tag-endpoints-require-remote-sync-permission-test
-  (when config/ee-available?
-    (mt/with-premium-features #{:transforms-basic :advanced-permissions}
-      (mt/with-temp [:model/Worktree {wt-id :id} {}
-                     :model/TransformTag {tag-id :id} {:name        (str "wt-" (u/generate-nano-id))
-                                                       :worktree_id wt-id}
-                     :model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id}]
-        (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (testing "a data analyst without the remote-sync permission cannot see or touch it"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :get 403 "transform-tag" :worktree-id wt-id)))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :put 403 (format "transform-tag/%d" tag-id) {:name "nope"})))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :delete 403 (format "transform-tag/%d" tag-id)))))
-          (testing "an admin can rename it"
-            (is (=? {:id tag-id :worktree_id wt-id :name "renamed in worktree"}
-                    (mt/user-http-request :crowberto :put 200 (format "transform-tag/%d" tag-id)
-                                          {:name "renamed in worktree"}))))
-          (testing "a data analyst holding the remote-sync permission can see and rename it too"
-            (perms/grant-application-permissions! group-id :remote-sync)
-            (is (= [tag-id]
-                   (mapv :id (mt/user-http-request :lucky :get 200 "transform-tag" :worktree-id wt-id))))
-            (is (=? {:id tag-id :worktree_id wt-id :name "renamed by lucky"}
-                    (mt/user-http-request :lucky :put 200 (format "transform-tag/%d" tag-id)
-                                          {:name "renamed by lucky"})))))))))
+  ;; creating content indexes it for search; on H2 a missing index table means DDL, which would commit the
+  ;; rollback-only transaction `with-temp` runs in and leak the temporary rows and role into later tests
+  (search.tu/with-index-disabled
+    (when config/ee-available?
+      (mt/with-premium-features #{:transforms-basic :advanced-permissions}
+        (mt/with-temp [:model/Worktree {wt-id :id} {}
+                       :model/TransformTag {tag-id :id} {:name        (str "wt-" (u/generate-nano-id))
+                                                         :worktree_id wt-id}
+                       :model/PermissionsGroup {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id}]
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (testing "a data analyst without the remote-sync permission cannot see or touch it"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :lucky :get 403 "transform-tag" :worktree-id wt-id)))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :lucky :put 403 (format "transform-tag/%d" tag-id) {:name "nope"})))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :lucky :delete 403 (format "transform-tag/%d" tag-id)))))
+            (testing "an admin can rename it"
+              (is (=? {:id tag-id :worktree_id wt-id :name "renamed in worktree"}
+                      (mt/user-http-request :crowberto :put 200 (format "transform-tag/%d" tag-id)
+                                            {:name "renamed in worktree"}))))
+            (testing "a data analyst holding the remote-sync permission can see and rename it too"
+              (perms/grant-application-permissions! group-id :remote-sync)
+              (is (= [tag-id]
+                     (mapv :id (mt/user-http-request :lucky :get 200 "transform-tag" :worktree-id wt-id))))
+              (is (=? {:id tag-id :worktree_id wt-id :name "renamed by lucky"}
+                      (mt/user-http-request :lucky :put 200 (format "transform-tag/%d" tag-id)
+                                            {:name "renamed by lucky"}))))))))))
 
 (deftest worktree-tag-names-are-scoped-to-their-worktree-test
   (when config/ee-available?

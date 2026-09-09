@@ -22,6 +22,7 @@
    [metabase.queries.models.card :as card]
    [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -4067,48 +4068,51 @@
                   (mt/user-http-request :rasta :get 200 (str "collection/" wt-coll)))))))))
 
 (deftest root-items-worktree-id-test
-  (when config/ee-available?
-    (mt/with-premium-features #{:transforms-basic :advanced-permissions}
-      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
-        (mt/with-temp [:model/Worktree   {wt-id :id}     {}
-                       :model/Collection {wt-coll :id}   {:name        "worktree root collection"
-                                                          :namespace   "transforms"
-                                                          :worktree_id wt-id}
-                       :model/Collection {main-coll :id} {:name      "main root collection"
-                                                          :namespace "transforms"}
-                       :model/Transform  {wt-tf :id}     {:name        "worktree transform"
-                                                          :worktree_id wt-id}
-                       :model/Transform  {main-tf :id}   {:name "main transform"}
-                       :model/PermissionsGroup {group-id :id} {}
-                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
-          (letfn [(item-ids [user & params]
-                    (->> (apply mt/user-http-request user :get 200 "collection/root/items"
-                                :namespace "transforms" params)
-                         :data
-                         (into #{} (map (juxt :model :id)))))]
-            (testing "by default the root listing shows only main-app content"
-              (let [ids (item-ids :crowberto)]
-                (is (contains? ids ["collection" main-coll]))
-                (is (contains? ids ["transform" main-tf]))
-                (is (not (contains? ids ["collection" wt-coll])))
-                (is (not (contains? ids ["transform" wt-tf])))))
-            (testing "worktree-id selects only that worktree's root-level content"
-              (let [ids (item-ids :crowberto :worktree-id wt-id)]
-                (is (contains? ids ["collection" wt-coll]))
-                (is (contains? ids ["transform" wt-tf]))
-                (is (not (contains? ids ["collection" main-coll])))
-                (is (not (contains? ids ["transform" main-tf]))))))
-          (testing "worktree-id requires the remote-sync permission"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 "collection/root/items" :worktree-id wt-id))))
-          (testing "a non-admin holding the remote-sync permission (and data-analyst access to the transforms namespace) sees the worktree's root-level content"
-            (perms/grant-application-permissions! group-id :remote-sync)
-            (mt/with-data-analyst-role! (mt/user->id :rasta)
-              (let [ids (into #{} (map (juxt :model :id))
-                              (:data (mt/user-http-request :rasta :get 200 "collection/root/items"
-                                                           :namespace "transforms" :worktree-id wt-id)))]
-                (is (contains? ids ["collection" wt-coll]))
-                (is (contains? ids ["transform" wt-tf]))))))))))
+  ;; creating content indexes it for search; on H2 a missing index table means DDL, which would commit the
+  ;; rollback-only transaction `with-temp` runs in and leak the temporary rows and role into later tests
+  (search.tu/with-index-disabled
+    (when config/ee-available?
+      (mt/with-premium-features #{:transforms-basic :advanced-permissions}
+        (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+          (mt/with-temp [:model/Worktree   {wt-id :id}     {}
+                         :model/Collection {wt-coll :id}   {:name        "worktree root collection"
+                                                            :namespace   "transforms"
+                                                            :worktree_id wt-id}
+                         :model/Collection {main-coll :id} {:name      "main root collection"
+                                                            :namespace "transforms"}
+                         :model/Transform  {wt-tf :id}     {:name        "worktree transform"
+                                                            :worktree_id wt-id}
+                         :model/Transform  {main-tf :id}   {:name "main transform"}
+                         :model/PermissionsGroup {group-id :id} {}
+                         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+            (letfn [(item-ids [user & params]
+                      (->> (apply mt/user-http-request user :get 200 "collection/root/items"
+                                  :namespace "transforms" params)
+                           :data
+                           (into #{} (map (juxt :model :id)))))]
+              (testing "by default the root listing shows only main-app content"
+                (let [ids (item-ids :crowberto)]
+                  (is (contains? ids ["collection" main-coll]))
+                  (is (contains? ids ["transform" main-tf]))
+                  (is (not (contains? ids ["collection" wt-coll])))
+                  (is (not (contains? ids ["transform" wt-tf])))))
+              (testing "worktree-id selects only that worktree's root-level content"
+                (let [ids (item-ids :crowberto :worktree-id wt-id)]
+                  (is (contains? ids ["collection" wt-coll]))
+                  (is (contains? ids ["transform" wt-tf]))
+                  (is (not (contains? ids ["collection" main-coll])))
+                  (is (not (contains? ids ["transform" main-tf]))))))
+            (testing "worktree-id requires the remote-sync permission"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 "collection/root/items" :worktree-id wt-id))))
+            (testing "a non-admin holding the remote-sync permission (and data-analyst access to the transforms namespace) sees the worktree's root-level content"
+              (perms/grant-application-permissions! group-id :remote-sync)
+              (mt/with-data-analyst-role! (mt/user->id :rasta)
+                (let [ids (into #{} (map (juxt :model :id))
+                                (:data (mt/user-http-request :rasta :get 200 "collection/root/items"
+                                                             :namespace "transforms" :worktree-id wt-id)))]
+                  (is (contains? ids ["collection" wt-coll]))
+                  (is (contains? ids ["transform" wt-tf])))))))))))
 
 (deftest root-items-worktree-snippets-test
   (when config/ee-available?
