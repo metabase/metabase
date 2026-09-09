@@ -83,16 +83,29 @@ export const AuthenticationCard = () => {
                       resourceType={resourceType}
                     />
                   )}
-                  {isGuestEmbedsEnabled !== undefined && (
-                    <EnableGuestEmbedsSection
-                      key={currentStep}
-                      isEnabled={isGuestEmbedsEnabled}
-                      termsAccepted={isGuestEmbedsTermsAccepted}
-                      isSimpleEmbedFeatureAvailable={
-                        isSimpleEmbedFeatureAvailable
-                      }
-                    />
-                  )}
+                  {isGuestEmbedsEnabled !== undefined &&
+                    // Guest enablement writes the same
+                    // `enable-embedding-modular` setting the SSO path does, so
+                    // on Pro the modular embedding terms are owed here too and
+                    // the section that states them is the one to show. Guest's
+                    // own terms come first whenever they are still unaccepted.
+                    (isSimpleEmbedFeatureAvailable &&
+                    isGuestEmbedsTermsAccepted ? (
+                      <EnableModularEmbeddingSection
+                        key={currentStep}
+                        isEnabled={isGuestEmbedsEnabled}
+                        termsAccepted={isSimpleEmbeddingTermsAccepted}
+                      />
+                    ) : (
+                      <EnableGuestEmbedsSection
+                        key={currentStep}
+                        isEnabled={isGuestEmbedsEnabled}
+                        termsAccepted={isGuestEmbedsTermsAccepted}
+                        isSimpleEmbedFeatureAvailable={
+                          isSimpleEmbedFeatureAvailable
+                        }
+                      />
+                    ))}
                 </>
               )}
             </Stack>

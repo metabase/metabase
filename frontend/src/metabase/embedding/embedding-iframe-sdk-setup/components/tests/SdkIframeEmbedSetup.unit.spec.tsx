@@ -34,6 +34,56 @@ describe("Embed flow > initial setup", () => {
   });
 });
 
+describe("Embed flow > enabling embedding from the Guest option", () => {
+  const guestSetup = (
+    options: Parameters<typeof setup>[0] & { hasLicense: boolean },
+  ) => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => options.hasLicense;
+
+    setup({ ...options, initialState: { isGuest: true } });
+  };
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("states the modular embedding terms on EE with a license", () => {
+    guestSetup({
+      hasLicense: true,
+      modularEmbeddingEnabled: false,
+      showModularEmbedTerms: true,
+    });
+
+    expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
+      "To continue, enable modular embedding and agree to the usage conditions.",
+    );
+  });
+
+  it("only asks to enable on EE with a license once the terms are accepted", () => {
+    guestSetup({
+      hasLicense: true,
+      modularEmbeddingEnabled: false,
+      showModularEmbedTerms: false,
+    });
+
+    expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
+      "Enable modular embedding to get started.",
+    );
+  });
+
+  it("states the guest embedding terms on EE without a license", () => {
+    guestSetup({
+      hasLicense: false,
+      modularEmbeddingEnabled: false,
+      showStaticEmbedTerms: true,
+    });
+
+    expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
+      "To continue, enable embedding and agree to the usage conditions.",
+    );
+  });
+});
+
 describe("Embed flow > misconfigured Site URL (EMB-1747)", () => {
   beforeEach(() => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
