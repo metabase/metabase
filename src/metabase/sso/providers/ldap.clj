@@ -18,7 +18,7 @@
 (auth-identity/derive! :provider/ldap :metabase.auth-identity.provider/provider)
 
 ;; LDAP Authenticated users are eligible for our MFA flow
-(derive :provider/ldap :metabase.auth-identity.provider/supports-mfa)
+(auth-identity/derive! :provider/ldap :metabase.auth-identity.provider/supports-mfa)
 
 ;; LDAP is an SSO provider that auto-creates users
 (auth-identity/derive! :provider/ldap :metabase.auth-identity.provider/create-user-if-not-exists)
