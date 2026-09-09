@@ -41,27 +41,29 @@ mb auth login --url https://metabase.example.com
 
 The CLI offers to open Metabase in your browser. Sign in with your password or SSO and approve the CLI. The CLI stores a token that refreshes itself, so you never paste a secret. If you'd rather use an API key, pick **With an API key** at the prompt. If the `MB_API_KEY` environment variable is set, the CLI uses that key and skips the browser. This `MB_API_KEY` is read from the machine running the CLI. It's unrelated to the [`MB_API_KEY` environment variable](../configuring-metabase/environment-variables.md#mb_api_key) you can set on your Metabase server, which only guards the `/api/notify` endpoints.
 
-On older versions of Metabase, the CLI skips the browser and asks for an [API key](../people-and-groups/api-keys.md#create-an-api-key).
+On Metabase versions before 63, the CLI skips the browser and asks for an [API key](../people-and-groups/api-keys.md#create-an-api-key).
 
 ### Log in without a prompt
 
-To log in from a script or CI, give the CLI an API key without putting the key on the command line, so it stays out of your shell history. Either set the `MB_API_KEY` environment variable (for example, from your CI provider's secret store) and run:
+To log in from a script or CI, give the CLI an API key without putting the key on the command line. There are two ways to do that.
+
+**Set the `MB_API_KEY` environment variable** (for example, from your CI provider's secret store) and run:
 
 ```sh
 mb auth login --url https://metabase.example.com --profile default
 ```
 
-Set the `MB_API_KEY` variable from a secret store or a file, not inline on the command line, or the key still ends up in your history. Pass `--profile` (or set `MB_PROFILE`) here (you can call the profile whatever you want). Without the profile flag, the CLI asks you for a profile name when you run it from a terminal, even though it already has the key.
-
-Or pipe the key on stdin from a file or a secrets manager:
+**Or pipe the key on stdin** from a file or a secrets manager:
 
 ```sh
 mb auth login --url https://metabase.example.com --profile default < api-key.txt
 ```
 
-The key must be a Metabase [API key](../people-and-groups/api-keys.md#create-an-api-key). If stdin isn't a terminal and no key arrives from the flag, stdin, or the environment variable, the CLI stops with "interactive login requires a TTY" rather than prompting
+In both cases, include `--profile` (or set `MB_PROFILE`), naming the profile whatever you like. Without it, the CLI still asks for a profile name when run from a terminal, even though it already has the key.
 
-### Check or clear your login
+The key must be a Metabase [API key](../people-and-groups/api-keys.md#create-an-api-key). If stdin isn't a terminal and no key arrives from the flag, stdin, or the environment variable, the CLI stops with "interactive login requires a TTY" rather than prompting.
+
+### Check your login status or log out
 
 To see whether you're logged in, which login method you used, and which Metabase version you're talking to, run:
 
@@ -107,14 +109,14 @@ And your agent will go to work, creating content directly in your Metabase via t
 
 ## Use the CLI for agent-driven development
 
-Pair the CLI with version control to build content with an agent in a development Metabase, commit the changes, and pull the changes into your production Metabase. Check out [Agent-driven development](../ai/file-based-development.md).
+Pair the CLI with version control to build content with an agent in a development Metabase, commit the changes, and pull the changes into your production Metabase. Check out [Agent-driven development](../ai/agent-driven-development.md).
 
 ## Further reading
 
 - [Metabase CLI command reference](https://github.com/metabase/metabase-cli#readme)
 - [CLI analytics](../monitor/cli-analytics.md)
 - [@metabase/cli on npm](https://www.npmjs.com/package/@metabase/cli)
-- [Agent-driven development](../ai/file-based-development.md)
+- [Agent-driven development](../ai/agent-driven-development.md)
 - [Agent skills](https://github.com/metabase/agent-skills)
 - [Remote sync](./remote-sync.md)
 - [Serialization](./serialization.md)

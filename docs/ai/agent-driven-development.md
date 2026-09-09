@@ -1,6 +1,8 @@
 ---
 title: Agent-driven development
 summary: "Use a coding agent and the Metabase CLI to create Metabase content, then version that content as YAML files with Remote Sync."
+redirect_from:
+  - /docs/latest/ai/file-based-development
 ---
 
 # Agent-driven development
@@ -73,7 +75,7 @@ Then authenticate it against your development Metabase:
 mb auth login --url your-metabase-url-here
 ```
 
-The CLI offers to open your Metabase in a browser so you can sign in and approve the CLI. On older versions, or if you pick **With an API key** at the prompt, paste the API key you created in your development Metabase. Check out [Authenticate the CLI](../installation-and-operation/metabase-cli.md#authenticate-the-cli) for details.
+The CLI offers to open your Metabase in a browser so you can sign in and approve the CLI. On Metabase versions before 63, or if you pick **With an API key** at the prompt, paste the API key you created in your development Metabase. Check out [Authenticate the CLI](../installation-and-operation/metabase-cli.md#authenticate-the-cli) for details.
 
 ### Add the agent skill
 
@@ -148,4 +150,4 @@ Since the agent uses the CLI to create content directly in Metabase, to undo cha
 - [Metabase CLI](../installation-and-operation/metabase-cli.md)
 - [Metabase Representation Format](https://github.com/metabase/representations)
 - [Agent skills](https://github.com/metabase/agent-skills)
-- [MCP server](./mcp.md): for agents that need live metadata lookups outside the file-based workflow.
+- [MCP server](./mcp.md): for agents that need live metadata lookups outside the agent-driven workflow.
