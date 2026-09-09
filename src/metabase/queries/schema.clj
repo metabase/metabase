@@ -74,33 +74,17 @@
   "One entry of the `:parameters` column of a Card, decoded."
   :map)
 
-(mr/def ::card.parameters
-  "The `:parameters` column of a Card, decoded."
-  [:sequential ::card.parameter])
-
 (mr/def ::card.parameter-mapping
   "One entry of the `:parameter_mappings` column of a Card, decoded."
   :map)
-
-(mr/def ::card.parameter-mappings
-  "The `:parameter_mappings` column of a Card, decoded."
-  [:sequential ::card.parameter-mapping])
 
 (mr/def ::card.dimension
   "One entry of the `:dimensions` column of a Card, decoded."
   :map)
 
-(mr/def ::card.dimensions
-  "The `:dimensions` column of a Card, decoded."
-  [:sequential ::card.dimension])
-
 (mr/def ::card.dimension-mapping
   "One entry of the `:dimension_mappings` column of a Card, decoded."
   :map)
-
-(mr/def ::card.dimension-mappings
-  "The `:dimension_mappings` column of a Card, decoded."
-  [:sequential ::card.dimension-mapping])
 
 (mr/def ::card
   "A Card as selected from the app DB: every column of `:report_card`."
@@ -127,8 +111,8 @@
    [:result_metadata                           [:maybe ::card.result-metadata]]
    [:collection_position                       [:maybe :int]]
    [:entity_id                                 :string]
-   [:parameters                                [:maybe ::card.parameters]]
-   [:parameter_mappings                        [:maybe ::card.parameter-mappings]]
+   [:parameters                                [:maybe [:sequential ::card.parameter]]]
+   [:parameter_mappings                        [:maybe [:sequential ::card.parameter-mapping]]]
    [:collection_preview                        :boolean]
    [:metabase_version                          [:maybe :string]]
    [:type                                      [:or :keyword :string]]
@@ -145,8 +129,8 @@
    [:legacy_query                              [:maybe :string]]
    [:embedding_type                            [:maybe [:or :keyword :string]]]
    [:public_uuid_prefix                        [:maybe :string]]
-   [:dimensions                                [:maybe ::card.dimensions]]
-   [:dimension_mappings                        [:maybe ::card.dimension-mappings]]
+   [:dimensions                                [:maybe [:sequential ::card.dimension]]]
+   [:dimension_mappings                        [:maybe [:sequential ::card.dimension-mapping]]]
    [:metabot_conversation_id                   [:maybe :string]]
    [:metabot_chart_id                          [:maybe :string]]])
 
@@ -174,8 +158,8 @@
    [:result_metadata                           {:optional true} [:maybe ::card.result-metadata]]
    [:collection_position                       {:optional true} [:maybe :int]]
    [:entity_id                                 {:optional true} [:maybe :string]]
-   [:parameters                                {:optional true} [:maybe ::card.parameters]]
-   [:parameter_mappings                        {:optional true} [:maybe ::card.parameter-mappings]]
+   [:parameters                                {:optional true} [:maybe [:sequential ::card.parameter]]]
+   [:parameter_mappings                        {:optional true} [:maybe [:sequential ::card.parameter-mapping]]]
    [:collection_preview                        {:optional true} [:maybe :boolean]]
    [:metabase_version                          {:optional true} [:maybe :string]]
    [:type                                      {:optional true} [:maybe [:or :keyword :string]]]
@@ -192,8 +176,8 @@
    [:legacy_query                              {:optional true} [:maybe :string]]
    [:embedding_type                            {:optional true} [:maybe [:or :keyword :string]]]
    [:public_uuid_prefix                        {:optional true} [:maybe :string]]
-   [:dimensions                                {:optional true} [:maybe ::card.dimensions]]
-   [:dimension_mappings                        {:optional true} [:maybe ::card.dimension-mappings]]
+   [:dimensions                                {:optional true} [:maybe [:sequential ::card.dimension]]]
+   [:dimension_mappings                        {:optional true} [:maybe [:sequential ::card.dimension-mapping]]]
    [:metabot_conversation_id                   {:optional true} [:maybe :string]]
    [:metabot_chart_id                          {:optional true} [:maybe :string]]
    [:verified-result-metadata?                 {:optional true} :boolean]])

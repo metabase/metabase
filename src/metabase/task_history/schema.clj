@@ -13,10 +13,6 @@
   "One entry of the `:logs` column of a TaskHistory, decoded."
   :map)
 
-(mr/def ::task-history.logs
-  "The `:logs` column of a TaskHistory, decoded."
-  [:sequential ::task-history.log])
-
 (mr/def ::task-history
   "A TaskHistory as selected from the app DB: every column of `:task_history`."
   [:map {:closed true}
@@ -29,7 +25,7 @@
    [:task_details [:maybe ::task-history.task-details]]
    [:status       [:or :keyword :string]]
    [:run_id       [:maybe ms/PositiveInt]]
-   [:logs         [:maybe ::task-history.logs]]])
+   [:logs         [:maybe [:sequential ::task-history.log]]]])
 
 (mr/def ::task-history.update
   "What an update (or insert) of a TaskHistory accepts: every column of `:task_history` except `id`, all optional."
@@ -42,7 +38,7 @@
    [:task_details {:optional true} [:maybe ::task-history.task-details]]
    [:status       {:optional true} [:maybe [:or :keyword :string]]]
    [:run_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:logs         {:optional true} [:maybe ::task-history.logs]]])
+   [:logs         {:optional true} [:maybe [:sequential ::task-history.log]]]])
 
 (mr/def ::task-run
   "A TaskRun as selected from the app DB: every column of `:task_run`."

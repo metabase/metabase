@@ -38,25 +38,17 @@
   "One entry of the `:metrics` column of a ExplorationBlock, decoded."
   :map)
 
-(mr/def ::exploration-block.metrics
-  "The `:metrics` column of a ExplorationBlock, decoded."
-  [:sequential ::exploration-block.metric])
-
 (mr/def ::exploration-block.dimension
   "One entry of the `:dimensions` column of a ExplorationBlock, decoded."
   :map)
-
-(mr/def ::exploration-block.dimensions
-  "The `:dimensions` column of a ExplorationBlock, decoded."
-  [:sequential ::exploration-block.dimension])
 
 (mr/def ::exploration-block
   "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
   [:map {:closed true}
    [:id                    ms/PositiveInt]
    [:exploration_thread_id ms/PositiveInt]
-   [:metrics               [:maybe ::exploration-block.metrics]]
-   [:dimensions            [:maybe ::exploration-block.dimensions]]
+   [:metrics               [:maybe [:sequential ::exploration-block.metric]]]
+   [:dimensions            [:maybe [:sequential ::exploration-block.dimension]]]
    [:position              :int]
    [:created_at            ms/TemporalInstant]
    [:updated_at            ms/TemporalInstant]])
@@ -65,8 +57,8 @@
   "What an update (or insert) of a ExplorationBlock accepts: every column of `:exploration_block` except `id`, all optional."
   [:map {:closed true}
    [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
-   [:metrics               {:optional true} [:maybe ::exploration-block.metrics]]
-   [:dimensions            {:optional true} [:maybe ::exploration-block.dimensions]]
+   [:metrics               {:optional true} [:maybe [:sequential ::exploration-block.metric]]]
+   [:dimensions            {:optional true} [:maybe [:sequential ::exploration-block.dimension]]]
    [:position              {:optional true} [:maybe :int]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
@@ -200,10 +192,6 @@
   "One entry of the `:query_plan_transcript` column of a ExplorationThread, decoded."
   :map)
 
-(mr/def ::exploration-thread.query-plan-transcript
-  "The `:query_plan_transcript` column of a ExplorationThread, decoded."
-  [:sequential ::exploration-thread.query-plan-transcript-entry])
-
 (mr/def ::exploration-thread.data-access-token
   "The `:data_access_token` column of a ExplorationThread, decoded."
   :map)
@@ -224,7 +212,7 @@
    [:completed_at          [:maybe ms/TemporalInstant]]
    [:analysis_started_at   [:maybe ms/TemporalInstant]]
    [:query_plan_started_at [:maybe ms/TemporalInstant]]
-   [:query_plan_transcript [:maybe ::exploration-thread.query-plan-transcript]]
+   [:query_plan_transcript [:maybe [:sequential ::exploration-thread.query-plan-transcript-entry]]]
    [:canceled_at           [:maybe ms/TemporalInstant]]
    [:data_access_token     [:maybe ::exploration-thread.data-access-token]]])
 
@@ -243,7 +231,7 @@
    [:completed_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:analysis_started_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:query_plan_started_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:query_plan_transcript {:optional true} [:maybe ::exploration-thread.query-plan-transcript]]
+   [:query_plan_transcript {:optional true} [:maybe [:sequential ::exploration-thread.query-plan-transcript-entry]]]
    [:canceled_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]])
 

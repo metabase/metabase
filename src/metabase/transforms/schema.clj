@@ -108,10 +108,6 @@
   "One entry of the `:table_dependencies` column of a Transform, decoded."
   :map)
 
-(mr/def ::transform.table-dependencies
-  "The `:table_dependencies` column of a Transform, decoded."
-  [:sequential ::transform.table-dependency])
-
 (mr/def ::transform.row
   "A Transform as selected from the app DB: every column of `:transform`."
   [:map {:closed true}
@@ -132,7 +128,7 @@
    [:target_db_id          [:maybe ::lib.schema.id/database]]
    [:last_checkpoint_value [:maybe :string]]
    [:target_table_id       [:maybe ::lib.schema.id/table]]
-   [:table_dependencies    [:maybe ::transform.table-dependencies]]])
+   [:table_dependencies    [:maybe [:sequential ::transform.table-dependency]]]])
 
 (mr/def ::transform.update
   "What an update (or insert) of a Transform accepts: every column of `:transform` except `id`, all optional, plus `:run_trigger` consumed by the model's hooks."
@@ -153,7 +149,7 @@
    [:target_db_id          {:optional true} [:maybe ::lib.schema.id/database]]
    [:last_checkpoint_value {:optional true} [:maybe :string]]
    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]
-   [:table_dependencies    {:optional true} [:maybe ::transform.table-dependencies]]
+   [:table_dependencies    {:optional true} [:maybe [:sequential ::transform.table-dependency]]]
    [:run_trigger           {:optional true} [:maybe [:or :keyword :string]]]])
 
 (mr/def ::transform-dag-run

@@ -27,17 +27,9 @@
   "One entry of the `:dimensions` column of a Measure, decoded."
   :map)
 
-(mr/def ::measure.dimensions
-  "The `:dimensions` column of a Measure, decoded."
-  [:sequential ::measure.dimension])
-
 (mr/def ::measure.dimension-mapping
   "One entry of the `:dimension_mappings` column of a Measure, decoded."
   :map)
-
-(mr/def ::measure.dimension-mappings
-  "The `:dimension_mappings` column of a Measure, decoded."
-  [:sequential ::measure.dimension-mapping])
 
 (mr/def ::measure
   "A Measure as selected from the app DB: every column of `:measure`."
@@ -52,8 +44,8 @@
    [:created_at         ms/TemporalInstant]
    [:updated_at         ms/TemporalInstant]
    [:entity_id          :string]
-   [:dimensions         [:maybe ::measure.dimensions]]
-   [:dimension_mappings [:maybe ::measure.dimension-mappings]]])
+   [:dimensions         [:maybe [:sequential ::measure.dimension]]]
+   [:dimension_mappings [:maybe [:sequential ::measure.dimension-mapping]]]])
 
 (mr/def ::measure.update
   "What an update (or insert) of a Measure accepts: every column of `:measure` except `id`, all optional."
@@ -67,5 +59,5 @@
    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id          {:optional true} [:maybe :string]]
-   [:dimensions         {:optional true} [:maybe ::measure.dimensions]]
-   [:dimension_mappings {:optional true} [:maybe ::measure.dimension-mappings]]])
+   [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
+   [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]])

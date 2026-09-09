@@ -30,10 +30,6 @@
   "One entry of the `:parameters` column of a Dashboard, decoded."
   :map)
 
-(mr/def ::dashboard.parameters
-  "The `:parameters` column of a Dashboard, decoded."
-  [:sequential ::dashboard.parameter])
-
 (mr/def ::dashboard
   "A Dashboard as selected from the app DB: every column of `:report_dashboard`."
   [:map {:closed true}
@@ -43,7 +39,7 @@
    [:name                    :string]
    [:description             [:maybe :string]]
    [:creator_id              ::lib.schema.id/user]
-   [:parameters              ::dashboard.parameters]
+   [:parameters              [:sequential ::dashboard.parameter]]
    [:points_of_interest      [:maybe :string]]
    [:caveats                 [:maybe :string]]
    [:show_in_getting_started :boolean]
@@ -74,7 +70,7 @@
    [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
-   [:parameters              {:optional true} [:maybe ::dashboard.parameters]]
+   [:parameters              {:optional true} [:maybe [:sequential ::dashboard.parameter]]]
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
@@ -101,10 +97,6 @@
   "One entry of the `:parameter_mappings` column of a DashboardCard, decoded."
   :map)
 
-(mr/def ::dashboard-card.parameter-mappings
-  "The `:parameter_mappings` column of a DashboardCard, decoded."
-  [:sequential ::dashboard-card.parameter-mapping])
-
 (mr/def ::dashboard-card.visualization-settings
   "The `:visualization_settings` column of a DashboardCard, decoded."
   :map)
@@ -125,7 +117,7 @@
    [:col                    :int]
    [:card_id                [:maybe ::lib.schema.id/card]]
    [:dashboard_id           ::lib.schema.id/dashboard]
-   [:parameter_mappings     ::dashboard-card.parameter-mappings]
+   [:parameter_mappings     [:sequential ::dashboard-card.parameter-mapping]]
    [:visualization_settings ::dashboard-card.visualization-settings]
    [:entity_id              :string]
    [:action_id              [:maybe ::lib.schema.id/action]]
@@ -143,7 +135,7 @@
    [:col                    {:optional true} [:maybe :int]]
    [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard_id           {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:parameter_mappings     {:optional true} [:maybe ::dashboard-card.parameter-mappings]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential ::dashboard-card.parameter-mapping]]]
    [:visualization_settings {:optional true} [:maybe ::dashboard-card.visualization-settings]]
    [:entity_id              {:optional true} [:maybe :string]]
    [:action_id              {:optional true} [:maybe ::lib.schema.id/action]]
