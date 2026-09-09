@@ -4,7 +4,9 @@
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.measures.models.measure]
    [metabase.models.interface :as mi]
+   [metabase.segments.models.segment]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.security :as mw.security]
@@ -12,6 +14,9 @@
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical])
   (:import (clojure.lang ExceptionInfo)))
+
+(comment metabase.measures.models.measure/keep-me
+         metabase.segments.models.segment/keep-me)
 
 ;;; TESTS FOR CHECK (ETC)
 
