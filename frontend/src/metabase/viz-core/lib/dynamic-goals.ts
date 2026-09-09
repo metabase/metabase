@@ -188,8 +188,6 @@ function toNumberOrNull(raw: RowValue | undefined): number | null {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
-// Renderers only see numbers here: the chart boundary resolves references first.
-// A reference that got past it means resolution was skipped, so it counts as "no goal".
 export function getNumericGoalValue(
   settings: VisualizationSettings,
 ): number | null {
@@ -216,7 +214,6 @@ export const getUnresolvedGoalMessage = (kind: GoalSettingKind) =>
     )
     .exhaustive();
 
-// A goal line that is switched off has nothing to resolve.
 function isGoalSettingActive(
   settings: VisualizationSettings,
   key: GoalSettingKey,
@@ -224,7 +221,6 @@ function isGoalSettingActive(
   return key !== "graph.goal_value" || settings["graph.show_goal"] === true;
 }
 
-// Whether `graph.goal_value` is a reference the chart has to resolve before rendering.
 export function needsGraphGoalResolution(
   display: VisualizationDisplay | undefined,
   settings: VisualizationSettings,
@@ -301,22 +297,21 @@ export function getSegmentColor(
 
 export function hasFailedGoalValues(
   data: GoalData,
-  values: ReadonlyArray<GoalValue | null | undefined>,
+  values: (GoalValue | null | undefined)[],
 ): boolean {
   return values.some((value) => isFailed(value, resolveGoalValue(data, value)));
 }
 
-// Unanswered or failed. Once no further fetch will happen, either means the goal can't be resolved.
 export function hasUnresolvedGoalValues(
   data: GoalData,
-  values: ReadonlyArray<GoalValue | null | undefined>,
+  values: (GoalValue | null | undefined)[],
 ): boolean {
   return values.some((value) => isUnresolved(resolveGoalValue(data, value)));
 }
 
 export function getUnansweredGoalEntities(
   data: GoalData,
-  values: ReadonlyArray<GoalValue | null | undefined>,
+  values: (GoalValue | null | undefined)[],
 ): ReferencedEntity[] {
   const unansweredRefs = values
     .filter(isGoalForeignColumnRef)
