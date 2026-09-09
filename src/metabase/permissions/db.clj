@@ -357,9 +357,10 @@
   (t2/select-fn-set :name :model/PermissionsGroup :name [:like pattern]))
 
 (mu/defn group-members
-  "The active Users in the PermissionsGroups with `group-ids`, with the optional extra `group-manager-column`."
-  [group-ids            :- [:sequential ms/PositiveInt]
-   group-manager-column :- [:maybe vector?]]
+  "The active Users in the PermissionsGroups with `group-ids`. When `include-group-manager?` is true each row also
+  carries the membership's `:is_group_manager` flag."
+  [group-ids              :- [:sequential ms/PositiveInt]
+   include-group-manager? :- :boolean]
   (t2/select :model/User {:select    (cond-> [:u.id
                                               [:u.id :user_id]
                                               :u.first_name
@@ -369,7 +370,8 @@
                                               :u.type
                                               :pgm.group_id
                                               [:pgm.id :membership_id]]
-                                       group-manager-column (conj group-manager-column))
+                                       include-group-manager?
+                                       (conj [:pgm.is_group_manager :is_group_manager]))
                           :from      [[:core_user :u]]
                           :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
                           :where     [:and

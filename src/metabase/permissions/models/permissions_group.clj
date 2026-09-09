@@ -156,8 +156,7 @@
    groups k
    ;; `user_id` in the result is for legacy reasons, we should remove it
    #(group-by :group_id (permissions.db/group-members (map :id groups)
-                                                      (when (premium-features/enable-advanced-permissions?)
-                                                        [:pgm.is_group_manager :is_group_manager])))
+                                                      (boolean (premium-features/enable-advanced-permissions?))))
    :id
    {:default []}))
 

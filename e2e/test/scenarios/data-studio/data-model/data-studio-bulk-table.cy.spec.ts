@@ -32,10 +32,6 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     cy.intercept("POST", "/api/data-studio/table/discard-values").as(
       "discardValues",
     );
-    cy.intercept(
-      "GET",
-      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
-    ).as("getSchema");
     cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
       "publishTables",
     );
@@ -48,20 +44,18 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.restore("postgres-writable");
     H.activateToken("pro-self-hosted");
     // Re-authenticate after restoring the writable-DB snapshot, like the
-    // sibling tests do — otherwise visiting Data Studio can land in an
+    // sibling tests do, otherwise visiting Data Studio can land in an
     // unauthenticated state and the TablePicker never issues the schema
-    // request, making `cy.wait("@getSchema")` time out.
+    // request.
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
-    // Wait for the UI to load the database's tables before interacting.
-    cy.wait("@getSchema");
+    TablePicker.expandDatabase("Writable Postgres12");
 
     // Capture the expected table IDs from a direct API request rather than the
-    // intercepted UI response: under stress the aliased `@getSchema` response
-    // body is occasionally a non-array (e.g. an error map), which made
-    // `tables.find` throw `TypeError: tables.find is not a function`. A
-    // `cy.request` deterministically returns the table list.
+    // intercepted UI response: under stress the intercepted response body is
+    // occasionally a non-array (e.g. an error map), which made `tables.find`
+    // throw `TypeError: tables.find is not a function`. A `cy.request`
+    // deterministically returns the table list.
     cy.request<Table[]>(
       `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
     ).then(({ body: tables }) => {
@@ -138,20 +132,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       H.DataModel.visitDataStudio();
 
       cy.log("select multiple tables");
-      // The picker tree keeps mounting after the databases request resolves, so
-      // clicking the database row before its expand handler is wired drops the click
-      // and the schema fetch that populates the tables never fires. Wait for the
-      // expand toggle to render collapsed, click it, then confirm it expanded so the
-      // schema request reliably occurs before we select the tables.
-      TablePicker.getDatabaseToggle("Writable Postgres12")
-        .should("have.attr", "aria-expanded", "false")
-        .click();
-      cy.wait("@getSchema");
-      TablePicker.getDatabaseToggle("Writable Postgres12").should(
-        "have.attr",
-        "aria-expanded",
-        "true",
-      );
+      TablePicker.expandDatabase("Writable Postgres12");
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       TablePicker.getTable("Reviews").findByRole("checkbox").check();
@@ -193,9 +174,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.activateToken("pro-self-hosted");
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
-    // wait for the database's tables to load before selecting them
-    cy.wait("@getSchema");
+    TablePicker.expandDatabase("Writable Postgres12");
     TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
     TablePicker.getTable("Products").find('input[type="checkbox"]').check();
 
@@ -256,9 +235,9 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       it("should change metadata and see that is changed for all selected tables without filters", () => {
         cy.log("change the owner and check the owner column");
 
-        TablePicker.getDatabase("Writable Postgres12").click();
-        TablePicker.getDatabase("Sample Database").click();
-        TablePicker.getSchema("Domestic").click();
+        TablePicker.expandDatabase("Writable Postgres12");
+        TablePicker.expandDatabase("Sample Database");
+        TablePicker.expandSchema("Domestic");
         TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
         TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
         H.selectHasValue("Owner", "").click();
@@ -328,20 +307,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     cy.log(
       "Expand the rows up front - we'll need them later for the assertion",
     );
-    // The picker tree keeps mounting after the databases request resolves, so
-    // clicking the database row before its expand handler is wired drops the click
-    // and the schema fetch that populates the tables never fires. Wait for the
-    // expand toggle to render collapsed, click it, then confirm it expanded so the
-    // schema request reliably occurs before we select the database.
-    TablePicker.getDatabaseToggle("Writable Postgres12")
-      .should("have.attr", "aria-expanded", "false")
-      .click();
-    cy.wait("@getSchema");
-    TablePicker.getDatabaseToggle("Writable Postgres12").should(
-      "have.attr",
-      "aria-expanded",
-      "true",
-    );
+    TablePicker.expandDatabase("Writable Postgres12");
 
     TablePicker.getDatabase("Writable Postgres12")
       .find('input[type="checkbox"]')
@@ -384,7 +350,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.expandDatabase("Writable Postgres12");
     TablePicker.getSchema("Schema A").find('input[type="checkbox"]').check();
     TablePicker.getSchema("Schema B").find('input[type="checkbox"]').check();
 
@@ -402,8 +368,8 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.selectHasValue("Source", "").click();
     H.selectDropdown().contains("Ingested").click();
 
-    TablePicker.getSchema("Schema A").click();
-    TablePicker.getSchema("Schema B").click();
+    TablePicker.expandSchema("Schema A");
+    TablePicker.expandSchema("Schema B");
 
     cy.findByTestId("loading-placeholder").should("not.exist");
     cy.findAllByTestId("tree-item")

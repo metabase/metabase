@@ -2,24 +2,36 @@
   "Application database queries for the metrics module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn metric-card-count
-  "The number of Cards matching the Honey SQL `where` clause."
-  [where :- [:maybe vector?]]
-  (t2/count :model/Card {:where where}))
+(defn- visible-metric-cards-where
+  "The `:where` clause selecting the unarchived metric Cards the current user can read. Mirrors
+  `metabase.queries.core/visible-metric-cards-where-clause`, which this namespace cannot call: the queries module
+  requires the metrics module, so requiring it back here would close a load cycle."
+  []
+  [:and
+   [:= :type "metric"]
+   [:= :archived false]
+   (collection/visible-collection-filter-clause :collection_id {:include-trash-collection? false
+                                                                :include-archived-items    :exclude
+                                                                :permission-level          :read})])
 
-(mu/defn metric-cards-page
-  "Up to `limit` id, name, description, and Collection id rows from `offset` of the Cards matching the Honey SQL
-  `where` clause, in name order."
-  [where  :- [:maybe vector?]
-   limit  :- ms/PositiveInt
+(mu/defn visible-metric-card-count
+  "The number of unarchived metric Cards the current user can read."
+  []
+  (t2/count :model/Card {:where (visible-metric-cards-where)}))
+
+(mu/defn visible-metric-cards-page
+  "Up to `limit` id, name, description, and Collection id rows from `offset` of the unarchived metric Cards the
+  current user can read, in name order."
+  [limit  :- ms/PositiveInt
    offset :- ms/IntGreaterThanOrEqualToZero]
   (t2/select [:model/Card :id :name :description :collection_id]
-             {:where    where
+             {:where    (visible-metric-cards-where)
               :order-by [[:name :asc]]
               :limit    limit
               :offset   offset}))
