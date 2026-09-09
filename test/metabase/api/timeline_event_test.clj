@@ -47,8 +47,7 @@
                                            :timezone     "US/Pacific"
                                            :time_matters false
                                            :timeline_id  (u/the-id timeline)})]
-          (is (string? (:entity_id event)))
-          (is (= 21 (count (:entity_id event))))
+          (is (=? {:entity_id #(and (string? %) (= 21 (count %)))} event))
           (is (= (:entity_id event)
                  (t2/select-one-fn :entity_id :model/TimelineEvent :id (:id event))))))
       ;; check the Timeline to see if the event is there
