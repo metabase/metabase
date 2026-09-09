@@ -72,7 +72,7 @@
   ;; on, its value becomes ordinary pages' `frame-ancestors`. It must stay confined to that
   ;; directive: a `;` in the value must not break out and append further CSP directives. The
   ;; worst is `script-src-elem` — the base policy omits it, so an injected one is honored and
-  ;; overrides the nonce/hash `script-src` allowlist the app relies on to block XSS.
+  ;; overrides the hash-based `script-src` allowlist the app relies on to block XSS.
   (mt/with-premium-features #{:embedding}
     (let [csp-directive-names
           (fn [origins]
@@ -387,6 +387,18 @@
           (testing "The same nonce is in the body of the rendered page"
             (is (str/includes? (:body response) nonce))))))))
 
+(deftest script-src-nonce-opt-in-test
+  (testing "script-src only carries a nonce for responses that opt in"
+    (with-redefs [config/is-dev? false]
+      (let [script-src-for  (fn [response-extras]
+                              (-> ((mw.security/add-security-headers
+                                    (fn [_request respond _raise]
+                                      (respond (merge {:status 200 :headers {} :body "ok"} response-extras))))
+                                   {:uri "/" :headers {}} identity identity)
+                                  (csp-directive-from-response "script-src")))]
+        (is (not (str/includes? (script-src-for {}) "'nonce-")))
+        (is (str/includes? (script-src-for {mw.security/script-nonce-response-key true}) "'nonce-"))))))
+
 (deftest data-app-inline-style-csp-test
   (testing "Only data-app iframe responses allow inline styles"
     (with-redefs [config/is-dev? false]
@@ -408,7 +420,7 @@
         (is (not (str/includes? app-style-src "'unsafe-inline'")))
         (is (str/includes? data-style-src "'unsafe-inline'"))
         (is (not (str/includes? data-style-src "'nonce-")))
-        (is (str/includes? data-script-src "'nonce-"))
+        (is (not (str/includes? data-script-src "'nonce-")))
         (is (not (str/includes? data-script-src "'unsafe-inline'")))))))
 
 ;; NOTE: `unsafe-eval` was removed from the data-app iframe document (it now lives
