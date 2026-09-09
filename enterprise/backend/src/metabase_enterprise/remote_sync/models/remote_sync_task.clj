@@ -33,16 +33,6 @@
     (throw (ex-info "A running task exists" {:existing-task existing})))
   (merge {:started_at (mi/now)} task))
 
-(t2/define-before-update :model/RemoteSyncTask
-  [task]
-  (let [changes (t2/changes task)]
-    (cond-> task
-      (and (contains? changes :progress) (not (contains? changes :last_progress_report_at)))
-      (assoc :last_progress_report_at (mi/now))
-
-      (and (some #(contains? changes %) [:outcome :error_message :conflicts]) (not (contains? changes :ended_at)))
-      (assoc :ended_at (mi/now)))))
-
 ;;; ------------------------------------------- Helper Functions -------------------------------------------
 
 (mu/defn create-sync-task!
@@ -72,9 +62,9 @@
   This signal will be checked in update-progress! to stop further processing. Note that the worker thread must
   manually check this flag rather than being interrupted, as interrupting Quartz threads can cause issues."
   [task-id]
-  (remote-sync.db/update-task! task-id
-                               {:cancelled true
-                                :error_message "Task cancelled"}))
+  (remote-sync.db/end-task! task-id
+                            {:cancelled true
+                             :error_message "Task cancelled"}))
 
 (defn update-progress!
   "Updates the progress of a sync task.
@@ -88,8 +78,7 @@
   (when (true? (remote-sync.db/task-cancelled? task-id))
     (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id
                                                            :cancelled? true})))
-  (remote-sync.db/update-task! task-id
-                               {:progress progress}))
+  (remote-sync.db/report-task-progress! task-id progress))
 
 (def ^:private default-progress-throttle-ms
   "Minimum ms between throttled (non-boundary) progress writes."
@@ -143,9 +132,9 @@
   Returns the number of rows updated (should be 1 if successful)."
   ([task-id] (complete-sync-task! task-id nil))
   ([task-id outcome]
-   (remote-sync.db/update-task! task-id
-                                {:progress 1.0
-                                 :outcome  outcome})))
+   (remote-sync.db/end-task! task-id
+                             {:progress 1.0
+                              :outcome  outcome})))
 
 (defn fail-sync-task!
   "Marks a sync task as failed.
@@ -154,8 +143,8 @@
 
   Returns the number of rows updated (should be 1 if successful)."
   [task-id error-msg]
-  (remote-sync.db/update-task! task-id
-                               {:error_message error-msg}))
+  (remote-sync.db/end-task! task-id
+                            {:error_message error-msg}))
 
 (defn current-task
   "Gets the current active sync task.
@@ -270,8 +259,8 @@
 
   Returns the number of rows updated (should be 1 if successful)."
   [task-id conflicts]
-  (remote-sync.db/update-task! task-id
-                               {:conflicts conflicts}))
+  (remote-sync.db/end-task! task-id
+                            {:conflicts conflicts}))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
 

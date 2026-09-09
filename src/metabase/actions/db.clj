@@ -164,7 +164,7 @@
 
 (mu/defn actions-with-id
   "The Actions with `action-id` (usually a single Action, since ids are unique)."
-  [action-id :- ::lib.schema.id/action]
+  [action-id :- [:maybe ::lib.schema.id/action]]
   (t2/select :model/Action :id action-id))
 
 (mu/defn actions-with-ids
@@ -174,7 +174,7 @@
 
 (mu/defn unarchived-action-with-id
   "The unarchived Actions with `action-id` (usually a single Action, since ids are unique)."
-  [action-id :- ::lib.schema.id/action]
+  [action-id :- [:maybe ::lib.schema.id/action]]
   (t2/select :model/Action :id action-id :archived false))
 
 (mu/defn action-with-entity-id

@@ -55,7 +55,7 @@
 (mu/defn tables-of-database-named
   "The Tables of the Database with `database-id` named one of `table-names`."
   [database-id :- ::lib.schema.id/database
-   table-names :- [:sequential :string]]
+   table-names :- [:or [:set :string] [:sequential :string]]]
   (t2/select :model/Table :db_id database-id :name [:in table-names]))
 
 (mu/defn tables-of-database-in-id-order

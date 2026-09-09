@@ -188,8 +188,8 @@
    [:metric_description               {:optional true} [:maybe :string]]
    [:chart_description                {:optional true} [:maybe :string]]])
 
-(mr/def ::exploration-thread.query-plan-transcript-entry
-  "One entry of the `:query_plan_transcript` column of a ExplorationThread, decoded."
+(mr/def ::exploration-thread.query-plan-transcript
+  "The `:query_plan_transcript` column of a ExplorationThread, decoded."
   :map)
 
 (mr/def ::exploration-thread.data-access-token
@@ -212,7 +212,7 @@
    [:completed_at          [:maybe ms/TemporalInstant]]
    [:analysis_started_at   [:maybe ms/TemporalInstant]]
    [:query_plan_started_at [:maybe ms/TemporalInstant]]
-   [:query_plan_transcript [:maybe [:sequential ::exploration-thread.query-plan-transcript-entry]]]
+   [:query_plan_transcript [:maybe ::exploration-thread.query-plan-transcript]]
    [:canceled_at           [:maybe ms/TemporalInstant]]
    [:data_access_token     [:maybe ::exploration-thread.data-access-token]]])
 
@@ -231,7 +231,7 @@
    [:completed_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:analysis_started_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:query_plan_started_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:query_plan_transcript {:optional true} [:maybe [:sequential ::exploration-thread.query-plan-transcript-entry]]]
+   [:query_plan_transcript {:optional true} [:maybe ::exploration-thread.query-plan-transcript]]
    [:canceled_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]])
 

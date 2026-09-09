@@ -657,6 +657,18 @@
    changes :- ::remote-sync.schema/remote-sync-task.update]
   (t2/update! :model/RemoteSyncTask task-id changes))
 
+(mu/defn end-task!
+  "Apply `changes` to the RemoteSyncTask with `task-id` and mark it ended now."
+  [task-id :- ms/PositiveInt
+   changes :- ::remote-sync.schema/remote-sync-task.update]
+  (t2/update! :model/RemoteSyncTask task-id (assoc changes :ended_at :%now)))
+
+(mu/defn report-task-progress!
+  "Record `progress` for the RemoteSyncTask with `task-id`, stamping the progress report time."
+  [task-id  :- ms/PositiveInt
+   progress :- number?]
+  (t2/update! :model/RemoteSyncTask task-id {:progress progress, :last_progress_report_at :%now}))
+
 (mu/defn supersede-stale-tasks!
   "Cancel and end now the started, unfinished RemoteSyncTasks that last reported progress before `cutoff`."
   [cutoff :- ms/TemporalInstant]
