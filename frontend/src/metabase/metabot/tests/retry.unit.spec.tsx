@@ -472,7 +472,7 @@ describe("metabot > retry", () => {
 
   it("should show the provider's message on a provider_error turn and retry from the alert", async () => {
     setup();
-    mockAgentEndpoint({
+    const firstSpy = mockAgentEndpoint({
       events: [
         {
           type: "start",
@@ -498,11 +498,12 @@ describe("metabot > retry", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/Something went wrong/)).not.toBeInTheDocument();
 
+    const firstReqBody = await lastReqBody(firstSpy);
     const retrySpy = mockAgentEndpoint({ events: [] });
     await userEvent.click(await alertRetryButton());
 
     const body = await lastReqBody(retrySpy);
-    expect(body.retry_message_id).toBe("user_msg_prov");
+    expect(body.retry_message_id).toBe(firstReqBody.user_message_id);
   });
 
   it("should fall back to a plain send when the request failed before the server started the turn", async () => {

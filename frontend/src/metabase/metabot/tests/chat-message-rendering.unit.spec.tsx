@@ -279,19 +279,23 @@ describe("AgentMessage", () => {
   describe("model_fallback", () => {
     it("says which provider the answer came from and why", async () => {
       setup({
-        id: "s1",
-        role: "agent",
-        type: "data_part",
-        part: {
-          type: "data-model_fallback",
-          data: {
-            model: "openai/gpt-5.4",
-            model_name: "GPT-5.4",
-            provider_name: "OpenAI",
-            previous_model: "anthropic/claude-sonnet-4-6",
-            previous_provider_name: "Anthropic",
+        parts: [
+          {
+            id: "s1",
+            role: "agent",
+            type: "data_part",
+            part: {
+              type: "data-model_fallback",
+              data: {
+                model: "openai/gpt-5.4",
+                model_name: "GPT-5.4",
+                provider_name: "OpenAI",
+                previous_model: "anthropic/claude-sonnet-4-6",
+                previous_provider_name: "Anthropic",
+              },
+            },
           },
-        },
+        ],
       });
 
       expect(
@@ -352,18 +356,18 @@ describe("AgentMessage", () => {
       const onRetry = jest.fn();
       setup(
         {
-          id: "msg",
-          role: "agent",
-          type: "turn_errored",
-          error: {
-            type: "provider_error",
-            message:
-              "Anthropic API error (HTTP 400) — Your credit balance is too low",
-          },
-          display: {
-            type: "message",
-            message:
-              "Anthropic API error (HTTP 400) — Your credit balance is too low",
+          status: {
+            type: "errored",
+            error: {
+              type: "provider_error",
+              message:
+                "Anthropic API error (HTTP 400) — Your credit balance is too low",
+            },
+            display: {
+              type: "message",
+              message:
+                "Anthropic API error (HTTP 400) — Your credit balance is too low",
+            },
           },
         },
         { onRetry },
@@ -377,7 +381,7 @@ describe("AgentMessage", () => {
       await userEvent.click(
         within(alert).getByTestId("metabot-chat-message-retry"),
       );
-      expect(onRetry).toHaveBeenCalledWith("msg");
+      expect(onRetry).toHaveBeenCalled();
     });
 
     it.each(["metabase_ai_managed_locked", "ai_usage_limit_reached"])(
@@ -385,10 +389,7 @@ describe("AgentMessage", () => {
       (type) => {
         setup(
           {
-            id: "msg",
-            role: "agent",
-            type: "turn_errored",
-            error: { type },
+            status: { type: "errored", error: { type } },
           },
           { onRetry: jest.fn() },
         );
