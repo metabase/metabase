@@ -524,10 +524,10 @@
   rejected fast mode itself, and otherwise rethrows through the usual translation.
 
   Decoding the error body also closes the streamed response, so the connection is not leaked when the
-  exception is swallowed by the retry. Fast mode has its own rate-limit pool, so a 429 here doesn''t
+  exception is swallowed by the retry. Fast mode has its own rate-limit pool, so a 429 here doesn't
   imply standard speed is limited; a 400 needs its message checked to keep unrelated malformed requests
   failing fast. A 529 means the API itself is overloaded, so it gets no immediate retry: surface it and
-  let the caller''s retry loop pace the next attempt, which the armed cooldown keeps at standard speed."
+  let the caller's retry loop pace the next attempt, which the armed cooldown keeps at standard speed."
   [req retry! ^Throwable e]
   (let [status    (:status (ex-data e))
         res       (when (and (:speed req) (contains? #{400 429 529} status))
