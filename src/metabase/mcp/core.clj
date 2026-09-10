@@ -17,7 +17,8 @@
   mcp.paths/canonical-path)
 
 (defn mcp-v2-path
-  "The path serving the v2 tool surface during the migration (see [[metabase.mcp.paths/v2-path]])."
+  "The `/v2`-suffixed alias (see [[metabase.mcp.paths/v2-path]]). Every MCP path reaches the same surface;
+   this exists for client configs written while the surface was behind that path."
   []
   mcp.paths/v2-path)
 

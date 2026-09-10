@@ -19,8 +19,9 @@
   "/api/metabase-mcp")
 
 (def v2-path
-  "Where the v2 tool surface serves during the migration. The other entries in [[endpoint-paths]] still
-   reach v1, so this is the one path whose OAuth metadata may advertise the v2-only scope set."
+  "The `/v2`-suffixed alias, kept so client configs written while the surface was behind that path keep
+   working. Every entry in [[endpoint-paths]] now reaches the same v2 surface and advertises the same
+   scopes; prefer [[canonical-path]] when telling anyone where the server lives."
   "/api/metabase-mcp/v2")
 
 (def endpoint-paths

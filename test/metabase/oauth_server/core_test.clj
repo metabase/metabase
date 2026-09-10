@@ -96,28 +96,28 @@
           (is (contains? granted scope)))))))
 
 (deftest mcp-resource-advertises-only-the-mcp-surface-test
-  (testing "RFC 9728 metadata answers \"what does *this* resource accept\", and the resources differ:
-            the MCP resource accepts the rationalized scopes its tool registry gates on, while the
-            wider set also carries every agent-API endpoint scope. Advertising the union for MCP is
-            what makes a client's consent screen list per-entity scopes the MCP tools never use."
-    (let [mcp  (set (oauth-server/mcp-resource-scopes (mcp/mcp-v2-path)))
-          wide (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))]
-      (testing "the five rationalized scopes are advertised for MCP"
-        (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
-                       "agent:sql:run" "agent:delivery:write"]]
-          (testing scope
-            (is (contains? mcp scope)))))
-      (testing "agent-API per-entity scopes are not"
-        (doseq [scope ["agent:collection:create" "agent:dashboard:create" "agent:dashboard:update"
-                       "agent:metric:create" "agent:metric:update" "agent:question:create"
-                       "agent:query:construct" "agent:query:execute" "agent:sql:construct"]]
-          (testing scope
-            (is (not (contains? mcp scope))))))
-      (testing "but they remain advertised on the wider set, since those resources do accept them"
-        (is (contains? wide "agent:collection:create"))
-        (is (contains? wide "agent:query:execute")))
-      (testing "so the MCP surface is strictly narrower"
-        (is (< (count mcp) (count wide)))))))
+  (testing "RFC 9728 metadata answers \"what does *this* resource accept\". Every MCP endpoint path now
+            reaches the same v2 surface, so each advertises the rationalized scopes its tool registry
+            gates on and none of the agent-API per-entity scopes. While v1 was still served the aliases
+            that reached it had to advertise the wider set; with v1 retired that would list per-entity
+            scopes on a consent screen for tools that no longer exist."
+    (doseq [path (mcp/mcp-endpoint-paths)]
+      (testing path
+        (let [mcp (set (oauth-server/mcp-resource-scopes path))]
+          (testing "the rationalized scopes are advertised"
+            (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
+                           "agent:sql:run" "agent:delivery:write"]]
+              (testing scope
+                (is (contains? mcp scope)))))
+          (testing "agent-API per-entity scopes are not"
+            (doseq [scope ["agent:collection:create" "agent:dashboard:create" "agent:dashboard:update"
+                           "agent:metric:create" "agent:metric:update" "agent:question:create"
+                           "agent:query:construct" "agent:query:execute" "agent:sql:construct"]]
+              (testing scope
+                (is (not (contains? mcp scope)))))))))
+    (testing "every path answers the same set, since every path reaches the same surface"
+      (is (= 1 (count (set (map (comp set oauth-server/mcp-resource-scopes)
+                                (mcp/mcp-endpoint-paths)))))))))
 
 (deftest get-provider-test
   (testing "get-provider returns a Provider instance"
@@ -160,15 +160,15 @@
     (let [mcp-uri "http://localhost:3000/api/metabase-mcp/v2"
           v1-uri  "http://localhost:3000/api/metabase-mcp"
           scopes #(set (some-> % (str/split #"\s+")))]
-      (testing "a v1 alias keeps the scopes v1's tools gate on — until the switchover those paths still
-                serve v1, and narrowing them to the v2 set would strip the capabilities the client asked
-                for from a grant the user then approves"
+      (testing "the canonical path narrows to the v2 surface too — every MCP path reaches it now, so a
+                per-entity scope no tool gates on is dropped rather than carried into the grant"
         (let [narrowed (scopes (oauth-server/narrow-scope-to-resource
                                 [v1-uri]
                                 "agent:content:read agent:question:create agent:sql:execute agent:query:run"))]
-          (is (contains? narrowed "agent:question:create"))
-          (is (contains? narrowed "agent:sql:execute"))
-          (is (contains? narrowed "agent:content:read"))))
+          (is (not (contains? narrowed "agent:question:create")))
+          (is (not (contains? narrowed "agent:sql:execute")))
+          (is (contains? narrowed "agent:content:read"))
+          (is (contains? narrowed "agent:query:run"))))
       (testing "an indicator naming the v2 resource drops scopes that surface does not accept"
         (let [narrowed (scopes (oauth-server/narrow-scope-to-resource
                                 [mcp-uri]
@@ -201,8 +201,8 @@
                             "mb:full agent:content:read agent:question:create")]
               (is (not (str/includes? narrowed "mb:full")))
               (is (str/includes? narrowed "agent:content:read"))
-              (is (= (not= path "/api/metabase-mcp/v2")
-                     (str/includes? narrowed "agent:question:create")))))))
+              ;; Every path reaches v2, so none of them accept the agent-API per-entity scopes.
+              (is (not (str/includes? narrowed "agent:question:create")))))))
       (testing "no indicator, or one naming a different resource, leaves the scope alone"
         (let [wide "agent:content:read agent:question:create"]
           (is (= wide (oauth-server/narrow-scope-to-resource nil wide)))
@@ -258,28 +258,31 @@
               (is (= wide (oauth-server/narrow-scope-to-resource [indicator] wide))))))))))
 
 (deftest narrow-scope-to-resource-multiple-indicators-test
-  (testing "RFC 8707 allows several `resource` indicators, and a token has to work against each. The
-            accepted set is therefore the UNION of what the named resources accept. Taking whichever one
-            is checked first drops the v1-only scopes when a v1 alias is named alongside v2 -- silently
-            shrinking a grant the client asked for and the user then approves."
+  (testing "RFC 8707 allows several `resource` indicators, and a token has to work against each, so the
+            accepted set is the UNION of what the named resources accept. Every MCP path now reaches the
+            same v2 surface, so the union is that one surface's set however many paths are named -- and a
+            per-entity scope no surface accepts is never re-admitted by naming more of them."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (let [v1     "http://localhost:3000/api/metabase-mcp"
-            alias1 "http://localhost:3000/api/mcp"
-            v2     "http://localhost:3000/api/metabase-mcp/v2"
-            wide   "mb:full agent:content:read agent:question:create agent:sql:execute"
-            scopes #(set (some-> % (str/split #"\s+")))]
-        (testing "one indicator each, for reference"
-          (is (contains? (scopes (oauth-server/narrow-scope-to-resource [v1] wide)) "agent:question:create"))
-          (is (not (contains? (scopes (oauth-server/narrow-scope-to-resource [v2] wide)) "agent:question:create"))))
-        (testing "naming a v1 alias alongside v2 keeps the v1-only scopes, in either order"
-          (doseq [indicators [[v1 v2] [v2 v1] [alias1 v2] [v2 alias1]]]
+      (let [canonical "http://localhost:3000/api/metabase-mcp"
+            alias1    "http://localhost:3000/api/mcp"
+            v2        "http://localhost:3000/api/metabase-mcp/v2"
+            wide      "mb:full agent:content:read agent:question:create agent:sql:execute"
+            scopes    #(set (some-> % (str/split #"\s+")))]
+        (testing "one indicator each: every path narrows to the v2 surface"
+          (doseq [indicator [canonical alias1 v2]]
+            (testing indicator
+              (let [narrowed (scopes (oauth-server/narrow-scope-to-resource [indicator] wide))]
+                (is (contains? narrowed "agent:content:read"))
+                (is (not (contains? narrowed "agent:question:create")))
+                (is (not (contains? narrowed "agent:sql:execute")))))))
+        (testing "naming several paths together is the same union, in either order"
+          (doseq [indicators [[canonical v2] [v2 canonical] [alias1 v2] [v2 alias1]]]
             (testing (pr-str indicators)
               (let [narrowed (scopes (oauth-server/narrow-scope-to-resource indicators wide))]
-                (is (contains? narrowed "agent:question:create"))
-                (is (contains? narrowed "agent:sql:execute"))
-                (is (contains? narrowed "agent:content:read"))))))
+                (is (contains? narrowed "agent:content:read"))
+                (is (not (contains? narrowed "agent:question:create")))))))
         (testing "the union never re-admits a scope no named surface accepts"
-          (doseq [indicators [[v1] [v2] [v1 v2] [v2 v1] [alias1 v2]]]
+          (doseq [indicators [[canonical] [v2] [canonical v2] [v2 canonical] [alias1 v2]]]
             (testing (pr-str indicators)
               (is (not (contains? (scopes (oauth-server/narrow-scope-to-resource indicators wide))
                                   "mb:full"))))))))))

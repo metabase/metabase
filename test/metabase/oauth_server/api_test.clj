@@ -76,11 +76,13 @@
                  :authorization_servers    ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
                 response))
-        (testing "advertising the canonical (v1) resource, it must advertise the v1 scope set -- the bare
-                  path is the one clients probe, and the v2-only set here is a token that does nothing"
+        (testing "the bare path is the one clients probe, so its scope set must be the one the resource it
+                  names actually accepts -- the canonical path reaches the v2 surface, so it advertises
+                  the scopes v2's tools gate on and none of the retired per-entity agent-API scopes"
           (is (= (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
                  (set (:scopes_supported response))))
-          (is (contains? (set (:scopes_supported response)) "agent:question:create")))))))
+          (is (contains? (set (:scopes_supported response)) "agent:content:read"))
+          (is (not (contains? (set (:scopes_supported response)) "agent:question:create"))))))))
 
 (deftest discovery-endpoint-rebuilds-on-site-url-change-test
   (testing "Discovery advertises endpoints for the *current* site-url, even after it changes (BOT-1617)"

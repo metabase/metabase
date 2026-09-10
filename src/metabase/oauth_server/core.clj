@@ -38,19 +38,18 @@
 
 (defn mcp-resource-scopes
   "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource
-  accept\", and what a path accepts depends on which surface it reaches.
+  accept\", and every path in [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they
+  all accept the same set: the scopes the v2 tool registry gates on plus the resource scopes its UI tools
+  render through.
 
-  `/api/metabase-mcp/v2` reaches v2, which accepts exactly the scopes its tool registry gates on — the
-  rationalized five — plus the resource scopes its UI tools render through. The other aliases still reach v1
-  until the switchover, and v1's tools gate on the per-entity agent-API scopes; advertising the v2-only set
-  for them would tell a client to request scopes no v1 tool accepts, leaving it with an empty `tools/list`
-  and a 403 on every call. They keep the full set until v1 retires, and this fn collapses to the v2 answer
-  when it does."
-  [path]
-  (vec (into (sorted-set)
-             (if (= path (mcp/mcp-v2-path))
-               (mcp/v2-scopes)
-               (mcp/all-scopes)))))
+  This branched while v1 was still served. v1's tools gated on the per-entity agent-API scopes
+  (`agent:question:create`, `agent:sql:execute`, …), so the aliases that reached v1 had to advertise those or
+  a client following the metadata would land with an empty `tools/list`. With v1 retired (#81708) the branch
+  inverted: the canonical `/api/metabase-mcp` served v2 tools while advertising fourteen scopes no tool gates
+  on any more, putting them on a consent screen for capabilities that no longer exist. `path` is kept in the
+  signature because RFC 9728 metadata is per-resource and a future surface may diverge again."
+  [_path]
+  (vec (into (sorted-set) (mcp/v2-scopes))))
 
 (defn default-grant-scopes
   "The scope set a dynamically-registered client is registered with when it sends no `scope` of its own (RFC 7591 makes
