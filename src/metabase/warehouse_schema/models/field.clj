@@ -23,6 +23,7 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -39,29 +40,10 @@
 
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 
-(defn- hydrate-fields-with-user-settings
-  "Hydrate `k` on `instances` with the Fields, as users see them, whose ids are under `id-key`."
-  [k id-key instances]
-  (mi/instances-with-hydrated-data
-   instances k
-   #(m/index-by :id (warehouse-schema.db/fields-with-user-settings {:field-ids (into #{} (keep id-key) instances)}))
-   id-key))
-
-(methodical/defmethod t2/batched-hydrate [:default :destination]
-  [_model k instances]
-  (hydrate-fields-with-user-settings k :destination_id instances))
-
-(methodical/defmethod t2/batched-hydrate [:default :field]
-  [_model k instances]
-  (hydrate-fields-with-user-settings k :field_id instances))
-
-(methodical/defmethod t2/batched-hydrate [:default :origin]
-  [_model k instances]
-  (hydrate-fields-with-user-settings k :origin_id instances))
-
-(methodical/defmethod t2/batched-hydrate [:default :human_readable_field]
-  [_model k instances]
-  (hydrate-fields-with-user-settings k :human_readable_field_id instances))
+(methodical/defmethod t2/model-for-automagic-hydration [:default :destination]          [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :field]                [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :origin]               [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :human_readable_field] [_model _k]  :model/Field)
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
@@ -131,7 +113,7 @@
   {:in  identity
    :out (fn [v] (if (number? v) (pos? v) v))})
 
-(t2/deftransforms :model/Field
+(def ^:private field-transforms
   {:base_type         transform-field-base-type
    :effective_type    transform-field-effective-type
    :coercion_strategy transform-field-coercion-strategy
@@ -144,6 +126,8 @@
    :nfc_path          mi/transform-json
    :json_unfolding    transform-field-boolean})
 
+(t2/deftransforms :model/Field field-transforms)
+
 (doto :model/Field
   (derive :metabase/model)
   (derive :hook/timestamped?)
@@ -151,6 +135,23 @@
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :model/Field
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  "Read Fields as users see them. A user's values live in `metabase_field_user_settings`, so selecting `metabase_field`
+  alone shows sync's values rather than the user's; point the default source at
+  [[warehouse-schema.db/field-source]], which merges the two, so callers get user values without asking. Aliasing it
+  as the table name keeps kv-args, column subsets and `:order-by` referring to it.
+
+  A query that brings its own `:from` is left alone, and so is every DML query type: writes still go straight to
+  `metabase_field`. [[warehouse-schema.db/with-sync-values]] opts a read out."
+  [query-type model parsed-args honeysql]
+  (let [built (next-method query-type model parsed-args honeysql)]
+    (cond-> built
+      (and (not warehouse-schema.db/*sync-values*)
+           (= (:from built) [[(t2/table-name :model/Field)]]))
+      (assoc :from [(warehouse-schema.db/field-source (t2/table-name :model/Field))]))))
 
 (t2/define-after-select :model/Field
   [field]
@@ -404,8 +405,7 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (m/index-by :id (when (seq target-field-ids)
-                                           (readable-fields-only
-                                            (warehouse-schema.db/fields-with-user-settings {:field-ids target-field-ids}))))]
+                                           (readable-fields-only (warehouse-schema.db/fields target-field-ids))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -415,8 +415,7 @@
   [field]
   (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
                           (:fk_target_field_id field))
-        target-field    (when-let [target-field (and target-field-id
-                                                     (warehouse-schema.db/field-with-user-settings target-field-id))]
+        target-field    (when-let [target-field (and target-field-id (warehouse-schema.db/field target-field-id))]
                           (when (mi/can-write? (t2/hydrate target-field :table))
                             target-field))]
     (assoc field :target target-field)))
@@ -459,7 +458,10 @@
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :parent]
   [_model k fields]
-  (hydrate-fields-with-user-settings k :parent_id fields))
+  (mi/instances-with-hydrated-data
+   fields k
+   #(warehouse-schema.db/fields-by-id (map :parent_id fields))
+   :parent_id))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

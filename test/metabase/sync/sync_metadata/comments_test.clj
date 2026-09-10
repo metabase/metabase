@@ -11,13 +11,16 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [metabase.warehouse-schema.core :as warehouse-schema]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
-(defn- db->fields [db]
+(defn- db->fields
+  "The name and description sync itself recorded for each Field of `db`, ignoring any description a user set."
+  [db]
   (let [table-ids (t2/select-pks-set :model/Table :db_id (u/the-id db))]
-    (set (map (partial into {}) (t2/select ['Field :name :description] :table_id [:in table-ids])))))
+    (warehouse-schema.db/with-sync-values
+      (set (map (partial into {}) (t2/select ['Field :name :description] :table_id [:in table-ids]))))))
 
 (tx/defdataset basic-field-comments
   [["basic_field_comments"
@@ -63,7 +66,7 @@
                      {:name (mt/format-name "updated_desc"), :description "original comment"}}
                    (db->fields (mt/db))))
             (is (= "updated description"
-                   (:description (warehouse-schema/field-with-user-settings field-id))))))))))
+                   (:description (t2/select-one :model/Field :id field-id))))))))))
 
 (tx/defdataset ^:private comment-after-sync
   [["comment_after_sync"

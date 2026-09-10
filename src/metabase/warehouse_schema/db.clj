@@ -32,6 +32,16 @@
    field-names :- [:sequential :string]]
   (models.db/field-in-path table-id field-names))
 
+(mu/defn fields
+  "The Fields with `field-ids`."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (t2/select :model/Field :id [:in field-ids]))
+
+(mu/defn fields-by-id
+  "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids]))
+
 (mu/defn field-table-id-rows
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
@@ -52,13 +62,7 @@
 (mu/defn field-values-eligibility
   "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field {:select    [:f.base_type
-                                           [(lib-be/field-user-settings-column :visibility_type :f :u) :visibility_type]
-                                           [(lib-be/field-user-settings-column :has_field_values :f :u) :has_field_values]
-                                           :f.preview_display]
-                               :from      [[(t2/table-name :model/Field) :f]]
-                               :left-join (lib-be/field-user-settings-join :f :u)
-                               :where     [:= :f.id field-id]}))
+  (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id))
 
 (mu/defn field-ids-for-table
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
@@ -71,44 +75,42 @@
   (t2/select-pks-set :model/Field :table_id table-id :active true))
 
 (defn- field-order-order-by
-  "`:order-by` for `field-order` over `metabase_field` aliased `f` with its user settings joined as `u`; `:smart`
-  ranks by the `semantic_type` users see."
   [field-order]
   (case field-order
-    :custom       [[:f.custom_position :asc]]
-    :smart        (let [semantic-type (lib-be/field-user-settings-column :semantic_type :f :u)]
-                    [[[:case
-                       (app-db/isa semantic-type :type/PK)       0
-                       (app-db/isa semantic-type :type/Name)     1
-                       (app-db/isa semantic-type :type/Temporal) 2
-                       :else                                    3]
-                      :asc]
-                     [[:lower :f.name] :asc]])
-    :database     [[:f.database_position :asc]]
-    :alphabetical [[[:lower :f.name] :asc]]))
+    :custom       [[:custom_position :asc]]
+    :smart        [[[:case
+                     (app-db/isa :semantic_type :type/PK)       0
+                     (app-db/isa :semantic_type :type/Name)     1
+                     (app-db/isa :semantic_type :type/Temporal) 2
+                     :else                                     3]
+                    :asc]
+                   [:%lower.name :asc]]
+    :database     [[:database_position :asc]]
+    :alphabetical [[:%lower.name :asc]]))
 
 (mu/defn field-ids-for-table-ordered
   "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id`, ordered per `field-order` (`:custom`, `:smart`, `:database`,
   or `:alphabetical`)."
   [table-id    :- ::lib.schema.id/table
    field-order :- [:enum :custom :smart :database :alphabetical]]
-  (t2/select [:model/Field :id] {:select    [:f.id]
-                                 :from      [[(t2/table-name :model/Field) :f]]
-                                 :left-join (lib-be/field-user-settings-join :f :u)
-                                 :where     [:= :f.table_id table-id]
-                                 :order-by  (field-order-order-by field-order)}))
+  (t2/select [:model/Field :id] :table_id table-id {:order-by (field-order-order-by field-order)}))
+
+(mu/defn active-fields-for-tables
+  "The active, unretired Fields of the Tables with `table-ids`, in field order."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (t2/select :model/Field
+             :active true
+             :table_id [:in table-ids]
+             :visibility_type [:not= "retired"]
+             {:order-by field-order-rule}))
 
 (mu/defn pk-field-ids-by-table
   "A map of ::warehouse-schema.schema/table ID to the ID of its visible primary key ::warehouse-schema.schema/field for `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select-fn->fn :table_id :id :model/Field
-                    {:select    [:f.table_id :f.id]
-                     :from      [[(t2/table-name :model/Field) :f]]
-                     :left-join (lib-be/field-user-settings-join :f :u)
-                     :where     [:and
-                                 [:in :f.table_id table-ids]
-                                 (app-db/isa (lib-be/field-user-settings-column :semantic_type :f :u) :type/PK)
-                                 [:not-in (lib-be/field-user-settings-column :visibility_type :f :u) ["sensitive" "retired"]]]}))
+                    :table_id [:in table-ids]
+                    :semantic_type (app-db/isa :type/PK)
+                    :visibility_type [:not-in ["sensitive" "retired"]]))
 
 (mu/defn update-field!
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
@@ -132,66 +134,43 @@
   [table-id :- ::lib.schema.id/table]
   (t2/delete! :model/Field :table_id table-id))
 
-;;; ---------------------------------------- Fields as users see them ----------------------------------------
-;;;
-;;; Reading a `:model/Field` never applies its user settings: queries that show Fields to users, or filter and sort on
-;;; a value users set, join `metabase_field_user_settings` with these helpers.
+(def ^:dynamic *sync-values*
+  "When true, reading a `:model/Field` yields the values sync wrote to `metabase_field` rather than the ones users
+  see. Bind it with [[with-sync-values]]; do not set it directly."
+  false)
+
+(defmacro with-sync-values
+  "Run `body` reading `:model/Field` as sync wrote it, ignoring the user's values in `metabase_field_user_settings`.
+  Sync itself needs this: it compares the columns it last wrote against the warehouse to decide what changed, and a
+  user's `display_name` or `semantic_type` would make every sync see a spurious difference.
+
+  The binding is conveyed on the current thread only, so wrap the query itself rather than a whole sync run -- work
+  handed to another thread or a future does not inherit it."
+  [& body]
+  `(binding [*sync-values* true] ~@body))
 
 (def ^:private sync-owned-field-columns
   "The columns of `metabase_field` users cannot set."
   (sort (remove lib-be/user-settable-field-columns (mu/map-schema-keys ::warehouse-schema.schema/field))))
 
-(mu/defn fields-with-user-settings-select
-  "Honey SQL `:select` of Fields as users see them: every column of `metabase_field`, aliased `field-alias`, with the
-  user-settable ones replaced by [[lib-be/field-user-settings-column]] over the user settings aliased
-  `settings-alias`, which the query must join with [[lib-be/field-user-settings-join]]."
-  [field-alias    :- :keyword
-   settings-alias :- :keyword]
-  (into (mapv #(u/qualified-key field-alias %) sync-owned-field-columns)
-        (map (fn [column] [(lib-be/field-user-settings-column column field-alias settings-alias) column]))
-        (sort lib-be/user-settable-field-columns)))
+(mu/defn field-source
+  "A `:from`/`:join` source of Fields as users see them, aliased `field-alias`: a subquery over `metabase_field` left
+  joined to `metabase_field_user_settings`, projecting every Field column with the user-settable ones replaced by
+  [[lib-be/field-user-settings-column]].
 
-(mu/defn field-with-user-settings
-  "The ::warehouse-schema.schema/field with `field-id` as users see it, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field {:select    (fields-with-user-settings-select :f :u)
-                               :from      [[(t2/table-name :model/Field) :f]]
-                               :left-join (lib-be/field-user-settings-join :f :u)
-                               :where     [:= :f.id field-id]}))
+  `:model/Field` selects already read from this (see `metabase.warehouse-schema.models.field`), so reach for it only
+  in a hand-written query that names `metabase_field` itself; then refer to `field-alias.column` as usual, with no
+  second helper to remember. Application DBs flatten the subquery, so a predicate on a sync-owned column still
+  reaches that column's index."
+  [field-alias :- :keyword]
+  [^:allow-subquery
+   {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
+                     (map (fn [column] [(lib-be/field-user-settings-column column :f :u) column]))
+                     (sort lib-be/user-settable-field-columns))
+    :from      [[(t2/table-name :model/Field) :f]]
+    :left-join (lib-be/field-user-settings-join :f :u)}
+   field-alias])
 
-(def ^:private field-id-batch-size
-  "How many ids one `IN` list carries: JDBC drivers cap bound parameters (Postgres at 65535)."
-  10000)
-
-(mu/defn fields-with-user-settings
-  "Fields as users see them: those with `field-ids` (any state, e.g. to re-read hydrated Fields before showing
-  them), or the active, unretired ones of the Tables with `table-ids` in field order. Any number of ids: they are
-  queried in batches of [[field-id-batch-size]]."
-  [{:keys [field-ids table-ids]} :- [:map {:closed true}
-                                     [:field-ids {:optional true} [:maybe [:set ::lib.schema.id/field]]]
-                                     [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]]]
-  (cond
-    (seq field-ids)
-    (into []
-          (mapcat (fn [ids]
-                    (t2/select :model/Field {:select    (fields-with-user-settings-select :f :u)
-                                             :from      [[(t2/table-name :model/Field) :f]]
-                                             :left-join (lib-be/field-user-settings-join :f :u)
-                                             :where     [:in :f.id ids]})))
-          (partition-all field-id-batch-size field-ids))
-
-    (seq table-ids)
-    (into []
-          (mapcat (fn [ids]
-                    (t2/select :model/Field {:select    (fields-with-user-settings-select :f :u)
-                                             :from      [[(t2/table-name :model/Field) :f]]
-                                             :left-join (lib-be/field-user-settings-join :f :u)
-                                             :where     [:and
-                                                         [:= :f.active true]
-                                                         [:in :f.table_id ids]
-                                                         [:not= (lib-be/field-user-settings-column :visibility_type :f :u) "retired"]]
-                                             :order-by  [[:f.position :asc] [[:lower :f.name] :asc]]})))
-          (partition-all field-id-batch-size table-ids))))
 (mu/defn field-names-reducible
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/field, plus its user-set display
   name from FieldUserSettings (if any) as `:user_display_name`."

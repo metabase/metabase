@@ -15,7 +15,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
-   [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.models.field :as field]
@@ -161,7 +160,7 @@
                   [:settings           {:optional true} [:maybe ms/VisualizationSettings]]
                   [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
                   [:json_unfolding     {:optional true} [:maybe :boolean]]]]
-  (let [field             (-> (warehouse-schema/field-with-user-settings id)
+  (let [field             (-> (warehouse-schema-rest.db/field id)
                               api/write-check
                               (t2/hydrate :dimensions))
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
@@ -207,7 +206,7 @@
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (let [updated (warehouse-schema/field-with-user-settings id)]
+    (let [updated (warehouse-schema-rest.db/field id)]
       (u/prog1 (-> updated
                    (t2/hydrate :dimensions :has_field_values)
                    (field/hydrate-target-with-write-perms))
@@ -290,7 +289,7 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [field (api/query-check (warehouse-schema/field-with-user-settings id))]
+  (let [field (api/query-check (warehouse-schema-rest.db/field id))]
     (parameters.field/field->values field)))
 
 (defn- validate-human-readable-pairs
@@ -316,7 +315,7 @@
    _query-params
    {value-pairs :values} :- [:map {:closed true}
                              [:values ms/FieldValuesList]]]
-  (let [field (api/write-check (warehouse-schema/field-with-user-settings id))]
+  (let [field (api/write-check (warehouse-schema-rest.db/field id))]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
@@ -385,7 +384,7 @@
                        [:value {:optional true} ms/NonBlankString]]]
   (when-not value
     (api/check-400 (request/limit) "Limit required if value is omitted"))
-  (let [field        (api/check-404 (warehouse-schema/field-with-user-settings id))
+  (let [field        (api/check-404 (warehouse-schema-rest.db/field id))
         search-field (api/check-404 (warehouse-schema-rest.db/field search-id))]
     (api/check-403 (mi/can-read? field))
     (api/check-403 (mi/can-read? search-field))
@@ -402,8 +401,8 @@
                                 [:remapped-id ms/PositiveInt]]
    {:keys [value]} :- [:map {:closed true}
                        [:value ms/NonBlankString]]]
-  (let [field          (-> (warehouse-schema/field-with-user-settings id) api/check-404 api/read-check)
-        remapped-field (-> (warehouse-schema/field-with-user-settings remapped-id) api/check-404 api/read-check)
+  (let [field          (-> (warehouse-schema-rest.db/field id) api/check-404 api/read-check)
+        remapped-field (-> (warehouse-schema-rest.db/field remapped-id) api/check-404 api/read-check)
         value          (parameters.field/parse-query-param-value-for-field field value)]
     (parameters.field/remapped-value field remapped-field value)))
 
@@ -415,4 +414,4 @@
   "Return related entities."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (warehouse-schema/field-with-user-settings id) api/read-check xrays/related))
+  (-> (warehouse-schema-rest.db/field id) api/read-check xrays/related))

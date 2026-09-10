@@ -120,8 +120,8 @@
   `metadata-fields` can be nil."
   [card-id metadata metadata-fields]
   (let [underlying (m/index-by :id (or metadata-fields
-                                       (when-let [ids (not-empty (into #{} (keep :id) metadata))]
-                                         (-> (warehouse-schema.db/fields-with-user-settings {:field-ids ids})
+                                       (when-let [ids (seq (keep :id metadata))]
+                                         (-> (warehouse-schema.db/fields ids)
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
@@ -160,7 +160,7 @@
                                        (keep :id))
                                  cards)
         metadata-fields    (if (seq metadata-field-ids)
-                             (-> (warehouse-schema.db/fields-with-user-settings {:field-ids metadata-field-ids})
+                             (-> (warehouse-schema.db/fields metadata-field-ids)
                                  (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                  (->> (m/index-by :id)))
                              {})]

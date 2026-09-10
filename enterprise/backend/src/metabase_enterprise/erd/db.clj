@@ -4,7 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.core :as warehouse-schema]
+   [metabase.warehouse-schema.models.table :as schema.table]
    [toucan2.core :as t2]))
 
 (def ^:private ActiveTablesOpts
@@ -30,22 +30,16 @@
                                                                [:= :schema schema])))})))
 
 (mu/defn active-fields-for-tables
-  "The active Fields of the Tables with `table-ids` as users see them, in field order."
+  "The active Fields of the Tables with `table-ids`, in field order."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
-                           :from      [[(t2/table-name :model/Field) :f]]
-                           :left-join (warehouse-schema/field-user-settings-join :f :u)
-                           :where     [:and
-                                       [:in :f.table_id table-ids]
-                                       [:= :f.active true]]
-                           :order-by  [[:f.position :asc] [[:lower :f.name] :asc]]}))
+  (t2/select :model/Field {:where    [:and
+                                      [:in :table_id table-ids]
+                                      [:= :active true]]
+                           :order-by schema.table/field-order-rule}))
 
 (mu/defn active-fields
-  "The active Fields with `field-ids` as users see them."
+  "The active Fields with `field-ids`."
   [field-ids :- [:or [:set ::lib.schema.id/field] [:sequential ::lib.schema.id/field]]]
-  (t2/select :model/Field {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
-                           :from      [[(t2/table-name :model/Field) :f]]
-                           :left-join (warehouse-schema/field-user-settings-join :f :u)
-                           :where     [:and
-                                       [:in :f.id field-ids]
-                                       [:= :f.active true]]}))
+  (t2/select :model/Field {:where [:and
+                                   [:in :id field-ids]
+                                   [:= :active true]]}))

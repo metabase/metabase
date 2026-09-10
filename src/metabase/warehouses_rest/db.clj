@@ -11,7 +11,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -189,10 +188,9 @@
               :limit    50}))
 
 (mu/defn autocomplete-fields
-  "Up to `limit` name, type, id, and Table of the active Fields of active Tables of the Database with `database-id`
-  whose lower-cased name matches the SQL LIKE `like-pattern` (a Honey SQL LIKE right-hand side, see
-  `metabase.util.honey-sql-2/like-substring`/`like-prefix`), excluding Fields the user has hidden or marked
-  sensitive, in field then table name order. `semantic_type` reflects the user's override."
+  "Up to `limit` name, type, id, and Table of the active, non-sensitive Fields of active Tables of the Database with
+  `database-id` whose lower-cased name matches the SQL LIKE `like-pattern` (a Honey SQL LIKE right-hand side, see
+  `metabase.util.honey-sql-2/like-substring`/`like-prefix`), in field then table name order."
   [database-id  :- ::lib.schema.id/database
    like-pattern :- [:or :string vector?]
    limit        :- ms/PositiveInt]
@@ -200,23 +198,16 @@
   ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
   ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
   ;; expressions.
-  (t2/select :model/Field
-             {:select     [:f.name :f.base_type
-                           [(warehouse-schema/field-user-settings-column :semantic_type :f :u) :semantic_type]
-                           :f.id :f.table_id [:table.name :table_name]]
-              :from       [[(t2/table-name :model/Field) :f]]
-              :left-join  (warehouse-schema/field-user-settings-join :f :u)
-              ;; checking for table.active in join makes query faster when there are a lot of inactive tables
-              :inner-join [[(t2/table-name :model/Table) :table] [:and :table.active
-                                                                  [:= :table.id :f.table_id]]]
-              :where      [:and
-                           :f.active
-                           [:like [:lower :f.name] like-pattern]
-                           [:not-in (warehouse-schema/field-user-settings-column :visibility_type :f :u)
-                            ["sensitive" "retired"]]
-                           [:= :table.db_id database-id]]
-              :order-by   [[[:lower :f.name] :asc]
+  (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
+             :metabase_field.active          true
+             :%lower.metabase_field/name     [:like like-pattern]
+             :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
+             :table.db_id                    database-id
+             {:order-by   [[[:lower :metabase_field.name] :asc]
                            [[:lower :table.name] :asc]]
+              ;; checking for table.active in join makes query faster when there are a lot of inactive tables
+              :inner-join [[:metabase_table :table] [:and :table.active
+                                                     [:= :table.id :metabase_field.table_id]]]
               :limit      limit}))
 
 (mu/defn table-ids-for-database
@@ -225,20 +216,11 @@
   (t2/select-fn-set :id :model/Table, :db_id database-id))
 
 (mu/defn non-sensitive-fields-for-tables
-  "The id, name, display name, Table id, and types of the Fields of the Tables with `table-ids` that the user hasn't
-  hidden or marked sensitive. `display_name` and `semantic_type` reflect the user's overrides."
+  "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field
-             {:select    [:f.id :f.name
-                          [(warehouse-schema/field-user-settings-column :display_name :f :u) :display_name]
-                          :f.table_id :f.base_type
-                          [(warehouse-schema/field-user-settings-column :semantic_type :f :u) :semantic_type]]
-              :from      [[(t2/table-name :model/Field) :f]]
-              :left-join (warehouse-schema/field-user-settings-join :f :u)
-              :where     [:and
-                          [:in :f.table_id table-ids]
-                          [:not-in (warehouse-schema/field-user-settings-column :visibility_type :f :u)
-                           ["sensitive" "retired"]]]}))
+  (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
+             :table_id        [:in table-ids]
+             :visibility_type [:not-in ["sensitive" "retired"]]))
 
 (mu/defn insert-database!
   "Insert the Database `row` and return the inserted instance."

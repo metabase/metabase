@@ -9,7 +9,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
@@ -169,13 +168,7 @@
 (mu/defn active-fields-targeting
   "The active Fields whose FK target, as users see it, is one of `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field
-             {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
-              :from      [[(t2/table-name :model/Field) :f]]
-              :left-join (warehouse-schema/field-user-settings-join :f :u)
-              :where     [:and
-                          (warehouse-schema/field-user-settings-column-where :fk_target_field_id :f :u :in field-ids)
-                          [:= :f.active true]]}))
+  (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true))
 
 (mu/defn delete-field-values-for-fields!
   "Delete the FieldValues of the Fields with `field-ids`."

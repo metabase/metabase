@@ -6,6 +6,7 @@
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
@@ -531,7 +532,8 @@
           (is (=? {:base_type        :type/Integer
                    :effective_type   :type/Integer
                    :data_sensitivity nil}
-                  (t2/select-one :model/Field :id field-id)))
+                  (warehouse-schema.db/with-sync-values
+                    (t2/select-one :model/Field :id field-id))))
           (is (=? {:effective_type   nil
                    :data_sensitivity :PII}
                   (t2/select-one :model/FieldUserSettings :field_id field-id))))

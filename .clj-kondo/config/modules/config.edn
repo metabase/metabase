@@ -1714,7 +1714,6 @@
    :model-imports #{:model/Collection
                     :model/Database
                     :model/Field
-                    :model/FieldUserSettings
                     :model/Table
                     :model/User}}
 
@@ -3034,8 +3033,7 @@
            models
            query-processor
            sync
-           util
-           warehouse-schema}
+           util}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -3998,8 +3996,7 @@
            tracing
            transforms
            transforms-base
-           util
-           warehouse-schema}
+           util}
    :model-exports #{:model/PythonLibrary}
    :model-imports #{:model/Database
                     :model/Field

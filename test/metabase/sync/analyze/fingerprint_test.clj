@@ -11,7 +11,6 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2])
   (:import
    [com.mchange.v2.resourcepool CannotAcquireResourceException]
@@ -46,21 +45,15 @@
          :type/Large
          :type/fingerprint-unsupported]))
 
-(def ^:private semantic-type
-  (warehouse-schema/field-user-settings-column :semantic_type :f :u))
-
-(def ^:private visibility-type
-  (warehouse-schema/field-user-settings-column :visibility_type :f :u))
-
 (deftest ^:parallel needs-fingerprint-update-clause-test
   (testing (str "Make sure we generate the correct HoneySQL WHERE clause based on whatever `version->base-types` "
                 "is passed in")
     (is (= [:and
             [:= :active true]
             [:or
-             [:not (app-db/isa semantic-type :type/PK)]
-             [:= semantic-type nil]]
-            [:not-in visibility-type ["retired" "sensitive"]]
+             [:not (app-db/isa :semantic_type :type/PK)]
+             [:= :semantic_type nil]]
+            [:not-in :visibility_type ["retired" "sensitive"]]
             [:not-in :base_type skip-fingerprint-base-types]
             [:or
              [:and
@@ -72,9 +65,9 @@
   (is (= [:and
           [:= :active true]
           [:or
-           [:not (app-db/isa semantic-type :type/PK)]
-           [:= semantic-type nil]]
-          [:not-in visibility-type ["retired" "sensitive"]]
+           [:not (app-db/isa :semantic_type :type/PK)]
+           [:= :semantic_type nil]]
+          [:not-in :visibility_type ["retired" "sensitive"]]
           [:not-in :base_type skip-fingerprint-base-types]
           [:or
            [:and
@@ -92,9 +85,9 @@
     (is (= [:and
             [:= :active true]
             [:or
-             [:not (app-db/isa semantic-type :type/PK)]
-             [:= semantic-type nil]]
-            [:not-in visibility-type ["retired" "sensitive"]]
+             [:not (app-db/isa :semantic_type :type/PK)]
+             [:= :semantic_type nil]]
+            [:not-in :visibility_type ["retired" "sensitive"]]
             [:not-in :base_type skip-fingerprint-base-types]
             [:or
              [:and
@@ -113,9 +106,9 @@
     (is (= [:and
             [:= :active true]
             [:or
-             [:not (app-db/isa semantic-type :type/PK)]
-             [:= semantic-type nil]]
-            [:not-in visibility-type ["retired" "sensitive"]]
+             [:not (app-db/isa :semantic_type :type/PK)]
+             [:= :semantic_type nil]]
+            [:not-in :visibility_type ["retired" "sensitive"]]
             [:not-in :base_type skip-fingerprint-base-types]
             [:or
              [:and
@@ -140,9 +133,9 @@
     (is (= [:and
             [:= :active true]
             [:or
-             [:not (app-db/isa semantic-type :type/PK)]
-             [:= semantic-type nil]]
-            [:not-in visibility-type ["retired" "sensitive"]]
+             [:not (app-db/isa :semantic_type :type/PK)]
+             [:= :semantic_type nil]]
+            [:not-in :visibility_type ["retired" "sensitive"]]
             [:not-in :base_type skip-fingerprint-base-types]]
            (#'sync.db/needs-fingerprint-update-clause true {1 #{:type/URL}})))))
 

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.settings :as warehouse-schema.settings]
@@ -66,8 +67,10 @@
                      :model/Field {synced-id :id} {:name "bird_watchers", :display_name "Bird Watchers"}]
         (field-user-settings/upsert-user-settings {:id user-set-id} {:display_name "User's Name"})
         (warehouse-schema.settings/humanization-strategy! "none")
-        (testing "the user-set Field's raw display name is left alone"
-          (is (= "Toucansare Cool" (t2/select-one-fn :display_name :model/Field, :id user-set-id))))
+        (testing "the user-set Field's raw display name is left alone, and their own name is what reads back"
+          (is (= "Toucansare Cool" (warehouse-schema.db/with-sync-values
+                                     (t2/select-one-fn :display_name :model/Field, :id user-set-id))))
+          (is (= "User's Name" (t2/select-one-fn :display_name :model/Field, :id user-set-id))))
         (testing "a raw display name that differs from the old humanization is left alone"
           (is (= "Some Other Name" (t2/select-one-fn :display_name :model/Field, :id custom-id))))
         (testing "a humanized display name is rewritten to the new strategy"

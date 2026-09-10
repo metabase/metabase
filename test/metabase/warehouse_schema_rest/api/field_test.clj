@@ -12,6 +12,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -109,6 +110,12 @@
             ["distincts" 75]]
            (mt/user-http-request :crowberto :get 200 (format "field/%d/summary" (mt/id :categories :name)))))))
 
+(defn- sync-field
+  "The Field row as sync wrote it, ignoring the user's values: what `metabase_field` itself still holds. An ordinary
+  `t2/select :model/Field` shows the user's values instead."
+  [field-id]
+  (warehouse-schema.db/with-sync-values (t2/select-one :model/Field :id field-id)))
+
 (defn simple-field-details [field]
   (select-keys field [:name
                       :display_name
@@ -129,7 +136,7 @@
   (testing "PUT /api/field/:id"
     (testing "test that we can do basic field update work, including unsetting some fields such as semantic-type"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
-        (let [original-field (simple-field-details (t2/select-one :model/Field :id field-id))]
+        (let [original-field (simple-field-details (sync-field field-id))]
           (testing "orignal value"
             (is (= {:name               "Field Test"
                     :display_name       "Field Test"
@@ -164,7 +171,7 @@
                       :data_sensitivity   "PII"}
                      (simple-field-details response))))
             (testing ":model/Field stays at the sync value; :model/FieldUserSettings holds the user's values"
-              (is (= original-field (simple-field-details (t2/select-one :model/Field :id field-id))))
+              (is (= original-field (simple-field-details (sync-field field-id))))
               (is (=? {:display_name      "yay"
                        :description       "foobar"
                        :description_set   true
@@ -192,7 +199,7 @@
                                                                                     :nfc_path         nil
                                                                                     :data_sensitivity nil})
             (testing ":model/Field is still at the sync value after clearing the user's values"
-              (is (= original-field (simple-field-details (t2/select-one :model/Field :id field-id)))))
+              (is (= original-field (simple-field-details (sync-field field-id)))))
             (testing "GET shows the cleared values"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
@@ -213,7 +220,7 @@
              (:description (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description nil})
       (testing "the user's cleared description wins even though metabase_field.description is untouched"
-        (is (= "synced description" (t2/select-one-fn :description :model/Field :id field-id)))
+        (is (= "synced description" (:description (sync-field field-id))))
         (is (nil? (:description (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
         (is (=? {:description nil :description_set true}
                 (t2/select-one :model/FieldUserSettings :field_id field-id)))))))
@@ -225,17 +232,17 @@
         (is (= "SEC_KEY"
                (:data_sensitivity (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
                                                         {:data_sensitivity "SEC_KEY"}))))
-        (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+        (is (nil? (:data_sensitivity (sync-field field-id))))
         (is (= :SEC_KEY (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id))))
       (testing "a null data_sensitivity clears the user setting"
         (is (nil? (:data_sensitivity (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
                                                            {:data_sensitivity nil}))))
-        (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+        (is (nil? (:data_sensitivity (sync-field field-id))))
         (is (nil? (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id))))
       (testing "an update that omits data_sensitivity leaves it unchanged"
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PHI"})
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:description "unrelated"})
-        (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+        (is (nil? (:data_sensitivity (sync-field field-id))))
         (is (= :PHI (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))
         (is (= "PHI" (:data_sensitivity (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))))))
 
@@ -247,7 +254,7 @@
           (is (=? {:errors {:data_sensitivity some?}}
                   (mt/user-http-request :crowberto :put 400 (format "field/%d" field-id)
                                         {:data_sensitivity bad-value})))
-          (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id))))))))
+          (is (nil? (:data_sensitivity (sync-field field-id)))))))))
 
 (deftest update-field-test-2
   (testing "PUT /api/field/:id"
@@ -295,7 +302,7 @@
               (let [response (set-strategy! :Coercion/UNIXSeconds->DateTime)]
                 (is (= "type/Instant" (:effective_type response)))
                 (is (= "type/Instant" (:effective_type (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
-                (is (not= :type/Instant (t2/select-one-fn :effective_type :model/Field :id field-id)))
+                (is (not= :type/Instant (:effective_type (sync-field field-id))))
                 (is (contains? (get-in (t2/select-one :model/Field :id field-id) [:fingerprint :type]) :type/DateTime))))))))))
 
 (deftest update-field-coercion-set-then-cleared-test
@@ -306,7 +313,7 @@
                                              {:coercion_strategy :Coercion/YYYYMMDDHHMMSSString->Temporal})]
           (is (= "Coercion/YYYYMMDDHHMMSSString->Temporal" (:coercion_strategy response)))
           (is (= "type/DateTime" (:effective_type response))))
-        (is (nil? (t2/select-one-fn :coercion_strategy :model/Field :id field-id)))
+        (is (nil? (:coercion_strategy (sync-field field-id))))
         (is (= :Coercion/YYYYMMDDHHMMSSString->Temporal
                (t2/select-one-fn :coercion_strategy :model/FieldUserSettings :field_id field-id)))
         (is (= :type/DateTime
@@ -325,7 +332,7 @@
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
         (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})
         (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:data_sensitivity "PII"})
-        (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))))))
+        (is (nil? (:data_sensitivity (sync-field field-id))))))))
 
 (deftest ^:parallel update-field-hydrated-target-test
   (testing "PUT /api/field/:id"
@@ -343,11 +350,11 @@
       (mt/with-temp [:model/Field {fk-field-id :id} {}
                      :model/Field {field-id :id} {:semantic_type :type/FK :fk_target_field_id fk-field-id}]
         (testing "before API call"
-          (is (= fk-field-id (t2/select-one-fn :fk_target_field_id :model/Field :id field-id))))
+          (is (= fk-field-id (:fk_target_field_id (sync-field field-id)))))
         ;; unset the :type/FK semantic-type
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
         (testing "after API call"
-          (is (= fk-field-id (t2/select-one-fn :fk_target_field_id :model/Field :id field-id)))
+          (is (= fk-field-id (:fk_target_field_id (sync-field field-id))))
           (is (=? {:semantic_type      :type/Name
                    :semantic_type_set  true
                    :fk_target_field_id nil}
@@ -371,8 +378,8 @@
                  :target             nil}
                 (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)))))
       (testing ":model/Field still has the sync-detected FK"
-        (is (= :type/FK (t2/select-one-fn :semantic_type :model/Field :id field-id)))
-        (is (= target-id (t2/select-one-fn :fk_target_field_id :model/Field :id field-id)))))))
+        (is (= :type/FK (:semantic_type (sync-field field-id))))
+        (is (= target-id (:fk_target_field_id (sync-field field-id))))))))
 
 (deftest update-fk-target-field-id-test
   (testing "PUT /api/field/:id"
@@ -380,7 +387,7 @@
       (mt/with-temp [:model/Field {field-id :id} {:base_type :type/Integer}]
         (mt/user-http-request :crowberto :put 200 (str "field/" field-id)
                               {:semantic_type :type/Quantity})
-        (is (nil? (t2/select-one-fn :semantic_type :model/Field :id field-id)))
+        (is (nil? (:semantic_type (sync-field field-id))))
         (is (= :type/Quantity
                (t2/select-one-fn :semantic_type :model/FieldUserSettings :field_id field-id)))
         (is (= "type/Quantity"
@@ -745,7 +752,7 @@
                    :model/Field {field-id-2 :id} {:name               "Field Test 2"
                                                   :semantic_type      :type/FK
                                                   :fk_target_field_id field-id-1}]
-      (let [raw-field #(simple-field-details (t2/select-one :model/Field :id field-id-2))
+      (let [raw-field #(simple-field-details (sync-field field-id-2))
             before    (raw-field)]
         (testing "before change"
           (is (= {:semantic_type :type/FK, :fk_target_field_id field-id-1}
@@ -764,7 +771,7 @@
                    :model/Field {field-id-3 :id} {:name               "Field Test 3"
                                                   :semantic_type      :type/FK
                                                   :fk_target_field_id field-id-1}]
-      (let [raw-field #(simple-field-details (t2/select-one :model/Field :id field-id-3))
+      (let [raw-field #(simple-field-details (sync-field field-id-3))
             before    (raw-field)]
         (testing "before change"
           (is (= field-id-1 (:fk_target_field_id before))))
@@ -779,7 +786,7 @@
   (testing "Checking update of the fk_target_field_id along with an FK change"
     (mt/with-temp [:model/Field {field-id-1 :id} {:name "Field Test 1"}
                    :model/Field {field-id-2 :id} {:name "Field Test 2"}]
-      (let [raw-field #(simple-field-details (t2/select-one :model/Field :id field-id-2))
+      (let [raw-field #(simple-field-details (sync-field field-id-2))
             before    (raw-field)]
         (testing "before change"
           (is (= {:semantic_type nil, :fk_target_field_id nil}
@@ -799,7 +806,7 @@
                      :model/Field {field-id-2 :id} {:name               "Field Test 2"
                                                     :semantic_type      :type/FK
                                                     :fk_target_field_id field-id-1}]
-        (let [raw-field #(simple-field-details (t2/select-one :model/Field :id field-id-2))
+        (let [raw-field #(simple-field-details (sync-field field-id-2))
               before    (raw-field)]
           (testing "before change"
             (is (= {:semantic_type :type/FK, :fk_target_field_id field-id-1, :description nil}
@@ -1020,7 +1027,7 @@
         (is (isa? (keyword (:effective_type field)) :type/DateTime))
         (is (= "minutes" (-> field :settings :time_enabled))))
       (testing ":model/Field itself never gets a coercion strategy"
-        (is (nil? (t2/select-one-fn :coercion_strategy :model/Field :id (mt/id :venues :price))))))))
+        (is (nil? (:coercion_strategy (sync-field (mt/id :venues :price)))))))))
 
 (deftest field-values-requires-query-permission-test
   (testing "GET /api/field/:id/values requires query permission (view-data + create-queries)"

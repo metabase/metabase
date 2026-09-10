@@ -20,7 +20,6 @@
 (p/import-vars
  [metabase.lib-be.db
   field-user-settings-column
-  field-user-settings-column-where
   field-user-settings-flags
   field-user-settings-join
   user-settable-field-columns]

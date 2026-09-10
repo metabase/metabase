@@ -59,24 +59,6 @@
       :else
       [:coalesce settings-column field-column])))
 
-(mu/defn field-user-settings-column-where
-  "Honey SQL clause `[op column value]` on the user-settable Field column `column` as users see it (see
-  [[field-user-settings-column]]), as an `:or` of a branch on the Field's own column and one on the user settings'
-  so both stay index-eligible. Requires [[field-user-settings-join]]."
-  [column         :- (into [:enum] user-settable-field-columns)
-   field-alias    :- :keyword
-   settings-alias :- :keyword
-   op             :- :keyword
-   value          :- :any]
-  (let [field-column    (u/qualified-key field-alias column)
-        settings-column (u/qualified-key settings-alias column)
-        user-set?       (if-let [flag (field-user-settings-flags column)]
-                          [:= [:coalesce (u/qualified-key settings-alias flag) false] true]
-                          [:not= (u/qualified-key settings-alias (if (= column :coercion_strategy) :effective_type column)) nil])]
-    [:or
-     [:and [:not user-set?] [op field-column value]]
-     [:and user-set? [op settings-column value]]]))
-
 ;;; ----------------------------------------- Databases and Cards -----------------------------------------
 
 (mu/defn card-database-ids

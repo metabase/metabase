@@ -31,7 +31,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
-   [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.core :as xrays]
@@ -365,7 +364,7 @@
        :origin_id      (:id origin-field)
        :origin         origin-field
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (warehouse-schema/field-with-user-settings (:fk_target_field_id origin-field)) :table)})))
+       :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

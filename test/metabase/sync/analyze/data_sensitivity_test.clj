@@ -6,11 +6,20 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
-(defn- label [field-or-id]
+(defn- label
+  "The `data_sensitivity` a user sees: their own label when they set one, else the classifier's."
+  [field-or-id]
   (t2/select-one-fn :data_sensitivity :model/Field :id (u/the-id field-or-id)))
+
+(defn- sync-label
+  "The `data_sensitivity` the classifier itself wrote to `metabase_field`."
+  [field-or-id]
+  (warehouse-schema.db/with-sync-values
+    (t2/select-one-fn :data_sensitivity :model/Field :id (u/the-id field-or-id))))
 
 (defn- mirror-label [field-or-id]
   (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id (u/the-id field-or-id)))
@@ -117,19 +126,26 @@
                    :model/Field    notes  {:table_id (:id table) :name "notes" :base_type :type/Text}]
       (field-user-settings/upsert-user-settings ssn {:data_sensitivity :PUBLIC})
       (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
-      (is (nil? (label ssn)))
-      (is (nil? (label notes)))
+      (testing "before the scan only the user's label exists"
+        (is (nil? (sync-label ssn)))
+        (is (nil? (sync-label notes)))
+        (is (= :PUBLIC (label ssn)))
+        (is (= :PHI (label notes))))
       (testing "the scan still classifies both fields on the raw Field"
         (is (= {:fields-scanned 2 :fields-labeled 1 :fields-failed 0}
                (sync.data-sensitivity/scan-data-sensitivity! db))))
-      (is (= :PII (label ssn)))
-      (is (= :PUBLIC (mirror-label ssn)))
-      (is (= :PUBLIC (label notes)))
-      (is (= :PHI (mirror-label notes)))
+      (testing "the classifier wrote its own label, and the user's still wins on read"
+        (is (= :PII (sync-label ssn)))
+        (is (= :PUBLIC (mirror-label ssn)))
+        (is (= :PUBLIC (label ssn)))
+        (is (= :PUBLIC (sync-label notes)))
+        (is (= :PHI (mirror-label notes)))
+        (is (= :PHI (label notes))))
       (testing "a forced rescan does not revisit a categorized Field, mirror or not"
         (sync.data-sensitivity/scan-data-sensitivity! db :force? true)
-        (is (= :PII (label ssn)))
-        (is (= :PUBLIC (mirror-label ssn)))))))
+        (is (= :PII (sync-label ssn)))
+        (is (= :PUBLIC (mirror-label ssn)))
+        (is (= :PUBLIC (label ssn)))))))
 
 (deftest reset-data-sensitivity-test
   (mt/with-temp [:model/Database db       {}
@@ -148,19 +164,20 @@
     (sync.data-sensitivity/scan-data-sensitivity! db)
     (sync.data-sensitivity/scan-data-sensitivity! other-db)
     (is (= [:PII :PUBLIC :PUBLIC :PII :PUBLIC :PII]
-           (map label [ssn foo notes email total far])))
+           (map sync-label [ssn foo notes email total far])))
     (testing "a table scope clears only that table's classifier labels"
       (is (= 1 (sync.data-sensitivity/reset-data-sensitivity! orders)))
-      (is (nil? (label total)))
-      (is (= :PII (label ssn))))
+      (is (nil? (sync-label total)))
+      (is (= :PII (sync-label ssn))))
     (testing "a database scope clears categories and PUBLIC alike, including fields with a label-less mirror row"
       (is (= 3 (sync.data-sensitivity/reset-data-sensitivity! db)))
-      (is (= [nil nil nil] (map label [ssn foo email]))))
-    (testing "a label backed by the mirror is human-set; the raw classifier label is untouched by the reset"
-      (is (= :PUBLIC (label notes)))
-      (is (= :PHI (mirror-label notes))))
+      (is (= [nil nil nil] (map sync-label [ssn foo email]))))
+    (testing "a label backed by the mirror is human-set; the reset clears only the classifier's own label"
+      (is (= :PUBLIC (sync-label notes)))
+      (is (= :PHI (mirror-label notes)))
+      (is (= :PHI (label notes))))
     (testing "other databases are untouched"
-      (is (= :PII (label far))))
+      (is (= :PII (sync-label far))))
     (testing "a second reset finds nothing"
       (is (zero? (sync.data-sensitivity/reset-data-sensitivity! db))))))
 
@@ -171,18 +188,19 @@
                  :model/Field    notes {:table_id (:id table) :name "notes" :base_type :type/Text}]
     (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
     (sync.data-sensitivity/scan-data-sensitivity! db)
-    (is (= :PII (label ssn)))
+    (is (= :PII (sync-label ssn)))
     (with-redefs [analyze/infer-data-sensitivity (constantly :SEC_KEY)]
       (testing "a forced scan leaves a categorized field on its old label"
         (sync.data-sensitivity/scan-data-sensitivity! db :force? true)
-        (is (= :PII (label ssn))))
+        (is (= :PII (sync-label ssn))))
       (testing "a reset scan recomputes it under the current rules and reports the reset count"
         (is (= {:fields-scanned 1 :fields-labeled 1 :fields-failed 0 :fields-reset 1}
                (sync.data-sensitivity/scan-data-sensitivity! db :reset? true)))
-        (is (= :SEC_KEY (label ssn))))
-      (testing "the user's label in the mirror is untouched; the raw classifier label is unaffected by the reset"
-        (is (= :SEC_KEY (label notes)) "reclassified by the earlier forced scan, which also revisits PUBLIC fields")
-        (is (= :PHI (mirror-label notes)))))))
+        (is (= :SEC_KEY (sync-label ssn))))
+      (testing "the user's label in the mirror is untouched, and is still what readers see"
+        (is (= :SEC_KEY (sync-label notes)) "reclassified by the earlier forced scan, which also revisits PUBLIC fields")
+        (is (= :PHI (mirror-label notes)))
+        (is (= :PHI (label notes)))))))
 
 (deftest classification-failure-is-counted-and-retried-test
   (mt/with-temp [:model/Database db    {}

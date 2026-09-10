@@ -4,7 +4,6 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.core :as warehouse-schema]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -24,15 +23,9 @@
   (t2/select-one [:model/Database :id :engine :details :write_data_details :admin_details] :id database-id))
 
 (mu/defn json-field-names-with-unfolding-disabled
-  "The names of the JSON Fields of the Table with `table-id` that have JSON unfolding disabled, honoring the
-  user's `json_unfolding` setting."
+  "The names of the JSON Fields of the Table with `table-id` that have JSON unfolding disabled."
   [table-id :- ::lib.schema.id/table]
-  (into #{}
-        (keep :name)
-        (t2/query {:select    [:f.name]
-                   :from      [[(t2/table-name :model/Field) :f]]
-                   :left-join (warehouse-schema/field-user-settings-join :f :u)
-                   :where     [:and
-                               [:= :f.table_id table-id]
-                               [:= :f.base_type "type/JSON"]
-                               [:= (warehouse-schema/field-user-settings-column :json_unfolding :f :u) false]]})))
+  (t2/select-fn-set :name [:model/Field :name]
+                    :table_id table-id
+                    :base_type :type/JSON
+                    :json_unfolding false))

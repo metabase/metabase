@@ -7,7 +7,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2]))
 
 (mu/defn table
@@ -26,22 +25,14 @@
   (t2/select-one :model/Database :id database-id))
 
 (mu/defn fields
-  "The Fields with `field-ids` as users see them."
+  "The Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (warehouse-schema/fields-with-user-settings {:field-ids (set field-ids)}))
+  (t2/select :model/Field :id [:in field-ids]))
 
 (mu/defn pk-fields-for-table
-  "The active primary key Fields of the Table with `table-id`, as users see them; honors the user's
-  `semantic_type`."
+  "The active primary key Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field
-             {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
-              :from      [[(t2/table-name :model/Field) :f]]
-              :left-join (warehouse-schema/field-user-settings-join :f :u)
-              :where     [:and
-                          [:= :f.table_id table-id]
-                          [:= (warehouse-schema/field-user-settings-column :semantic_type :f :u) "type/PK"]
-                          :f.active]}))
+  (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true))
 
 (mu/defn fields-by-name
   "The Fields of the Table with `table-id` named one of `field-names`."
@@ -50,14 +41,9 @@
   (t2/select :model/Field :table_id table-id :name [:in field-names]))
 
 (mu/defn active-fields-in-position-order
-  "The active Fields of the Table with `table-id` as users see them, in position order."
+  "The active Fields of the Table with `table-id`, in position order."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field
-             {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
-              :from      [[(t2/table-name :model/Field) :f]]
-              :left-join (warehouse-schema/field-user-settings-join :f :u)
-              :where     [:and [:= :f.table_id table-id] :f.active]
-              :order-by  [[:f.position :asc]]}))
+  (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]}))
 
 (mu/defn field-requirements-by-name
   "A map of name to the name, required flag, and base type of the Fields of the Table with `table-id`."
@@ -66,17 +52,16 @@
 
 (mu/defn category-list-field-ids-by-name
   "The `:id` and `:lower_name` rows of the category list Fields of the Table with `table-id` whose name matches one
-  of `names`, case-insensitively; honors the user's `has_field_values`/`semantic_type`."
+  of `names`, case-insensitively."
   [table-id :- ::lib.schema.id/table
    names    :- [:sequential :string]]
-  (t2/query {:select    [:f.id [[:lower :f.name] :lower_name]]
-             :from      [[(t2/table-name :model/Field) :f]]
-             :left-join (warehouse-schema/field-user-settings-join :f :u)
-             :where     [:and
-                         [:= :f.table_id table-id]
-                         [:in [:lower :f.name] (map u/lower-case-en names)]
-                         [:in (warehouse-schema/field-user-settings-column :has_field_values :f :u) ["list" "auto-list"]]
-                         [:= (warehouse-schema/field-user-settings-column :semantic_type :f :u) "type/Category"]]}))
+  (t2/query {:select [:id [[:lower :name] :lower_name]]
+             :from   [(t2/table-name :model/Field)]
+             :where  [:and
+                      [:= :table_id table-id]
+                      [:in [:lower :name] (map u/lower-case-en names)]
+                      [:in :has_field_values ["list" "auto-list"]]
+                      [:= :semantic_type "type/Category"]]}))
 
 (mu/defn field-values-of-fields
   "The value lists of the FieldValues of the Fields with `field-ids`."
