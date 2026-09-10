@@ -1,16 +1,18 @@
 import { renderHook } from "@testing-library/react";
+import fetchMock from "fetch-mock";
 
+import { renderWithProviders, screen } from "__support__/ui";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { PLUGIN_API } from "metabase/api/client";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { reinitialize } from "metabase/plugins";
+import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-entity-data";
+import { createMockTransform } from "metabase-types/api/mocks";
 
-import { useInitData } from "./use-init-data-internal";
+import { useInitData, useInitDataInternal } from "./use-init-data-internal";
 
-// Keep the test scoped to the header wiring; the viz registry is irrelevant.
-// `registerVisualizations` is a named export, so the mock must expose it under
-// that name — a bare `jest.fn()` module leaves it `undefined`, and the
-// `_.once(registerVisualizations)` call then throws on `undefined.apply`.
+// Visualization registration is unrelated to these initialization tests.
 jest.mock("metabase/visualizations/register", () => ({
   registerVisualizations: jest.fn(),
 }));
@@ -75,5 +77,53 @@ describe("useInitData » data-app context", () => {
     ).toBeUndefined();
 
     unmount();
+  });
+});
+
+describe("useInitDataInternal with an initialized store", () => {
+  const transform = createMockTransform({ id: 42, name: "Existing transform" });
+
+  function TransformName() {
+    const { entity } = useEntityData(transform.id, "transform");
+    return <span>{entity?.name}</span>;
+  }
+
+  function InitializedProvider() {
+    useInitDataInternal({
+      reduxStore: fakeReduxStore(),
+      authConfig: { metabaseInstanceUrl: "http://localhost:3000" },
+    });
+    return <TransformName />;
+  }
+
+  beforeEach(() => {
+    reinitialize();
+    fetchMock.get("path:/api/transform/42", transform);
+  });
+
+  afterEach(() => {
+    reinitialize();
+  });
+
+  it("loads a child's transform on the first render with an initialized store", async () => {
+    const { unmount } = renderWithProviders(<InitializedProvider />);
+    expect(await screen.findByText(transform.name)).toBeInTheDocument();
+    unmount();
+  });
+
+  it("loads transforms after plugins are reset between provider mounts", async () => {
+    const { unmount: unmountFirst } = renderWithProviders(
+      <InitializedProvider />,
+    );
+    expect(await screen.findByText(transform.name)).toBeInTheDocument();
+    unmountFirst();
+
+    reinitialize();
+
+    const { unmount: unmountSecond } = renderWithProviders(
+      <InitializedProvider />,
+    );
+    expect(await screen.findByText(transform.name)).toBeInTheDocument();
+    unmountSecond();
   });
 });

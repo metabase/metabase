@@ -51,7 +51,6 @@ const registerVisualizationsOnce = _.once(registerVisualizations);
 const registerDashboardVisualizationsOnce = _.once(
   registerDashboardVisualizations,
 );
-const registerTransformQueryHooksOnce = _.once(registerTransformQueryHooks);
 
 // Install the SDK's request-client header strategy once; re-renders keep the
 // first-set client (matching the previous set-once-if-unset behaviour).
@@ -110,6 +109,10 @@ export const useInitDataInternal = ({
   isLocalHost,
 }: InitDataLoaderParameters) => {
   const dispatch = reduxStore.dispatch;
+
+  // An initialized store lets children render immediately. Install their hooks
+  // before that render, including after a plugin reset between provider mounts.
+  registerTransformQueryHooks();
 
   const isDataUninitialized = () =>
     reduxStore.getState().sdk.initStatus.status === "uninitialized";
@@ -170,6 +173,5 @@ export const useInitDataInternal = ({
   useMount(function registerVisualizations() {
     registerVisualizationsOnce();
     registerDashboardVisualizationsOnce();
-    registerTransformQueryHooksOnce();
   });
 };
