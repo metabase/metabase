@@ -85,11 +85,11 @@ The payload's [`source`](./sdk/api/ParameterChangeSource.html) is `initial-state
 
 On guest embeds and static embeds, your server passes parameter values in the `params` object of the JWT it signs. What Metabase does with them depends on the visibility you chose for each parameter in the embed wizard.
 
-| Wizard setting | Token sets it                                                | Page sets it (`initial-parameters`, widget, or URL)                                                           | Widget shows |
-| -------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------ |
-| **Disabled**   | Rejected: `You're not allowed to specify a value for :slug.` | Rejected, same error.                                                                                         | No           |
-| **Editable**   | Allowed. The widget disappears for that token.               | Allowed, unless the token also sets it: `You can't specify a value for :slug if it's already set in the JWT.` | Yes          |
-| **Locked**     | Required: `You must specify a value for :slug in the JWT.`   | Rejected: `You can only specify a value for :slug in the JWT.`                                                | No           |
+| Wizard setting | Token sets it                                               | Page sets it (`initial-parameters`, widget, or URL)                                                          | Widget shows |
+| -------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------ |
+| **Disabled**   | Rejected: `You're not allowed to specify a value for slug.` | Rejected, same error.                                                                                        | No           |
+| **Editable**   | Allowed. The widget disappears for that token.              | Allowed, unless the token also sets it: `You can't specify a value for slug if it's already set in the JWT.` | Yes          |
+| **Locked**     | Required: `You must specify a value for :slug in the JWT.`  | Rejected: `You can only specify a value for slug in the JWT.`                                                | No           |
 
 Other rules:
 

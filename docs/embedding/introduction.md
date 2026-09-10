@@ -55,7 +55,7 @@ All SSO options require a Pro or Enterprise plan.
 | [Custom visualizations](./custom-visualizations.md)                                       | ✅  | ❌    |
 | [Usage analytics](../usage-and-performance-tools/usage-analytics.md)                      | ✅  | ❌    |
 | Customize layouts and behavior with [plugins](./sdk/plugins.md)                           | ✅  | ❌    |
-| [Locked filters](./parameters.md#restrict-data-on-guest-embeds)\*\*\*              | ❌  | ✅    |
+| [Locked filters](./parameters.md#restrict-data-on-guest-embeds)\*\*\*                     | ❌  | ✅    |
 
 \* Each authentication method allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing) plans can disable data downloads.
 
@@ -112,7 +112,7 @@ To migrate a static embed to a guest embed:
 
 - Keep your server-side signing code. The token payload (`resource`, `params`, and `exp`) is the same.
 - Replace the iframe with a `<metabase-dashboard>` or `<metabase-question>` element, and pass the token in its `token` attribute. Check out [Creating a guest embed](./guest-embedding.md#creating-a-guest-embed).
-- If you use an AI coding agent, give it the [Static → guest embeds skill](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-static-embedding-to-guest-embedding-upgrade-skill-md), which walks through the migration. Check out [AI agent resources](./ai-agent-resources.md).
+- If you use an AI coding agent, give it the [Static → guest embeds skill](https://skillsmp.com/creators/metabase/agent-skills/skills-metabase-static-embedding-to-guest-embedding-upgrade), which walks through the migration. Check out [AI agent resources](./ai-agent-resources.md).
 
 ## Resources for AI agents
 

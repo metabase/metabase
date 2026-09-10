@@ -159,7 +159,7 @@ For SQL questions, pair `sqlParameters` with `onSqlParametersChange`:
 
 You must update your state from the callback. If you don't, the embed reverts to the values in your prop on the next render (which may wipe out edits people have made).
 
-The [callback's payload](./parameters-reference.md#change-payload) includes the applied values, each parameter's default, and a `source` that says why it fired. To clear one filter, pass `null` for its slug. Te reset the value to its default, omit the slug. See [Value formats by parameter type](./parameters-reference.md#value-formats-by-parameter-type).
+The [callback's payload](./parameters-reference.md#change-payload) includes the applied values, each parameter's default, and a `source` that says why it fired. To clear one filter, pass `null` for its slug. To reset the value to its default, omit the slug. See [Value formats by parameter type](./parameters-reference.md#value-formats-by-parameter-type).
 
 Push values as arrays, even single ones: `{ min_rating: [4] }`. Metabase stores dashboard values as arrays and hands them back that way.
 
@@ -246,7 +246,7 @@ If you'd rather keep Metabase's SQL widgets, the SDK's `InteractiveQuestion.SqlP
 
 ### Change a locked value from your page
 
-You may want to resign tokens one viewer is allowed more than one value, but not every value. Say an account manager covers three customers. The **Customer ID** parameter has to stay locked so the manager can't query a fourth customer, but they still need to switch between their three. A widget on your page picks the customer, your server signs a new token with that value in `params`, and you hand the token to the component. The embed re-queries with the new locked value.
+Sometimes one viewer is allowed more than one value, but not every value. Say an account manager covers three customers. The **Customer ID** parameter has to stay locked so the manager can't query a fourth customer, but they still need to switch between their three. A widget on your page picks the customer, your server signs a new token with that value in `params`, and you hand the token to the component. The embed re-queries with the new locked value.
 
 Because the parameter is locked, your server should check that the viewer is allowed the value before it signs the new token. If the endpoint signs whatever value it's sent, anyone can request a token for any value, and the parameter is basically an editable parameter that you've [hidden](#hide-parameter-widgets).
 
