@@ -1,7 +1,8 @@
 import type { SearchFilterComponent } from "metabase/common/search/types";
-import { definePluginSlot } from "metabase/plugin-slots";
 import type { State } from "metabase/redux/store";
 import type { CollectionEssentials } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 export type ModelFilterControlsProps = any;
 export type ModelFilterSettings = {

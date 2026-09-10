@@ -1,4 +1,4 @@
-import { definePluginSlot } from "metabase/plugin-slots";
+import { definePluginSlot } from "metabase/plugins/slot";
 
 import type { EmbedAuthManagerConstructor } from "./types/auth-manager";
 

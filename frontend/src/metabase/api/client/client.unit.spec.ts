@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { setupBasename } from "__support__/basename";
-import { resetPluginSlots } from "metabase/plugin-slots";
+import { resetPluginSlots } from "metabase/plugins/slot";
 import { setBasename } from "metabase/utils/basename";
 
 import { PLUGIN_API } from "../plugins";
