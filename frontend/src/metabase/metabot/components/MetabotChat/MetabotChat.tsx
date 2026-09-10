@@ -181,7 +181,7 @@ export const MetabotChat = ({
                           <Icon
                             name="bolt"
                             size={16}
-                            c="core-brand"
+                            c="icon-brand"
                             style={{ transform: "translateY(1px)" }}
                           />
                           <Box>{prompt}</Box>

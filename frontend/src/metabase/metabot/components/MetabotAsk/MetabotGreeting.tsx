@@ -150,7 +150,7 @@ export const MetabotGreeting = ({
                       <Icon
                         name="bolt"
                         size={16}
-                        c="core-brand"
+                        c="icon-brand"
                         style={{ marginTop: "4px" }}
                       />
                       <Text>{prompt}</Text>
