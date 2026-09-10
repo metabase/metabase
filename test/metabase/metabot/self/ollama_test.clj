@@ -119,6 +119,54 @@
                                                       :temperature 0}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; Reasoning replay
+;;; ──────────────────────────────────────────────────────────────────
+
+(def ^:private reasoning-turn
+  "One agent-loop turn: reasoning, the tool call it led to, the result, the answer."
+  [{:role :user :content "how many orders?"}
+   {:type :reasoning :id "r1" :text "I should "}
+   {:type :reasoning :id "r1" :text "count them"}
+   {:type :tool-input :id "c1" :function "run_query" :arguments {:sql "select 1"}}
+   {:type :tool-output :id "c1" :result {:output "42"}}
+   {:type :text :text "42 orders."}])
+
+(defn- replayed-assistant
+  "The assistant message from a `reasoning-turn` request — the one thinking should land on."
+  [opts]
+  (second (:messages (ollama/ollama-request-body (merge {:model "good-model"
+                                                         :input reasoning-turn}
+                                                        opts)))))
+
+(deftest ^:parallel request-body-replays-in-turn-reasoning-test
+  (testing "reasoning lands on the assistant message carrying the tool call it led to"
+    (is (= [{:role "user" :content "how many orders?"}
+            {:role       "assistant"
+             :content    ""
+             :reasoning  "I should count them"
+             :tool_calls [{:id       "c1"
+                           :type     "function"
+                           :function {:name "run_query" :arguments "{\"sql\":\"select 1\"}"}}]}
+            {:role "tool" :tool_call_id "c1" :content "42"}
+            {:role "assistant" :content "42 orders."}]
+           (:messages (ollama/ollama-request-body {:model "good-model" :input reasoning-turn})))))
+  (testing "renamed to `reasoning`, since Ollama ignores `reasoning_content` on the way in"
+    (is (not (contains? (replayed-assistant nil) :reasoning_content)))))
+
+(deftest ^:parallel request-body-replay-is-not-probe-gated-test
+  (testing "replay does not wait on the probe"
+    (doseq [[label creds] {"probed reasoning"     reasoning-credentials
+                           "probed non-reasoning" credentials
+                           "never probed"         nil}]
+      (testing label
+        (is (= "I should count them"
+               (:reasoning (replayed-assistant {:credentials creds}))))))))
+
+(deftest ^:parallel request-body-strips-reasoning-when-the-caller-wants-none-test
+  (testing "when the caller wants no thinking, thinking already in the input is dropped too"
+    (is (not (contains? (replayed-assistant {:reasoning? false}) :reasoning)))))
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; Credentials
 ;;; ──────────────────────────────────────────────────────────────────
 

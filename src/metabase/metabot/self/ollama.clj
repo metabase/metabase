@@ -6,6 +6,7 @@
 
   https://docs.ollama.com/api/openai-compatibility"
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
@@ -357,16 +358,50 @@
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 
+(defn- reasoning-message
+  "Builds the assistant message that sends one block of the model's thinking back to it.
+
+  When a model thinks and then calls a tool, we replay that thinking on the next request, so it
+  still knows why it made the call.
+
+  We put it under `:reasoning_content` because that is the key the shared Chat Completions code
+  knows how to merge. [[ollama-reasoning-spelling]] renames it before the request goes out.
+
+  This only ever replays thinking from the turn in progress. Thinking is thrown away before a turn
+  is saved, so it can never reach a later one. That is what makes this safe for any model: models
+  disagree about replaying *old* thinking, but not about the turn they are in the middle of."
+  [part]
+  {:role "assistant" :content "" :reasoning_content (:text part)})
+
+(defn- ollama-reasoning-spelling
+  "Renames replayed thinking to the field name Ollama actually reads.
+
+  Ollama sends thinking *to* us as either `reasoning` or `reasoning_content`, depending on its
+  version. But when we send thinking back, only `reasoning` works.
+
+  Get it wrong and Ollama quietly ignores the field: no error, replay just does nothing. Renaming
+  every message is safe, because [[reasoning-message]] is the only thing that sets this key."
+  [body]
+  (update body :messages #(mapv (fn [m] (set/rename-keys m {:reasoning_content :reasoning})) %)))
+
 (mu/defn ollama-request-body
   "The Chat Completions body, as [[chat-completions/request-body]] builds it plus three adapter-local
   adjustments: `max_tokens` is always sent (uncapped, a looping small model burns the whole context
-  window in one call), raised to the floors above where they apply, and `temperature` falls back to
-  [[default-temperature]]. They stay here rather than in the shared builder, which also serves Z.AI,
-  Mistral and OpenRouter."
-  [{:keys [max-tokens temperature schema tool_choice credentials] :as opts} :- core/LLMRequestOpts]
+  window in one call), raised to the floors above where they apply; `temperature` falls back to
+  [[default-temperature]]; and the model's thinking is replayed (see [[reasoning-message]]). They
+  stay here rather than in the shared builder, which also serves Z.AI, Mistral and OpenRouter.
+
+  We never tell Ollama whether to think, just as vLLM does not. Both run whatever model the operator
+  installed, so we take that model's own default and leave room for it with the floors above.
+  Ollama does have a `reasoning_effort` switch, but turning thinking off would only save tokens on
+  the operator's own hardware, and it errors on models that cannot think at all."
+  [{:keys [max-tokens temperature schema tool_choice credentials reasoning?] :as opts
+    :or   {reasoning? true}} :- core/LLMRequestOpts]
   (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
-    (assoc (chat-completions/request-body (cond-> opts
-                                            (nil? temperature) (assoc :temperature default-temperature)))
+    (assoc (ollama-reasoning-spelling
+            (chat-completions/request-body
+             (cond-> opts (nil? temperature) (assoc :temperature default-temperature))
+             (when reasoning? {:reasoning-part->message reasoning-message})))
            :max_tokens (cond-> (or max-tokens (llm/llm-max-tokens))
                          forced?                             (max forced-tool-call-token-floor)
                          (reasoning-connection? credentials) (max reasoning-model-token-floor)))))
