@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn active-visible-table-ids-by-name
@@ -17,7 +18,7 @@
                               [:= :db_id database-id]
                               ;; `lower()` cannot use an index on the name column, but it still beats fetching every
                               ;; row for the Database.
-                              [:in [:lower :name] (into #{} (map u/lower-case-en) table-names)]
+                              [:in [:lower :name] (into #{:from [(warehouse-schema-overlay/table-query)]} (map u/lower-case-en) table-names)]
                               ;; Mirrors the Table filter the MetadataProvider applies to an unfiltered fetch; an
                               ;; `:id` lookup does not apply it, so it has to happen here.
                               [:= :active true]

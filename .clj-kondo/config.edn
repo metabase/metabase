@@ -73,6 +73,7 @@
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
+  :metabase/table-or-field-query                             {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -890,7 +891,12 @@
    :name    app-db-namespaces}]
 
  :config-in-ns
- {test-namespaces
+ {metabase.app-db.custom-migrations
+  {:linters
+   ;; a migration reads the rows as they were when it ran; applying today's user settings would make it drift
+   {:metabase/table-or-field-query {:level :off}}}
+
+  test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}
@@ -898,6 +904,7 @@
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
     :metabase/t2-query-namespace                         {:level :off}
+    :metabase/table-or-field-query                       {:level :off}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
     :discouraged-var

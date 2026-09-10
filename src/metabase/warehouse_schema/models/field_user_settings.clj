@@ -5,6 +5,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -33,11 +34,11 @@
 
 (mu/defn upsert-user-settings
   "Record the user-settable Field columns present in `settings` as the user values of `field`, flagging the
-  [[warehouse-schema.db/field-user-settings-flags]] among them as set."
+  [[warehouse-schema-overlay/field-user-settings-flags]] among them as set."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/field]]
    settings     :- ::warehouse-schema.schema/field.update]
   (let [settings (u/select-keys-when settings :present field/field-user-settings)
-        flags    (into {} (keep (fn [[k flag]] (when (contains? settings k) [flag true]))) warehouse-schema.db/field-user-settings-flags)]
+        flags    (into {} (keep (fn [[k flag]] (when (contains? settings k) [flag true]))) warehouse-schema-overlay/field-user-settings-flags)]
     (when (seq settings)
       (when-not (warehouse-schema.db/field-user-settings-exist? id)
         (warehouse-schema.db/insert-field-user-settings! {:field_id id}))
@@ -47,13 +48,13 @@
   "Drop the user values of the Field columns `ks` for `field`, so its sync values show again. Used when sync
   invalidates them, e.g. a base type change voids a user-set coercion."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/field]]
-   ks           :- [:sequential (into [:enum] warehouse-schema.db/user-settable-field-columns)]]
+   ks           :- [:sequential (into [:enum] warehouse-schema-overlay/user-settable-field-columns)]]
   (when (warehouse-schema.db/field-user-settings-exist? id)
     (warehouse-schema.db/update-field-user-settings!
      id
      (into {} (mapcat (fn [k]
                         (cond-> [[k nil]]
-                          (warehouse-schema.db/field-user-settings-flags k) (conj [(warehouse-schema.db/field-user-settings-flags k) false]))))
+                          (warehouse-schema-overlay/field-user-settings-flags k) (conj [(warehouse-schema-overlay/field-user-settings-flags k) false]))))
            ks))))
 
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)

@@ -9,6 +9,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private PermissionsRow
@@ -474,7 +475,8 @@
   `skip-archived?`."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Table {:where [:and
+  (t2/select-pks-set :model/Table {:from [(warehouse-schema-overlay/table-query)]
+                                   :where [:and
                                            [:= :collection_id collection-id]
                                            [:= :is_published true]
                                            (when skip-archived? [:= :archived_at nil])]}))
@@ -487,7 +489,7 @@
 (mu/defn published-table-ids-in-collections
   "The IDs of the published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true))
+  (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn unpublish-tables-in-collections!
   "Unpublish the Tables in the Collections with `collection-ids` and detach them from their ::collections.schema/collection, returning

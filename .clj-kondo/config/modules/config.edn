@@ -111,7 +111,7 @@
            settings
            users
            util
-           warehouse-schema
+           warehouse-schema-overlay
            warehouses}
    :model-exports #{:model/Action}
    :model-imports #{:model/Card
@@ -151,7 +151,8 @@
            lib
            models
            permissions
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -240,7 +241,8 @@
            system
            task
            util
-           version}
+           version
+           warehouse-schema-overlay}
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Collection
@@ -250,7 +252,6 @@
                     :model/Database
                     :model/DatabaseRouter
                     :model/Document
-                    :model/Field
                     :model/ModerationReview
                     :model/PermissionsGroup
                     :model/Pulse
@@ -389,7 +390,8 @@
            task
            task-history
            tracing
-           util}
+           util
+           warehouse-schema-overlay}
    :model-exports #{:model/AuditLog}
    :model-imports #{:model/ApiKey
                     :model/Card
@@ -620,7 +622,8 @@
            premium-features
            remote-sync
            search
-           util}
+           util
+           warehouse-schema-overlay}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
                     :model/CollectionBookmark
@@ -829,7 +832,8 @@
            request
            sync
            util
-           warehouse-schema}
+           warehouse-schema
+           warehouse-schema-overlay}
    :model-imports #{:model/Database
                     :model/Dimension
                     :model/Field
@@ -865,7 +869,8 @@
            revisions
            search
            util
-           view-log}
+           view-log
+           warehouse-schema-overlay}
    :model-exports #{:model/Document}
    :model-imports #{:model/Card
                     :model/Collection
@@ -916,6 +921,7 @@
            tracing
            util
            warehouse-schema
+           warehouse-schema-overlay
            warehouses}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
@@ -1267,7 +1273,7 @@
            models
            settings
            util
-           warehouse-schema}
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Dimension
@@ -1288,7 +1294,8 @@
            lib-be
            settings
            types
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Field :model/Table}}
 
   llm
@@ -1315,7 +1322,8 @@
            sql-tools
            sync
            util
-           warehouse-schema}
+           warehouse-schema
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -1385,7 +1393,8 @@
            permissions
            remote-sync
            search
-           util}
+           util
+           warehouse-schema-overlay}
    :model-exports #{:model/Measure}
    :model-imports #{:model/Collection :model/Table :model/User}}
 
@@ -1450,6 +1459,7 @@
               transforms-base
               util
               warehouse-schema
+              warehouse-schema-overlay
               warehouses}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
@@ -1490,7 +1500,8 @@
            query-processor
            request
            server
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Field :model/Measure}}
 
   model-persistence
@@ -1533,7 +1544,8 @@
            classloader
            legacy-mbql
            lib
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1677,7 +1689,8 @@
            models
            query-processor
            util
-           warehouse-schema}
+           warehouse-schema
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Field
@@ -1704,7 +1717,7 @@
            tracing
            users
            util
-           warehouse-schema
+           warehouse-schema-overlay
            enterprise/advanced-permissions}
    :model-exports #{:model/ApplicationPermissionsRevision
                     :model/CollectionPermissionGraphRevision
@@ -1730,7 +1743,8 @@
            premium-features
            request
            settings
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DataPermissions
@@ -1908,7 +1922,8 @@
            sync
            util
            view-log
-           warehouse-schema}
+           warehouse-schema
+           warehouse-schema-overlay}
    :model-exports #{:model/Card
                     :model/ParameterCard
                     :model/Query
@@ -1951,7 +1966,8 @@
            request
            revisions
            search
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection
@@ -1972,7 +1988,8 @@
            permissions
            query-processor
            request
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Field :model/Table}}
 
   query-processor
@@ -2044,7 +2061,8 @@
            system
            tracing
            users
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -2211,6 +2229,7 @@
            remote-sync
            search
            util
+           warehouse-schema-overlay
            xrays}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/User}}
@@ -2379,7 +2398,8 @@
            lib
            settings
            sql-parsing
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Table}}
 
   sso
@@ -2450,6 +2470,7 @@
            tracing
            util
            warehouse-schema
+           warehouse-schema-overlay
            warehouses}
    :model-imports #{:model/Database
                     :model/Field
@@ -2597,7 +2618,8 @@
            task-history
            tracing
            transforms-base
-           util}
+           util
+           warehouse-schema-overlay}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2637,7 +2659,8 @@
            premium-features
            query-processor
            sync
-           util}
+           util
+           warehouse-schema-overlay}
    :friends #{transforms
               enterprise/transforms-python}}
 
@@ -2679,7 +2702,8 @@
            permissions
            system
            types
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
@@ -2722,7 +2746,8 @@
            settings
            sync
            util
-           warehouse-schema}
+           warehouse-schema
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -2744,7 +2769,7 @@
            settings
            task
            util
-           warehouse-schema}}
+           warehouse-schema-overlay}}
 
   user-key-value
   {:team "UX West"
@@ -2854,7 +2879,6 @@
   warehouse-schema
   {:team "UX West"
    :api  #{metabase.warehouse-schema.core
-           metabase.warehouse-schema.db
            metabase.warehouse-schema.field
            metabase.warehouse-schema.field-values.distinct-batch
            metabase.warehouse-schema.humanization
@@ -2884,6 +2908,7 @@
            search
            settings
            util
+           warehouse-schema-overlay
            warehouses}
    :model-exports #{:model/Dimension
                     :model/Field
@@ -2897,6 +2922,14 @@
                     :model/Segment
                     :model/Transform
                     :model/User}}
+
+  warehouse-schema-overlay
+  {:team "UX West"
+   :api  #{metabase.warehouse-schema-overlay.core}
+   :uses #{util}
+   :model-imports #{:model/Field
+                    :model/FieldUserSettings
+                    :model/Table}}
 
   warehouse-schema-rest
   {:team "UX West"
@@ -2920,6 +2953,7 @@
            upload
            util
            warehouse-schema
+           warehouse-schema-overlay
            xrays}
    :model-imports #{:model/Collection
                     :model/Database
@@ -2948,7 +2982,7 @@
            settings
            sync
            util
-           warehouse-schema}
+           warehouse-schema-overlay}
    :model-exports #{:model/Database}
    :model-imports #{:model/Card
                     :model/Field
@@ -2981,6 +3015,7 @@
            upload
            util
            warehouse-schema
+           warehouse-schema-overlay
            warehouses
            enterprise/advanced-permissions}
    :model-imports #{:model/Card
@@ -3011,7 +3046,8 @@
            segments
            settings
            util
-           warehouse-schema}
+           warehouse-schema
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3039,7 +3075,7 @@
            query-processor
            sync
            util
-           warehouse-schema}
+           warehouse-schema-overlay}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -3082,6 +3118,7 @@
            query-processor
            remote-sync
            util
+           warehouse-schema-overlay
            warehouses
            enterprise/impersonation}
    :model-imports #{:model/ApplicationPermissionsRevision
@@ -3153,6 +3190,7 @@
            users
            util
            warehouse-schema
+           warehouse-schema-overlay
            warehouses
            enterprise/serialization}
    :model-imports #{:model/AuditLog
@@ -3312,6 +3350,7 @@
            startup
            task
            util
+           warehouse-schema-overlay
            enterprise/embeddings
            enterprise/semantic-search}
    :model-imports #{:model/Card
@@ -3332,11 +3371,11 @@
            models
            permissions
            premium-features
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/AuditLog
                     :model/Collection
                     :model/Dimension
-                    :model/Field
                     :model/Table
                     :model/User}}
 
@@ -3399,12 +3438,12 @@
            task
            transforms
            transforms-base
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Document
-                    :model/Field
                     :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
@@ -3439,6 +3478,7 @@
            permissions
            premium-features
            util
+           warehouse-schema-overlay
            enterprise/sso}
    :model-imports #{:model/Card
                     :model/Collection
@@ -3471,6 +3511,7 @@
            search
            task
            util
+           warehouse-schema-overlay
            enterprise/semantic-search}
    :model-imports #{:model/Card
                     :model/Measure
@@ -3486,7 +3527,8 @@
            models
            permissions
            util
-           warehouse-schema}
+           warehouse-schema
+           warehouse-schema-overlay}
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table}}
@@ -3542,7 +3584,8 @@
            collections
            lib
            premium-features
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
   enterprise/mcp
@@ -3710,6 +3753,7 @@
            transforms
            util
            warehouse-schema
+           warehouse-schema-overlay
            enterprise/dependencies}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -3743,6 +3787,7 @@
            users
            util
            warehouse-schema
+           warehouse-schema-overlay
            warehouses
            enterprise/api}
    :model-exports #{:model/Sandbox}
@@ -3837,7 +3882,8 @@
            settings
            task
            tracing
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Collection
                     :model/Dashboard
                     :model/Table}}
@@ -3977,7 +4023,7 @@
            transforms
            transforms-base
            util
-           warehouse-schema}
+           warehouse-schema-overlay}
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table
@@ -4004,7 +4050,7 @@
            transforms
            transforms-base
            util
-           warehouse-schema}
+           warehouse-schema-overlay}
    :model-exports #{:model/PythonLibrary}
    :model-imports #{:model/Database
                     :model/Field
@@ -4020,7 +4066,8 @@
            permissions
            premium-features
            upload
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Database :model/Table}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

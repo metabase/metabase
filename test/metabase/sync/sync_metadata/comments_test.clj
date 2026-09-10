@@ -11,7 +11,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -65,7 +65,7 @@
                      {:name (mt/format-name "updated_desc"), :description "original comment"}}
                    (db->fields (mt/db))))
             (is (= "updated description"
-                   (:description (t2/select-one :model/Field :id field-id {:from [(warehouse-schema.db/field-query)]}))))))))))
+                   (:description (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))))))))))
 
 (tx/defdataset ^:private comment-after-sync
   [["comment_after_sync"

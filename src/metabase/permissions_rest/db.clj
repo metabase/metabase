@@ -6,6 +6,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- managed-groups-clause
@@ -154,4 +155,4 @@
 (mu/defn tables-for-databases
   "The id, Database id, and schema of the Tables of the Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]))
+  (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids] {:from [(warehouse-schema-overlay/table-query)]}))

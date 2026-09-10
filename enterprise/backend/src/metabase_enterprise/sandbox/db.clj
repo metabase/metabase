@@ -10,6 +10,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn sandbox
@@ -149,7 +150,7 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables-of-database
   "The `:id`, `:db_id`, and `:schema` of the Tables of the Database with `db-id`, restricted to `schema` when
@@ -158,7 +159,8 @@
    schema-only? :- :boolean
    schema       :- [:maybe :string]]
   (t2/select [:model/Table :id :db_id :schema]
-             {:where [:and
+             {:from [(warehouse-schema-overlay/table-query)]
+              :where [:and
                       [:= :db_id db-id]
                       (when schema-only?
                         [:= :schema schema])]}))
@@ -168,14 +170,14 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Database
                  :id ^:allow-subquery {:select [:t.db_id]
-                                       :from   [[(t2/table-name :model/Table) :t]]
+                                       :from      [(warehouse-schema-overlay/table-query {:alias :t})]
                                        :where  [:= :t.id table-id]}))
 
 (mu/defn fields-of-table-named
   "The `:id` and `:name` of the Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:set :string]]
-  (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names]))
+  (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn cards-by-id
   "A map of Card ID to the query, result metadata, and schema of the Cards with `card-ids`."

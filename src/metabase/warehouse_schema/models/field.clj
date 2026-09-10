@@ -15,6 +15,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -171,8 +172,8 @@
         enforce-effective-type-invariant)))
 
 (def field-user-settings
-  "Set of user-settable values for a Field; see [[warehouse-schema.db/user-settable-field-columns]]."
-  warehouse-schema.db/user-settable-field-columns)
+  "Set of user-settable values for a Field; see [[warehouse-schema-overlay/user-settable-field-columns]]."
+  warehouse-schema-overlay/user-settable-field-columns)
 
 (t2/define-before-update :model/Field
   [field]

@@ -16,6 +16,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (declare collection metabot-metrics-and-models-query root-collections-of-types)
@@ -431,7 +432,7 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn active-table-with-columns
   "The `columns` of the active Table with `table-id`, or nil."
@@ -442,27 +443,27 @@
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id))
+  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables-by-id
   "A map of ID to Table for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn->fn :id identity :model/Table :id [:in table-ids]))
+  (t2/select-fn->fn :id identity :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-summaries
   "The ID, names, schema, Database ID, and description of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids]))
+  (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-schema-rows
   "The ID, name, schema, and Database ID of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids]))
+  (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-curation-rows
   "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :is_published :data_layer :data_authority] :id [:in table-ids]))
+  (t2/select [:model/Table :id :is_published :data_layer :data_authority] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn visible-table-summaries
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -473,7 +474,7 @@
              :db_id database-id
              :id [:in table-ids]
              :active true
-             :visibility_type nil))
+             :visibility_type nil {:from [(warehouse-schema-overlay/table-query)]}))
 
 (defn- current-user-visible-table-clause
   "Honey SQL `{:where …}` (plus `:with` when the filter needs a CTE) restricting Tables to those visible to the
@@ -499,7 +500,7 @@
              :id [:in table-ids]
              :active true
              :visibility_type nil
-             (current-user-visible-table-clause)))
+             (assoc (current-user-visible-table-clause) :from [(warehouse-schema-overlay/table-query)])))
 
 (def ^:private max-visible-tables-to-consider
   "Cap on the number of visible Tables fetched for fuzzy table-name matching."
@@ -514,7 +515,9 @@
                        :db_id database-id
                        :active true
                        :visibility_type nil
-                       (cond-> (assoc (current-user-visible-table-clause) :limit max-visible-tables-to-consider)
+                       (cond-> (assoc (current-user-visible-table-clause)
+                                      :from  [(warehouse-schema-overlay/table-query)]
+                                      :limit max-visible-tables-to-consider)
                          (seq excluded-table-ids)
                          (update :where (fn [where-clause]
                                           (if where-clause
@@ -531,7 +534,10 @@
              :db_id database-id
              :active true
              :visibility_type nil
-             (assoc (current-user-visible-table-clause) :order-by [[:view_count :desc]] :limit limit)))
+             (assoc (current-user-visible-table-clause)
+                    :from     [(warehouse-schema-overlay/table-query)]
+                    :order-by [[:view_count :desc]]
+                    :limit    limit)))
 
 (mu/defn table-names
   "Up to `limit` IDs, names, and schemas of the active, unhidden Tables in the Database with `database-id`."
@@ -541,7 +547,8 @@
              :db_id database-id
              :active true
              :visibility_type nil
-             {:limit limit}))
+             {:from [(warehouse-schema-overlay/table-query)]
+              :limit limit}))
 
 (mu/defn active-tables-for-database
   "The presentable columns of the active Tables in the Database with `database-id`, ordered by schema and name."
@@ -549,7 +556,8 @@
   (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
              :db_id database-id
              :active true
-             {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]}))
+             {:from [(warehouse-schema-overlay/table-query)]
+              :order-by [[:%lower.schema :asc] [:%lower.name :asc]]}))
 
 (mu/defn active-tables-in-schema
   "The presentable columns of the active Tables in `schema` of the Database with `database-id`, ordered by name."
@@ -559,7 +567,8 @@
              :db_id database-id
              :schema schema
              :active true
-             {:order-by [[:%lower.name :asc]]}))
+             {:from [(warehouse-schema-overlay/table-query)]
+              :order-by [[:%lower.name :asc]]}))
 
 (mu/defn active-schemas-for-database
   "The distinct `:schema` rows of the active Tables in the Database with `database-id`, ordered by schema."
@@ -609,7 +618,7 @@
    table :- :string]
   (t2/select-one :model/QueryTable
                  {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-                  :from   [[(t2/table-name :model/Table) :t]]
+                  :from      [(warehouse-schema-overlay/table-query {:alias :t})]
                   :where  [:and
                            [:= :t.db_id db-id]
                            (table-match-clause {:schema schema :table table})]}))
@@ -624,7 +633,7 @@
                            [:table :string]]]]
   (t2/select :model/QueryTable
              {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-              :from   [[(t2/table-name :model/Table) :t]]
+              :from      [(warehouse-schema-overlay/table-query {:alias :t})]
               :where  [:and
                        [:= :t.db_id db-id]
                        (into [:or] (map table-match-clause) tables)]}))
@@ -634,17 +643,17 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id))
+  (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-table-ids
   "A map of Field ID to Table ID for `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids]))
+  (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 

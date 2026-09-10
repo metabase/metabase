@@ -8,6 +8,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private order-by-name {:order-by [[:%lower.name :asc]]})
@@ -75,14 +76,14 @@
   "The Database id of the Table of the Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one-fn :db_id :model/Table {:select [:t.db_id]
-                                         :from [[:metabase_table :t]]
+                                         :from [(warehouse-schema-overlay/table-query {:alias :t})]
                                          :join [[:segment :m] [:= :t.id :m.table_id]]
                                          :where [:= :m.id segment-id]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id))
+  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn card
   "The Card with `card-id`, or nil."

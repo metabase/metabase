@@ -6,7 +6,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -14,7 +14,7 @@
   "The `data_sensitivity` a user sees: their own label when they set one, else the classifier's."
   [field-or-id]
   (t2/select-one-fn :data_sensitivity :model/Field :id (u/the-id field-or-id)
-                    {:from [(warehouse-schema.db/field-query {:alias :f})]}))
+                    {:from [(warehouse-schema-overlay/field-query {:alias :f})]}))
 
 (defn- sync-label
   "The `data_sensitivity` the classifier itself wrote to `metabase_field`."

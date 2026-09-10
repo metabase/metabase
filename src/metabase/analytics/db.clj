@@ -9,6 +9,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn first-user-date-joined
@@ -49,7 +50,8 @@
 (mu/defn published-table-count-in-collections
   "The number of published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/count :model/Table {:where [:and
+  (t2/count :model/Table {:from [(warehouse-schema-overlay/table-query)]
+                          :where [:and
                                   [:= :is_published true]
                                   [:in :collection_id collection-ids]]}))
 
@@ -161,7 +163,7 @@
   "The Database id and schema of the Tables of the non-internal Databases."
   []
   (t2/query {:select [:t.db_id :t.schema]
-             :from   [[(t2/table-name :model/Table) :t]]
+             :from      [(warehouse-schema-overlay/table-query {:alias :t})]
              :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
              :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
 
@@ -169,8 +171,8 @@
   "The Table id of the Fields of the non-internal Databases."
   []
   (t2/query {:select [:f.table_id]
-             :from [[(t2/table-name :model/Field) :f]]
-             :join [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]
+             :from      [(warehouse-schema-overlay/field-query {:alias :f})]
+             :join [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :f.table_id]
                     [(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
              :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
 
@@ -373,7 +375,7 @@
 (mu/defn upload-table-exists?
   "Whether an uploaded Table exists."
   []
-  (t2/exists? :model/Table :is_upload true))
+  (t2/exists? :model/Table :is_upload true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn snippet-collection-exists?
   "Whether a snippet Collection exists."

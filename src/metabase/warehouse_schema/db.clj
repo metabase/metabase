@@ -10,6 +10,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
@@ -17,101 +18,10 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
-;;; ---------------------------------------- Fields as users see them ----------------------------------------
-
-(def user-settable-field-columns
-  "The Field columns users can set. Their user values live in `metabase_field_user_settings`, never in `metabase_field`."
-  #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy
-    :fk_target_field_id :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity})
-
-(def field-user-settings-flags
-  "The user-settable Field columns that are nullable on the Field and also written by sync, mapped to the
-  `metabase_field_user_settings` flag recording that the user made the call: for these a user's NULL beats the sync
-  value."
-  {:description        :description_set
-   :semantic_type      :semantic_type_set
-   :fk_target_field_id :fk_target_field_id_set})
-
-(mu/defn- field-user-settings-join
-  "The `:left-join` entries joining `metabase_field_user_settings` as `settings-alias` to the Field table aliased
-  `field-alias`; see [[field-user-settings-column]]."
-  [field-alias    :- :keyword
-   settings-alias :- :keyword]
-  [[(t2/table-name :model/FieldUserSettings) settings-alias]
-   [:= (u/qualified-key settings-alias :field_id) (u/qualified-key field-alias :id)]])
-
-(mu/defn- field-user-settings-column
-  "Honey SQL expression for the user-settable Field column `column` as users see it: the value in
-  `metabase_field_user_settings` (aliased `settings-alias`) when the user set it, else the Field's (aliased
-  `field-alias`). A user's NULL counts as set for the [[field-user-settings-flags]] when their flag is true, and for
-  `coercion_strategy` whenever the user set `effective_type`. Requires [[field-user-settings-join]]."
-  [column         :- (into [:enum] user-settable-field-columns)
-   field-alias    :- :keyword
-   settings-alias :- :keyword]
-  (let [field-column    (u/qualified-key field-alias column)
-        settings-column (u/qualified-key settings-alias column)
-        flag            (field-user-settings-flags column)]
-    (cond
-      flag
-      [:case [:= (u/qualified-key settings-alias flag) true] settings-column :else field-column]
-
-      (= column :coercion_strategy)
-      [:case [:not= (u/qualified-key settings-alias :effective_type) nil] settings-column :else field-column]
-
-      ;; a CASE on the boolean gives every app DB a value its JDBC driver reads back as a boolean or a number
-      (= column :json_unfolding)
-      [:case [:= [:coalesce settings-column field-column] true] true :else false]
-
-      :else
-      [:coalesce settings-column field-column])))
-
-(def ^:private sync-owned-field-columns
-  "The columns of `metabase_field` users cannot set."
-  (sort (remove user-settable-field-columns (mu/map-schema-keys ::warehouse-schema.schema/field))))
-
-(mu/defn field-query :- [:tuple :map :keyword]
-  "The source a query over Fields reads from, for its `:from` or a join: a subquery over `metabase_field` left joined
-  to `metabase_field_user_settings`, projecting every Field column with the user-settable ones replaced by the value
-  users see.
-
-    (t2/select :model/Field :table_id table-id {:from [(field-query)]})
-
-  By default it stands in under the Field table's own name, so kv-args, column subsets and `:order-by` keep working
-  untouched. Pass `:alias` when the query joins something else and has to qualify its columns:
-
-    (t2/select :model/Field {:from  [(field-query {:alias :f})]
-                             :join  [[:metabase_table :t] [:= :f.table_id :t.id]]
-                             :where [:= :t.db_id database-id]})
-
-  Every query over Fields reads from this -- selecting `metabase_field` directly shows sync's values rather than the
-  user's. `{:user-settings? false}` asks for sync's own values instead, which sync needs where it diffs the columns
-  it last wrote against the warehouse.
-
-  Application DBs flatten the subquery, so a predicate on a sync-owned column still reaches that column's index."
-  ([]
-   (field-query nil))
-
-  ([{:keys [alias user-settings?]
-     :or   {alias          (t2/table-name :model/Field)
-            user-settings? true}} :- [:maybe [:map
-                                              [:alias          {:optional true} :keyword]
-                                              [:user-settings? {:optional true} :boolean]]]]
-   [(if user-settings?
-      ^:allow-subquery
-      {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
-                        (map (fn [column] [(field-user-settings-column column :f :u) column]))
-                        (sort user-settable-field-columns))
-       :from      [[(t2/table-name :model/Field) :f]]
-       :left-join (field-user-settings-join :f :u)}
-      ^:allow-subquery
-      {:select [:f.*]
-       :from   [[(t2/table-name :model/Field) :f]]})
-    alias]))
-
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(field-query)]}))
+  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-in-path
   "The ::warehouse-schema.schema/field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
@@ -123,45 +33,46 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(field-query)]}))
+  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn fields-by-id
   "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids] {:from [(field-query)]}))
+  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-table-id-rows
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
+  (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-table-id
   "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
+  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-id-by-name
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    parent-id  :- [:maybe ms/PositiveInt]
    field-name :- :string]
-  (t2/select-one-pk :model/Field :name field-name :parent_id parent-id :table_id table-id))
+  (t2/select-one-pk :model/Field :name field-name :parent_id parent-id :table_id table-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-values-eligibility
   "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id
-                 {:from [(field-query)]}))
+                 {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-ids-for-table
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field {:where [:= :table_id table-id]}))
+  (t2/select-pks-set :model/Field {:from [(warehouse-schema-overlay/field-query)]
+                                   :where [:= :table_id table-id]}))
 
 (mu/defn active-field-ids-for-table
   "The IDs of the active Fields of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :active true))
+  (t2/select-pks-set :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query)]}))
 
 (defn- field-order-order-by
   [field-order]
@@ -182,7 +93,7 @@
   or `:alphabetical`)."
   [table-id    :- ::lib.schema.id/table
    field-order :- [:enum :custom :smart :database :alphabetical]]
-  (t2/select [:model/Field :id] :table_id table-id {:from     [(field-query)]
+  (t2/select [:model/Field :id] :table_id table-id {:from     [(warehouse-schema-overlay/field-query)]
                                                     :order-by (field-order-order-by field-order)}))
 
 (mu/defn active-fields-for-tables
@@ -192,7 +103,8 @@
              :active true
              :table_id [:in table-ids]
              :visibility_type [:not= "retired"]
-             {:from [(field-query)], :order-by field-order-rule}))
+             {:from [(warehouse-schema-overlay/field-query)]
+              :order-by field-order-rule}))
 
 (mu/defn pk-field-ids-by-table
   "A map of ::warehouse-schema.schema/table ID to the ID of its visible primary key ::warehouse-schema.schema/field for `table-ids`."
@@ -201,7 +113,7 @@
                     :table_id [:in table-ids]
                     :semantic_type (app-db/isa :type/PK)
                     :visibility_type [:not-in ["sensitive" "retired"]]
-                    {:from [(field-query {:alias :f})]}))
+                    {:from [(warehouse-schema-overlay/field-query {:alias :f})]}))
 
 (mu/defn update-field!
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
@@ -230,24 +142,27 @@
   Uploads use it to leave those Fields alone when appending re-derives display names from the CSV header."
   [table-id :- ::lib.schema.id/table
    names    :- [:set :string]]
-  (t2/select-fn-set (comp u/lower-case-en :name)
-                    :model/Field
-                    {:select    [:f.name]
-                     :from      [[(t2/table-name :model/Field) :f]]
-                     :left-join (field-user-settings-join :f :u)
-                     :where     [:and
-                                 [:= :f.table_id table-id]
-                                 [:in [:lower :f.name] names]
-                                 [:not= :u.display_name nil]]}))
+  (set
+   (t2/select-fn-set (comp u/lower-case-en :name)
+                     :model/Field
+                     ;; both sides on purpose: this asks whether the user set a display name at all
+                     {:select    [:f.name]
+                      :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
+                      :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
+                      :where     [:and
+                                  [:= :f.table_id table-id]
+                                  [:in [:lower :f.name] names]
+                                  [:not= :u.display_name nil]]})))
 
 (mu/defn field-names-reducible
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/field, plus its user-set display
   name from FieldUserSettings (if any) as `:user_display_name`."
   []
   (t2/reducible-query
+   ;; sync's display name and the user's side by side, so humanization can tell them apart
    {:select    [:f.id :f.name :f.display_name [:u.display_name :user_display_name]]
-    :from      [[(t2/table-name :model/Field) :f]]
-    :left-join (field-user-settings-join :f :u)}))
+    :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
+    :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]}))
 
 (mu/defn set-field-display-name!
   "Set the display name of the ::warehouse-schema.schema/field with `id`, returning the number updated."
@@ -272,7 +187,7 @@
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id` that have a FieldUserSettings row."
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-set :field_id :model/FieldUserSettings
-                    {:join  [[:metabase_field :f] [:= :f.id :field_id]]
+                    {:join  [(warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :field_id]]
                      :where [:= :f.table_id table-id]}))
 
 (def ^:private field-user-settings-update-keys
@@ -320,7 +235,8 @@
   "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/FieldValues :field_id :values :field.table_id]
-             {:join  [[:metabase_field :field] [:= :metabase_fieldvalues.field_id :field.id]]
+             {:join  [(warehouse-schema-overlay/field-query {:alias :field})
+                      [:= :metabase_fieldvalues.field_id :field.id]]
               :where [:and
                       [:in :field.table_id table-ids]
                       [:= :field.visibility_type "normal"]
@@ -397,29 +313,29 @@
 (mu/defn table
   "The ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-by-name
   "The ::warehouse-schema.schema/table named `table-name` in `schema` of the ::warehouses.schema/database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
-  (t2/select-one :model/Table :name table-name :db_id database-id :schema schema))
+  (t2/select-one :model/Table :name table-name :db_id database-id :schema schema {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-name-and-schema
   "The name and schema of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :name :schema] :id table-id))
+  (t2/select-one [:model/Table :name :schema] :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-database-id
   "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table table-id))
+  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn update-table!
   "Apply `changes` to the ::warehouse-schema.schema/table with `table-id`, returning the number updated."
@@ -462,7 +378,7 @@
 (mu/defn table-names-reducible
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/table."
   []
-  (t2/reducible-select [:model/Table :id :name :display_name]))
+  (t2/reducible-select [:model/Table :id :name :display_name] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn set-table-display-name!
   "Set the display name of the ::warehouse-schema.schema/table with `id`, returning the number updated."

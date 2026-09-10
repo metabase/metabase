@@ -7,7 +7,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.warehouse-schema.core :as warehouse-schema]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
@@ -376,7 +376,7 @@
     (mt/with-temp [:model/Field {field-id :id :as field} {:display_name "Sync" :description "sync" :semantic_type :type/Category}]
       (field-user-settings/upsert-user-settings field {:display_name "User" :description nil})
       (is (=? {:display_name "User" :description nil :semantic_type :type/Category}
-              (t2/select-one :model/Field :id field-id {:from [(warehouse-schema/field-query)]})))
+              (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]})))
       (testing "and metabase_field itself still holds sync's values"
         (is (=? {:display_name "Sync" :description "sync" :semantic_type :type/Category}
                 (t2/select-one :model/Field :id field-id))))))
@@ -384,14 +384,14 @@
     (mt/with-temp [:model/Field {field-id :id :as field} {:display_name "Sync"}]
       (field-user-settings/upsert-user-settings field {:display_name "User"})
       (is (= "Sync" (:display_name (t2/select-one :model/Field :id field-id
-                                                  {:from [(warehouse-schema/field-query {:user-settings? false})]}))))))
+                                                  {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))))))
   (testing "a coercion the user cleared reads as cleared, following their effective_type"
     (mt/with-temp [:model/Field {field-id :id :as field} {:base_type      :type/Text
                                                           :effective_type :type/Number
                                                           :coercion_strategy :Coercion/String->Number}]
       (field-user-settings/upsert-user-settings field {:effective_type :type/Text :coercion_strategy nil})
       (is (=? {:effective_type :type/Text :coercion_strategy nil}
-              (t2/select-one :model/Field :id field-id {:from [(warehouse-schema/field-query)]}))))))
+              (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))))))
 
 (deftest deactivating-fk-target-unsets-user-fk-test
   (testing "retiring a Field drops the user-set FKs pointing at it so the sync values show again"
