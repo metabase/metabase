@@ -2,6 +2,7 @@
   "Lifecycle for the permission group and resource collection owned by a data app."
   (:require
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.permissions :as data-app.permissions]
    [metabase.collections.core :as collection]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]))
@@ -21,31 +22,6 @@
   (or (some->> (:permission_group_id app)
                (data-apps.db/permission-group))
       (create-permission-group! app)))
-
-(defn- database-level-permission?
-  "Whether `rows` (one `[group db perm-type]` entry of an [[perms/index-database-permissions]]
-   index) is exactly a database-wide permission of `value`, with no table-level rows."
-  [rows value]
-  (and (= 1 (count rows))
-       (let [{:keys [table_id perm_value]} (first rows)]
-         (and (nil? table_id)
-              (= perm_value value)))))
-
-(defn- block-view-data!
-  "Block the app group's view-data at the database level on every database, so it grants no data access
-   of its own — a viewer reaches an app's data only through access they already hold in another group.
-   `view-data :blocked` cascades `download-results`/`transforms` to `:no`; we reassert whenever any of
-   that has drifted, so a manual grant can't survive a sync."
-  [group]
-  (let [database-ids (data-apps.db/non-router-database-ids)
-        permissions  (or (perms/index-database-permissions [(:id group)] database-ids) {})
-        db-level?    (fn [database-id perm-type value]
-                       (database-level-permission? (get permissions [(:id group) database-id perm-type]) value))]
-    (doseq [database-id database-ids
-            :when (not (and (db-level? database-id :perms/view-data :blocked)
-                            (db-level? database-id :perms/download-results :no)
-                            (db-level? database-id :perms/transforms :no)))]
-      (perms/set-database-permission! permissions group database-id :perms/view-data :blocked))))
 
 (defn- restore-trashed-collection!
   "Bring `collection` back out of the trash, with everything archived alongside it.
@@ -82,7 +58,7 @@
 
 (defn- apply-resource-permissions!
   [group collection]
-  (block-view-data! group)
+  (data-app.permissions/reconcile-data-app-permissions! (data-apps.db/non-router-database-ids))
   (apply-collection-permissions! group collection))
 
 (defn- create-resource-collection! [app]

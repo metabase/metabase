@@ -189,8 +189,7 @@
     (let [blocked-group-ids   (advanced-permissions.db/blocked-group-ids group-ids)
           impersonation-group-ids (advanced-permissions.db/impersonated-group-ids group-ids)
           sandbox-group-ids   (advanced-permissions.db/sandboxed-group-ids group-ids)
-          ;; A data-app group grants no data access of its own (it is `:blocked` on every existing
-          ;; database), so a newly-added database must default to `:blocked` for it too, not `:unrestricted`.
+          ;; New databases have no legacy grants to preserve. App groups must start blocked.
           blocked-groups      (into (or blocked-group-ids #{})
                                     (concat impersonation-group-ids sandbox-group-ids (perms/data-app-group-ids)))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
@@ -207,9 +206,14 @@
           sandbox-group-ids (into #{}
                                   (map :group_id)
                                   (advanced-permissions.db/sandboxed-group-ids-for-database db-id group-ids))
-          ;; A data-app group is `:blocked` at the database level; a newly-synced table must default to
-          ;; `:blocked` for it too, or the `:unrestricted` default would write a table row overriding that block.
-          blocked-groups    (-> (or blocked-group-ids #{})
-                                (into sandbox-group-ids)
-                                (into (perms/data-app-group-ids)))]
-      (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
+          app-group-ids     (set (perms/data-app-group-ids))
+          app-view-data     (when (some app-group-ids group-ids)
+                              (perms/data-app-view-data-permission-level db-id))
+          blocked-groups    (into (or blocked-group-ids #{}) sandbox-group-ids)]
+      ;; A new table must not introduce a block into an app group's database-wide legacy permission.
+      (into {} (map (fn [group-id]
+                      [group-id (cond
+                                  (app-group-ids group-id) app-view-data
+                                  (blocked-groups group-id) :blocked
+                                  :else :unrestricted)]))
+            group-ids))))

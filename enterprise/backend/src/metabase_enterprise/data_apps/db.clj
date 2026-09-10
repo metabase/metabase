@@ -140,6 +140,21 @@
   []
   (t2/select-pks-set :model/PermissionsGroup :is_data_app_group true))
 
+(defn databases-with-legacy-permissions
+  "Database IDs with legacy View Data permissions from groups not owned by apps."
+  [database-ids]
+  (if (seq database-ids)
+    (t2/select-fn-set :db_id :model/DataPermissions
+                      {:select [:p.db_id]
+                       :from [[:data_permissions :p]]
+                       :join [[:permissions_group :g] [:= :g.id :p.group_id]]
+                       :where [:and
+                               [:in :p.db_id database-ids]
+                               [:= :p.perm_type "perms/view-data"]
+                               [:= :p.perm_value "legacy-no-self-service"]
+                               [:= :g.is_data_app_group false]]})
+    #{}))
+
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."
   [collection-id]

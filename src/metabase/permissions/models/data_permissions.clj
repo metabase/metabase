@@ -1270,10 +1270,15 @@
   [_db-id group-ids]
   (zipmap group-ids (repeat :unrestricted)))
 
+(defenterprise data-app-view-data-permission-level
+  "The app-group View Data level to preserve when a new table is created."
+  metabase-enterprise.data-apps.permissions
+  [_database-id]
+  :blocked)
+
 (defenterprise data-app-group-ids
   "Ids of the permission groups Metabase owns and manages itself (data-app groups). They grant no data
-   access of their own — kept `view-data :blocked` on every database and table — and SSO group sync must
-   never touch their membership. OSS has none."
+   access beyond ordinary groups' permissions. SSO group sync must never touch their membership. OSS has none."
   metabase-enterprise.data-apps.models.data-app
   []
   #{})

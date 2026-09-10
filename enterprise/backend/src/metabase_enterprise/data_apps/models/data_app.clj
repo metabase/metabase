@@ -89,7 +89,7 @@
 
 (defenterprise data-app-group-ids
   "The data-app permission groups (those flagged `is_data_app_group`). SSO group sync must never touch
-   their membership, and newly-synced tables default to `:blocked` for them."
+   their membership."
   :feature :none
   []
   (data-apps.db/data-app-group-ids))
