@@ -15,6 +15,18 @@ import type {
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
+export const MIN_TIMELINE_EVENTS_CARD_SIZE = { width: 240, height: 200 };
+
+export const hasSupportedTimelineEventsSize = ({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}): boolean =>
+  width >= MIN_TIMELINE_EVENTS_CARD_SIZE.width &&
+  height >= MIN_TIMELINE_EVENTS_CARD_SIZE.height;
+
 // "timeline_events.enabled" is a question-only setting, so dashcard settings can't override it
 export const shouldDashCardDisplayTimelineEvents = (
   dashcard: DashboardCard,

@@ -213,17 +213,6 @@ export function DashCardVisualization({
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
-  const {
-    isEnabled: isTimelineEventsEnabled,
-    timelineEvents,
-    timelineEventsVisibility,
-    selectedTimelineEventIds,
-    onOpenTimelines,
-    onSelectTimelineEvents,
-    onDeselectTimelineEvents,
-    onTimelineEventsShown,
-  } = useDashCardTimelineEvents(dashcard);
-
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),
   );
@@ -501,6 +490,17 @@ export function DashCardVisualization({
       // Bigger buffer space to account for varying chart padding
       bufferSpace: 100,
     });
+
+  const {
+    isEnabled: isTimelineEventsEnabled,
+    timelineEvents,
+    timelineEventsVisibility,
+    selectedTimelineEventIds,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    onTimelineEventsShown,
+  } = useDashCardTimelineEvents(dashcard, containerRef);
 
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
