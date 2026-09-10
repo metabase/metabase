@@ -28,6 +28,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "isGuest",
     "jwtProviderUri",
     "pluginsConfig",
+    "guestEmbedProvider",
     "guestEmbedProviderUri",
     "allowedCustomVisualizations",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],

@@ -443,10 +443,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         this._iframe.setAttribute("data-iframe-loaded", "true");
       }
 
-      const { guestEmbedProviderUri, token } = this.properties;
+      const { guestEmbedProvider, guestEmbedProviderUri, token } = this.properties;
 
       // No static token provided — fetch initial guest token first, then send settings
-      if (guestEmbedProviderUri && !token) {
+      if ((guestEmbedProviderUri || guestEmbedProvider) && !token) {
         await this._fetchInitialGuestToken();
       } else {
         this._updateSettings(this.properties);
@@ -592,21 +592,20 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   private async _callGuestTokenProvider(
     expiredToken?: string,
   ): Promise<string> {
-    const { guestEmbedProviderUri, componentName, dashboardId, questionId } =
-      this.properties;
+    const {
+      guestEmbedProvider,
+      guestEmbedProviderUri,
+      componentName,
+      dashboardId,
+      questionId
+    } = this.properties;
 
-    if (!guestEmbedProviderUri) {
+    if (!guestEmbedProviderUri && !guestEmbedProvider ) {
       throw MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
         url: String(guestEmbedProviderUri),
-        message: "Guest embed provider URI is not configured.",
+        message: "Guest embed provider URI or provider is not configured.",
       });
     }
-
-    const guestEmbedProviderUriFullPath = new URL(
-      guestEmbedProviderUri,
-      window.location.origin,
-    );
-    guestEmbedProviderUriFullPath.searchParams.set("response", "json");
 
     const entityType =
       componentName === "metabase-dashboard" ? "dashboard" : "question";
@@ -629,6 +628,22 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       this.getAttribute("custom-context"),
     );
     const customContext = objectCustomContext ?? stringCustomContext;
+
+    if (guestEmbedProvider) {
+      return guestEmbedProvider({
+        entityType,
+        entityId: resourceId,
+        customContext,
+        expiredToken,
+      }).then(res => res.jwt);
+    }
+
+    const guestEmbedProviderUriFullPath = new URL(
+      guestEmbedProviderUri as string,
+      window.location.origin,
+    );
+    guestEmbedProviderUriFullPath.searchParams.set("response", "json");
+
     const body = {
       entityType,
       entityId: resourceId,
@@ -644,7 +659,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     if (!response.ok) {
       throw MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
-        url: guestEmbedProviderUri,
+        url: guestEmbedProviderUri as string,
         status: String(response.status),
       });
     }
