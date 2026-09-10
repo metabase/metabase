@@ -25,10 +25,10 @@ Use `regexExtract` to create custom columns with shorter, more readable labels f
 
 Let's say that you have web data with a lot of different URLs, and you want to map each URL to a shorter, more readable campaign name.
 
-| URL                                                   | Campaign Name |
-| ----------------------------------------------------- | ------------- |
-| https://www.metabase.com/docs/?utm_campaign=alice     | alice         |
-| https://www.metabase.com/learn/?utm_campaign=neo      | neo           |
+| URL                                                  | Campaign Name |
+| ---------------------------------------------------- | ------------- |
+| https://www.metabase.com/docs?utm_campaign=alice     | alice         |
+| https://www.metabase.com/learn?utm_campaign=neo      | neo           |
 | https://www.metabase.com/glossary?utm_campaign=candy | candy         |
 
 You can create a custom column **Campaign Name** with the expression:

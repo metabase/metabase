@@ -54,8 +54,6 @@ categories:
                 url: "questions/visualizations/visualizing-results"
               - name: "Box plot"
                 url: "questions/visualizations/box-plot"
-              - name: "Combo chart"
-                url: "questions/visualizations/line-bar-and-area-charts#combo-charts"
               - name: "Details chart"
                 url: "questions/visualizations/detail"
               - name: "Funnel chart"
