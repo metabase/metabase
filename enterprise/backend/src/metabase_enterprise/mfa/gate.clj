@@ -16,6 +16,7 @@
    [better-cond.core :as b]
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.settings :as mfa.settings]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.settings :as channel.settings]))
 
 (set! *warn-on-reflection* true)
@@ -29,7 +30,7 @@
 
 (defn- challenged-provider?
   [provider]
-  (isa? provider :metabase.auth-identity.provider/supports-mfa))
+  (auth-identity/isa? provider :metabase.auth-identity.provider/supports-mfa))
 
 (def ^:private session-suppressed-providers
   #{:provider/emailed-secret-password-reset})

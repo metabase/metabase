@@ -3,8 +3,8 @@
 import {
   createMockStore,
   mockFetchTableMetadata,
-  mockGetMetadataUnfiltered,
   mockRunRtkEndpoint,
+  mockSelectMetadataProviderUnfiltered,
   resetTestState,
   stagesOf,
 } from "./setup";
@@ -50,7 +50,7 @@ describe("resolveDatasetQuery", () => {
       payload: 1,
     });
 
-    expect(mockGetMetadataUnfiltered).toHaveBeenCalledWith({});
+    expect(mockSelectMetadataProviderUnfiltered).toHaveBeenCalledWith({}, 1);
 
     expect(datasetQuery).toMatchObject({
       "lib/type": "mbql/query",

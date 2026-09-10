@@ -6,7 +6,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
@@ -203,7 +202,7 @@
 
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  [card-type :- ::queries.schema/card-type
+  [card-type :- ::queries.schema/card.type
    & {:keys [collection-scope xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
@@ -217,20 +216,20 @@
 
 (mu/defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
-  [card-type :- ::queries.schema/card-type]
+  [card-type :- ::queries.schema/card.type]
   (seq (source-query-cards card-type :xform (take 1))))
 
 (mu/defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [card-type :- ::queries.schema/card-type
+  [card-type :- ::queries.schema/card.type
    & {:keys [include-fields?]}]
   (schema.table/cards->virtual-tables (source-query-cards card-type)
                                       :include-fields? include-fields?))
 
 (mu/defn- saved-cards-virtual-db-metadata
-  [card-type :- ::queries.schema/card-type
+  [card-type :- ::queries.schema/card.type
    & {:keys [include-tables? include-fields?]}]
   (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
@@ -305,10 +304,8 @@
         filter-by-data-access? (not (or include-editable-data-model?
                                         exclude-uneditable-details?
                                         filter-on-router-database-id))
-        user-info {:user-id api/*current-user-id*
-                   :is-superuser? (mi/superuser?)
-                   :is-data-analyst? api/*is-data-analyst?*}
-        dbs (warehouses-rest.db/databases-where user-info filter-by-data-access? filter-on-router-database-id
+        dbs (warehouses-rest.db/databases-where api/*current-user-id* (mi/superuser?) api/*is-data-analyst?*
+                                                filter-by-data-access? filter-on-router-database-id
                                                 include-analytics?)
         ;; everything below walks the list one database at a time
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
@@ -504,52 +501,6 @@
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))
 
-(def ^:private database-usage-models
-  "List of models that are used to report usage on a database."
-  [:question :dataset :metric :segment :transform]) ; TODO -- rename `:dataset` to `:model`?
-
-(defmulti ^:private database-usage-query
-  "Query that will returns the number of `model` that use the database with id `database-id`.
-  The query must returns a scalar, and the method could return `nil` in case no query is available."
-  {:arglists '([model database-id])}
-  (fn [model _database-id] (keyword model)))
-
-(defn- card-query
-  [db-id model type-str]
-  ^:allow-subquery {:select [[:%count.* model]]
-                    :from   [:report_card]
-                    :where  [:and
-                             [:= :database_id db-id]
-                             [:= :type type-str]]})
-
-(defmethod database-usage-query :question
-  [_ db-id]
-  (card-query db-id :question "question"))
-
-(defmethod database-usage-query :dataset
-  [_ db-id]
-  (card-query db-id :dataset "model"))
-
-(defmethod database-usage-query :metric
-  [_ db-id]
-  (card-query db-id :metric "metric"))
-
-(defmethod database-usage-query :segment
-  [_ db-id]
-  ^:allow-subquery {:select [[:%count.* :segment]]
-                    :from   [:segment]
-                    :where  [:in :table_id ^:allow-subquery {:select [:id]
-                                                             :from   [:metabase_table]
-                                                             :where  [:= :db_id db-id]}]})
-
-(defmethod database-usage-query :transform
-  [_ db-id]
-  ^:allow-subquery {:select [[:%count.* :transform]]
-                    :from   [:transform]
-                    :where  [:or
-                             [:= :source_database_id db-id]
-                             [:= :target_db_id db-id]]})
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -564,12 +515,7 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-database-exists id)
-  (first (mdb/query
-          {:select [:*]
-           :from   (for [model database-usage-models
-                         :let [query (database-usage-query model id)]
-                         :when query]
-                     [query model])})))
+  (first (warehouses-rest.db/database-usage-counts id)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 

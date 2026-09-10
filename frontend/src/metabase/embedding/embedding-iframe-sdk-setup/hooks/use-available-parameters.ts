@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useLatest, usePrevious } from "react-use";
+import { usePrevious } from "react-use";
 
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
@@ -25,11 +25,6 @@ export const useAvailableParameters = ({
   const initialAvailableParametersRef = useRef<Parameter[] | null>(null);
   const prevResourceId = usePrevious(resource?.id);
 
-  // This prevents `availableParameters` from being updated on every metadata change,
-  // which would cause unnecessary re-renders in the component using this hook.
-  // See [PublicOrEmbeddedQuestion.tsx] for reference.
-  const metadataRef = useLatest(metadata);
-
   // Extract parameters from the loaded dashboard/card
   const availableParameters = useMemo((): Parameter[] => {
     if (!resource) {
@@ -43,16 +38,15 @@ export const useAvailableParameters = ({
         dashboard.dashcards,
         dashboard.parameters,
         dashboard.param_fields,
-        metadata,
       );
     } else if (experience === "chart") {
       // Unjustified type cast. FIXME
       const card = resource as Card;
-      return getCardUiParameters(card, metadataRef.current) || [];
+      return getCardUiParameters(card, metadata) || [];
     }
 
     return [];
-  }, [resource, experience, metadata, metadataRef]);
+  }, [resource, experience, metadata]);
 
   // Reset initial parameters when the resource changes
   if (resource?.id !== prevResourceId) {

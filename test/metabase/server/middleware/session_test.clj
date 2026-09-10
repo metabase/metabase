@@ -7,6 +7,7 @@
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?*]]
    [metabase.app-db.core :as mdb]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
@@ -870,7 +871,7 @@
                  (let [session (generate-session-and-get-user-info! user-id auth-identity-id)]
                    (is (some? session)))))))))
       (mt/when-ee-evailable
-       (let [supports-mfa (isa? provider :metabase.auth-identity.provider/supports-mfa)]
+       (let [supports-mfa (auth-identity/isa? provider :metabase.auth-identity.provider/supports-mfa)]
          (testing "With mfa is being enforced, methods that support mfa don't work"
            (mt/with-premium-features
             #{:multi-factor-auth}
@@ -913,7 +914,7 @@
 (deftest mfa-providers-list-test
   (testing "Ldap and password are the only ones that support mfa"
     (is (= #{:provider/password :provider/ldap}
-           (descendants :metabase.auth-identity.provider/supports-mfa))))
+           (auth-identity/descendants :metabase.auth-identity.provider/supports-mfa))))
   (testing "and the hard-coded list the session query is compiled from says the same thing"
     (is (= #{:provider/password :provider/ldap}
            @#'server.db/mfa-supported-methods))))
