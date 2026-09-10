@@ -19,12 +19,12 @@
   (:require
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -182,7 +182,7 @@
     query
     (when-let [resolved (resolve-effective-database query)]
       (let [database-id (:database resolved)]
-        (when (or (not (t2/exists? :model/Database :id database-id))
+        (when (or (not (metabot.db/database-exists? database-id))
                   (and (readable? audited? :model/Database database-id)
                        (query-runnable? audited? resolved)))
           resolved)))))
