@@ -437,7 +437,8 @@
                 :is-group-manager? false,
                 :user-locale nil
                 :is-data-analyst? false
-                :auth-provider nil}
+                :auth-provider nil
+                :session-key-hash test-session-key-hashed}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
         (finally
           (t2/delete! :model/Session :id test-session-id))))))
@@ -454,7 +455,8 @@
                 :is-group-manager? false,
                 :user-locale nil
                 :is-data-analyst? false
-                :auth-provider nil}
+                :auth-provider nil
+                :session-key-hash test-session-key-hashed}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
         (finally
           (t2/delete! :model/Session :id test-session-id))))))
@@ -507,7 +509,8 @@
                   :is-group-manager? false,
                   :user-locale nil
                   :is-data-analyst? false
-                  :auth-provider nil}
+                  :auth-provider nil
+                  :session-key-hash test-session-key-hashed}
                  (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
           (finally
             (t2/delete! :model/Session :id test-session-id)))
