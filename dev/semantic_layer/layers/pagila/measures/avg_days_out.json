@@ -1,2 +1,0 @@
-{"name": "Average days out", "table_id": "{{t:rentals}}", "description": "Average number of days a film was out before it came back.",
- "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:rentals}}", "aggregation": [["avg", {}, ["field", {}, "{{f:rentals.rental_days}}"]]]}]}}

@@ -1,2 +1,0 @@
-{"name": "Late returns", "table_id": "{{t:rentals}}", "description": "Rentals returned after their allowed period.",
- "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:rentals}}", "aggregation": [["count-where", {}, ["=", {}, ["field", {}, "{{f:rentals.is_late}}"], true]]]}]}}

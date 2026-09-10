@@ -1,3 +1,5 @@
 .scratch/
 .scratch_*
 __pycache__/
+layers/*
+!layers/_example/

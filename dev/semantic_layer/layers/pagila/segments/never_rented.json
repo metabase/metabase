@@ -1,2 +1,0 @@
-{"name": "Never rented", "table_id": "{{t:films}}", "description": "Films in the catalogue that have never been rented.",
- "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:films}}", "filters": [["=", {}, ["field", {}, "{{f:films.rental_count}}"], 0]]}]}}

@@ -1,2 +1,0 @@
-{"name": "Still out", "table_id": "{{t:rentals}}", "description": "Rentals that have not been returned.",
- "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:rentals}}", "filters": [["is-null", {}, ["field", {}, "{{f:rentals.return_date}}"]]]}]}}

@@ -1,2 +1,0 @@
-{"name": "Average rental rate", "table_id": "{{t:films}}", "description": "Average list price to rent a film.",
- "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:films}}", "aggregation": [["avg", {}, ["field", {}, "{{f:films.rental_rate}}"]]]}]}}

@@ -1,2 +1,0 @@
-{"name": "Payments", "table_id": "{{t:payments}}", "description": "Number of payments taken.",
- "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:payments}}", "aggregation": [["count", {}]]}]}}

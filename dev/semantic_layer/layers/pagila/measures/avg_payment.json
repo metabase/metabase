@@ -1,2 +1,0 @@
-{"name": "Average payment", "table_id": "{{t:payments}}", "description": "Average amount per payment.",
- "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:payments}}", "aggregation": [["avg", {}, ["field", {}, "{{f:payments.amount}}"]]]}]}}

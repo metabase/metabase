@@ -1,2 +1,0 @@
-{"name": "Average lifetime spend", "table_id": "{{t:customers}}", "description": "Average total spent per customer.",
- "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:customers}}", "aggregation": [["avg", {}, ["field", {}, "{{f:customers.total_spent}}"]]]}]}}

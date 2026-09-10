@@ -1,2 +1,0 @@
-{"name": "Frequent renters", "table_id": "{{t:customers}}", "description": "Customers with 30 or more rentals (roughly the top third).",
- "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:customers}}", "filters": [[">=", {}, ["field", {}, "{{f:customers.rental_count}}"], 30]]}]}}

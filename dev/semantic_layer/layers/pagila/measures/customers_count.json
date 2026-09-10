@@ -1,2 +1,0 @@
-{"name": "Customers", "table_id": "{{t:customers}}", "description": "Number of customers.",
- "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:customers}}", "aggregation": [["count", {}]]}]}}
