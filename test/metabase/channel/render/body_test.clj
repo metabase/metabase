@@ -400,8 +400,14 @@
       [{:min 0 :max 100}]
       [{:min 0 :max 100 :color nil}]
       [{:min 0 :max 100} {:min 0 :max 100 :color segment-color}]))
+  (testing "a numeric string is colored by its number, like in the app"
+    (is (str/includes? (scalar-style (scalar-results [{:min 0 :max 100 :color segment-color}] "42")) segment-color))
+    (is (not (str/includes? (scalar-style (scalar-results [{:min 0 :max 10 :color segment-color}] "42")) segment-color))))
   (testing "a non-numeric value is never colored"
-    (is (not (str/includes? (scalar-style (scalar-results [{:min 0 :color segment-color}] "foo")) segment-color))))
+    (are [value] (not (str/includes? (scalar-style (scalar-results [{:min 0 :color segment-color}] value)) segment-color))
+      "foo"
+      ""
+      nil))
   (testing "a bound that can't resolve fails the render"
     (are [segments] (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
                                       (scalar-style (scalar-results segments)))
