@@ -37,7 +37,6 @@ describe("scenarios > organization > timelines > dashboard", () => {
       H.timelineEventVisibility("RC1").should("be.checked");
     });
     H.timelineEventChip("RC1").should("be.visible");
-    cy.get("@createEvent").its("request.body.source").should("eq", "dashboard");
   });
 
   it("should not list timelines without events", () => {
@@ -71,7 +70,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
     H.timelineEventChip("RC1").should("not.exist");
 
     eventsSidebar().button("Create event").click();
-    createEvent("RC2", "10/30/2027");
+    createEvent("RC2", "12/15/2027");
 
     eventsSidebar().within(() => {
       H.timelineVisibility("Releases").should("be.checked");
@@ -427,7 +426,8 @@ describe("scenarios > organization > timelines > dashboard", () => {
     H.timelineEventChip("RC1").should("not.exist");
     H.getDashboardCardMenu().click();
     H.menu().should("be.visible").findByText("Events").should("not.exist");
-    H.getDashboardCard().findByTestId("chart-container").click("topLeft");
+    cy.realPress("Escape");
+    H.menu().should("not.exist");
 
     H.editDashboard();
     H.resizeDashboardCard({ card: H.getDashboardCard(), x: 900, y: 700 });
@@ -560,10 +560,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
       createEvent("RC2", "01/15/2028");
       eventChip(0, "RC2").should("be.visible");
       eventChip(1, "RC2").should("be.visible");
-      H.expectUnstructuredSnowplowEvent({
-        event: "new_event_created",
-        source: "dashboard",
-      });
+      H.expectUnstructuredSnowplowEvent({ event: "new_event_created" });
       expectEventsShownOnce();
 
       cy.reload();

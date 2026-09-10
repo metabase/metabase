@@ -102,14 +102,23 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
       });
 
       cy.wait("@previewQuery");
+      // the preview iframe reloads on interaction, so only assert what is rendered
       H.getIframeBody().within(() => {
         if (resource === "question") {
           expectChartWithoutEvents({ requestAlias: "previewTimelineRequests" });
         } else {
-          expectReadOnlyDashboardEvents();
-          expectDashboardMenuWithoutEvents("previewTimelineRequests");
+          H.echartsContainer()
+            .findByText("Created At: Month")
+            .should("be.visible");
+          H.timelineEventChip("RC1").should("be.visible");
+          cy.findAllByTestId("timeline-event-chip").should("have.length", 1);
+          cy.findByTestId("dashboard-events-sidebar").should("not.exist");
+          cy.findByRole("button", { name: "Events", exact: true }).should(
+            "not.exist",
+          );
         }
       });
+      cy.get("@previewTimelineRequests.all").should("have.length", 0);
     });
   });
 });
@@ -138,6 +147,7 @@ function expectSharedDashboardEvents() {
     });
   });
   expectReadOnlyDashboardEvents();
+  expectDashboardMenuWithoutEvents();
   cy.get("@getTimelines.all").should("have.length", 0);
 }
 
