@@ -597,6 +597,29 @@
                            [:field (meta/id :checkins :date) {:base-type :type/Date}]
                            [:absolute-datetime #t "2014-05-08" :day]]})))))))
 
+(deftest ^:parallel optimize-untyped-expression-ref-not-optimized-test
+  (testing (str "`temporal-ref?` reads the column type off the ref's own options, and resolve stamps "
+                "none on an `expression` ref, so the literal-side form is left unoptimized on an "
+                "untyped ref and rewritten on a typed one. Pass 2.95 in agent-lib repair hoists the "
+                "bucket onto the ref, which is what makes the two agree again (BOT-2095).")
+    (testing "untyped ref, bucket on the literal: left alone"
+      (let [clause [:> [:expression "date"] [:absolute-datetime #t "2025-06-01" :month]]]
+        (is (= clause (optimize-filters clause)))))
+    (testing "typed ref, same clause: rewritten into a range"
+      (is (= [:>= [:expression "date" {:base-type :type/DateTime}] [:absolute-datetime #t "2025-07-01" :default]]
+             (optimize-filters [:> [:expression "date" {:base-type :type/DateTime}]
+                                [:absolute-datetime #t "2025-06-01" :month]]))))
+    ;; The hoisted form Pass 2.95 emits is `<ref bucketed by month> > "2025-06-01"`, and by the time
+    ;; this middleware runs `wrap-value-literals` has turned that bare string into a `:day` literal
+    ;; WITHOUT copying the ref's unit onto it - so the units disagree and nothing is optimized. Write
+    ;; the literal as `:default` here instead and the clause *is* optimized: a different fact, pinned
+    ;; under this test's name. Nor is this half about typing - the typed ref behaves identically.
+    (testing "bucket on the ref: left alone whether or not the ref carries a type"
+      (doseq [opts [{:temporal-unit :month}
+                    {:base-type :type/DateTime, :temporal-unit :month}]]
+        (let [clause [:> [:expression "date" opts] [:absolute-datetime #t "2025-06-01" :day]]]
+          (is (= clause (optimize-filters clause)) (pr-str opts)))))))
+
 (deftest ^:parallel do-not-change-unit-of-relative-datetime-to-default-test
   (testing "Never change the unit of a relative datetime to :default. That would not make any sense."
     (is (= {:database (meta/id)

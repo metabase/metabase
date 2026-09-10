@@ -915,28 +915,70 @@
 ;;;
 ;;; Why: the frontend opens a Metabot question from a `/question#` hash holding *legacy* MBQL
 ;;; (`metabase.metabot.agent.links/->legacy-mbql`). JSON turns the unit into a string, and the legacy
-;;; schema cannot decode it back for `absolute-datetime` / `during`, so the page 400s. A
+;;; schema cannot decode it back for `absolute-datetime` / `during`, so the clause never survives the
+;;; hop -- the last paragraph below says what that costs, which depends on where the clause sits. A
 ;;; `temporal-unit` on a ref decodes fine (`legacy-json-round-trip-temporal-filters-test`).
 ;;;
 ;;; Only inside a stage's `filters`, where `optimize-temporal-filters` reads the unit from either
-;;; side. In `count-where`, `case` or a join condition the bucket would truncate the column instead,
-;;; so those stay as written. So do a unit the literal cannot carry (`hour` on a date,
+;;; side. Not in `aggregation:` (`count-where`, `sum-where`, `share`) or a join's `conditions:`: that
+;;; middleware walks `:filters` and `:expressions` and nothing else, so there the bucket really would
+;;; truncate the column --
+;;;
+;;;   ["count-where", {}, [">", {}, <col>, ["absolute-datetime", {}, "2027-06-15", "month"]]]
+;;;     as written: SUM(CASE WHEN created_at                    > date_trunc(month, ...) ...)
+;;;     hoisted:    SUM(CASE WHEN date_trunc(month, created_at) > date_trunc(month, ...) ...)
+;;;
+;;; -- a different answer. Stage-level `expressions:` is out of scope only because this pass keys off
+;;; `filters`; the middleware does cover `expressions`, and a `case` nested inside a filter is
+;;; already rewritten. Also left as written: a unit the literal cannot carry (`hour` on a date,
 ;;; `month-of-year`), a ref that already has a `temporal-unit`, `between` bounds with different
 ;;; buckets, and an unparseable literal (resolve's `:invalid-temporal-literal` check still needs to
 ;;; see it). The third example drops the wrapper anyway: `day` on a date adds nothing, and the bound
 ;;; ends up as the query builder writes it.
 ;;;
-;;; Both forms then select the same rows, with one exception: `!=` / `not-in` on a `:type/Date`
-;;; column bucketed by `day`. Only the hoisted form reaches `date-field-with-day-bucketing?`, so the
-;;; literal-side form becomes a negated range (`d < x OR d >= x+1`, dropping NULL rows) while the
-;;; hoisted one stays an `!=` and gets the `IS NULL` disjunct `sql.qp` adds to every other `!=`
-;;; (`correct-null-behaviour`). Hoisting is the only option here, not just the better one: every
-;;; `!=` shape that survives the JSON hop compiles to `<> ... OR ... IS NULL`, and the one shape
-;;; that does not is the 400 above. Pinned by `optimize-date-not-equals-null-semantics-test`.
+;;; Both forms then select the same rows wherever `optimize-temporal-filters` can read the unit off
+;;; either side -- a `field` ref, or an `expression` ref that carries a type. Two exceptions.
+;;;
+;;; (1) `!=` / `not-in` on a `:type/Date` column bucketed by `day`. Only the hoisted form reaches
+;;; `date-field-with-day-bucketing?`, so the literal-side form becomes a negated range
+;;; (`d < x OR d >= x+1`, dropping NULL rows) while the hoisted one stays an `!=` and gets the
+;;; `IS NULL` disjunct `sql.qp` adds to every other `!=` (`correct-null-behaviour`). Hoisting is the
+;;; only option here, not just the better one: every `!=` shape that survives the JSON hop compiles
+;;; to `<> ... OR ... IS NULL`, and the one shape that does not is the broken one above. Pinned by
+;;; `optimize-date-not-equals-null-semantics-test`. Note this divergence is about *which rows*, so
+;;; inside a `case` it changes a computed value rather than a filter -- worth knowing before widening
+;;; the pass past `filters`.
+;;;
+;;; (2) An `expression` ref. The middleware optimises neither form, for two unrelated reasons: as
+;;; written, resolve stamps no `base-type` on the ref and `temporal-ref?` reads the type from the
+;;; ref's own options, so the clause is not optimizable at all; hoisted, `wrap-value-literals` copies
+;;; a ref's unit onto the bare literal only for `field` refs (`type-info-from-col` sits behind a
+;;; `clause-of-type? :field` guard), so a `month`-bucketed `expression` ref meets a `day` literal and
+;;; the units disagree.
+;;;
+;;;   [">", {}, ["expression", {}, "Ship"], ["absolute-datetime", {}, "2025-06-01", "month"]]
+;;;     as written: WHERE <Ship>                    > date_trunc(month, '2025-06-01')   -- 18744 rows
+;;;     hoisted:    WHERE date_trunc(month, <Ship>) > '2025-06-01'                      -- 18709 rows
+;;;
+;;; The hoisted count is what both forms give once the ref is typed, so the rewrite makes an untyped
+;;; `expression` ref behave like a typed one -- a real change, and the right one. `=` and `<=`
+;;; diverge the same way; `<` and `>=` happen to agree. Both asymmetries are QP gaps (`temporal-ref?`
+;;; should consult `lib/type-of`; `wrap-value-literals` should read a unit off any ref); worth their
+;;; own issue. Pinned by `optimize-untyped-expression-ref-not-optimized-test`.
 ;;;
 ;;; Column types are unknown here, so a bucket can land on a text column;
 ;;; [[assert-temporal-buckets-on-temporal-columns!]] rejects that after resolve. Runs after Pass 2.9,
 ;;; which creates new `filters`. Idempotent: the output matches neither predicate.
+;;;
+;;; None of the survivors above is merely unrewritten -- each is broken. The legacy unit enums have no
+;;; `:decode/normalize`, so after the JSON hop the clause never normalizes back. What that costs
+;;; depends on where it sits. In `filters`, `expressions` and join `conditions:` the dev and CI
+;;; question page 400s, while a production JAR -- where `normalize-or-throw`'s `mu/defn` output check
+;;; is compiled out -- lets `lib/query`'s `clean-stage-schema-errors` delete the clause, and the
+;;; question silently answers something else. In `aggregation:` the legacy schema is permissive
+;;; enough that even dev never throws: the `count-where` above is deleted in both, silently. Pass 6's
+;;; [[unencodable-temporal-clause-error!]] catches every one and raises a retryable `:agent-error?`,
+;;; except the unparseable literal, which resolve names more precisely.
 ;;; ============================================================
 
 (def ^:private date-truncation-units
@@ -2646,6 +2688,81 @@
                :error        :numeric-field-id
                :clause       &match})))))
 
+;;; ----- E7: a temporal clause the `/question#` hash cannot carry ---------------------
+
+(defn- deferred-to-invalid-temporal-literal?
+  "True for an `absolute-datetime` whose literal cannot parse.
+
+  Resolve's own check names the literal (`:invalid-temporal-literal`,
+  [[metabase.agent-lib.representations.resolve/validate-temporal-literals]]), which is the more
+  useful complaint, so E7 stays quiet and lets that one fire. It does not inspect `during` or
+  `value`, which is why only this head gets the carve-out.
+
+  The carve-out is per *clause*, not per query: a query holding an unparseable literal alongside any
+  other offender still reports that other offender, because E7 throws on the first match anywhere.
+  Deferring the whole query instead would be a worse trade -- `validate-temporal-literals` only walks
+  `absolute-datetime` clauses and bare `between` bounds, so an unparseable literal in a position it
+  does not inspect would silence E7 with nothing to replace it, reopening the silent-deletion hole
+  Pass 2.95 and this detector exist to close. The model fixes what E7 named and sees the literal
+  complaint on the next turn."
+  [node]
+  (let [literal (nth node 2)]
+    (and (string? literal)
+         (not (parseable-temporal-literal? literal)))))
+
+(defn- unencodable-temporal-clause-error!
+  "Detect an `absolute-datetime`, `during` or unit-carrying `value` clause that Pass 2.95 could not
+  rewrite.
+
+    [\"count-where\", {}, [\">\", {}, <col>, [\"absolute-datetime\", {}, \"2025-01-01\", \"month\"]]]
+
+  All three hold a temporal unit in a slot the legacy schema types with `::DateUnit` /
+  `::DateTimeUnit` (`metabase.legacy-mbql.schema`, via `::ValueTypeInfo` for `value`), and neither
+  enum carries a `:decode/normalize`. Once the `/question#` hash has JSON-encoded the query the unit
+  is a string and the clause never normalizes back. In `filters`, `expressions` and join
+  `conditions:` that is a 400 on the dev and CI question page, and in a production JAR -- where
+  `normalize-or-throw`'s `mu/defn` output check is compiled out -- `lib/query`'s
+  `clean-stage-schema-errors` deletes the clause outright and the question silently answers something
+  else. In `aggregation:` the legacy schema is permissive enough that nothing throws even in dev: the
+  clause is deleted silently in both. Pass 2.95 rewrites every shape it can rewrite without changing
+  the answer, so anything still standing here is broken either way.
+
+  `relative-datetime` and `datetime-diff` units do carry `:decode/normalize`, so they survive the hop
+  and are not listed. `temporal-extract`'s `::TemporalExtractUnit` has no decoder either, but Pass
+  1.867 has already rewritten every one to a `get-*` clause by the time this runs -- narrow that pass
+  and this detector needs the head. `time` is excluded on purpose: it 400s in dev, but `->mbql5`
+  salvages the raw clause in prod (unit correctly keywordized, filter intact), so flagging it would
+  reject a query that works for customers. This detector exists only because `::DateUnit`,
+  `::TimeUnit`, `::DateTimeUnit` and `::TemporalExtractUnit` lack decoders -- if they ever gain them,
+  delete it rather than inherit a false-positive machine.
+
+  Throws `:agent-error?` ex-info on the first offender."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     ;; `map-entry?`: a `{\"value\" …}` entry postwalks as a 2-element vector. The arity checks below
+     ;; already exclude it; the guard matches E2 / E6 and survives a head being added at that arity.
+     (when (and (vector? node)
+                (not (map-entry? node))
+                (string? (nth node 0 nil))
+                (map? (nth node 1 nil))
+                (case (u/lower-case-en (nth node 0))
+                  "absolute-datetime" (and (= 4 (count node))
+                                           (not (deferred-to-invalid-temporal-literal? node)))
+                  "during"            (= 5 (count node))
+                  ;; a `nil` unit counts as none, as it does on a ref -- that shape round-trips fine
+                  "value"             (and (= 3 (count node))
+                                           (some? (get (nth node 1) "unit")))
+                  false))
+       (throw (ex-info
+               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to a plain date string like \"2025-01-01\" - or write the range out with `between` and two plain date strings. Inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:` moving the unit onto the column would change the answer, so the explicit range is the only rewrite there."
+                    (pr-str node))
+               {:agent-error? true
+                :error        :unencodable-temporal-clause
+                :clause       node})))
+     node)
+   form))
+
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 
 (defn- friendly-errors*
@@ -2659,7 +2776,8 @@
     (case-default-in-opts-error! query)
     (sexp-legacy-op-as-clause-error! query)
     (blank-expression-ref-error! query)
-    (numeric-field-id-error! query))
+    (numeric-field-id-error! query)
+    (unencodable-temporal-clause-error! query))
   query)
 
 ;;; ============================================================

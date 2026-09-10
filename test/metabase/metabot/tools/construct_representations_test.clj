@@ -1712,25 +1712,44 @@
       (is (false? @seen)))))
 
 (defn- legacy-json-wire
-  "Run the tool on a single-stage ORDERS query carrying `stage-kvs`, convert the resulting MBQL 5
-  query to legacy the way `links` does for the `/question#` hash, and JSON round-trip it."
+  "Run the tool on a single-stage ORDERS query carrying `stage-kvs`, returning `[before wire]`.
+
+  `before` is the MBQL 5 query the tool built; `wire` is that query converted to legacy the way
+  `links` does for the `/question#` hash and JSON round-tripped."
   [stage-kvs]
   (let [result (construct/execute-representations-query
                 (query-data {"lib/type" "mbql/query"
                              "database" "Sample"
                              "stages"   [(merge {"lib/type"     "mbql.stage/mbql"
                                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]}
-                                                stage-kvs)]}))]
-    (-> (get-in result [:structured-output :query]) links/->legacy-mbql json/encode (json/decode true))))
+                                                stage-kvs)]}))
+        before (get-in result [:structured-output :query])]
+    [before (-> before links/->legacy-mbql json/encode (json/decode true))]))
 
-(defn- assert-survives-json-hop! [wire]
+(defn- stage-clause-counts
+  "Per-stage counts of the clause vectors on a query, for comparing a query with its round-trip."
+  [query]
+  (mapv (fn [stage]
+          (into (sorted-map)
+                (for [k     [:filters :aggregation :expressions :breakout :order-by :fields :joins]
+                      :when (contains? stage k)]
+                  [k (count (get stage k))])))
+        (:stages query)))
+
+(defn- assert-survives-json-hop! [[before wire]]
   ;; `->legacy-mbql` returns the MBQL 5 query unchanged if conversion throws, and a
   ;; JSON-round-tripped MBQL 5 query passes `lib/query` - so without this the
   ;; assertion below could hold while proving nothing.
   (is (= "query" (:type wire))
       "->legacy-mbql fell back to MBQL 5 instead of converting")
-  (is (map? (lib/query mp-temporal wire))
-      "did not survive the JSON round-trip"))
+  ;; ... and `lib/query` does not throw on a wire whose clause `clean-stage-schema-errors` deleted,
+  ;; so "no throw" is not survival. Compare the clauses - by count, since uuids and idents are
+  ;; regenerated across the hop and deep equality is not available. A clause swapped for a different
+  ;; clause of the same arity would slip through; deletion, the failure mode here, would not.
+  (let [after (lib/query mp-temporal wire)]
+    (is (map? after) "did not survive the JSON round-trip")
+    (is (= (stage-clause-counts before) (stage-clause-counts after))
+        "a clause was silently dropped by the round-trip")))
 
 ;; A Metabot-built question reaches the frontend as legacy MBQL inside a base64 `/question#` hash,
 ;; so it makes a JSON hop that turns every keyword into a string. Legacy normalization has no
@@ -1784,6 +1803,42 @@
            (legacy-json-wire {"aggregation" [["max" {} created-at]]
                               "breakout"    [["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]]
                               "filters"     [["<" {} ["aggregation" {} 0] (abs-dt "2025-01-01" "month")]]})))))))
+
+;; A bucketed temporal clause that Pass 2.95 cannot hoist does not survive the `/question#` hash the
+;; frontend opens: 400 in dev, and in production `lib/query`'s cleaner deletes the clause and the
+;; question silently answers something else. Pass 6 turns each into a retryable agent error (BOT-2095).
+(deftest unencodable-temporal-clause-reaches-the-agent-test
+  (with-temporal-mp-and-stubs!
+    (fn []
+      (let [created-at ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+            abs-dt     (fn [literal unit] ["absolute-datetime" {} literal unit])]
+        (doseq [[label stage-kvs]
+                {"in `count-where`"
+                 {"aggregation" [["count-where" {} [">" {} created-at (abs-dt "2025-01-01" "month")]]]}
+                 "in a join condition"
+                 {"joins"       [{"lib/type"   "mbql/join"
+                                  "alias"      "O2"
+                                  "stages"     [{"lib/type" "mbql.stage/mbql"
+                                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
+                                  "conditions" [[">" {} created-at (abs-dt "2025-01-01" "month")]]}]
+                  "aggregation" [["count" {}]]}
+                 "a `value` clause carrying a unit"
+                 {"filters"     [["=" {} created-at
+                                  ["value" {"base-type" "type/DateTime" "unit" "day"} "2025-01-01"]]]
+                  "aggregation" [["count" {}]]}}]
+          (testing label
+            (try
+              (construct/execute-representations-query
+               (query-data {"lib/type" "mbql/query"
+                            "database" "Sample"
+                            "stages"   [(merge {"lib/type"     "mbql.stage/mbql"
+                                                "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                               stage-kvs)]}))
+              (is false "expected throw")
+              (catch clojure.lang.ExceptionInfo e
+                (let [d (ex-data e)]
+                  (is (true? (:agent-error? d)))
+                  (is (= :unencodable-temporal-clause (:error d))))))))))))
 
 ;; Repair moves a bucket onto the ref without knowing the column's type; lib accepts a bucket on a
 ;; text column, and the QP would then drop it silently. The gate after resolve turns that into an
