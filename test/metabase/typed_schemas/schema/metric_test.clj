@@ -114,17 +114,14 @@
                                                                         "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
                                                                        247]]}]}}])
                 schema.metric/metric-details identity
-                schema.metric/metric-schema (fn [details _card] (:id details))
-                typed-schemas.db/metric-ids (constantly #{247})]
+                schema.metric/metric-schema (fn [details _card] (:id details))]
     (is (= [247]
            (vec (schema.metric/metric-schemas nil nil))))))
 
-(deftest metric-schemas-does-not-npe-when-a-metric-references-a-non-metric-card-test
-  ;; A metric that references a card which is *not* a metric (e.g. it joins a saved question) reaches
-  ;; `metric-dependency-ids`, whose database lookup returns nil — not #{} — when none of the
-  ;; referenced cards are metrics (its real contract on an empty result). `metric-schemas` then hits
-  ;; `(not-any? nil #{card-id})`, which NPEs. Such a metric is not a metric-to-metric reference, so it
-  ;; must be kept, not throw. (The sibling test above masks this by stubbing select-pks-set non-nil.)
+(deftest metric-schemas-excludes-metrics-that-join-a-saved-question-test
+  ;; Metric 258 is table-sourced and joins a saved question, so `source-card-id` — which only reads
+  ;; stage 0's source — passes it. The CLI checks the whole query and rejects it, aborting
+  ;; `sync-resources` for any app that uses it, so codegen has to drop it here as well.
   (with-redefs [schema.common/select-schema-cards
                 (constantly [{:id 247
                               :dataset_query {:lib/type :mbql/query
@@ -136,14 +133,18 @@
                                               :database 1
                                               :stages [{:lib/type :mbql.stage/mbql
                                                         :source-table 10
-                                                        :aggregation [[:metric
-                                                                       {:lib/uuid
-                                                                        "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
-                                                                       999]]}]}}])
+                                                        :joins [{:lib/type :mbql/join
+                                                                 :alias "Question"
+                                                                 :stages [{:lib/type :mbql.stage/mbql
+                                                                           :source-card 42}]
+                                                                 :conditions
+                                                                 [[:=
+                                                                   {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
+                                                                   [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 11]
+                                                                   [:field {:lib/uuid "cccccccc-cccc-cccc-cccc-cccccccccccc"} 12]]]}]}]}}])
                 schema.metric/metric-details identity
-                schema.metric/metric-schema (fn [details _card] (:id details))
-                typed-schemas.db/metric-ids (constantly nil)]
-    (is (= [247 258]
+                schema.metric/metric-schema (fn [details _card] (:id details))]
+    (is (= [247]
            (vec (schema.metric/metric-schemas nil nil))))))
 
 (deftest table-source-names-filters-unreadable-tables-test
