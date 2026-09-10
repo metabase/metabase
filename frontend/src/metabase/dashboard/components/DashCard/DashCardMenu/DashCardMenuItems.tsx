@@ -4,16 +4,12 @@ import { t } from "ttag";
 import { canDownloadResults } from "metabase/common/utils/dataset";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
-import type {
-  DashCardMenuItem,
-  DashboardCardCustomMenuItem,
-} from "metabase/embedding-sdk/types/plugins";
 import { useDispatch } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
 
+import type { DashCardMenuItem, DashCardMenuOptions } from "./dashcard-menu";
 import { canEditQuestion } from "./utils";
 
 type DashCardMenuItemsProps = {
@@ -43,9 +39,7 @@ export const DashCardMenuItems = ({
     ) => dispatch(editQuestion(question, mode)),
   } = useDashboardContext();
   // Unjustified type cast. FIXME
-  const dashcardMenuItems = dashcardMenu as
-    | DashboardCardCustomMenuItem
-    | undefined;
+  const dashcardMenuItems = dashcardMenu as DashCardMenuOptions | undefined;
 
   const {
     customItems = [],
@@ -108,9 +102,7 @@ export const DashCardMenuItems = ({
       items.push(
         ...customItems.map((item) => {
           const customItem =
-            typeof item === "function"
-              ? item({ question: transformSdkQuestion(question) })
-              : item;
+            typeof item === "function" ? item({ question }) : item;
 
           return {
             ...customItem,
