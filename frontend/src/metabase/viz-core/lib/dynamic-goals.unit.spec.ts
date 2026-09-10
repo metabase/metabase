@@ -25,6 +25,7 @@ import {
   needsGraphGoalResolution,
   resolveGoalSegments,
   resolveGoalValue,
+  resolveOpenEndedGoalSegments,
 } from "./dynamic-goals";
 
 const cols = [
@@ -275,9 +276,11 @@ describe("resolveGoalSegments", () => {
 
   it("takes the default fill from the given color getter", () => {
     const getColor = jest.fn(() => "#123456");
-    const segments = resolveGoalSegments(DATA, [{ min: 0, max: 100 }], {
+    const segments = resolveGoalSegments(
+      DATA,
+      [{ min: 0, max: 100 }],
       getColor,
-    });
+    );
 
     expect(getColor).toHaveBeenCalledWith("text-secondary");
     expect(segments).toEqual([
@@ -374,22 +377,18 @@ describe("resolveGoalSegments", () => {
   });
 });
 
-describe("resolveGoalSegments with allowOpenEnded", () => {
+describe("resolveOpenEndedGoalSegments", () => {
   const DATA = createMockDatasetData({
     cols: [createMockColumn({ name: "value" })],
     rows: [[50]],
   });
 
   it("keeps a bound left empty open", () => {
-    const segments = resolveGoalSegments(
-      DATA,
-      [
-        { min: null, max: 10, color: "red", label: "low" },
-        { min: 10, max: 100, color: "yellow", label: "mid" },
-        { min: 100, max: null, color: "green", label: "high" },
-      ],
-      { allowOpenEnded: true },
-    );
+    const segments = resolveOpenEndedGoalSegments(DATA, [
+      { min: null, max: 10, color: "red", label: "low" },
+      { min: 10, max: 100, color: "yellow", label: "mid" },
+      { min: 100, max: null, color: "green", label: "high" },
+    ]);
 
     expect(segments).toEqual([
       { min: null, max: 10, color: "red", label: "low" },
@@ -400,18 +399,16 @@ describe("resolveGoalSegments with allowOpenEnded", () => {
 
   it("drops a segment with both bounds empty", () => {
     expect(
-      resolveGoalSegments(DATA, [{ min: null, max: null, color: "red" }], {
-        allowOpenEnded: true,
-      }),
+      resolveOpenEndedGoalSegments(DATA, [
+        { min: null, max: null, color: "red" },
+      ]),
     ).toEqual([]);
   });
 
   it("resolves a self-column bound against the first row", () => {
-    const segments = resolveGoalSegments(
-      DATA,
-      [{ min: "value", max: null, color: "green" }],
-      { allowOpenEnded: true },
-    );
+    const segments = resolveOpenEndedGoalSegments(DATA, [
+      { min: "value", max: null, color: "green" },
+    ]);
 
     expect(segments).toEqual([
       { min: 50, max: null, color: "green", label: undefined },
@@ -431,17 +428,13 @@ describe("resolveGoalSegments with allowOpenEnded", () => {
       },
     });
 
-    const segments = resolveGoalSegments(
-      data,
-      [
-        {
-          min: { type: "measure", id: 4, column: "goal" },
-          max: null,
-          color: "green",
-        },
-      ],
-      { allowOpenEnded: true },
-    );
+    const segments = resolveOpenEndedGoalSegments(data, [
+      {
+        min: { type: "measure", id: 4, column: "goal" },
+        max: null,
+        color: "green",
+      },
+    ]);
 
     expect(segments).toEqual([
       { min: 250, max: null, color: "green", label: undefined },
@@ -456,39 +449,31 @@ describe("resolveGoalSegments with allowOpenEnded", () => {
       },
     });
 
-    const segments = resolveGoalSegments(
-      data,
-      [
-        {
-          min: { type: "card", id: 9, column: "goal" },
-          max: null,
-          color: "green",
-        },
-        { min: "missing", max: 100, color: "red" },
-        {
-          min: null,
-          max: { type: "card", id: 9, column: "goal" },
-          color: "blue",
-        },
-      ],
-      { allowOpenEnded: true },
-    );
+    const segments = resolveOpenEndedGoalSegments(data, [
+      {
+        min: { type: "card", id: 9, column: "goal" },
+        max: null,
+        color: "green",
+      },
+      { min: "missing", max: 100, color: "red" },
+      {
+        min: null,
+        max: { type: "card", id: 9, column: "goal" },
+        color: "blue",
+      },
+    ]);
 
     expect(segments).toEqual([]);
   });
 
   it("drops a segment whose set bound is still unanswered", () => {
-    const segments = resolveGoalSegments(
-      DATA,
-      [
-        {
-          min: null,
-          max: { type: "card", id: 9, column: "goal" },
-          color: "green",
-        },
-      ],
-      { allowOpenEnded: true },
-    );
+    const segments = resolveOpenEndedGoalSegments(DATA, [
+      {
+        min: null,
+        max: { type: "card", id: 9, column: "goal" },
+        color: "green",
+      },
+    ]);
 
     expect(segments).toEqual([]);
   });
@@ -497,10 +482,7 @@ describe("resolveGoalSegments with allowOpenEnded", () => {
     const getColor = jest.fn(() => "#123456");
 
     expect(
-      resolveGoalSegments(DATA, [{ min: 0, max: null }], {
-        allowOpenEnded: true,
-        getColor,
-      }),
+      resolveOpenEndedGoalSegments(DATA, [{ min: 0, max: null }], getColor),
     ).toEqual([{ min: 0, max: null, color: "#123456", label: undefined }]);
   });
 });

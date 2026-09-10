@@ -24,7 +24,7 @@ import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   type ComputedVisualizationSettings,
   getGoalSegmentBounds,
-  resolveGoalSegments,
+  resolveOpenEndedGoalSegments,
 } from "metabase/viz-core";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
@@ -121,9 +121,7 @@ function ScalarComponent(
     jsx: true,
   };
 
-  const segments = resolveGoalSegments(goalData.data, scalarSegments, {
-    allowOpenEnded: true,
-  });
+  const segments = resolveOpenEndedGoalSegments(goalData.data, scalarSegments);
   const color = getColor(value, segments);
   const tooltipContent = getTooltipContent(segments);
 

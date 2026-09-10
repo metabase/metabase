@@ -32,7 +32,6 @@ import {
   type GoalSettingKind,
   getDynamicGoalSettingKeys,
 } from "./dynamic-goal-settings";
-import { segmentIsValid } from "./utils";
 
 export type GoalData = Pick<
   DatasetData,
@@ -278,30 +277,11 @@ export function getGoalValues(
   });
 }
 
-export type ResolveGoalSegmentsOptions = {
-  allowOpenEnded?: boolean;
-  getColor?: ColorGetter;
-};
-
-export function resolveGoalSegments(
+// A bound left empty stays null; at most one bound is null.
+export function resolveOpenEndedGoalSegments(
   data: GoalData,
   segments: GoalSegment[] | undefined,
-  options: ResolveGoalSegmentsOptions & { allowOpenEnded: true },
-): ResolvedOpenEndedGoalSegment[];
-export function resolveGoalSegments(
-  data: GoalData,
-  segments: GoalSegment[] | undefined,
-  options?: ResolveGoalSegmentsOptions & { allowOpenEnded?: false },
-): ResolvedGoalSegment[];
-export function resolveGoalSegments(
-  data: GoalData,
-  segments: GoalSegment[] | undefined,
-  options?: ResolveGoalSegmentsOptions,
-): ResolvedOpenEndedGoalSegment[];
-export function resolveGoalSegments(
-  data: GoalData,
-  segments: GoalSegment[] | undefined,
-  { allowOpenEnded = false, getColor = color }: ResolveGoalSegmentsOptions = {},
+  getColor: ColorGetter = color,
 ): ResolvedOpenEndedGoalSegment[] {
   return validGoalSegments(segments).flatMap((segment) => {
     const min = resolveGoalValue(data, segment.min).value;
@@ -310,11 +290,9 @@ export function resolveGoalSegments(
     const hasUnresolvedBound =
       (segment.min != null && min == null) ||
       (segment.max != null && max == null);
+    const hasBound = min != null || max != null;
 
-    if (
-      hasUnresolvedBound ||
-      !segmentIsValid({ min, max }, { allowOpenEnded })
-    ) {
+    if (hasUnresolvedBound || !hasBound) {
       return [];
     }
 
@@ -327,6 +305,22 @@ export function resolveGoalSegments(
       },
     ];
   });
+}
+
+export function resolveGoalSegments(
+  data: GoalData,
+  segments: GoalSegment[] | undefined,
+  getColor: ColorGetter = color,
+): ResolvedGoalSegment[] {
+  return resolveOpenEndedGoalSegments(data, segments, getColor).filter(
+    isClosedGoalSegment,
+  );
+}
+
+function isClosedGoalSegment(
+  segment: ResolvedOpenEndedGoalSegment,
+): segment is ResolvedGoalSegment {
+  return segment.min != null && segment.max != null;
 }
 
 export function getSegmentColor(
