@@ -8,6 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -35,7 +36,7 @@
   "Record the user-settable Field columns present in `settings` as the user values of `field`, flagging the
   [[lib-be/field-user-settings-flags]] among them as set."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/field]]
-   settings     :- :map]
+   settings     :- ::warehouse-schema.schema/field.update]
   (let [settings (u/select-keys-when settings :present field/field-user-settings)
         flags    (into {} (keep (fn [[k flag]] (when (contains? settings k) [flag true]))) lib-be/field-user-settings-flags)]
     (when (seq settings)
@@ -47,7 +48,7 @@
   "Drop the user values of the Field columns `ks` for `field`, so its sync values show again. Used when sync
   invalidates them, e.g. a base type change voids a user-set coercion."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/field]]
-   ks           :- [:sequential :keyword]]
+   ks           :- [:sequential (into [:enum] lib-be/user-settable-field-columns)]]
   (when (warehouse-schema.db/field-user-settings-exist? id)
     (warehouse-schema.db/update-field-user-settings!
      id
