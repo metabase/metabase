@@ -85,6 +85,7 @@
           :let  [copy-models (set copy/entities)]]
     (is (contains? copy-models model)
         (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude))))
+
 (def ^:private foreign-key-coverage-exceptions
   "Known exceptions to foreign-key coverage."
   ;; OSS cannot create tenants and does not copy them, so only EE-created dumps are affected.
