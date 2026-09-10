@@ -429,7 +429,9 @@ export const setParameterMapping = createThunkAction(
       const dashcards = Object.values(getDashcards(getState()));
       const dashcard = getDashCardById(getState(), dashcardId);
 
-      // this has to run before showAutoWireToast so auto-wire doesn't touch this card
+      // this has to run first so auto-wire can see the updated dashcard
+      // otherwise the toast will be shown when it shouldn't be shown
+      // and undo would wipe the mapping the user just set.
       dispatch(
         setDashCardAttributes({
           id: dashcardId,

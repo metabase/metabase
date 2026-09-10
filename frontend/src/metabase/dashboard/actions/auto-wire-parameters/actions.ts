@@ -59,6 +59,13 @@ export function showAutoWireToast(
       return;
     }
 
+    const targetCard = getDashcardCards(dashcard).find(
+      (card) => card.id === cardId,
+    );
+    if (!targetCard) {
+      return;
+    }
+
     const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters({
       dashboards: dashboardState.dashboards,
       dashcards: dashboardState.dashcards,
@@ -90,13 +97,6 @@ export function showAutoWireToast(
       },
     }));
 
-    const targetCard = getDashcardCards(dashcard).find(
-      (card) => card.id === cardId,
-    );
-    if (!targetCard) {
-      return;
-    }
-
     const mappingOption = getMatchingParameterOption(
       parameter,
       dashcard,
@@ -112,7 +112,7 @@ export function showAutoWireToast(
       return;
     }
 
-    dispatch(
+    return dispatch(
       showAutoWireParametersToast({
         dashcardAttributes,
         originalDashcardAttributes,

@@ -1,71 +1,31 @@
-import {
-  type ParameterMappingOption,
-  getParameterMappingOptions,
-} from "metabase/parameters/utils/mapping-options";
 import { createMockStoreDashboard } from "metabase/redux/store/mocks";
-import type {
-  CardId,
-  QuestionDashboardCard,
-  StructuredParameterDimensionTarget,
-} from "metabase-types/api";
-import {
-  createMockCard,
-  createMockDashboardCard,
-  createMockParameter,
-  createMockParameterMapping,
-} from "metabase-types/api/mocks";
+import type { QuestionDashboardCard } from "metabase-types/api";
+import { createMockParameterMapping } from "metabase-types/api/mocks";
 
+import {
+  MATCHING_TARGET,
+  PARAMETER,
+  PARAMETER_ID,
+  createOrdersDashcard,
+  getOrdersQuestions,
+} from "./tests/setup";
 import {
   getAllDashboardCardsWithUnmappedParameters,
   getAutoWiredMappingsForDashcards,
 } from "./utils";
-
-jest.mock("metabase/parameters/utils/mapping-options", () => ({
-  ...jest.requireActual("metabase/parameters/utils/mapping-options"),
-  getParameterMappingOptions: jest.fn(),
-}));
-
-const PARAMETER_ID = "parameter";
-const MATCHING_TARGET: StructuredParameterDimensionTarget = [
-  "dimension",
-  ["field", 100, null],
-];
-
-function getMappingOption(cardId: CardId): ParameterMappingOption {
-  return {
-    sectionName: "Table",
-    name: `Column ${cardId}`,
-    icon: "int",
-    target: MATCHING_TARGET,
-  };
-}
 
 function createDashcard({
   parameterMappings = [],
 }: {
   parameterMappings?: QuestionDashboardCard["parameter_mappings"];
 } = {}) {
-  return createMockDashboardCard({
-    id: 1,
-    dashboard_tab_id: 1,
-    card_id: 1,
-    card: createMockCard({ id: 1 }),
-    series: [createMockCard({ id: 2 }), createMockCard({ id: 3 })],
-    parameter_mappings: parameterMappings,
+  return createOrdersDashcard({
+    seriesCardIds: [2, 3],
+    parameterMappings,
   });
 }
 
-beforeEach(() => {
-  jest.clearAllMocks();
-  jest
-    .mocked(getParameterMappingOptions)
-    .mockImplementation((_question, _parameter, card) => {
-      if (card.id == null) {
-        return [];
-      }
-      return [getMappingOption(card.id)];
-    });
-});
+const questions = getOrdersQuestions([1, 2, 3]);
 
 describe("getAllDashboardCardsWithUnmappedParameters", () => {
   function getUnmappedDashcards(dashcard: QuestionDashboardCard) {
@@ -108,17 +68,15 @@ describe("getAllDashboardCardsWithUnmappedParameters", () => {
 });
 
 describe("getAutoWiredMappingsForDashcards", () => {
-  const parameter = createMockParameter({ id: PARAMETER_ID });
-
   it("creates a mapping for every card in a dashcard", () => {
     const dashcard = createDashcard();
 
     expect(
       getAutoWiredMappingsForDashcards(
-        parameter,
+        PARAMETER,
         [dashcard],
         MATCHING_TARGET,
-        {},
+        questions,
         [dashcard],
       ),
     ).toEqual([
@@ -147,10 +105,10 @@ describe("getAutoWiredMappingsForDashcards", () => {
 
     expect(
       getAutoWiredMappingsForDashcards(
-        parameter,
+        PARAMETER,
         [dashcard],
         MATCHING_TARGET,
-        {},
+        questions,
         [dashcard],
       ),
     ).toEqual([
@@ -173,6 +131,5 @@ describe("getAutoWiredMappingsForDashcards", () => {
         },
       },
     ]);
-    expect(getParameterMappingOptions).toHaveBeenCalledTimes(2);
   });
 });

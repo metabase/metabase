@@ -102,7 +102,7 @@ export function getMatchingParameterOption(
   return matchedOption ?? null;
 }
 
-export function getMatchingParameterOptions(
+function getMatchingParameterOptions(
   parameter: Parameter,
   targetDashcard: QuestionDashboardCard,
   targetDimension: ParameterTarget,
@@ -167,7 +167,7 @@ export function getAutoWiredMappingsForDashcards(
   return targetDashcardMappings;
 }
 
-export function getParameterMappingsForCards(
+function getParameterMappingsForCards(
   dashcard: QuestionDashboardCard,
   parameterId: ParameterId,
   mappingOptions: Map<CardId, ParameterMappingOption>,
