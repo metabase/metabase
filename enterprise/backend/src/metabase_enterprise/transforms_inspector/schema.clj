@@ -9,7 +9,8 @@
    [malli.util :as mut]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 ;;; -------------------------------------------------- Field & Table Schemas --------------------------------------------------
 
@@ -199,6 +200,11 @@
   "Params passed to a drill lens (e.g. `{:join_step 2}`), emitted on drill-lens triggers and echoed back by the FE
    to the lens endpoints. Scalar values only."
   [:map-of :keyword [:maybe [:or :string :int :boolean :double]]])
+
+(mr/def ::lens-params.request
+  "[[::lens-params]] as the FE echoes them back to the lens endpoints: the keys are the lens's own, so string-keyed on
+  the way in; the endpoints keywordize them for the lens."
+  (ms/string-keyed-map [:maybe [:or :string :int :boolean :double]]))
 
 (mr/def ::drill-lens-trigger
   "Definition for conditional drill lens availability.

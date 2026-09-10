@@ -222,7 +222,7 @@
       (testing "updates comment content"
         (is (=? {:content {:text "Updated content"}}
                 (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
-                                      {:content {"text" "Updated content"}}))))
+                                      {:content {"type" "text" "text" "Updated content"}}))))
       (testing "updates comment resolution status"
         (is (=? {:is_resolved true}
                 (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
@@ -233,7 +233,7 @@
     (mt/with-temp [:model/Document {doc-id :id} {}
                    :model/Comment  {c-id :id}   {:target_id doc-id :creator_id (mt/user->id :rasta)}]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :lucky :put 403 (str "comment/" c-id) {:content {:text "hi"}})))
+             (mt/user-http-request :lucky :put 403 (str "comment/" c-id) {:content {:type "text" :text "hi"}})))
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :lucky :delete 403 (str "comment/" c-id)))))))
 
@@ -411,7 +411,7 @@
           (testing "PUT /api/comment/:id - users without document access cannot update comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :put 403 (str "comment/" restricted-comment-id)
-                                         {:content {:text "Updated by lucky"}}))))
+                                         {:content {:type "text" :text "Updated by lucky"}}))))
           (testing "DELETE /api/comment/:id - users without document access cannot delete comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :delete 403 (str "comment/" restricted-comment-id)))))

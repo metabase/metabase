@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.curation :as curation]
@@ -74,45 +75,75 @@
   "Schema for the `:query` of a viewing context item: whatever query the client currently has open, in any MBQL
   version.
 
-  Open ([[ms/Map]]) rather than `[:or ::lib.schema/query ::mbql.s/Query]`. Request decoding strips keys a map schema
-  doesn't declare, and both of those schemas would have gutted the query on its way in — a legacy query arrived as
-  `{:database 1}`, which then failed validation and 400'd the request. The real shape is checked downstream anyway:
-  every consumer routes the query through `lib-be/normalize-query` / `lib/query`, which normalize and validate it."
-  ms/Map)
+  Decoding converts a legacy query to MBQL 5 and validates it, so every consumer gets the shape `lib/query` expects."
+  ::lib-be.schema/maybe-legacy-query)
+
+(def ^:private item-entries
+  "The keys of a viewing context item this code reads. The rest of the item is forwarded to the model as the client
+  sent it, string-keyed: the FE grows these fields faster than a schema could name them, and dropping one would
+  degrade Metabot silently rather than erroring."
+  [[::mc/default ms/OpaqueJSONObject]
+   [:id              {:optional true} [:maybe [:or :int :string]]]
+   [:name            {:optional true} [:maybe :string]]
+   [:description     {:optional true} [:maybe :string]]
+   [:database_schema {:optional true} [:maybe :string]]
+   [:sql_engine      {:optional true} [:maybe :string]]
+   [:error           {:optional true} [:maybe :string]]
+   [:source_type     {:optional true} [:maybe :string]]
+   [:source          {:optional true} [:maybe [:map
+                                               [::mc/default ms/OpaqueJSONObject]
+                                               [:type  {:optional true} [:maybe :string]]
+                                               [:query {:optional true} [:maybe [:or :string ItemQuerySchema]]]]]]
+   [:used_tables     {:optional true} [:maybe [:sequential [:map {:closed true}
+                                                            [:id              {:optional true} [:maybe :int]]
+                                                            [:type            {:optional true} [:maybe [:or :keyword :string]]]
+                                                            [:name            {:optional true} [:maybe :string]]
+                                                            [:database_schema {:optional true} [:maybe :string]]
+                                                            [:description     {:optional true} [:maybe :string]]]]]]
+   [:buffers         {:optional true} [:maybe [:sequential [:map
+                                                            [::mc/default ms/OpaqueJSONObject]
+                                                            [:id {:optional true} [:maybe [:or :int :string]]]]]]]
+   [:query           {:optional true} ItemQuerySchema]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."
-  [:map
-   ;; `::mc/default` because the rest of the item is forwarded to the model as the client sent it -- the FE grows
-   ;; these fields (`:id`, `:name`, `:source`, `:sql_engine`, ...) faster than this schema could name them, and
-   ;; dropping one degrades Metabot silently rather than erroring.
-   [::mc/default :any]
-   [:type item-type-schema]
-   [:query {:optional true} ItemQuerySchema]])
+  (into [:map [:type item-type-schema]] item-entries))
 
 (def QcItemSchema
   "Schema viewing context item with query and charts."
-  [:map
-   [::mc/default :any]
-   [:type (into [:enum] item-types-qc)]
-   [:query {:optional true} ItemQuerySchema]
-   [:chart_configs
-    {:optional true}
-    [:vector
-     [:map
-      [::mc/default :any]
-      [:query {:optional true} ItemQuerySchema]]]]])
+  (into [:map
+         [:type (into [:enum] item-types-qc)]
+         [:chart_configs
+          {:optional true}
+          [:vector
+           [:map
+            [::mc/default ms/OpaqueJSONObject]
+            [:query {:optional true} ItemQuerySchema]]]]]
+        item-entries))
 
 (def ViewingItemSchema
   "Schema of user is viewing item."
   [:or QcItemSchema DefaultItemSchema])
 
+(mr/def ::recently-viewed-item
+  "One of the user's recent views, trimmed to what the model gets told about it."
+  [:map {:closed true}
+   [:id          {:optional true} [:maybe [:or :int :string]]]
+   [:name        {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:type        {:optional true} [:maybe :string]]])
+
 (mr/def ::context
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    [::mc/default :any]
-    [:user_is_viewing {:optional true} [:vector ViewingItemSchema]]]])
+  "The context a Metabot request carries. Besides what the client sends, [[create-context]] adds the user's recent
+  views, the current time and the caller's capabilities before the agent reads it."
+  [:map
+   [::mc/default ms/OpaqueJSONObject]
+   [:user_is_viewing            {:optional true} [:vector ViewingItemSchema]]
+   [:user_recently_viewed       {:optional true} [:maybe [:sequential ::recently-viewed-item]]]
+   [:current_time_with_timezone {:optional true} [:maybe :string]]
+   [:current_user_time          {:optional true} [:maybe :string]]
+   [:capabilities               {:optional true} [:maybe [:or [:set :string] [:sequential :string]]]]
+   [:slack_channel_id           {:optional true} [:maybe :string]]])
 
 (defn- query-for-sql-parsing
   "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed

@@ -5,6 +5,7 @@
    [metabase.channel.urls :as channel.urls]
    [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
+   [metabase.comments.schema :as comments.schema]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
@@ -22,7 +23,9 @@
 ;; future migration.
 
 (t2/deftransforms :model/Comment
-  {:content mi/transform-json
+  {:content {:in  (comp mi/json-in comments.schema/normalize-content)
+             :out (comp (mi/catch-normalization-exceptions comments.schema/normalize-content)
+                        mi/json-out-with-keywordization)}
    :context mi/transform-json})
 
 (methodical/defmethod t2/batched-hydrate [:model/Comment :creator]

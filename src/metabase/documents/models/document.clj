@@ -27,7 +27,9 @@
   :model/Document)
 
 (t2/deftransforms :model/Document
-  {:document    mi/transform-json
+  {:document    {:in  (comp mi/json-in prose-mirror/normalize-document)
+                 :out (comp (mi/catch-normalization-exceptions prose-mirror/normalize-document)
+                            mi/json-out-with-keywordization)}
    :public_uuid (mi/transform-encrypted-text "document.public_uuid")})
 
 (doto :model/Document

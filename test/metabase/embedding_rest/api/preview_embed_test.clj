@@ -99,7 +99,7 @@
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (embed-test/with-temp-card [card]
           (testing "check that if embedding is enabled globally fail if the token is missing a `:locked` parameter"
-            (is (= "You must specify a value for :venue_id in the JWT."
+            (is (= "You must specify a value for venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:venue_id "locked"}})))))
           (testing "if `:locked` param is supplied, request should succeed"
             ;; embed tests still assert via the deprecated helper; not yet migrated
@@ -108,7 +108,7 @@
              (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:venue_id "locked"}
                                                                              :params            {:venue_id 100}}))))
           (testing "if `:locked` parameter is present in URL params, request should fail"
-            (is (= "You can only specify a value for :venue_id in the JWT."
+            (is (= "You can only specify a value for venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "locked"}
                                                                                         :params            {:venue_id 100}})
                                                                   "?venue_id=200"))))))))))
@@ -119,11 +119,11 @@
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (embed-test/with-temp-card [card]
           (testing "check that if embedding is enabled globally and for the object requests fail if they pass a `:disabled` parameter"
-            (is (= "You're not allowed to specify a value for :venue_id."
+            (is (= "You're not allowed to specify a value for venue_id."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:venue_id "disabled"}
                                                                                    :params            {:venue_id 100}})))))
           (testing "If a `:disabled` param is passed in the URL the request should fail"
-            (is (= "You're not allowed to specify a value for :venue_id."
+            (is (= "You're not allowed to specify a value for venue_id."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "disabled"}})
                                                                   "?venue_id=200"))))))))))
 
@@ -133,7 +133,7 @@
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (embed-test/with-temp-card [card]
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
-            (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
+            (is (= "You can't specify a value for venue_id if it's already set in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}
                                                                                         :params            {:venue_id 100}})
                                                                   "?venue_id=200")))))
@@ -177,13 +177,13 @@
             (is (= [[107]]
                    (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card))))))
           (testing "you can't apply an empty param value if the parameter is disabled"
-            (is (= "You're not allowed to specify a value for :date."
+            (is (= "You're not allowed to specify a value for date."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:date "disabled"}}) "?date=")))))))
       (testing "if the param is locked"
         (mt/with-temp
           [:model/Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "locked"})]
           (testing "an empty value with `nil` as the param's value is invalid and should result in an error"
-            (is (= "You must specify a value for :date in the JWT."
+            (is (= "You must specify a value for date in the JWT."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:date "locked"}
                                                                                    :params            {:date nil}}))))
             (testing "check this is different to when a non-nil value is provided"
@@ -191,7 +191,7 @@
                      (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "locked"}
                                                                                               :params            {:date "Q2-2014"}})))))))
           (testing "an empty string value is invalid and should result in an error"
-            (is (= "You must specify a value for :date in the JWT."
+            (is (= "You must specify a value for date in the JWT."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:date "locked"}
                                                                                    :params            {:date ""}}))))))))))
 
@@ -288,7 +288,7 @@
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (embed-test/with-temp-dashcard [dashcard]
           (testing "check that if embedding is enabled globally fail if the token is missing a `:locked` parameter"
-            (is (= "You must specify a value for :venue_id in the JWT."
+            (is (= "You must specify a value for venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard
                                                                            {:_embedding_params {:venue_id "locked"}})))))
           (testing "If `:locked` param is supplied, request should succeed"
@@ -297,7 +297,7 @@
                     (mt/user-http-request :crowberto :get 202
                                           (dashcard-url dashcard {:_embedding_params {:venue_id "locked"}, :params {:venue_id 100}})))))
           (testing "If `:locked` parameter is present in URL params, request should fail"
-            (is (= "You can only specify a value for :venue_id in the JWT."
+            (is (= "You can only specify a value for venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard
                                                                                 {:_embedding_params {:venue_id "locked"}, :params {:venue_id 100}})
                                                                   "?venue_id=200"))))))))))
@@ -308,11 +308,11 @@
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (embed-test/with-temp-dashcard [dashcard]
           (testing "check that if embedding is enabled globally and for the object requests fail if they pass a `:disabled` parameter"
-            (is (= "You're not allowed to specify a value for :venue_id."
+            (is (= "You're not allowed to specify a value for venue_id."
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard
                                                                            {:_embedding_params {:venue_id "disabled"}, :params {:venue_id 100}})))))
           (testing "If a `:disabled` param is passed in the URL the request should fail"
-            (is (= "You're not allowed to specify a value for :venue_id."
+            (is (= "You're not allowed to specify a value for venue_id."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard {:_embedding_params {:venue_id "disabled"}})
                                                                   "?venue_id=200"))))))))))
 
@@ -322,7 +322,7 @@
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (embed-test/with-temp-dashcard [dashcard]
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
-            (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
+            (is (= "You can't specify a value for venue_id if it's already set in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}
                                                                                           :params            {:venue_id 100}})
                                                                   "?venue_id=200")))))
@@ -509,7 +509,6 @@
                                                           :dashboard_id       dashboard-id
                                                           :parameter_mappings [{:parameter_id "_name_"
                                                                                 :card_id      card-id
-                                                                                :type         "string/="
                                                                                 :target       [:dimension [:template-tag "NAME"]]}]}]
               (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
                 (is (= [[1]]

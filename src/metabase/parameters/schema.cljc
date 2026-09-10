@@ -41,8 +41,10 @@
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
   [:map
-   {:decode/normalize normalize-values-source-config}
-   [:values      {:optional true} [:* :any]]
+   {:closed true :decode/normalize normalize-values-source-config}
+   [:values      {:optional true} [:* [:or
+                                       [:ref ::lib.schema.parameter/parameter.value.scalar]
+                                       [:tuple [:ref ::lib.schema.parameter/parameter.value.scalar] :string]]]]
    [:card_id     {:optional true} ::lib.schema.id/card]
    [:value_field {:optional true} [:ref ::legacy-ref]]
    [:label_field {:optional true} [:ref ::legacy-ref]]])
@@ -61,7 +63,9 @@
                       [:values_source_type :string]
                       [:values_source_config
                        [:map {:closed true}
-                        [:values {:optional true} [:* :any]]]]]]]))
+                        [:values {:optional true} [:* [:or
+                                                       [:ref ::lib.schema.parameter/parameter.value.scalar]
+                                                       [:tuple [:ref ::lib.schema.parameter/parameter.value.scalar] :string]]]]]]]]]))
 
 (mr/def ::values-source-type
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :static-list :card])
@@ -75,7 +79,8 @@
   queries."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   [:map
-   {:description      "parameter must be a map with :id and :type keys"
+   {:closed true
+    :description      "parameter must be a map with :id and :type keys"
     :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:default              {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:display-name         {:optional true} [:maybe :string]]
@@ -90,6 +95,7 @@
                                                     [:set [:ref ::parameter-mapping]]]]]
    [:name                 {:optional true} :string]
    [:options              {:optional true} [:maybe [:ref ::lib.schema.parameter/parameter.options]]]
+   [:position             {:optional true} [:maybe :int]]
    [:required             {:optional true} [:maybe :boolean]]
    ;; ok now I know you're trying to mess with me with this camelCase key
    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
@@ -155,7 +161,8 @@
   the frontend's `normalizeParameters` sends. Distinct from `::lib.schema.parameter/parameter`, which requires `:type`
   and normalizes the value."
   [:map
-   {:description      "parameter must be a map with an :id key"
+   {:closed true
+    :description      "parameter must be a map with an :id key"
     :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:id      ::lib.schema.common/non-blank-string]
    ;; the name of the template tag this value is for, when it can't be inferred from `:target`
@@ -187,7 +194,8 @@
 (mr/def ::parameter-mapping
   "Schema for a valid Parameter Mapping"
   [:map
-   {:decode/normalize (fn [mapping]
+   {:closed true
+    :decode/normalize (fn [mapping]
                         (when (map? mapping)
                           (let [mapping (lib.schema.common/normalize-map-no-kebab-case mapping)]
                             (cond-> mapping
@@ -224,4 +232,12 @@
   [:merge
    [:ref ::parameter-mapping]
    [:map
-    [:dashcard :map]]])
+    [:dashcard {:optional true} :map]]])
+
+(mr/def ::resolved-parameter
+  "A dashboard parameter with its `:mappings` resolved against the DashboardCards that carry them, as the
+  `:resolved-params` hydration builds it."
+  [:merge
+   [:ref ::parameter]
+   [:map {:closed true}
+    [:mappings {:optional true} [:maybe [:set [:ref ::parameter-mapping-with-dashcard]]]]]])

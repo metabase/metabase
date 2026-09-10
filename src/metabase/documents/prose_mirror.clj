@@ -3,16 +3,44 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.util.malli.registry :as mr]))
+   [malli.core :as mc]
+   [metabase.lib.core :as lib]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
+
+(mr/def ::node.attrs
+  "The `attrs` of a ProseMirror node: the ones this code reads by name, and, string-keyed, whatever else the editor
+  put there -- every node type has its own attributes and the editor owns that set."
+  [:map
+   [::mc/default ms/OpaqueJSONObject]
+   [:id               {:optional true} [:maybe [:or :int :string]]]
+   [:_id              {:optional true} [:maybe :string]]
+   [:model            {:optional true} [:maybe :string]]
+   [:entityId         {:optional true} [:maybe [:or :int :string]]]
+   [:label            {:optional true} [:maybe :string]]
+   [:stored_result_id {:optional true} [:maybe :int]]])
 
 (mr/def ::ast
-  "Schema for a prose-mirror document AST as it arrives at the API."
+  "Schema for a prose-mirror document AST as it arrives at the API or is read back from the application database: a
+  node in the shape ProseMirror's `Node.toJSON` emits, whose children and marks are nodes too."
   [:map
-   {:decode/normalize (fn [ast]
+   {:closed           true
+    :decode/normalize (fn [ast]
                         (cond-> ast
-                          (map? ast) walk/keywordize-keys))
-    :closed           false}
-   [:type :string]])
+                          (map? ast) walk/keywordize-keys))}
+   [:type                     :string]
+   [:attrs   {:optional true} [:maybe [:ref ::node.attrs]]]
+   [:content {:optional true} [:maybe [:sequential [:ref ::ast]]]]
+   [:marks   {:optional true} [:maybe [:sequential [:ref ::ast]]]]
+   [:text    {:optional true} [:maybe :string]]])
+
+(defn normalize-document
+  "Normalize a document AST on its way in from the API or out of the application database. A document in another
+  `content_type` is not a ProseMirror node and passes through untouched."
+  [document]
+  (if (and (map? document) (some #(contains? document %) [:type "type"]))
+    (lib/normalize ::ast document)
+    document))
 
 (def card-embed-type
   "Type of a card-embed node. Carries either `:id` (live Card reference) or
