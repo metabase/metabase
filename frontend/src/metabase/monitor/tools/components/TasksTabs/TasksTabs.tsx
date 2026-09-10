@@ -23,7 +23,7 @@ export const TasksTabs = ({ children }: TasksTabsProps) => {
   return (
     <Flex h="100%" wrap="nowrap">
       <MonitorMain>
-        <Stack gap="lg">
+        <Stack gap="xl">
           <MonitorHeaderTitle>{t`Background tasks`}</MonitorHeaderTitle>
           <PillTabNavigation tabs={tabs} />
         </Stack>

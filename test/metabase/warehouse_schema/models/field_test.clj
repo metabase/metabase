@@ -309,3 +309,38 @@
                        :model/Table {table-id :id} {:db_id db-id}]
           (let [field-id (op table-id)]
             (assert-coercion-effective-type-invariant! field-id label)))))))
+
+(deftest data-sensitivity-transform-round-trip-test
+  (testing "data_sensitivity is stored as the enum string and read back as a keyword"
+    (mt/with-temp [:model/Field {field-id :id} {:data_sensitivity :PII}]
+      (is (= "PII" (t2/select-one-fn :data_sensitivity :metabase_field :id field-id)))
+      (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))))
+  (testing "a field with no label reads nil and has no user-settings row"
+    (mt/with-temp [:model/Field {field-id :id}]
+      (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+      (is (not (t2/exists? :model/FieldUserSettings :field_id field-id))))))
+
+(deftest data-sensitivity-user-setting-overlay-test
+  (testing "a user-set label wins over a bare update to the Field"
+    (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
+      (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
+      (t2/update! :model/Field field-id {:data_sensitivity :PII})
+      (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+      (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))))
+  (testing "a user-set label also overlays an update that does not mention data_sensitivity"
+    (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
+      (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
+      (t2/update! :model/Field field-id {:description "touched"})
+      (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))))
+  (testing "a nil user setting does not block a bare update to the Field"
+    (mt/with-temp [:model/Field {field-id :id :as field}]
+      (field-user-settings/upsert-user-settings field {:data_sensitivity nil})
+      (is (t2/exists? :model/FieldUserSettings :field_id field-id))
+      (t2/update! :model/Field field-id {:data_sensitivity :PII})
+      (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+      (is (nil? (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))))
+  (testing "upsert-user-settings with a nil value clears a previously set label on the mirror"
+    (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
+      (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
+      (field-user-settings/upsert-user-settings field {:data_sensitivity nil})
+      (is (nil? (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id))))))

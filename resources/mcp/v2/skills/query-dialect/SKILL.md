@@ -5,15 +5,15 @@ description: The query dialect execute_query and question_write's `query` accept
 
 # The query dialect
 
-`execute_query` (`query`) and `question_write` (inline `query`) name everything — tables, columns, saved questions, models, metrics, measures, segments — by its **numeric id**. Copy ids from `browse_data` (`list_tables`, `get_fields`), `search`, or `get_content`; never invent or guess one. The server validates, repairs, and resolves against real metadata, and its errors name what didn't resolve.
+**MBQL or SQL?** MBQL (`execute_query`) for anything that will sit on a filtered dashboard, anything with a date/category/FK filter, every plain aggregate, breakout, or join — MBQL cards wire to dashboard filters as-is; a raw-SQL card must be rewritten with template tags first. SQL (`execute_sql`) for window functions, CTEs, set operations, engine-specific functions, or when the user asks for SQL. Unsure: start in MBQL — the server validates it and names what didn't resolve.
 
-`get_content`'s `definition` include returns queries in this same shape, so a definition you read can be edited and sent back as-is.
+Everything — tables, columns, saved questions, models, metrics, measures, segments — is named by **numeric id**, copied from `browse_data` (`list_tables`, `get_fields`), `search`, or `get_content`; never invented. A wrong name errors loudly; a wrong id that exists resolves to the wrong column *silently*. `get_content`'s `definition` include returns this same shape, so a read definition can be edited and sent back.
 
-Loop: author → `execute_query` `validate_only: true` (checks shape + ids, mints a `query_handle`, runs nothing) → execute → save via `question_write` with that `query_handle` (saves exactly what ran).
+Loop: author → `execute_query` `validate_only: true` (shape + ids, mints a `query_handle`, runs nothing) → execute → `question_write` with that `query_handle` (saves exactly what ran).
 
 ## Shape
 
-Top level: `{"lib/type": "mbql/query", "database": <numeric db id>, "stages": [...]}`. `execute_query` infers `database` from the first stage's source, but `question_write`'s inline `query` requires it — include it.
+`{"lib/type": "mbql/query", "database": <db id>, "stages": [...]}`. `execute_query` infers `database` from the first stage; `question_write`'s inline `query` requires it — include it.
 
 ```json
 {"lib/type": "mbql/query",
@@ -24,21 +24,19 @@ Top level: `{"lib/type": "mbql/query", "database": <numeric db id>, "stages": [.
              "breakout": [["field", {"temporal-unit": "month"}, 42]]}]}
 ```
 
-- `source-table` (numeric table id) **or** `source-card` (numeric card id) — exactly one, **first stage only**; later stages read the previous stage's output implicitly.
+- First stage only: `source-table` (table id) **or** `source-card` (card id), exactly one; later stages read the previous stage's output.
 - Optional stage keys: `filters`, `aggregation`, `breakout`, `expressions`, `fields`, `joins`, `order-by`, `limit`.
 
-## The two most-violated rules
+## Two rules
 
-1. **Every clause is `["op", {}, ...args]` — write the options map at position 1 even when empty.** `["count", {}]`, not `["count"]`. (A missing `{}` is repaired server-side, but write it so your query matches later reads.)
-2. **A field ref names its column by numeric id**: `["field", {}, 42]` — the id from `browse_data` `get_fields`. A wrong id that happens to exist resolves to the wrong column *silently*, so copy ids from tool output, never from memory.
+1. **Every clause is `["op", {}, ...args]`** — options map at position 1 even when empty: `["count", {}]`, never `["count"]`. (Repaired server-side, but write it so your query matches later reads.) Never put a stage key (`aggregation`, `filters`, …) at a clause head — clauses go inside those arrays.
+2. **A field ref is `["field", {}, <numeric id>]`.** In a later stage, reference a previous stage's column by its **machine name**: `["field", {}, "count"]`. An aggregation's output name is the bare function (`count`, `sum`, `avg`; a second `sum` is `sum_2`) unless its options set `"name"`; a breakout keeps the field's machine name even when bucketed. Never a display label ("Max of Total").
 
-In a **later stage**, reference a previous stage's column by its **string machine name**: `["field", {}, "count"]`. An aggregation's output name is the bare function (`count`, `sum`, `avg`; a second `sum` is `sum_2`) unless its options set `"name"`; a breakout keeps the source field's machine name even when bucketed — never use display labels ("Max of Total").
-
-Field options: `temporal-unit` (bucket a datetime: `"day"`, `"week"`, `"month"`, `"quarter"`, `"year"`, …), `binning` (`{"strategy": "num-bins", "num-bins": 10}` for histograms), `join-alias` (required on every explicitly-joined ref), `source-field` (implicit-FK disambiguation, a numeric field id).
+Field options: `temporal-unit` (`"day"`, `"week"`, `"month"`, `"quarter"`, `"year"`, …), `binning` (`{"strategy": "num-bins", "num-bins": 10}` for histograms), `join-alias` (required on every explicitly-joined ref), `source-field` (implicit-FK disambiguation, a field id). Don't breakout the same field twice in one stage (bucketed and raw).
 
 ## Filters, aggregation, order-by
 
-`filters` entries are implicitly ANDed; nest `["or", {}, …]` for OR.
+`filters` entries are ANDed; nest `["or", {}, …]` for OR.
 
 ```json
 "filters": [[">", {}, ["field", {}, 40], 100],
@@ -47,13 +45,14 @@ Field options: `temporal-unit` (bucket a datetime: `"day"`, `"week"`, `"month"`,
 "order-by": [["desc", {}, ["aggregation", {}, 0]]]
 ```
 
-- `order-by` wraps a ref in `["asc", {}, ref]` / `["desc", {}, ref]`. Order by a same-stage aggregation with `["aggregation", {}, <0-based index>]` — **never** `["field", {}, "count"]` in the stage that computes it: that shape validates, then fails (or silently misresolves) at execution.
-- Filtering **on** an aggregation result (`HAVING`) belongs in a next stage, by output name (see multi-stage below).
-- Relative dates: `["time-interval", {}, <field>, -30, "day"]`, `["time-interval", {}, <field>, "current", "month"]`. An explicit year or date range in the request is an **absolute** filter (`between` on dates), not relative.
-- Multi-value categorical: `["in", {}, <field>, "a", "b"]` / `["not-in", …]`.
-- Full operator catalog: `learn("query-dialect", "operators")`.
+- `order-by`: `["asc"|"desc", {}, ref]`. A same-stage aggregation is `["aggregation", {}, <0-based index>]` — **never** `["field", {}, "count"]` in the stage that computes it (validates, then fails or misresolves at execution); name refs to aggregations are for the next stage.
+- `HAVING` (filter on an aggregation) goes in a next stage, by output name (below).
+- Relative dates: `["time-interval", {}, <field>, -30, "day"]`, `["time-interval", {}, <field>, "current", "month"]`. An explicit year or date range is an **absolute** `between`, not relative.
+- Multi-value: `["in", {}, <field>, "a", "b"]` / `["not-in", …]`.
+- Date arithmetic: `["datetime-diff", {}, a, b, "day"]`, never `-`.
+- Full catalog: `learn("query-dialect", "operators")`.
 
-## Expressions (custom columns)
+## Expressions
 
 ```json
 "expressions": {"Subtotal": ["+", {}, ["field", {}, 40], ["field", {}, 44]]},
@@ -62,7 +61,7 @@ Field options: `temporal-unit` (bucket a datetime: `"day"`, `"week"`, `"month"`,
 
 ## Joins
 
-**Implicit FK join** — reference a related table's field directly; with exactly one FK to that table the server fills in the join:
+**Implicit FK join** — reference the related table's field directly; with exactly one FK path the server fills in the join (`browse_data` `get_fields` marks FK columns and targets — check before assuming a column lives on the current table):
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -71,9 +70,7 @@ Field options: `temporal-unit` (bucket a datetime: `"day"`, `"week"`, `"month"`,
  "breakout": [["field", {}, 61]]}
 ```
 
-Ambiguous FK → retry with `{"source-field": <FK field id on the source table>}` on the field. No FK path → explicit join. `browse_data` `get_fields` marks FK columns and targets — check before assuming a column lives on the current table.
-
-**Explicit join**:
+Ambiguous FK → add `{"source-field": <FK field id on the source table>}` to the ref. No FK path → explicit join:
 
 ```json
 "joins": [{"alias": "Products",
@@ -85,11 +82,11 @@ Ambiguous FK → retry with `{"source-field": <FK field id on the source table>}
 "breakout": [["field", {"join-alias": "Products"}, 61]]
 ```
 
-`strategy`: `left-join` (default) / `right-join` / `inner-join` / `full-join`. **Every** joined-column ref carries `{"join-alias": "<alias>"}`, in conditions and downstream alike. Conditions accept only `=`, `!=`, `<`, `<=`, `>`, `>=`.
+`strategy`: `left-join` (default) / `right-join` / `inner-join` / `full-join`. **Every** joined-column ref carries `{"join-alias": "<alias>"}`, in conditions and downstream. Conditions accept only `=`, `!=`, `<`, `<=`, `>`, `>=`.
 
-## Multi-stage queries
+## Multi-stage
 
-Filter on an aggregation's result in a **next** stage, referencing it by output name; ordering by a same-stage aggregation needs no extra stage (`["aggregation", {}, <index>]`):
+Filter on an aggregation's result in the next stage, by output name:
 
 ```json
 "stages": [
@@ -103,11 +100,11 @@ Filter on an aggregation's result in a **next** stage, referencing it by output 
 ]
 ```
 
-Window function: `offset` sits in `aggregation` and reads another breakout row — month-over-month is `["offset", {"name": "prev_month"}, ["sum", {}, <field>], -1]` against a monthly breakout.
+Window: `offset` sits in `aggregation` and reads another breakout row — month-over-month is `["offset", {"name": "prev_month"}, ["sum", {}, <field>], -1]` against a monthly breakout.
 
 ## Saved questions and models as sources
 
-`source-card` takes the card's **numeric id**, copied from `search` or `get_content` — never guessed. Columns by output **name**:
+`source-card` takes the card's numeric id — never `card__<id>`, URI refs, or entity_ids — and its columns go by output name. The card must be in the same database as the rest of the query. Never fall back to native `{{#id}}` SQL.
 
 ```json
 {"lib/type": "mbql/query",
@@ -118,31 +115,19 @@ Window function: `offset` sits in `aggregation` and reads another breakout row �
              "limit": 50}]}
 ```
 
-The card must live in the same database as the rest of the query. Never fall back to native `{{#id}}` SQL — `source-card` is the supported path.
-
 ## Metrics, measures, segments
 
-Referenced by numeric id (copied from tool responses) on a stage whose `source-table` is their base table:
-
-- Metric (saved metric card): `"aggregation": [["metric", {}, 42]]`
-- Measure (table-attached aggregation): `"aggregation": [["measure", {}, 7]]`
-- Segment (table-attached filter): `"filters": [["segment", {}, 3]]`
-
-`browse_data` `get_fields` lists each table's measures, segments, and metrics with ids. To compose *on top of* one, read its definition via `get_content` (`include: ["definition"]`) — it returns clauses in this dialect you can inline and extend.
+By numeric id, on a stage whose `source-table` is their base table: metric `"aggregation": [["metric", {}, 42]]`; measure `"aggregation": [["measure", {}, 7]]`; segment `"filters": [["segment", {}, 3]]`. `browse_data` `get_fields` lists each table's with ids. To compose on top of one, `get_content` `include: ["definition"]` returns its clauses in this dialect to inline and extend.
 
 ## Translating the request
 
-- **A constraint is a filter, not a breakout**: "only/where/for X" → `filters`; reserve `breakout` for "by / per / for each / over time".
-- **Apply every stated constraint**; don't drop one because the aggregation is in place.
-- **Don't add analysis the user didn't ask for.**
+- "only / where / for X" is a **filter**; "by / per / for each / over time" is a **breakout**.
+- Apply every stated constraint; add no analysis the user didn't ask for.
 
 ## Don't
 
-- Don't invent or guess ids — copy them from `browse_data` / `search` output. A wrong name errors loudly; a wrong id can silently hit the wrong column.
-- Don't use `card__<id>` strings, URI-style references, or 21-char entity_ids anywhere — `source-card` takes the bare numeric id.
-- Don't omit the `{}` options slot or put options anywhere but position 1.
-- Don't put a stage-container key (`aggregation`, `filters`, `breakout`, `limit`) at a clause head — clauses go *inside* those arrays.
-- Don't reference a same-stage aggregation by name (`["field", {}, "count"]`) in `order-by` — use `["aggregation", {}, <index>]`; name refs to aggregations are for the *next* stage.
-- Don't subtract dates with `-` — use `["datetime-diff", {}, a, b, "day"]`.
-- Don't breakout the same field twice in one stage (bucketed and raw).
-- Don't reference a previous stage's column by display label — machine name only.
+- Don't guess ids — a wrong id that exists resolves to the wrong column with no error.
+- Don't order by a same-stage aggregation by name (`["field", {}, "count"]`) — `["aggregation", {}, <index>]`; name refs are for the next stage.
+- Don't omit the `{}` options slot — the server repairs it, so your query stops matching later reads.
+- Don't reference a previous stage's column by display label ("Max of Total") — machine name only.
+- Don't turn "only / where X" into a breakout, or drop a stated constraint once the aggregation is in place.

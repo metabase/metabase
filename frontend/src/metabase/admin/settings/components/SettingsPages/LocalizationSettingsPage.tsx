@@ -31,7 +31,7 @@ export function LocalizationSettingsPage() {
           )}
           inputType="select"
           description={
-            <Stack gap="md">
+            <Stack gap="lg">
               {t`The default language for all users across the ${applicationName} UI, system emails, subscriptions, and alerts. Each user can override this from their own account settings.`}
               <CommunityLocalizationNotice isAdminView />
             </Stack>

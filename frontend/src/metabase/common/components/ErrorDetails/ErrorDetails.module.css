@@ -2,6 +2,6 @@
   font-family: monospace;
   white-space: pre-wrap;
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   overflow-y: auto;
 }

@@ -40,11 +40,8 @@ export function generateTsConfig(): string {
   return tsconfigTemplate;
 }
 
-export function generateIndexTsx(name: string, displayName: string): string {
-  return replaceDisplayName(
-    replaceName(replaceImportPath(indexTsxTemplate), name),
-    displayName,
-  );
+export function generateIndexTsx(displayName: string): string {
+  return replaceDisplayName(replaceImportPath(indexTsxTemplate), displayName);
 }
 
 export function generateManifest(name: string): string {

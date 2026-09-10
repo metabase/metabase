@@ -700,3 +700,23 @@
                {:type :text :text "partial answer"}
                {:type :usage :usage {:promptTokens 4 :completionTokens 0}}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel cancelled-consumer-is-not-fed-further-events-test
+  (testing "once the consumer stops early (reduced), nothing from later events reaches it"
+    ;; the agent loop signals a client disconnect or cancellation by returning `reduced` from the
+    ;; reducing fn; a plain `reduce` over an event's parts would strip that wrapper and keep feeding
+    ;; every event that follows
+    (let [event      {:responseId "r15"
+                      :candidates [{:content {:role "model" :parts [{:text "a"} {:text "b"}]}}]}
+          seen       (atom [])
+          cancelled? (atom false)
+          rf         (fn
+                       ([] [])
+                       ([acc] acc)
+                       ([acc {:keys [type delta]}]
+                        (swap! seen conj (or delta type))
+                        (when (= :text-delta type)
+                          (reset! cancelled? true))
+                        (if @cancelled? (reduced acc) acc)))]
+      (transduce (sgc/->aisdk-chunks-xf) rf [event event event])
+      (is (= [:start :text-start "a" :text-end] @seen)))))

@@ -17,10 +17,10 @@ export function RecoveryCodesForm({
   onDone,
 }: RecoveryCodesFormProps) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Text c="text-secondary">{message}</Text>
       <Input.Wrapper label={t`Your recovery codes`}>
-        <Box mt="xs">
+        <Box mt="xxs">
           <CopyableCodeBlock codes={recoveryCodes} />
         </Box>
       </Input.Wrapper>

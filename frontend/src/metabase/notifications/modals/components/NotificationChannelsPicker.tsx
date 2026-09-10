@@ -128,8 +128,8 @@ export const NotificationChannelsPicker = ({
     getNotificationHandlersGroupedByTypes(notificationHandlers);
 
   return (
-    <Stack gap="xl" align="start">
-      <Stack gap="xl" align="start" data-testid="alert-configured-channel">
+    <Stack gap="xxl" align="start">
+      <Stack gap="xxl" align="start" data-testid="alert-configured-channel">
         {channels.email?.configured && !!emailHandler && (
           <ChannelSettingsBlock
             title={t`Email`}

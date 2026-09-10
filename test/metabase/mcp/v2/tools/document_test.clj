@@ -7,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.registry :as registry]
-   [metabase.mcp.v2.tools.content :as v2.content]
    [metabase.mcp.v2.tools.document :as v2.document]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -55,25 +54,25 @@
 ;; TODO(slice-11/content): restore once `metabase.mcp.v2.tools.content/fetch-document` lands —
 ;; this test calls it via `(#'v2.content/fetch-document ...)` to compare the tool's echo against a
 ;; concise get_content read. See DEC-0001 and .private/decisions in the mcp-v2-foundation sidecar.
-(deftest create-clones-card-test
-  (mt/with-temp [:model/Card {card-id :id} {:name "Orders card"
-                                            :dataset_query (orders-query)}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (with-tool-documents
-        (fn [created!]
-          (let [payload (created! (call {:method           "create"
-                                         :name             "Clone test"
-                                         :content_markdown (str "Intro paragraph.\n\n{% card id=" card-id " %}")}))
-                cloned-id (some-> (re-find #"\{% card id=(\d+)" (:content_markdown payload)) second parse-long)]
-            (testing "the embedded foreign card is cloned and the response shows the clone's id"
-              (is (pos-int? cloned-id))
-              (is (not= card-id cloned-id))
-              (is (= (:id payload) (t2/select-one-fn :document_id :model/Card :id cloned-id))))
-            (testing "the original card is untouched"
-              (is (nil? (t2/select-one-fn :document_id :model/Card :id card-id))))
-            (testing "get_content returns the same Markdown body the tool returned"
-              (is (= (:content_markdown payload)
-                     (:content_markdown (#'v2.content/fetch-document (:id payload))))))))))))
+#_(deftest create-clones-card-test
+    (mt/with-temp [:model/Card {card-id :id} {:name "Orders card"
+                                              :dataset_query (orders-query)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (with-tool-documents
+          (fn [created!]
+            (let [payload (created! (call {:method           "create"
+                                           :name             "Clone test"
+                                           :content_markdown (str "Intro paragraph.\n\n{% card id=" card-id " %}")}))
+                  cloned-id (some-> (re-find #"\{% card id=(\d+)" (:content_markdown payload)) second parse-long)]
+              (testing "the embedded foreign card is cloned and the response shows the clone's id"
+                (is (pos-int? cloned-id))
+                (is (not= card-id cloned-id))
+                (is (= (:id payload) (t2/select-one-fn :document_id :model/Card :id cloned-id))))
+              (testing "the original card is untouched"
+                (is (nil? (t2/select-one-fn :document_id :model/Card :id card-id))))
+              (testing "get_content returns the same Markdown body the tool returned"
+                (is (= (:content_markdown payload)
+                       (:content_markdown (#'v2.content/fetch-document (:id payload))))))))))))
 
 (deftest create-collection-target-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -144,7 +143,8 @@
               (is (some #(= "Leave me alone." (get-in % [:content 0 :text])) after)))
             (testing "the rewritten block keeps its id, so its comment thread stays anchored"
               (is (= edited-id (id-of after #(str/includes? (str (get-in % [:content 0 :text])) "Edited"))))
-              (is (= [] (:orphaned_comment_threads updated))))))))))
+              (is (= [] (:orphaned_comment_threads updated)))
+              (is (= [] (:changed_blocks updated))))))))))
 
 (deftest edits-report-orphans-only-for-deleted-blocks-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -167,7 +167,9 @@
                                :edits  [{:old_str "\n\nDelete me." :new_str ""}]})]
             (testing "a block the edit removed reports its thread orphaned"
               (is (= [{:child_target_id doomed :comment_count 1}]
-                     (:orphaned_comment_threads updated))))
+                     (:orphaned_comment_threads updated)))
+              (is (= [{:block_id doomed :old_type "paragraph" :new_type nil}]
+                     (:changed_blocks updated))))
             (is (= "Keep me.\n\nKeep me too." (:content_markdown updated)))))))))
 
 (deftest rename-and-metadata-only-update-test
@@ -250,32 +252,48 @@
                                  :edits [{:old_str "gamma" :new_str "gamma gamma" :replace_all true}]})]
               (is (= "gamma gamma one\n\ngamma gamma two" (:content_markdown updated))))))))))
 
-(deftest edit-replacement-is-literal-text-not-markdown-test
-  (testing "a replacement that looks like Markdown syntax stays literal text — it does not reopen the
-           block as a list/heading, lose characters to a consumed marker, or change the block's id"
+(deftest edit-replacement-parses-markdown-test
+  (testing "replacement text is parsed as Markdown"
     (mt/with-current-user (mt/user->id :crowberto)
       (with-tool-documents
         (fn [created!]
-          (let [payload (created! (call {:method "create" :name "Literal" :content_markdown "x x x x x"}))
-                doc-id  (:id payload)
-                block-id (fn [] (-> (t2/select-one-fn :document :model/Document :id doc-id)
-                                    :content first :attrs :_id))
-                id-before (block-id)]
-            (testing "* as a replace_all replacement: still one paragraph, all five survive, id kept"
-              (let [updated (call {:method "update" :id doc-id
-                                   :edits [{:old_str "x" :new_str "*" :replace_all true}]})
-                    stored  (t2/select-one-fn :document :model/Document :id doc-id)]
-                (is (= "\\* \\* \\* \\* \\*" (:content_markdown updated))
-                    "the serialized body escapes each * as literal text — no marker was consumed")
-                (is (= ["paragraph"] (mapv :type (:content stored)))
-                    "the paragraph did not become a bulletList")
-                (is (= id-before (-> stored :content first :attrs :_id))
-                    "a text-only edit kept the block's id, so anchored comments stay put")))))))))
+          (doseq [[label replacement expected-markdown expected-type]
+                  [["bold" "**Bold**" "**Bold**" "paragraph"]
+                   ["list" "- first\n- second" "- first\n- second\n\n" "bulletList"]
+                   ["code fence" "```sql\nselect 1\n```" "```sql\nselect 1\n```\n\n" "codeBlock"]]]
+            (testing label
+              (let [payload  (created! (call {:method "create" :name label
+                                              :content_markdown "Replace me."}))
+                    doc-id   (:id payload)
+                    old-id   (-> (t2/select-one-fn :document :model/Document :id doc-id)
+                                 :content first :attrs :_id)
+                    updated  (call {:method "update" :id doc-id
+                                    :edits [{:old_str "Replace me." :new_str replacement}]})]
+                (is (= expected-markdown (:content_markdown updated)))
+                (is (= expected-type
+                       (-> (t2/select-one-fn :document :model/Document :id doc-id)
+                           :content first :type)))
+                (is (= (if (= "paragraph" expected-type)
+                         []
+                         [{:block_id old-id :old_type "paragraph" :new_type expected-type}])
+                       (:changed_blocks updated))))))
+          (testing "layout container"
+            (let [payload (created! (call {:method "create" :name "Layout"
+                                           :content_markdown "Replace me."}))
+                  doc-id  (:id payload)
+                  old-id  (-> (t2/select-one-fn :document :model/Document :id doc-id)
+                              :content first :attrs :_id)
+                  updated (call {:method "update" :id doc-id
+                                 :edits [{:old_str "Replace me."
+                                          :new_str "::: flex\n::: supporting\nwords\n:::\n:::"}]})]
+              (is (str/includes? (:content_markdown updated) "::: flex"))
+              (is (= "resizeNode" (-> (t2/select-one-fn :document :model/Document :id doc-id)
+                                      :content first :type)))
+              (is (= [{:block_id old-id :old_type "paragraph" :new_type nil}]
+                     (:changed_blocks updated))))))))))
 
-(deftest edit-inside-code-is-not-escaped-test
-  (testing "backslashes are literal inside a code span or fenced block, so the escaping that keeps a
-            replacement literal in prose would store characters the caller never wrote there —
-            `my_var` must not become `my\\_var` just because the edit landed in code"
+(deftest edit-inside-code-round-trips-test
+  (testing "replacement text inside code remains code content"
     (mt/with-current-user (mt/user->id :crowberto)
       (with-tool-documents
         (fn [created!]
@@ -292,21 +310,45 @@
                                  :edits [{:old_str "ls" :new_str "my_var"}]})]
               (is (str/includes? (:content_markdown updated) "my_var -la"))
               (is (not (str/includes? (:content_markdown updated) "my\\_var")))))
-          (testing "prose in the same document still escapes, so a replacement cannot reopen the block"
+          (testing "prose replacement is parsed as Markdown"
             (let [payload (created! (call {:method "create" :name "Mixed"
                                            :content_markdown "plain ls here"}))
                   updated (call {:method "update" :id (:id payload)
                                  :edits [{:old_str "ls" :new_str "*em*"}]})]
-              (is (= "plain \\*em\\* here" (:content_markdown updated))))))))))
+              (is (= "plain *em* here" (:content_markdown updated))))))))))
+
+(defn- error-text
+  "The error text a `call-tool` outcome carries, whichever way it refused: the registry rejects a
+   schema violation before dispatch as `{:error …}`, while a handler's teaching error comes back
+   from an executed call as `{:result {:isError true}}`. `nil` when the call succeeded, so a call
+   that went through can never satisfy an assertion about a refusal."
+  [{:keys [result error]}]
+  (cond
+    error             (:message error)
+    (:isError result) (-> result :content first :text)))
 
 (defn- write-error
   "The error text `document_write` returns for `args`, called through the registry rather than the
    handler directly — the tool's own Malli schema is only applied at that seam, and these are
-   arguments the schema is meant to reject. `nil` when the call succeeded."
+   arguments the schema is meant to reject."
   [args]
-  (let [result (registry/call-tool nil "test-session" "document_write" args)]
-    (when (:isError result)
-      (-> result :content first :text))))
+  (error-text (registry/call-tool nil "test-session" "document_write" args)))
+
+(deftest markdown-tables-are-rejected-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (with-tool-documents
+      (fn [created!]
+        (let [message "Markdown tables are not supported. Save the query as a question with `display: table` and embed it with {% card id=… %}."
+              table   "| Table | Rows |\n|---|---|\n| users | 5,000 |"
+              created (created! (call {:method "create" :name "Table test" :content_markdown "No table"}))
+              doc-id  (:id created)]
+          (is (= message (write-error {:method "create" :name "Rejected" :content_markdown table})))
+          (is (= message (write-error {:method "update" :id doc-id :content_markdown table})))
+          (is (= message (write-error {:method "update" :id doc-id
+                                       :edits [{:old_str "No table" :new_str table}]})))
+          (is (:id (created! (call {:method           "create"
+                                    :name             "Code example"
+                                    :content_markdown (str "```markdown\n" table "\n```")})))))))))
 
 (defn- written-smart-link-attrs
   "The smartLink attrs of a document written through the tool, read back from the stored AST — the
@@ -357,12 +399,16 @@
                 (is (= [{:entityId inactive-id :model "user" :label nil :href "/"}]
                        (written-smart-link-attrs created!
                                                  (format "{%% entity id=\"%d\" model=\"user\" %%}" inactive-id))))
-                (mt/with-temporary-setting-values [user-visibility :none]
-                  (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label nil :href "/"}
-                          {:entityId (mt/user->id :rasta) :model "user" :label "Rasta Toucan" :href "/"}]
-                         (written-smart-link-attrs created!
-                                                   (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
-                                                           (mt/user->id :crowberto) (mt/user->id :rasta)))))))))
+                ;; `user-visibility` is gated on :email-restrict-recipients — in OSS the setting reads
+                ;; :all no matter what is stored, so without this the narrowing never happens and the
+                ;; assertion below pins the default instead of the rule.
+                (mt/with-premium-features #{:email-restrict-recipients}
+                  (mt/with-temporary-setting-values [user-visibility :none]
+                    (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label nil :href "/"}
+                            {:entityId (mt/user->id :rasta) :model "user" :label "Rasta Toucan" :href "/"}]
+                           (written-smart-link-attrs created!
+                                                     (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
+                                                             (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
           (testing "an admin resolves what a non-admin could not"
             (mt/with-current-user (mt/user->id :crowberto)
               (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
@@ -515,6 +561,46 @@
                 (is (not (str/includes? (:content_markdown out) "widget")))
                 (is (= 20 (count (re-seq #"gadget" (:content_markdown out)))))))))))))
 
+(deftest edit-budget-covers-the-whole-call-test
+  (testing "the rewriting ceiling bounds one document_write call, not one edit. `edits` is an
+           unbounded list, so an allowance handed fresh to each entry is no bound at all: edits
+           that each price under the ceiling still buy an unbounded multiple of it in one request."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (with-tool-documents
+        (fn [created!]
+          ;; ~16KB. Each `replace_all` below matches 300 times, pricing at ~4,800 — well under the
+          ;; ceiling on its own, so every one of these edits is individually legal.
+          (let [doc-id (:id (created! (call {:method           "create"
+                                             :name             "Many edits"
+                                             :content_markdown (str/join "\n\n" (repeat 300 cost-model-line))})))
+                stored #(:markdown (documents/serialize
+                                    (t2/select-one-fn :document :model/Document :id doc-id)))
+                edit   (fn [old new] {:old_str old :new_str new :replace_all true})]
+            (testing "one such edit on its own is accepted"
+              (is (nil? (write-error {:method "update" :id doc-id
+                                      :edits [(edit "quick" "swift")]}))))
+            (let [before (stored)]
+              (testing "enough of them in a single call is refused, naming the call as the unit"
+                (let [timer   (u/start-timer)
+                      err     (write-error {:method "update" :id doc-id
+                                            :edits (mapv edit
+                                                         ["brown" "jumped" "over" "lazy" "sleeping" "dog"]
+                                                         ["red" "leapt" "above" "idle" "dozing" "fox"])})
+                      elapsed (u/since-ms timer)]
+                  (is (some? err) "should be refused, not carried out")
+                  (when err
+                    (is (re-find #"(?i)every edit in the call" err)
+                        "should say the ceiling is per call, so the agent splits rather than retries")
+                    (is (re-find #"content_markdown" err)
+                        "should point at the single-pass alternative"))
+                  ;; The budget caps work performed: the sweep stops once it is spent, so an
+                  ;; over-budget call costs about the ceiling (~600ms), never the whole request.
+                  (is (< elapsed 5000)
+                      (format "refusal should stop at the ceiling (took %.0fms)" (double elapsed)))))
+              (testing "a refused call leaves the stored body untouched — the reduce builds a new AST
+                       and the throw lands before update-document!, so no prefix of the edits persists"
+                (is (= before (stored)))))))))))
+
 (deftest method-shape-errors-test
   (mt/with-current-user (mt/user->id :crowberto)
     (with-tool-documents
@@ -550,7 +636,7 @@
               call!    (fn [scopes]
                          (-> (registry/call-tool scopes nil "document_write"
                                                  {:method "update" :id (:id existing) :edits []})
-                             :content first :text))]
+                             :result :content first :text))]
           (testing "without the read scope the body is withheld, leaving the minimal ack"
             (let [txt (call! #{"agent:content:write"})]
               (is (not (re-find #"PRE-EXISTING SECRET" txt)))
@@ -584,32 +670,32 @@
             (call! {:edits [] :clear ["collection_position"]})
             (is (nil? (t2/select-one-fn :collection_position :model/Document :id (:id doc)))))
           (testing "a property outside the clearable set is refused at the boundary"
-            (let [txt (-> (call! {:edits [] :clear ["name"]}) :content first :text)]
+            (let [txt (error-text (call! {:edits [] :clear ["name"]}))]
               (is (re-find #"clear" txt))
               (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id (:id doc)))))))))))
 
 ;; TODO(slice-11/content): restore once the `get_content` tool lands — this test calls it via
 ;; `registry/call-tool ... "get_content"` to compare the write echo against a concise read. See
 ;; DEC-0001 and .private/decisions in the mcp-v2-foundation sidecar.
-(deftest write-echo-and-read-name-the-body-alike-test
-  (testing "the write echo and a concise get_content read call the body `content_markdown`. They
+#_(deftest write-echo-and-read-name-the-body-alike-test
+    (testing "the write echo and a concise get_content read call the body `content_markdown`. They
               used to disagree — the read said `markdown` — so an agent doing the read-modify-write
               this tool's `edits`/`old_str` design encourages had to rename the field in between."
-    (mt/with-model-cleanup [:model/Document]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (let [echo (-> (registry/call-tool #{"agent:content:write" "agent:content:read"} nil
-                                           "document_write"
-                                           {:method "create" :name "shared name"
-                                            :content_markdown "BODY TEXT"})
-                       :content first :text json/decode+kw)
-              read (-> (registry/call-tool #{"agent:content:read"} nil "get_content"
-                                           {:items [{:type "document" :id (:id echo)}]})
-                       :content first :text json/decode+kw :results first)]
-          (is (= "BODY TEXT" (:content_markdown echo)))
-          (is (= (:content_markdown echo) (:content_markdown read)))
-          (testing "and neither side still carries the old key"
-            (is (not (contains? echo :markdown)))
-            (is (not (contains? read :markdown)))))))))
+      (mt/with-model-cleanup [:model/Document]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [echo (-> (registry/call-tool #{"agent:content:write" "agent:content:read"} nil
+                                             "document_write"
+                                             {:method "create" :name "shared name"
+                                              :content_markdown "BODY TEXT"})
+                         :content first :text json/decode+kw)
+                read (-> (registry/call-tool #{"agent:content:read"} nil "get_content"
+                                             {:items [{:type "document" :id (:id echo)}]})
+                         :content first :text json/decode+kw :results first)]
+            (is (= "BODY TEXT" (:content_markdown echo)))
+            (is (= (:content_markdown echo) (:content_markdown read)))
+            (testing "and neither side still carries the old key"
+              (is (not (contains? echo :markdown)))
+              (is (not (contains? read :markdown)))))))))
 
 (deftest ^:parallel tools-list-discoverability-test
   (testing "a dynamically-registered client can discover and call document_write. Registration is
@@ -626,6 +712,7 @@
       (testing "the manifest carries a description and an input schema that advertises `clear`"
         (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools grant)))]
           (is (seq (:description tool)))
+          (is (str/includes? (:description tool) "No Markdown tables - embed a table-display question instead."))
           (is (get-in tool [:inputSchema :properties :clear])))))))
 
 ;; Closes the inherited finding from slice 09a's review (.private/findings/slice-09a/parallel-review.md,

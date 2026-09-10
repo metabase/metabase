@@ -2,12 +2,12 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.search.db :as search.db]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.string :as u.str]
-   [toucan2.core :as t2]))
+   [metabase.util.string :as u.str]))
 
 (defn impossible-condition?
   "An (incomplete) check where queries will definitely return nothing, to help avoid spurious index update queries."
@@ -78,8 +78,7 @@
                               :es    :spanish
                               :sv    :swedish
                               :tr    :turkish}
-             available-languages (->> (t2/query {:select [:cfgname]
-                                                 :from   [:pg_ts_config]})
+             available-languages (->> (search.db/pg-text-search-configs)
                                       (map :cfgname)
                                       (map keyword)
                                       set)]

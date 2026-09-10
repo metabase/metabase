@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -241,3 +242,46 @@
                             :handlers
                             first)]
             (is (not (contains? handler :recipients)))))))))
+
+(deftest unreadable-dashcard-loses-its-card-describing-settings-test
+  (testing "reducing an unreadable dashcard's `:card` to nothing is not the whole redaction: the
+            `layout` include reads `:visualization_settings` and `:parameter_mappings` off the same
+            dashcard, and those are stored snapshots describing the card — its author-written title,
+            the warehouse columns it renders, and the field ids its filters are wired to. A caller
+            who was just denied the card must not receive them by another route."
+    (let [dashcard {:id                     1
+                    :card_id                12
+                    :row                    0
+                    :col                    0
+                    :size_x                 4
+                    :size_y                 4
+                    :card                   {:id 12 :name "Executive Payroll"}
+                    :visualization_settings {:card.title          "Executive Payroll by Employee"
+                                             :column_settings     {"[\"name\",\"base_salary\"]"
+                                                                   {:column_title "Salary"}}
+                                             :click_behavior      {:targetId 999}
+                                             :dashcard.background true}
+                    :parameter_mappings     [{:card_id 12 :target [:dimension [:field 999 nil]]}]}
+          redact   (fn [readable?]
+                     (with-redefs [mi/can-read? (constantly readable?)]
+                       (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]})))))]
+      (testing "unreadable: nothing naming the card survives"
+        (let [dc (redact false)]
+          (is (nil? (:card dc)))
+          (is (nil? (get-in dc [:visualization_settings :card.title]))
+              "the title is the card's name by another name")
+          (is (nil? (get-in dc [:visualization_settings :column_settings]))
+              "column settings name warehouse columns the caller may hold no permission on")
+          (is (nil? (get-in dc [:visualization_settings :click_behavior]))
+              "click targets name other entities")
+          (is (= [] (:parameter_mappings dc))
+              (str "parameter mappings carry the field ids the card's filters are wired to. Emptied "
+                   "rather than removed: the key is required on a DashboardCard, and the parameters "
+                   "summary runs `dashboard->resolved-params` over this same row"))
+          (testing "the grid slot itself is dashboard data, not card data, and survives"
+            (is (= 4 (:size_x dc)))
+            (is (true? (get-in dc [:visualization_settings :dashcard.background]))))))
+      (testing "readable: nothing is stripped"
+        (let [dc (redact true)]
+          (is (= "Executive Payroll by Employee" (get-in dc [:visualization_settings :card.title])))
+          (is (some? (:parameter_mappings dc))))))))

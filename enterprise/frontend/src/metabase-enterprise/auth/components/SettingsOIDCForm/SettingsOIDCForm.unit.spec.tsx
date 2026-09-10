@@ -76,21 +76,63 @@ const setup = async (options?: { providers?: CustomOidcConfig[] }) => {
   await screen.findByText("OpenID Connect");
 };
 
+describe("SettingsOIDCForm - collapsible sections", () => {
+  it("starts both optional sections collapsed for a new provider", async () => {
+    await setup({ providers: [] });
+
+    expect(
+      screen.getByRole("button", { name: "Optional settings" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByRole("button", { name: "Attribute mapping" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("starts both optional sections collapsed when the provider only has default values", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    expect(
+      screen.getByRole("button", { name: "Optional settings" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByRole("button", { name: "Attribute mapping" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("starts both optional sections collapsed even when the provider has custom values", async () => {
+    await setup({
+      providers: [
+        {
+          ...EXISTING_PROVIDER,
+          scopes: ["openid", "email"],
+          "attribute-map": {
+            ...EXISTING_PROVIDER["attribute-map"],
+            email: "mail",
+          },
+        },
+      ],
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Optional settings" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByRole("button", { name: "Attribute mapping" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
 describe("SettingsOIDCForm - Group Sync", () => {
   it("does not show group sync section for new providers", async () => {
     await setup({ providers: [] });
 
-    expect(
-      screen.queryByText("Synchronize group membership with your SSO"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Group mapping")).not.toBeInTheDocument();
   });
 
   it("shows the group sync UI for existing providers", async () => {
     await setup({ providers: [EXISTING_PROVIDER] });
 
-    expect(
-      screen.getByText("Synchronize group membership with your SSO"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Group mapping")).toBeInTheDocument();
     expect(screen.getByTestId("group-sync-switch")).toBeInTheDocument();
     expect(screen.getByLabelText("Group attribute name")).toBeInTheDocument();
     expect(

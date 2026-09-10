@@ -1,3 +1,4 @@
+export * from "./Dialog";
 export * from "./Drawer";
 export * from "./HoverCard";
 export * from "./Menu";
