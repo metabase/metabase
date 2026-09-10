@@ -27,19 +27,6 @@ function setup(data: DatasetData, goalValues: (GoalValue | null)[]) {
   );
 }
 
-function createAnswer(goal: number, column = "goal") {
-  return createMockDatasetData({
-    referenced_entities: {
-      card: {
-        9: {
-          status: "completed",
-          data: { cols: [createMockColumn({ name: column })], rows: [[goal]] },
-        },
-      },
-    },
-  });
-}
-
 describe("useResolvedGoalData", () => {
   it("resolves static values, self-column names and empty bounds without fetching", () => {
     const { result } = setup(DATA, [0, 100, "count", null]);
@@ -49,7 +36,9 @@ describe("useResolvedGoalData", () => {
   });
 
   it("answers references the dataset can't by re-running the query with them attached", async () => {
-    setupCardDataset({ dataset: { data: createAnswer(250) } });
+    setupCardDataset({
+      dataset: { data: createReferencedEntitiesAnswer(250) },
+    });
 
     const { result } = setup(DATA, [0, GOAL_REF]);
     expect(result.current).toEqual({ status: "resolving" });
@@ -92,7 +81,9 @@ describe("useResolvedGoalData", () => {
   });
 
   it("fails when the fresh answer still lacks the referenced column", async () => {
-    setupCardDataset({ dataset: { data: createAnswer(1, "other") } });
+    setupCardDataset({
+      dataset: { data: createReferencedEntitiesAnswer(1, "other") },
+    });
 
     const { result } = setup(DATA, [0, GOAL_REF]);
 
@@ -188,7 +179,9 @@ describe("useResolvedGoalData", () => {
         },
       },
     });
-    setupCardDataset({ dataset: { data: createAnswer(250) } });
+    setupCardDataset({
+      dataset: { data: createReferencedEntitiesAnswer(250) },
+    });
 
     const { result } = setup(data, [
       { type: "measure", id: 4, column: "sum" },
@@ -208,3 +201,16 @@ describe("useResolvedGoalData", () => {
     );
   });
 });
+
+function createReferencedEntitiesAnswer(goal: number, column = "goal") {
+  return createMockDatasetData({
+    referenced_entities: {
+      card: {
+        9: {
+          status: "completed",
+          data: { cols: [createMockColumn({ name: column })], rows: [[goal]] },
+        },
+      },
+    },
+  });
+}
