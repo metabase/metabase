@@ -127,21 +127,50 @@ Style this to match the app. If accessibility, keyboard behavior, or popover pos
 
 Date ranges should use ISO `YYYY-MM-DD` strings for query values. Never use `type="date"`.
 
-For custom date pickers:
+Include a Custom range option in date preset bars by default. Omit it only when the user explicitly asks for fixed presets only or no date range control. Order presets as durations first, then All time, then Custom last.
 
-- Include a Custom range option in date preset bars by default. Omit it only when the user explicitly asks for fixed presets only or no date range control. Order presets as durations first, then All time, then Custom last.
-- First check whether the repo already has a date picker component or component library. If it does, use the existing component.
-- If the repo has no existing date picker, install `react-datepicker`. The default data-app template only includes React, React DOM, and the Metabase SDK.
-- Do not install a large UI suite just for one data-app date filter.
-- Type strict `react-datepicker` callbacks explicitly, for example `onChange={(date: Date | null) => ...}` for single-date pickers.
-- For custom date ranges, use `selectsRange` with local `Date | null` start/end state, but only commit the query range when both dates are selected.
-- If the custom range control should look like the other preset buttons, use `customInput` with a `forwardRef` button, spread react-datepicker's injected props, and call its injected `onClick` so the popover still opens.
-- Convert selected dates to ISO `YYYY-MM-DD` strings with local date getters (`getFullYear`, `getMonth`, `getDate`) rather than `toISOString()`.
-- For date-picker `selected` props, parse saved strings defensively and pass `null` for empty or invalid values. Never pass `new Date("")`.
-- Recent `react-datepicker` packages include their own TypeScript types; do not add `@types/react-datepicker` unless the installed version actually needs it.
+### Use the built-in `DateRangePicker`
 
-Install `react-datepicker` only when the repo does not already have a date picker:
+`DateRangePicker` is the custom-range control. It comes from the SDK, so there is no dependency to install, no CSS to import, and no theming to match by hand — it already looks like the SDK components beside it.
+
+```tsx
+import { DateRangePicker } from "@metabase/embedding-sdk-react/data-app";
+
+const [range, setRange] = useState<[string | null, string | null]>([
+  null,
+  null,
+]);
+const [start, end] = range;
+
+const dateFilters =
+  start && end
+    ? [filter(ordersTable.fields.createdAt, "between", [start, end])]
+    : [];
+
+<DateRangePicker value={range} onChange={setRange} clearable />;
+```
+
+Both ends are `YYYY-MM-DD` strings — the same shape `filter(...)` takes, so there is no `Date` conversion and no time zone to get wrong.
+
+- `onChange` fires on every calendar click, so it reports half-picked ranges as `[start, null]`. Build the filter only when both ends are set; a half-picked range means no date filter, not a sentinel date.
+- Props: `value` / `defaultValue` / `onChange`, `label`, `placeholder`, `minDate`, `maxDate`, `clearable`, `disabled`, `numberOfColumns` (months shown side by side, default 2), `valueFormat` (dayjs format for the input text), `className`, `style`.
+- Size and place it with `style` or `className` on the picker itself. It renders at its content width by default.
+- Drop it straight into a preset bar as the Custom option — it needs no `customInput` or `forwardRef` wrapper to open its popover.
+
+### Falling back to a third-party picker
+
+Only for what `DateRangePicker` does not cover, such as single-date or date-time selection. Nothing else justifies a picker dependency — `react-datepicker`, `react-day-picker`, `flatpickr`, `@mui/x-date-pickers`, `antd` and `rsuite` are all the same mistake for a plain date range. The default data-app template ships React, React DOM, and the Metabase SDK, so this adds a dependency:
 
 ```bash
 npm install react-datepicker
 ```
+
+`react-datepicker` is the default pick; the rest of this section assumes it.
+
+- Do not install a large UI suite just for one data-app date filter.
+- Import `react-datepicker/dist/react-datepicker.css`, then add small CSS overrides for the app's visual style if needed.
+- Type strict `react-datepicker` callbacks explicitly, for example `onChange={(date: Date | null) => ...}` for single-date pickers.
+- If the control should look like the other preset buttons, use `customInput` with a `forwardRef` button, spread react-datepicker's injected props, and call its injected `onClick` so the popover still opens.
+- Convert selected dates to ISO `YYYY-MM-DD` strings with local date getters (`getFullYear`, `getMonth`, `getDate`) rather than `toISOString()`.
+- For date-picker `selected` props, parse saved strings defensively and pass `null` for empty or invalid values. Never pass `new Date("")`.
+- Recent `react-datepicker` packages include their own TypeScript types; do not add `@types/react-datepicker` unless the installed version actually needs it.

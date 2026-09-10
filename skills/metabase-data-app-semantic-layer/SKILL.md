@@ -23,9 +23,9 @@ Keep the semantic layer and presentation layer separate.
 - Do not hardcode categorical filter option values. A generated schema field only proves the field exists, not which values exist; query options from Metabase at runtime using the same generated schema field that the filter applies.
 - Dashboard-level filters should visibly affect every compatible card, table, KPI, and trend. If a filter can only apply to one query, make that scope obvious in the UI; do not show duplicate or no-op date controls.
 - Entity filters, where the stored value is an id/key and the UI shows a label, must use a single searchable combobox. Click/focus must open the option list immediately, before typing. Query options at runtime, search labels, and store the raw value. Never render entity filters as `<select>`; plain selects are only for short closed enums explicitly provided by the user.
-- Do not use native `<input type="date">` for data-app filter bars. Its placeholder and calendar popover are browser-controlled, often show `mm/dd/yyyy`, and cannot be reliably themed. If the repo already has a date picker component or component library, use that. Otherwise install `react-datepicker` for custom date selection.
-- Import `react-datepicker/dist/react-datepicker.css`, then add small CSS overrides for the app's visual style if needed.
-- Date bars must include Custom last by default: duration presets, All time, then Custom. Omit Custom only when the user explicitly asks for fixed presets only or no date range control. Date pickers must receive `Date | null`, never `new Date("")` or another invalid date for incomplete ranges; type strict callback parameters explicitly, such as `onChange={(date: Date | null) => ...}`.
+- Use `DateRangePicker` from `@metabase/embedding-sdk-react/data-app` for custom date ranges. It ships with the SDK, is themed to match the SDK components around it, and needs no dependency and no CSS import. Do not install a date picker library for a range — not `react-datepicker`, `react-day-picker`, `flatpickr`, or a UI suite's picker (`@mui/x-date-pickers`, `antd`, `rsuite`, …). Do not use native `<input type="date">` either: its placeholder and calendar popover are browser-controlled, often show `mm/dd/yyyy`, and cannot be reliably themed.
+- Reach for a third-party date picker only for what `DateRangePicker` does not cover, such as single-date or date-time selection; `react-datepicker` is the default pick. Then import its stylesheet (`react-datepicker/dist/react-datepicker.css`), add small CSS overrides for the app's visual style if needed, and pass `Date | null` — never `new Date("")` or another invalid date for incomplete ranges; type strict callback parameters explicitly, such as `onChange={(date: Date | null) => ...}`.
+- Date bars must include Custom last by default: duration presets, All time, then Custom. Omit Custom only when the user explicitly asks for fixed presets only or no date range control.
 - Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Use generated table measures or exported aggregation helpers.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, segments, or chart series.
 - Do not custom-render ambiguous business fields such as `margin`, `rate`, `score`, `percent`, `health`, `risk`, or `efficiency`. Do not add `%`, multiply by 100, color-code, or render stars unless semantic-layer units explicitly support it; use an SDK table/chart, omit the field, or ask for curation.
@@ -568,12 +568,11 @@ For the common memoized date/category filter shape:
 type DatePreset = "30d" | "90d" | "custom" | "all";
 
 const [datePreset, setDatePreset] = useState<DatePreset>("all");
-const [customStart, setCustomStart] = useState<Date | null>(null);
-const [customEnd, setCustomEnd] = useState<Date | null>(null);
+const [customRange, setCustomRange] = useState<[string | null, string | null]>([
+  null,
+  null,
+]);
 const [status, setStatus] = useState("all");
-
-const toLocalDateString = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
 const dateRange = useMemo((): readonly [string, string] | null => {
   if (datePreset === "all") {
@@ -581,13 +580,12 @@ const dateRange = useMemo((): readonly [string, string] | null => {
   }
 
   if (datePreset === "custom") {
-    return customStart && customEnd
-      ? [toLocalDateString(customStart), toLocalDateString(customEnd)]
-      : null;
+    const [start, end] = customRange;
+    return start && end ? [start, end] : null;
   }
 
   return getPresetDateRange(datePreset);
-}, [datePreset, customStart, customEnd]);
+}, [datePreset, customRange]);
 
 const orderFilters = useMemo(
   () => [
@@ -602,7 +600,7 @@ const orderFilters = useMemo(
 );
 ```
 
-When date picker state uses `Date | null`, convert selected dates with a local `YYYY-MM-DD` formatter before passing them to `filter(..., "between", range)`. Do not use `date.toISOString().split("T")[0]` for local date filters.
+`customRange` above is what `<DateRangePicker value={customRange} onChange={setCustomRange} />` stores, so there is nothing to convert. When a fallback picker's state uses `Date | null`, convert selected dates with a local `YYYY-MM-DD` formatter before passing them to `filter(..., "between", range)`. Do not use `date.toISOString().split("T")[0]` for local date filters.
 
 ## Result Shape And Charts
 
@@ -679,7 +677,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Shipping a date preset bar with no Custom range option, or Custom before All time.
 - Charting opaque IDs such as `franchise_id` when a user-facing name is available.
 - Rendering an entity filter in a plain `<select>`, even if the current runtime option list is short.
-- Using native `<input type="date">` and shipping browser-controlled `mm/dd/yyyy` placeholders or unthemed calendar popovers.
+- Reaching for native `<input type="date">` or any date picker dependency (`react-datepicker`, `react-day-picker`, a UI suite's picker) for a date range instead of `DateRangePicker`, and shipping browser-controlled `mm/dd/yyyy` placeholders or unthemed calendar popovers.
 - Assuming `filter(...)` fully validates value types.
 - Letting a `null` bucket become the latest time-series point.
 - Hardcoding business values, labels, timestamps, or rankings.

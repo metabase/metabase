@@ -14,6 +14,7 @@ import type { EditableDashboard } from "embedding-sdk-bundle/components/public/d
 import type { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
 import type { StaticDashboard } from "embedding-sdk-bundle/components/public/dashboard/StaticDashboard";
 import type { ResolveDatasetQuery } from "embedding-sdk-bundle/lib/create-metabase-query";
+import type { DateRangePicker } from "embedding-sdk-bundle/lib/data-app/date-range-picker";
 import type {
   DataAppLink,
   DataAppRouter,
@@ -68,6 +69,7 @@ type PublicExports = {
   CreateQuestion: InternalComponent<typeof CreateQuestion>;
   DataAppLink: typeof DataAppLink;
   DataAppRouter: typeof DataAppRouter;
+  DateRangePicker: typeof DateRangePicker;
   EditableDashboard: InternalComponent<typeof EditableDashboard>;
   InteractiveDashboard: InternalComponent<typeof InteractiveDashboard>;
   InteractiveQuestion: InternalComponent<typeof InteractiveQuestion>;

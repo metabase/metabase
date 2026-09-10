@@ -12,6 +12,11 @@ defineGlobalDependencies();
 
 export { DataAppRouter } from "./components/public/DataAppRouter";
 export { DataAppLink } from "./components/public/DataAppLink";
+export { DateRangePicker } from "./components/public/DateRangePicker";
+export type {
+  DateRangePickerProps,
+  DateRangeValue,
+} from "embedding-sdk-bundle/lib/data-app/date-range-picker";
 export { copy } from "./lib/public/copy";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export { defineQuery } from "./hooks/public/use-metabase-query/define-query";
