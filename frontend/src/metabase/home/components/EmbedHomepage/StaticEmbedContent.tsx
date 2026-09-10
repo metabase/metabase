@@ -43,7 +43,7 @@ export const StaticEmbedContent = ({
           to={exampleDashboardLink}
           onClick={trackEmbeddingHomepageExampleDashboardClick}
         >
-          <Button variant="outline">{t`Embed an example dashboard`}</Button>
+          <Button>{t`Embed an example dashboard`}</Button>
         </Link>
       )}
       <ExternalLink href={learnMoreStaticEmbedUrl}>

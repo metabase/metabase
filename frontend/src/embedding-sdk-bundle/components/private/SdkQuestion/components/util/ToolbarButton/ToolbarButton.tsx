@@ -31,8 +31,6 @@ function _ToolbarButton(
           <Icon name={icon} aria-hidden />
         ) : undefined
       }
-      py="sm"
-      px="lg"
       {...buttonProps}
     >
       {label}

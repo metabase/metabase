@@ -420,6 +420,7 @@ const EditMap = ({
             />
             <Button
               ml="sm"
+              size="lg"
               disabled={!map.url}
               variant={geoJson ? "default" : "filled"}
               onClick={onLoadGeoJson}

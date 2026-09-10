@@ -16,8 +16,6 @@ export function PopoverBackButton(props: PopoverBackButtonProps) {
       p={0}
       aria-label={t`Back`}
       c="text-primary"
-      fz="1rem"
-      lh="1.25rem"
       {...rest}
       variant="subtle"
       leftSection={withArrow && <Icon name="chevronleft" />}

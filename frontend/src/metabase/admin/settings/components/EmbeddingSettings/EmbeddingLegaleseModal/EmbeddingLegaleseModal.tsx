@@ -51,7 +51,6 @@ export const EmbeddingLegaleseModal = ({
       <Group justify="right" mt="xl">
         <Button
           onClick={onClose}
-          variant="outline"
           disabled={loading}
         >{t`Decline and go back`}</Button>
         <Button

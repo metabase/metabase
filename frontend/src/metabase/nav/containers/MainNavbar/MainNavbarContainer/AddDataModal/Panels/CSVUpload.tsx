@@ -235,18 +235,16 @@ export const CSVUpload = ({
             </div>
             {uploadState.file ? (
               <Button
-                variant="subtle"
-                p={0}
-                h="auto"
+                variant="transparent"
+                size="compact-md"
                 onClick={() => setUploadState({ file: null, error: null })}
               >
                 {t`Remove`}
               </Button>
             ) : (
               <Button
-                variant="subtle"
-                p={0}
-                h="auto"
+                variant="transparent"
+                size="compact-md"
                 onClick={handleFileSelectClick}
               >
                 {t`Select a file`}

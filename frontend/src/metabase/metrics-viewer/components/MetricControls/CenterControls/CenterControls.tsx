@@ -59,6 +59,7 @@ export function CenterControls(props: CenterControlsProps) {
               className={S.xAxisButton}
               aria-label={t`X-axis controls`}
               variant="subtle"
+              size="lg"
               color="text-primary"
               leftSection={<Icon name="gear" size={16} />}
               onClick={() => setIsXAxisPopoverOpen(!isXAxisPopoverOpen)}

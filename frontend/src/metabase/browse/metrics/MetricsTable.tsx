@@ -392,9 +392,8 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
       <Menu position="bottom-end">
         <Menu.Target>
           <Button
-            size="xs"
             variant="subtle"
-            px="sm"
+            size="sm"
             aria-label={t`Metric options`}
             c="text-primary"
           >

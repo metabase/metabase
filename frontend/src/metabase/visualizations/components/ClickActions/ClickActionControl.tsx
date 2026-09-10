@@ -4,8 +4,8 @@ import {
   type ClickAction,
   isCustomClickAction,
   isCustomClickActionWithView,
+  isRegularClickAction,
 } from "metabase/visualizations/types";
-import { isRegularClickAction } from "metabase/visualizations/types";
 
 import S from "./ClickActionControl.module.css";
 
@@ -49,9 +49,8 @@ export const ClickActionControl = ({
     case "token-filter":
       return (
         <Button
-          variant="outline"
-          fz="xl"
-          size="xs"
+          variant="subtle"
+          size="sm"
           onClick={handleClick}
           className={S.tokenFilterActionButton}
           leftSection={
@@ -71,9 +70,8 @@ export const ClickActionControl = ({
     case "token":
       return (
         <Button
-          variant="outline"
-          size="xs"
-          fz="sm"
+          variant="subtle"
+          size="sm"
           className={S.tokenFilterActionTokenButton}
           onClick={handleClick}
         >
@@ -85,9 +83,8 @@ export const ClickActionControl = ({
       return (
         <Tooltip label={action.tooltip}>
           <Button
-            variant="outline"
-            fz="xl"
-            size="xs"
+            variant="subtle"
+            size="sm"
             className={S.tokenFilterActionButton}
             data-testid={`click-actions-sort-control-${action.name}`}
             onClick={handleClick}
@@ -102,7 +99,7 @@ export const ClickActionControl = ({
     case "formatting":
       return (
         <Tooltip label={action.tooltip}>
-          <Button variant="outline" fz="xl" size="xs" onClick={handleClick}>
+          <Button size="sm" onClick={handleClick}>
             {typeof action.icon === "string" && (
               <Icon size={16} name={action.icon} />
             )}
@@ -113,10 +110,10 @@ export const ClickActionControl = ({
     case "horizontal":
       return (
         <Button
-          size="xs"
           p="0.5rem"
           mx="-0.5rem"
-          variant="inverse"
+          variant="subtle"
+          color="text-primary"
           classNames={{
             root: S.horizontalButton,
             label: S.label,

@@ -283,13 +283,7 @@ export const MetabotComponent = memo(
             className={S.closeButton}
           >
             {editor.options.editable ? (
-              <Button
-                variant="subtle"
-                p="sm"
-                m="sm"
-                size="sm"
-                onClick={() => deleteNode()}
-              >
+              <Button variant="subtle" m="sm" onClick={() => deleteNode()}>
                 <Icon name="close" data-hide-on-print />
                 <MetabotIcon data-show-on-print />
               </Button>
@@ -334,7 +328,6 @@ export const MetabotComponent = memo(
                 position="bottom"
               >
                 <Button
-                  size="sm"
                   disabled={!isMetabotEnabled}
                   onClick={() =>
                     isLoading ? handleStopMetabot() : handleRunMetabot()

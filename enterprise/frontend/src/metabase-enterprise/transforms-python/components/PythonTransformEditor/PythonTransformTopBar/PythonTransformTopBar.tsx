@@ -88,14 +88,7 @@ export function PythonTransformTopBar({
       )}
       {showEditButton && (
         <Flex ml="auto" mr="xl" align="center" h="3rem">
-          <EditDefinitionButton
-            bg="transparent"
-            fz="sm"
-            h="1.5rem"
-            px="sm"
-            size="xs"
-            transformId={transform.id}
-          />
+          <EditDefinitionButton size="sm" transformId={transform.id} />
         </Flex>
       )}
     </Flex>

@@ -74,9 +74,12 @@ export function TableSelector({
           miw={0}
           onClick={open}
           disabled={disabled}
-          classNames={{ inner: S.tableSelectorButtonInner }}
-          px="sm"
-          py="xl"
+          classNames={{
+            root: S.tableSelectorButton,
+            inner: S.tableSelectorButtonInner,
+          }}
+          py="sm"
+          h="auto"
           variant="subtle"
         >
           <Stack gap="xxs">

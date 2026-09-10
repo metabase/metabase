@@ -25,7 +25,6 @@ export const SearchButton = (props: ButtonProps) => {
   if (isSmallScreen) {
     return (
       <Button
-        h="36px"
         leftSection={<Icon name="search" />}
         variant="subtle"
         onClick={handleClick}
@@ -37,7 +36,6 @@ export const SearchButton = (props: ButtonProps) => {
 
   return (
     <Button
-      h="36px"
       w="240px"
       c={searchText ? "text-primary" : "text-disabled"}
       leftSection={<Icon name="search" c="text-primary" />}

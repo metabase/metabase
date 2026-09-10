@@ -51,19 +51,18 @@ export function Sidebar({
           {onRemove && (
             <Tooltip label={removeTooltip} disabled={!removeTooltip}>
               {/* without a div we will need hacks to make tooltip work */}
-              <div>
+              <Box display="flex">
                 <Button
                   leftSection={<Icon name="trash" />}
-                  variant="subtle"
+                  variant="transparent"
                   color="feedback-negative"
                   disabled={isRemoveDisabled}
                   onClick={onRemove}
-                  style={{ paddingLeft: 0, paddingRight: 0 }}
                   size="compact-md"
                   role="button"
                   aria-label={t`Remove`}
                 >{t`Remove`}</Button>
-              </div>
+              </Box>
             </Tooltip>
           )}
           {onCancel && (

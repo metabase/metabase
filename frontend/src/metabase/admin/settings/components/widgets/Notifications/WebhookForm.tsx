@@ -261,7 +261,7 @@ export const WebhookForm = ({
                 maw="21rem"
               />
               <Button
-                h="2.5rem"
+                size="lg"
                 onClick={() => handleTest(values, setFieldError)}
               >
                 {testButtonLabel}
@@ -342,14 +342,14 @@ export const WebhookForm = ({
           <Flex
             mt="1.5rem"
             justify={onDelete ? "space-between" : "end"}
+            align="center"
             gap="0.75rem"
           >
             {onDelete && (
               <Button
-                variant="subtle"
+                variant="transparent"
                 c="text-secondary"
                 size="compact-md"
-                pl="0"
                 leftSection={<Icon name="trash" />}
                 onClick={onDelete}
               >{t`Delete this destination`}</Button>
@@ -359,7 +359,7 @@ export const WebhookForm = ({
               <FormSubmitButton
                 disabled={!dirty}
                 label={submitLabel}
-                variant="brand"
+                variant="filled"
               />
             </Group>
           </Flex>

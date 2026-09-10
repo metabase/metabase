@@ -15,7 +15,6 @@ export function NoBreakoutControls() {
         <Box className={S.controlSection}>
           <Button
             className={S.controlButton}
-            fw="bold"
             aria-label={t`No breakout`}
             variant="subtle"
             color="text-primary"

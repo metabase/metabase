@@ -128,7 +128,6 @@ export const SdkIframeEmbedSetupContent = () => {
           <Group className={S.Navigation} justify="space-between">
             {canGoBack && (
               <Button
-                variant="default"
                 onClick={handleBack}
                 disabled={!allowPreviewAndNavigation}
               >

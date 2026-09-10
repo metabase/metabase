@@ -49,6 +49,7 @@ export function FormModelPicker({
         ref={formFieldRef}
       >
         <Button
+          size="lg"
           data-testid="collection-picker-button"
           id={id}
           onClick={() => setIsPickerOpen(true)}

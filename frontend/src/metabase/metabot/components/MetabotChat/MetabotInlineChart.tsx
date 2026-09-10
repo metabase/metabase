@@ -241,9 +241,9 @@ function SaveChartAction({
             component={ForwardRefLink}
             to={Urls.question(question.setId(savedCardId))}
             target="_blank"
-            variant="subtle"
+            variant="transparent"
             color="text-secondary"
-            size="compact-xs"
+            size="compact-md"
             leftSection={<Icon name="check" size={14} />}
           >
             {t`Saved`}
@@ -252,8 +252,8 @@ function SaveChartAction({
         .with({ readonly: true }, () => null)
         .with({ savedCardId: P.nullish, readonly: false }, () => (
           <Button
-            variant="subtle"
-            size="compact-xs"
+            variant="transparent"
+            size="compact-md"
             onClick={() => setIsSaveModalOpen(true)}
           >
             {t`Save`}

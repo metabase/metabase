@@ -201,10 +201,9 @@ export function Editor(props: EditorProps) {
             <Button
               aria-label={t`Function browser`}
               onClick={toggleFunctionBrowser}
+              size="sm"
               variant={isFunctionBrowserOpen ? "filled" : "subtle"}
               className={S.toolbarButton}
-              size="xs"
-              p="x"
               leftSection={<Icon name="function" />}
             />
           </ButtonTooltip>
@@ -214,9 +213,8 @@ export function Editor(props: EditorProps) {
                 aria-label={t`Auto-format`}
                 onClick={formatExpression}
                 className={S.toolbarButton}
+                size="sm"
                 variant="subtle"
-                size="xs"
-                p="xxs"
                 disabled={isFormatting || error != null}
                 leftSection={<Icon name="format_code" />}
               />

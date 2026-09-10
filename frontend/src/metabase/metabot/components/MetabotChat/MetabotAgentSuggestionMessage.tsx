@@ -257,10 +257,9 @@ export const AgentSuggestionMessage = ({
           >
             <Tooltip label={t`Read only`} disabled={!readonly}>
               <Button
-                size="compact-xs"
-                variant="subtle"
+                size="compact-md"
+                variant="transparent"
                 fw="normal"
-                fz="sm"
                 c={
                   canApply && !readonly ? "feedback-positive" : "text-disabled"
                 }

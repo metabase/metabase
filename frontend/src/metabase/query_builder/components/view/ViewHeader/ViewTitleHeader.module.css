@@ -28,7 +28,7 @@
 @container query-builder (max-width: 50em) {
   .ActionButtonRoot[data-variant="default"] {
     flex-shrink: 0;
-    padding: 11px;
+    padding-inline: 8px;
   }
 
   .ActionButtonLabel {
@@ -63,7 +63,6 @@
     &:hover,
     &[data-expanded="true"] {
       .FilterCountChip {
-        color: var(--mb-color-text-primary-inverse);
         background-color: var(--mb-color-core-filter);
       }
     }

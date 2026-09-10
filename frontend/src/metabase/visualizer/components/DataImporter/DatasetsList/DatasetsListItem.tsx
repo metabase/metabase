@@ -28,11 +28,13 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
 
   return (
     <Button
-      fullWidth
+      justify="start"
+      flex="0 0 auto"
+      pl={0}
+      variant={selected ? "filled" : "subtle"}
+      color={selected ? "core-brand" : "text-primary"}
       data-testid="swap-dataset-button"
-      variant="visualizer"
       aria-pressed={selected}
-      size="xs"
       onClick={() => {
         if (selected) {
           onRemove?.(item);
@@ -42,7 +44,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
       }}
       leftSection={
         <Box>
-          <Icon c="inherit" className={S.TableIcon} name="table2" mr="xxs" />
+          <Icon c="inherit" name="table2" mr="xxs" />
           {item.notRecommended && (
             <Tooltip
               label={t`This dataset might not be fully compatible with your current selection.`}
@@ -57,9 +59,8 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
           )}
         </Box>
       }
-      style={{ flex: 0, minHeight: 30, paddingLeft: 8, paddingRight: 8 }}
     >
-      <Ellipsified style={{ height: 17 }}>{item.name}</Ellipsified>
+      <Ellipsified>{item.name}</Ellipsified>
     </Button>
   );
 };

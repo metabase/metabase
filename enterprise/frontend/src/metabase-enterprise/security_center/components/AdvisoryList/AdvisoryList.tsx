@@ -88,8 +88,8 @@ export function AdvisoryList({
             </Title>
             {onAcknowledgeAll && undismissedNotAffecting.length > 0 && (
               <Button
-                variant="subtle"
-                size="compact-xs"
+                variant="transparent"
+                size="compact-md"
                 onClick={() =>
                   onAcknowledgeAll(
                     undismissedNotAffecting.map((a) => a.advisory_id),

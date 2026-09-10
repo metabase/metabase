@@ -79,7 +79,6 @@ export function TableActionsMenu({ table }: Props) {
       <Button
         component={ForwardRefLink}
         to={schemaViewerUrl}
-        size="md"
         leftSection={<Icon name="network" size={16} />}
       >
         {t`View schema`}
@@ -93,7 +92,6 @@ export function TableActionsMenu({ table }: Props) {
         <Menu.Target>
           <Button
             aria-label={t`More actions`}
-            size="md"
             leftSection={<Icon name="ellipsis" size={16} />}
           />
         </Menu.Target>

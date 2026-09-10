@@ -87,7 +87,6 @@ export const Logs = ({
                         aria-label={t`Clear`}
                         c="text-primary"
                         leftSection={<Icon name="close" />}
-                        size="xs"
                         variant="subtle"
                         onClick={() => {
                           patchUrlState({ query: "" });
@@ -137,13 +136,14 @@ export const Logs = ({
                 )}
 
                 <Button
+                  size="lg"
                   component={Link}
                   to={Urls.monitorLogLevels()}
                   leftSection={<Icon name="pulse" />}
-                  variant="default"
                 >{t`Customize log levels`}</Button>
 
                 <Button
+                  size="lg"
                   disabled={!hasFilteredLogs}
                   leftSection={<Icon name="download" />}
                   variant="filled"

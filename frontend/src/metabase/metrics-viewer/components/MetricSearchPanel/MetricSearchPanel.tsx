@@ -100,8 +100,7 @@ export function MetricSearchPanel() {
               <Button
                 variant="light"
                 color="core-filter"
-                size="xs"
-                p="sm"
+                px="sm"
                 leftSection={
                   <Icon
                     name={hasFilters ? "filter_plus" : "filter"}
@@ -117,8 +116,6 @@ export function MetricSearchPanel() {
                   <Button
                     variant="light"
                     color="core-filter"
-                    size="xs"
-                    py="sm"
                     px="lg"
                     aria-label={toggleLabel}
                     onClick={(event) => {

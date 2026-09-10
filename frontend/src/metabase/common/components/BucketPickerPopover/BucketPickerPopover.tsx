@@ -96,9 +96,8 @@ export function BucketPickerPopover({
           px="sm"
           miw="35%"
           maw="50%"
-          h="auto"
-          py={0}
-          variant="subtle"
+          size="compact-md"
+          variant="transparent"
           color="core-white"
           classNames={{ label: S.triggerButtonLabel }}
         >
@@ -150,7 +149,6 @@ export function BucketPickerPopover({
               color="core-brand"
               fullWidth
               px="lg"
-              py="sm"
               styles={{
                 inner: { display: "flex", justifyContent: "flex-start" },
               }}

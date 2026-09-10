@@ -43,7 +43,7 @@ export interface EmbeddingHubAction {
   anchor?: string;
 
   /** CTA button variant. */
-  variant?: "outline" | "subtle" | "filled";
+  variant?: "default" | "subtle" | "filled";
 
   /** Which modal to trigger? */
   modal?: EmbeddingHubModalToTrigger;

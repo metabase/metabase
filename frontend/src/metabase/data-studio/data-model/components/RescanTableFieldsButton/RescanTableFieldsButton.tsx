@@ -44,7 +44,7 @@ export const RescanTableFieldsButton = ({
   };
 
   return (
-    <Button variant="default" onClick={handleClick}>
+    <Button onClick={handleClick}>
       {started
         ? t`Scan triggered!`
         : isSingleTable

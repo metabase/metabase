@@ -92,7 +92,6 @@ export function Header({
       <Button.Group>
         <Tooltip withinPortal={false} label={t`Undo`}>
           <Button
-            size="sm"
             aria-label={t`Undo`}
             disabled={!canUndo}
             onClick={undo}
@@ -103,7 +102,6 @@ export function Header({
         </Tooltip>
         <Tooltip withinPortal={false} label={t`Redo`}>
           <Button
-            size="sm"
             aria-label={t`Redo`}
             disabled={!canRedo}
             onClick={redo}
@@ -115,7 +113,6 @@ export function Header({
       </Button.Group>
       <Button
         variant="filled"
-        size="sm"
         disabled={!saveButtonEnabled}
         onClick={handleSave}
       >

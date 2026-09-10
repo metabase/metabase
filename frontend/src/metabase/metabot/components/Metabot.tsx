@@ -49,7 +49,6 @@ const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
         </Text>
         <Button
           variant="subtle"
-          size="compact-lg"
           onClick={onRetry}
           data-testid="metabot-error-retry"
         >

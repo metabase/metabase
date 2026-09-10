@@ -394,7 +394,7 @@ export const NativeQueryEditorRoot = forwardRef<
                           variant="filled"
                           bg="feedback-positive"
                           px="0"
-                          w="2.5rem"
+                          w="2rem"
                           onClick={() => {
                             const proposedQuery =
                               proposedQuestion.legacyNativeQuery();
@@ -413,7 +413,7 @@ export const NativeQueryEditorRoot = forwardRef<
                       >
                         <Button
                           data-testid="reject-proposed-changes-button"
-                          w="2.5rem"
+                          w="2rem"
                           px="0"
                           variant="filled"
                           bg="feedback-negative"

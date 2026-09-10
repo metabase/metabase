@@ -53,12 +53,7 @@ export function ModelCacheManagementSection({ model }: Props) {
   const canRefreshCache =
     persistedModel && checkCanRefreshModelCache(persistedModel);
 
-  const refreshButtonLabel =
-    persistedModel?.state === "creating" ? (
-      t`Create now`
-    ) : (
-      <Icon name="refresh" tooltip={t`Refresh now`} />
-    );
+  const isCreating = persistedModel?.state === "creating";
 
   const canManageDB = model.canManageDB();
 
@@ -89,17 +84,27 @@ export function ModelCacheManagementSection({ model }: Props) {
             </Flex>
             {isError && <Box pt="sm">{lastRefreshLabel}</Box>}
           </Box>
-          {canRefreshCache && canManageDB && (
-            <Button
-              variant="subtle"
-              p="xxs"
-              c="text-primary"
-              size="xs"
-              onClick={() => onRefresh(model.id())}
-            >
-              {refreshButtonLabel}
-            </Button>
-          )}
+          {canRefreshCache &&
+            canManageDB &&
+            (isCreating ? (
+              <Button
+                variant="transparent"
+                size="compact-md"
+                c="text-primary"
+                onClick={() => onRefresh(model.id())}
+              >
+                {t`Create now`}
+              </Button>
+            ) : (
+              <Button
+                variant="transparent"
+                size="compact-md"
+                c="text-primary"
+                aria-label={t`Refresh now`}
+                leftSection={<Icon name="refresh" tooltip={t`Refresh now`} />}
+                onClick={() => onRefresh(model.id())}
+              />
+            ))}
         </Flex>
       )}
     </>

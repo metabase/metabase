@@ -56,7 +56,7 @@ export const AddRow = ({
         {t`Cancel`}
       </Button>
       <Button
-        variant={isValid ? "filled" : "outline"}
+        variant={isValid ? "filled" : "default"}
         disabled={!isValid}
         onClick={onDone}
       >

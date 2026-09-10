@@ -175,8 +175,8 @@ export const LoginAttributeMappingEditor = ({
         );
       })}
       <Button
-        variant="light"
-        size="xs"
+        variant="transparent"
+        size="compact-md"
         leftSection={<Icon name="add" />}
         onClick={() => {
           handleChange(addEntry(entries));
@@ -255,6 +255,7 @@ const ValueInput = ({
       />
       {canDelete && (
         <Button
+          size="lg"
           leftSection={<Icon name="close" />}
           onClick={onDelete}
           data-testid="remove-mapping"
@@ -265,6 +266,7 @@ const ValueInput = ({
           label={t`Revert to "${valueOpts?.revert?.value}" value from ${valueOpts?.revert?.source}`}
         >
           <Button
+            size="lg"
             leftSection={<Icon name="refresh" />}
             onClick={onRevert}
             data-testid="revert-mapping"

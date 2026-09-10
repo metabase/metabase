@@ -39,6 +39,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
             miw={value ? undefined : "10rem"}
             onClick={openModal}
             variant="filled"
+            size="lg"
           >
             {value ? t`Regenerate key` : t`Set up key`}
           </Button>

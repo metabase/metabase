@@ -98,6 +98,7 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   {(segments.length > 1 || canRemoveAll) && (
                     <Button
+                      size="lg"
                       leftSection={<Icon name="trash" c="text-disabled" />}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
@@ -120,6 +121,7 @@ export const ChartSettingSegmentsEditor = ({
         >{t`Add color ranges to make this number change color depending on it's value`}</Text>
       )}
       <Button
+        size="lg"
         leftSection={<Icon name="add" />}
         onClick={() => onChange(segments.concat(newSegment(segments)))}
         w="100%"
