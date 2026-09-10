@@ -101,7 +101,8 @@ export const DashCardMenuItems = ({
         key: "MB_TIMELINE_EVENTS",
         iconName: "calendar",
         label: t`Events`,
-        onClick: () => dispatch(openEventsSidebar({ dashcardId })),
+        onClick: () =>
+          dispatch(openEventsSidebar({ dashcardId }, "dashcard_menu")),
       });
     }
 

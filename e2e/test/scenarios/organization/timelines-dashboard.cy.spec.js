@@ -34,6 +34,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
       H.timelineEventVisibility("RC1").should("be.checked");
     });
     H.timelineEventChip("RC1").should("be.visible");
+    cy.get("@createEvent").its("request.body.source").should("eq", "dashboard");
   });
 
   it("should not list timelines without events", () => {
@@ -271,7 +272,13 @@ describe("scenarios > organization > timelines > dashboard", () => {
     H.editDashboard();
     H.dashboardSaveButton().should("be.visible");
     eventsSidebar().should("not.exist");
-    H.removeDashboardCard(0);
+    // hover away from the chart center, where the event popover would cover the card
+    H.getDashboardCard(0)
+      .realHover({ position: "topLeft" })
+      .findByTestId("dashboardcard-actions-panel")
+      .should("be.visible")
+      .icon("close")
+      .click({ force: true });
     H.saveDashboard();
     H.waitForDashcardsToLoad({ count: 1 });
     eventChip(0, "RC1")
@@ -456,19 +463,36 @@ describe("scenarios > organization > timelines > dashboard", () => {
       expectEventsShownOnce();
 
       openEventsSidebar();
+      expectDashboardEvent({
+        event: "dashboard_events_panel_opened",
+        triggered_from: "dashboard_menu",
+      });
       toggleEventVisibility("RC1");
       eventChip(0, "RC1").should("not.exist");
       eventChip(1, "RC1").should("not.exist");
+      expectDashboardEvent({
+        event: "dashboard_events_visibility_changed",
+        triggered_from: "dashboard",
+        event_detail: "hidden",
+      });
       toggleEventVisibility("RC1");
       eventChip(0, "RC1").should("be.visible");
       eventChip(1, "RC1").should("be.visible");
+      expectDashboardEvent({
+        event: "dashboard_events_visibility_changed",
+        triggered_from: "dashboard",
+        event_detail: "shown",
+      });
       expectEventsShownOnce();
 
       eventsSidebar().button("Create event").click();
       createEvent("RC2", "01/15/2028");
       eventChip(0, "RC2").should("be.visible");
       eventChip(1, "RC2").should("be.visible");
-      H.expectUnstructuredSnowplowEvent({ event: "new_event_created" });
+      H.expectUnstructuredSnowplowEvent({
+        event: "new_event_created",
+        source: "dashboard",
+      });
       expectEventsShownOnce();
 
       cy.reload();
@@ -553,10 +577,14 @@ function closeEventsSidebar() {
 }
 
 function expectEventsShownOnce() {
+  expectDashboardEvent({ event: "dashboard_events_shown" }, 1);
+}
+
+function expectDashboardEvent(payload, count) {
   cy.get("@dashboardId").then((dashboardId) => {
     H.expectUnstructuredSnowplowEvent(
-      { event: "dashboard_events_shown", target_id: dashboardId },
-      1,
+      { ...payload, target_id: dashboardId },
+      count,
     );
   });
 }
