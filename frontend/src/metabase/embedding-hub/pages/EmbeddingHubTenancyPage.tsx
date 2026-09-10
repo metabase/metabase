@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 
+import { permissionApi } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { usePermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
@@ -10,9 +11,9 @@ import {
 } from "metabase/common/tenants";
 import { isUnder } from "metabase/embedding-hub/components/EmbeddingHubLayout";
 import { TenancyUpsellPage } from "metabase/embedding-hub/upsells";
-import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Outlet, useLocation, useNavigate } from "metabase/router";
-import { useSetting } from "metabase/settings";
+import { useAdminSetting, useSetting } from "metabase/settings";
 import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   Box,
@@ -115,7 +116,21 @@ function TenancyTabs() {
 }
 
 function EnableTenancyCard() {
-  const [isUserStrategyModalOpen, setIsUserStrategyModalOpen] = useState(false);
+  const dispatch = useDispatch();
+  const { updateSetting } = useAdminSetting("use-tenants");
+
+  const enableTenancy = async () => {
+    const response = await updateSetting({ key: "use-tenants", value: true });
+
+    if (!response.error) {
+      dispatch(
+        permissionApi.util.invalidateTags([
+          "permissions-group",
+          "setup-guide-checklist",
+        ]),
+      );
+    }
+  };
 
   return (
     <Card p="xxl" withBorder>
@@ -128,21 +143,9 @@ function EnableTenancyCard() {
           </Text>
 
           <Group gap="xl">
-            {/* Opened here rather than routed to: the `.../user-strategy`
-                modal route hangs off the tenants listing, which this page does
-                not render until tenancy is on. */}
-            <Button
-              variant="filled"
-              onClick={() => setIsUserStrategyModalOpen(true)}
-            >
+            <Button variant="filled" onClick={enableTenancy}>
               {t`Enable multi-tenancy`}
             </Button>
-
-            {isUserStrategyModalOpen && (
-              <PLUGIN_TENANTS.EditUserStrategyModal
-                onClose={() => setIsUserStrategyModalOpen(false)}
-              />
-            )}
 
             <TenantsDocsLink label={t`View docs`} />
           </Group>

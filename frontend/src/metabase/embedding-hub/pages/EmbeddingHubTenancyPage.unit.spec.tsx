@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupTenantEntpoints,
@@ -9,7 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import {
   createMockSettings,
@@ -90,18 +91,25 @@ describe("EmbeddingHubTenancyPage", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("opens the user-strategy modal rather than navigating", async () => {
+    it("turns tenancy on without asking for a strategy first", async () => {
       setup({ hasTenants: true, isUsingTenants: false });
 
       await userEvent.click(
         await screen.findByRole("button", { name: "Enable multi-tenancy" }),
       );
 
-      // Routing to `.../user-strategy` would have matched a modal route that
-      // hangs off the tenants listing, which this state does not render.
+      await waitFor(async () => {
+        expect(await findRequests("PUT")).toHaveLength(1);
+      });
+
+      const [{ url, body }] = await findRequests("PUT");
+
+      expect(url).toContain("/api/setting/use-tenants");
+      expect(body).toEqual({ value: true });
+
       expect(
-        await screen.findByRole("heading", { name: "Pick a user strategy" }),
-      ).toBeInTheDocument();
+        screen.queryByRole("heading", { name: "Pick a user strategy" }),
+      ).not.toBeInTheDocument();
     });
   });
 
