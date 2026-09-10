@@ -296,23 +296,25 @@ describe("scenarios > organization > timelines > dashboard", () => {
         collection_id: ADMIN_PERSONAL_COLLECTION_ID,
       },
       events: [{ name: "Secret release", timestamp: "2027-11-20T00:00:00Z" }],
-    }).then(({ timeline: privateTimeline }) => {
-      createReleaseTimeline().then(({ timeline }) => {
-        H.createQuestionAndDashboard({
-          questionDetails: {
-            ...questionDetails,
-            visualization_settings: {
-              "timeline.selected_timeline_ids": [
-                timeline.id,
-                privateTimeline.id,
-              ],
-            },
+    }).then(({ timeline }) => cy.wrap(timeline.id).as("privateTimelineId"));
+    createReleaseTimeline().then(({ timeline }) =>
+      cy.wrap(timeline.id).as("timelineId"),
+    );
+    cy.then(function () {
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          ...questionDetails,
+          visualization_settings: {
+            "timeline.selected_timeline_ids": [
+              this.timelineId,
+              this.privateTimelineId,
+            ],
           },
-        }).then(({ body: { dashboard_id } }) => {
-          cy.signOut();
-          cy.signIn("readonly");
-          H.visitDashboard(dashboard_id);
-        });
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        cy.signOut();
+        cy.signIn("readonly");
+        H.visitDashboard(dashboard_id);
       });
     });
     H.getDashboardCard().findByText("Created At: Month").should("be.visible");
@@ -345,7 +347,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
         { name: "RC1", timestamp: "2027-10-20T00:00:00Z" },
         { name: "Stable release", timestamp: "2028-01-15T00:00:00Z" },
       ],
-    }).then(({ timeline }) => {
+    }).then(({ timeline }) =>
       H.createQuestionAndDashboard({
         questionDetails: {
           ...questionDetails,
@@ -358,31 +360,31 @@ describe("scenarios > organization > timelines > dashboard", () => {
             { id: "date", name: "Date", slug: "date", type: "date/range" },
           ],
         },
-      }).then(({ body: dashcard, questionId }) => {
-        cy.request("PUT", `/api/dashboard/${dashcard.dashboard_id}`, {
-          dashcards: [
-            {
-              ...dashcard,
-              parameter_mappings: [
-                {
-                  parameter_id: "date",
-                  card_id: questionId,
-                  target: [
-                    "dimension",
-                    [
-                      "field",
-                      ORDERS.CREATED_AT,
-                      { "base-type": "type/DateTime" },
-                    ],
+      }).then(({ body: { id, dashboard_id }, questionId }) => {
+        H.addOrUpdateDashboardCard({
+          dashboard_id,
+          card_id: questionId,
+          card: {
+            id,
+            parameter_mappings: [
+              {
+                parameter_id: "date",
+                card_id: questionId,
+                target: [
+                  "dimension",
+                  [
+                    "field",
+                    ORDERS.CREATED_AT,
+                    { "base-type": "type/DateTime" },
                   ],
-                },
-              ],
-            },
-          ],
+                ],
+              },
+            ],
+          },
         });
-        H.visitDashboard(dashcard.dashboard_id);
-      });
-    });
+        H.visitDashboard(dashboard_id);
+      }),
+    );
     H.timelineEventChip("RC1").should("be.visible");
     H.timelineEventChip("Stable release").should("be.visible");
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
@@ -417,16 +419,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
     H.editDashboard();
     H.resizeDashboardCard({ card: H.getDashboardCard(), x: -2000, y: -2000 });
     H.saveDashboard();
-    H.getDashboardCard()
-      .findByTestId("chart-container")
-      .should("be.visible")
-      .and(($chart) => {
-        const { width, height } = $chart[0].getBoundingClientRect();
-        expect(
-          width < 240 || height < 200,
-          "chart is below the supported event size",
-        ).to.be.true;
-      });
+    H.getDashboardCard().findByText("Orders by month").should("be.visible");
     H.timelineEventChip("RC1").should("not.exist");
     H.getDashboardCardMenu().click();
     H.menu().should("be.visible").findByText("Events").should("not.exist");

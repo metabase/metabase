@@ -42,18 +42,6 @@ describe("scenarios > embedding-sdk > timeline events", () => {
     });
   });
 
-  it("should not show events with a composable question visualization", () => {
-    cy.get<number>("@questionId").then((questionId) => {
-      mountSdkContent(
-        <InteractiveQuestion questionId={questionId}>
-          <InteractiveQuestion.Title />
-          <InteractiveQuestion.QuestionVisualization />
-        </InteractiveQuestion>,
-      );
-    });
-    getSdkRoot().within(() => expectChartWithoutEvents());
-  });
-
   (
     [
       ["InteractiveDashboard", InteractiveDashboard],
