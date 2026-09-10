@@ -67,7 +67,7 @@
   (let [recorded (get credentials reasoning-config-key)]
     (or (true? recorded) (= "true" recorded))))
 
-(def cloud-base-url
+(def ^:private cloud-base-url
   "Ollama Cloud's OpenAI-compatible API — the one Ollama address that is not configurable."
   "https://ollama.com/v1")
 
