@@ -396,6 +396,7 @@
     "on-headers": "^1.1.0",
     "prosemirror-model": "^1.25.11",
     "prosemirror-state": "^1.4.4",
+    "prosemirror-transform": "^1.12.1",
     "prosemirror-view": "^1.42.3",
     "js-cookie": "^3.0.7",
     "qs": "6.16.0",
