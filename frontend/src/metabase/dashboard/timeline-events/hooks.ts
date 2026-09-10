@@ -2,7 +2,12 @@ import { useCallback } from "react";
 
 import { useListTimelinesQuery } from "metabase/api";
 import { useDashboardContext } from "metabase/dashboard/context";
+import {
+  isPublicEmbedding,
+  isStaticEmbedding,
+} from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
+import { getRecordedTimelineEventsVisibility } from "metabase/visualizations/lib/timeline-events-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   DashCardId,
@@ -41,6 +46,7 @@ export const useDashboardTimelines = () => {
 
 type DashCardTimelineEventsProps = Pick<
   VisualizationProps,
+  | "timelineEvents"
   | "timelineEventsVisibility"
   | "selectedTimelineEventIds"
   | "onOpenTimelines"
@@ -57,8 +63,11 @@ const NO_TIMELINE_EVENTS: TimelineEventsVisibility = {
   "timeline.selected_timeline_ids": [],
 };
 
+const EMPTY_EVENTS: TimelineEvent[] = [];
+
 const DISABLED: DashCardTimelineEvents = {
   isEnabled: false,
+  timelineEvents: EMPTY_EVENTS,
   timelineEventsVisibility: NO_TIMELINE_EVENTS,
 };
 
@@ -68,17 +77,21 @@ export const useDashCardTimelineEvents = (
   const dispatch = useDispatch();
   const { withTimelineEvents = false } = useDashboardContext();
   const dashcardId: DashCardId = dashcard.id;
-  const isEnabled = useSelector(
-    (state) =>
-      withTimelineEvents &&
-      getDashCardTimeseriesXAxis(state, dashcardId) != null,
+  const canDisplayEvents = useSelector(
+    (state) => getDashCardTimeseriesXAxis(state, dashcardId) != null,
   );
+  const isEnabled = withTimelineEvents && canDisplayEvents;
 
-  const timelineEventsVisibility = useSelector((state) =>
-    isEnabled
+  const timelineEventsVisibility = useSelector((state) => {
+    if (!canDisplayEvents) {
+      return NO_TIMELINE_EVENTS;
+    }
+    return withTimelineEvents
       ? getDashCardTimelineEventsVisibility(state, dashcardId)
-      : NO_TIMELINE_EVENTS,
-  );
+      : getRecordedTimelineEventsVisibility(
+          dashcard.card?.visualization_settings,
+        );
+  });
   const selectedTimelineEventIds = useSelector((state) =>
     isEnabled
       ? getDashCardSelectedTimelineEventIds(state, dashcardId)
@@ -109,11 +122,21 @@ export const useDashCardTimelineEvents = (
     [dispatch],
   );
 
-  if (!isEnabled) {
+  if (!canDisplayEvents) {
     return DISABLED;
   }
+
+  const timelineEvents =
+    dashcard.timeline_events ??
+    (isPublicEmbedding() || isStaticEmbedding() ? EMPTY_EVENTS : undefined);
+
+  if (!isEnabled) {
+    return { isEnabled: false, timelineEvents, timelineEventsVisibility };
+  }
+
   return {
     isEnabled,
+    timelineEvents,
     timelineEventsVisibility,
     selectedTimelineEventIds,
     onOpenTimelines,

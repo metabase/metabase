@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { TimelineEventInfo } from "metabase/common/components/TimelineEventInfo";
 import { Box, HoverCard, Icon, Text, UnstyledButton } from "metabase/ui";
 import {
   TIMELINE_EVENTS_BAND,
@@ -68,7 +69,10 @@ export const TimelineEventChip = ({
 
   const isSingleEvent = events.length === 1;
   const hasMoreThanMax = events.length > MAX_VISIBLE_EVENTS;
-  const visibleEvents = hasMoreThanMax
+  const canSelect = onSelectTimelineEvents != null;
+  const showDetails = !canSelect && onSeeAllEvents == null;
+  const showSeeAll = hasMoreThanMax && (canSelect || onSeeAllEvents != null);
+  const visibleEvents = showSeeAll
     ? events.slice(0, MAX_VISIBLE_EVENTS)
     : events;
 
@@ -79,7 +83,6 @@ export const TimelineEventChip = ({
     selectedEventIds.includes(event.id),
   );
 
-  const canSelect = onSelectTimelineEvents != null;
   const handleSelect = () => {
     onOpenTimelines?.(isSingleEvent ? undefined : events.map((e) => e.id));
     onSelectTimelineEvents?.(events);
@@ -97,7 +100,6 @@ export const TimelineEventChip = ({
   // "See all" hands the whole cluster to `onSeeAllEvents` when provided (its
   // host renders the full list); otherwise it falls back to the select/open
   // behavior used by the query builder's timeline sidebar.
-  const showSeeAll = hasMoreThanMax && (canSelect || onSeeAllEvents != null);
   const handleSeeAll = () => {
     dismissPopover();
     if (onSeeAllEvents) {
@@ -157,13 +159,26 @@ export const TimelineEventChip = ({
       <HoverCard.Dropdown p={0} bdrs="0.75rem">
         <div data-testid="timeline-event-popover">
           {isSingleEvent ? (
-            <Box miw="8rem" maw="16rem" p="0.75rem">
-              <TimelineEventRow event={events[0]} showIcon={false} />
+            <Box
+              miw="8rem"
+              maw="16rem"
+              mah="20rem"
+              p="0.75rem"
+              style={{ overflowY: "auto" }}
+            >
+              {showDetails ? (
+                <TimelineEventInfo event={events[0]} />
+              ) : (
+                <TimelineEventRow event={events[0]} showIcon={false} />
+              )}
             </Box>
           ) : (
             <>
-              <Box w="16rem">
-                <TimelineEventsList events={visibleEvents} />
+              <Box w="16rem" mah="20rem" style={{ overflowY: "auto" }}>
+                <TimelineEventsList
+                  events={visibleEvents}
+                  showDetails={showDetails}
+                />
               </Box>
               {showSeeAll && (
                 <UnstyledButton

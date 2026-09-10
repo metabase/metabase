@@ -279,6 +279,46 @@
                                                        (m/remove-keys hidden-parameter-ids fields)))
         (select-keys action-public-keys))))
 
+(defn- public-dashcard-timeline-ids
+  [{:keys [card] action-id :action_id, dashcard-settings :visualization_settings, :as dashcard}]
+  (let [settings     (:visualization_settings card)
+        timeline-ids (:timeline.selected_timeline_ids settings)]
+    (when (and (pos-int? (:id card))
+               (false? (:archived card))
+               (queries/timeline-events-supported-display? (:display card))
+               (nil? action-id)
+               (not (contains? dashcard :action))
+               (nil? (:virtual_card dashcard-settings))
+               (not (contains? dashcard-settings :visualization))
+               (not (false? (:timeline_events.enabled settings)))
+               (sequential? timeline-ids))
+      (into #{} (filter pos-int?) timeline-ids))))
+
+(defn- public-timeline-events
+  [timeline-ids]
+  (when (seq timeline-ids)
+    ;; A public dashboard authorizes its saved event selection without granting collection access.
+    (let [active-ids (t2/select-pks-set :model/Timeline :id [:in timeline-ids] :archived false)]
+      (when (seq active-ids)
+        (t2/select [:model/TimelineEvent :id :timeline_id :name :description :icon :timestamp :timezone
+                    :time_matters :archived :created_at]
+                   :timeline_id [:in active-ids]
+                   :archived false
+                   {:order-by [[:timestamp :asc] [:id :asc]]})))))
+
+(defn- add-public-dashboard-timeline-events
+  [dashcards]
+  (let [dashcard-timeline-ids (mapv public-dashcard-timeline-ids dashcards)
+        events                (public-timeline-events (into #{} cat dashcard-timeline-ids))]
+    (mapv (fn [{{settings :visualization_settings} :card, :as dashcard} timeline-ids]
+            (let [excluded-ids (:timeline.excluded_timeline_event_ids settings)
+                  excluded-ids (if (sequential? excluded-ids) (set excluded-ids) #{})]
+              (assoc dashcard :timeline_events
+                     (into [] (filter #(and (contains? timeline-ids (:timeline_id %))
+                                            (not (contains? excluded-ids (:id %))))) events))))
+          dashcards
+          dashcard-timeline-ids)))
+
 (mu/defn public-dashboard :- ::dashboards.schema/dashboard
   "Return the public Dashboard with the given `dashboard-id`, removing all columns that should not be visible to
   the general public. Throws a 404 if the Dashboard doesn't exist. With `:enable-embedding? true`, additionally
@@ -291,10 +331,12 @@
         keep-param-fields-for-parameters
         params/remove-param-fields-non-public-columns
         api.dashboard/add-query-average-durations
+        (update :dashcards add-public-dashboard-timeline-events)
         (update :dashcards (fn [dashcards]
                              (for [dashcard dashcards]
                                (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x :dashboard_tab_id
-                                                          :size_y :parameter_mappings :visualization_settings :action :inline_parameters])
+                                                          :size_y :parameter_mappings :visualization_settings :action
+                                                          :inline_parameters :timeline_events])
                                    (update :card remove-card-non-public-columns)
                                    (update :series (fn [series]
                                                      (for [series series]

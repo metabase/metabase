@@ -33,8 +33,8 @@
 /*
  * The bridge extends past the dropdown, so keep overflow visible — otherwise the
  * default `overflow: auto` treats the bridge as content and adds a scrollbar.
- * The doubled selector wins over the default dropdown styles. The content always
- * fits (at most three rows plus "See all"), so no scrolling is needed.
+ * The doubled selector wins over the default dropdown styles. Long event lists
+ * scroll inside the dropdown instead.
  */
 .bridgeDropdown.bridgeDropdown {
   overflow: visible;
