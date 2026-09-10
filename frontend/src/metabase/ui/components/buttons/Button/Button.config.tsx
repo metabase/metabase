@@ -82,9 +82,7 @@ const getRootVars = ({ variant, color, size }: ButtonProps): ButtonRootVars => {
   if (family && TOKENIZED_FAMILIES[variant]?.includes(family)) {
     const vars = getFamilyVars(variant, family);
     const isCompact = typeof size === "string" && size.startsWith("compact");
-    const isTransparent =
-      variant === "transparent" || (variant === "subtle" && isCompact);
-    return isTransparent ? { ...vars, ...TRANSPARENT_VARS } : vars;
+    return isCompact ? { ...vars, ...TRANSPARENT_VARS } : vars;
   }
   return NON_BRAND_VARS[variant] ?? {};
 };
