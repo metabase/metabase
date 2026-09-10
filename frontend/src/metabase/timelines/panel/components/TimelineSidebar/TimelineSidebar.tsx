@@ -17,6 +17,7 @@ import type {
   Timeline,
   TimelineEvent,
   TimelineEventId,
+  TimelineEventSource,
 } from "metabase-types/api";
 
 import TimelinePanel from "../../containers/TimelinePanel";
@@ -38,6 +39,8 @@ export interface TimelineSidebarProps {
   selectedEventIds: TimelineEventId[];
   focusedEventIds?: TimelineEventId[] | null;
   xAxis?: TimeseriesXAxis | null;
+  /** where events created from this sidebar are reported as coming from */
+  eventSource?: TimelineEventSource;
   onUpdateVisibility: (update: TimelineEventsVisibilityUpdate) => void;
   onSelectEvents: (events: TimelineEvent[]) => void;
   onDeselectEvents: () => void;
@@ -53,6 +56,7 @@ export const TimelineSidebar = ({
   selectedEventIds,
   focusedEventIds = null,
   xAxis = null,
+  eventSource,
   onUpdateVisibility,
   onSelectEvents,
   onDeselectEvents,
@@ -169,6 +173,7 @@ export const TimelineSidebar = ({
       <TimelineEventModals
         modal={modal}
         collectionId={collectionId}
+        source={eventSource}
         onEventCreated={handleEventCreated}
         onClose={handleCloseModal}
       />
