@@ -760,19 +760,19 @@
                           :buckets [100 500 1000 2000 5000 10000 20000 30000 60000 120000]})
    (prometheus/counter :metabase-metabot/llm-input-tokens
                        {:description "LLM input tokens"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-output-tokens
                        {:description "LLM output tokens"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-cache-creation-tokens
                        {:description "LLM cache creation input tokens (Anthropic prompt caching)"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-cache-read-tokens
                        {:description "LLM cache read input tokens (Anthropic prompt caching)"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/histogram :metabase-metabot/llm-tokens-per-call
                          {:description "Tokens per LLM call"
-                          :labels [:model :source]
+                          :labels [:model :source :provider]
                           :buckets [1000 2500 5000 10000 20000 50000 100000 200000]})
    (prometheus/counter :metabase-metabot/agent-requests
                        {:description "Agent loop invocations"

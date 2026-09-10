@@ -54,8 +54,8 @@
 (defenterprise log-ai-usage!
   "Record an LLM API call in the ai_usage_log table."
   :feature :none
-  [{:keys [source model prompt-tokens completion-tokens cache-creation-tokens cache-read-tokens
-           user-id tenant-id conversation-id profile-id request-id ai-proxied]}]
+  [{:keys [source model provider model-name prompt-tokens completion-tokens cache-creation-tokens
+           cache-read-tokens user-id tenant-id conversation-id profile-id request-id ai-proxied]}]
   (when-not (contains? known-sources source)
     (throw (ex-info (str "Unknown ai_usage_log source " (pr-str source))
                     {:source source})))
@@ -71,6 +71,8 @@
         (metabot.db/insert-usage-log!
          {:source                 source
           :model                  model
+          :provider               provider
+          :model_name             model-name
           :prompt_tokens          prompt-tokens
           :completion_tokens      completion-tokens
           :total_tokens           total-tokens
