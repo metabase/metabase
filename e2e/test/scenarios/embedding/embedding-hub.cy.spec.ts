@@ -572,12 +572,7 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
         .findByRole("button", { name: "Enable multi-tenancy" })
         .click();
 
-      cy.findByRole("dialog", { name: "Pick a user strategy" }).within(() => {
-        cy.findByText("Multi tenant").click();
-        cy.findByRole("button", { name: "Apply" }).click();
-      });
-
-      cy.log("Applying lands on the tenants listing, now empty");
+      cy.log("Enabling lands on the tenants listing, now empty");
       // The empty state's copy is interpolated with anchor links, so no
       // single node's text content matches the sentence exactly -- a regex
       // matches the substring instead.
