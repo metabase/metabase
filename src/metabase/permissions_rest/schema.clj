@@ -49,7 +49,7 @@
 
 (mr/def ::table-perms
   (named-or-granular
-   [:map
+   [:map {:closed true}
     [:read  {:optional true} [:enum :all :none]]
     [:query {:optional true} [:enum :all :none :segmented]]]))
 
@@ -92,7 +92,7 @@
            :no]]])
 
 (mr/def ::data-perms
-  [:map
+  [:map {:closed true}
    [:native  {:optional true} [:ref ::native]]
    [:schemas {:optional true} [:ref ::schemas]]])
 
@@ -160,7 +160,7 @@
 (mr/def ::sandbox-update
   "a sandbox to write alongside a permissions graph update"
   [:and
-   [:map
+   [:map {:closed true}
     [:id                   {:optional true} ms/PositiveInt]
     [:group_id             {:optional true} ms/PositiveInt]
     [:table_id             {:optional true} ms/PositiveInt]
@@ -173,14 +173,14 @@
 
 (mr/def ::impersonation-update
   "a connection impersonation policy to write alongside a permissions graph update"
-  [:map
+  [:map {:closed true}
    [:group_id  ms/PositiveInt]
    [:db_id     ms/PositiveInt]
    [:attribute ms/NonBlankString]])
 
 (mr/def ::graph-update-request
   "the permissions graph, plus the sandboxes and connection impersonations to write with it"
-  [:map
+  [:map {:closed true}
    [:groups [:and
              [:multi {:dispatch map?}
               [true [:map-of

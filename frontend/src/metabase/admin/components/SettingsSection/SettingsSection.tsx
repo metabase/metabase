@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type React from "react";
+import { useState } from "react";
 
 import {
   Accordion,
@@ -33,6 +34,8 @@ export function SettingsSection({
   children,
   id,
   stackProps,
+  disabled = false,
+  className,
   ...boxProps
 }: {
   title?: React.ReactNode;
@@ -42,10 +45,16 @@ export function SettingsSection({
   children?: React.ReactNode;
   id?: string;
   stackProps?: StackProps;
+  // greys the whole card out; the caller still disables the controls inside
+  disabled?: boolean;
 } & BoxProps) {
   const { className: stackClassName, ...restStackProps } = stackProps ?? {};
   return (
-    <Box id={id} {...boxProps}>
+    <Box
+      id={id}
+      className={cx(disabled && S.DisabledSection, className)}
+      {...boxProps}
+    >
       {children && (
         <Stack
           gap="xl"
@@ -79,6 +88,7 @@ export function CollapsibleSettingsSection({
   title,
   description,
   defaultOpened = false,
+  disabled = false,
   children,
   className,
   ...boxProps
@@ -86,11 +96,19 @@ export function CollapsibleSettingsSection({
   title: React.ReactNode;
   description?: React.ReactNode;
   defaultOpened?: boolean;
+  // greys the card out, keeps it closed and keeps it from toggling
+  disabled?: boolean;
   children?: React.ReactNode;
 } & BoxProps) {
+  // a card that defaults open while disabled opens once it is enabled
+  const [isOpened, setIsOpened] = useState(defaultOpened);
   return (
     <Accordion
-      className={cx(S.CollapsibleAccordion, className)}
+      className={cx(
+        S.CollapsibleAccordion,
+        disabled && S.DisabledSection,
+        className,
+      )}
       classNames={{
         item: S.CollapsibleItem,
         control: S.CollapsibleControl,
@@ -101,7 +119,8 @@ export function CollapsibleSettingsSection({
       }}
       chevron={<Icon aria-hidden name="chevrondown" />}
       order={2}
-      defaultValue={defaultOpened ? COLLAPSIBLE_SECTION_VALUE : null}
+      value={isOpened && !disabled ? COLLAPSIBLE_SECTION_VALUE : null}
+      onChange={(value) => setIsOpened(value != null)}
       {...boxProps}
     >
       <Accordion.Item value={COLLAPSIBLE_SECTION_VALUE}>
@@ -109,7 +128,7 @@ export function CollapsibleSettingsSection({
             the whole header row toggles while the description stays outside
             the control button and out of its accessible name */}
         <Box className={S.CollapsibleHeader}>
-          <Accordion.Control>{title}</Accordion.Control>
+          <Accordion.Control disabled={disabled}>{title}</Accordion.Control>
           {description && (
             <Text c="text-secondary" {...SETTINGS_CARD_DESCRIPTION_PROPS}>
               {description}
