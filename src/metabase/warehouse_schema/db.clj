@@ -159,29 +159,39 @@
                                :left-join (lib-be/field-user-settings-join :f :u)
                                :where     [:= :f.id field-id]}))
 
+(def ^:private field-id-batch-size
+  "How many ids one `IN` list carries: JDBC drivers cap bound parameters (Postgres at 65535)."
+  10000)
+
 (mu/defn fields-with-user-settings
-  "Fields as users see them, in one query: those with `field-ids` (any state, e.g. to re-read hydrated Fields before
-  showing them), or the active, unretired ones of the Tables with `table-ids` in field order."
+  "Fields as users see them: those with `field-ids` (any state, e.g. to re-read hydrated Fields before showing
+  them), or the active, unretired ones of the Tables with `table-ids` in field order. Any number of ids: they are
+  queried in batches of [[field-id-batch-size]]."
   [{:keys [field-ids table-ids]} :- [:map {:closed true}
                                      [:field-ids {:optional true} [:maybe [:set ::lib.schema.id/field]]]
                                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]]]
   (cond
     (seq field-ids)
-    (t2/select :model/Field {:select    (fields-with-user-settings-select :f :u)
-                             :from      [[(t2/table-name :model/Field) :f]]
-                             :left-join (lib-be/field-user-settings-join :f :u)
-                             :where     [:in :f.id field-ids]})
+    (into []
+          (mapcat (fn [ids]
+                    (t2/select :model/Field {:select    (fields-with-user-settings-select :f :u)
+                                             :from      [[(t2/table-name :model/Field) :f]]
+                                             :left-join (lib-be/field-user-settings-join :f :u)
+                                             :where     [:in :f.id ids]})))
+          (partition-all field-id-batch-size field-ids))
 
     (seq table-ids)
-    (t2/select :model/Field {:select    (fields-with-user-settings-select :f :u)
-                             :from      [[(t2/table-name :model/Field) :f]]
-                             :left-join (lib-be/field-user-settings-join :f :u)
-                             :where     [:and
-                                         [:= :f.active true]
-                                         [:in :f.table_id table-ids]
-                                         [:not= (lib-be/field-user-settings-column :visibility_type :f :u) "retired"]]
-                             :order-by  [[:f.position :asc] [[:lower :f.name] :asc]]})))
-
+    (into []
+          (mapcat (fn [ids]
+                    (t2/select :model/Field {:select    (fields-with-user-settings-select :f :u)
+                                             :from      [[(t2/table-name :model/Field) :f]]
+                                             :left-join (lib-be/field-user-settings-join :f :u)
+                                             :where     [:and
+                                                         [:= :f.active true]
+                                                         [:in :f.table_id ids]
+                                                         [:not= (lib-be/field-user-settings-column :visibility_type :f :u) "retired"]]
+                                             :order-by  [[:f.position :asc] [[:lower :f.name] :asc]]})))
+          (partition-all field-id-batch-size table-ids))))
 (mu/defn field-names-reducible
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/field, plus its user-set display
   name from FieldUserSettings (if any) as `:user_display_name`."

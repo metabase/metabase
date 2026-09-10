@@ -350,6 +350,20 @@
       (field-user-settings/unset-user-settings! edited [:effective_type :coercion_strategy])
       (is (=? {:effective_type :type/Number :coercion_strategy :Coercion/String->Number} (warehouse-schema.db/field-with-user-settings edited-id))))))
 
+(deftest fields-with-user-settings-batches-test
+  (testing "ids beyond one IN list's worth are queried in batches, all of them returned"
+    (mt/with-temp [:model/Table {table-id :id} {}
+                   :model/Field {a :id} {:table_id table-id :display_name "A" :position 0}
+                   :model/Field {b :id :as field-b} {:table_id table-id :display_name "B" :position 1}
+                   :model/Field {c :id} {:table_id table-id :display_name "C" :position 2}]
+      (field-user-settings/upsert-user-settings field-b {:display_name "User B"})
+      (with-redefs [warehouse-schema.db/field-id-batch-size 2]
+        (is (= #{["A" a] ["User B" b] ["C" c]}
+               (into #{} (map (juxt :display_name :id))
+                     (warehouse-schema.db/fields-with-user-settings {:field-ids #{a b c}}))))
+        (is (= [a b c]
+               (map :id (warehouse-schema.db/fields-with-user-settings {:table-ids #{table-id}}))))))))
+
 (deftest upsert-user-settings-flags-test
   (mt/with-temp [:model/Field {field-id :id :as field} {}
                  :model/Field {target-id :id} {}]
