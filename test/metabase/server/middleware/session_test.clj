@@ -247,29 +247,35 @@
       (is (nil? (:metabase-user-id request'))))))
 
 (deftest current-user-info-for-api-key-test
-  (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
-                                  :user_id               (mt/user->id :lucky)
-                                  :creator_id            (mt/user->id :lucky)
-                                  :updated_by_id         (mt/user->id :lucky)
-                                  ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
+  (mt/with-temp [:model/ApiKey {api-key-id :id} {:name                  "An API Key"
+                                                 :user_id               (mt/user->id :lucky)
+                                                 :creator_id            (mt/user->id :lucky)
+                                                 :updated_by_id         (mt/user->id :lucky)
+                                                 ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
     (testing "A valid API key works, and user info is added to the request"
+      ;; `:api-key-id` and `:tenant-id` are resolved for API-key auth only — the usage analytics hook
+      ;; in `metabase.server.middleware.log` reads both off the request rather than looking them up again.
       (let [req {:headers {"x-api-key" "mb_foobar123"}}]
         (testing "No premium features, do not include :is-group-manager?"
           (mt/with-premium-features #{}
-            (is (= (merge req {:metabase-user-id        (mt/user->id :lucky)
+            (is (= (merge req {:api-key-id              api-key-id
+                               :metabase-user-id        (mt/user->id :lucky)
                                :is-superuser?           false
                                :is-data-analyst?        false
                                :user-locale             nil
+                               :tenant-id               nil
                                :embedding/auth-method   "api-key"})
                    (#'mw.session/merge-current-user-info req)))))
         (testing "Include :is-group-manager? if we have EE + :advanced-permissions "
           (when config/ee-available?
             (mt/with-premium-features #{:advanced-permissions}
-              (is (= (merge req {:metabase-user-id        (mt/user->id :lucky)
+              (is (= (merge req {:api-key-id              api-key-id
+                                 :metabase-user-id        (mt/user->id :lucky)
                                  :is-superuser?           false
                                  :is-data-analyst?        false
                                  :is-group-manager?       false
                                  :user-locale             nil
+                                 :tenant-id               nil
                                  :embedding/auth-method   "api-key"})
                      (#'mw.session/merge-current-user-info req))))))))))
 

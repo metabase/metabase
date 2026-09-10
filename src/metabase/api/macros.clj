@@ -810,6 +810,21 @@
                handler]))
           handlers)))
 
+(def route-template-carrier-key
+  "Request key under which middleware running *above* the routing tree can put a `volatile!` in order to learn which
+  route template ended up matching.
+
+  `:route-template` is added to a request that routing builds for the matched endpoint alone
+  (see [[find-matching-handler]]); it never travels back up, and neither does anything else reliable. Response
+  metadata would cover successful responses, but an endpoint that throws — which is how most 4xx/5xx are produced —
+  has its response built from the exception by `metabase.server.middleware.exceptions/catch-api-exceptions`, losing
+  any metadata the endpoint's response would have carried. A carrier owned by the outer middleware covers both, the
+  same way `log-api-call` already collects DB call counts from deep inside a request.
+
+  The carrier is optional: nothing installs one unless it needs the value, so routing pays a single map lookup. See
+  `metabase.server.middleware.log/log-api-call`, which installs one for API-key-authenticated requests only."
+  ::route-template-carrier)
+
 (mu/defn- build-ns-handler :- ::handler
   "Build a combined Ring handler for all `endpoints` that routes requests to the matching handler (if any)."
   [endpoints :- ::ns-endpoints]
@@ -817,7 +832,9 @@
     (open-api/handler-with-open-api-spec
      (fn ns-handler* [request respond raise]
        (if-let [[request* handler] (find-matching-handler handler-map request)]
-         (handler request* respond raise)
+         (do
+           (some-> (get request route-template-carrier-key) (vreset! (:route-template request*)))
+           (handler request* respond raise))
          (respond nil)))
      (fn [prefix]
        (metabase.api.macros.defendpoint.open-api/open-api-spec endpoints prefix)))))

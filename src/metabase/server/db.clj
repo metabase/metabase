@@ -69,11 +69,15 @@
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
-       (cond-> {:select    [[:api_key.user_id :metabase-user-id]
+       ;; `api-key-id` and `tenant-id` are here for API-key usage analytics: the auth query already has both rows
+       ;; joined, so carrying them on the request costs nothing and spares the response path a second lookup.
+       (cond-> {:select    [[:api_key.id :api-key-id]
+                            [:api_key.user_id :metabase-user-id]
                             [:api_key.key :api-key]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
+                            [:user.locale :user-locale]
+                            [:user.tenant_id :tenant-id]]
                 :from      :api_key
                 :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
                 :where     [:and
@@ -133,8 +137,8 @@
     (t2/query-one (cons sql params))))
 
 (mu/defn api-key-user-info
-  "The user id, api key, superuser/data-analyst/group-manager flags, and locale for the active User whose ApiKey
-  starts with `key-prefix`, or nil if there is none."
+  "The API key id, user id, api key, superuser/data-analyst/group-manager flags, tenant id, and locale for the active
+  User whose ApiKey starts with `key-prefix`, or nil if there is none."
   [key-prefix                   :- :string
    enable-advanced-permissions? :- :boolean]
   (t2/query-one (cons (user-data-for-api-key-prefix-query enable-advanced-permissions?) [key-prefix])))
