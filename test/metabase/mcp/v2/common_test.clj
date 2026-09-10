@@ -59,6 +59,40 @@
              (text (common/->mcp-error-content
                     (ex-info "leaky internal detail" {::common/error-code common/error-code-internal}))))))))
 
+(deftest ^:parallel schema-failure-names-the-function-test
+  (let [text #(-> % :content first :text)
+        ;; The shape `metabase.util.malli.fn` throws in dev and test.
+        invalid-input  (ex-info "Invalid input: [{:dashcard-id [\"disallowed key, got: 177\"]}]"
+                                {:type      :metabase.util.malli.fn/invalid-input
+                                 :fn-name   'check-parameter-mapping-permissions
+                                 :humanized [{:dashcard-id ["disallowed key, got: 177"]}]
+                                 :schema    :ignored
+                                 :value     [{:dashcard-id 177 :secret "hunter2"}]})
+        invalid-output (ex-info "Invalid output: {:email [\"missing required key\"]}"
+                                {:type      :metabase.util.malli.fn/invalid-output
+                                 :fn-name   'get-notification
+                                 :humanized {:email ["missing required key"]}
+                                 :schema    :ignored
+                                 :value     {:email "someone@example.com"}})]
+    (testing "GHY-4502: a server-side schema failure names the function instead of collapsing to
+              \"Internal error\" — it is a bug, but a bug with a name is a one-call diagnosis rather
+              than the nine blind retries that prompted this"
+      (let [content (common/->mcp-error-content invalid-input)]
+        (is (:isError content))
+        (is (re-find #"check-parameter-mapping-permissions" (text content))
+            "the function name is what makes this actionable")
+        (is (re-find #"dashcard-id" (text content))
+            "an invalid-INPUT humanization describes the caller's own argument, so it is safe to echo")))
+    (testing "the offending value is never echoed — `:value` carries the whole argument, which may
+              hold anything the caller sent"
+      (is (not (re-find #"hunter2" (text (common/->mcp-error-content invalid-input))))))
+    (testing "an invalid-OUTPUT names the function but never its humanization: that describes
+              SERVER-produced data, which the caller may have no right to see"
+      (let [content (common/->mcp-error-content invalid-output)]
+        (is (re-find #"get-notification" (text content)))
+        (is (not (re-find #"someone@example.com" (text content))))
+        (is (not (re-find #"missing required key" (text content))))))))
+
 (deftest ^:parallel success-content-test
   (testing "read responses default to text-only"
     (is (= {:content [{:type "text" :text "hi"}]} (common/success-content "hi"))))

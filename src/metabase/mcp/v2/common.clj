@@ -114,6 +114,29 @@
         (when (contains? client-error-status-codes status-code)
           (status-code->error-code status-code)))))
 
+(def ^:private schema-failure-types
+  "The `metabase.util.malli.fn` failure types. These are server-side bugs, not caller mistakes, but a bug
+   with a name is a one-call diagnosis instead of a blind retry loop — see GHY-4502."
+  #{:metabase.util.malli.fn/invalid-input :metabase.util.malli.fn/invalid-output})
+
+(defn- schema-failure-message
+  "A caller-facing message for a `mu/defn` schema failure, or nil when `e` is not one.
+
+   Names the function either way. The humanization is included ONLY for `::invalid-input`, where it
+   describes the caller's own argument echoed back at them. An `::invalid-output` humanization
+   describes SERVER-produced data — `me/humanize` embeds offending values (\"disallowed key, got: 177\"),
+   so echoing one could hand the caller a row they have no right to read.
+
+   `:value` is never touched: it holds the whole argument or return value."
+  [e]
+  (let [{:keys [type fn-name humanized]} (ex-data e)]
+    (when (contains? schema-failure-types type)
+      (if (= type :metabase.util.malli.fn/invalid-input)
+        (format "Server-side schema check failed in `%s`: %s. This is a bug in Metabase, not something to retry — report it."
+                fn-name (pr-str humanized))
+        (format "Server-side schema check failed in `%s` (on its return value). This is a bug in Metabase, not something to retry — report it."
+                fn-name)))))
+
 (defn caller-safe-error-message
   "The message of `e` when it is deliberately caller-facing, judged the same way as
    [[->mcp-error-content]]; any other exception is logged server-side and reported to the client
@@ -121,11 +144,14 @@
    JSON-RPC error rather than tool content — resource reads, list handlers, and the transport's
    own catch-all."
   [e]
-  (if (caller-facing-error-code e)
-    (or (ex-message e) "Internal error")
-    (do
-      (log/error e "Unhandled error dispatching MCP v2 request")
-      "Internal error")))
+  (cond
+    (caller-facing-error-code e) (or (ex-message e) "Internal error")
+    (schema-failure-message e)   (do
+                                   (log/error e "Schema check failed dispatching MCP v2 request")
+                                   (schema-failure-message e))
+    :else                        (do
+                                   (log/error e "Unhandled error dispatching MCP v2 request")
+                                   "Internal error")))
 
 (defn ->mcp-error-content
   "Convert a caught exception into MCP error content, and the single point where an exception
@@ -138,9 +164,13 @@
   [e]
   (if-let [code (caller-facing-error-code e)]
     (error-content (or (ex-message e) "Internal error") code)
-    (do
-      (log/error e "Unhandled error dispatching MCP v2 tool call")
-      (error-content "Internal error" error-code-internal))))
+    (if-let [message (schema-failure-message e)]
+      (do
+        (log/error e "Schema check failed dispatching MCP v2 tool call")
+        (error-content message error-code-internal))
+      (do
+        (log/error e "Unhandled error dispatching MCP v2 tool call")
+        (error-content "Internal error" error-code-internal)))))
 
 ;;; ------------------------------------------------ Message helpers ----------------------------------------------
 
