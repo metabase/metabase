@@ -27,7 +27,6 @@
    [metabase.metabot.self.openai :as openai]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -165,16 +164,6 @@
             :error-code  :api-key-missing
             :status-code 403}))
 
-(def ^:private provider
-  (adapter/provider
-   {:slug         "bedrock"
-    :display-name "AWS Bedrock"
-    :errors       {401 #(tru "AWS Bedrock rejected our credentials or request signature")
-                   403 #(tru "AWS Bedrock credentials lack permission for this model or action")
-                   404 #(tru "AWS Bedrock model or endpoint is unavailable in the configured region")
-                   429 #(tru "AWS Bedrock has rate limited us")
-                   500 #(tru "AWS Bedrock is not working but not saying why")}}))
-
 (defn- ensure-credentials
   "Validate the credentials of the connection serving this request.
   Self-hosted, no access key pair at all is fine, signing falls back to the AWS default credentials chain; on a
@@ -197,29 +186,35 @@
         (u/assoc-dissoc :session-token token)
         (update :region #(validate-region (or (not-empty %) "us-east-1"))))))
 
-(defn- bedrock-request
-  "Perform a SigV4-signed HTTP request against the Bedrock mantle endpoint.
-  `headers` are extra *unsigned* headers (e.g. `anthropic-version`). `credentials` is the AWS credentials map of
-  the connection serving this request. `ai-proxy?` is accepted for parity with the other provider adapters but is
-  not supported: throws when true."
-  [{:keys [method path body as headers credentials ai-proxy?]}]
-  (adapter/reject-ai-proxy! provider ai-proxy?)
+(defn- bedrock-auth
+  "Bedrock's `:auth`. Alone among the providers it authenticates per request rather than per connection:
+  SigV4 signs over the method, the full URL and the body, so those arrive with the request rather than
+  being fixed by the descriptor. The signed headers travel as the request's auth headers; extra unsigned
+  headers (e.g. `anthropic-version`) can still be added freely alongside them.
+
+  `ai-proxy?` is accepted for parity with the other adapters but is not supported."
+  [{:keys [slug display-name]} {:keys [credentials ai-proxy? method path body]}]
   (let [{:keys [region] :as creds} (ensure-credentials credentials)
         base-url     (str "https://bedrock-mantle." region ".api.aws")
         content-type (when body "application/json")
         sig-headers  (signed-headers (merge creds {:method       method
                                                    :url          (str base-url path)
                                                    :body         body
-                                                   :content-type content-type}))
-        auth         (core/resolve-auth "bedrock" "AWS Bedrock"
-                                        {:url base-url :headers sig-headers}
-                                        ai-proxy?)]
-    (core/request auth
-                  (cond-> {:method  method
-                           :url     path
-                           :headers headers}
-                    as   (assoc :as as)
-                    body (assoc :body body)))))
+                                                   :content-type content-type}))]
+    (core/resolve-auth slug display-name
+                       {:url base-url :headers sig-headers}
+                       ai-proxy?)))
+
+(def ^:private provider
+  (adapter/provider
+   {:slug         "bedrock"
+    :auth         bedrock-auth
+    :display-name "AWS Bedrock"
+    :errors       {401 #(tru "AWS Bedrock rejected our credentials or request signature")
+                   403 #(tru "AWS Bedrock credentials lack permission for this model or action")
+                   404 #(tru "AWS Bedrock model or endpoint is unavailable in the configured region")
+                   429 #(tru "AWS Bedrock has rate limited us")
+                   500 #(tru "AWS Bedrock is not working but not saying why")}}))
 
 ;;; ------------------------------------------------ Model listing ----------------------------------------------
 
@@ -227,11 +222,11 @@
   "Fetch the full mantle model catalog (`GET /v1/models`), every vendor included."
   [{:keys [credentials ai-proxy?]}]
   (try
-    (let [res (bedrock-request {:method      :get
-                                :path        "/v1/models"
-                                :as          :json
-                                :credentials credentials
-                                :ai-proxy?   ai-proxy?})]
+    (let [res (adapter/request! provider {:method      :get
+                                          :path        "/v1/models"
+                                          :as          :json
+                                          :credentials credentials
+                                          :ai-proxy?   ai-proxy?})]
       (get-in res [:body :data]))
     (catch Exception e
       (adapter/rethrow! provider e))))
@@ -329,7 +324,7 @@
   `:region`, and (for temporary credentials) `:session-token`. On a self-hosted Metabase with no access key pair,
   requests are signed with whatever the AWS default credentials chain resolves; Metabase Cloud requires the pair.
   `:ai-proxy?` is not supported for Bedrock and throws when true."
-  [{:keys [model credentials ai-proxy?] :as opts
+  [{:keys [model] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (let [opts   (assoc opts :model model :fast? false)
         family (model->family model)
@@ -340,17 +335,11 @@
                       :req     (->mantle-anthropic-body (claude/claude-request-body opts))}
           :openai    {:path    "/openai/v1/responses"
                       :req     (openai/openai-request-body opts)})]
-    (adapter/stream! provider {:model      model
-                               :path       path
-                               :body       req
-                               :span-attrs {:family family}
-                               :send!      #(bedrock-request {:method      :post
-                                                              :path        path
-                                                              :as          :stream
-                                                              :headers     headers
-                                                              :body        (json/encode req)
-                                                              :credentials credentials
-                                                              :ai-proxy?   ai-proxy?})})))
+    (adapter/stream! provider opts
+                     {:path       path
+                      :body       req
+                      :headers    headers
+                      :span-attrs {:family family}})))
 
 (defn- model->aisdk-chunks-xf
   "The SSE->AISDK translating transducer for a Bedrock model id.

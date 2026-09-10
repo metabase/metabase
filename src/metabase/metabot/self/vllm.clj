@@ -27,20 +27,35 @@
   "Smallest `max_model_len` [[preflight!]] will accept. A product floor, not a measurement."
   16384)
 
+(defn- missing-base-url-ex []
+  (ex-info (tru "No vLLM base URL is set")
+           {:api-error  true
+            :error-code :base-url-missing}))
+
+(defn- vllm-auth
+  "vLLM's `:auth`. A server needs a base URL but not a key — one started without `--api-key` is a complete
+  configuration — so the map is never nil and [[core/resolve-auth]] cannot reach its `missing-api-key-ex`
+  branch."
+  [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
+  (let [base-url (not-empty (:base-url credentials))
+        api-key  (not-empty (:api-key credentials))]
+    (when-not base-url
+      (throw (missing-base-url-ex)))
+    (core/resolve-auth slug display-name
+                       (cond-> {:url base-url}
+                         api-key (assoc :headers {"Authorization" (str "Bearer " api-key)}))
+                       ai-proxy?)))
+
 (def ^:private provider
   (adapter/provider
    {:slug         "vllm"
     :display-name "vLLM"
+    :auth         vllm-auth
     :errors       {400 #(tru "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar")
                    401 #(tru "vLLM API key expired or invalid — check the key your server was started with via --api-key")
                    404 #(tru "vLLM API endpoint was not found — the base URL should end in /v1")
                    429 #(tru "The vLLM server''s request queue is full — reduce concurrent load, or restart it with a larger --max-num-seqs")
                    500 #(tru "vLLM returned an internal server error")}}))
-
-(defn- missing-base-url-ex []
-  (ex-info (tru "No vLLM base URL is set")
-           {:api-error  true
-            :error-code :base-url-missing}))
 
 (defn- missing-model-ex []
   (ex-info (tru "No vLLM model is set")
@@ -59,21 +74,6 @@
   [credentials]
   (let [recorded (get credentials reasoning-config-key)]
     (or (true? recorded) (= "true" recorded))))
-
-(defn- vllm-auth
-  "Auth map for a vLLM request, built from the connection's credentials alone. The map is never nil, so
-  `core/resolve-auth` cannot reach its `missing-api-key-ex` branch — a keyless server is a complete
-  configuration."
-  [credentials ai-proxy?]
-  (adapter/reject-ai-proxy! provider ai-proxy?)
-  (let [base-url (not-empty (:base-url credentials))
-        api-key  (not-empty (:api-key credentials))]
-    (when-not base-url
-      (throw (missing-base-url-ex)))
-    (core/resolve-auth "vllm" "vLLM"
-                       (cond-> {:url base-url}
-                         api-key (assoc :headers {"Authorization" (str "Bearer " api-key)}))
-                       ai-proxy?)))
 
 (defn- inference-timeouts
   "Timeouts for a generation request."
@@ -377,7 +377,9 @@
   otherwise the normal candidate selection chooses a replacement."
   ([] (list-models {}))
   ([{:keys [credentials ai-proxy? model proposed-model probe?]}]
-   (let [auth     (vllm-auth credentials ai-proxy?)
+   (adapter/reject-ai-proxy! provider ai-proxy?)
+   ;; one auth serves the listing and the probe below, so this path resolves it itself
+   (let [auth     (vllm-auth provider {:credentials credentials :ai-proxy? ai-proxy?})
          entries  (list-all-models auth)
          proposed (when (some #(= proposed-model (:id %)) entries)
                     proposed-model)
@@ -464,16 +466,14 @@
   Opts map takes `:credentials` (`{:base-url ... :api-key ...}`) from the connection serving this
   request, and throws without a base URL.
   `:ai-proxy?` is not supported for vLLM and throws when true."
-  [{:keys [model credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
+  [{:keys [model credentials] :as opts} :- core/LLMRequestOpts]
   (when (str/blank? model)
     (throw (missing-model-ex)))
   (let [timeout-ms (llm/llm-vllm-request-timeout-ms)]
-    (adapter/stream! provider
-                     {:model    model
-                      :path     "/chat/completions"
+    (adapter/stream! provider opts
+                     {:path     "/chat/completions"
                       :body     (vllm-request-body opts)
                       :request  (inference-timeouts)
-                      :auth     (vllm-auth credentials ai-proxy?)
                       :wrap     #(io-guarded % timeout-ms)
                       ;; clj-http raises an `IOException` only when there is no response at all, so the
                       ;; IO branch cannot swallow a failure the provider's own messages would have translated.

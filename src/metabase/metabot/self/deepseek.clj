@@ -172,14 +172,13 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for DeepSeek and throws when true."
-  [{:keys [model credentials ai-proxy?] :as opts
+  [{:keys [model] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (adapter/stream! provider {:model       model
-                             :path        messages-path
-                             :body        (deepseek-request-body (assoc opts :model model))
-                             :headers     {"anthropic-version" anthropic-version}
-                             :credentials credentials
-                             :ai-proxy?   ai-proxy?}))
+  (let [opts (assoc opts :model model)]
+    (adapter/stream! provider opts
+                     {:path    messages-path
+                      :body    (deepseek-request-body opts)
+                      :headers {"anthropic-version" anthropic-version}})))
 
 (defn deepseek->aisdk-chunks-xf
   "Translates DeepSeek Anthropic Messages streaming events into AI SDK v5 protocol chunks."
