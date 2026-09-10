@@ -90,7 +90,6 @@
                             [:lens-id ms/NonBlankString]]
    params :- ::inspector.schema/lens-params.request]
   (let [transform (api/read-check :model/Transform id)
-        params    (update-keys params keyword)
         _         (transforms.core/check-feature-enabled! transform)
         result    (tracing/with-span :transforms "transforms.inspector.lens"
                     {:transform/id          id

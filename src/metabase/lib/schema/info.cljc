@@ -5,7 +5,6 @@
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
@@ -70,7 +69,8 @@
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:transform-id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:lens-id                 {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:lens-params             {:optional true} [:maybe [:map-of :string [:ref ::lib.schema.literal/literal]]]]
+   [:lens-params             {:optional true} [:maybe [:map {:closed true}
+                                                       [:join_step {:optional true} [:maybe :int]]]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
    [:visualization-settings  {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in

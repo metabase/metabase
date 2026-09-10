@@ -1029,11 +1029,11 @@
   (perms/graph namespace))
 
 (def ^:private RequestId
-  "A group or collection ID as it arrives as a JSON object key in a `PUT /graph` body: keywordized by the request
-  middleware, so `:1` rather than `1`; [[decode-graph]] parses it back."
+  "A group or collection ID as it arrives as a JSON object key in a `PUT /graph` body: the request middleware keywordizes
+  it, so it is turned back into the string it was and has to spell the integer [[decode-graph]] parses."
   [:and
-   ms/KeywordOrString
-   [:fn {:error/message "an ID"} (fn [k] (boolean (re-matches #"\d+" (name k))))]])
+   [:string {:decode/api #(cond-> % (keyword? %) name)}]
+   [:re {:error/message "an ID"} #"\d+"]])
 
 (def ^:private RequestPermissionsGroups
   "The `:groups` of a [[PermissionsGraph]] as it arrives in a `PUT /graph` body, before [[decode-graph]] coerces its

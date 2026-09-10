@@ -9,6 +9,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -49,8 +50,7 @@
 
 (mr/def ::action-value-map
   "A map from parameter name / column name to a value. The names are the action's and the table's, so the map is
-  string-keyed on its way in ([[ms/string-keyed-map]]); the handlers keywordize it for the mapping, which reads by
-  keyword.
+  string-keyed, here and all the way down to the action that runs it.
 
   Same shape as [[metabase.actions.schema/execute-parameter-values]]. Decoding sees a permissive string-keyed map and the
   values are validated against, rather than decoded through, [[strict-action-value-map]]."
@@ -101,7 +101,8 @@
     (merge input params)
     (reduce-kv
      (fn [acc k v]
-       (let [override (when-not (:visible v) (get params k))]
+       (let [k        (u/qualified-name k)
+             override (when-not (:visible v) (get params k))]
          (case (:sourceType v)
            ;; It seems like misconfiguration to configure a default :value for "ask-user", but some tests do it.
            "ask-user" (assoc acc k (if (contains? params k) override (:value v)))
@@ -128,8 +129,8 @@
              (= ::input x)  input
              (= ::params x) params
              ;; specific key
-             (tag? ::key x)   (get root (keyword (second x)))
-             (tag? ::param x) (get params (keyword (second x)))
+             (tag? ::key x)   (get root (second x))
+             (tag? ::param x) (get params (second x))
              :else
              x))
          mapping)))))
@@ -186,7 +187,7 @@
                                     :scope scope
                                     :input_count 1}
                           :user-id api/*current-user-id*})
-  {:outputs (execute!* action scope (some-> params (update-keys keyword)) [(update-keys input keyword)])})
+  {:outputs (execute!* action scope params [input])})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -225,7 +226,7 @@
                                     :scope scope
                                     :input_count (count inputs)}
                           :user-id api/*current-user-id*})
-  {:outputs (execute!* action scope (some-> params (update-keys keyword)) (map #(update-keys % keyword) inputs))})
+  {:outputs (execute!* action scope params inputs)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

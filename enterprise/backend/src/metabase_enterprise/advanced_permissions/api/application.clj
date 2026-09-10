@@ -39,14 +39,12 @@
   (update graph :groups dejsonify-groups))
 
 (def ^:private RequestGroupId
-  "A PermissionsGroup ID as it arrives in a `PUT /graph` request body. JSON object keys are keywordized by the request
-  middleware, so a group ID shows up as `:1` rather than `1`. [[dejsonify-groups]] parses the name back into an
-  integer, so a key that doesn't spell one has to be rejected here -- it would throw rather than 400 down there."
+  "A PermissionsGroup ID as it arrives as a JSON object key in a `PUT /graph` request body: the request middleware
+  keywordizes it, so it is turned back into the string it was and has to spell the integer [[dejsonify-groups]] parses
+  -- a key that doesn't is rejected here rather than throwing down there."
   [:and
-   ms/KeywordOrString
-   [:fn
-    {:error/message "group ID"}
-    (fn group-id-name? [k] (boolean (re-matches #"\d+" (name k))))]])
+   [:string {:decode/api #(cond-> % (keyword? %) name)}]
+   [:re {:error/message "group ID"} #"\d+"]])
 
 (def ^:private RequestGroups
   "The `:groups` half of an application permissions graph as it arrives in a `PUT /graph` request body: group ID ->
