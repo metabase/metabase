@@ -12,7 +12,7 @@ MariaDB shares a driver with MySQL, so select the **MySQL** driver.
 
 ## Supported versions
 
-Metabase supports the oldest supported version of Maria DB through the latest stable version. See [MariaDB Server releases](https://mariadb.com/kb/en/mariadb-server-release-dates/).
+Metabase supports the oldest supported version of Maria DB through the latest stable version. See [MariaDB Server releases](https://mariadb.com/docs/release-notes/community-server).
 
 ## Edit connection details
 

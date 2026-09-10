@@ -24,6 +24,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
@@ -200,7 +201,7 @@
   "Schema for the map we use to internally represent the base elements of a Card used for Notifications. id is not
   required since the card may be a placeholder."
   (mu/with-api-error-message
-   [:map
+   [:map {:closed true}
     [:include_csv                        ms/BooleanValue]
     [:include_xls                        ms/BooleanValue]
     [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
@@ -229,7 +230,8 @@
      [:display            [:maybe ms/KeywordOrString]]
      [:collection_id      [:maybe ms/PositiveInt]]
      [:dashboard_id       [:maybe ms/PositiveInt]]
-     [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
+     [:parameter_mappings [:maybe ::parameters.schema/parameter-mappings]]
+     [:pulse_id           {:optional true} [:maybe ms/PositiveInt]]]]
    (deferred-tru "value must be a map with the following keys `({0})`"
                  (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
                                  "dashboard_id" "parameter_mappings"]))))

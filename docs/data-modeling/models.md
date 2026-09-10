@@ -67,7 +67,7 @@ To view a model's details, visit the model and click on the **info** button in t
 - **History**: Lists changes to the model, and by whom.
 - **Relationships**: Lists which questions use the model, and which tables the model is linked to.
 - **Actions**: Lists actions created based on the model.
-- **Insights**: Info about the [model's usage](../usage-and-performance-tools/usage-analytics.md). Only visible to admins on a [Pro or Enterprise plan](https://www.metabase.com/pricing/).
+- **Insights**: Info about the [model's usage](../usage-and-performance-tools/usage-analytics.md). Only visible to admins on a [Pro or Enterprise plan](https://www.metabase.com/pricing).
 
 ## Add metadata to columns in a model
 
@@ -235,5 +235,5 @@ See [Convert existing models to transforms](../data-studio/transforms/query-tran
 [cte]: https://www.metabase.com/learn/sql/working-with-sql/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/dimensions-and-measures
 [question]: ../questions/start.md
-[learn-models]: https://www.metabase.com/learn/metabase-basics/getting-started/models
+[learn-models]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/models
 [troubleshooting-models]: ../troubleshooting-guide/models.md

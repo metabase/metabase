@@ -156,7 +156,7 @@
   (merge {:cache-strategy (ttl-strategy)
           :lib/type       :mbql/query
           :database       1
-          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2, :abc :def}]}
+          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2}]}
          query-kvs))
 
 (def ^:private ^:dynamic *rows*
