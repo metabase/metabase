@@ -61,9 +61,23 @@
          (is (= 200 (:status row)))
          (is (int? (:duration_ms row)))
          (is (= "metabase-cli" (:client_name row)))
-         (is (nil? (:tenant_id row))))
+         (is (nil? (:tenant_id row)))
+         (testing "embedding_client is absent — the common case, no X-Metabase-Client header sent"
+           (is (nil? (:embedding_client row)))))
        (testing "and last_used_at is stamped"
          (is (some? (last-used-at api-key-id))))))))
+
+(deftest api-key-request-records-embedding-client-test
+  (testing "the X-Metabase-Client header, when present, is recorded alongside client_name"
+    (do-with-api-key!
+     (fn [unmasked-key api-key-id]
+       (client/client :get 200 "user/current"
+                      (update (api-key-headers unmasked-key) :request-options
+                              update :headers assoc "x-metabase-client" "embedding-sdk-react"))
+       (let [[row] (rows-for api-key-id)]
+         (is (= "embedding-sdk-react" (:embedding_client row)))
+         (testing "client_name stays the User-Agent classification — unaffected by the header"
+           (is (= "metabase-cli" (:client_name row)))))))))
 
 (deftest api-key-request-records-the-template-not-the-uri-test
   (testing "a route with a path param records the template, never the concrete id"

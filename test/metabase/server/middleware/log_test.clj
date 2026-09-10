@@ -40,7 +40,7 @@
 (def ^:private api-key-request
   {:request-method        :get
    :uri                   "/api/card/1"
-   :headers               {"user-agent" "metabase-cli/1.2.3"}
+   :headers               {"user-agent" "metabase-cli/1.2.3", "x-metabase-client" "embedding-sdk-react"}
    :remote-addr           "203.0.113.7"
    :embedding/auth-method "api-key"
    :api-key-id            7
@@ -75,20 +75,28 @@
     (let [{:keys [recorded-request last-used]}
           (run-log-api-call! api-key-request "/api/card/:id" {:status 200, :body "ok"})]
       (is (= 7 last-used))
-      (is (=? {:api-key-id     7
-               :user-id        3
-               :tenant-id      9
-               :route-template "/api/card/:id"
-               :http-method    "GET"
-               :status         200
-               :user-agent     "metabase-cli/1.2.3"
-               :ip-address     "203.0.113.7"}
+      (is (=? {:api-key-id       7
+               :user-id          3
+               :tenant-id        9
+               :route-template   "/api/card/:id"
+               :http-method      "GET"
+               :status           200
+               :user-agent       "metabase-cli/1.2.3"
+               :ip-address       "203.0.113.7"
+               :embedding-client "embedding-sdk-react"}
               recorded-request))
       (testing "duration is measured, and nothing from the URI or query string is recorded"
         (is (int? (:duration-ms recorded-request)))
         (is (= #{:api-key-id :user-id :tenant-id :route-template :http-method :status :duration-ms
-                 :user-agent :ip-address}
+                 :user-agent :ip-address :embedding-client}
                (set (keys recorded-request))))))))
+
+(deftest log-api-call-embedding-client-absent-test
+  (testing "embedding-client is nil when the header is absent — the common case for API-key traffic"
+    (let [{:keys [recorded-request]}
+          (run-log-api-call! (update api-key-request :headers dissoc "x-metabase-client")
+                             "/api/card/:id" {:status 200, :body "ok"})]
+      (is (nil? (:embedding-client recorded-request))))))
 
 (deftest log-api-call-records-nothing-for-other-auth-methods-test
   (testing "session-authenticated requests are untouched"

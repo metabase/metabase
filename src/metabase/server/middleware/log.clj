@@ -221,7 +221,10 @@
   analytics can never fail a request or alter its response.
 
   Only the fields below are recorded. The raw URI, the query string, and the request and response bodies are
-  deliberately never passed on — see `metabase.api-keys.usage`."
+  deliberately never passed on — see `metabase.api-keys.usage`.
+
+  `embedding-client` is the raw `X-Metabase-Client` header, supplementary to `client_name` (classified
+  from `user-agent` by the recorder itself, not here) — see `metabase.api-keys.usage`."
   [{:keys [request response start-time route-template-carrier] :as info}]
   (when (api-key-request? request)
     (try
@@ -239,7 +242,12 @@
           :status         (:status response)
           :duration-ms    (long (u/since-ms start-time))
           :user-agent     (get-in request [:headers "user-agent"])
-          :ip-address     (request/ip-address request)}))
+          :ip-address     (request/ip-address request)
+          ;; supplementary to client_name (the primary classification axis) — a plain header read, no
+          ;; carrier needed like route-template, since it's already on the pre-routing request we closed
+          ;; over. Almost always nil for API-key traffic: the SDK/embed.js clients that set it
+          ;; authenticate via JWT/SSO, not API keys.
+          :embedding-client (get-in request [:headers "x-metabase-client"])}))
       (catch Throwable e
         (log/warn e "Error recording API key usage"))))
   info)
