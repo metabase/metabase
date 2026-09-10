@@ -25,9 +25,14 @@
   (t2/insert-returning-instance! :model/Dashboard row))
 
 (mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
+  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated.
+
+  Takes the whole `::dashboard.update` — \"what an update (or insert) of a Dashboard accepts\" — the same
+  schema [[insert-dashboard!]] takes. It was narrowed to `[:parameters]` when the only caller wrote nothing
+  else; `metabase.dashboards.write/update-dashboard!` writes the full attribute set (`:name`, `:description`,
+  `:archived`, `:collection_id`, `:cache_ttl`, ...), and a narrowed schema refuses every one of them."
   [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- (mut/select-keys ::dashboards.schema/dashboard.update [:parameters])]
+   changes      :- ::dashboards.schema/dashboard.update]
   (t2/update! :model/Dashboard dashboard-id changes))
 
 (mu/defn delete-dashboard-revisions!
