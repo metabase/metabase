@@ -10,12 +10,14 @@
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -86,33 +88,22 @@
    [:configured :boolean]
    [:url [:maybe :string]]])
 
-(def ^:private QuerySource
-  [:map
-   [:type :string]
-   [:id ms/PositiveInt]])
-
-(def ^:private QueryDefinition
-  [:map {:closed false}
-   [:stages [:sequential {:min 1}
-             [:map {:closed false}
-              [:source QuerySource]]]]])
-
 (def ^:private MetricResponse
   [:map {:closed true}
    [:id                     ms/PositiveInt]
    [:name                   ms/NonBlankString]
    [:type                   [:enum :metric]]
    [:collection_id          [:maybe ms/PositiveInt]]
-   [:dataset_query          ms/Map]
+   [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    [:database_id            ms/PositiveInt]
    [:display                [:maybe [:or :keyword :string]]]
-   [:visualization_settings [:maybe ms/Map]]
+   [:visualization_settings [:maybe ms/VisualizationSettings]]
    [:description            [:maybe :string]]])
 
 (def ^:private QueryResolutionResponse
   [:map
    [:database_id ms/PositiveInt]
-   [:dataset_query ms/Map]
+   [:dataset_query ::lib-be.schema/maybe-legacy-query]
    [:table_ids [:sequential ms/PositiveInt]]
    [:metrics [:sequential MetricResponse]]])
 
@@ -122,8 +113,7 @@
 
 (def ^:private QueryTableDependenciesRequest
   [:map {:closed true}
-   [:dataset_queries [:sequential [:map {:closed false}
-                                   [:database ms/PositiveInt]]]]])
+   [:dataset_queries [:sequential ::lib-be.schema/maybe-legacy-query]]])
 
 (def ^:private QueryTableDependenciesResponse
   [:map {:closed true}
@@ -260,7 +250,7 @@
 
 (api.macros/defendpoint :put ["/:slug/table-dependencies" :slug slug-regex] :- DataAppResponse
   "Store the tables used by the resources from a successful data app resource synchronization."
-  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    {table-ids :table_ids} :- TableDependenciesRequest]
   (api/check-superuser)
@@ -275,7 +265,7 @@
 (api.macros/defendpoint :post ["/:slug/user-permission-warnings" :slug slug-regex]
   :- [:sequential PermissionWarning]
   "Return warnings for users who cannot access every table used by a data app."
-  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    {user-ids :user_ids} :- PermissionWarningsRequest]
   (api/check-superuser)
@@ -326,9 +316,9 @@
 
 (api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- QueryResolutionResponse
   "Resolve an authored data-app query definition into a serializable Metabase query."
-  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
-   query-def :- QueryDefinition]
+   query-def :- ::query-definition/query-definition]
   (api/check-superuser)
   (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
   (let [{source-type :type, table-id :id} (get-in query-def [:stages 0 :source])
@@ -348,7 +338,7 @@
    Sync copies models, actions and metrics whose queries it never resolves through `/query`, and only
    this metadata-based lookup sees an implicit join: the id of a table reached through a foreign key
    appears nowhere in the query itself."
-  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    {dataset-queries :dataset_queries} :- QueryTableDependenciesRequest]
   (api/check-superuser)
@@ -364,7 +354,7 @@
 
 (api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DataAppResponse
   "Create or reuse a data app draft before its first repository import."
-  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (data-app.config/valid-slug? slug)
                  "Data app draft slugs must use lowercase letters, numbers, and dashes.")

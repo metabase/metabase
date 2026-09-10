@@ -2,11 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase.actions.core :as actions]
+   [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -139,6 +141,9 @@
           (is (not (t2/exists? :model/Collection :id resource_collection_id))
               "and so is its resource collection"))))))
 
+(deftest ^:parallel query-definition-request-schema-is-closed-test
+  (is (empty? (closed-schemas/findings ::query-definition/query-definition))))
+
 (deftest superuser-can-resolve-a-query-definition-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -146,12 +151,19 @@
       (let [response (mt/user-http-request
                       :crowberto :post 200 "apps/demo/query"
                       {:stages [{:source {:type "table" :id (mt/id :venues)}
-                                 :limit  5}]})]
+                                 :orderBys [{:type "column" :name "PRICE" :tableId (mt/id :venues)
+                                             :direction "asc" :jsType "number"}]
+                                 :filters [{:type "operator" :operator ">"
+                                            :args [{:type "column" :name "PRICE"}
+                                                   {:type "literal" :value 2}]}]
+                                 :limit 5}]})]
         (is (= (mt/id) (:database_id response)))
         (is (=? {:dataset_query {:lib/type "mbql/query"
                                  :database (mt/id)
                                  :stages [{:lib/type "mbql.stage/mbql"
                                            :source-table (mt/id :venues)
+                                           :filters [[">" {} ["field" {} (mt/id :venues :price)] 2]]
+                                           :order-by [["asc" {} ["field" {} (mt/id :venues :price)]]]
                                            :limit 5}]}}
                 response))))))
 
@@ -546,9 +558,8 @@
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
       (create-app!)
-      (is (= "Data app query definitions must use a table source."
-             (mt/user-http-request :crowberto :post 400 "apps/demo/query"
-                                   {:stages [{:source {:type "card" :id 1}}]}))))))
+      (is (some? (mt/user-http-request :crowberto :post 400 "apps/demo/query"
+                                       {:stages [{:source {:type "card" :id 1}}]}))))))
 
 (deftest query-definition-source-must-be-valid-test
   (mt/with-premium-features #{:data-apps-preview}
