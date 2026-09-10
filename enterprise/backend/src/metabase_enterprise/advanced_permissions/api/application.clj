@@ -38,6 +38,25 @@
   [graph]
   (update graph :groups dejsonify-groups))
 
+(def ^:private RequestGroupId
+  "A PermissionsGroup ID as it arrives in a `PUT /graph` request body. JSON object keys are keywordized by the request
+  middleware, so a group ID shows up as `:1` rather than `1`. [[dejsonify-groups]] parses the name back into an
+  integer, so a key that doesn't spell one has to be rejected here -- it would throw rather than 400 down there."
+  [:and
+   ms/KeywordOrString
+   [:fn
+    {:error/message "group ID"}
+    (fn group-id-name? [k] (boolean (re-matches #"\d+" (name k))))]])
+
+(def ^:private RequestGroups
+  "The `:groups` half of an application permissions graph as it arrives in a `PUT /graph` request body: group ID ->
+  permission type -> permission. [[dejsonify-graph]] turns the values into keywords right after this schema runs."
+  [:map-of
+   RequestGroupId
+   [:map-of
+    [:enum :setting :monitoring :subscription]
+    (ms/enum-keywords-and-strings :yes :no)]])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -46,15 +65,13 @@
   "Do a batch update of Application Permissions by passing a modified graph."
   [_route-params
    {skip-graph? :skip-graph
-    force? :force} :- [:map
+    force? :force} :- [:map {:closed true}
                        [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                        [:force      {:default false} [:maybe ms/BooleanValue]]]
-   body :- [:map
+   body :- [:map {:closed true}
             [:revision {:optional true} [:maybe ms/Int]]
             [:force    {:optional true} [:maybe :boolean]]
-            ;; keyed by group id, then by application permission type -- `dejsonify-graph` below turns both back
-            ;; into the int and keyword the graph is stored under
-            [:groups   [:map-of :keyword [:map-of :keyword ms/NonBlankString]]]]]
+            [:groups   RequestGroups]]]
   (api/check-superuser)
   (-> body
       dejsonify-graph

@@ -29,9 +29,10 @@
 (mr/def ::api-action-expression
   "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside.
 
-  Open ([[ms/Map]]) rather than a bare `:map`: the shape is deliberately unspecified here, and a closed map with no
-  declared entries would have every key stripped during request decoding, so the handler would only ever see `{}`."
-  ms/Map)
+  Opaque ([[ms/OpaqueJSONObject]]) rather than a bare `:map`: the shape is deliberately unspecified here, and a closed
+  map with no declared entries would have every key stripped during request decoding, so the handler would only ever
+  see `{}`."
+  ms/OpaqueJSONObject)
 
 (mr/def ::api-action-id-or-expression
   "All the various ways of referring to an action with the v2 APIs."
@@ -44,17 +45,17 @@
   [:ref ::lib.schema.parameter/parameter.value])
 
 (def ^:private strict-action-value-map
-  [:map-of :keyword [:ref ::action-value]])
+  [:map-of :string [:ref ::action-value]])
 
 (mr/def ::action-value-map
-  "A map from parameter name / column name to a value. Keys are keywords: the request decoder keywordizes map keys and
-  the handler reads them via `(keyword ...)`, so the FE never sends anything else.
+  "A map from parameter name / column name to a value. The names are the action's and the table's, so the map is
+  string-keyed on its way in ([[ms/string-keyed-map]]); the handlers keywordize it for the mapping, which reads by
+  keyword.
 
-  Same shape as [[metabase.actions.schema/execute-parameter-values]]. Decoding sees a permissive
-  `[:map-of :keyword :any]` and the values are validated against, rather than decoded through,
-  [[strict-action-value-map]]."
+  Same shape as [[metabase.actions.schema/execute-parameter-values]]. Decoding sees a permissive string-keyed map and the
+  values are validated against, rather than decoded through, [[strict-action-value-map]]."
   [:and
-   [:map-of :keyword :any]
+   ms/OpaqueJSONObject
    [:fn {:error/message "value must be a scalar, or a sequence of scalars"}
     #(mr/validate strict-action-value-map %)]])
 
@@ -172,9 +173,7 @@
   [{}
    {}
    {:keys [action scope params input]}
-   ;; `params` and `input` are open ([[ms/Map]]): their keys are the action's parameter names and the table's column
-   ;; names, so nothing here can be declared, and a bare `:map` would be stripped down to `{}` before the handler ran.
-   :- [:map
+   :- [:map {:closed true}
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:params {:optional true} ::action-value-map]
@@ -187,7 +186,7 @@
                                     :scope scope
                                     :input_count 1}
                           :user-id api/*current-user-id*})
-  {:outputs (execute!* action scope params [input])})
+  {:outputs (execute!* action scope (some-> params (update-keys keyword)) [(update-keys input keyword)])})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -213,7 +212,7 @@
    {}
    {:keys [action scope inputs params]}
    ;; see the note on `POST /execute` for why `inputs` and `params` are open
-   :- [:map
+   :- [:map {:closed true}
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:inputs [:sequential {:min 1} ::action-value-map]]
@@ -226,7 +225,7 @@
                                     :scope scope
                                     :input_count (count inputs)}
                           :user-id api/*current-user-id*})
-  {:outputs (execute!* action scope params inputs)})
+  {:outputs (execute!* action scope (some-> params (update-keys keyword)) (map #(update-keys % keyword) inputs))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -239,7 +238,7 @@
    {}
    ;; TODO support for bulk actions
    {:keys [action scope input]}
-   :- [:map
+   :- [:map {:closed true}
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:input {:optional true} ::action-value-map]]]

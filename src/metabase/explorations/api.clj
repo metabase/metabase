@@ -3,6 +3,9 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [malli.core :as mc]
+   [malli.util :as mut]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -19,6 +22,7 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metrics.core :as metrics]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
@@ -315,22 +319,33 @@
 (def ^:private ExploreFilterScalar
   [:maybe [:or :string number? :boolean]])
 
+(def ^:private ExploreFieldRef
+  "The MBQL 5 reference an explore filter points at, kept exactly as the client sent it: it is persisted and echoed
+  back, so it is neither normalized nor given a `:lib/uuid` here."
+  [:tuple
+   [:or :string :keyword]
+   (let [options (mr/resolve-schema ::lib.schema.common/options)]
+     (-> (m/find-first #(= :map (mc/type %)) (mc/children options))
+         mut/optional-keys
+         (mut/update-properties dissoc :decode/normalize :decode/api :encode/for-hashing)))
+   [:or :int :string]])
+
 (def ^:private ExploreFilterSpec
   "One segment filter stamped onto a block metric selection's `:explore_filters` vector.
   `:display_value` is required — the FE formats it at click time and both the thread name
   and filter pills read it as-is."
   [:multi {:dispatch :operator}
    ["="
-    [:map
+    [:map {:closed true}
      [:operator       [:= "="]]
-     [:field_ref      [:sequential :any]]
+     [:field_ref      ExploreFieldRef]
      [:value          ExploreFilterScalar]
      [:display_value  ms/NonBlankString]
      [:dimension_name {:optional true} [:maybe :string]]]]
    ["between"
-    [:map
+    [:map {:closed true}
      [:operator       [:= "between"]]
-     [:field_ref      [:sequential :any]]
+     [:field_ref      ExploreFieldRef]
      [:values         [:tuple ExploreFilterScalar ExploreFilterScalar]]
      [:display_value  ms/NonBlankString]
      [:dimension_name {:optional true} [:maybe :string]]]]])
@@ -339,7 +354,7 @@
   ;; Mapping objects are decoded from the snake_case wire shape to the internal kebab-case shape
   ;; at the `defendpoint` edge by the wire-annotated schema (see [[metabase.metrics.core]]);
   ;; the envelope `:dimension_mappings` key itself stays snake_case, matching storage.
-  [:map
+  [:map {:closed true}
    [:card_id ms/PositiveInt]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]])
 
@@ -347,7 +362,7 @@
   ;; The FE sends snake_case dimension snapshots; the `:decode/api` rule kebab-cases them at the
   ;; `defendpoint` edge, so entries here are declared in the internal kebab-case shape the
   ;; handler receives and persists. Open map: snapshot keys beyond these pass through kebab-cased.
-  [:map {:decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
+  [:map {:closed true :decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe :string]]
@@ -358,7 +373,7 @@
    one `ExplorationBlock` row; the planners cross this block's metrics with this block's
    dimensions only. The sidebar heading is computed read-side (the `:name` of an
    `ExplorationBlockNode`), not supplied here."
-  [:map
+  [:map {:closed true}
    [:metrics    {:optional true} [:maybe [:sequential MetricSelection]]]
    [:dimensions {:optional true} [:maybe [:sequential DimensionSelection]]]])
 
@@ -525,7 +540,7 @@
    The FE sends one entry per Research-plan block (`:blocks` — each a metric/dimension
    area), each persisted verbatim. `:timeline_ids` is thread-scoped (timelines aren't part of
    any metric×dimension cross-product) and lives at the top level, not inside a block."
-  [:map
+  [:map {:closed true}
    [:name          expl.model/ExplorationName]
    [:description   {:optional true} [:maybe :string]]
    [:prompt        {:optional true} [:maybe :string]]
@@ -538,7 +553,7 @@
   page — its block (metric selection + dimensions) is copied verbatim so the new thread re-runs
   the same charts. `explore_filters` is appended to each copied metric selection's existing
   `:explore_filters`."
-  [:map
+  [:map {:closed true}
    [:page_id         ms/PositiveInt]
    [:explore_filters [:sequential {:min 1} ExploreFilterSpec]]])
 
@@ -547,7 +562,7 @@
   actually includes are forwarded to the underlying `t2/update!`. `collection_id` may be `nil`
   to move the exploration to the root collection (\"Our Analytics\"). `collection_position` may
   be `nil` to unpin the exploration."
-  [:map
+  [:map {:closed true}
    [:name                {:optional true} expl.model/ExplorationName]
    [:description         {:optional true} [:maybe :string]]
    [:archived            {:optional true} :boolean]
@@ -671,7 +686,7 @@
   keeps the earlier scope (see
   `metabase.explorations.query-plan.context/build-row-context`). Returns immediately with the new
   thread stamped `started_at`; clients poll `GET /:id` for the queries to land, exactly like create."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [page_id explore_filters]} :- ExploreFurther]
   (let [exploration (get-exploration-or-404 id)]
@@ -736,7 +751,7 @@
 
   Optional `q` filters case-insensitively across metric name and dimension display-name."
   [_route-params
-   {:keys [q]} :- [:maybe [:map [:q {:optional true} [:maybe ms/NonBlankString]]]]]
+   {:keys [q]} :- [:maybe [:map {:closed true} [:q {:optional true} [:maybe ms/NonBlankString]]]]]
   ;; Returned in the internal kebab-case shape; the `::DimensionsResponse` schema encodes
   ;; dimensions and mappings to the snake_case wire shape at the `defendpoint` edge. (The
   ;; `add_research_groups` metabot tool serves the same payload outside `defendpoint` and
@@ -764,7 +779,7 @@
 
 (api.macros/defendpoint :get "/:id" :- ::HydratedExploration
   "Fetch an exploration with its thread, selections, and generated queries."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [expl (api/read-check (get-exploration-or-404 id))]
     (hydrate-exploration expl)))
 
@@ -777,7 +792,7 @@
   Moving an exploration cascades the new `collection_id` onto its Summary document; flipping
   `archived` cascades to the same document (skipping any that were directly user-archived,
   mirroring the dashboard / dashboard-question cascade)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
   (let [existing (get-exploration-or-404 id)
@@ -803,7 +818,7 @@
 
   Cascades to every `exploration_thread`, `exploration_query`, and attached Summary `document`
   via the on-delete-cascade FKs configured in the explorations migration."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [existing (get-exploration-or-404 id)]
     (api/write-check existing)
     (explorations.db/delete-exploration! id))
@@ -832,7 +847,7 @@
 
   No `:event/exploration-update` is published: nothing on the Exploration row changes, so there
   is no revision to record (the revision push skips unchanged objects)."
-  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
+  [{:keys [thread-id]} :- [:map {:closed true} [:thread-id ms/PositiveInt]]]
   (let [thread      (get-thread-or-404 thread-id)
         exploration (api/write-check (get-exploration-or-404 (:exploration_id thread)))]
     (when-not (reset-thread-for-rerun! thread-id)
@@ -857,7 +872,7 @@
   Idempotent: a thread with `completed_at IS NOT NULL` (already terminal — natural completion or
   prior cancel) returns 200 with its existing state. Authorization is the same write check as
   other thread-mutating endpoints."
-  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
+  [{:keys [thread-id]} :- [:map {:closed true} [:thread-id ms/PositiveInt]]]
   (write-check-thread thread-id)
   (let [now (t/offset-date-time)]
     (t2/with-transaction [_conn]
@@ -904,8 +919,8 @@
   "Stream the result of a single completed exploration query. The optional `format` query param
   is one of `api`, `json`, `csv`, `xlsx` (default `api`). When the underlying query is still
   pending or has errored, returns a 409 with status info instead of streaming."
-  [{:keys [id]}     :- [:map [:id ms/PositiveInt]]
-   {:keys [format]} :- [:map
+  [{:keys [id]}     :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [format]} :- [:map {:closed true}
                         [:format {:default :api}
                          [:enum {:decode/api keyword} :api :csv :json :xlsx]]]]
   (let [q (get-exploration-query-or-404 id)]
@@ -929,9 +944,9 @@
 
 (api.macros/defendpoint :put "/page/:id/starred" :- :nil
   "Set whether an exploration page is starred."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [starred]} :- [:map [:starred :boolean]]]
+   {:keys [starred]} :- [:map {:closed true} [:starred :boolean]]]
   (let [page (get-exploration-page-or-404 id)]
     (api/write-check page)
     (explorations.db/update-page! id {:starred starred}))
@@ -942,7 +957,7 @@
   page passes a one-element `page_ids`; hiding a whole group passes all its page ids."
   [_route-params
    _query-params
-   {:keys [page_ids hidden]} :- [:map
+   {:keys [page_ids hidden]} :- [:map {:closed true}
                                  [:page_ids [:sequential ms/PositiveInt]]
                                  [:hidden :boolean]]]
   (doseq [id page_ids]
@@ -999,13 +1014,13 @@
 
   All source EQs must belong to a thread of this exploration. Appending clears
   `is_placeholder` when it was set."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [exploration_query_ids display visualization_settings]}
-   :- [:map
+   :- [:map {:closed true}
        [:exploration_query_ids  [:sequential {:min 1} ms/PositiveInt]]
        [:display                :string]
-       [:visualization_settings ms/Map]]]
+       [:visualization_settings ms/VisualizationSettings]]]
   (api/write-check (get-exploration-or-404 id))
   (let [doc (summary-document-or-404 id)]
     (api/check-404 (exploration-query-ids-belong-to-exploration? id exploration_query_ids))

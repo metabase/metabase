@@ -30,7 +30,7 @@
   "OSI ai_context blob. All fields optional; extra keys tolerated for forward-compat with the OSI spec.
   String and list lengths are capped so a single curated entity can't bloat the index, its embeddings, or
   the agent prompt."
-  [:map {:closed false}
+  [:map {:closed true}
    [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
@@ -66,7 +66,7 @@
   ;; entity-type is any non-blank string at the route level — a write to a non-writable type gets a clear
   ;; 400 in the handler (an enum here would 404 the route instead), and reads/deletes of an unknown type
   ;; simply find no row and 404.
-  [:map
+  [:map {:closed true}
    [:entity-type     ms/NonBlankString]
    [:entity-local-id ms/PositiveInt]])
 
@@ -102,7 +102,7 @@
   upsert keep two concurrent writers from racing in a duplicate row."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params
-   {:keys [ai_context]} :- [:map [:ai_context AiContextInput]]]
+   {:keys [ai_context]} :- [:map {:closed true} [:ai_context AiContextInput]]]
   (api/check-superuser)
   (api/check-400 (contains? writable-entity-types entity-type)
                  "entity_type must be one of: measure, metric, model, segment, table")

@@ -33,26 +33,28 @@
   "Malli schema for a SCIM user. This represents both users returned by the service provider (Metabase)
   as well as users sent by the client (i.e. Okta), with fields marked as optional if they may not be present
   in the latter."
-  [:map
+  [:map {:closed true}
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
    [:userName ms/NonBlankString]
-   [:name [:map
+   [:name [:map {:closed true}
            [:givenName string?]
            [:familyName string?]]]
    [:emails [:sequential
-             [:map
+             [:map {:closed true}
               [:value ms/NonBlankString]
               [:type {:optional true} ms/NonBlankString]
               [:primary {:optional true} boolean?]]]]
    [:groups
     {:optional true}
-    [:sequential [:map
+    [:sequential [:map {:closed true}
                   [:value ms/NonBlankString]
                   [:$ref {:optional true} ms/NonBlankString]
                   [:display ms/NonBlankString]]]]
    [:locale {:optional true} [:maybe ms/NonBlankString]]
-   [:active {:optional true} boolean?]])
+   [:active {:optional true} boolean?]
+   [:meta {:optional true} [:map {:closed true}
+                            [:resourceType ms/NonBlankString]]]])
 
 (def SCIMUserList
   "Malli schema for a list of SCIM users"
@@ -67,38 +69,35 @@
   "A single attribute value in a PATCH operation. The strings clients send for booleans are parsed by the handler."
   [:or ms/NonBlankString :boolean])
 
-(def ^:private patch-value?
-  (mr/validator ::patch-value))
-
 (def UserPatch
   "Malli schema for a user patch operation"
-  [:map
+  [:map {:closed true}
    [:schemas [:sequential ms/NonBlankString]]
    [:Operations
-    [:sequential [:map
+    [:sequential [:map {:closed true}
                   [:op ms/NonBlankString]
                   ;; which attribute the operation targets; `nil` means the value is a map of attribute -> value
                   [:path {:optional true} [:maybe ms/NonBlankString]]
                   ;; dispatched on shape rather than written as `[:or [:map-of ...] ...]`: request decoding would
                   ;; run the `:map-of` decoder over a scalar value and throw
                   [:value [:multi {:dispatch #(if (map? %) :map :scalar)}
-                           [:map [:and
-                                  [:map-of [:or :keyword :string] :any]
-                                  [:fn {:error/message "attribute value must be a non-blank string or a boolean"}
-                                   #(every? patch-value? (vals %))]]]
+                           [:map (ms/string-keyed-map ::patch-value)]
                            [:scalar ::patch-value]]]]]]])
 
 (def SCIMGroup
   "Malli schema for a SCIM group."
-  [:map
+  [:map {:closed true}
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
    [:displayName ms/NonBlankString]
    [:members
     {:optional true}
-    [:sequential [:map
+    [:sequential [:map {:closed true}
                   [:value ms/NonBlankString]
-                  [:$ref {:optional true} ms/NonBlankString]]]]])
+                  [:$ref {:optional true} ms/NonBlankString]
+                  [:display {:optional true} ms/NonBlankString]]]]
+   [:meta {:optional true} [:map {:closed true}
+                            [:resourceType ms/NonBlankString]]]])
 
 (def SCIMGroupList
   "Malli schema for a list of SCIM groups"
@@ -215,7 +214,7 @@
 (api.macros/defendpoint :get "/Users"
   "Fetch a list of users."
   [_route-params
-   {start-index :startIndex, c :count, filter-param :filter} :- [:map
+   {start-index :startIndex, c :count, filter-param :filter} :- [:map {:closed true}
                                                                  [:startIndex {:optional true} [:maybe ms/PositiveInt]]
                                                                  [:count      {:optional true} [:maybe ms/PositiveInt]]
                                                                  [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
@@ -242,7 +241,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get ["/Users/:id" :id #"[^/]+"]
   "Fetch a single user."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-user-by-entity-id id)
@@ -275,7 +274,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Users/:id" :id #"[^/]+"]
   "Update a user."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]
    _query-params
    scim-user :- SCIMUser]
@@ -331,7 +330,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :patch ["/Users/:id" :id #"[^/]+"]
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]
    _query-params
    patch-ops :- UserPatch]
@@ -404,7 +403,7 @@
   "Fetch a list of groups."
   [_route-params
    {start-index :startIndex, c :count, filter-param :filter}
-   :- [:map
+   :- [:map {:closed true}
        [:startIndex {:optional true} [:maybe ms/PositiveInt]]
        [:count      {:optional true} [:maybe ms/PositiveInt]]
        [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
@@ -431,7 +430,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get ["/Groups/:id" :id #"[^/]+"]
   "Fetch a single group."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-group-by-entity-id id)
@@ -478,7 +477,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Groups/:id" :id #"[^/]+"]
   "Update a group."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]
    _query-params
    scim-group :- SCIMGroup]
@@ -501,7 +500,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete ["/Groups/:id" :id #"[^/]+"]
   "Delete a group."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
