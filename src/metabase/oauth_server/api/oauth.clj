@@ -299,8 +299,21 @@
             (let [parsed       (oidc/parse-authorization-request provider query-params)
                   ;; Narrow before signing: the signature then binds the narrowed scope through the
                   ;; consent form round-trip, so the decision endpoint grants exactly what was shown.
-                  parsed       (if-let [narrowed (oauth-server/narrow-scope-to-resource
-                                                  (:resource parsed) (:scope parsed))]
+                  requested    (some-> (:scope parsed) str str/trim not-empty)
+                  narrowed     (oauth-server/narrow-scope-to-resource (:resource parsed) (:scope parsed))
+                  ;; `narrow-scope-to-resource` answers nil both for "no scope was requested" and for
+                  ;; "a scope was requested and nothing survived". Only the first may drop the parameter.
+                  ;; The second means the client asked exclusively for scopes this resource does not
+                  ;; accept: dropping it there renders a consent screen listing nothing and mints a
+                  ;; zero-scope token, which looks like success and leaves an empty `tools/list` with no
+                  ;; in-product way to widen the grant. RFC 6749 section 4.1.2.1 has an error for it.
+                  _            (when (and requested (not narrowed))
+                                 (throw (ex-info "no requested scope is accepted by the named resource"
+                                                 {:oauth-error       "invalid_scope"
+                                                  :error-description (str "The requested scopes are not accepted by "
+                                                                          "the requested resource.")
+                                                  :resource          (:resource parsed)})))
+                  parsed       (if narrowed
                                  (assoc parsed :scope narrowed)
                                  (dissoc parsed :scope))
                   client       (proto/get-client (:client-store provider) (:client_id parsed))
@@ -319,10 +332,12 @@
                   (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
             (catch ExceptionInfo e
               (log/warnf "OAuth authorize request failed: %s" (ex-message e))
-              {:status  400
-               :headers {"Content-Type" "application/json"}
-               :body    {:error             "invalid_request"
-                         :error_description "The authorization request is invalid."}})))
+              (let [{:keys [oauth-error error-description]} (ex-data e)]
+                {:status  400
+                 :headers {"Content-Type" "application/json"}
+                 :body    {:error             (or oauth-error "invalid_request")
+                           :error_description (or error-description
+                                                  "The authorization request is invalid.")}}))))
         {:status 404 :body {:error "not_found"}})))
 
 (api.macros/defendpoint :post "/authorize/decision"
