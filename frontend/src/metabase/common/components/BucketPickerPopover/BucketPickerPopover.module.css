@@ -9,10 +9,6 @@
   visibility: visible;
 }
 
-.triggerButton:hover {
-  color: var(--mb-color-text-primary-inverse);
-}
-
 /* No hover on touch devices, so always show the button with readable text */
 @media (hover: none) and (pointer: coarse) {
   .triggerButton {
