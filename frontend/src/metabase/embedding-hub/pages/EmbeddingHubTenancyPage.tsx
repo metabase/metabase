@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
-import { permissionApi } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { usePermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
@@ -11,7 +10,6 @@ import {
 } from "metabase/common/tenants";
 import { isUnder } from "metabase/embedding-hub/components/EmbeddingHubLayout";
 import { TenancyUpsellPage } from "metabase/embedding-hub/upsells";
-import { useDispatch } from "metabase/redux";
 import { Outlet, useLocation, useNavigate } from "metabase/router";
 import { useAdminSetting, useSetting } from "metabase/settings";
 import { SettingsPageWrapper } from "metabase/settings-components";
@@ -116,21 +114,7 @@ function TenancyTabs() {
 }
 
 function EnableTenancyCard() {
-  const dispatch = useDispatch();
   const { updateSetting } = useAdminSetting("use-tenants");
-
-  const enableTenancy = async () => {
-    const response = await updateSetting({ key: "use-tenants", value: true });
-
-    if (!response.error) {
-      dispatch(
-        permissionApi.util.invalidateTags([
-          "permissions-group",
-          "setup-guide-checklist",
-        ]),
-      );
-    }
-  };
 
   return (
     <Card p="xxl" withBorder>
@@ -143,7 +127,10 @@ function EnableTenancyCard() {
           </Text>
 
           <Group gap="xl">
-            <Button variant="filled" onClick={enableTenancy}>
+            <Button
+              variant="filled"
+              onClick={() => updateSetting({ key: "use-tenants", value: true })}
+            >
               {t`Enable multi-tenancy`}
             </Button>
 
