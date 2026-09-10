@@ -1,17 +1,39 @@
+import { createMockMetadata } from "__support__/metadata";
+import { getParameterValuesForQuestion } from "metabase/query_builder";
 import { utf8_to_b64 } from "metabase/utils/encoding";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 
 import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
 
+// The exact payload `execute_sql` mints, captured from `lib/prepare-for-serialization` in the REPL:
+// MBQL 5 (`stages`, not a legacy `dataset_query`), `template-tags` as an array rather than a map,
+// and `parameters` re-attached at the top level because serialization strips them from the query.
 const NATIVE_QUERY = {
-  database: 26,
-  type: "native",
-  native: {
-    query: "SELECT * FROM orders WHERE category = {{cat}}",
-    "template-tags": {
-      cat: { id: "abc-123", name: "cat", "display-name": "Cat", type: "text" },
+  "lib/type": "mbql/query",
+  stages: [
+    {
+      "lib/type": "mbql.stage/native",
+      "template-tags": [
+        {
+          type: "text",
+          name: "cat",
+          id: "1f8cda0e-e8ae-4d63-ae5c-896d3bf4bc59",
+          "display-name": "Cat",
+        },
+      ],
+      native: "SELECT {{cat}} AS cat",
     },
-  },
+  ],
+  database: 29001,
 };
+
+const BOUND_PARAMETERS = [
+  {
+    type: "text",
+    target: ["variable", ["template-tag", "cat"]],
+    value: "meow",
+  },
+];
 
 describe("getMcpDeserializedQuery", () => {
   it("hides axis labels for MCP App ad-hoc charts", () => {
@@ -34,18 +56,12 @@ describe("getMcpDeserializedQuery", () => {
     const query = utf8_to_b64(
       JSON.stringify({
         ...NATIVE_QUERY,
-        parameters: [
-          {
-            type: "category",
-            value: "Gizmo",
-            target: ["variable", ["template-tag", "cat"]],
-          },
-        ],
+        parameters: BOUND_PARAMETERS,
       }),
     );
 
     expect(getMcpDeserializedQuery(query)?.initialSqlParameters).toEqual({
-      cat: "Gizmo",
+      cat: "meow",
     });
   });
 
@@ -57,13 +73,7 @@ describe("getMcpDeserializedQuery", () => {
     const query = utf8_to_b64(
       JSON.stringify({
         ...NATIVE_QUERY,
-        parameters: [
-          {
-            type: "category",
-            value: "Gizmo",
-            target: ["variable", ["template-tag", "cat"]],
-          },
-        ],
+        parameters: BOUND_PARAMETERS,
       }),
     );
 
@@ -92,5 +102,32 @@ describe("getMcpDeserializedQuery", () => {
 
   it("returns null for invalid query params", () => {
     expect(getMcpDeserializedQuery("not-json")).toBeNull();
+  });
+
+  // The load-bearing one. The two above only prove the payload was split; this proves the split
+  // halves rejoin, by driving the same helpers `loadQuestionSdk` uses: the card's own parameters
+  // are derived from its template tags, and `initialSqlParameters` is matched against them by slug.
+  // If the value doesn't land here, the embed runs `{{cat}}` unbound no matter how clean the split.
+  it("binds the value to the card's template-tag parameter", () => {
+    const deserialized = getMcpDeserializedQuery(
+      utf8_to_b64(
+        JSON.stringify({ ...NATIVE_QUERY, parameters: BOUND_PARAMETERS }),
+      ),
+    );
+    const card = deserialized!.card;
+    const metadata = createMockMetadata({});
+
+    const uiParameters = getCardUiParameters(card, metadata);
+    expect(uiParameters.map((parameter) => parameter.slug)).toEqual(["cat"]);
+
+    const parameterValues = getParameterValuesForQuestion({
+      card,
+      metadata,
+      queryParams: deserialized!.initialSqlParameters,
+    });
+    // Array-wrapped by widget normalization: `normalizeParameterValue` wraps every string- and
+    // number-typed parameter the same way on the path to the request, so this is the shape a
+    // filter widget produces too, not an MCP quirk.
+    expect(Object.values(parameterValues)).toEqual([["meow"]]);
   });
 });
