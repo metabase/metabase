@@ -15,6 +15,10 @@ inputs:
     description: OpenLDAP container
     required: true
     default: false
+  mocksaml:
+    description: Mock SAML container
+    required: true
+    default: false
   postgres:
     description: Postgres container
     required: true
@@ -73,6 +77,7 @@ runs:
         [ "${{ inputs.mongo }}" = true ] && SERVICES+=(mongo-sample)
         [ "${{ inputs.maildev }}" = true ] && SERVICES+=(maildev maildev-ssl)
         [ "${{ inputs.openldap }}" = true ] && SERVICES+=(ldap)
+        [ "${{ inputs.mocksaml }}" = true ] && SERVICES+=(saml-idp)
         [ "${{ inputs.webhook }}" = true ] && SERVICES+=(webhook-tester)
         [ "${{ inputs.snowplow }}" = true ] && SERVICES+=(snowplow-micro)
 
@@ -106,6 +111,12 @@ runs:
         if ${{ inputs.openldap }}; then
           echo -e "${Y}checking openldap container..." &&
           while ! nc -z localhost 389; do sleep 1; done &&
+          echo -e "${G}Openldap is up and running!"
+        fi
+
+        if ${{ inputs.mocksaml }}; then
+          echo -e "${Y}checking mock saml container..." &&
+          while ! nc -z localhost 8090; do sleep 1; done &&
           echo -e "${G}Openldap is up and running!"
         fi
 
