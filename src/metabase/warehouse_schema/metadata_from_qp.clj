@@ -12,6 +12,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [toucan2.core :as t2]))
 
@@ -27,7 +28,7 @@
     query-xform :- [:=> [:cat ::lib.schema/query] ::lib.schema/query]
     rff         :- [:maybe ::qp.schema/rff]]
    {:pre [(pos-int? table-id)]}
-   (let [database-id (t2/select-one-fn :db_id :model/Table table-id)
+   (let [database-id (warehouse-schema.db/table-database-id table-id)
          mp          (lib-be/application-database-metadata-provider database-id)
          query       (-> (lib/query mp (lib.metadata/table mp table-id))
                          query-xform

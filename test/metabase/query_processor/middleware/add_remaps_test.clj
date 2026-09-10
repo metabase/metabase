@@ -11,6 +11,7 @@
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -85,7 +86,7 @@
     (doseq [category-name-options (lib.tu.macros/$ids venues
                                     [{:source-field %category-id}
                                      {:source-field               %category-id
-                                      ::some-other-namespaced-key true}])]
+                                      :qp/ignore-coercion true}])]
       (testing (format "\ncategories.name field options = %s" (pr-str category-name-options))
         (let [{:keys [remaps query]} (#'qp.add-remaps/add-fk-remaps
                                       (lib/query

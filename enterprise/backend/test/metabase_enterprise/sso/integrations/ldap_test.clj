@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.integrations.ldap-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.sso.integrations.ldap :as ee.ldap]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.appearance.settings :as appearance.settings]
    [metabase.auth-identity.core :as auth-identity]
@@ -13,6 +14,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest find-test
+  ;; No attribute allowlist is configured, so `:attributes` is empty for every user.
   (mt/with-premium-features #{:sso-ldap}
     (ldap.test/with-ldap-server!
       (testing "find by username"
@@ -20,11 +22,7 @@
                 :first-name "John"
                 :last-name "Smith"
                 :email "John.Smith@metabase.com"
-                :attributes {"uid" "jsmith1"
-                             "mail" "John.Smith@metabase.com"
-                             "givenname" "John"
-                             "sn" "Smith"
-                             "cn" "John Smith"}
+                :attributes {}
                 :groups ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "jsmith1"))))
       (testing "find by email"
@@ -32,11 +30,7 @@
                 :first-name "John"
                 :last-name "Smith"
                 :email "John.Smith@metabase.com"
-                :attributes {"uid" "jsmith1"
-                             "mail" "John.Smith@metabase.com"
-                             "givenname" "John"
-                             "sn" "Smith"
-                             "cn" "John Smith"}
+                :attributes {}
                 :groups ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "John.Smith@metabase.com"))))
       (testing "find by email, no groups"
@@ -44,10 +38,7 @@
                 :first-name "Fred"
                 :last-name "Taylor"
                 :email "fred.taylor@metabase.com"
-                :attributes {"mail" "fred.taylor@metabase.com"
-                             "cn" "Fred Taylor"
-                             "givenname" "Fred"
-                             "sn" "Taylor"}
+                :attributes {}
                 :groups ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "fred.taylor@metabase.com"))))
       (testing "find by email, no givenName"
@@ -55,10 +46,7 @@
                 :first-name nil
                 :last-name "Miller"
                 :email "jane.miller@metabase.com"
-                :attributes {"uid" "jmiller"
-                             "mail" "jane.miller@metabase.com"
-                             "cn" "Jane Miller"
-                             "sn" "Miller"}
+                :attributes {}
                 :groups []}
                (ldap/find-user "jane.miller@metabase.com"))))
       (mt/with-temporary-setting-values [ldap-group-membership-filter "memberUid={uid}"]
@@ -67,11 +55,7 @@
                   :first-name "Sally"
                   :last-name "Brown"
                   :email "sally.brown@metabase.com"
-                  :attributes {"uid" "sbrown20"
-                               "mail" "sally.brown@metabase.com"
-                               "givenname" "Sally"
-                               "sn" "Brown"
-                               "cn" "Sally Brown"}
+                  :attributes {}
                   :groups ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
                  (ldap/find-user "sbrown20"))))
         (testing "find by email with custom group membership filter"
@@ -79,32 +63,65 @@
                   :first-name "Sally"
                   :last-name "Brown"
                   :email "sally.brown@metabase.com"
-                  :attributes {"uid" "sbrown20"
-                               "mail" "sally.brown@metabase.com"
-                               "givenname" "Sally"
-                               "sn" "Brown"
-                               "cn" "Sally Brown"}
+                  :attributes {}
                   :groups ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
                  (ldap/find-user "sally.brown@metabase.com"))))))))
+
+(deftest syncable-user-attributes-test
+  (testing "with an empty allowlist no attributes are synced"
+    (mt/with-temporary-setting-values [ldap-sync-user-attributes           true
+                                       ldap-sync-user-attributes-blacklist ["userPassword" "dn" "distinguishedName"]
+                                       ldap-sync-user-attributes-allowlist []]
+      (is (= {}
+             (#'ee.ldap/syncable-user-attributes
+              {:objectclass ["top" "person"] :mail "a@b.com" :extra "x" :role "admin"})))))
+  (testing "allowlisted directory attributes are filtered and normalized like SAML/JWT attributes"
+    (mt/with-temporary-setting-values [ldap-sync-user-attributes           true
+                                       ldap-sync-user-attributes-blacklist ["userPassword" "dn" "distinguishedName"]
+                                       ldap-sync-user-attributes-allowlist ["mail" "extra" "userPassword"]]
+      (testing "objectclass and blacklisted keys are dropped (blacklist match is case-insensitive)"
+        (is (= {"mail" "a@b.com" "extra" "x"}
+               (#'ee.ldap/syncable-user-attributes
+                {:objectclass ["top" "person"] :userpassword "secret" :mail "a@b.com" :extra "x"})))))
+    (mt/with-temporary-setting-values [ldap-sync-user-attributes           true
+                                       ldap-sync-user-attributes-blacklist []
+                                       ldap-sync-user-attributes-allowlist ["multi" "single" "blank" "nested" "@reserved"]]
+      (testing "multi-value attributes are joined; nil/map values are dropped; @-prefixed keys are reserved"
+        (is (= {"multi" "a,b" "single" "s"}
+               (#'ee.ldap/syncable-user-attributes
+                {:multi ["a" "b"] :single "s" :blank nil :nested {:k 1} (keyword "@reserved") "x"}))))))
+  (testing "an allowlist restricts syncing to named keys (allowlist match is case-insensitive)"
+    (mt/with-temporary-setting-values [ldap-sync-user-attributes           true
+                                       ldap-sync-user-attributes-blacklist []
+                                       ldap-sync-user-attributes-allowlist ["Mail"]]
+      (is (= {"mail" "a@b.com"}
+             (#'ee.ldap/syncable-user-attributes {:mail "a@b.com" :other "nope"})))))
+  (testing "when attribute sync is disabled nothing is returned"
+    (mt/with-temporary-setting-values [ldap-sync-user-attributes false]
+      (is (nil? (#'ee.ldap/syncable-user-attributes {:mail "a@b.com"}))))))
 
 (deftest attribute-sync-test
   (mt/with-premium-features #{:sso-ldap}
     (ldap.test/with-ldap-server!
-      (testing "find by email/username should return other attributes as well"
-        (is (= {:dn "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
-                :first-name "Lucky"
-                :last-name "Pigeon"
-                :email "lucky@metabase.com"
-                :attributes {"uid" "lucky"
-                             "mail" "lucky@metabase.com"
-                             "title" "King Pigeon"
-                             "givenname" "Lucky"
-                             "sn" "Pigeon"
-                             "cn" "Lucky Pigeon"}
-                :groups []}
-               (ldap/find-user "lucky"))))
-      (testing "ignored attributes should not be returned"
-        (mt/with-temporary-setting-values [ldap-sync-user-attributes-blacklist
+      (testing "find by email/username should return allowlisted attributes as well"
+        (mt/with-temporary-setting-values [ldap-sync-user-attributes-allowlist
+                                           ["uid" "mail" "title" "givenName" "sn" "cn"]]
+          (is (= {:dn "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
+                  :first-name "Lucky"
+                  :last-name "Pigeon"
+                  :email "lucky@metabase.com"
+                  :attributes {"uid" "lucky"
+                               "mail" "lucky@metabase.com"
+                               "title" "King Pigeon"
+                               "givenname" "Lucky"
+                               "sn" "Pigeon"
+                               "cn" "Lucky Pigeon"}
+                  :groups []}
+                 (ldap/find-user "lucky")))))
+      (testing "blacklisted attributes should not be returned even when allowlisted"
+        (mt/with-temporary-setting-values [ldap-sync-user-attributes-allowlist
+                                           ["uid" "mail" "title" "givenName" "sn" "cn"]
+                                           ldap-sync-user-attributes-blacklist
                                            (cons "title" (sso-settings/ldap-sync-user-attributes-blacklist))]
           (is (= {:dn "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
                   :first-name "Lucky"
@@ -115,6 +132,16 @@
                                "givenname" "Lucky"
                                "sn" "Pigeon"
                                "cn" "Lucky Pigeon"}
+                  :groups []}
+                 (ldap/find-user "lucky")))))
+      (testing "when an allowlist is set, only allowlisted attributes are returned"
+        (mt/with-temporary-setting-values [ldap-sync-user-attributes-allowlist ["uid" "mail"]]
+          (is (= {:dn "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
+                  :first-name "Lucky"
+                  :last-name "Pigeon"
+                  :email "lucky@metabase.com"
+                  :attributes {"uid" "lucky"
+                               "mail" "lucky@metabase.com"}
                   :groups []}
                  (ldap/find-user "lucky")))))
       (testing "if attribute sync is disabled, no attributes should come back at all"
@@ -131,27 +158,29 @@
   (mt/with-premium-features #{:sso-ldap}
     (mt/with-model-cleanup [:model/User]
       (ldap.test/with-ldap-server!
-        (testing "when creating a new user via provider/login!, user attributes should get synced"
-          (let [result (auth-identity/login! :provider/ldap
-                                             {:username    "jsmith1"
-                                              :password    "strongpassword"
-                                              :device-info {:device_id          "test-device"
-                                                            :device_description "Test Device"
-                                                            :ip_address         "127.0.0.1"
-                                                            :embedded           false
-                                                            :token_exchange     false}})]
-            (is (true? (:success? result)))
-            (is (= {:first_name       "John"
-                    :last_name        "Smith"
-                    :email            "john.smith@metabase.com"
-                    :login_attributes {"uid"       "jsmith1"
-                                       "mail"      "John.Smith@metabase.com"
-                                       "givenname" "John"
-                                       "sn"        "Smith"
-                                       "cn"        "John Smith"}
-                    :common_name      "John Smith"}
-                   (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
-                                           :email "john.smith@metabase.com"))))))))))
+        (testing "when creating a new user via provider/login!, allowlisted user attributes should get synced"
+          (mt/with-temporary-setting-values [ldap-sync-user-attributes-allowlist
+                                             ["uid" "mail" "givenName" "sn" "cn"]]
+            (let [result (auth-identity/login! :provider/ldap
+                                               {:username    "jsmith1"
+                                                :password    "strongpassword"
+                                                :device-info {:device_id          "test-device"
+                                                              :device_description "Test Device"
+                                                              :ip_address         "127.0.0.1"
+                                                              :embedded           false
+                                                              :token_exchange     false}})]
+              (is (true? (:success? result)))
+              (is (= {:first_name       "John"
+                      :last_name        "Smith"
+                      :email            "john.smith@metabase.com"
+                      :login_attributes {"uid"       "jsmith1"
+                                         "mail"      "John.Smith@metabase.com"
+                                         "givenname" "John"
+                                         "sn"        "Smith"
+                                         "cn"        "John Smith"}
+                      :common_name      "John Smith"}
+                     (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
+                                             :email "john.smith@metabase.com")))))))))))
 
 (deftest new-user-attributes-not-synced-when-disabled-test
   (mt/with-premium-features #{:sso-ldap}
@@ -180,36 +209,38 @@
   (mt/with-premium-features #{:sso-ldap}
     (mt/with-model-cleanup [:model/User]
       (ldap.test/with-ldap-server!
-        (testing "Existing user's attributes are updated via provider/login!"
-          (let [result1 (auth-identity/login! :provider/ldap
-                                              {:username    "jsmith1"
-                                               :password    "strongpassword"
-                                               :device-info {:device_id          "test-device"
-                                                             :device_description "Test Device"
-                                                             :ip_address         "127.0.0.1"
-                                                             :embedded           false
-                                                             :token_exchange     false}})
-                result2 (auth-identity/login! :provider/ldap
-                                              {:username    "jsmith1"
-                                               :password    "strongpassword"
-                                               :device-info {:device_id          "test-device"
-                                                             :device_description "Test Device"
-                                                             :ip_address         "127.0.0.1"
-                                                             :embedded           false
-                                                             :token_exchange     false}})]
-            (is (true? (:success? result1)))
-            (is (true? (:success? result2)))
-            (is (= {:first_name       "John"
-                    :last_name        "Smith"
-                    :common_name      "John Smith"
-                    :email            "john.smith@metabase.com"
-                    :login_attributes {"uid"       "jsmith1"
-                                       "mail"      "John.Smith@metabase.com"
-                                       "givenname" "John"
-                                       "sn"        "Smith"
-                                       "cn"        "John Smith"}}
-                   (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
-                                           :email "john.smith@metabase.com"))))))))))
+        (testing "Existing user's allowlisted attributes are updated via provider/login!"
+          (mt/with-temporary-setting-values [ldap-sync-user-attributes-allowlist
+                                             ["uid" "mail" "givenName" "sn" "cn"]]
+            (let [result1 (auth-identity/login! :provider/ldap
+                                                {:username    "jsmith1"
+                                                 :password    "strongpassword"
+                                                 :device-info {:device_id          "test-device"
+                                                               :device_description "Test Device"
+                                                               :ip_address         "127.0.0.1"
+                                                               :embedded           false
+                                                               :token_exchange     false}})
+                  result2 (auth-identity/login! :provider/ldap
+                                                {:username    "jsmith1"
+                                                 :password    "strongpassword"
+                                                 :device-info {:device_id          "test-device"
+                                                               :device_description "Test Device"
+                                                               :ip_address         "127.0.0.1"
+                                                               :embedded           false
+                                                               :token_exchange     false}})]
+              (is (true? (:success? result1)))
+              (is (true? (:success? result2)))
+              (is (= {:first_name       "John"
+                      :last_name        "Smith"
+                      :common_name      "John Smith"
+                      :email            "john.smith@metabase.com"
+                      :login_attributes {"uid"       "jsmith1"
+                                         "mail"      "John.Smith@metabase.com"
+                                         "givenname" "John"
+                                         "sn"        "Smith"
+                                         "cn"        "John Smith"}}
+                     (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
+                                             :email "john.smith@metabase.com")))))))))))
 
 (deftest update-attributes-disabled-test
   (mt/with-premium-features #{:sso-ldap}

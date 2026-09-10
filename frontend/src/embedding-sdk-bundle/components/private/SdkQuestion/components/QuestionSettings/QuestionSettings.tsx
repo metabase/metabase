@@ -5,7 +5,7 @@ import {
   BaseChartSettings,
   useChartSettingsState,
 } from "metabase/visualizations/components/ChartSettings";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
+import { getSettingsWidgetsForSeries } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 

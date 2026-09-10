@@ -221,7 +221,7 @@
                                "All Metabase features may not work properly when using an unsupported version."
                                "\n********************************************************************************\n"))))))))
 
-(def ^:private disallowed-additional-opts #"(?:allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
+(def ^:private disallowed-additional-opts #"(?:allowLocalInfile|allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
 
 (defmethod driver/validate-db-details! :mysql
   [_driver details]
@@ -320,6 +320,7 @@
       ;; else
       message)))
 
+;; the JDBC-spec variant is still needed so the audit/app-db path can reuse it without a driver pool
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
   [_ spec]
@@ -739,6 +740,14 @@
         (set-prog-nm-fn))
       (set-prog-nm-fn)))) ; additional-options did not contain connectionAttributes at all; set it
 
+(defn- set-local-infile
+  "Pin `allowLocalInfile` to `allowed?` on `spec`'s connection string.
+
+  Appending is what makes this stick: the driver lets URL parameters override connection `Properties`, and lets a later
+  duplicate parameter override an earlier one, so this only wins if it comes after `:additional-options`."
+  [spec allowed?]
+  (sql-jdbc.common/handle-additional-options spec {:additional-options (str "allowLocalInfile=" allowed?)}))
+
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
   [_ {ssl? :ssl, :keys [additional-options ssl-cert auth-provider], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
@@ -778,7 +787,8 @@
                          (dissoc :ssl)))]
        (-> (driver-api/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
-           (sql-jdbc.common/handle-additional-options details))))))
+           (sql-jdbc.common/handle-additional-options details)
+           (set-local-infile false))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
   [& args]
@@ -885,6 +895,21 @@
     (if (= offset "Z")
       "UTC"
       offset)))
+
+(defn- utf8-string-literal
+  "A MySQL string literal for `s`, written as a character set introducer plus a hex literal so its value does not
+  depend on the session's `NO_BACKSLASH_ESCAPES` setting. This has to be a *literal* rather than
+  `CONVERT(UNHEX(...) USING utf8mb4)`: a literal keeps coercibility `COERCIBLE` and so takes on the collation of
+  whatever it is compared against, while `CONVERT` is `IMPLICIT` and makes every comparison against a column whose
+  collation differs from the connection's fail with `Illegal mix of collations`."
+  [^String s]
+  (format "_utf8mb4 X'%s'" (codecs/bytes->hex (.getBytes s "UTF-8"))))
+
+(defmethod sql.qp/inline-value [:mysql String]
+  [_driver ^String s]
+  ;; MySQL's interpretation of backslashes in quoted literals depends on `NO_BACKSLASH_ESCAPES`. Use a hex literal so
+  ;; both the safety and the value of the resulting string are independent of the session's SQL mode.
+  (utf8-string-literal s))
 
 (defmethod sql.qp/inline-value [:mysql OffsetTime]
   [_ t]
@@ -1056,12 +1081,14 @@
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
               (.write writer (str value))))
-          (sql-jdbc.execute/do-with-connection-with-options
-           driver
-           db-id
-           nil
-           (fn [conn]
-             (jdbc/execute! {:connection conn} sql))))
+          ;; Bulk-loading needs a connection that will service `LOAD DATA LOCAL INFILE`, which the pooled connections
+          ;; refuse (see [[set-local-infile]]), so open a dedicated unpooled one for this statement. That is safe here
+          ;; where it is not for user-supplied SQL: the driver only sends the server the file named in the statement,
+          ;; and this statement names the temp file we just wrote.
+          (driver-api/with-metadata-provider db-id
+            (let [details (driver.conn/effective-details (driver-api/database (driver-api/metadata-provider)))]
+              (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+                (jdbc/execute! (set-local-infile spec true) sql)))))
         (finally
           (.delete temp-file))))))
 
@@ -1359,7 +1386,9 @@
 (defn- utf8-string-expr
   "A MySQL expression evaluating to the string `s`, hex-encoded so there is nothing to escape and SQL injection is
   impossible. Index names are unvalidated free-form user input and `sql.u/escape-sql` is explicitly not safe for that
-  (a backslash defeats its quote-doubling, and its escaping is session-dependent), so we use the hex pattern instead."
+  (a backslash defeats its quote-doubling, and its escaping is session-dependent), so we use the hex pattern instead.
+  Use [[utf8-string-literal]] instead anywhere the result is compared against a column -- this one is `IMPLICIT` and
+  would clash with the column's collation."
   [^String s]
   (format "CONVERT(UNHEX('%s') USING utf8mb4)" (codecs/bytes->hex (.getBytes s "UTF-8"))))
 

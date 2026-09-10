@@ -39,6 +39,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.js.svg :as js.svg]
@@ -47,6 +48,7 @@
    [metabase.channel.render.pdf.markdown :as md]
    [metabase.channel.render.pdf.typeset :as typeset]
    [metabase.channel.render.png :as png]
+   [metabase.channel.render.table :as table]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.shared :as channel.shared]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -919,8 +921,11 @@
   clipped body so a short card can't hide it). A pivot has neither."
   ^bytes [timezone {:keys [card dashcard result]} chart-type px-w px-h]
   (let [;; Render directly, not via render-pulse-card: its <p>/.pulse-body margins escape CSSBox's
-        ;; height clip and push the image past the cell. body/render gives the bare table.
-        info     (body/render chart-type :inline timezone card dashcard (:data result))
+        ;; height clip and push the image past the cell. body/render gives the bare table. Opt out of the email/Slack
+        ;; fixed-width fallback for wrapping columns: CSSBox lays the table out at `px-w` and auto-wraps, so a fixed
+        ;; width would only overflow the page and clip the text (see [[table/*text-wrapping-fallback-width*]]).
+        info     (binding [table/*text-wrapping-fallback-width* nil]
+                   (body/render chart-type :inline timezone card dashcard (:data result)))
         note     (when (= :object chart-type) (object-detail-note (:content info)))
         ;; the note is body/render's trailing element, so drop it from the clipped body (it's pinned below)
         body     (cond-> (:content info) note pop)
@@ -1468,9 +1473,9 @@
                                     (map (juxt #(-> % :dashcard :id) identity)))
                            parts)
            dims      (paper-dims paper-key)
-           dash      (t2/select-one :model/Dashboard :id dashboard-id)
-           tabs      (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})
-           dcs       (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
+           dash      (channel.db/dashboard dashboard-id)
+           tabs      (channel.db/dashboard-tabs dashboard-id)
+           dcs       (t2/hydrate (channel.db/dashcards dashboard-id) :card)
            ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in
            ;; the UI, so the PDF shouldn't draw (or reserve space for) its title either
            tabbed?   (> (count tabs) 1)

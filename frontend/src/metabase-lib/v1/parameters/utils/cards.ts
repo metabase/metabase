@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -11,15 +10,15 @@ import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/pa
 import { getParameterTargetField } from "metabase-lib/v1/parameters/utils/targets";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
-  Card,
   Parameter,
   ParameterTarget,
   ParameterValuesMap,
+  SeriesCard,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 
 export function getCardUiParameters(
-  card: Card,
+  card: SeriesCard,
   metadata: Metadata,
   parameterValues: ParameterValuesMap = {},
   parameters = getParametersFromCard(card, metadata),
@@ -35,7 +34,7 @@ export function getCardUiParameters(
     });
 
   return hasParamFields(card)
-    ? getSavedCardUiParameters(card, metadata, valuePopulatedParameters)
+    ? getSavedCardUiParameters(card, valuePopulatedParameters)
     : getUnsavedCardUiParameters(card, metadata, valuePopulatedParameters);
 }
 
@@ -43,7 +42,7 @@ export function getCardUiParameters(
  * A question opened from a dashboard shows the dashboard's parameters, which
  * the card's own `param_fields` do not cover.
  */
-function hasParamFields(card: Card) {
+function hasParamFields(card: SeriesCard) {
   return card.id != null && card.dashboardId == null;
 }
 
@@ -54,16 +53,15 @@ function hasParamFields(card: Card) {
  * frontend does not have.
  */
 function getSavedCardUiParameters(
-  card: Card,
-  metadata: Metadata,
+  card: SeriesCard,
   parameters: Parameter[] | ParameterWithTarget[],
 ): UiParameter[] {
   return parameters.map((parameter) => {
     const target = getParameterTarget(parameter);
-    const parameterFields = (card.param_fields?.[parameter.id] ?? [])
-      .map((field) => metadata.field(field.id))
-      .filter(isNotNull);
-    const fields = _.uniq(parameterFields, (field) => field.id);
+    const fields = _.uniq(
+      card.param_fields?.[parameter.id] ?? [],
+      (field) => field.id,
+    );
     if (fields.length > 0) {
       return {
         ...parameter,
@@ -84,7 +82,7 @@ function getSavedCardUiParameters(
  * against the query.
  */
 function getUnsavedCardUiParameters(
-  card: Card,
+  card: SeriesCard,
   metadata: Metadata,
   parameters: Parameter[] | ParameterWithTarget[],
 ): UiParameter[] {

@@ -1,14 +1,14 @@
 import { act } from "@testing-library/react";
 
-import { renderHookWithProviders } from "__support__/ui";
-import { isEmbedPreview } from "metabase/embedding/config";
-import { selectTab } from "metabase/redux/dashboard";
 import {
   createMockDashboardState,
   createMockSettingsState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderHookWithProviders } from "__support__/ui";
+import { isEmbedPreview } from "metabase/embedding/config";
+import { selectTab } from "metabase/redux/dashboard";
 import type { Location } from "metabase/router";
 import { notifyLocationListeners, useIsNavigationHeld } from "metabase/router";
 import type { ParameterValueOrArray } from "metabase-types/api";

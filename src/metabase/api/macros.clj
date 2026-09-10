@@ -27,6 +27,7 @@
    [malli.util]
    [medley.core :as m]
    [metabase.api.common.internal]
+   [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.macros.scope]
    [metabase.api.open-api :as open-api]
@@ -184,7 +185,8 @@
    args  :- :map]
   (when-let [ks (not-empty (metabase.api.common.internal/route-arg-keywords route))]
     (let [route-params-schema (some-> (get-in args [:params :route :schema])
-                                      #_:clj-kondo/ignore
+                                      ;; eval runs at macroexpansion time to resolve the schema form
+                                      #_{:clj-kondo/ignore [:discouraged-var]}
                                       eval
                                       mr/resolve-schema
                                       mc/schema)]
@@ -238,9 +240,9 @@
                                 :raise   symbol?))))))
 
 (def ^:private default-params-schema
-  "Schema for route params, query params, and the request body when an endpoint binds them without declaring one. A
-  bare `:map` strips every key on decode, so endpoints have to declare the keys they read."
-  [:map])
+  "Schema for route params, query params, and the request body when an endpoint binds them without declaring one. It
+  declares no keys, so every key is stripped on decode: an endpoint has to declare the keys it reads."
+  [:map {:closed true}])
 
 (mu/defn- parse-params :- ::params
   [params]
@@ -318,7 +320,7 @@
    {:name :normalize}
    ;; A param map drops the keys it doesn't declare instead of rejecting them, so a client sending a field the
    ;; endpoint has no use for is still served -- which in turn means every key an endpoint reads has to be declared,
-   ;; at every level of nesting. `ms/Map` (and any other `{:closed false}` map) opts out, for values we deliberately
+   ;; at every level of nesting. A `{:closed false}` map opts out, for values we deliberately
    ;; pass through as they arrived: a query, viz settings, database details, a settings bag.
    ;;
    ;; Runs last: `:normalize` renames keys into the ones the schema declares, so stripping any earlier would drop
@@ -511,14 +513,16 @@
   "Impl for [[endpoint-core-fn]]: validate the schemas used for validation at evaluation time, so we can get instant
   feedback if they're bad as opposed to waiting for someone to actually use the endpoint."
   [schema-type schema]
-  (try
-    (mc/schema schema)
-    (catch Throwable e#
-      (throw (ex-info (format "Invalid %s schema: %s\n\n%s"
-                              (name schema-type)
-                              (ex-message e#)
-                              (u/pprint-to-str schema))
-                      {:schema schema})))))
+  (let [schema (try
+                 (mc/schema schema)
+                 (catch Throwable e#
+                   (throw (ex-info (format "Invalid %s schema: %s\n\n%s"
+                                           (name schema-type)
+                                           (ex-message e#)
+                                           (u/pprint-to-str schema))
+                                   {:schema schema}))))]
+    (closed-schemas/check! schema-type schema)
+    schema))
 
 (defmacro endpoint-core-fn-with-optimized-schemas
   "Helper macro for [[endpoint-core-fn]]. This is not strictly necessary, but improves performance somewhat by
@@ -978,6 +982,7 @@
 ;;;; Example usages
 ;;;;
 
+;; examples are fully qualified so they can be pasted into a REPL from any namespace
 #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (comment
   (metabase.api.macros/ns-routes 'metabase.timeline.api.timeline)

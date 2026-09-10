@@ -33,24 +33,23 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
+import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
 import { runAdhocDatasetQuery } from "metabase/querying/run-query";
-import { updateMetadata } from "metabase/redux/metadata";
 import type {
   DashboardLinkTargets,
   Dispatch,
   GetState,
 } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
-import { FieldSchema } from "metabase/schema";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   getDashboardType,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
+import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import { uuid } from "metabase/utils/uuid";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -152,6 +151,8 @@ export const setShowLoadingCompleteFavicon = createAction<boolean>(
 const loadingComplete = createThunkAction(
   SET_LOADING_DASHCARDS_COMPLETE,
   () => (dispatch, getState) => {
+    // Every card has its data, so the dashboard is as rendered as it gets.
+    markOnce(PERFORMANCE_MARKS.pageReady);
     dispatch(setShowLoadingCompleteFavicon(true));
 
     if (!document.hidden) {
@@ -893,21 +894,15 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_fields) {
-        await dispatch(
-          updateMetadata(Object.values(result.param_fields).flat(), [
-            FieldSchema,
-          ]),
-        );
+        await dispatch(paramFieldsFetched(result.param_fields));
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
-      const metadata = getMetadata(getState());
       const parameters = getSavedDashboardUiParameters(
         result.dashcards,
         result.parameters,
         result.param_fields,
-        metadata,
       );
 
       const parameterValuesById = preserveParameters

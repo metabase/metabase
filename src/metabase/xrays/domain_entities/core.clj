@@ -9,6 +9,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
+   [metabase.xrays.domain-entities.hierarchy :as domain-entities.hierarchy]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]
    [toucan2.core :as t2]))
 
@@ -93,7 +94,7 @@
 (defn- best-match
   [candidates]
   (->> candidates
-       (sort-by (juxt (comp count ancestors :type) (comp count :required_attributes)))
+       (sort-by (juxt (comp count domain-entities.hierarchy/ancestors :type) (comp count :required_attributes)))
        last))
 
 (defn- instantiate-dimensions

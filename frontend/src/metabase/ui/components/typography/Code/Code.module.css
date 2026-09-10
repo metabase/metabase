@@ -1,4 +1,10 @@
 .root {
+  padding: 2px calc(var(--mantine-spacing-xxs) / 2);
+  border-radius: var(--mantine-radius-xs);
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-background_page-tertiary);
+
+  &[data-block] {
+    padding: var(--mantine-spacing-xxs);
+  }
 }

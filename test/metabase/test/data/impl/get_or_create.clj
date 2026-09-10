@@ -417,8 +417,7 @@
       (u/with-timeout create-database-timeout-ms
         ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
         (test.tz/with-system-timezone-id! "UTC"
-          (tx/create-db! driver dbdef)))))
-  (tx/track-dataset driver dbdef))
+          (tx/create-db! driver dbdef))))))
 
 (mu/defn- create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."
@@ -448,6 +447,7 @@
       ;; Destroying the DB when there's a failure loading and syncing is fine
       ;; for most DBs, but for cloud databases it makes things worse.
       (when (driver/database-supports? driver :test/dynamic-dataset-loading nil)
+        ;; test-harness console notice; stays visible even when log output is captured
         #_{:clj-kondo/ignore [:discouraged-var]}
         (println "create-database! failed; destroying database"
                  driver (pr-str database-name))

@@ -1,4 +1,4 @@
-import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
+import { getDeduplicatedTableColumnSettings } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import {
   getColumnKey,

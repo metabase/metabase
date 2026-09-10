@@ -66,7 +66,7 @@ export function SyncProgressModal({
   if (isError) {
     return (
       <Modal onClose={onDismiss} opened size="md" title={t`Sync failed`}>
-        <Stack mt="md" gap="md">
+        <Stack mt="lg" gap="lg">
           <Text>{t`An error occurred during sync.`}</Text>
           {errorMessage && <Text>{errorMessage}</Text>}
           <Group justify="flex-end">
@@ -86,7 +86,7 @@ export function SyncProgressModal({
 
     return (
       <Modal onClose={onDismiss} opened size="md" title={successTitle}>
-        <Stack mt="md" gap="md">
+        <Stack mt="lg" gap="lg">
           <Text>{getSuccessMessage(outcome, taskType)}</Text>
           <Group justify="flex-end">
             <Button
@@ -110,7 +110,7 @@ export function SyncProgressModal({
       title={title}
       withCloseButton={false}
     >
-      <Stack mt="md" gap="md">
+      <Stack mt="lg" gap="lg">
         {isStalled ? (
           <Text ta="center">{getStalledMessage(minutesSinceLastUpdate)}</Text>
         ) : (

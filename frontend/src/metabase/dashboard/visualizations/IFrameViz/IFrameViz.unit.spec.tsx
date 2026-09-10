@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import {
   createMockDashboardState,
   createMockSettingsState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Parameter } from "metabase-types/api";
 import {

@@ -42,7 +42,7 @@ export function RevisionMessageModal({
       title={t`Reason for changes`}
       size="lg"
     >
-      <Flex direction="column" gap="md">
+      <Flex direction="column" gap="lg">
         <Textarea
           placeholder={t`Leave a note to explain what changes you made and why they were required`}
           value={field.value}

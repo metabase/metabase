@@ -75,6 +75,14 @@ jobs:
           clojure -M:ee:doc command-documentation
         continue-on-error: false
 
+      - name: Generate AI provider documentation
+        id: generate_ai_provider_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating AI provider documentation..."
+          clojure -M:ee:doc ai-providers-documentation
+        continue-on-error: false
+
       - name: Generate usage analytics documentation
         run: ./bin/generate-usage-analytics-docs.bb
 
@@ -164,6 +172,7 @@ jobs:
           - \`clojure -M:ee:doc config-template\`
           - \`clojure -M:ee:doc api-documentation\`
           - \`clojure -M:ee:doc command-documentation\`
+          - \`clojure -M:ee:doc ai-providers-documentation\`
           - \`./bin/generate-usage-analytics-docs.bb\`
           - \`bun run embedding-sdk:docs:generate\`
           - \`bun run embedding-eajs:docs:generate\`

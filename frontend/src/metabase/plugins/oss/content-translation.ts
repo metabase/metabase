@@ -1,10 +1,14 @@
 import { useCallback } from "react";
 
-import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import type {
+  ContentTranslationFunction,
+  TranslatableSingleSeries,
+} from "metabase/content-translation/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { HoveredObject } from "metabase/visualizations/types";
-import type { Series } from "metabase-types/api";
+import type { HoveredObject } from "metabase/viz-core";
 import type { EntityToken } from "metabase-types/api/entity";
+
+import { definePluginSlot } from "../slot";
 
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
@@ -33,19 +37,11 @@ const getDefaultPluginContentTranslation = () => ({
     locale: string;
   }): string => displayName,
   useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
-  useTranslateSeries: (obj: Series) => obj,
+  useTranslateSeries: <T extends TranslatableSingleSeries>(obj: T[]) => obj,
   useSortByContentTranslation: () => (a: string, b: string) =>
     a.localeCompare(b),
 });
 
-export const PLUGIN_CONTENT_TRANSLATION = getDefaultPluginContentTranslation();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(
-    PLUGIN_CONTENT_TRANSLATION,
-    getDefaultPluginContentTranslation(),
-  );
-}
+export const PLUGIN_CONTENT_TRANSLATION = definePluginSlot(
+  getDefaultPluginContentTranslation,
+);

@@ -31,7 +31,7 @@ export function EmbeddedMetabotUpsell() {
     >
       <Text lh="lg">
         {t`With Modular Embedding, you can put an AI chat component in your app to make it easier for your customers to get answers from data.`}{" "}
-        <ExternalLink href="https://www.metabase.com/docs/latest/embedding/sdk/ai-chat">{t`Learn more`}</ExternalLink>
+        <ExternalLink href="https://www.metabase.com/docs/latest/embedding/ai-chat">{t`Learn more`}</ExternalLink>
       </Text>
     </UpsellCard>
   );

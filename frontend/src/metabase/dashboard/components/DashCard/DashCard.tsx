@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { getIn } from "icepick";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
@@ -17,31 +16,36 @@ import {
 } from "metabase/dashboard/utils";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { StoreDashcard } from "metabase/redux/store";
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
-import { getVisualizationRaw } from "metabase/visualizations";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   getInitialStateForCardDataSource,
   getInitialStateForMultipleSeries,
   getInitialStateForVisualizerCard,
 } from "metabase/visualizer/utils";
-import Question from "metabase-lib/v1/Question";
+import {
+  extendCardWithDashcardSettings,
+  getVisualizationRaw,
+} from "metabase/viz-core";
 import type {
   Card,
   DashCardId,
+  DashCardSeries,
   DashboardCard,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
+import {
+  isDashCardDataSeries,
+  isVisualizerDashboardCard,
+} from "metabase-types/guards/dashboard";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
@@ -166,11 +170,11 @@ function DashCardInner({
     return [mainCard];
   }, [mainCard, dashcard]);
 
-  const series = useMemo(() => {
+  const series: DashCardSeries = useMemo(() => {
     return cards.map((card) => {
       const isSlow = card.id ? slowCards[card.id] : false;
       const isUsuallyFast =
-        card.query_average_duration &&
+        card.query_average_duration != null &&
         card.query_average_duration < DASHBOARD_SLOW_TIMEOUT;
 
       if (!card.id) {
@@ -178,7 +182,7 @@ function DashCardInner({
       }
 
       return {
-        ...getIn(dashcardData, [card.id]),
+        ...dashcardData?.[card.id],
         card,
         isSlow,
         isUsuallyFast,
@@ -309,6 +313,9 @@ function DashCardInner({
   }, [dashcard.id, dispatch]);
 
   const getVisualizerInitialState = useCallback(() => {
+    if (!isDashCardDataSeries(series)) {
+      return null;
+    }
     if (isVisualizerDashboardCard(dashcard)) {
       return getInitialStateForVisualizerCard(dashcard, datasets);
     } else if (series.length > 1) {
@@ -321,15 +328,19 @@ function DashCardInner({
   const onEditVisualizationClick = useCallback(() => {
     const initialState = getVisualizerInitialState();
 
-    onEditVisualization(dashcard, initialState);
+    if (initialState != null) {
+      onEditVisualization(dashcard, initialState);
+    }
   }, [dashcard, onEditVisualization, getVisualizerInitialState]);
 
-  const metadata = useSelector(getMetadata);
+  const handleEditVisualization = isDashCardDataSeries(series)
+    ? onEditVisualizationClick
+    : undefined;
+
+  const buildQuestion = useQuestionFromCard();
   const question = useMemo(() => {
-    return isQuestionCard(dashcard.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
-  }, [dashcard.card, metadata]);
+    return isQuestionCard(dashcard.card) ? buildQuestion(dashcard.card) : null;
+  }, [dashcard.card, buildQuestion]);
 
   return (
     <ErrorBoundary>
@@ -342,8 +353,6 @@ function DashCardInner({
           DashboardS.Card,
           EmbedFrameS.Card,
           CS.relative,
-          CS.roundedSm,
-          !isAction && CS.bordered,
           CS.flex,
           CS.flexColumn,
           CS.hoverParent,
@@ -352,6 +361,7 @@ function DashCardInner({
             [S.hasHiddenBackground]: hasHiddenBackground,
             [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
+            [S.isAction]: isAction,
           },
           className,
         )}
@@ -385,13 +395,12 @@ function DashCardInner({
             onPreviewToggle={handlePreviewToggle}
             isTrashedOnRemove={isTrashedOnRemove}
             onAddParameter={handleAddParameter}
-            onEditVisualization={onEditVisualizationClick}
+            onEditVisualization={handleEditVisualization}
           />
         )}
         <DashCardVisualization
           dashcard={dashcard}
           question={question}
-          metadata={metadata}
           series={series}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}
@@ -415,7 +424,7 @@ function DashCardInner({
           onTogglePreviewing={handlePreviewToggle}
           onEditVisualization={
             isVisualizerDashboardCard(dashcard)
-              ? onEditVisualizationClick
+              ? handleEditVisualization
               : undefined
           }
         />

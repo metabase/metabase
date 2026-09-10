@@ -60,7 +60,7 @@ export const GraphNode = memo(function ItemNode({
           [S.initialized]: isInitialized,
           [S.selected]: isSelected,
         })}
-        p="lg"
+        p="xl"
         withBorder
         aria-label={label}
         aria-selected={isSelected}
@@ -68,7 +68,7 @@ export const GraphNode = memo(function ItemNode({
         onClick={handleClick}
       >
         <Stack gap="sm">
-          <Group c={typeInfo.color} gap="xs" wrap="nowrap">
+          <Group c={typeInfo.color} gap="xxs" wrap="nowrap">
             <FixedSizeIcon name={getNodeIcon(node)} />
             <Box fz="sm" fw="bold" lh="1rem">
               {typeInfo.label}
@@ -78,7 +78,7 @@ export const GraphNode = memo(function ItemNode({
             {label}
           </Box>
         </Stack>
-        <Stack mt="md" gap="sm" align="start">
+        <Stack mt="lg" gap="sm" align="start">
           <Box c="text-secondary" fz="sm" lh="1rem">
             {getDependencyGroupTitle(node, groups)}
           </Box>

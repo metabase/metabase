@@ -13,7 +13,7 @@ import { useSdkControlledSqlParameters } from "./use-sdk-controlled-sql-paramete
 jest.mock("metabase/redux", () => ({
   useSelector: jest.fn(),
 }));
-jest.mock("metabase/selectors/metadata", () => ({
+jest.mock("metabase/metadata-store", () => ({
   getMetadata: jest.fn(),
 }));
 jest.mock("metabase-lib/v1/parameters/utils/cards", () => ({
