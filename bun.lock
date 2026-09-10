@@ -81,7 +81,7 @@
         "crc-32": "^1.2.2",
         "cron-expression-validator": "^1.0.20",
         "cronstrue": "^2.11.0",
-        "csv-parse": "^5.5.6",
+        "csv-parse": "^7.0.2",
         "csv-stringify": "^6.5.0",
         "d3": "^7.9.0",
         "d3-scale": "^4.0.2",
@@ -2612,7 +2612,7 @@
 
     "csstype": ["csstype@3.2.3", "", {}, "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ=="],
 
-    "csv-parse": ["csv-parse@5.5.6", "", {}, "sha512-uNpm30m/AGSkLxxy7d9yRXpJQFrZzVWLFBkS+6ngPcZkw/5k3L/jjFuj7tVnEpRn+QgmiXr21nDlhCiUK4ij2A=="],
+    "csv-parse": ["csv-parse@7.0.2", "", {}, "sha512-uKZghv9UmPkMVLYy//KZ9HFAIJsl7wkhoEdIL0+rhuSY9pZQlhaeGEDPIe+/w7eh81MOql8Q/9+inAGWG6ZHYA=="],
 
     "csv-stringify": ["csv-stringify@6.5.0", "", {}, "sha512-edlXFVKcUx7r8Vx5zQucsuMg4wb/xT6qyz+Sr1vnLrdXqlLD1+UKyWNyZ9zn6mUW1ewmGxrpVwAcChGF0HQ/2Q=="],
 
