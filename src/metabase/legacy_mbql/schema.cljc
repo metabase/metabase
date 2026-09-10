@@ -1898,7 +1898,7 @@
      [:points_of_interest {:optional true} [:maybe :string]]
      [:preview_display    {:optional true} [:maybe :boolean]]
      [:caveats            {:optional true} [:maybe :string]]
-     [:target             {:optional true} [:maybe [:ref ::legacy-column-metadata]]]
+     [:target             {:optional true} [:maybe [:or ::lib.schema.id/field [:ref ::legacy-column-metadata]]]]
      [:options            {:optional true} [:maybe [:ref ::lib.schema.metadata/column.options]]]
      [:remapped_from      {:optional true} [:maybe :string]]
      [:remapped_to        {:optional true} [:maybe :string]]

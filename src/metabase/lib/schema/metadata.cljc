@@ -594,8 +594,10 @@
     [:created-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
     [:updated-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
     [:last-analyzed              {:optional true} [:maybe [:ref ::column.timestamp]]]
-    [:target                     {:optional true} [:maybe [:ref ::column]]]
-    [:name-field                 {:optional true} [:maybe [:ref ::column]]]
+    ;; the Field a foreign key points at, and the Field that names this table's rows: hydrated onto a Field by the
+    ;; application database metadata provider, but only an id reference in the metadata the frontend hands over
+    [:target                     {:optional true} [:maybe [:or ::lib.schema.id/field [:ref ::column]]]]
+    [:name-field                 {:optional true} [:maybe [:or ::lib.schema.id/field [:ref ::column]]]]
     ;; the Dimension and FieldValues joined onto a Field by the application database metadata provider
     [:dimension/id                      {:optional true} [:maybe ::lib.schema.id/dimension]]
     [:dimension/name                    {:optional true} [:maybe :string]]
