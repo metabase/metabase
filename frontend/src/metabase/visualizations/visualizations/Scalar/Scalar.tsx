@@ -88,11 +88,11 @@ function ScalarComponent(
   if (goalSegments.status !== "resolved") {
     return (
       <ScalarCardShell
-        tier={tier}
-        title={title}
-        showsTitleTooltip={showsTitleTooltip}
         actionButtons={actionButtons}
         innerTooltipHoverHandlers={innerTooltipHoverHandlers}
+        showsTitleTooltip={showsTitleTooltip}
+        tier={tier}
+        title={title}
       >
         <GoalResolutionState kind="segments" status={goalSegments.status} />
         {titleElement}
