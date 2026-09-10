@@ -2795,6 +2795,7 @@
            permissions
            premium-features
            request
+           session
            sso
            system
            tenants
