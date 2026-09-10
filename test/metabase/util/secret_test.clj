@@ -163,7 +163,7 @@
   (testing "the one non-network reason -- handing a credential to a person -- is accepted"
     (is (= "mb_abc" (u.secret/expose (u.secret/secret "mb_abc") :disclosure/to-creator))))
   (testing "the reason set is closed"
-    (is (= #{:disclosure/to-creator} u.secret/disclosure-reasons))
+    (is (= #{:disclosure/to-creator :disclosure/fixed-endpoint} u.secret/disclosure-reasons))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown disclosure reason"
                           (u.secret/expose (u.secret/secret "mb_abc") :derive/hash)))))
 
@@ -281,3 +281,10 @@
       (is (= 400 (:status-code (ex-data thrown))))))
   (testing "an unrelated exception passes through, so the caller's own handling continues"
     (is (nil? (u.secret/rethrow-if-audience-mismatch! (ex-info "Wrong host or port" {}))))))
+
+(deftest maybe-derive-with-test
+  (testing "a Secret is derived from without the plaintext becoming a caller binding"
+    (is (= 7 (u.secret/maybe-derive-with (u.secret/secret "hunter2") count))))
+  (testing "and a caller already holding the plain value is tolerated, which is what makes it safe at a sink that
+           may be handed either"
+    (is (= 7 (u.secret/maybe-derive-with "hunter2" count)))))

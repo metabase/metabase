@@ -6,7 +6,8 @@
    [metabase.settings.core :as setting :refer [defsetting define-multi-setting define-multi-setting-impl]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.secret :as u.secret])
   (:import
    (com.unboundid.ldap.sdk DN)))
 
@@ -173,10 +174,11 @@
   ;; see [[metabase.channel.settings/slack-app-token]] -- Slack's endpoint is not configurable
   :audience   {})
 
-(defn unobfuscated-slack-connect-client-secret
-  "Get the unobfuscated value of [[slack-connect-client-secret]]."
+(defn slack-connect-client-secret-for-slack-api
+  "The Slack Connect client secret as plaintext, for presenting to Slack's OIDC endpoint, which is not configurable.
+  See [[metabase.channel.settings/slack-app-token-for-slack-api]]."
   []
-  (setting/get-value-of-type :string :slack-connect-client-secret))
+  (some-> (slack-connect-client-secret) (u.secret/expose :disclosure/fixed-endpoint)))
 
 (def slack-connect-auth-mode-sso
   "Authentication mode for full SSO login."

@@ -10,12 +10,6 @@
   []
   (server.settings/metabot-slack-signing-secret))
 
-(defn unobfuscated-metabot-slack-signing-secret
-  "Get the unobfuscated value of [[metabot-slack-signing-secret]].
-   Delegates to [[metabase.server.settings/unobfuscated-metabot-slack-signing-secret]]."
-  []
-  (server.settings/unobfuscated-metabot-slack-signing-secret))
-
 (defsetting slackbot-event-handler-pool-size
   (deferred-tru "Maximum number of concurrent Slack event handler threads.")
   :visibility :internal

@@ -50,6 +50,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.secret :as u.secret]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]))
 
@@ -68,7 +69,8 @@
   "Build a certificate store map usable by the saml20-clj library."
   []
   (when-let [path (sso-settings/saml-keystore-path)]
-    (when-let [password (sso-settings/saml-keystore-password)]
+    (when-let [password (some-> (sso-settings/saml-keystore-password)
+                                (u.secret/maybe-derive-with identity))]
       (when-let [key-name (sso-settings/saml-keystore-alias)]
         {:filename path
          :password password

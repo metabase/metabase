@@ -7,7 +7,8 @@
    [metabase.analytics.settings :as analytics.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,7 +24,7 @@
   ;; The analytics-uuid is a fallback for LLM features like sql generation in OSS builds that don't have a
   ;; premium-embedding-token.
   ;; https://metaboat.slack.com/archives/C07SJT1P0ET/p1769582038106939?thread_ts=1769493176.349639&cid=C07SJT1P0ET
-  (or (some-> (not-empty (premium-features/premium-embedding-token))
+  (or (some-> (some-> (premium-features/premium-embedding-token) (u.secret/maybe-derive-with identity)) not-empty
               memoized-sha256-hex)
       (str "oss__" (analytics.settings/analytics-uuid))))
 

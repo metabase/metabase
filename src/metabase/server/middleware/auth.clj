@@ -5,7 +5,8 @@
    [buddy.core.bytes :as bytes]
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
-   [metabase.server.settings :as server.settings]))
+   [metabase.server.settings :as server.settings]
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,11 +59,12 @@
    Returns nil if no signing secret is configured, false if timestamp is too old
    (replay attack prevention) or signature is invalid, true if valid."
   [request-body timestamp slack-signature]
-  (when-let [signing-secret (server.settings/unobfuscated-metabot-slack-signing-secret)]
+  (when-let [signing-secret (server.settings/metabot-slack-signing-secret)]
     (and (slack-timestamp-valid? timestamp)
          (some? slack-signature)
          (let [message (str "v0:" timestamp ":" request-body)
-               computed-signature (hmac-sha256 signing-secret message)
+               ;; verifies a signature Slack computed; the secret never leaves the process
+               computed-signature (u.secret/maybe-derive-with signing-secret #(hmac-sha256 % message))
                expected-signature (str "v0=" computed-signature)]
            ;; Use constant-time comparison to prevent timing attacks
            (bytes/equals? (.getBytes ^String expected-signature "UTF-8")

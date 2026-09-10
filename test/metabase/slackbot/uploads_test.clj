@@ -291,7 +291,7 @@
                                                 (reset! uploaded-file (slurp file))
                                                 {:id 1 :name "test"})
          ;; stub out the token lookup
-         channel.settings/unobfuscated-slack-app-token (constantly "xoxb-fake")]
+         channel.settings/slack-app-token-for-slack-api (constantly "xoxb-fake")]
         (let [result (#'slackbot.uploads/process-csv-file
                       {:db_id 1 :schema_name nil :table_prefix nil}
                       {:name "test.csv" :url_private "https://example.com/test.csv" :size 100})]

@@ -4,7 +4,8 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.sso.settings :as sso-settings]
-   [metabase.util.encryption :as encryption])
+   [metabase.util.encryption :as encryption]
+   [metabase.util.secret :as u.secret])
   (:import
    (java.net URLEncoder URLDecoder)
    (java.time Instant)))
@@ -13,7 +14,8 @@
 
 (defn- hashed-key
   []
-  (encryption/secret-key->hash (sso-settings/sdk-encryption-validation-key)))
+  ;; hashed in-process; the key itself is never presented to anyone
+  (u.secret/maybe-derive-with (sso-settings/sdk-encryption-validation-key) encryption/secret-key->hash))
 
 (defn generate-token
   "Generate a cryptographically secure token with built-in expiration."

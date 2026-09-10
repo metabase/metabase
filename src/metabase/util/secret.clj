@@ -141,8 +141,11 @@
   confines the plaintext to one expression. What is left is the case no mechanism can verify: handing a credential to
   a person.
 
-  * `to-creator` -- showing a just-created credential to its creator, once."
-  #{:disclosure/to-creator})
+  * `to-creator` -- showing a just-created credential to its creator, once.
+  * `fixed-endpoint` -- presenting it to a peer no setting selects, so there is no audience to compare. The Slack API
+    is the example: its address is not configurable, so nothing a caller writes can redirect the credential."
+  #{:disclosure/to-creator
+    :disclosure/fixed-endpoint})
 
 (def ^:const mask-string
   "The fixed, value-independent portion of a mask. Constant width so it leaks neither the length nor any character of
@@ -314,6 +317,16 @@
   [e]
   (when-let [refusal (audience-mismatch e)]
     (throw refusal)))
+
+(defn maybe-derive-with
+  "[[derive-with]] when `v` is a Secret; apply `f` to `v` directly otherwise.
+
+  The partner of [[maybe-expose]] for a derivation that stays in the process: it tolerates a caller, or a test, that
+  already holds the plain value. Pair it with `some->` where `f` cannot take nil."
+  [v f]
+  (if (secret? v)
+    (derive-with v f)
+    (f v)))
 
 (defn masked?
   "Whether `v` looks like a value produced by [[mask]] -- i.e. the client echoed back a mask rather than supplying a

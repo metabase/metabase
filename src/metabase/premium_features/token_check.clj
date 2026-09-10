@@ -32,6 +32,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [metabase.util.string :as u.str]
    [potemkin.types :as p]
    [toucan2.connection :as t2.conn]
@@ -215,7 +216,7 @@
 (defn send-metering-events!
   "Send metering events for billing purposes"
   []
-  (when-let [token (premium-features.settings/premium-embedding-token)]
+  (when-let [token (u.secret/maybe-expose (premium-features.settings/premium-embedding-token) :disclosure/fixed-endpoint)]
     (when (mr/validate [:re RemoteCheckedToken] token)
       (tracing/with-span :tasks "metering.send-events" {}
         (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)]
@@ -236,7 +237,8 @@
 (mu/defn max-users-allowed :- [:maybe pos-int?]
   "Returns the max users value from an airgapped key, or nil indicating there is no limit."
   []
-  (when-let [token (premium-features.settings/premium-embedding-token)]
+  (when-let [token (some-> (premium-features.settings/premium-embedding-token)
+                           (u.secret/maybe-derive-with identity))]
     (when (str/starts-with? token "airgap_")
       (let [max-users (:max-users (decode-airgap-token token))]
         (when (pos? max-users) max-users)))))
@@ -595,7 +597,8 @@
 (defn -airgap-enabled
   "Getter for [[metabase.premium-features.settings/airgap-enabled]]"
   []
-  (mr/validate AirgapToken (premium-features.settings/premium-embedding-token)))
+  (mr/validate AirgapToken (some-> (premium-features.settings/premium-embedding-token)
+                                   (u.secret/maybe-derive-with identity))))
 
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
@@ -608,25 +611,28 @@
     []
     (try
       (or (some-> (premium-features.settings/premium-embedding-token)
+                  (u.secret/maybe-expose :disclosure/fixed-endpoint)
                   (check-token)
                   :features set)
           #{})
       (catch Throwable e
         (when (:pass-thru (ex-data e))
           (throw e))
-        (cached-logger (premium-features.settings/premium-embedding-token) e)
+        (cached-logger (u.secret/maybe-expose (premium-features.settings/premium-embedding-token) :disclosure/fixed-endpoint) e)
         #{}))))
 
 (defn -token-status
   "Getter for the [[metabase.premium-features.settings/token-status]] setting."
   []
   (some-> (premium-features.settings/premium-embedding-token)
+          (u.secret/maybe-expose :disclosure/fixed-endpoint)
           (check-token)))
 
 (mu/defn plan-alias :- [:maybe :string]
   "Returns a string representing the instance's current plan, if included in the last token status request."
   []
   (some-> (premium-features.settings/premium-embedding-token)
+          (u.secret/maybe-expose :disclosure/fixed-endpoint)
           (check-token)
           :plan-alias))
 
@@ -635,6 +641,7 @@
   []
   (clear-cache!)
   (some-> (premium-features.settings/premium-embedding-token)
+          (u.secret/maybe-expose :disclosure/fixed-endpoint)
           (check-token)
           :quotas))
 
@@ -643,6 +650,7 @@
   []
   (clear-cache!)
   (some-> (premium-features.settings/premium-embedding-token)
+          (u.secret/maybe-expose :disclosure/fixed-endpoint)
           (check-token)
           :meters))
 
@@ -663,7 +671,7 @@
   "Returns `true` if the token definitively has `feature`, `false` if it definitively does not, or `nil` if the token
   status is indeterminate (e.g., network failure, timeout). Returns `false` (not `nil`) when no token is configured."
   [feature]
-  (if-let [token (premium-features.settings/premium-embedding-token)]
+  (if-let [token (u.secret/maybe-expose (premium-features.settings/premium-embedding-token) :disclosure/fixed-endpoint)]
     (let [result (check-token token)]
       (when (:canonical? result)
         (boolean (contains? (set (:features result)) (name feature)))))

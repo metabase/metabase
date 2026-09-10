@@ -782,11 +782,20 @@
 
 (defn- bind-secret
   "Wrap `value` as a [[metabase.util.secret/secret]] bound to the audience `setting` declares, as that audience is
-  stored right now. Only a credential whose audience names fields is wrapped: a `{}` audience has nothing to bind to,
-  because no setting decides where that credential goes."
-  [{:keys [sensitive? audience], setting-name :name} value]
+  stored right now.
+
+  Every credential that declares an `:audience` is wrapped, including one declaring `{}`. A `{}` audience binds to no
+  destination, so [[metabase.util.secret/expose]] will not hand it to a network peer; what the wrapper still buys is
+  redaction in logs, a JSON encoder that refuses it, and a [[set!]] that will not write it back. Such a credential is
+  opened with `:disclosure/fixed-endpoint` or, where it never leaves the process, [[metabase.util.secret/derive-with]].
+
+  Restricted to `:string` settings, because a Secret wraps a credential rather than a structure that contains one.
+  `oidc-providers` is `:sensitive?` and holds a list whose members each carry a `client-secret`; those are handled
+  per provider in [[metabase-enterprise.sso.api.oidc]], and wrapping the list would say the list is the credential."
+  [{:keys [sensitive? audience], setting-type :type, setting-name :name} value]
   (if (and sensitive?
-           (seq audience)
+           (some? audience)
+           (= :string setting-type)
            (some? value)
            (not (u.secret/secret? value)))
     (u.secret/secret value {:audience-schema (audience->schema audience)

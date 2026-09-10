@@ -13,7 +13,8 @@
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.secret :as u.secret])
   (:import
    [com.fasterxml.jackson.core JsonParseException]))
 
@@ -65,7 +66,7 @@
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
    using the embedding token and signed in user's email to fetch the billing information."
   []
-  (let [token    (premium-features/premium-embedding-token)
+  (let [token    (u.secret/maybe-expose (premium-features/premium-embedding-token) :disclosure/fixed-endpoint)
         email    (billing.db/user-email api/*current-user-id*)
         language (i18n/user-locale-string)]
     (if (and token (str/starts-with? token "airgap_"))

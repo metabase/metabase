@@ -6,7 +6,8 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]))
 
 (defsetting slack-app-token
   (deferred-tru
@@ -18,10 +19,13 @@
   ;; Slack's API endpoint is fixed, so there is no destination setting that could redirect this
   :audience   {})
 
-(defn unobfuscated-slack-app-token
-  "Get the unobfuscated value of [[slack-app-token]]."
+(defn slack-app-token-for-slack-api
+  "The Slack app token as plaintext, for presenting to the Slack API.
+
+  Slack's endpoint is not configurable, so the token declares `:audience {}` and there is no destination to compare;
+  the disclosure is named rather than checked. Use [[slack-app-token]] wherever only its presence matters."
   []
-  (setting/get-value-of-type :string :slack-app-token))
+  (some-> (slack-app-token) (u.secret/expose :disclosure/fixed-endpoint)))
 
 (defsetting slack-token-valid?
   (deferred-tru

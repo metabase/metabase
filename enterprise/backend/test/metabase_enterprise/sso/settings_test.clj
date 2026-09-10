@@ -46,7 +46,7 @@
             (is (= (if feature? "test_resources/keystore.jks" nil)
                    (sso-settings/saml-keystore-path)))
             (is (= (if feature? "123456" "changeit")
-                   (sso-settings/saml-keystore-password)))
+                   (mt/plaintext (sso-settings/saml-keystore-password))))
             (is (= (if feature? "sp" nil)
                    (sso-settings/saml-keystore-alias)))
             (is (= (if feature? "not default email" "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
@@ -154,7 +154,7 @@
             (is (= (if feature? default-idp-uri nil)
                    (sso-settings/jwt-identity-provider-uri)))
             (is (= (if feature? "01234" nil)
-                   (sso-settings/jwt-shared-secret)))
+                   (mt/plaintext (sso-settings/jwt-shared-secret))))
             (is (= (if feature? "not default email" "email")
                    (sso-settings/jwt-attribute-email)))
             (is (= (if feature? "not default first_name" "first_name")
@@ -354,7 +354,7 @@
         (binding [api/*current-user-id* (mt/user->id :crowberto)]
           (setting/set-many! {:saml-keystore-path "/etc/metabase/new.jks"})
           (is (= "/etc/metabase/new.jks" (sso-settings/saml-keystore-path)))
-          (is (= "keystore-secret" (sso-settings/saml-keystore-password))))))))
+          (is (= "keystore-secret" (mt/plaintext (sso-settings/saml-keystore-password)))))))))
 
 (deftest jwt-idp-uri-change-does-not-require-the-shared-secret-again-test
   (testing "the shared secret is not bound to the identity provider URI: Metabase only verifies IdP-signed tokens with
@@ -365,4 +365,4 @@
         (binding [api/*current-user-id* (mt/user->id :crowberto)]
           (setting/set-many! {:jwt-identity-provider-uri "https://new.example.com/sso"})
           (is (= "https://new.example.com/sso" (sso-settings/jwt-identity-provider-uri)))
-          (is (= "jwt-secret" (sso-settings/jwt-shared-secret))))))))
+          (is (= "jwt-secret" (mt/plaintext (mt/plaintext (sso-settings/jwt-shared-secret))))))))))
