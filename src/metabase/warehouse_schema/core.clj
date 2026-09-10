@@ -12,9 +12,7 @@
 (p/import-vars
  [metabase.lib-be.core
   field-user-settings-column
-  field-user-settings-flags
-  field-user-settings-join
-  user-settable-field-columns]
+  field-user-settings-join]
  [metabase.warehouse-schema.db
   field-source
   with-sync-values])
