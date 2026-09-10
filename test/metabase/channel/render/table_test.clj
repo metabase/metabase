@@ -318,3 +318,28 @@
                                    :rows (repeat 200 ["I will keep default limits."])}})
                           :content
                           (render.tu/nodes-with-text "I will keep default limits.")))))))))
+
+(deftest ^:parallel text-wrapping-fallback-width-test
+  (testing "a text-wrapping column with no explicit table.column_widths (UXW-4714)"
+    (let [columns    [{:name "desc"}]
+          viz        {::mb.viz/column-settings {{::mb.viz/column-name "desc"} {::mb.viz/text-wrapping true}}}
+          styles-for #(get (table/column->viz-setting-styles columns viz) "desc")]
+      (testing "defaults to a fixed fallback width, so email/Slack clients (which don't auto-wrap) wrap"
+        (let [s (styles-for)]
+          (is (= "normal" (:white-space s)))
+          (is (= "780px" (:width s)))
+          (is (= "780px !important" (:max-width s)))))
+      (testing "binding *text-wrapping-fallback-width* to nil omits the fixed width, so an auto-wrapping renderer (the PDF) sizes the column to the table"
+        (binding [table/*text-wrapping-fallback-width* nil]
+          (let [s (styles-for)]
+            (is (= "normal" (:white-space s)))
+            (is (not (contains? s :width)))
+            (is (not (contains? s :max-width))))))))
+  (testing "an explicit table.column_widths gives min-width and ignores the fallback var entirely"
+    (let [columns [{:name "desc"}]
+          viz     {::mb.viz/column-settings {{::mb.viz/column-name "desc"} {::mb.viz/text-wrapping true}}
+                   :table.column_widths [200]}]
+      (binding [table/*text-wrapping-fallback-width* nil]
+        (let [s (get (table/column->viz-setting-styles columns viz) "desc")]
+          (is (contains? s :min-width))
+          (is (not (contains? s :width))))))))

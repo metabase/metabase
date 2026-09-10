@@ -27,7 +27,7 @@ Data Studio provides tools to shape and track your data so everyone can trust th
 - **[Transforms](./transforms/transforms-overview.md)**: Wrangle your data in Metabase, write the query results back to your database, and reuse them in Metabase as sources for new queries.
 - **[Glossary](../exploration-and-organization/data-model-reference.md#glossary)**: Define terms relevant to your business, both for people and agents trying to understand your data.
 
-\* Available on [Pro and Enterprise plans](https://www.metabase.com/pricing/).
+\* Available on [Pro and Enterprise plans](https://www.metabase.com/pricing).
 
 ## Permissions for Data Studio
 
