@@ -7,14 +7,12 @@ import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
-import { getMetadata } from "metabase/metadata-store";
+import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
 import {
   getParameterValuesForQuestion,
   resolveCards,
 } from "metabase/query_builder";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { updateMetadata } from "metabase/redux/metadata";
-import { FieldSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import type { SeriesCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -95,9 +93,7 @@ export const loadQuestionSdk =
     if ("param_fields" in card && card.param_fields) {
       // This is needed to make some parameter widget populate the dropdown list
       // otherwise they will use a normal text input
-      dispatch(
-        updateMetadata(Object.values(card.param_fields).flat(), [FieldSchema]),
-      );
+      dispatch(paramFieldsFetched(card.param_fields));
     }
 
     return { question, originalQuestion, parameterValues };

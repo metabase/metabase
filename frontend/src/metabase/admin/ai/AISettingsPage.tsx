@@ -228,14 +228,13 @@ function ToggleSettingsSection({
     <SettingsSection
       id={id}
       title={
-        <Flex align="center" gap="md" justify="space-between" w="100%">
+        <Flex align="center" gap="lg" justify="space-between" w="100%">
           <div>{title}</div>
           <Switch
             aria-label={title}
             checked={checked}
             disabled={disabled}
             onChange={(event) => onChange(event.target.checked)}
-            size="sm"
             w="auto"
           />
         </Flex>
@@ -256,7 +255,7 @@ function DisabledSection({
 }) {
   return (
     <Stack
-      gap="lg"
+      gap="xl"
       opacity={disabled ? 0.4 : 1}
       aria-disabled={disabled || undefined}
       {...(disabled ? { inert: "" } : {})}

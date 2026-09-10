@@ -195,7 +195,7 @@ interface SingleDatabaseNameProps {
 const SingleDatabaseName = ({ database }: SingleDatabaseNameProps) => (
   <Flex
     h="3rem"
-    px="md"
+    px="lg"
     align="center"
     fw="bold"
     data-testid="selected-database"

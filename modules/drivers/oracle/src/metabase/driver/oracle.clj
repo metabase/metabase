@@ -40,6 +40,7 @@
     Types)
    (java.time
     Instant
+    LocalDate
     LocalDateTime
     OffsetDateTime
     ZonedDateTime)
@@ -424,8 +425,14 @@
   [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr          (sql.qp/->honeysql driver arg)
         has-timezone? (or (sql.qp.u/field-with-tz? arg)
-                          (h2x/is-of-type? expr #"timestamp(\(\d\))? with time zone"))]
-    (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
+                          (h2x/is-of-type? expr #"timestamp(\(\d\))? with time zone"))
+        _             (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
+        ;; `FROM_TZ` only accepts a `TIMESTAMP`; Oracle refuses to implicitly promote a `DATE` (ORA-00932), so cast
+        ;; dates to a plain `TIMESTAMP` first (#27186).
+        expr          (cond-> expr
+                        (or (instance? LocalDate expr)
+                            (h2x/is-of-type? expr "date"))
+                        h2x/->timestamp)]
     (-> (if has-timezone?
           expr
           [:from_tz expr (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))])

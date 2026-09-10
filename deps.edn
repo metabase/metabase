@@ -362,6 +362,10 @@
                  ;; The actual port is read from the running Jetty server via server.instance/server-port.
                  "-Dmb.jetty.port=0"]}
 
+  ;; Includes the small generator tests that validate development-only repository configuration.
+  :dev/test
+  {:extra-paths ["dev/test"]}
+
   ;; run the dev server with
   ;; clojure -M:run
   ;; clojure -M:run:drivers (include all drivers)
@@ -417,7 +421,7 @@
                "-Dmb.experimental.search.block.on.queue=true"
                "-Dmb.search.engine=appdb"
                ;; We use a local webhook service for testing
-               "-Dmb.http.channel.host.strategy=allow-all"]}
+               "-Dmb.http.channel.allowed.networks=allow-all"]}
 
   ;; run the prod server when generating docs
   ;; as some default values differ between dev and prod
@@ -562,6 +566,7 @@
     "test"
     "enterprise/backend/src"
     "enterprise/backend/test"
+    "dev/test/metabase"
     "bin/build/src"
     "bin/build/test"
     "bin/lint-migrations-file/src"
@@ -698,7 +703,11 @@
                 ;; Syntax error compiling fn* in Eastwood's analyzer
                 metabase.sql-tools.macaw.references-test
                 ;; Method too large for Eastwood's analyzer
-                metabase.sql-tools.sqlglot.references-test]}}
+                metabase.sql-tools.sqlglot.references-test
+                ;; dev/test namespaces that no longer load; nothing runs them
+                dev.deps-graph-test
+                dev.migrate-test
+                dev.model-tracking-test]}}
 
   ;; clojure -T:whitespace-linter
   :whitespace-linter

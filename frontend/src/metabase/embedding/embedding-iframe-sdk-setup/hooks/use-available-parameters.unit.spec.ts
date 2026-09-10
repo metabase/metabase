@@ -23,19 +23,12 @@ jest.mock("metabase-lib/v1/parameters/utils/cards", () => ({
   getCardUiParameters: jest.fn(),
 }));
 
-jest.mock("metabase/redux/metadata", () => ({
-  updateMetadata: jest.fn((data) => ({
-    type: "metabase/entities/UPDATE",
-    payload: data,
-  })),
-}));
-
-jest.mock("metabase/schema", () => ({
-  FieldSchema: {},
-}));
-
 jest.mock("metabase/metadata-store", () => ({
   getMetadata: jest.fn(),
+  paramFieldsFetched: jest.fn((paramFields) => ({
+    type: "metabase/entities/UPDATE",
+    payload: paramFields,
+  })),
 }));
 
 const mockUseSelector = jest.requireMock("metabase/redux").useSelector;
@@ -321,7 +314,7 @@ describe("useAvailableParameters", () => {
   });
 
   describe("param_fields handling", () => {
-    it("should dispatch updateMetadata when resource has param_fields", () => {
+    it("should mirror the param_fields the resource carries", () => {
       const dashboardWithParamFields = {
         ...mockDashboard,
         param_fields: {

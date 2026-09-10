@@ -84,7 +84,7 @@ const DestinationDatabasesListItem = ({
   return (
     <Flex
       justify="space-between"
-      my="md"
+      my="lg"
       data-testid="destination-db-list-item"
     >
       <Flex align="center" gap="sm">
@@ -94,7 +94,7 @@ const DestinationDatabasesListItem = ({
         />
         <Text>{database.name}</Text>
       </Flex>
-      <Menu shadow="md" width={200} position="bottom-end">
+      <Menu shadow="sm" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton>
             <Icon name="ellipsis" />

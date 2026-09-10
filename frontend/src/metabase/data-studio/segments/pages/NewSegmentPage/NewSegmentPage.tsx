@@ -100,7 +100,7 @@ export function NewSegmentPage({
   }, [savedSegment, getSuccessUrl, navigate]);
 
   return (
-    <PageContainer data-testid="new-segment-page" gap="xl">
+    <PageContainer data-testid="new-segment-page" gap="xxl">
       <NewSegmentHeader
         previewUrl={previewUrl}
         onNameChange={setName}

@@ -15,6 +15,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -554,7 +555,35 @@
                        {:id 1 :type "dashboard" :name "Unrelated dashboard"}]]
           (is (= [{:id document-id :type "document" :name "Existing document" :can_write true}
                   {:id 1 :type "dashboard" :name "Unrelated dashboard"}]
-                 (#'search/validate-and-enrich-documents results))))))))
+                 (#'search/validate-and-enrich-documents false results))))))))
+
+(deftest archived-document-hits-survive-an-archived-search-test
+  (testing "GHY-4137: the staleness check must validate document hits against the archived set the
+            search actually asked for. With a hardcoded `:archived false`, every archived document
+            was dropped from the page while `:total` still counted it — an empty page no offset
+            could ever reach."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Document {archived-id :id} {:name "Archived doc" :archived true}
+                     :model/Document {active-id :id} {:name "Active doc" :archived false}]
+        (testing "an archived hit survives an archived search"
+          (is (= [archived-id]
+                 (map :id (#'search/validate-and-enrich-documents
+                           true
+                           [{:id archived-id :type "document" :name "Archived doc"}])))))
+        (testing "an active hit is stale for an archived search"
+          (is (= []
+                 (#'search/validate-and-enrich-documents
+                  true
+                  [{:id active-id :type "document" :name "Active doc"}]))))
+        (testing "the active search is unchanged: active survives, archived is stale"
+          (is (= [active-id]
+                 (map :id (#'search/validate-and-enrich-documents
+                           false
+                           [{:id active-id :type "document" :name "Active doc"}]))))
+          (is (= []
+                 (#'search/validate-and-enrich-documents
+                  false
+                  [{:id archived-id :type "document" :name "Archived doc"}]))))))))
 
 (deftest enrich-with-collection-descriptions-test
   (mt/with-premium-features #{:content-verification}
@@ -737,6 +766,87 @@
                              :base_table_schema
                              :base_table_portable_fk])))))))))
 
+(deftest confined-collection-is-not-overridable-test
+  (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a
+            containment boundary, not a default. An explicit collection-id, which the v2 search tool
+            passes from a caller-supplied filter, must not widen or relocate the search outside that
+            collection."
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Collection {confined-id :id}  {:name "Bot's collection"}
+                     :model/Collection {elsewhere-id :id} {:name "Somewhere else"}
+                     :model/Metabot {metabot-eid :entity_id} {:name          "confined bot"
+                                                              :collection_id confined-id}]
+        (let [collection-for (fn [search-args]
+                               (let [captured (atom ::unset)]
+                                 (mt/with-dynamic-fn-redefs [search-core/ranked-results
+                                                             (fn [context]
+                                                               (reset! captured (:collection context))
+                                                               [])]
+                                   (search/search (merge {:term-queries ["anything"]
+                                                          :entity-types ["dashboard"]
+                                                          :profile-id   "nlq"
+                                                          :metabot-id   metabot-eid}
+                                                         search-args)))
+                                 @captured))]
+          (testing "with no collection-id, the metabot's own collection scopes the search"
+            (is (= confined-id (collection-for {}))))
+          (testing "an explicit collection-id elsewhere cannot escape the confinement"
+            (is (= confined-id (collection-for {:collection-id elsewhere-id}))))
+          (testing "an unconfined metabot still honours an explicit collection-id"
+            (mt/with-temp [:model/Metabot {open-eid :entity_id} {:name "open bot" :collection_id nil}]
+              (is (= elsewhere-id (collection-for {:metabot-id    open-eid
+                                                   :collection-id elsewhere-id}))))))))))
+
+(deftest transform-visibility-is-superuser-only-test
+  (testing "this pipeline dropped remove-unreadable-transforms and relies instead on the transform
+            search spec's `:visibility :superuser`. Pin the narrowing: the engine is asked for
+            transforms when the caller is a superuser, and never when they are not. If this goes red,
+            the removed post-filter is load-bearing again.
+            The visibility rule itself is covered by metabase.search.filter-test."
+    ;; Two environment inputs are pinned rather than inherited, because leaving either to the ambient
+    ;; environment is what made this test pass on H2 while failing on the MySQL/MariaDB EE shards —
+    ;; there the positive control failed, so every assertion here was proving nothing.
+    ;;
+    ;; 1. The transform source types: the in-place engine drops transform for EVERYONE when
+    ;;    `enabled-transform-source-types` is empty ((empty? enabled-types) (disj "transform") in
+    ;;    search/in_place/filter.clj) — a gate the appdb path has no equivalent of. This is pinned by
+    ;;    redefining `transforms.gating/enabled-source-types`, the single seam search/impl.clj reads it
+    ;;    from, rather than by writing the `transforms-enabled` setting. Writing that setting would
+    ;;    outlive this test: `with-temporary-setting-values` restores by writing back whatever
+    ;;    `setting/get` returned at capture time, so a setting that was UNSET on entry comes back
+    ;;    explicitly set, permanently defeating the `if-some` fallback in its getter for every later
+    ;;    test in the JVM.
+    ;; 2. The engine: appdb and in-place gate transforms by different code, and MySQL/MariaDB fall
+    ;;    back to in-place because the app DB cannot hold the search index. Running both here means
+    ;;    the shard's engine choice can no longer decide whether this test means anything.
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-dynamic-fn-redefs [transforms.gating/enabled-source-types (constantly #{"native" "mbql" "python"})]
+        (search.tu/with-appdb-search-and-legacy-search
+          ;; `api/*is-superuser?*` is bound explicitly rather than inferred from the test user, which
+          ;; resolves it through a SELECT on the shared user row. Both engines read exactly this var
+          ;; to gate transforms, and pinning it is what the assertion is about: that this pipeline
+          ;; propagates the caller's superuser status, not where that status came from.
+          (let [models-for (fn [superuser?]
+                             (let [captured (atom nil)]
+                               (mt/with-test-user :crowberto
+                                 (binding [api/*is-superuser?* superuser?]
+                                   (mt/with-dynamic-fn-redefs [search-core/ranked-results
+                                                               (fn [context]
+                                                                 (reset! captured (:models context))
+                                                                 [])]
+                                     (search/search {:term-queries ["anything"]
+                                                     :entity-types ["transform" "dashboard"]}))))
+                               @captured))]
+            (testing "a superuser's search reaches the engine with transforms in scope"
+              (let [models (models-for true)]
+                (is (contains? models "transform"))
+                (is (contains? models "dashboard")
+                    "sanity: the positive control really did reach the engine")))
+            (testing "a non-superuser's search never asks the engine for transforms"
+              (let [models (models-for false)]
+                (is (not (contains? models "transform")))
+                (is (contains? models "dashboard")
+                    "sanity: the other requested type is unaffected, so this isn't an empty-set pass")))))))))
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
     (mt/with-premium-features #{:transforms-basic}

@@ -70,7 +70,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
           >{t`Let us know your plans with Metabase so that we can best guide you`}</Text>
         }
       >
-        <Stack pt="lg">
+        <Stack pt="xl">
           <Radio
             value="self-service-analytics"
             label={t`Self-service analytics for my own company`}
@@ -83,7 +83,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
           <Radio value="not-sure" label={t`Not sure yet`} />
         </Stack>
       </Radio.Group>
-      <Divider my="xl" />
+      <Divider my="xxl" />
       <Button variant="filled" onClick={handleSubmit}>
         {t`Next`}
       </Button>

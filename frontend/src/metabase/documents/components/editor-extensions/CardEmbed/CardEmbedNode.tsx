@@ -825,6 +825,7 @@ export const CardEmbedComponent = memo(
                       rawSeries={series}
                       metadata={metadata}
                       mode={visualizationMode}
+                      hasColumnReordering
                       highlighted={highlighted}
                       onChangeCardAndRun={
                         isStatic

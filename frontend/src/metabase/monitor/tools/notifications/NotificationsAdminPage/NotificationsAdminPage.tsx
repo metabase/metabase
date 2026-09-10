@@ -334,7 +334,7 @@ export const NotificationsAdminPage = () => {
             onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
           />
 
-          <Flex gap="md" align="center">
+          <Flex gap="lg" align="center">
             <DebouncedSearchInput
               value={urlState.query}
               placeholder={t`Search by question or owner…`}

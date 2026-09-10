@@ -11,6 +11,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.queries :as v2.queries]
@@ -41,9 +42,10 @@
 (defn- ->lib-template-tag
   "Map the tool's tag shape onto `existing-tag` (the lib-extracted template-tag map, which
    already carries `:id`/`:name`/`:display-name`). `dimension` and `temporal-unit` tags
-   additionally carry a field (`field_id` — numeric id or 21-char entity_id, resolved here and
-   built into a pMBQL field ref, since a JSON caller cannot construct one directly: it requires
-   a `:lib/uuid`); `dimension` tags also carry a widget type (`widget_type`). Alongside the
+   additionally carry a field (`field_id` — a numeric field id, resolved here and built into a
+   pMBQL field ref, since a JSON caller cannot construct one directly: it requires a `:lib/uuid`.
+   Numeric only: `metabase_field.entity_id` was dropped by migration and `:model/Field` is not in
+   the eid-translation map, so an entity_id here could only ever fail); `dimension` tags also carry a widget type (`widget_type`). Alongside the
    underscore write dialect, the kebab-case read shape `get_content` emits (`display-name`,
    `widget-type`, a `dimension` ref) is accepted, so a read-modify-write round-trip needs no
    translation."
@@ -62,7 +64,7 @@
             skills/template-tag-contract)))
     (when (and field-ref? (nil? field-id))
       (common/throw-teaching-error
-       (format "A %s template tag requires a field_id — the numeric id or 21-character entity_id of the column it binds.\n%s"
+       (format "A %s template tag requires a field_id — the numeric id of the column it binds.\n%s"
                (name t) skills/template-tag-contract)))
     (cond-> (assoc existing-tag :type t)
       display-name (assoc :display-name display-name)
@@ -125,9 +127,12 @@
   "The gates an inline `native` source passes: the `agent:sql:run` scope and the
    `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own two, because the stored card is raw
    SQL a later `run_saved_question` executes, so accepting one under the content write scope alone
-   would rebuild `execute_sql` without its scope or its kill switch. A `query_handle` needs neither
-   here: minting one already passed them. No-op on the scope half for unscoped callers (cookie
-   sessions bind the unrestricted sentinel, which matches everything)."
+   would rebuild `execute_sql` without its scope or its kill switch. Every source that can resolve
+   to native passes these, `query_handle` included — holding a handle is not proof the gates were
+   spent (`construct_native_query` mints under `agent:sql:construct` and never consults the kill
+   switch, and a handle resolves on `core_session.user_id`, so any credential of that user can spend
+   one minted by another). No-op on the scope half for unscoped callers (cookie sessions bind the
+   unrestricted sentinel, which matches everything)."
   [token-scopes]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
     (throw (ex-info (format (str "Saving a native (SQL) query requires the %s scope — this token can "
@@ -155,10 +160,13 @@
        "Pass exactly one query source: `query_handle` (a handle from an execute tool), `query` (an inline query), or `native` ({database_id, sql})."))
     (cond
       query_handle
-      (lib-be/normalize-query
-       nil
-       (:query (v2.queries/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
-       {:strict? true})
+      (let [resolved (lib-be/normalize-query
+                      nil
+                      (:query (v2.queries/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
+                      {:strict? true})]
+        (when (query-guards/native-query? resolved)
+          (check-native-source-gates! token-scopes))
+        resolved)
 
       query
       (let [resolved (try
@@ -192,9 +200,9 @@
   [collection-id]
   (if-not collection-id
     (:name (collection/root-collection-with-ui-details nil))
-    (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
-                                    :namespace :archived_directly]
-                                   collection-id)
+    (let [coll      (mcp.db/select-one-by-id [:model/Collection :id :name :location :personal_owner_id
+                                              :namespace :archived_directly]
+                                             collection-id)
           ancestors (cond->> (:effective_ancestors (t2/hydrate coll :effective_ancestors))
                       (collection/is-personal-collection-or-descendant-of-one? coll)
                       (remove #(= "root" (:id %))))
@@ -289,18 +297,28 @@
     (common/throw-teaching-error
      "Pass either collection_id or dashboard_id, not both — a dashboard question's collection is the dashboard's collection.")))
 
+(defn- normalize-model-display
+  "Force `display` to table when a patch retypes a card to a model, as `PUT /api/card/:id` does. A
+   model's display is not inert: the query processor runs the pivot QP when it is `:pivot`, and a
+   chart display also drives subscription rendering, dashcard sizing, and the search display filter.
+   An explicit `list` is left alone, as REST leaves it: the list view is one of the two displays the
+   model editor offers, so it is a real choice rather than a leftover chart display."
+  [card-updates]
+  (cond-> card-updates
+    (and (= :model (:type card-updates))
+         (not= :list (:display card-updates)))
+    (assoc :display :table)))
+
 (defn- resolve-dashboard!
   "Resolve `dashboard_id` to `{:dashboard-id id :collection-id (its collection_id)}`, or nil when
-   `dashboard_id` is absent. [[v2.resolve/resolve-id-or-404]] is translation only — a numeric id
-   passes straight through with no lookup — so an explicit existence check is needed here (mirrors
-   [[v2.resolve/resolve-collection-id]]) or a bad numeric id reaches the DB as a raw FK violation."
+   `dashboard_id` is absent. Read-checked, so a dashboard that doesn't exist and one the caller
+   can't read are the same not-found — answering the second with the later write check's 403 would
+   make the argument an existence oracle for every dashboard on the instance. The write check still
+   decides whether a card may actually be saved into it."
   [dashboard_id]
   (when dashboard_id
-    (let [id  (v2.resolve/resolve-id-or-404 :model/Dashboard dashboard_id)
-          row (t2/select-one [:model/Dashboard :collection_id] :id id)]
-      (when-not row
-        (common/throw-not-found :model/Dashboard dashboard_id))
-      {:dashboard-id id :collection-id (:collection_id row)})))
+    (let [dashboard (v2.resolve/resolve-and-read :model/Dashboard dashboard_id)]
+      {:dashboard-id (:id dashboard) :collection-id (:collection_id dashboard)})))
 
 (defn- create!
   "Run the shared REST create check stack ([[metabase.queries.core/check-allowed-to-create-card!]])
@@ -416,7 +434,8 @@
                        (contains? args :archived)               (assoc :archived (boolean archived))
                        new-query                                (assoc :dataset_query new-query))
         card-updates (api/updates-with-archived-directly card-before raw-updates)
-        card-updates (force-restore-on-dashboard-move card-before card-updates)]
+        card-updates (force-restore-on-dashboard-move card-before card-updates)
+        card-updates (normalize-model-display card-updates)]
     ;; the type the card will have once written: the patch's when the caller is converting, else the
     ;; stored one. Never the raw request, which is nil whenever `card_type` is omitted.
     (queries/check-card-can-be-saved! (:dataset_query card-updates)
@@ -424,10 +443,15 @@
     (when-some [query (:dataset_query card-updates)]
       (queries/check-no-save-cycle! card-id query))
     (queries/check-allowed-to-update-card! card-before card-updates)
-    ;; Result-metadata inference runs the query's preprocess over whatever tables and cards the new
-    ;; query names, and its teaching errors name the columns it found — so it must come AFTER the
-    ;; permission check above, or a caller could learn the columns of a table (or another user's
-    ;; card) they cannot run, one guessed name at a time.
+    ;; Result-metadata inference runs the query's preprocess over whatever tables and cards the query
+    ;; names, and its teaching errors name the columns it found — so it must come AFTER a permission
+    ;; check on that query, or a caller could learn the columns of a table (or another user's card)
+    ;; they cannot run, one guessed name at a time. The stack above only checks the query when the
+    ;; query itself changes, so a column_metadata-only update needs this check of its own. It also
+    ;; covers what `check-update-result-metadata-data-perms` checks on the REST body: the overrides
+    ;; only annotate columns the inference produced, so the metadata names no table the query doesn't.
+    (when (seq column_metadata)
+      (queries/check-allowed-to-run-query! (or new-query (:dataset_query card-before))))
     (let [card-updates (cond-> card-updates
                          (seq column_metadata) (assoc :result_metadata
                                                       (resolve-result-metadata
@@ -438,7 +462,7 @@
                              :card-updates          card-updates
                              :actor                 @api/*current-user*
                              :delete-old-dashcards? false}))
-    (update-card-response (t2/select-one :model/Card :id card-id))))
+    (update-card-response (mcp.db/select-one-by-id :model/Card card-id))))
 
 (def ^:private question-write-args-schema
   [:map {:closed true}
@@ -469,9 +493,8 @@
                                 "snippet" "card" "table"]]
                         [:display_name {:optional true} [:maybe [:string {:description "Widget label."}]]]
                         [:field_id {:optional true}
-                         [:maybe [:or {:description (str "Required for dimension/temporal-unit: the bound column, as "
-                                                         "a numeric field id or 21-char entity_id.")}
-                                  :int :string]]]
+                         [:maybe [:int {:description (str "Required for dimension/temporal-unit: the bound column, as "
+                                                          "a numeric field id. Fields have no entity_id.")}]]]
                         [:widget_type {:optional true}
                          [:maybe [:string {:description (str "Required for dimension: widget/operator matched to the "
                                                              "column's type — e.g. \"string/=\", \"string/contains\", "
@@ -520,5 +543,6 @@
         payload (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                                    (case op
                                      :create (create! a session-id token-scopes)
-                                     :update (update! a b session-id token-scopes)))]
+                                     :update (update! a b session-id token-scopes))
+                                   nil)]
     (common/success-content payload payload)))
