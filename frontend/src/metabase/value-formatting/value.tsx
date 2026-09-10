@@ -121,11 +121,12 @@ export function formatValue(value: unknown, _options: FormatValueOptions = {}) {
       : undefined;
     if (renderJsxMarkdown) {
       let maybeJson = {};
-      try {
-        // Unjustified type cast. FIXME
-        maybeJson = JSON.parse(value as string);
-      } catch {
-        // do nothing
+      if (typeof value === "string") {
+        try {
+          maybeJson = JSON.parse(value);
+        } catch {
+          // do nothing
+        }
       }
       // inject the formatted value as "value" and the unformatted value as "raw"
       return renderJsxMarkdown(options.markdown_template, {
