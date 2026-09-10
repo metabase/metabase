@@ -69,7 +69,11 @@ import {
   type DashboardContextProviderHandle,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
+import {
+  getDashboardComplete,
+  getIsDirty,
+  getIsEditing,
+} from "metabase/dashboard/selectors";
 import type { RefreshPeriod } from "metabase/dashboard/types";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
@@ -224,7 +228,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   Partial<
     Pick<
       DashboardContextProps,
-      | "getClickActionMode"
+      | "clickActionMode"
       | "dashboardActions"
       | "dashcardMenu"
       | "navigateToNewCardFromDashboard"
@@ -256,7 +260,7 @@ const SdkDashboardInner = ({
   renderDrillThroughQuestion: AdHocQuestionView,
   dashboardActions,
   dashcardMenu,
-  getClickActionMode,
+  clickActionMode,
   navigateToNewCardFromDashboard,
   className,
   style,
@@ -376,6 +380,7 @@ const SdkDashboardInner = ({
     useState<number>();
 
   const dashboard = useSelector(getDashboardComplete);
+  const isEditing = useSelector(getIsEditing);
   const autoScrollToDashcardId = useMemo(
     () =>
       dashboard?.dashcards.find(
@@ -619,7 +624,7 @@ const SdkDashboardInner = ({
         onLoad={handleLoad}
         onLoadWithoutCards={handleLoadWithoutCards}
         onError={(error) => dispatch(setErrorPage(error))}
-        getClickActionMode={getClickActionMode}
+        clickActionMode={clickActionMode}
         dashcardMenu={finalDashcardMenu}
         dashboardActions={dashboardActions}
         onAddQuestion={(dashboard) => {
@@ -654,6 +659,7 @@ const SdkDashboardInner = ({
                   skip={skipStyledWrapper}
                   className={className}
                   style={style}
+                  fullHeight={isEditing}
                 >
                   <Dashboard className={EmbedFrameS.EmbedFrame} />
                   <AutoRefreshController refreshPeriod={autoRefreshInterval} />

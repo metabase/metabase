@@ -448,9 +448,11 @@
   #{"claude-opus-4-8" "claude-opus-5"})
 
 (defn fast-mode-model?
-  "Whether `model` supports Anthropic fast mode."
-  [model]
-  (contains? fast-mode-models (strip-vendor-prefix model)))
+  "Whether `model` supports Anthropic fast mode. Never through the AI proxy: fast mode is premium-priced,
+  and proxied requests bill through Metabase Cloud rather than the instance's own key."
+  [model ai-proxy?]
+  (and (not ai-proxy?)
+       (contains? fast-mode-models (strip-vendor-prefix model))))
 
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request.
@@ -465,9 +467,7 @@
         thinking  (or reasoning-config
                       (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
                         (model-thinking-config model)))
-        ;; fast mode is premium-priced, so only honor it on BYOK connections;
-        ;; proxied requests bill through Metabase Cloud.
-        fast?     (and fast? (not ai-proxy?) (fast-mode-model? model))
+        fast?     (and fast? (fast-mode-model? model ai-proxy?))
         input     (cond->> input
                     (nil? thinking) (remove #(= :reasoning (:type %))))
         messages  (parts->claude-messages input)

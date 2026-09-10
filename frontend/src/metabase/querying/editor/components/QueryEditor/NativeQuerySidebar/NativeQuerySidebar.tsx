@@ -1,16 +1,15 @@
-import { useRef, useState } from "react";
+import { type ComponentType, useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
-import { useListDatabasesQuery } from "metabase/api";
-import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
 import { Box } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet, RowValue } from "metabase-types/api";
 
 import { DataReference } from "../../../../components/DataReference/DataReference";
 import { SnippetSidebar } from "../../../../components/SnippetSidebar";
+import type { TemplateTagsSidebarProps } from "../../../types";
 
 import S from "./NativeQuerySidebar.module.css";
 
@@ -32,6 +31,7 @@ type NativeQuerySidebarProps = {
   setParameterValues: (newParameterValues: Record<string, RowValue>) => void;
   parametersAreUserVisible?: boolean;
   canUseSampleDatabase?: boolean;
+  templateTagsSidebar: ComponentType<TemplateTagsSidebarProps>;
 };
 
 export function NativeQuerySidebar({
@@ -62,7 +62,7 @@ export function NativeQuerySidebar({
           <QueryDataReferenceSidebar {...props} />
         ))
         .with({ isTemplateTagsSidebarOpen: true }, () => (
-          <TemplateTagsSidebar {...props} />
+          <QueryTemplateTagsSidebar {...props} />
         ))
         .otherwise(() => null)}
     </Box>
@@ -122,9 +122,8 @@ function QuerySnippetSidebar({
   );
 }
 
-const VISIBILITY_ALWAYS_ENABLED = () => "enabled" as const;
-
-function TemplateTagsSidebar({
+function QueryTemplateTagsSidebar({
+  templateTagsSidebar: TemplateTagsSidebar,
   question,
   query,
   onToggleTemplateTagsSidebar,
@@ -134,60 +133,16 @@ function TemplateTagsSidebar({
   onChangeQuery,
   canUseSampleDatabase,
 }: NativeQuerySidebarProps) {
-  const { data: databases } = useListDatabasesQuery();
-  const sampleDatabaseId = databases?.data.find(
-    (database) => database.is_sample,
-  )?.id;
-
-  // The template-tag editor fires several query mutations within a single event
-  // handler (e.g. switching a variable's type updates both the tag and its
-  // value-source config). React props don't update between those synchronous
-  // calls, so we track the latest query in a ref and compose each change on top
-  // of it; otherwise the second `onChangeQuery` would clobber the first.
-  const latestQueryRef = useRef(query);
-  latestQueryRef.current = query;
-
-  const commitQuery = (newQuery: Lib.Query) => {
-    latestQueryRef.current = newQuery;
-    onChangeQuery(newQuery);
-  };
-
   return (
-    <TagEditorSidebar
+    <TemplateTagsSidebar
       question={question}
-      query={question.legacyNativeQuery()!}
-      onClose={onToggleTemplateTagsSidebar}
-      sampleDatabaseId={
-        canUseSampleDatabase === false ? undefined : sampleDatabaseId
-      }
-      setTemplateTag={(tag) => {
-        const currentQuery = latestQueryRef.current;
-        const templateTags = Lib.templateTags(currentQuery);
-        commitQuery(
-          Lib.withTemplateTags(currentQuery, {
-            ...templateTags,
-            [tag.name]: tag,
-          }),
-        );
-      }}
-      setParameterValue={(tagId, value) => {
-        setParameterValues({
-          ...parameterValues,
-          [tagId]: value,
-        });
-      }}
-      setTemplateTagConfig={(tag, config) => {
-        const newQuery = question
-          .setQuery(latestQueryRef.current)
-          .legacyNativeQuery()!
-          .setTemplateTagConfig(tag, config);
-        commitQuery(newQuery.question().query());
-      }}
-      setDatasetQuery={(newQuery) => {
-        commitQuery(question.setDatasetQuery(newQuery).query());
-      }}
-      getEmbeddedParameterVisibility={VISIBILITY_ALWAYS_ENABLED}
+      query={query}
+      parameterValues={parameterValues}
       parametersAreUserVisible={parametersAreUserVisible}
+      canUseSampleDatabase={canUseSampleDatabase}
+      onChangeQuery={onChangeQuery}
+      setParameterValues={setParameterValues}
+      onClose={onToggleTemplateTagsSidebar}
     />
   );
 }

@@ -5,8 +5,8 @@
    [clojure.edn :as edn]
    [clojure.set :as set]
    [java-time.api :as t]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.schema :as security-center.schema]
-   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.json :as json]
@@ -60,11 +60,7 @@
 (defn- latest-updated-at
   "Return the maximum `updated_at` across all advisories as an ISO-8601 string, or nil if none exist."
   []
-  (some-> (mdb/query {:select [[[:max :updated_at]]]
-                      :from   [:security_advisory]})
-          first
-          vals
-          first
+  (some-> (security-center.db/max-advisory-updated-at)
           t/instant
           t/format))
 
@@ -132,12 +128,7 @@
    On insert, match_status starts as :unknown until the matching engine evaluates it.
    On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
   [advisory]
-  (mdb/update-or-insert! :model/SecurityAdvisory
-                         {:advisory_id (:advisory_id advisory)}
-                         (fn [existing]
-                           (if existing
-                             advisory
-                             (assoc advisory :match_status :unknown)))))
+  (security-center.db/upsert-advisory! advisory))
 
 (defn sync-advisories!
   "Fetch advisories from the MetaStore and upsert into the appdb."

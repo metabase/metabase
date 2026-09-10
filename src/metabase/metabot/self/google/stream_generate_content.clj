@@ -337,7 +337,7 @@
              (not @message-id)    (-> (u/prog1
                                         (vreset! message-id (or responseId (core/mkid))))
                                       (rf {:type :start :messageId @message-id}))
-             (seq (:parts content)) (as-> res (reduce emit-part res (:parts content)))
+             (seq (:parts content)) (as-> res (u/reduce-preserving-reduced emit-part res (:parts content)))
              (some? finishReason) (finish! finishReason)
              ;; A blocked prompt ends the stream with no candidates, only promptFeedback.
              (some? block-reason) (-> (close-text!)

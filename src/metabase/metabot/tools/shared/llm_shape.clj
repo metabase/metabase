@@ -93,16 +93,23 @@
     (string? query) query
     (string? (:query-content query)) (:query-content query)
     (and (map? query) (:database query))
-    (try
-      (let [normalized (lib-be/normalize-query query)
-            mp         (lib-be/application-database-metadata-provider (:database normalized))
-            exported   (repr.resolve/export-query mp normalized shared.content-store/default-store)]
-        (or (repr-data->llm-block exported)
-            (query-edn-fallback normalized)))
-      (catch Exception e
-        (when-not (= 403 (:status-code (ex-data e)))
-          (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
-          (query-edn-fallback query))))
+    ;; The refusal marker, not the status code, is what distinguishes "you may not read this"
+    ;; from "the export failed". The content store collapses a permission denial into the same
+    ;; not-found error a missing id produces — deliberately, so the agent cannot probe for hidden
+    ;; content — which means the 403 this used to catch no longer arrives. Without the marker a
+    ;; refused card would fall through to the EDN fallback and print the raw query.
+    (binding [shared.content-store/*last-lookup-refused?* (atom false)]
+      (try
+        (let [normalized (lib-be/normalize-query query)
+              mp         (lib-be/application-database-metadata-provider (:database normalized))
+              exported   (repr.resolve/export-query mp normalized shared.content-store/default-store)]
+          (or (repr-data->llm-block exported)
+              (query-edn-fallback normalized)))
+        (catch Exception e
+          (when-not (or (= 403 (:status-code (ex-data e)))
+                        @shared.content-store/*last-lookup-refused?*)
+            (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
+            (query-edn-fallback query)))))
     (string? (get-in query [:native :query])) (get-in query [:native :query])
     (map? query) (query-edn-fallback query)
     :else (some-> query str)))

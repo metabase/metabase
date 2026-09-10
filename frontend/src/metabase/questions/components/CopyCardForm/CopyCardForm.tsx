@@ -110,7 +110,7 @@ export const CopyCardForm = ({
     >
       {({ values }) => (
         <Form>
-          <Stack gap="md" mb="md">
+          <Stack gap="lg" mb="lg">
             <FormTextInput
               name="name"
               label={t`Name`}

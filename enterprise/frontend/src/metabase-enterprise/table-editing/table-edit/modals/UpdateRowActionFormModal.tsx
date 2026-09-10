@@ -123,10 +123,10 @@ export function UpdateRowActionFormModal({
           }}
         >
           <form onSubmit={handleSubmit}>
-            <Modal.Header px="xl" pb="0" className={S.modalHeader}>
+            <Modal.Header px="xxl" pb="0" className={S.modalHeader}>
               <Modal.Title>{t`Edit record`}</Modal.Title>
             </Modal.Header>
-            <Modal.Body px="xl" py="lg" className={cx(S.modalBody)}>
+            <Modal.Body px="xxl" py="xl" className={cx(S.modalBody)}>
               <Box className={S.modalBodyGrid}>
                 {!description ? (
                   <Center className={S.modalBodyLoader}>
@@ -153,7 +153,12 @@ export function UpdateRowActionFormModal({
                 )}
               </Box>
             </Modal.Body>
-            <Flex px="xl" className={S.modalFooter} gap="lg" justify="flex-end">
+            <Flex
+              px="xxl"
+              className={S.modalFooter}
+              gap="xl"
+              justify="flex-end"
+            >
               <Button variant="subtle" onClick={handleClose}>
                 {t`Cancel`}
               </Button>

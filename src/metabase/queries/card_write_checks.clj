@@ -8,11 +8,11 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,12 +42,11 @@
   [body]
   (let [[_ collection-id :as specified-collection-id?] (find body :collection_id)
         ;; unlike collection_id, `dashboard_id=null` isn't different than not specifying it at all.
-        dashboard-id (:dashboard_id body)
-        dashboard-id->collection-id #(t2/select-one-fn :collection_id [:model/Dashboard :collection_id] %)]
+        dashboard-id (:dashboard_id body)]
     (cond
       ;; you specified both - they must match
       (and specified-collection-id? dashboard-id)
-      (let [dashboard-collection-id (dashboard-id->collection-id dashboard-id)]
+      (let [dashboard-collection-id (queries.db/dashboard-collection-id dashboard-id)]
         (api/check-400 (= collection-id dashboard-collection-id)
                        (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
                             dashboard-collection-id
@@ -56,13 +55,12 @@
 
       specified-collection-id? collection-id
 
-      dashboard-id (dashboard-id->collection-id dashboard-id)
+      dashboard-id (queries.db/dashboard-collection-id dashboard-id)
 
       :else nil)))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
-  (let [dashboards (or (:in_dashboards card)
-                       (:in_dashboards (t2/hydrate card :in_dashboards)))]
+  (let [dashboards (queries.db/card-dashboards card)]
     (doseq [dashboard dashboards]
       (api/write-check dashboard))))
 
@@ -98,6 +96,13 @@
           result-metadata (:result_metadata card-updates)]
       (query-perms/check-result-metadata-data-perms database-id result-metadata))))
 
+(defn check-allowed-to-run-query!
+  "Throw unless the current user has data permission to run `query`."
+  [query]
+  ;; Strip :query-permissions/perms first -- it is populated internally by the QP middleware, so
+  ;; any value already on the incoming query is dropped here.
+  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms)))
+
 (defn check-allowed-to-create-card!
   "The full pre-write permission/validation stack for creating a card, mirroring `POST /api/card`.
    `card` is the create body (with `:dataset_query`, and `:collection_id` and/or `:dashboard_id`);
@@ -106,9 +111,7 @@
   [card card-type]
   (let [query (:dataset_query card)]
     (check-card-can-be-saved! query card-type)
-    ;; Strip :query-permissions/perms first -- it is populated internally by the QP middleware, so
-    ;; any value already on the incoming query is dropped here.
-    (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
+    (check-allowed-to-run-query! query)
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
     (check-no-save-cycle! ::no-id query)))

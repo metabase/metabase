@@ -54,7 +54,7 @@ export const ListFilterPopover = ({
   return (
     <Popover
       position="bottom-end"
-      shadow="md"
+      shadow="sm"
       withinPortal
       opened={opened}
       onChange={setOpened}
@@ -71,10 +71,10 @@ export const ListFilterPopover = ({
           </Button>
         </Indicator>
       </Popover.Target>
-      <Popover.Dropdown p="lg">
-        <Stack gap="xl" w={300}>
+      <Popover.Dropdown p="xl">
+        <Stack gap="xxl" w={300}>
           {children}
-          <Group gap="md" grow>
+          <Group gap="lg" grow>
             <Button variant="default" onClick={handleClear}>
               {t`Clear filters`}
             </Button>

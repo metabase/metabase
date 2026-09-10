@@ -173,7 +173,7 @@ export function TableAttributesEditBulk({
 
   return (
     <>
-      <Stack gap="md">
+      <Stack gap="lg">
         <Group
           align="center"
           c="text-disabled"
@@ -182,8 +182,8 @@ export function TableAttributesEditBulk({
           fs="lg"
           lh="normal"
           wrap="nowrap"
-          px="lg"
-          pt="lg"
+          px="xl"
+          pt="xl"
           justify="space-between"
         >
           <Title
@@ -198,7 +198,7 @@ export function TableAttributesEditBulk({
           </Title>
         </Group>
 
-        <Box px="lg">
+        <Box px="xl">
           <Group gap="sm">
             {canPublish && !remoteSyncReadOnly && (
               <Button
@@ -233,7 +233,7 @@ export function TableAttributesEditBulk({
           </Group>
         </Box>
 
-        <Box px="lg">
+        <Box px="xl">
           <TableSectionGroup title={t`Attributes`}>
             <Box className={S.container}>
               <UserInput

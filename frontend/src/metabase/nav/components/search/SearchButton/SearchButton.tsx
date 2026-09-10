@@ -57,7 +57,7 @@ export const SearchButton = (props: ButtonProps) => {
       {...props}
     >
       <span>{searchText || t`Search...`}</span>
-      <Flex gap="xs">
+      <Flex gap="xxs">
         <span className={S.shortcutText}>{METAKEY}</span>
         <span className={S.shortcutText}>{t`K`}</span>
       </Flex>

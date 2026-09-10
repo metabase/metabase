@@ -25,6 +25,7 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
+   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.util :as u]
@@ -146,7 +147,7 @@
   after the transform was made incremental."
   [{:keys [source]}]
   (let [field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
-        table-id (when field-id (t2/select-one-fn :table_id :model/Field field-id))]
+        table-id (when field-id (transforms-base.db/field-table-id field-id))]
     (table-template-tag-name (:query source) table-id)))
 
 ;;; ------------------------------------------------- Transform Normalization -------------------------------------------------
@@ -269,9 +270,7 @@
   "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id source-range-params]
   (let [hi-value (:value (:hi source-range-params))]
-    (t2/update! :model/Transform
-                transform-id
-                {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
+    (transforms-base.db/update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
 
 (defn save-run-checkpoint-range!
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -279,10 +278,10 @@
   [run-id source-range-params]
   (when (and run-id source-range-params)
     (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
-      (t2/update! :model/TransformRun run-id
-                  (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
-                    lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
-                    hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
+      (transforms-base.db/update-transform-run! run-id
+                                                (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
+                                                  lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
+                                                  hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
 (defn- coerce-to-local-datetime
   "Coerce a temporal value to LocalDateTime, stripping any timezone information."
@@ -507,18 +506,14 @@
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."
   [database-id target & kv-args]
-  (some-> (apply t2/select-one :model/Table
-                 :db_id database-id
-                 :schema (:schema target)
-                 :name (:name target)
-                 kv-args)
+  (some-> (apply transforms-base.db/target-table database-id (:schema target) (:name target) kv-args)
           (t2/hydrate :db)))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
   [{:keys [target] :as transform}]
   (let [db-id (transforms-base.i/target-db-id transform)
-        {driver :engine :as database} (t2/select-one :model/Database db-id)]
+        {driver :engine :as database} (transforms-base.db/database db-id)]
     (driver/table-exists? driver database target)))
 
 (defn- sync-table!
@@ -531,8 +526,8 @@
      ;; the driver's default schema. If so, fix the Table record before syncing.
      (let [table (if (nil? (:schema table))
                    (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                     (do (t2/update! :model/Table (:id table) {:schema actual-schema})
-                         (-> (t2/select-one :model/Table (:id table))
+                     (do (transforms-base.db/update-table! (:id table) {:schema actual-schema})
+                         (-> (transforms-base.db/table (:id table))
                              (t2/hydrate :db)))
                      table)
                    table)]
@@ -548,7 +543,7 @@
                                                 :is_writable false)
                                 {:create? true})]
     (when-not (:active table)
-      (t2/update! :model/Table (:id table) {:active true}))
+      (transforms-base.db/update-table! (:id table) {:active true}))
     table))
 
 (defn sync-target!
@@ -563,7 +558,7 @@
   [database target]
   (when-let [table (sync-table! database target)]
     ;; TODO this should probably be a function in the sync module
-    (t2/update! :model/Table (:id table) {:active false})))
+    (transforms-base.db/update-table! (:id table) {:active false})))
 
 (defn delete-target-table!
   "Drop a transform's output table and deactivate its app-db Table row."
@@ -571,7 +566,7 @@
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
-        (if-let [{driver :engine :as database} (t2/select-one :model/Database database-id)]
+        (if-let [{driver :engine :as database} (transforms-base.db/database database-id)]
           (let [drop-target (update target :type keyword)]
             (driver/drop-transform-target! driver database drop-target)
             (log/info "Deactivating  target " (pr-str target) "for transform" id)
@@ -582,7 +577,7 @@
 (defn delete-target-table-by-id!
   "Delete the target table of the transform specified by `transform-id`."
   [transform-id]
-  (delete-target-table! (t2/select-one :model/Transform transform-id)))
+  (delete-target-table! (transforms-base.db/transform transform-id)))
 
 ;;; ------------------------------------------------- Table DDL -------------------------------------------------
 
@@ -640,9 +635,7 @@
   "Best-effort: flag the request for `index` (located by its canonical name) failed, with the error message."
   [transform-id index ^Throwable t]
   (when transform-id
-    (t2/update! :model/TableIndex
-                :transform_id transform-id :index_name (reconcile/index-name index)
-                {:status :failed :error_message (ex-message t) :last_executed_at :%now})))
+    (transforms-base.db/mark-table-index-failed! transform-id (reconcile/index-name index) (ex-message t))))
 
 (defn- apply-standalone-indexes!
   "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
@@ -673,7 +666,7 @@
   [transform]
   (when (and (seq (:indexes (:target transform)))
              (full-create-run? transform))
-    (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))]
+    (let [database (transforms-base.db/database (transforms-base.i/target-db-id transform))]
       (apply-standalone-indexes! database (assoc (:target transform) :transform-id (:id transform))))))
 
 (defn- apply-index-outcomes!
@@ -682,14 +675,14 @@
   [by-outcome]
   (doseq [[status rows] by-outcome]
     (if (= :delete-row status)
-      (t2/delete! :model/TableIndex :id [:in (map :id rows)])
-      (t2/update! :model/TableIndex :id [:in (map :id rows)]
-                  (cond-> {:status           status
-                           :last_executed_at :%now}
-                    (= status :succeeded)
-                    (assoc :error_message nil)
-                    (= status :failed)
-                    (assoc :error_message "Index was not found on the target table after the transform ran."))))))
+      (transforms-base.db/delete-table-indexes! (map :id rows))
+      (transforms-base.db/update-table-indexes! (map :id rows)
+                                                (cond-> {:status           status
+                                                         :last_executed_at :%now}
+                                                  (= status :succeeded)
+                                                  (assoc :error_message nil)
+                                                  (= status :failed)
+                                                  (assoc :error_message "Index was not found on the target table after the transform ran."))))))
 
 (defn verify-managed-indexes!
   "Reconcile each index request against what's physically in the warehouse and set its `:status`.
@@ -701,7 +694,7 @@
                     (table-index/select-for-verification (:id transform) (:index-request-ids target))
                     (table-index/select-for-transform (:id transform)))]
       (when-let [managed (seq managed)]
-        (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
+        (let [database (transforms-base.db/database (transforms-base.i/target-db-id transform))
               {:keys [schema] table-name :name} (:target transform)]
           (if-some [warehouse-indexes (reconcile/fetch-warehouse-indexes database schema table-name)]
             (apply-index-outcomes!
@@ -726,11 +719,11 @@
         {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
-        database (t2/select-one :model/Database db-id)]
+        database (transforms-base.db/database db-id)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when-let [table (sync-target! target database)]
-      (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
-      (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
+      (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
+      (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)}))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
     (try
@@ -750,7 +743,7 @@
 (defn output-table
   "Return the output table created by a transform, looked up via `transform_id`."
   [transform]
-  (t2/select-one :model/Table :transform_id (:id transform)))
+  (transforms-base.db/table-for-transform (:id transform)))
 
 (defn merge-target-unique-key
   "Physical column names of a transform's `merge` unique key, or nil when the target isn't a merge target."
@@ -762,9 +755,7 @@
   "Physical column names of a transform's synced target table, ordered by position, or nil."
   [transform]
   (when-let [table (output-table transform)]
-    (not-empty (t2/select-fn-vec :name [:model/Field :name :position]
-                                 :table_id (:id table) :active true
-                                 {:order-by [[:position :asc]]}))))
+    (not-empty (transforms-base.db/active-field-names-for-table (:id table)))))
 
 (defn validate-merge-unique-key!
   "Throws if any of `unique-key` is not present in `columns`. Returns `unique-key`."
@@ -789,17 +780,10 @@
   [refs]
   (when (seq refs)
     (let [unique-refs (distinct (map (juxt :database_id :schema :table) refs))
-          ref->clause (fn [[db-id schema table-name]]
-                        [:and
-                         [:= :db_id db-id]
-                         (if (some? schema)
-                           [:= :schema schema]
-                           [:is :schema nil])
-                         [:= :name table-name]])
           fetch-batch (fn [batch]
-                        (t2/select-fn->fn (juxt :db_id :schema :name) :id
-                                          [:model/Table :id :db_id :schema :name]
-                                          {:where (into [:or] (map ref->clause batch))}))]
+                        (into {}
+                              (map (juxt (juxt :db_id :schema :name) :id))
+                              (transforms-base.db/table-refs-matching batch)))]
       (into {} (mapcat fetch-batch) (partition-all batch-lookup-chunk-size unique-refs)))))
 
 (defn- source-table-ref->key
@@ -832,10 +816,10 @@
         needs-metadata   (filter (fn [e] (and (:table_id e) (not (:table e)))) source-tables)
         int-id->metadata (when (seq needs-metadata)
                            (let [ids (into #{} (map :table_id) needs-metadata)]
-                             (t2/select-pk->fn (fn [{:keys [db_id schema name]}]
-                                                 {:database_id db_id :schema schema :table name})
-                                               [:model/Table :id :db_id :schema :name]
-                                               :id [:in ids])))
+                             (into {}
+                                   (map (juxt :id (fn [{:keys [db_id schema name]}]
+                                                    {:database_id db_id :schema schema :table name})))
+                                   (transforms-base.db/table-refs ids))))
         missing-ids      (when (seq needs-metadata)
                            (let [ids (into #{} (map :table_id) needs-metadata)]
                              (remove (or int-id->metadata {}) ids)))

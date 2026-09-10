@@ -6,7 +6,9 @@
 (mr/def ::middleware-options
   "Additional options that can be used to toggle middleware on or off."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map}
+   {:decode/normalize lib.schema.common/normalize-map
+    :decode/api       lib.schema.common/remove-internal-keys
+    :encode/serialize lib.schema.common/remove-internal-keys}
    [:skip-results-metadata?
     {:optional true
      :description

@@ -356,8 +356,6 @@ function DashCardInner({
           DashboardS.Card,
           EmbedFrameS.Card,
           CS.relative,
-          CS.roundedSm,
-          !isAction && CS.bordered,
           CS.flex,
           CS.flexColumn,
           CS.hoverParent,
@@ -366,6 +364,7 @@ function DashCardInner({
             [S.hasHiddenBackground]: hasHiddenBackground,
             [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
+            [S.isAction]: isAction,
           },
           className,
         )}
