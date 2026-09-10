@@ -28,9 +28,12 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
 
   return (
     <Button
-      fullWidth
+      justify="start"
+      flex="0 0 auto"
+      pl={0}
+      variant={selected ? "filled" : "subtle"}
+      color={selected ? "core-brand" : "text-primary"}
       data-testid="swap-dataset-button"
-      variant="visualizer"
       aria-pressed={selected}
       onClick={() => {
         if (selected) {
@@ -56,9 +59,8 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
           )}
         </Box>
       }
-      style={{ flex: 0, minHeight: 32, paddingLeft: 8, paddingRight: 8 }}
     >
-      <Ellipsified style={{ height: 17 }}>{item.name}</Ellipsified>
+      <Ellipsified>{item.name}</Ellipsified>
     </Button>
   );
 };

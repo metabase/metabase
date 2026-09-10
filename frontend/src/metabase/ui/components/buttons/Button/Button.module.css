@@ -134,42 +134,6 @@
       background-color: var(--mb-color-button-on_dark-disabled);
     }
   }
-
-  &[data-variant="visualizer"] {
-    --button-color: var(--mb-color-core-brand);
-    --button-color-hover: var(--mb-color-background_surface-hover);
-
-    border-radius: 8px;
-    display: flex;
-    justify-content: flex-start;
-    color: var(--mb-color-text-primary);
-    font-weight: 500;
-    background-color: transparent;
-    padding: rem(4px) rem(15px);
-
-    & .inner {
-      overflow: hidden;
-    }
-
-    &:hover {
-      color: var(--button-color);
-      background-color: var(--button-color-hover);
-    }
-
-    &[aria-pressed="true"] {
-      color: var(--mb-color-text-primary-inverse);
-      background-color: var(--button-color);
-    }
-
-    /* Button with icon only */
-    &:has(.label:empty) {
-      overflow: visible;
-
-      &[data-size^="xs"] {
-        padding: rem(2px) rem(6px);
-      }
-    }
-  }
 }
 
 .loader {
