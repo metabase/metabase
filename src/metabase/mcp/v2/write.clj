@@ -4,7 +4,8 @@
   (:require
    [clojure.string :as str]
    [metabase.mcp.scope :as mcp.scope]
-   [metabase.mcp.v2.common :as common]))
+   [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.resolve :as v2.resolve]))
 
 (set! *warn-on-reflection* true)
 
@@ -84,7 +85,9 @@
     (do
       (when (nil? id)
         (common/throw-teaching-error "`id` is required when method is \"update\"."))
-      [:update id (-> (dissoc args :method :id)
-                      (expand-clear clearable clear))])
+      ;; Every `_write` tool's `id` takes an int or a string, so a client that serializes such a
+      ;; param as a string reaches the tool's own id handling already coerced (GHY-4498).
+      [:update (v2.resolve/normalize-id id) (-> (dissoc args :method :id)
+                                                (expand-clear clearable clear))])
 
     (common/throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))

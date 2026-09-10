@@ -337,7 +337,7 @@
         (is (str/includes? (tool-error (call-run-saved-question {:id card-id :row_limit 3000}))
                            "row_limit: should be at most 2000")))
       (testing "an id that is neither numeric nor a 21-char entity_id is a teaching error"
-        (is (= "Invalid id \"garbage\" — pass a numeric id or a 21-character entity_id."
+        (is (= "Invalid id \"garbage\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
                (tool-error (call-run-saved-question {:id "garbage"}))))))))
 
 (deftest ^:parallel pivot-card-row-cap-test
@@ -364,3 +364,20 @@
           (is (= 5 (count (:rows payload))))
           (is (true? (:truncated payload)))
           (is (some? (::steering payload))))))))
+
+(deftest ^:parallel numeric-string-id-parity-test
+  (testing "GHY-4498: Claude Desktop sends every value of an int-or-string param as a JSON string,
+            so a numeric card id arrives as \"16211\" and must run the same card as the integer"
+    (mt/with-temp [:model/Card {card-id :id} (plain-card "rsq numeric string id")]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [by-num (tool-result (call-run-saved-question {:id card-id :row_limit 5}))
+              by-str (tool-result (call-run-saved-question {:id (str card-id) :row_limit 5}))]
+          (is (= (:rows by-num) (:rows by-str))))))))
+
+(deftest ^:parallel non-id-string-still-rejected-test
+  (testing "GHY-4498: only the exact shape of a numeric id is coerced — every other string keeps
+            going through entity_id validation"
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [bad ["0" "-1" "016211" "1.0" "not-an-id"]]
+        (is (str/includes? (tool-error (call-run-saved-question {:id bad})) "entity_id")
+            (str "expected " (pr-str bad) " to be rejected"))))))

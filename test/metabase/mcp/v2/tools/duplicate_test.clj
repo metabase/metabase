@@ -460,7 +460,7 @@
           (is (not= dash-id (:id result)))
           (is (= "Copy of Sales" (:name result)))))))
   (testing "GHY-4151: a malformed id is a teaching error naming both accepted shapes"
-    (is (= "Invalid id \"nope\" — pass a numeric id or a 21-character entity_id."
+    (is (= "Invalid id \"nope\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
            (tool-error (call-tool! :crowberto {:type "dashboard" :id "nope"}))))))
 
 (deftest unknown-type-test

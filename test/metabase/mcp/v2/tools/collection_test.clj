@@ -423,3 +423,22 @@
           (is (nil? (:authority_level result)) "the echo reports it unset")
           (is (nil? (t2/select-one-fn :authority_level :model/Collection :id coll-id))
               "and it is unset in the database"))))))
+
+(deftest numeric-string-ids-test
+  (testing "GHY-4498: clients that serialize an int-or-string param as a JSON string must still be
+            able to name a collection by its numeric id, on both `id` and `parent_id`"
+    (mt/with-model-cleanup [:model/Collection]
+      (mt/with-temp [:model/Collection {parent-id :id} {:name "String id parent"}
+                     :model/Collection {coll-id :id}   {:name "Renamed by string id"}]
+        (testing "`parent_id` as a numeric string nests under that collection"
+          (let [payload (create! :crowberto {:name "Child by string id" :parent_id (str parent-id)})]
+            (is (= (str "/" parent-id "/")
+                   (t2/select-one-fn :location :model/Collection :id (:id payload))))))
+        (testing "`id` as a numeric string updates that collection"
+          (let [payload (tool-result (call-tool! :crowberto {:method "update" :id (str coll-id)
+                                                             :name   "Renamed"}))]
+            (is (= coll-id (:id payload)))
+            (is (= "Renamed" (t2/select-one-fn :name :model/Collection :id coll-id)))))
+        (testing "a string that only looks like an id is still an entity_id validation error"
+          (is (str/includes? (tool-error (call-tool! :crowberto {:method "update" :id "0" :name "x"}))
+                             "entity_id")))))))

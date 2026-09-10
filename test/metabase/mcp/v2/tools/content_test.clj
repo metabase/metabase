@@ -1195,3 +1195,24 @@
       (mt/with-temp [:model/Card {card-id :id} {:name "Live Q" :dataset_query (venues-query)}]
         (mt/with-test-user :crowberto
           (is (false? (:archived (content-one {:items [{:type "question" :id card-id}]})))))))))
+
+(deftest get-content-numeric-string-id-test
+  (testing "GHY-4498: a numeric id serialized as a JSON string reads the same row as the integer,
+            including for the types that have no entity_id column"
+    (notification.tu/with-card-notification
+      [notification {:card         {:dataset_query (venues-query)}
+                     :notification {:creator_id (mt/user->id :crowberto)}
+                     :handlers     []}]
+      (mt/with-temp [:model/Card {card-id :id} {:name "numeric string id card"}]
+        (mt/with-test-user :crowberto
+          (testing "a question"
+            (let [row (content-one {:items [{:type "question" :id (str card-id)}]})]
+              (is (nil? (:error row)))
+              (is (= card-id (:id row)))))
+          (testing "an alert, which is numeric-only"
+            (let [row (content-one {:items [{:type "alert" :id (str (:id notification))}]})]
+              (is (nil? (:error row)))
+              (is (= (:id notification) (:id row)))))
+          (testing "a string that only looks numeric is still rejected"
+            (is (re-find #"numeric id"
+                         (:error (content-one {:items [{:type "alert" :id "0"}]}))))))))))

@@ -173,7 +173,7 @@
     (is (= "`id` is required when method is \"update\"."
            (tool-error (call-tool! :crowberto write-scope "metric_write" {:method "update" :name "x"})))))
   (testing "GHY-4146: an id that is neither numeric nor a 21-char entity_id teaches the two accepted shapes"
-    (is (= "Invalid id \"abc\" — pass a numeric id or a 21-character entity_id."
+    (is (= "Invalid id \"abc\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
            (tool-error (call-tool! :crowberto write-scope "metric_write" {:method "update" :id "abc"})))))
   (testing "GHY-4146: create-only fields on update are rejected, so a caller never believes an ignored field took effect"
     (is (= "`archived` applies to method \"update\" only — remove it from this create call."

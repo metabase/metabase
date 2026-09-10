@@ -21,6 +21,24 @@
   [x]
   (boolean (and (string? x) (re-matches entity-id-re x))))
 
+(def ^:private numeric-id-re
+  "Digits with no leading zero and no sign — the exact rendering of a numeric id."
+  #"^[1-9][0-9]*$")
+
+(defn normalize-id
+  "Coerce an id argument a client sent as a JSON string (`\"16211\"`) to the integer it names;
+   return `x` unchanged for every other value, including entity_ids and the `\"root\"`/`\"trash\"`
+   sentinels.
+
+   GHY-4498: some MCP clients serialize every value of an `anyOf [integer, string]` param as a
+   string, and the model has no way to force the JSON type, so a numeric id would otherwise be
+   unreachable from those clients. Digit runs too large for a `long` stay strings and fail
+   validation like any other non-id."
+  [x]
+  (if (and (string? x) (re-matches numeric-id-re x))
+    (or (parse-long x) x)
+    x))
+
 (defn resolve-id-or-404
   "Resolve a numeric id or 21-char entity_id to the numeric id for `model`. Throws the
    collapsed not-found error when an entity_id doesn't resolve, and a teaching error for any
@@ -29,21 +47,25 @@
    This is translation only — it must always be followed by the object's read check. Prefer
    [[resolve-and-read]], which enforces that pairing."
   [model id-or-eid]
-  (cond
-    (int? id-or-eid)
-    id-or-eid
+  (let [id-or-eid (normalize-id id-or-eid)]
+    (cond
+      (int? id-or-eid)
+      id-or-eid
 
-    (entity-id? id-or-eid)
-    (try
-      (eid-translation/->id-or-404 model id-or-eid)
-      (catch clojure.lang.ExceptionInfo e
-        (if (= 404 (:status-code (ex-data e)))
-          (common/throw-not-found model id-or-eid)
-          (throw e))))
+      (entity-id? id-or-eid)
+      (try
+        (eid-translation/->id-or-404 model id-or-eid)
+        (catch clojure.lang.ExceptionInfo e
+          (if (= 404 (:status-code (ex-data e)))
+            (common/throw-not-found model id-or-eid)
+            (throw e))))
 
-    :else
-    (common/throw-teaching-error (format "Invalid id %s — pass a numeric id or a 21-character entity_id."
-                                         (pr-str id-or-eid)))))
+      :else
+      ;; Name a retry that works: the obvious reading of "pass a numeric id" is to send the same
+      ;; number again, which fails identically.
+      (common/throw-teaching-error
+       (format "Invalid id %s — pass the positive numeric id, or the 21-character entity_id from a search or list result."
+               (pr-str id-or-eid))))))
 
 (defn resolve-and-read-with
   "Resolve `id-or-eid` for `model`, then return the object from `read-check-fn`, which must
