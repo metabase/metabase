@@ -1,0 +1,2 @@
+{"name": "Catalogue revenue", "table_id": "{{t:films}}", "description": "Lifetime revenue earned by the films.",
+ "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:films}}", "aggregation": [["sum", {}, ["field", {}, "{{f:films.revenue}}"]]]}]}}

@@ -1,0 +1,26 @@
+{
+  "schema": "pagila",
+  "title": "Pagila DVD rental",
+  "summary": "Four wide tables built from the 22 raw pagila tables, published to the Library, with the business's shared vocabulary defined on top of them.",
+  "source": {"database": "semantic_layer_test", "schema": "pagila", "raw_tables_used": ["rental", "payment", "inventory", "film", "film_category", "category", "language", "film_actor", "customer", "staff", "store", "address", "city", "country"]},
+  "tables": [
+    {"name": "rentals",   "one_row_per": "rental",   "built_by": "transforms/rentals.sql",   "rows": 16044, "links": {"customer_id": "customers", "film_id": "films"}},
+    {"name": "payments",  "one_row_per": "payment",  "built_by": "transforms/payments.sql",  "rows": 16049, "links": {"customer_id": "customers", "film_id": "films", "rental_id": "rentals"}},
+    {"name": "films",     "one_row_per": "film",     "built_by": "transforms/films.sql",     "rows": 1000},
+    {"name": "customers", "one_row_per": "customer", "built_by": "transforms/customers.sql", "rows": 599}
+  ],
+  "decisions": [
+    "Payments are kept as their own table (one per till receipt) and also rolled up onto each rental as amount_paid; revenue questions use payments, rental-behaviour questions use rentals.",
+    "A rental is late when it came back after the film's rental_duration; still-out rentals have is_late = null so they don't count either way.",
+    "Films' special_features (a text array) became four boolean columns instead of a text blob.",
+    "Customer email is kept (sample data); street address and phone are dropped, city/district/country stay.",
+    "Raw pagila tables stay visible; only the four clean tables are published to the Library."
+  ],
+  "definitions": {
+    "measures": "measures/*.json — one aggregation per table, no baked-in filters",
+    "segments": "segments/*.json — late returns, still out, active customers, frequent renters (>= 30 rentals), family friendly, never rented",
+    "metrics":  "metrics/*.json — Revenue, Rentals, Active renters, Late return rate, Average days out; monthly default; saved in Library / Metrics"
+  },
+  "dashboards": [{"name": "Pagila overview", "file": "dashboards/overview.json", "filters": ["date", "store", "category"]}],
+  "checks": "build.sh runs every card after creation and fails on an error or an empty result; row counts above were reconciled against the raw tables before the transforms were committed."
+}

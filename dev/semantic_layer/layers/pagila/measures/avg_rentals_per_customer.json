@@ -1,0 +1,2 @@
+{"name": "Average rentals per customer", "table_id": "{{t:customers}}", "description": "Average number of rentals per customer.",
+ "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:customers}}", "aggregation": [["avg", {}, ["field", {}, "{{f:customers.rental_count}}"]]]}]}}

@@ -1,0 +1,43 @@
+{
+  "name": "Revenue by store",
+  "description": "Amount paid per store.",
+  "type": "question",
+  "display": "bar",
+  "collection_id": "{{c:pagila}}",
+  "visualization_settings": {
+    "graph.dimensions": [
+      "store_city"
+    ],
+    "graph.metrics": [
+      "sum"
+    ]
+  },
+  "dataset_query": {
+    "lib/type": "mbql/query",
+    "database": "{{db}}",
+    "stages": [
+      {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": "{{t:payments}}",
+        "aggregation": [
+          [
+            "sum",
+            {},
+            [
+              "field",
+              {},
+              "{{f:payments.amount}}"
+            ]
+          ]
+        ],
+        "breakout": [
+          [
+            "field",
+            {},
+            "{{f:payments.store_city}}"
+          ]
+        ]
+      }
+    ]
+  }
+}

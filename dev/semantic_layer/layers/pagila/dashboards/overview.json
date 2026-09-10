@@ -1,0 +1,60 @@
+{
+  "name": "Pagila overview",
+  "description": "Revenue, rentals and customers for the DVD rental business. Filter by date, store or film category.",
+  "collection_id": "{{c:pagila}}",
+  "parameters": [
+    {"id": "date",     "name": "Date",     "slug": "date",     "type": "date/all-options", "sectionId": "date"},
+    {"id": "store",    "name": "Store",    "slug": "store",    "type": "string/=",         "sectionId": "location"},
+    {"id": "category", "name": "Category", "slug": "category", "type": "string/=",         "sectionId": "string"}
+  ],
+  "dashcards": [
+    {"id": -1, "card_id": "{{card:questions/total_revenue}}", "col": 0,  "row": 0, "size_x": 6, "size_y": 3,
+     "parameter_mappings": [
+       {"parameter_id": "date",     "card_id": "{{card:questions/total_revenue}}", "target": ["dimension", ["field", "{{f:payments.payment_date}}", null]]},
+       {"parameter_id": "store",    "card_id": "{{card:questions/total_revenue}}", "target": ["dimension", ["field", "{{f:payments.store_city}}", null]]},
+       {"parameter_id": "category", "card_id": "{{card:questions/total_revenue}}", "target": ["dimension", ["field", "{{f:payments.film_category}}", null]]}]},
+    {"id": -2, "card_id": "{{card:questions/total_rentals}}", "col": 6,  "row": 0, "size_x": 6, "size_y": 3,
+     "parameter_mappings": [
+       {"parameter_id": "date",     "card_id": "{{card:questions/total_rentals}}", "target": ["dimension", ["field", "{{f:rentals.rental_date}}", null]]},
+       {"parameter_id": "store",    "card_id": "{{card:questions/total_rentals}}", "target": ["dimension", ["field", "{{f:rentals.store_city}}", null]]},
+       {"parameter_id": "category", "card_id": "{{card:questions/total_rentals}}", "target": ["dimension", ["field", "{{f:rentals.film_category}}", null]]}]},
+    {"id": -3, "card_id": "{{card:questions/active_renters}}", "col": 12, "row": 0, "size_x": 6, "size_y": 3,
+     "parameter_mappings": [
+       {"parameter_id": "date",     "card_id": "{{card:questions/active_renters}}", "target": ["dimension", ["field", "{{f:rentals.rental_date}}", null]]},
+       {"parameter_id": "store",    "card_id": "{{card:questions/active_renters}}", "target": ["dimension", ["field", "{{f:rentals.store_city}}", null]]},
+       {"parameter_id": "category", "card_id": "{{card:questions/active_renters}}", "target": ["dimension", ["field", "{{f:rentals.film_category}}", null]]}]},
+    {"id": -4, "card_id": "{{card:questions/late_rate}}", "col": 18, "row": 0, "size_x": 6, "size_y": 3,
+     "parameter_mappings": [
+       {"parameter_id": "date",     "card_id": "{{card:questions/late_rate}}", "target": ["dimension", ["field", "{{f:rentals.rental_date}}", null]]},
+       {"parameter_id": "store",    "card_id": "{{card:questions/late_rate}}", "target": ["dimension", ["field", "{{f:rentals.store_city}}", null]]},
+       {"parameter_id": "category", "card_id": "{{card:questions/late_rate}}", "target": ["dimension", ["field", "{{f:rentals.film_category}}", null]]}]},
+    {"id": -5, "card_id": "{{card:questions/revenue_by_month}}", "col": 0,  "row": 3, "size_x": 12, "size_y": 6,
+     "parameter_mappings": [
+       {"parameter_id": "date",     "card_id": "{{card:questions/revenue_by_month}}", "target": ["dimension", ["field", "{{f:payments.payment_date}}", null]]},
+       {"parameter_id": "store",    "card_id": "{{card:questions/revenue_by_month}}", "target": ["dimension", ["field", "{{f:payments.store_city}}", null]]},
+       {"parameter_id": "category", "card_id": "{{card:questions/revenue_by_month}}", "target": ["dimension", ["field", "{{f:payments.film_category}}", null]]}]},
+    {"id": -6, "card_id": "{{card:questions/rentals_by_category}}", "col": 12, "row": 3, "size_x": 12, "size_y": 6,
+     "parameter_mappings": [
+       {"parameter_id": "date",     "card_id": "{{card:questions/rentals_by_category}}", "target": ["dimension", ["field", "{{f:rentals.rental_date}}", null]]},
+       {"parameter_id": "store",    "card_id": "{{card:questions/rentals_by_category}}", "target": ["dimension", ["field", "{{f:rentals.store_city}}", null]]}]},
+    {"id": -7, "card_id": "{{card:questions/revenue_by_store}}", "col": 0,  "row": 9, "size_x": 8, "size_y": 6,
+     "parameter_mappings": [
+       {"parameter_id": "date",     "card_id": "{{card:questions/revenue_by_store}}", "target": ["dimension", ["field", "{{f:payments.payment_date}}", null]]},
+       {"parameter_id": "category", "card_id": "{{card:questions/revenue_by_store}}", "target": ["dimension", ["field", "{{f:payments.film_category}}", null]]}]},
+    {"id": -8, "card_id": "{{card:questions/rentals_by_rating}}", "col": 8,  "row": 9, "size_x": 8, "size_y": 6,
+     "parameter_mappings": [
+       {"parameter_id": "date",     "card_id": "{{card:questions/rentals_by_rating}}", "target": ["dimension", ["field", "{{f:rentals.rental_date}}", null]]},
+       {"parameter_id": "store",    "card_id": "{{card:questions/rentals_by_rating}}", "target": ["dimension", ["field", "{{f:rentals.store_city}}", null]]},
+       {"parameter_id": "category", "card_id": "{{card:questions/rentals_by_rating}}", "target": ["dimension", ["field", "{{f:rentals.film_category}}", null]]}]},
+    {"id": -9, "card_id": "{{card:questions/late_rate_by_category}}", "col": 16, "row": 9, "size_x": 8, "size_y": 6,
+     "parameter_mappings": [
+       {"parameter_id": "date",     "card_id": "{{card:questions/late_rate_by_category}}", "target": ["dimension", ["field", "{{f:rentals.rental_date}}", null]]},
+       {"parameter_id": "store",    "card_id": "{{card:questions/late_rate_by_category}}", "target": ["dimension", ["field", "{{f:rentals.store_city}}", null]]}]},
+    {"id": -10, "card_id": "{{card:questions/top_films}}", "col": 0,  "row": 15, "size_x": 12, "size_y": 8,
+     "parameter_mappings": [
+       {"parameter_id": "category", "card_id": "{{card:questions/top_films}}", "target": ["dimension", ["field", "{{f:films.category}}", null]]}]},
+    {"id": -11, "card_id": "{{card:questions/customers_by_country}}", "col": 12, "row": 15, "size_x": 12, "size_y": 8,
+     "parameter_mappings": [
+       {"parameter_id": "store",    "card_id": "{{card:questions/customers_by_country}}", "target": ["dimension", ["field", "{{f:customers.store_city}}", null]]}]}
+  ]
+}

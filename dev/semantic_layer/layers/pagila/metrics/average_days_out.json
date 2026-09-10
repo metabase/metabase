@@ -1,0 +1,38 @@
+{
+  "name": "Average days out",
+  "description": "Average days a film was out before it came back, by month rented.",
+  "type": "metric",
+  "display": "line",
+  "collection_id": "{{c:metrics}}",
+  "visualization_settings": {},
+  "dataset_query": {
+    "lib/type": "mbql/query",
+    "database": "{{db}}",
+    "stages": [
+      {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": "{{t:rentals}}",
+        "aggregation": [
+          [
+            "avg",
+            {},
+            [
+              "field",
+              {},
+              "{{f:rentals.rental_days}}"
+            ]
+          ]
+        ],
+        "breakout": [
+          [
+            "field",
+            {
+              "temporal-unit": "month"
+            },
+            "{{f:rentals.rental_date}}"
+          ]
+        ]
+      }
+    ]
+  }
+}

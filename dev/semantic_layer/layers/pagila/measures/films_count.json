@@ -1,0 +1,2 @@
+{"name": "Films", "table_id": "{{t:films}}", "description": "Number of films in the catalogue.",
+ "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:films}}", "aggregation": [["count", {}]]}]}}

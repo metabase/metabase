@@ -1,0 +1,34 @@
+{
+  "name": "Rentals by rating",
+  "description": "Share of rentals per film rating.",
+  "type": "question",
+  "display": "pie",
+  "collection_id": "{{c:pagila}}",
+  "visualization_settings": {
+    "pie.dimension": "film_rating",
+    "pie.metric": "count"
+  },
+  "dataset_query": {
+    "lib/type": "mbql/query",
+    "database": "{{db}}",
+    "stages": [
+      {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": "{{t:rentals}}",
+        "aggregation": [
+          [
+            "count",
+            {}
+          ]
+        ],
+        "breakout": [
+          [
+            "field",
+            {},
+            "{{f:rentals.film_rating}}"
+          ]
+        ]
+      }
+    ]
+  }
+}

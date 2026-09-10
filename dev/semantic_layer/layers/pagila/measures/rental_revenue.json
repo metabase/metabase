@@ -1,0 +1,2 @@
+{"name": "Rental revenue", "table_id": "{{t:rentals}}", "description": "Total paid for the rentals.",
+ "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:rentals}}", "aggregation": [["sum", {}, ["field", {}, "{{f:rentals.amount_paid}}"]]]}]}}

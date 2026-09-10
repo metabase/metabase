@@ -1,0 +1,102 @@
+{
+  "rentals": {
+    "display_name": "Rentals",
+    "description": "One row per rental: when it went out and came back, what was rented, who rented it, which store and staff handled it, and what was paid.",
+    "fields": {
+      "rental_id":           {"semantic_type": "type/PK"},
+      "rental_date":         {"semantic_type": "type/CreationTimestamp", "display_name": "Rented at"},
+      "return_date":         {"display_name": "Returned at"},
+      "is_returned":         {"display_name": "Returned?"},
+      "rental_days":         {"semantic_type": "type/Duration", "display_name": "Days out", "description": "Days between rental and return (fractional). Empty while the film is still out."},
+      "allowed_days":        {"semantic_type": "type/Duration", "display_name": "Allowed days", "description": "The film's rental period."},
+      "is_late":             {"display_name": "Returned late?", "description": "True when the film came back after its allowed rental period. Empty while it is still out."},
+      "days_late":           {"semantic_type": "type/Duration", "display_name": "Days late"},
+      "amount_paid":         {"semantic_type": "type/Currency", "display_name": "Amount paid"},
+      "payment_date":        {"display_name": "Paid at"},
+      "customer_id":         {"semantic_type": "type/FK", "fk": "customers.customer_id"},
+      "customer_name":       {"semantic_type": "type/Name", "display_name": "Customer"},
+      "customer_city":       {"semantic_type": "type/City"},
+      "customer_country":    {"semantic_type": "type/Country"},
+      "customer_is_active":  {"display_name": "Customer active?"},
+      "staff_name":          {"semantic_type": "type/Name", "display_name": "Staff member"},
+      "store_city":          {"semantic_type": "type/Category", "display_name": "Store", "has_field_values": "list"},
+      "film_id":             {"semantic_type": "type/FK", "fk": "films.film_id"},
+      "film_title":          {"semantic_type": "type/Title", "display_name": "Film"},
+      "film_rating":         {"semantic_type": "type/Category", "display_name": "Rating", "has_field_values": "list"},
+      "film_category":       {"semantic_type": "type/Category", "display_name": "Category", "has_field_values": "list"},
+      "film_language":       {"semantic_type": "type/Category", "display_name": "Language", "has_field_values": "list"},
+      "film_release_year":   {"display_name": "Release year"},
+      "film_length_minutes": {"display_name": "Film length (min)"},
+      "rental_rate":         {"semantic_type": "type/Currency", "display_name": "Rental rate"},
+      "replacement_cost":    {"semantic_type": "type/Currency", "display_name": "Replacement cost"}
+    }
+  },
+  "payments": {
+    "display_name": "Payments",
+    "description": "One row per payment taken at the till: amount, date, who paid, which store and staff member took it, and the rental it settled.",
+    "fields": {
+      "payment_id":       {"semantic_type": "type/PK"},
+      "payment_date":     {"semantic_type": "type/CreationTimestamp", "display_name": "Paid at"},
+      "amount":           {"semantic_type": "type/Currency"},
+      "customer_id":      {"semantic_type": "type/FK", "fk": "customers.customer_id"},
+      "customer_name":    {"semantic_type": "type/Name", "display_name": "Customer"},
+      "customer_country": {"semantic_type": "type/Country"},
+      "staff_name":       {"semantic_type": "type/Name", "display_name": "Staff member"},
+      "store_city":       {"semantic_type": "type/Category", "display_name": "Store", "has_field_values": "list"},
+      "rental_id":        {"semantic_type": "type/FK", "fk": "rentals.rental_id"},
+      "rental_date":      {"display_name": "Rented at"},
+      "film_id":          {"semantic_type": "type/FK", "fk": "films.film_id"},
+      "film_title":       {"semantic_type": "type/Title", "display_name": "Film"},
+      "film_rating":      {"semantic_type": "type/Category", "display_name": "Rating", "has_field_values": "list"},
+      "film_category":    {"semantic_type": "type/Category", "display_name": "Category", "has_field_values": "list"}
+    }
+  },
+  "films": {
+    "display_name": "Films",
+    "description": "One row per film in the catalogue: what it is, how it is priced, which extras it ships with, and how often it has been rented.",
+    "fields": {
+      "film_id":               {"semantic_type": "type/PK"},
+      "title":                 {"semantic_type": "type/Title"},
+      "description":           {"semantic_type": "type/Description"},
+      "release_year":          {"display_name": "Release year"},
+      "rating":                {"semantic_type": "type/Category", "has_field_values": "list"},
+      "category":              {"semantic_type": "type/Category", "has_field_values": "list"},
+      "language":              {"semantic_type": "type/Category", "has_field_values": "list"},
+      "length_minutes":        {"display_name": "Length (min)"},
+      "allowed_days":          {"semantic_type": "type/Duration", "display_name": "Rental period (days)"},
+      "rental_rate":           {"semantic_type": "type/Currency", "display_name": "Rental rate"},
+      "replacement_cost":      {"semantic_type": "type/Currency", "display_name": "Replacement cost"},
+      "has_trailers":          {"display_name": "Has trailers"},
+      "has_commentaries":      {"display_name": "Has commentaries"},
+      "has_deleted_scenes":    {"display_name": "Has deleted scenes"},
+      "has_behind_the_scenes": {"display_name": "Has behind the scenes"},
+      "actor_count":           {"semantic_type": "type/Quantity", "display_name": "Actors"},
+      "copies_in_stock":       {"semantic_type": "type/Quantity", "display_name": "Copies in stock"},
+      "rental_count":          {"semantic_type": "type/Quantity", "display_name": "Times rented"},
+      "revenue":               {"semantic_type": "type/Currency", "display_name": "Lifetime revenue"},
+      "first_rented_at":       {"display_name": "First rented"},
+      "last_rented_at":        {"display_name": "Last rented"}
+    }
+  },
+  "customers": {
+    "display_name": "Customers",
+    "description": "One row per customer: contact details, where they live, their home store, and their lifetime rental history.",
+    "fields": {
+      "customer_id":       {"semantic_type": "type/PK"},
+      "customer_name":     {"semantic_type": "type/Name", "display_name": "Customer"},
+      "email":             {"semantic_type": "type/Email"},
+      "is_active":         {"display_name": "Active?"},
+      "customer_since":    {"semantic_type": "type/CreationDate", "display_name": "Customer since"},
+      "store_city":        {"semantic_type": "type/Category", "display_name": "Home store", "has_field_values": "list"},
+      "district":          {"semantic_type": "type/State"},
+      "city":              {"semantic_type": "type/City"},
+      "country":           {"semantic_type": "type/Country", "has_field_values": "list"},
+      "rental_count":      {"semantic_type": "type/Quantity", "display_name": "Rentals"},
+      "total_spent":       {"semantic_type": "type/Currency", "display_name": "Lifetime spend"},
+      "first_rental_date": {"display_name": "First rental"},
+      "last_rental_date":  {"display_name": "Last rental"},
+      "late_returns":      {"semantic_type": "type/Quantity", "display_name": "Late returns"},
+      "favorite_category": {"semantic_type": "type/Category", "display_name": "Favourite category", "has_field_values": "list"}
+    }
+  }
+}

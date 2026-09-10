@@ -1,0 +1,36 @@
+{
+  "name": "Customers by country",
+  "description": "Where customers live.",
+  "type": "question",
+  "display": "map",
+  "collection_id": "{{c:pagila}}",
+  "visualization_settings": {
+    "map.type": "region",
+    "map.region": "world_countries",
+    "map.dimension": "country",
+    "map.metric": "count"
+  },
+  "dataset_query": {
+    "lib/type": "mbql/query",
+    "database": "{{db}}",
+    "stages": [
+      {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": "{{t:customers}}",
+        "aggregation": [
+          [
+            "count",
+            {}
+          ]
+        ],
+        "breakout": [
+          [
+            "field",
+            {},
+            "{{f:customers.country}}"
+          ]
+        ]
+      }
+    ]
+  }
+}

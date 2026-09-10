@@ -1,0 +1,41 @@
+{
+  "name": "Late return rate",
+  "description": "Share of returned rentals that came back late.",
+  "type": "question",
+  "display": "scalar",
+  "collection_id": "{{c:pagila}}",
+  "visualization_settings": {
+    "column_settings": {
+      "[\"name\",\"share\"]": {
+        "number_style": "percent",
+        "decimals": 1
+      }
+    }
+  },
+  "dataset_query": {
+    "lib/type": "mbql/query",
+    "database": "{{db}}",
+    "stages": [
+      {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": "{{t:rentals}}",
+        "aggregation": [
+          [
+            "share",
+            {},
+            [
+              "=",
+              {},
+              [
+                "field",
+                {},
+                "{{f:rentals.is_late}}"
+              ],
+              true
+            ]
+          ]
+        ]
+      }
+    ]
+  }
+}

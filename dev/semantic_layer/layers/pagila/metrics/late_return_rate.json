@@ -1,0 +1,43 @@
+{
+  "name": "Late return rate",
+  "description": "Share of returned rentals that came back late, by month rented.",
+  "type": "metric",
+  "display": "line",
+  "collection_id": "{{c:metrics}}",
+  "visualization_settings": {},
+  "dataset_query": {
+    "lib/type": "mbql/query",
+    "database": "{{db}}",
+    "stages": [
+      {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": "{{t:rentals}}",
+        "aggregation": [
+          [
+            "share",
+            {},
+            [
+              "=",
+              {},
+              [
+                "field",
+                {},
+                "{{f:rentals.is_late}}"
+              ],
+              true
+            ]
+          ]
+        ],
+        "breakout": [
+          [
+            "field",
+            {
+              "temporal-unit": "month"
+            },
+            "{{f:rentals.rental_date}}"
+          ]
+        ]
+      }
+    ]
+  }
+}

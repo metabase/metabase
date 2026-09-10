@@ -1,0 +1,2 @@
+{"name": "Family friendly", "table_id": "{{t:films}}", "description": "Films rated G or PG.",
+ "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:films}}", "filters": [["=", {}, ["field", {}, "{{f:films.rating}}"], "G", "PG"]]}]}}

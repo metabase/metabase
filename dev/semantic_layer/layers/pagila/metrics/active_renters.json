@@ -1,0 +1,38 @@
+{
+  "name": "Active renters",
+  "description": "Distinct customers who rented at least once in the month.",
+  "type": "metric",
+  "display": "line",
+  "collection_id": "{{c:metrics}}",
+  "visualization_settings": {},
+  "dataset_query": {
+    "lib/type": "mbql/query",
+    "database": "{{db}}",
+    "stages": [
+      {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": "{{t:rentals}}",
+        "aggregation": [
+          [
+            "distinct",
+            {},
+            [
+              "field",
+              {},
+              "{{f:rentals.customer_id}}"
+            ]
+          ]
+        ],
+        "breakout": [
+          [
+            "field",
+            {
+              "temporal-unit": "month"
+            },
+            "{{f:rentals.rental_date}}"
+          ]
+        ]
+      }
+    ]
+  }
+}

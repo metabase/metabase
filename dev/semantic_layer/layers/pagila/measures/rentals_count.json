@@ -1,0 +1,2 @@
+{"name": "Rentals", "table_id": "{{t:rentals}}", "description": "Number of rentals.",
+ "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:rentals}}", "aggregation": [["count", {}]]}]}}

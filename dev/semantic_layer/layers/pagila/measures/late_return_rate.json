@@ -1,0 +1,2 @@
+{"name": "Late return rate", "table_id": "{{t:rentals}}", "description": "Share of returned rentals that came back late.",
+ "definition": {"lib/type": "mbql/query", "database": "{{db}}", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": "{{t:rentals}}", "aggregation": [["share", {}, ["=", {}, ["field", {}, "{{f:rentals.is_late}}"], true]]]}]}}
