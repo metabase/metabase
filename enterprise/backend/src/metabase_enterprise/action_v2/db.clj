@@ -26,9 +26,9 @@
   (t2/select-one :model/Database :id database-id))
 
 (mu/defn fields
-  "The Fields with `field-ids`."
+  "The Fields with `field-ids` as users see them."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (warehouse-schema/fields-with-user-settings {:field-ids (set field-ids)}))
 
 (mu/defn pk-fields-for-table
   "The active primary key Fields of the Table with `table-id`, as users see them; honors the user's
@@ -50,9 +50,14 @@
   (t2/select :model/Field :table_id table-id :name [:in field-names]))
 
 (mu/defn active-fields-in-position-order
-  "The active Fields of the Table with `table-id`, in position order."
+  "The active Fields of the Table with `table-id` as users see them, in position order."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]}))
+  (t2/select :model/Field
+             {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:and [:= :f.table_id table-id] :f.active]
+              :order-by  [[:f.position :asc]]}))
 
 (mu/defn field-requirements-by-name
   "A map of name to the name, required flag, and base type of the Fields of the Table with `table-id`."
