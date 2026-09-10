@@ -12,6 +12,12 @@ type UnionToIntersection<Union> = (
  * when it is read, spreading that object at module scope translates it at
  * import instead, and the result is frozen in whatever language was loaded.
  * This keeps the getters as getters.
+ *
+ * At runtime the last source wins, as it does in a spread. The return type is
+ * an intersection of the sources rather than an override of one by the next,
+ * because a recursive override type is too expensive for tsc on the larger
+ * merges here. Two sources that give the same key incompatible types therefore
+ * read back as `never` instead of as the last source's type.
  */
 export function mergeLazily<Sources extends object[]>(
   ...sources: Sources

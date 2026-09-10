@@ -1,5 +1,6 @@
 import { useHotkeys } from "@mantine/hooks";
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -18,9 +19,9 @@ import {
 
 import { ELLIPSIS, GROUP_LABELS } from "../../constants";
 
-// Built per render rather than at import: a shortcut's `name` and `keywords`
-// are getters so they translate when read, and spreading them here would
-// freeze whatever language was loaded when this module first evaluated.
+// Built when the modal opens rather than at import: a shortcut's `name` and
+// `keywords` are getters so they translate when read, and spreading them at
+// module scope would freeze whatever language was loaded at import.
 const groupShortcuts = () =>
   _.groupBy(
     _.mapObject(ALL_SHORTCUTS, (val, id) => ({ id, ...val })),
@@ -34,11 +35,16 @@ export const PaletteShortcutsModal = ({
   onClose: ModalProps["onClose"];
   open: boolean;
 }) => {
-  const groupedShortcuts = groupShortcuts();
-  // Unjustified type cast. FIXME
-  const shortcutGroups = Object.keys(groupedShortcuts).filter(
-    (val) => !!val,
-  ) as ShortcutGroup[];
+  const groupedShortcuts = useMemo(
+    () => (open ? groupShortcuts() : {}),
+    [open],
+  );
+  const shortcutGroups = useMemo(
+    () =>
+      // Unjustified type cast. FIXME
+      Object.keys(groupedShortcuts).filter((val) => !!val) as ShortcutGroup[],
+    [groupedShortcuts],
+  );
 
   useHotkeys([
     ["Shift+?", onClose],

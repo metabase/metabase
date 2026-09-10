@@ -62,8 +62,9 @@ export function updateValueWithCurrentColumns(
   );
 
   // add toAdd to first partitions where it matches the filter
+  const partitions = getPartitions();
   for (const columnName of toAdd) {
-    for (const { columnFilter: filter, name } of getPartitions()) {
+    for (const { columnFilter: filter, name } of partitions) {
       const column = columns.find((c) => c.name === columnName);
       if (column != null && (filter == null || filter(column))) {
         value[name] = value[name] ?? [];

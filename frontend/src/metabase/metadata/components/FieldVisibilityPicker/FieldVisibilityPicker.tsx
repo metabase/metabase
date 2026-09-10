@@ -19,6 +19,8 @@ export const FieldVisibilityPicker = ({
   onChange,
   ...props
 }: Props) => {
+  const data = getData();
+
   const handleChange = (value: string) => {
     if (!isFieldVisibilityType(value)) {
       throw new Error("Unknown FieldVisibilityType. This should never happen");
@@ -39,10 +41,10 @@ export const FieldVisibilityPicker = ({
         position: "bottom-start",
         ...comboboxProps,
       }}
-      data={getData()}
+      data={data}
       placeholder={t`Select a field visibility`}
       renderOption={(item) => {
-        const option = getData().find(
+        const option = data.find(
           (option) => option.value === item.option.value,
         );
 
