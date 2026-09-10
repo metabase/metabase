@@ -32,33 +32,40 @@
   ([session-id tool-name arguments scopes]
    (registry/call-tool scopes session-id tool-name arguments)))
 
+(defn- dispatch-error?
+  "Whether a [[call!]] outcome is an error, at either layer: a registry-level rejection
+   (`{:error …}`, from a scope denial or an args-schema failure) or `:isError` tool content."
+  [{:keys [result error]}]
+  (boolean (or error (:isError result))))
+
 (defn- response-text
-  [result]
-  (-> result :content first :text))
+  "The outcome's text block, or a registry-level rejection's message."
+  [{:keys [result error]}]
+  (if error (:message error) (-> result :content first :text)))
 
 (defn- payload
-  "Parse the JSON payload line of a successful response. Throws if the tool returned an
-   error, so a tool-level error can never masquerade as an empty result."
-  [result]
-  (when (:isError result)
-    (throw (ex-info "expected success, got tool error" {:result result})))
-  (-> result response-text str/split-lines first json/decode+kw))
+  "Parse the JSON payload line of a successful response. Throws if the call errored at either
+   layer, so an error can never masquerade as an empty result."
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info "expected success, got tool error" {:outcome outcome})))
+  (-> outcome response-text str/split-lines first json/decode+kw))
 
 (defn- steering-line
   "The steering sentence appended after the JSON payload, or nil on an unsteered response.
-   Throws on a tool-level error for the same reason as [[payload]]."
-  [result]
-  (when (:isError result)
-    (throw (ex-info "expected success, got tool error" {:result result})))
-  (second (str/split-lines (response-text result))))
+   Throws on an error at either layer, for the same reason as [[payload]]."
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info "expected success, got tool error" {:outcome outcome})))
+  (second (str/split-lines (response-text outcome))))
 
 (defn- error-text
-  "The error message of a tool-level error response. Throws if the call succeeded, so a
-   passing call can never satisfy an error assertion."
-  [result]
-  (when-not (:isError result)
-    (throw (ex-info "expected tool error, got success" {:result result})))
-  (response-text result))
+  "The message of an errored call, at either layer. Throws if the call succeeded, so a passing
+   call can never satisfy an error assertion."
+  [outcome]
+  (when-not (dispatch-error? outcome)
+    (throw (ex-info "expected tool error, got success" {:outcome outcome})))
+  (response-text outcome))
 
 (defn- stored-query
   "Decode the serialized query a handle stores, exactly as downstream consumers will read it."

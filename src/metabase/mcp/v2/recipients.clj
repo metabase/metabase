@@ -5,9 +5,9 @@
    recipient is stored (a notification recipient vs. a pulse channel recipient), which is why the
    validation lives here and the shaping stays in each tool."
   (:require
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,7 +19,7 @@
   (cond
     (int? recipient)
     (do
-      (when-not (t2/exists? :model/User :id recipient :is_active true)
+      (when-not (mcp.db/active-user-exists? recipient)
         (common/throw-teaching-error
          (format "No active user with id %d — pass a user id from the people list, or an email address."
                  recipient)))
