@@ -8,6 +8,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
+import { createMockEmbedState, createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   screen,
@@ -21,10 +22,6 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
-import {
-  createMockEmbedState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import MetabaseSettings from "metabase/utils/settings";
 import type { User } from "metabase-types/api";
 import {
