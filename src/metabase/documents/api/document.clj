@@ -223,7 +223,7 @@
                             :user-id api/*current-user-id*})
     new-document))
 
-(api.macros/defendpoint :post "/:from-document-id/copy" :- ::documents.schema/document
+(api.macros/defendpoint :post "/:from-document-id/copy" :- [:map [:id ::documents.schema/document.id]]
   "Copy a Document."
   [{:keys [from-document-id]} :- [:map {:closed true}
                                   [:from-document-id ms/PositiveInt]]
