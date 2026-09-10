@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
@@ -68,3 +69,90 @@
            (captured-counts {:input [{:role :user :content "hi"}
                                      {:type :text :text "one"}
                                      {:type :text :text "two"}]})))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Descriptor headers
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- streamed-request
+  "Run `thunk` with streaming stubbed to the identity chain, so the adapter's `stream!` hands back the
+  clj-http request map it would have sent."
+  [thunk]
+  (with-redefs [self.core/sse-reducible             identity
+                self.core/reducible-with-api-errors (fn [r _ _] r)
+                debug/capture-stream                (fn [r _] r)
+                http/request                        (fn [req] {:body req})]
+    (thunk)))
+
+(deftest descriptor-headers-reach-the-stream-test
+  (testing "a provider's `:headers` are on its streaming request — the only thing that puts them there"
+    (testing "Anthropic's API version"
+      (is (=? {:method  :post
+               :url     "https://api.anthropic.com/v1/messages"
+               :headers {"anthropic-version" "2023-06-01"
+                         "Content-Type"      "application/json"}}
+              (streamed-request
+               #(claude/claude-raw {:model       "claude-haiku-4-5"
+                                    :input       [{:role :user :content "hi"}]
+                                    :credentials {:api-key  "sk-ant-test"
+                                                  :base-url "https://api.anthropic.com"}})))))
+    (testing "OpenRouter's attribution headers, which its account activity page reads"
+      (is (=? {:method  :post
+               :url     "https://openrouter.ai/api/v1/chat/completions"
+               :headers {"HTTP-Referer" "https://metabase.com"
+                         "X-Title"      "Metabase"
+                         "Content-Type" "application/json"}}
+              (streamed-request
+               #(openrouter/openrouter-raw {:model       "anthropic/claude-haiku-4.5"
+                                            :input       [{:role :user :content "hi"}]
+                                            :credentials {:api-key  "sk-or-test"
+                                                          :base-url "https://openrouter.ai/api"}})))))))
+
+(deftest descriptor-headers-merge-with-per-request-headers-test
+  (testing "a per-request header joins the descriptor's rather than replacing them"
+    ;; Claude's fast mode adds `anthropic-beta`; dropping `anthropic-version` alongside it would 400
+    (is (=? {:headers {"anthropic-version" "2023-06-01"
+                       "anthropic-beta"    string?}}
+            (streamed-request
+             #(claude/claude-raw {:model       "claude-opus-4-8"
+                                  :input       [{:role :user :content "hi"}]
+                                  :fast?       true
+                                  :credentials {:api-key  "sk-ant-test"
+                                                :base-url "https://api.anthropic.com"}}))))))
+
+(deftest descriptor-headers-reach-the-catalog-test
+  (testing "a provider's `:headers` are on its catalog request too, not just its stream"
+    (let [seen (atom nil)]
+      (with-redefs [http/request (fn [req]
+                                   (reset! seen req)
+                                   {:status 200 :body {:data []}})]
+        (claude/list-models {:credentials {:api-key "sk-ant-test" :base-url "https://api.anthropic.com"}}))
+      (is (=? {:method  :get
+               :url     "https://api.anthropic.com/v1/models"
+               :headers {"anthropic-version" "2023-06-01"}}
+              @seen)))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Listing
+;;; ──────────────────────────────────────────────────────────────────
+
+(def ^:private allow-list
+  {"b-model" {:display-name "Allow-list B"}
+   "a-model" {:display-name "Allow-list A"}})
+
+(deftest listing-test
+  (let [entries [{:id "b-model" :name "Catalog B"}
+                 {:id "a-model" :display_name "Catalog A"}
+                 {:id "unlisted" :name "Catalog U"}]]
+    (testing "keeps only allow-listed ids, sorted by id"
+      (is (= ["a-model" "b-model"]
+             (mapv :id (:models (adapter/listing allow-list entries))))))
+    (testing "names come from the allow-list by default, so a catalog that starts carrying names cannot rename a model"
+      (is (= ["Allow-list A" "Allow-list B"]
+             (mapv :display_name (:models (adapter/listing allow-list entries))))))
+    (testing "catalog-name? prefers the catalog's own name, falling back to `:display_name` then the allow-list"
+      (is (= ["Catalog A" "Catalog B"]
+             (mapv :display_name (:models (adapter/listing allow-list entries true))))))
+    (testing "catalog-name? still falls back to the allow-list when the entry carries no name at all"
+      (is (= ["Allow-list A"]
+             (mapv :display_name (:models (adapter/listing allow-list [{:id "a-model"}] true))))))))
