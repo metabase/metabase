@@ -519,9 +519,9 @@
   limit — so a large total is a floor (the response says \"at least N\"). An empty {data: [], total: 0} means no
   match against the search index, which on a freshly started instance can still be building — if content you can
   reach with browse_collection or browse_data does not turn up here, prefer those over concluding it is absent."  {:name "search"
-                                                                             :scope        metabot.scope/agent-content-read
-                                                                             :annotations  {:readOnlyHint true :idempotentHint true}
-                                                                             :args         search-args-schema}
+                                                                                                                   :scope        metabot.scope/agent-content-read
+                                                                                                                   :annotations  {:readOnlyHint true :idempotentHint true}
+                                                                                                                   :args         search-args-schema}
   [{:keys [term_queries semantic_queries recent type collection_id archived] :as args} _]
   (let [queries?  (boolean (or (seq term_queries) (seq semantic_queries)))
         filters?  (boolean (or (seq type)
