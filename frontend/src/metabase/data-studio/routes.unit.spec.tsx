@@ -105,7 +105,6 @@ describe("Data Studio index redirect", () => {
           path="data-studio"
           element={
             <>
-              {/* Stands in for the Data Studio nav */}
               <Link to="/data-studio/transforms">Transforms</Link>
               <Outlet />
             </>

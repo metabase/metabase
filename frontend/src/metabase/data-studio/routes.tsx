@@ -156,7 +156,6 @@ export function getDataStudioDependencyDiagnosticsRedirects() {
 
 export function DataStudioIndexRedirect() {
   const indexPath = useSelector(getIndexPath);
-  // Let a navigation the user already started finish; it takes over this route.
   const isNavigating = useIsNavigating();
   const { value: hasSeenGuide, isLoading } = useUserKeyValue({
     namespace: "data_studio",

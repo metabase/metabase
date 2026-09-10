@@ -19,14 +19,10 @@ const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
   breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
-  /**
-   * Visits Data Studio and waits for its index redirect to land.
-   *
-   * `/data-studio` redirects asynchronously: the nav renders right away, but the
-   * target resolves once the `hasSeenGuide` user key-value request comes back.
-   */
   visit: () => {
     cy.visit("/data-studio");
+    // `/data-studio` redirects asynchronously: the nav renders right away, but the
+    // target resolves user preferences request comes back.
     cy.location("pathname").should("not.eq", "/data-studio");
     DataStudio.nav().should("be.visible");
   },
