@@ -15,11 +15,11 @@ We've developed some [agent skills](https://github.com/metabase/agent-skills) to
 
 | Skill                           | Description                                                                                  |
 | ------------------------------- | -------------------------------------------------------------------------------------------- |
-| [SDK version upgrade](https://skillsmp.com/creators/metabase/agent-skills/skills-metabase-modular-embedding-version-upgrade) | Upgrade your modular embedding SDK, including changelog checks and breaking change handling. |
-| [Full app → modular embedding](https://skillsmp.com/creators/metabase/agent-skills/skills-metabase-full-app-to-modular-embedding-upgrade) | Migrate from full app embedding to modular embedding. |
-| [Modular embedding → SDK (React)](https://skillsmp.com/creators/metabase/agent-skills/skills-metabase-modular-embedding-to-modular-embedding-sdk-upgrade) | Migrate from script-based modular embedding to the React SDK. |
-| [Static → guest embeds](https://skillsmp.com/creators/metabase/agent-skills/skills-metabase-static-embedding-to-guest-embedding-upgrade) | Migrate from static (signed) embeds to guest embeds. |
-| [SSO for embeds](https://skillsmp.com/creators/metabase/agent-skills/skills-metabase-embedding-sso-implementation) | Set up SSO authentication for embedded Metabase.|
+| [SDK version upgrade](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-modular-embedding-version-upgrade-skill-md) | Upgrade your modular embedding SDK, including changelog checks and breaking change handling. |
+| [Full app → modular embedding](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-full-app-to-modular-embedding-upgrade-skill-md) | Migrate from full app embedding to modular embedding. |
+| [Modular embedding → SDK (React)](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-modular-embedding-to-modular-embedding-sdk-upgrade-skill-md) | Migrate from script-based modular embedding to the React SDK. |
+| [Static → guest embeds](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-static-embedding-to-guest-embedding-upgrade-skill-md) | Migrate from static (signed) embeds to guest embeds. |
+| [SSO for embeds](https://skillsmp.com/skills/metabase-agent-skills-skills-metabase-embedding-sso-implementation-skill-md) | Set up SSO authentication for embedded Metabase. |
 
 Browse all skills on the [agent skills repo](https://github.com/metabase/agent-skills).
 

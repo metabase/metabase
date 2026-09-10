@@ -51,7 +51,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [collections-restricted-data]: ./data-permissions.md#a-user-group-can-view-collections-that-contain-restricted-data
 [connecting-database]: ../databases/connecting.md
 [data-model]: ../data-modeling/metadata/metadata-editing.md
-[data-browser]: ../exploration-and-organization/data-model-reference.md
+[data-browser]: ../exploration-and-organization/exploration.md#browse-your-databases
 [data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
 [group-permissions]: ../permissions/introduction.md#key-points-regarding-permissions

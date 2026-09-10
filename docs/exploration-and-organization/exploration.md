@@ -57,7 +57,7 @@ The left sidebar lists your databases, [models](../data-modeling/models/models.m
 
 The database browser will list all the databases connected to your Metabase. Hover over a table and click on the **bolt** icon to [X-ray](x-rays.md) the table, or click on the **book** icon to view more info about the table: its fields and their descriptions (if any), what questions are based on that table, and more.
 
-To learn more, see the [data reference](./data-model-reference.md).
+To learn more about the information in the **book** sidebar, see the [data reference](./data-model-reference.md).
 
 ## Exploring collections
 

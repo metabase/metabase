@@ -8,7 +8,7 @@ redirect_from:
 
 If you can't connect to your database, you'll need to figure out if the problem is happening with Metabase or your database server.
 
-If your database connection is successful, but the tables aren't showing up in the [Data Browser](../exploration-and-organization/data-model-reference.md), go to [Troubleshooting missing tables](./cant-see-tables.md).
+If your database connection is successful, but the tables aren't showing up in the [Data Browser](../exploration-and-organization/exploration.md#browse-your-databases), go to [Troubleshooting missing tables](./cant-see-tables.md).
 
 ## Troubleshooting connections to Metabase
 
