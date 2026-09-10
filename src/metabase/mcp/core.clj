@@ -6,10 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
-   [metabase.mcp.settings :as mcp.settings]
-   ;; Only for `registered-opt-in-scopes`. Deliberately NOT `mcp.v2.resources`: that reaches
-   ;; `metabot.scope`/`premium-features`, which must stay off the security middleware's load path.
-   [metabase.mcp.v2.registry :as v2.registry]))
+   [metabase.mcp.settings :as mcp.settings]))
 
 (set! *warn-on-reflection* true)
 
@@ -94,10 +91,3 @@
    `v2-surface-scopes-match-metabot-scope-test` keeps the literal in step with what the tools gate on."
   []
   mcp.paths/v2-surface-scopes)
-
-(defn opt-in-scopes
-  "MCP scopes advertised for a token to request explicitly but excluded from the default DCR
-   grant (see [[metabase.mcp.v2.registry/registered-opt-in-scopes]]). The OAuth server folds these
-   into `scopes_supported` on top of [[all-scopes]]."
-  []
-  (v2.registry/registered-opt-in-scopes))
