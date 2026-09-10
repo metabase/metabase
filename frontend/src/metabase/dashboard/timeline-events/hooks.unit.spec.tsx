@@ -1,17 +1,17 @@
 import { useMount } from "react-use";
 
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
-import { renderWithProviders, screen } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { DashboardWideEventsSidebar } from "metabase/dashboard/components/DashboardEventsSidebar/DashboardWideEventsSidebar";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import {
   createMockApiState,
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
   seedApiQueryCache,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders, screen } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { DashboardWideEventsSidebar } from "metabase/dashboard/components/DashboardEventsSidebar/DashboardWideEventsSidebar";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   DashboardCard,
