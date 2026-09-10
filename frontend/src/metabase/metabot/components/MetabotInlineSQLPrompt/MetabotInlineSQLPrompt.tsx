@@ -7,11 +7,12 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { MetabotManagedProviderLimitHoverCard } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
+import { MetabotSendButton } from "metabase/metabot/components/MetabotSendButton";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import type { MetabotAgentTurnDisplayError } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { useSetting } from "metabase/settings";
-import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
 
 import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
@@ -55,7 +56,9 @@ export const MetabotInlineSQLPrompt = ({
     useUserMetabotPermissions();
   const metabotName = useSetting("metabot-name");
 
-  const isSubmitDisabled = !canUseSqlGeneration || !value.trim() || isLoading;
+  const isLocked = error?.type === "locked";
+  const isSubmitDisabled =
+    !canUseSqlGeneration || !value.trim() || isLoading || isLocked;
 
   const handleSubmit = useCallback(async () => {
     const prompt = promptInputRef.current?.getValue?.().trim() ?? "";
@@ -116,55 +119,52 @@ export const MetabotInlineSQLPrompt = ({
         </Box>
       )}
 
-      <Flex justify="space-between" align="center" gap="sm" mt="xxs">
+      <Flex
+        direction="row-reverse"
+        justify="space-between"
+        align="center"
+        gap="sm"
+        mt="xxs"
+      >
+        {canUseSqlGeneration && (
+          <Tooltip
+            label={isLoading ? t`Stop generating` : t`Send to ${metabotName}`}
+          >
+            <MetabotSendButton
+              className={S.submitButton}
+              data-testid="metabot-inline-sql-generate"
+              aria-label={
+                isLoading ? t`Stop generating` : t`Send to ${metabotName}`
+              }
+              isResponding={isLoading}
+              onClick={isLoading ? cancelRequest : handleSubmit}
+              disabled={!isLoading && isSubmitDisabled}
+            />
+          </Tooltip>
+        )}
         <Box
           data-testid="metabot-inline-sql-error"
-          w="100%"
+          pr="0.125rem"
+          ta="right"
+          flex={1}
+          miw={0}
           fz="sm"
-          c="feedback-negative"
+          c={error?.type === "aborted" ? "text-secondary" : "feedback-negative"}
         >
-          {error?.type === "locked" ? (
-            <MetabotManagedProviderLimitHoverCard />
-          ) : (
-            error?.message
-          )}
+          {isLocked ? <MetabotManagedProviderLimitHoverCard /> : error?.message}
         </Box>
-        <Flex gap="xxs" flex="1 0 auto">
-          {canUseSqlGeneration && (
-            <Tooltip disabled={isLoading} label={t`Send to ${metabotName}`}>
-              <Button
-                className={S.submitButton}
-                data-testid="metabot-inline-sql-generate"
-                size="xs"
-                variant="filled"
-                px="0"
-                w="1.875rem"
-                styles={{ label: { display: "flex" } }}
-                onClick={handleSubmit}
-                disabled={isSubmitDisabled}
-              >
-                {isLoading ? (
-                  <Loader
-                    size="xs"
-                    color="text-disabled"
-                    data-testid="metabot-inline-sql-generating"
-                  />
-                ) : (
-                  <Icon name="send" />
-                )}
-              </Button>
-            </Tooltip>
-          )}
-          <Button
-            className={S.cancelButton}
-            data-testid="metabot-inline-sql-cancel"
-            size="xs"
-            variant="subtle"
-            onClick={handleClose}
-          >
-            {t`Cancel`}
-          </Button>
-        </Flex>
+        <Button
+          className={S.cancelButton}
+          data-testid="metabot-inline-sql-cancel"
+          size="xs"
+          fz="sm"
+          px={0}
+          fw="normal"
+          variant="subtle"
+          onClick={handleClose}
+        >
+          {t`Cancel`}
+        </Button>
       </Flex>
       <AIProviderConfigurationModal
         opened={isAiProviderConfigurationModalOpen}
