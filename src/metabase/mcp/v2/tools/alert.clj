@@ -442,4 +442,5 @@
                                       (create! a))
                           :update (do (when-let [reason (execute-scope-trigger b)]
                                         (check-query-execute-scope! token-scopes reason))
-                                      (update! a b)))))))
+                                      (update! a b)))
+                        nil))))
