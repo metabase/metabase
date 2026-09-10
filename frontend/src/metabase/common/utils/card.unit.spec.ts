@@ -4,7 +4,7 @@ import {
 } from "metabase/common/utils/card";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockDashCardDataSeries,
@@ -60,7 +60,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
 
     const result = getMetricSeriesWithDefaultDisplay(
       [createMetricSeries(query)],
-      SAMPLE_METADATA,
+      SAMPLE_PROVIDER,
     );
 
     expect(result[0].card.display).toBe("bar");
@@ -81,7 +81,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
 
     const result = getMetricSeriesWithDefaultDisplay(
       [createMetricSeries(query)],
-      SAMPLE_METADATA,
+      SAMPLE_PROVIDER,
     );
 
     expect(result[0].card.display).toBe("line");
@@ -95,7 +95,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
       ),
     ];
 
-    expect(getMetricSeriesWithDefaultDisplay(series, SAMPLE_METADATA)).toBe(
+    expect(getMetricSeriesWithDefaultDisplay(series, SAMPLE_PROVIDER)).toBe(
       series,
     );
   });

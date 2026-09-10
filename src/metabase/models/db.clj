@@ -53,32 +53,34 @@
   (t2/select-one model (t2.identity-query/identity-query [row-map])))
 
 (mu/defn entities-reducible
-  "A reducible of the `model` rows additionally matching the Honey SQL `extra-where` when given — the serdes
-  extract-query nested-fetch hook passes a dynamic foreign-key-column + id-list condition here that varies per
-  model/transform and can't be expressed as fixed data — ordered by `order-by` (or unordered when nil)."
-  [model       :- [:or :keyword symbol?]
-   extra-where :- [:maybe vector?]
-   order-by    :- [:maybe vector?]]
+  "A reducible of the `model` rows whose `filter-column` is one of `filter-ids` (every row when `filter-column` is
+  nil), ordered ascending by `order-columns` (unordered when empty)."
+  [model         :- [:or :keyword symbol?]
+   filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns :- [:maybe [:sequential :keyword]]]
   (t2/reducible-select model (cond-> {}
-                               extra-where (assoc :where extra-where)
-                               order-by    (assoc :order-by order-by))))
+                               filter-column       (assoc :where [:in filter-column filter-ids])
+                               (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn entities-in-collections-reducible
   "A reducible of the `model` rows whose `:collection_id` is in `collection-set` (nil in the set counts as the root
-  collection), additionally matching the Honey SQL `extra-where` when given (see [[entities-reducible]] for why this
-  stays a raw clause), ordered by `order-by` (or unordered when nil)."
+  collection) and whose `filter-column` is one of `filter-ids` (unrestricted when `filter-column` is nil), ordered
+  ascending by `order-columns` (unordered when empty)."
   [model          :- [:or :keyword symbol?]
    collection-set :- [:or [:set [:maybe ms/PositiveInt]] [:sequential [:maybe ms/PositiveInt]]]
-   extra-where    :- [:maybe vector?]
-   order-by       :- [:maybe vector?]]
+   filter-column  :- [:maybe :keyword]
+   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns  :- [:maybe [:sequential :keyword]]]
   (t2/reducible-select model
                        (cond-> {:where [:and
                                         [:or
                                          [:in :collection_id collection-set]
                                          (when (some nil? collection-set)
                                            [:= :collection_id nil])]
-                                        extra-where]}
-                         order-by (assoc :order-by order-by))))
+                                        (when filter-column
+                                          [:in filter-column filter-ids])]}
+                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn table-names-reducible
   "A reducible of the id, name, and display name of every Table."

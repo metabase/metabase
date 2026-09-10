@@ -75,7 +75,7 @@
 
 (def FilterParams
   "Schema for filter for task history."
-  [:map
+  [:map {:closed true}
    [:status {:optional true} (into [:enum] task-history-status)]
    [:task {:optional true} [:string {:min 1}]]])
 
@@ -84,20 +84,25 @@
 
 (def SortParams
   "Sorting map schema."
-  [:map
+  [:map {:closed true}
    [:sort_column    {:default :started_at} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :desc}       [:enum :asc :desc]]])
+
+(def FilterAndSortParams
+  "The query params of `GET /api/task`: [[FilterParams]] and [[SortParams]] together. `:merge` merges the two maps'
+  properties, so the result is closed like both of its halves."
+  [:merge FilterParams SortParams])
 
 (mu/defn all
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   {:keys [status task sort_column sort_direction]} :- [:maybe [:merge FilterParams SortParams]]]
+   {:keys [status task sort_column sort_direction]} :- [:maybe FilterAndSortParams]]
   (task-history.db/task-histories status task (or sort_column :started_at) (or sort_direction :desc) limit offset))
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
-  [{:keys [status task]} :- FilterParams]
+  [{:keys [status task]} :- [:maybe FilterAndSortParams]]
   (task-history.db/task-history-count status task))
 
 (defn unique-tasks

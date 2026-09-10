@@ -135,7 +135,8 @@
              :column      column
              :min-value   min-value
              :max-value   max-value
-             :new-binning (update binning :bin-width #(double (/ % 10.0)))}))))))
+             :new-binning (-> (lib.binning/->binning-options binning)
+                              (update :bin-width #(double (/ % 10.0))))}))))))
 
 ;;;
 ;;; application

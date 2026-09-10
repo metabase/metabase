@@ -9,9 +9,8 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
+import { selectQuestionFromCard } from "metabase/metadata-store";
 import { Route } from "metabase/router";
-import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -74,8 +73,7 @@ export const setup = async ({
       questions: [card],
     }),
   });
-  const metadata = getMetadata(state);
-  const question = checkNotNull(metadata.question(card.id));
+  const question = selectQuestionFromCard(state, card);
 
   if (enterprisePlugins) {
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);

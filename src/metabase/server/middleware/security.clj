@@ -25,10 +25,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def script-nonce-response-key
+  "Response key that opts a response into a `script-src` nonce. Set it on server-rendered documents whose
+  inline script body varies per request, so no build-time hash can cover them. Everything else is expected
+  to use the hashes in [[inline-js-hashes]]."
+  ::script-nonce?)
+
 (defn- generate-nonce
-  "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only scripts and
-   inline style elements with the same nonce will be allowed to run. The server generates a unique nonce value each
-   time it sends a response. For more information see
+  "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only
+   style elements with the same nonce will be allowed to apply. The app document hands this value to page
+   JS, which needs it to inject styles at runtime (Emotion, CodeMirror, ECharts). The server generates a
+   unique nonce value each time it sends a response. `script-src` only carries the nonce for responses that
+   set [[script-nonce-response-key]]. For more information see
    https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src."
   []
   (let [chars         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -238,16 +246,20 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  [nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                  ["'self'"
-                                  ;; for custom viz plugin bundles loaded via fetch + inline <script> with nonce.
+                                  ;; Only responses that set [[script-nonce-response-key]] get a nonce here.
+                                  ;; The app document deliberately does not: its inline scripts are covered by
+                                  ;; the hashes below, and it hands the nonce to page JS so styles can be
+                                  ;; injected at runtime, which would make a `script-src` nonce reachable by
+                                  ;; anything that can read the page.
                                   ;; In dev mode 'unsafe-inline' covers this; adding a nonce there would
                                   ;; cause the browser to ignore 'unsafe-inline' per the CSP spec.
-                                  (when (and nonce (not config/is-dev?))
+                                  (when (and nonce script-nonce? (not config/is-dev?))
                                     (format "'nonce-%s'" nonce))
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
@@ -382,8 +394,9 @@
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
-  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
+  [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  (cond-> (update (content-security-policy-header nonce script-nonce? data-app-iframe? data-app-connect-hosts
+                                                  allow-blob-img?)
                   "Content-Security-Policy"
                   #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
     ;; MANDATORY for data apps — do not remove/weaken. Sole barrier (no JS backstop)
@@ -509,13 +522,17 @@
   "Fetch a map of security headers that should be added to a response based on the passed options.
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
    `:self` (same-origin only), or `:none` (default — no framing unless interactive
-   embedding is configured)."
-  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts allow-blob-img?]
-      :or   {frame-ancestors :none, allow-cache? false, data-app-iframe? false, allow-blob-img? false}}]
+   embedding is configured). `:script-nonce?` adds the nonce to `script-src`, see
+   [[script-nonce-response-key]]."
+  [& {:keys [origin nonce script-nonce? frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts
+             allow-blob-img?]
+      :or   {frame-ancestors :none, allow-cache? false, script-nonce? false, data-app-iframe? false,
+             allow-blob-img? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
+   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce script-nonce? data-app-iframe?
+                                                        data-app-connect-hosts allow-blob-img?)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
@@ -623,6 +640,7 @@
   (let [headers (security-headers
                  :origin                      (get (:headers request) "origin")
                  :nonce                       (:nonce request)
+                 :script-nonce?               (boolean (get response script-nonce-response-key))
                  ;; The internal data-app iframe is only ever framed by the
                  ;; same-origin Metabase app, so restrict it to `'self'` rather
                  ;; than the open embedding `*`. Check it before the broader

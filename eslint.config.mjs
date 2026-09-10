@@ -330,7 +330,6 @@ const configs = [
       "metabase/no-color-literals": "error",
       "metabase/valid-theme-tokens": "error",
       "metabase/no-literal-metabase-strings": "error",
-      "metabase/no-oss-reinitialize-import": "error",
       "metabase/no-analytics-import-outside-analytics-files": "error",
       "metabase/no-module-level-memoize": "error",
       "metabase/no-direct-memoize-import": "error",
@@ -1193,6 +1192,7 @@ const configs = [
       "bin/**/*.js",
       ".github/scripts/**/*.js",
       ".github/scripts/**/*.mjs",
+      ".github/scripts/**/*.ts",
     ],
     languageOptions: {
       globals: {
@@ -1275,6 +1275,26 @@ const configs = [
           ],
         },
       ],
+    },
+  },
+  // ============================================
+  // PLUGIN SLOT DECLARATIONS
+  // ============================================
+  {
+    files: [
+      "frontend/src/**/*.{ts,tsx,js,jsx}",
+      "enterprise/frontend/src/**/*.{ts,tsx,js,jsx}",
+    ],
+    ignores: [
+      // metabase/api can't import metabase/plugins under the module rules, so PLUGIN_API is declared and reset by hand.
+      // This is temporary: once plugins can sit below api, the slot uses definePluginSlot and this exemption goes.
+      "frontend/src/metabase/api/client/request-handlers.ts",
+      // TODO(no-plugin-slot-outside-plugins-files): reinitialize() leaves these two alone until their modules adopt definePluginSlot.
+      "frontend/src/metabase/embedding/embedding-iframe-sdk/plugin.ts",
+      "frontend/src/embedding-sdk-bundle/store/auth/auth.ts",
+    ],
+    rules: {
+      "metabase/no-plugin-slot-outside-plugins-files": "error",
     },
   },
 ];

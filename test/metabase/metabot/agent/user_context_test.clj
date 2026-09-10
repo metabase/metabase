@@ -169,7 +169,7 @@
 (deftest ^:parallel format-viewing-context-test-2c
   (testing "formats question entity"
     (let [context {:user_is_viewing [{:type "question"
-                                      :id 789
+                                      :id Integer/MAX_VALUE
                                       :name "Top Customers"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -179,7 +179,7 @@
 (deftest ^:parallel format-viewing-context-test-2d
   (testing "formats metric entity"
     (let [context {:user_is_viewing [{:type "metric"
-                                      :id 111
+                                      :id (dec Integer/MAX_VALUE)
                                       :name "Total Revenue"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -189,7 +189,7 @@
 (deftest ^:parallel format-viewing-context-test-2e
   (testing "formats dashboard entity"
     (let [context {:user_is_viewing [{:type "dashboard"
-                                      :id 222
+                                      :id (- Integer/MAX_VALUE 2)
                                       :name "Executive Dashboard"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
