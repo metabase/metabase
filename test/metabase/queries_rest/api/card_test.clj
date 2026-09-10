@@ -1956,7 +1956,7 @@
         (testing "Admin should be able to update Card's embedding params"
           (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                 {:embedding_params {:abc "enabled"}})
-          (is (= {:abc "enabled"}
+          (is (= {"abc" "enabled"}
                  (t2/select-one-fn :embedding_params :model/Card :id (u/the-id card)))))))))
 
 (deftest update-embedding-type-to-nil-test

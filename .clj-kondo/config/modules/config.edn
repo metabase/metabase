@@ -109,6 +109,7 @@
            query-processor
            search
            settings
+           users
            util
            warehouses}
    :model-exports #{:model/Action}
@@ -1468,6 +1469,7 @@
               transforms
               transforms-base
               util
+              warehouse-schema
               warehouses}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
@@ -1618,6 +1620,7 @@
            parameters
            permissions
            premium-features
+           queries
            query-processor
            request
            session
@@ -1909,6 +1912,7 @@
            graph
            lib
            lib-be
+           lib-metric
            metrics
            models
            parameters
@@ -2731,6 +2735,7 @@
            driver
            events
            lib
+           lib-be
            model-persistence
            models
            permissions

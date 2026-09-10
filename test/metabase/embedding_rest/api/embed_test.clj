@@ -291,7 +291,6 @@
                 ;; merge of both places
                 {:id "c",
                  :type "date/single",
-                 :display_name "c",
                  :target ["variable" ["template-tag" "c"]],
                  :name "c",
                  :slug "c",
@@ -472,7 +471,7 @@
                                  (card-query-url card response-format {:params {:venue_id 100}})
                                  {:request-options request-options})))
           (testing "If `:locked` parameter is present in URL params, request should fail"
-            (is (= "You can only specify a value for :venue_id in the JWT."
+            (is (= "You can only specify a value for venue_id in the JWT."
                    (let [url (card-query-url card response-format {:params {:venue_id 100}})]
                      (client/client :get 400 (str url (if (str/includes? url "format_rows")
                                                         "&venue_id=100"
@@ -484,10 +483,10 @@
       (do-response-formats [response-format _request-options]
         (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
                       "`:disabled` parameter")
-          (is (= "You're not allowed to specify a value for :venue_id."
+          (is (= "You're not allowed to specify a value for venue_id."
                  (client/client :get 400 (card-query-url card response-format {:params {:venue_id 100}})))))
         (testing "If a `:disabled` param is passed in the URL the request should fail"
-          (is (= "You're not allowed to specify a value for :venue_id."
+          (is (= "You're not allowed to specify a value for venue_id."
                  (let [url (card-query-url card response-format)]
                    (client/client :get 400 (str url (if (str/includes? url "format_rows")
                                                       "&venue_id=200"
@@ -499,7 +498,7 @@
       (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "enabled"}}]
         (do-response-formats [response-format request-options]
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
-            (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
+            (is (= "You can't specify a value for venue_id if it's already set in the JWT."
                    (let [url (card-query-url card response-format {:params {:venue_id 100}})]
                      (client/client :get 400 (str url (if (str/includes? url "format_rows")
                                                         "&venue_id=100"
@@ -564,7 +563,7 @@
             (is (= [[107]]
                    (mt/rows (client/client :get 202 (card-query-url card ""))))))
           (testing "you can't apply an empty param value if the parameter is disabled"
-            (is (= "You're not allowed to specify a value for :date."
+            (is (= "You're not allowed to specify a value for date."
                    (client/client :get 400 (str (card-query-url card "") "?date=")))))))
       (testing "if the param is locked"
         (mt/with-temp
@@ -893,7 +892,6 @@
                      :model/DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
                                                          :card_id            card-id
                                                          :parameter_mappings [{:card_id      card-id
-                                                                               :slug         "venue_name"
                                                                                :parameter_id "foo"
                                                                                :target       [:dimension
                                                                                               [:field (mt/id :venues :name) nil]]}
@@ -939,12 +937,10 @@
                      :model/DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
                                                          :card_id            card-id
                                                          :parameter_mappings [{:card_id      card-id
-                                                                               :slug         "venue_name"
                                                                                :parameter_id "foo"
                                                                                :target       [:dimension
                                                                                               [:field (mt/id :venues :name) nil]]}
                                                                               {:card_id      card-id
-                                                                               :slug         "venue_name_2"
                                                                                :parameter_id "bar"
                                                                                :target       [:dimension
                                                                                               [:field (mt/id :venues :name) nil]]}]}]
@@ -1056,8 +1052,7 @@
     (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (with-embedding-enabled-and-new-secret-key!
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true}
-                                       :card     {:dataset_query (assoc (mt/mbql-query venues)
-                                                                        :limit 1
+                                       :card     {:dataset_query (assoc (mt/mbql-query venues {:limit 1})
                                                                         :middleware
                                                                         {:add-default-userland-constraints? true
                                                                          :userland-query?                   true})}
@@ -1130,17 +1125,17 @@
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "disabled"}}}]
       (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
                     "`:disabled` parameter")
-        (is (= "You're not allowed to specify a value for :venue_id."
+        (is (= "You're not allowed to specify a value for venue_id."
                (client/client :get 400 (dashcard-url dashcard {:params {:venue_id 100}})))))
       (testing "If a `:disabled` param is passed in the URL the request should fail"
-        (is (= "You're not allowed to specify a value for :venue_id."
+        (is (= "You're not allowed to specify a value for venue_id."
                (client/client :get 400 (str (dashcard-url dashcard) "?venue_id=200"))))))))
 
 (deftest dashboard-enabled-params-test
   (with-embedding-enabled-and-new-secret-key!
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "enabled"}}}]
       (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
-        (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
+        (is (= "You can't specify a value for venue_id if it's already set in the JWT."
                (client/client :get 400 (str (dashcard-url dashcard {:params {:venue_id 100}}) "?venue_id=200")))))
       (testing "If an `:enabled` param is present in the JWT, that's ok"
         (is (=? {:status "completed"
@@ -1186,7 +1181,7 @@
               (is (= [[107]]
                      (mt/rows (client/client :get 202 (dashcard-url dashcard))))))
             (testing "you can't apply an empty param value if the parameter is disabled"
-              (is (= "You're not allowed to specify a value for :date."
+              (is (= "You're not allowed to specify a value for date."
                      (client/client :get 400 (str (dashcard-url dashcard) "?date=")))))))
         (testing "if the param is locked"
           (mt/with-temp-vals-in-db :model/Dashboard (u/the-id dashboard) {:embedding_params {:date "locked"}}
@@ -1541,7 +1536,7 @@
       (doseq [url-fn [values-url search-url]
               :let   [url (str (url-fn {"price" 4}) "?_PRICE_=4")]]
         (testing (str "\n" url)
-          (is (= "You can't specify a value for :price if it's already set in the JWT."
+          (is (= "You can't specify a value for price if it's already set in the JWT."
                  (client/client :get 400 url))))))))
 
 (deftest chain-filter-ignore-current-user-permissions-test
@@ -1591,7 +1586,7 @@
         (doseq [url-fn [values-url search-url]
                 :let   [url (url-fn {"price" 4})]]
           (testing (str "\n" url)
-            (is (= "You can only specify a value for :price in the JWT."
+            (is (= "You can only specify a value for price in the JWT."
                    (client/client :get 400 (str url "?_PRICE_=4"))))))))))
 
 (deftest chain-filter-disabled-params-test
@@ -1610,13 +1605,13 @@
         (doseq [url-fn [values-url search-url]
                 :let   [url (url-fn {"price" 4})]]
           (testing (str "\n" url)
-            (is (= "You're not allowed to specify a value for :price."
+            (is (= "You're not allowed to specify a value for price."
                    (client/client :get 400 url))))))
       (testing "Requests should fail if the URL has a disabled parameter"
         (doseq [url-fn [values-url search-url]
                 :let   [url (str (url-fn) "?_PRICE_=4")]]
           (testing (str "\n" url)
-            (is (= "You're not allowed to specify a value for :price."
+            (is (= "You're not allowed to specify a value for price."
                    (client/client :get 400 url)))))))))
 
 ;; Pivot tables
@@ -1767,10 +1762,10 @@
                                      :dashcard {:parameter_mappings []}}]
         (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
                       "`:disabled` parameter")
-          (is (= "You're not allowed to specify a value for :abc."
+          (is (= "You're not allowed to specify a value for abc."
                  (client/client :get 400 (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}})))))
         (testing "If a `:disabled` param is passed in the URL the request should fail"
-          (is (= "You're not allowed to specify a value for :abc."
+          (is (= "You're not allowed to specify a value for abc."
                  (client/client :get 400 (str (pivot-dashcard-url dashcard) "?abc=200")))))))))
 
 (deftest pivot-dashcard-enabled-params-test
@@ -1786,7 +1781,7 @@
                                      :card     (api.pivots/pivot-card)
                                      :dashcard {:parameter_mappings []}}]
         (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
-          (is (= "You can't specify a value for :abc if it's already set in the JWT."
+          (is (= "You can't specify a value for abc if it's already set in the JWT."
                  (client/client :get 400 (str (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}}) "?abc=200")))))
         (testing "If an `:enabled` param is present in the JWT, that's ok"
           (let [result (client/client :get 202 (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}}))

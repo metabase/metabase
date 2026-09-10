@@ -431,7 +431,7 @@
                     :dispatch         :type}
             ["url_verification" slackbot.events/SlackUrlVerificationEvent]
             ["event_callback"   slackbot.events/SlackEventCallbackEvent]
-            [::mc/default       [:map [:type :string]]]]
+            [::mc/default       [:map {:closed true} [:type :string]]]]
    request]
   (log/debugf "[slackbot] Incoming Slack request type=%s slack_event_type=%s request_ts=%s"
               (:type body)
@@ -448,7 +448,7 @@
 (def SlackBotSettingsRequest
   "Malli schema for the request body of PUT /api/metabot/slack/settings.
    All credential fields must be provided together (either all set or all nil)."
-  [:map
+  [:map {:closed true}
    [:slack-connect-client-id      [:maybe ms/NonBlankString]]
    [:slack-connect-client-secret  [:maybe ms/NonBlankString]]
    [:metabot-slack-signing-secret [:maybe ms/NonBlankString]]])
@@ -621,7 +621,7 @@
   "Handle interactive payloads from Slack (button clicks, modal submissions)."
   [_route-params
    _query-params
-   {:keys [payload]} :- [:map
+   {:keys [payload]} :- [:map {:closed true}
                          [:payload ms/NonBlankString]]
    request]
   (assert-valid-slack-req request)

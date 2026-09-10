@@ -119,7 +119,7 @@
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
   [_route-params
-   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map
+   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map {:closed true}
                                                                                  [:archived                       {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
@@ -216,7 +216,7 @@
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id]}
-   :- [:map
+   :- [:map {:closed true}
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
        [:include-library                {:default false} [:maybe :boolean]]
@@ -732,7 +732,7 @@
 
   To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a
   dashboard question."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/read-check :model/Collection id)
   (present-dashboard-question-candidates
    (dashboard-question-candidates id)))
@@ -764,11 +764,11 @@
 
 (api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
   "Move candidate cards to the dashboards they appear in."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [card_ids]} :- [:maybe
-                          [:map [:card_ids {:optional true}
-                                 [:set ms/PositiveInt]]]]]
+                          [:map {:closed true} [:card_ids {:optional true}
+                                                [:set ms/PositiveInt]]]]]
   (api/read-check :model/Collection id)
   {:moved (move-dashboard-question-candidates id card_ids)})
 
@@ -777,8 +777,8 @@
   [_route-params
    _query-params
    {:keys [card_ids]} :- [:maybe
-                          [:map [:card_ids {:optional true}
-                                 [:set ms/PositiveInt]]]]]
+                          [:map {:closed true} [:card_ids {:optional true}
+                                                [:set ms/PositiveInt]]]]]
   {:moved (move-dashboard-question-candidates nil card_ids)})
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -789,7 +789,7 @@
 (api.macros/defendpoint :get "/root" :- ::Collection
   "Return the 'Root' Collection object with standard details added"
   [_route-params
-   {:keys [namespace]} :- [:map
+   {:keys [namespace]} :- [:map {:closed true}
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
   (-> (root-collection namespace)
       (api/read-check)
@@ -842,7 +842,7 @@
    {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
            include-library collection-type
            show-dashboard-questions show-exploration-documents
-           q include-available-models]} :- [:map
+           q include-available-models]} :- [:map {:closed true}
                                             [:models                      {:optional true} [:maybe Models]]
                                             [:collection-type             {:optional true} children-query/CollectionType]
                                             [:archived                    {:default false} [:maybe ms/BooleanValue]]
@@ -889,7 +889,7 @@
   scope params so the metadata describes the list being shown."
   [_route-params
    {:keys [models archived namespace pinned-state collection-type include-library
-           show-dashboard-questions show-exploration-documents]} :- [:map
+           show-dashboard-questions show-exploration-documents]} :- [:map {:closed true}
                                                                      [:models                     {:optional true} [:maybe Models]]
                                                                      [:archived                   {:default false} [:maybe ms/BooleanValue]]
                                                                      [:namespace                  {:optional true} [:maybe ms/NonBlankString]]
@@ -924,7 +924,7 @@
   "Create a new Collection."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:name            ms/NonBlankString]
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
@@ -1023,10 +1023,26 @@
 (api.macros/defendpoint :get "/graph" :- PermissionsGraph
   "Fetch a graph of all Collection Permissions."
   [_route-params
-   {:keys [namespace]} :- [:map
+   {:keys [namespace]} :- [:map {:closed true}
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-superuser)
   (perms/graph namespace))
+
+(def ^:private RequestId
+  "A group or collection ID as it arrives as a JSON object key in a `PUT /graph` body: the request middleware keywordizes
+  it, so it is turned back into the string it was and has to spell the integer [[decode-graph]] parses."
+  [:and
+   [:string {:decode/api #(cond-> % (keyword? %) name)}]
+   [:re {:error/message "an ID"} #"\d+"]])
+
+(def ^:private RequestPermissionsGroups
+  "The `:groups` of a [[PermissionsGraph]] as it arrives in a `PUT /graph` body, before [[decode-graph]] coerces its
+  keys."
+  [:multi {:dispatch map?}
+   [true  [:map-of RequestId [:multi {:dispatch map?}
+                              [true  [:map-of [:or [:= :root] RequestId] (ms/enum-keywords-and-strings :write :read :none)]]
+                              [false [:fn {:error/message "map"} map?]]]]]
+   [false [:fn {:error/message "map"} map?]]])
 
 (def ^:private graph-decoder
   "Building it this way is a lot faster then calling mc/decode <value> <schema> <transformer>"
@@ -1054,14 +1070,19 @@
   If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions
   graph."
   [_route-params
-   {:keys [skip-graph force]} :- [:map
+   {:keys [skip-graph force]} :- [:map {:closed true}
                                   [:force      {:default false} [:maybe ms/BooleanValue]]
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]]
-   {:keys [namespace revision groups]} :- [:map
+   {:keys [namespace revision groups]} :- [:map {:closed true}
                                            [:namespace {:optional true} [:maybe ms/NonBlankString]]
                                            [:revision  {:optional true} [:maybe ms/Int]]
-                                           [:groups    ms/Map]]]
+                                           [:groups    RequestPermissionsGroups]]
+   request]
   (api/check-superuser)
+  (let [raw-groups (get-in request [:body :groups])]
+    (api/check-no-dropped-entries raw-groups groups)
+    (doseq [[group-id collection-id->perm] groups]
+      (api/check-no-dropped-entries (get raw-groups (keyword group-id)) collection-id->perm)))
   (update-graph! namespace
                  (decode-graph {:revision revision :groups groups})
                  skip-graph
@@ -1071,17 +1092,17 @@
 
 (api.macros/defendpoint :get "/:id" :- ::Collection
   "Fetch a specific Collection with standard details added"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
     (collection-detail (api/read-check :model/Collection resolved-id))))
 
 (api.macros/defendpoint :put "/:id" :- ::Collection
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {authority-level :authority_level, :as collection-updates} :- [:map
+   {authority-level :authority_level, :as collection-updates} :- [:map {:closed true}
                                                                   [:name             {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:description      {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:archived         {:default false} [:maybe ms/BooleanValue]]
@@ -1113,7 +1134,7 @@
 ;; Returns the number of Collection rows deleted, which `t2/delete!` hands back -- 1 whenever the checks above pass.
 (api.macros/defendpoint :delete "/:id" :- ms/IntGreaterThanOrEqualToZero
   "Deletes a collection permanently"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)
   (let [collection (collections-rest.db/collection id)
@@ -1146,11 +1167,11 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned-state sort-column sort-direction official-collections-first
            show-dashboard-questions show-exploration-documents
-           q include-available-models]} :- [:map
+           q include-available-models]} :- [:map {:closed true}
                                             [:models                      {:optional true} [:maybe Models]]
                                             [:archived                    {:default false} [:maybe ms/BooleanValue]]
                                             [:pinned-state                {:optional true} [:maybe (into [:enum] children-query/valid-pinned-state-values)]]
@@ -1189,10 +1210,10 @@
   `GET /api/collection/:id/items`, the result does not depend on search text; pass that endpoint's other scope
   params -- `models`, `archived`, `pinned-state`, `show-dashboard-questions`, `show-exploration-documents` -- so the
   metadata describes the list being shown."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned-state
-           show-dashboard-questions show-exploration-documents]} :- [:map
+           show-dashboard-questions show-exploration-documents]} :- [:map {:closed true}
                                                                      [:models                     {:optional true} [:maybe Models]]
                                                                      [:archived                   {:default false} [:maybe ms/BooleanValue]]
                                                                      [:pinned-state               {:optional true} [:maybe (into [:enum] children-query/valid-pinned-state-values)]]
