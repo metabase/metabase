@@ -163,6 +163,7 @@
      version
      view-log
      warehouse-schema
+     warehouse-schema-overlay
      xrays})
 
 (defn- affected-modules

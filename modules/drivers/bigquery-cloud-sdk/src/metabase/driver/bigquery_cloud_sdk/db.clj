@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouses.schema :as warehouses.schema]
    ;; the driver persists dataset-filter and project-id migrations of its Database details back to the app DB
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -37,4 +38,6 @@
   "Whether the Table with `table-id` has an active database-partitioned Field named `field-name`."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string]
-  (t2/exists? :model/Field :table_id table-id :name field-name :database_partitioned true :active true))
+  ;; every column here is one sync owns, so the user settings have nothing to say about it
+  (t2/exists? :model/Field :table_id table-id :name field-name :database_partitioned true :active true
+              {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))

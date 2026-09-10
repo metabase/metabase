@@ -904,7 +904,6 @@
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
     :metabase/t2-query-namespace                         {:level :off}
-    :metabase/table-or-field-query                       {:level :off}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
     :discouraged-var
