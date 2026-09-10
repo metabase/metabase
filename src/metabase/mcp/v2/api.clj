@@ -24,6 +24,7 @@
    [metabase.mcp.v2.tools.learn]
    [metabase.mcp.v2.tools.metric]
    [metabase.mcp.v2.tools.parameters]
+   [metabase.mcp.v2.tools.query]
    [metabase.mcp.v2.tools.question]
    [metabase.mcp.v2.tools.search]
    [metabase.mcp.v2.tools.subscription]
