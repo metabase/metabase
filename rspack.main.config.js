@@ -45,8 +45,8 @@ const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
  *
  * The reason to do it is neither of those. It keeps this chunk's hash still: a
  * package only leaves it when we change its version, not when a feature stops
- * importing something. The old `vendor`, which claimed every `node_modules`
- * module, changed in three of the last four releases.
+ * importing something. A chunk that claims every `node_modules` module instead
+ * moves on almost every release.
  */
 const CORE_VENDOR_PACKAGES = [
   "react",
