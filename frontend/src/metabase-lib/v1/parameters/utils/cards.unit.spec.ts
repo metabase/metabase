@@ -8,6 +8,8 @@ import {
 } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
+import Question from "metabase-lib/v1/Question";
+
 import { getCardUiParameters } from "./cards";
 
 describe("parameters/utils/cards", () => {
@@ -198,6 +200,44 @@ describe("parameters/utils/cards", () => {
       const card = createMockCard({ parameters: undefined });
 
       expect(getCardUiParameters(card, metadata)).toEqual([]);
+    });
+
+    // Callers that hold a Question read its `parameters()` rather than calling
+    // this directly. The two agree, including when a caller passes the result
+    // of a first pass back in as the `parameters` argument.
+    describe("agreement with Question.parameters()", () => {
+      const parameter = createMockParameter({
+        id: "param-1",
+        name: "Quantity",
+        slug: "quantity",
+        type: "number/=",
+        target: ["dimension", ["template-tag", "quantity"]],
+      });
+
+      it.each([
+        ["a saved card", 5],
+        ["an unsaved card", null],
+      ])("matches on %s", (_name, id) => {
+        const card = createMockCard({
+          id,
+          dataset_query: quantityTagQuery,
+          parameters: [parameter],
+        });
+        const question = new Question(card, SAMPLE_METADATA);
+        const values = { [parameter.id]: 7 };
+
+        const viaQuestion = question.setParameterValues(values).parameters();
+        // Guards the comparison below: two empty arrays would also match.
+        expect(viaQuestion).toHaveLength(1);
+        expect(
+          getCardUiParameters(
+            card,
+            SAMPLE_METADATA,
+            values,
+            question.parameters(),
+          ),
+        ).toEqual(viaQuestion);
+      });
     });
   });
 });
