@@ -469,7 +469,7 @@
    [:semantic_queries {:optional true}
     [:maybe [:sequential [:string {:min 1 :description "A natural-language query matched by semantic similarity when a semantic engine is active (keyword-ranked otherwise). Each query runs separately; results are merged by rank."}]]]]
    [:recent {:optional true}
-    [:maybe [:boolean {:description "true returns your recently viewed items instead of searching. Combines with type (only question, model, metric, dashboard, document, collection, table are tracked) but not with queries or other filters."}]]]
+    [:maybe [:boolean {:description "true returns your recently viewed items instead of searching. Combines with type (only question, model, metric, dashboard, document, collection, table are tracked) but not with queries or other filters. Reflects Metabase UI views only — content you read through these tools is not recorded as a view, so a fresh token's recents can be empty even after get_content calls in the same session."}]]]
    [:type {:optional true}
     [:maybe [:sequential (into [:enum {:description type-desc}] all-types)]]]
    [:collection_id {:optional true}
