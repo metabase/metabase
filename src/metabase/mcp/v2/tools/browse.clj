@@ -18,10 +18,12 @@
    [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
@@ -30,8 +32,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.table :as schema.table]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.table :as schema.table]))
 
 (set! *warn-on-reflection* true)
 
@@ -91,7 +92,7 @@
    "list_models"    {:required [:database_id]
                      :allowed  #{:database_id :limit :offset :response_format :fields}}
    "get_fields"     {:required [:table_ids]
-                     :allowed  #{:table_ids :include_hidden :offset :response_format :fields}}})
+                     :allowed  #{:database_id :table_ids :include_hidden :offset :response_format :fields}}})
 
 (defn- validate-args-for-action!
   [{:keys [action] :as args}]
@@ -115,9 +116,9 @@
   [database-id]
   (v2.resolve/resolve-and-read-with :model/Database database-id
                                     (fn [id]
-                                      (api/read-check (t2/select-one :model/Database
-                                                                     :id id
-                                                                     {:where (schema.table/browsable-databases-honeysql-filter)})))))
+                                      (api/read-check (mcp.db/browsable-database
+                                                       id
+                                                       (schema.table/browsable-databases-honeysql-filter))))))
 
 ;;; ------------------------------------------------ List plumbing -------------------------------------------------
 
@@ -151,11 +152,9 @@
 
 (defn- list-databases
   [args]
-  ;; Naming the columns keeps `t2/select` from decrypting the `details`/`settings` blobs on every row. Nothing
-  ;; projected reads them, and `mi/can-read?` needs only `:id`.
-  (let [rows (t2/select (into [:model/Database] database-detailed-keys)
-                        {:where    (schema.table/browsable-databases-honeysql-filter)
-                         :order-by [[:%lower.name :asc]]})
+  ;; Nothing projected reads the `details`/`settings` blobs, and `mi/can-read?` needs only `:id`.
+  (let [rows (mcp.db/browsable-databases database-detailed-keys
+                                         (schema.table/browsable-databases-honeysql-filter))
         ;; `mi/can-read?` below is one permission check per database; load them in one query first.
         _    (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) rows)})
         dbs  (filterv mi/can-read? rows)]
@@ -231,11 +230,7 @@
 (defn- list-models
   [{:keys [database_id] :as args}]
   (check-database! database_id)
-  (let [models (->> (t2/select question-select-columns
-                               :type :model
-                               :database_id database_id
-                               :archived false
-                               {:order-by [[:%lower.name :asc]]})
+  (let [models (->> (mcp.db/unarchived-models-in-database question-select-columns database_id)
                     (filterv mi/can-read?))]
     (paged-list-content args models {} #(project-rows :question args %))))
 
@@ -281,8 +276,15 @@
   "Map of requested table id → vector of its FK-target tables (readable ones only, capped at
    [[max-related-tables]]), the first [[max-related-tables-with-fields]] of which carry their
    visible column names — sandbox-filtered, so a sandboxed caller never sees hidden columns of
-   a neighboring table."
-  [metadata-rows]
+   a neighboring table.
+
+   `browsable-db-ids` re-applies the browsable-database filter the requested tables already
+   passed. `mi/can-read?` on a Table evaluates per-table perms against its `:db_id` and has no
+   notion of a router destination: a destination reads as affirmatively readable, because the
+   Database read check redirects to its router. An FK from a still-router table into a table
+   whose `:db_id` was reassigned would otherwise carry the destination's column names into the
+   response by the neighbour path, which the directly-requested path already refuses."
+  [browsable-db-ids metadata-rows]
   (let [targets-by-table (into {}
                                (map (fn [{:keys [id fields]}]
                                       [id (into []
@@ -293,7 +295,8 @@
                                metadata-rows)
         related-ids      (into #{} (mapcat val) targets-by-table)
         related          (when (seq related-ids)
-                           (->> (t2/select :model/Table :id [:in related-ids] :active true)
+                           (->> (mcp.db/active-tables-by-ids related-ids)
+                                (filter (comp browsable-db-ids :db_id))
                                 (filter mi/can-read?)
                                 (m/index-by :id)))
         expand-ids       (into #{}
@@ -303,12 +306,7 @@
                                               (take max-related-tables-with-fields))))
                                targets-by-table)
         columns          (when (seq expand-ids)
-                           (-> (group-by :table_id
-                                         (t2/select [:model/Field :id :name :table_id :position]
-                                                    :table_id [:in expand-ids]
-                                                    :active true
-                                                    :visibility_type [:not-in ["hidden" "sensitive" "retired"]]
-                                                    {:order-by [[:position :asc] [:id :asc]]}))
+                           (-> (group-by :table_id (mcp.db/active-visible-fields-for-tables expand-ids))
                                schema.table/batch-filter-sandboxed-fields))]
     (update-vals targets-by-table
                  (fn [target-ids]
@@ -328,12 +326,22 @@
 
 (defn- attach-inline-values
   "Inline cached sample `:values` (as `[value human-readable?]` pairs, the REST field/values
-   shape) onto list-type fields, for the detailed projection. One current-user-aware batched
-   FieldValues fetch across all `tables` — sandboxed/impersonated fields resolve through their
-   per-user cache, never the shared one."
+   shape) onto the list-type fields of every table in `tables` the current user can query, for
+   the detailed projection. Tables they can only read come back unchanged — full field metadata,
+   no `:values`. One current-user-aware batched FieldValues fetch across the queryable tables —
+   sandboxed/impersonated fields resolve through their per-user cache, never the shared one."
   [tables]
-  (let [field-ids  (into []
-                         (comp (mapcat :fields)
+  ;; Read permission is not enough: values are rows of the table, not metadata about it. REST draws
+  ;; the same line — `/api/field/:id/summary` gates on `read-check`, `/api/field/:id/values` on
+  ;; `query-check` — so a metadata-only caller who is refused there must be refused here too.
+  (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
+                                  :table-ids (into #{} (keep :id) tables)})
+  (let [queryable  (into #{} (comp (filter mi/can-query?) (keep :id)) tables)
+        ;; Field ids are unique across tables, so restricting the fetch to queryable tables is the
+        ;; whole gate — nothing withheld here can be looked up again below.
+        field-ids  (into []
+                         (comp (filter (comp queryable :id))
+                               (mapcat :fields)
                                (filter list-type-field?)
                                (keep :id))
                          tables)
@@ -349,6 +357,23 @@
                                                   (get id->values (:id field)))]
                                    (assoc field :values (field-values/field-values->pairs fv))
                                    field)))))
+            tables))))
+
+(defn- withhold-restricted-fingerprints
+  "Strips `:fingerprint` from the fields of every table in `tables` whose current user's row access
+   is narrowed by sandboxing, connection impersonation, or database routing. Fingerprints are
+   computed at sync time across every row of the table, so `:min`/`:max`/`:earliest`/`:latest` are
+   literal values from rows the user cannot see and `:global :distinct-count` is whole-table
+   cardinality — there is no safe subset, so the whole map goes. One batched, fail-closed
+   restriction lookup for the request."
+  [tables]
+  (let [restricted (metabot.perms/row-restricted-table-ids (into #{} (keep :id) tables))]
+    (if (empty? restricted)
+      tables
+      (mapv (fn [table]
+              (cond-> table
+                (contains? restricted (:id table))
+                (update :fields (partial mapv #(dissoc % :fingerprint)))))
             tables))))
 
 (defn- compact
@@ -388,12 +413,6 @@
   ^long [x]
   (alength (.getBytes ^String (json/encode x) "UTF-8")))
 
-(defn- budget-omitted
-  [payload]
-  {:id     (:id payload)
-   :name   (:name payload)
-   :reason "response budget — request in a separate call"})
-
 (defn- slice-table-payload
   "The explicit single-table slice: fields in position order from `offset`, as many as fit the
    budget (never fewer than one, so paging always advances), plus counts and — when fields
@@ -417,26 +436,26 @@
      :message message}))
 
 (defn- assemble-tables
-  "Apply the byte budget to `payloads` (in request order): whole tables until the budget runs
-   out, then the rest under `:omitted`. When the first table alone exceeds the budget — or the
-   caller passed an explicit `offset` — it is returned as a single-table slice instead."
+  "Apply the byte budget to `payloads` (in request order): whole tables until the budget runs out.
+   When the first table alone exceeds the budget — or the caller passed an explicit `offset` — it
+   is returned as a single-table slice instead. Returns `{:tables [...] :message ...}`; `:tables`
+   is always a prefix of `payloads`, so the caller names what was dropped from its own source rows."
   [payloads offset]
   (if (and (seq payloads)
            (or (some? offset)
                (> (byte-size (first payloads)) get-fields-byte-budget)))
     (let [{:keys [payload message]} (slice-table-payload (first payloads) (or offset 0))]
       {:tables  [payload]
-       :omitted (mapv budget-omitted (rest payloads))
        :message message})
     (loop [[payload & more :as remaining] payloads
            used   0
            tables []]
       (if (empty? remaining)
-        {:tables tables :omitted []}
+        {:tables tables}
         (let [size (byte-size payload)]
           (if (<= (+ used size) get-fields-byte-budget)
             (recur more (+ used size) (conj tables payload))
-            {:tables tables :omitted (mapv budget-omitted remaining)}))))))
+            {:tables tables}))))))
 
 (defn- get-fields
   [{:keys [table_ids include_hidden offset] :as args}]
@@ -459,24 +478,32 @@
           ;; filter [[list-databases]] uses, so a change to the metadata fetch can't reopen a leak.
           browsable-db-ids (let [db-ids (into #{} (map :db_id) fetched)]
                              (when (seq db-ids)
-                               (t2/select-pks-set :model/Database
-                                                  {:where [:and
-                                                           [:in :id db-ids]
-                                                           (schema.table/browsable-databases-honeysql-filter)]})))
+                               (mcp.db/browsable-database-ids
+                                db-ids
+                                (schema.table/browsable-databases-honeysql-filter))))
           browsable? (fn [row] (contains? browsable-db-ids (:db_id row)))
           rows      (filterv browsable? fetched)
           missing   (into (vec missing) (comp (remove browsable?) (map :id)) fetched)
           detailed? (or (contains? args :fields)
                         (= :detailed (common/response-format args)))
-          rows      (cond-> rows detailed? attach-inline-values)
-          related   (related-tables-by-requested-table rows)
+          rows      (cond-> rows
+                      detailed? attach-inline-values
+                      detailed? withhold-restricted-fingerprints)
+          related   (related-tables-by-requested-table browsable-db-ids rows)
           payloads  (mapv #(project-table args related %) rows)
-          {:keys [tables omitted message]} (assemble-tables payloads offset)
+          {:keys [tables message]} (assemble-tables payloads offset)
+          ;; `tables` is a prefix of `payloads`, which is index-aligned with `rows`, so the tables
+          ;; the budget dropped are the matching suffix of `rows` — named from the source rows
+          ;; because a `fields` projection can strip `:id`/`:name` off the payloads.
           omitted   (into (mapv (fn [id]
                                   {:id     id
                                    :reason "not found — it may not exist, or you may not have access to it"})
                                 missing)
-                          omitted)
+                          (map (fn [row]
+                                 {:id     (:id row)
+                                  :name   (:name row)
+                                  :reason "response budget — request in a separate call"}))
+                          (drop (count tables) rows))
           body      (cond-> {:tables tables}
                       (seq omitted) (assoc :omitted omitted))]
       (common/success-content (cond-> (json/encode body)
@@ -489,7 +516,7 @@
    [:action (into [:enum {:description "What to browse. list_databases → list_schemas → list_tables → get_fields walks the hierarchy; list_models lists the models built on a database."}]
                   ["list_databases" "list_schemas" "list_tables" "list_models" "get_fields"])]
    [:database_id {:optional true}
-    [:maybe [:int {:description "Numeric database id (databases have no entity_id). Required for list_schemas, list_tables, and list_models."}]]]
+    [:maybe [:int {:description "Numeric database id (databases have no entity_id). Required for list_schemas, list_tables, and list_models. Ignored by get_fields."}]]]
    [:schema {:optional true}
     [:maybe [:string {:description "list_tables only: the schema to list. Omit (or pass \"\") for databases without schemas."}]]]
    [:search {:optional true}
@@ -504,7 +531,7 @@
    [:offset {:optional true}
     [:maybe [:int {:min 0 :description "list_* actions: rows to skip, for paging. For get_fields it pages the fields of a single oversized table, as directed by the continuation message."}]]]
    [:response_format {:optional true}
-    [:maybe [:enum {:description "concise (default) returns the essential columns; detailed adds the full projection (for get_fields: effective_type, coercion_strategy, database_type, fingerprint, has_field_values, and inline values for list-type fields)."}
+    [:maybe [:enum {:description "concise (default) returns the essential columns; detailed adds the full projection (for get_fields: effective_type, coercion_strategy, database_type, fingerprint, has_field_values, and inline values for list-type fields). Values and fingerprints are permission-dependent, and absent rather than empty when withheld: values need permission to query the table, not just to read its metadata, and fingerprints are withheld entirely when your row access to the table is narrowed."}
              "concise" "detailed"]]]
    [:fields {:optional true}
     [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from the detailed row shape, item-relative (e.g. \"fields.name\"). Mutually exclusive with response_format. Not supported for list_schemas."}]]]]])
