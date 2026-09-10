@@ -269,6 +269,9 @@
    :metabase.lib.metadata.result-metadata/source             :breakout
    :metabase.lib.metadata.result-metadata/remove-join-alias? true
    :metabase.lib.field.resolution/fallback-metadata?         true
+   :metabase.driver.mongo.query-processor/source-alias       "ID"
+   :metabase.driver.mongo.query-processor/join-field         "Cat"
+   :metabase.driver.mongo.query-processor/inherited?         true
    :metabase.lib.join/target                                 {:lib/type  :metadata/column
                                                               :name      "CATEGORY"
                                                               :base-type :type/Text}
