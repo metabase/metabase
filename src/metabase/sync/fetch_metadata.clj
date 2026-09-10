@@ -7,12 +7,12 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.fn :as mu.fn]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.fn :as mu.fn]))
 
 (defmacro log-if-error
   "Logs an error message if an exception is thrown while executing the body."
@@ -63,7 +63,7 @@
     (eduction
      (mapcat (fn [table-id]
                (try
-                 (let [table (t2/select-one :model/Table table-id)
+                 (let [table (sync.db/table table-id)
                        table-fields (table-fields-metadata database table)]
                    ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
                    ;; connection is closed before moving to the next table.

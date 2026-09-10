@@ -60,6 +60,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "data-entity_saved" }, () => true)
     .with({ type: "data-adhoc_viz" }, () => false)
     .with({ type: "data-static_viz" }, () => false)
+    .with({ type: "data-research_plan_update" }, () => false)
     .exhaustive();
 
 const isUserVisibleDataPartMessage = (
@@ -381,10 +382,10 @@ const AgentTurnAlert = ({
 }) => (
   <Flex
     direction="column"
-    gap="xs"
+    gap="xxs"
     p="sm"
     bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="sm"
+    bdrs="xs"
     data-testid="metabot-chat-message-turn-alert"
     bg="background_page-primary"
   >
@@ -402,8 +403,8 @@ const AgentTurnAlert = ({
     </Flex>
     {debugDetails && (
       <Card
-        bdrs="xs"
-        ml="lg"
+        bdrs="xxs"
+        ml="xl"
         p="sm"
         withBorder
         shadow="none"
@@ -416,7 +417,7 @@ const AgentTurnAlert = ({
         {JSON.stringify(debugDetails, null, 2)}
       </Card>
     )}
-    {footer && <Box ml="lg">{footer}</Box>}
+    {footer && <Box ml="xl">{footer}</Box>}
   </Flex>
 );
 

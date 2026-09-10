@@ -379,9 +379,9 @@ export const NativeQueryEditorRoot = forwardRef<
 
                 <Stack
                   display={readOnly ? "none" : undefined}
-                  gap="md"
+                  gap="lg"
                   justify="flex-end"
-                  p="md"
+                  p="lg"
                 >
                   {proposedQuestion && onRejectProposed && onAcceptProposed && (
                     <>

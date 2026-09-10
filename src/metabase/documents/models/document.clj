@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -118,15 +119,15 @@
   ([instance]
    (and (mi/current-user-has-full-permissions? :read instance)
         (content-visible? instance)))
-  ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-read? (documents.db/document pk))))
 
 (defmethod mi/can-write? :model/Document
   ([instance]
    (and (mi/current-user-has-full-permissions? :write instance)
         (content-visible? instance)))
-  ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-write? (documents.db/document pk))))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -148,7 +149,7 @@
   (when old-collection-id
     (api/write-check :model/Collection old-collection-id))
   (when new-collection-id
-    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))
+    (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
     (api/write-check :model/Collection new-collection-id)))
 
 ;;; ------------------------------------------------ Write orchestration -------------------------------------------
@@ -256,9 +257,7 @@
                                                                 (pos-int? (-> % :attrs :id)))
                                                        (-> % :attrs :id)))
         to-clone (when (seq card-ids)
-                   (t2/select :model/Card {:where [:and [:in :id card-ids]
-                                                   [:or [:<> :document_id id]
-                                                    [:= :document_id nil]]]}))]
+                   (documents.db/cards-not-in-document card-ids id))]
     (with-content-gate-cache
       (reduce (fn [accum card]
                 (api/read-check card)
@@ -269,13 +268,20 @@
               {}
               to-clone))))
 
+(defn- hydrate-document
+  "Fetch a document by id along with the derived fields the API returns. Does *not* check permissions or
+  publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
+  both semantically wrong and an extra, avoidable round-trip."
+  [id]
+  (t2/hydrate (documents.db/document id) :creator :can_write :can_delete :can_restore :is_remote_synced))
+
 (defn get-document
   "Get document by id checking if the current user has permission to access and if the document exists.
   Pass `:log-view? false` to skip publishing the `:event/document-read` view event."
   [id & {:keys [log-view?] :or {log-view? true}}]
   (u/prog1 (api/check-404
             (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
+             (hydrate-document id)))
     (when log-view?
       (events/publish-event! :event/document-read
                              {:object-id id
@@ -316,12 +322,12 @@
                            (when collection_position
                              (api/maybe-reconcile-collection-position! {:collection_id collection_id
                                                                         :collection_position collection_position}))
-                           (let [document-id (t2/insert-returning-pk! :model/Document {:name name
-                                                                                       :collection_id collection_id
-                                                                                       :collection_position collection_position
-                                                                                       :document document
-                                                                                       :content_type prose-mirror/prose-mirror-content-type
-                                                                                       :creator_id api/*current-user-id*})
+                           (let [document-id (documents.db/insert-document! {:name name
+                                                                             :collection_id collection_id
+                                                                             :collection_position collection_position
+                                                                             :document document
+                                                                             :content_type prose-mirror/prose-mirror-content-type
+                                                                             :creator_id api/*current-user-id*})
                                  cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
                                                                                           :collection_id collection_id
                                                                                           :document document
@@ -329,11 +335,22 @@
                                                                (when-not (empty? cards)
                                                                  (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
                              (when (seq cards-to-update-in-ast)
-                               (t2/update! :model/Document :id document-id
-                                           (update-cards-in-ast
-                                            {:document document
-                                             :content_type prose-mirror/prose-mirror-content-type}
-                                            cards-to-update-in-ast)))
+                               (documents.db/update-document! document-id
+                                                              (update-cards-in-ast
+                                                               {:document document
+                                                                :content_type prose-mirror/prose-mirror-content-type}
+                                                               cards-to-update-in-ast)))
+                             ;; `get-document`, so `:event/document-read` fires: the creator has to find the
+                             ;; document they just made in their recents, and that row is written only by this
+                             ;; event's handler. Creating is arguably not viewing — but the view count and
+                             ;; `view_log` row it also writes are the cost of the recents entry until the two
+                             ;; are decoupled; suppressing the event silently drops the document out of the
+                             ;; command palette (UXW-1786).
+                             ;;
+                             ;; The read check inside it still has to run: `can-read?` on a Document is
+                             ;; collection permissions *and* the content gate, and the gate adjudicates the
+                             ;; warehouse data the body embeds, so a document the creator may not read must not
+                             ;; come back rendered.
                              (u/prog1 (get-document document-id)
                                (when (collections/remote-synced-collection? (:collection_id <>))
                                  (collections/check-non-remote-synced-dependencies <>)))))]
@@ -379,22 +396,22 @@
             pairings (draft-stored-result-pairings document
                                                    (:content_type existing-document)
                                                    draft-card-id-map)]
-        (t2/update! :model/Document document-id
-                    (cond-> document-updates
-                      document (merge (update-cards-in-ast
-                                       {:document document
-                                        :content_type (:content_type existing-document)}
-                                       card-id-map))
-                      name (assoc :name name)
-                      (contains? body :collection_id) (assoc :collection_id collection_id)
-                      ;; First body save clears the auto-created Summary placeholder flag.
-                      (and (:is_placeholder existing-document)
-                           (contains? body :document))
-                      (assoc :is_placeholder false)))
+        (documents.db/update-document! document-id
+                                       (cond-> document-updates
+                                         document (merge (update-cards-in-ast
+                                                          {:document document
+                                                           :content_type (:content_type existing-document)}
+                                                          card-id-map))
+                                         name (assoc :name name)
+                                         (contains? body :collection_id) (assoc :collection_id collection_id)
+                                         ;; First body save clears the auto-created Summary placeholder flag.
+                                         (and (:is_placeholder existing-document)
+                                              (contains? body :document))
+                                         (assoc :is_placeholder false)))
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings)))
       (collections/check-for-remote-sync-update existing-document))
-    (let [updated-document (get-document document-id)]
+    (let [updated-document (hydrate-document document-id)]
       ;; Publish appropriate events
       (if (:archived document-updates)
         (events/publish-event! :event/document-delete
@@ -410,9 +427,10 @@
   [_model k documents]
   (mi/instances-with-hydrated-data
    documents k
-   #(-> (t2/select [:model/User :id :email :first_name :last_name] :id (keep :creator_id documents))
-        (map (juxt :id identity))
-        (into {}))
+   #(when-let [creator-ids (seq (keep :creator_id documents))]
+      (-> (documents.db/user-columns creator-ids)
+          (map (juxt :id identity))
+          (into {})))
    :creator_id {:default {}}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :cards]
@@ -422,9 +440,7 @@
   (let [document-ids (keep :id documents)
         ;; Fetch all cards for all documents in one batched query
         all-cards (when (seq document-ids)
-                    (t2/select :model/Card
-                               :document_id [:in document-ids]
-                               :archived false))
+                    (documents.db/unarchived-cards-for-documents document-ids))
         ;; Group cards by document_id, then convert each group to a map keyed by card ID
         cards-by-doc-id (group-by :document_id all-cards)
         cards-maps-by-doc-id (update-vals cards-by-doc-id
@@ -440,9 +456,7 @@
   (let [update-map {:collection_id collection-id
                     :archived (boolean archived)
                     :archived_directly (boolean archived-directly)}]
-    (t2/update! :model/Card
-                :document_id document-id
-                update-map)))
+    (documents.db/update-cards-for-document! document-id update-map)))
 
 (t2/define-after-update :model/Document
   [{:keys [id collection_id archived archived_directly] :as instance}]
@@ -520,11 +534,14 @@
 
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 
-(def ^:private ast-model->db-model
-  {"card"      :model/Card
-   "dataset"   :model/Card
-   "table"     :model/Table
-   "dashboard" :model/Dashboard})
+(defn- ast-model->entity
+  "The database row identified by the smart-link/card-embed `model` (\"card\", \"dataset\", \"table\", or
+  \"dashboard\") and `id`, or nil."
+  [model id]
+  (case model
+    ("card" "dataset") (documents.db/card id)
+    "table"            (documents.db/table id)
+    "dashboard"        (documents.db/dashboard id)))
 
 (def ^:private model->serdes-model
   {"card"      "Card"
@@ -548,7 +565,7 @@
         node (cond-> node
                (= prose-mirror/card-embed-type type)
                (update :attrs #(apply dissoc % non-portable-card-embed-attrs)))]
-    (if-let [db-model (and id (t2/select-one (ast-model->db-model model) :id id))]
+    (if-let [db-model (and id (ast-model->entity model id))]
       (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
       (u/prog1 node
         (log/warnf "entity_id not found for %s at id: %s" model id)))))
@@ -659,7 +676,7 @@
 
 (defmethod serdes/descendants "Document"
   [_model-name id _opts]
-  (when-let [document (t2/select-one :model/Document :id id)]
+  (when-let [document (documents.db/document id)]
     (when (= prose-mirror/prose-mirror-content-type (:content_type document))
       (merge
        (into {}

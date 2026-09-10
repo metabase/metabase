@@ -24,8 +24,8 @@ export const SettingsLicense = () => {
           title={t`Looking for more?`}
           description={t`Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.`}
         />
-        <Text fw="bold" mt="xl">{t`Want to know more?`}</Text>
-        <Flex mt="md" justify="space-between">
+        <Text fw="bold" mt="xxl">{t`Want to know more?`}</Text>
+        <Flex mt="lg" justify="space-between">
           <Button component={ExternalLink} variant="filled" href={upgradeUrl}>
             {t`Explore our paid plans`}
           </Button>

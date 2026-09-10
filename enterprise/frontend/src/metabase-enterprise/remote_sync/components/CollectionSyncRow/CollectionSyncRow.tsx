@@ -27,7 +27,7 @@ export const CollectionSyncRow = ({
   });
 
   return (
-    <Box p="md" className={CS.borderRowDivider}>
+    <Box p="lg" className={CS.borderRowDivider}>
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
           <Icon name={icon.name} c={icon.color ?? "text-secondary"} />
@@ -35,7 +35,6 @@ export const CollectionSyncRow = ({
         </Flex>
         <Flex align="center" gap="sm">
           <Switch
-            size="sm"
             checked={isChecked}
             onChange={(e) => onToggle(collection, e.currentTarget.checked)}
             disabled={!canWrite || isReadOnly}

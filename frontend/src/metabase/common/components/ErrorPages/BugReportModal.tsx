@@ -65,22 +65,22 @@ export const BugReportModal = ({
       >
         {(formik) => (
           <Form>
-            <Text py="md">{t`Could you provide us with a little context?`}</Text>
+            <Text py="lg">{t`Could you provide us with a little context?`}</Text>
             <FormTextarea
               name="description"
               data-autofocus
               placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
               minRows={5}
-              mb="md"
+              mb="lg"
             />
             <Box
               bg={"accent-gray-light"}
-              p="lg"
-              my="md"
+              p="xl"
+              my="lg"
               style={{ borderRadius: "0.5rem" }}
             >
-              <Flex align="flex-start" gap="md">
-                <Stack gap="xs">
+              <Flex align="flex-start" gap="lg">
+                <Stack gap="xxs">
                   <Text size="lg" fw="bold">
                     {t`Include diagnostic information`}
                   </Text>
@@ -116,8 +116,8 @@ export const BugReportModal = ({
             >
               {isSlackSending ? t`Sending...` : t`Submit report`}
             </Button>
-            <Divider my="md" />
-            <Flex align="flex-start" justify="space-between" gap="md">
+            <Divider my="lg" />
+            <Flex align="flex-start" justify="space-between" gap="lg">
               <Box>
                 <Text size="lg" fw="bold">{t`Download report`}</Text>
                 <Text>{t`Diagnostic info may contain sensitive data.`}</Text>
@@ -127,8 +127,8 @@ export const BugReportModal = ({
                 label={c("This is a verb, not a noun").t`Download`}
                 color="text-primary"
                 my="sm"
-                px="lg"
-                radius="md"
+                px="xl"
+                radius="sm"
               />
             </Flex>
           </Form>

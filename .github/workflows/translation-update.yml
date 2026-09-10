@@ -144,14 +144,12 @@ jobs:
           EOF
           )"
 
-      - name: Auto approve PR
-        uses: juliangruber/approve-pull-request-action@68fcc9a5a73b5641cadf757cf99d73720dcb05d0 # v2.1.0
-        with:
-          github-token: ${{ github.token }}
-          number: ${{ steps.create_pr.outputs.pr_number }}
-
-      - name: Enable Pull Request Automerge
-        run: gh pr merge --squash --auto "$PR_NUMBER"
+      - name: Approve and Merge the PR
+        run: |
+          gh pr review --approve "$PR_NUMBER"
+          gh pr merge --squash --auto "$PR_NUMBER"
+        shell: bash
         env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          # uses a different token than the token that created the PR so we can approve and merge it
+          GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}

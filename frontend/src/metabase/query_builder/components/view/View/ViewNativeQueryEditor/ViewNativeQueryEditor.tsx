@@ -1,4 +1,5 @@
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
+import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
@@ -107,8 +108,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         isPromptInputOpen={inlineSQLPrompt?.isPromptOpen}
         onTogglePromptInput={inlineSQLPrompt?.togglePrompt}
       >
-        <NativeQueryEditor.TopBar>
-          <NativeQueryEditor.ParametersList />
+        <NativeQueryEditor.TopBar leftContent={<NativeQueryParametersList />}>
           <NativeQueryEditor.Sidebar />
           <NativeQueryEditor.VisibilityToggler />
         </NativeQueryEditor.TopBar>

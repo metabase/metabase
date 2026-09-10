@@ -28,12 +28,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type {
-  ClickActionModeGetter,
-  ClickActionsMode,
-  ClickObject,
-  QueryClickActionsMode,
-} from "./click-actions";
+import type { ClickActionsMode, ClickObject } from "./click-actions";
 
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
@@ -144,6 +139,7 @@ export type VisualizationPassThroughProps = {
   canToggleSeriesVisibility?: boolean;
   isObjectDetail?: boolean;
   isQueryBuilder?: boolean;
+  isStandaloneQuestion?: boolean;
   queryBuilderMode?: QueryBuilderMode;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
@@ -164,7 +160,12 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
+  mode?: ClickActionsMode;
+  /**
+   * Lets users drag column headers to reorder the columns.
+   * Without it the table shows the outline header, the style used for read-only previews.
+   */
+  hasColumnReordering?: boolean;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx

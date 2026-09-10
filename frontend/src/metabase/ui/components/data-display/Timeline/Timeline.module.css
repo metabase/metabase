@@ -5,9 +5,21 @@
 .item {
   --item-border-color: var(--mb-color-border-neutral);
 
+  &::before {
+    bottom: calc(var(--mantine-spacing-xxl) * -1);
+  }
+
+  &:not(:first-of-type) {
+    margin-top: var(--mantine-spacing-xxl);
+  }
+
   &[data-line-active] {
     --item-border-color: var(--tl-color);
   }
+}
+
+.itemTitle {
+  margin-bottom: calc(var(--mantine-spacing-xxs) / 2);
 }
 
 .itemBullet {
