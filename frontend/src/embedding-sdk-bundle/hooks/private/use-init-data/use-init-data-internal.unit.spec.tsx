@@ -1,9 +1,16 @@
+/* eslint-disable testing-library/no-node-access -- verifies ECharts tooltip attachment outside React */
 import { renderHook } from "@testing-library/react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { PLUGIN_API } from "metabase/api/client";
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { apiRequestManipulationMiddleware } from "metabase/api/client/middleware";
+import {
+  EMBEDDING_SDK_CONFIG,
+  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
+} from "metabase/embedding-sdk/config";
+import { reinitialize } from "metabase/plugins";
+import { getTooltipBaseOption } from "metabase/viz-core";
 
 import { useInitData } from "./use-init-data-internal";
 
@@ -75,5 +82,46 @@ describe("useInitData » data-app context", () => {
     ).toBeUndefined();
 
     unmount();
+  });
+});
+
+describe("SDK visualization reset lifecycle", () => {
+  afterEach(() => {
+    document.getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID)?.remove();
+    document.querySelector(".echarts-tooltip-container")?.remove();
+    reinitialize();
+  });
+
+  it("restores app tooltips after reset and installs SDK tooltips on the next mount", async () => {
+    const portal = document.createElement("div");
+    portal.id = EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID;
+    document.body.append(portal);
+    const { unmount: unmountFirst } = setup();
+    expect(
+      portal.contains(getTooltipBaseOption({ current: null }).appendTo()),
+    ).toBe(true);
+    unmountFirst();
+    portal.remove();
+
+    reinitialize();
+    const appTooltip = getTooltipBaseOption({ current: null }).appendTo();
+    expect(appTooltip.parentElement).toBe(document.body);
+    appTooltip.remove();
+
+    const nextPortal = document.createElement("div");
+    nextPortal.id = EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID;
+    document.body.append(nextPortal);
+    const { unmount: unmountSecond } = setup();
+    expect(
+      nextPortal.contains(getTooltipBaseOption({ current: null }).appendTo()),
+    ).toBe(true);
+    const request = await apiRequestManipulationMiddleware({
+      method: "GET",
+      url: "/api/health",
+      data: {},
+    });
+    expect(request.headers?.["X-Metabase-Client"]).toBe("embedding-sdk-react");
+    expect(request.headers?.["X-Metabase-Embedded"]).toBeUndefined();
+    unmountSecond();
   });
 });
