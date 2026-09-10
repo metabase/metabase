@@ -586,7 +586,7 @@
    ;; reads it from the raw body to decide session-vs-permanent cookie, exactly as on
    ;; `POST /api/session` — for a newly enrolled MFA user THIS request is the one that creates the session.
    {enrollment-token :enrollment_token
-    code             :code} :- [:map
+    code             :code} :- [:map {:closed true}
                                 [:enrollment_token ms/NonBlankString]
                                 [:code             ms/NonBlankString]
                                 [:remember         {:optional true} :boolean]]
