@@ -130,6 +130,15 @@
    [:perm_type     {:optional true} [:maybe [:or :keyword :string]]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
 
+(mr/def ::data-access-token
+  "A persisted [[metabase.permissions.data-access-token/data-access-token]]: the lens a piece of content was produced
+  under, as digests of the sandbox, impersonation and routing tokens that applied, keyed by table or database id. A
+  lens with nothing applied is `{}`."
+  [:map {:closed true}
+   [:sandbox       {:optional true} [:map-of ms/PositiveInt :string]]
+   [:impersonation {:optional true} [:map-of ms/PositiveInt :string]]
+   [:routing       {:optional true} [:map-of ms/PositiveInt :string]]])
+
 (mr/def ::permissions-group
   "A PermissionsGroup as selected from the app DB: every column of `:permissions_group`."
   [:map {:closed true}
@@ -138,6 +147,22 @@
    [:entity_id        :string]
    [:magic_group_type [:maybe [:or :keyword :string]]]
    [:is_tenant_group  :boolean]])
+
+(mr/def ::permissions-group.member
+  "A member of a PermissionsGroup as `metabase.permissions.db/group-members` selects it: the User columns the group
+  member list shows, the membership it comes from, and `:is_group_manager` when advanced permissions are enabled."
+  [:map {:closed true}
+   [:id                                ms/PositiveInt]
+   [:user_id                           ms/PositiveInt]
+   [:first_name                        [:maybe :string]]
+   [:last_name                         [:maybe :string]]
+   [:email                             :string]
+   [:is_superuser                      :boolean]
+   [:type                              [:or :keyword :string]]
+   [:group_id                          ms/PositiveInt]
+   [:membership_id                     ms/PositiveInt]
+   [:is_group_manager {:optional true} [:maybe :boolean]]
+   [:common_name      {:optional true} [:maybe :string]]])
 
 (mr/def ::permissions-group.update
   "What an update (or insert) of a PermissionsGroup accepts: every column of `:permissions_group` except `id`, all optional."

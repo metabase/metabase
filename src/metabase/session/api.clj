@@ -237,7 +237,7 @@
   "Login."
   [_route-params
    _query-params
-   {:keys [username password]} :- [:map
+   {:keys [username password]} :- [:map {:closed true}
                                    [:username ms/NonBlankString]
                                    [:password ms/NonBlankString]]
    request]
@@ -365,7 +365,7 @@
   "Send a reset email when user has forgotten their password."
   [_route-params
    _query-params
-   {:keys [email]} :- [:map
+   {:keys [email]} :- [:map {:closed true}
                        [:email ms/Email]]
    request]
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
@@ -442,7 +442,7 @@
 (api.macros/defendpoint :get "/password_reset_token_valid"
   "Check if a password reset token is valid and isn't expired."
   [_route-params
-   {:keys [token]} :- [:map
+   {:keys [token]} :- [:map {:closed true}
                        [:token ms/NonBlankString]]]
   (let [auth-result (auth-identity/with-fallback auth-identity/authenticate
                       [:provider/support-access-grant
@@ -471,7 +471,7 @@
   "Login with Google Auth."
   [_route-params
    _query-params
-   {:keys [token]} :- [:map
+   {:keys [token]} :- [:map {:closed true}
                        [:token ms/NonBlankString]]
    request]
   (when-not (sso/google-auth-client-id)
@@ -510,7 +510,7 @@
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
   [_route-params
    _query-params
-   _body :- [:map
+   _body :- [:map {:closed true}
              [:password ms/ValidPassword]]]
   ;; if we pass the [[ms/ValidPassword]] test we're g2g
   {:valid true})
@@ -528,7 +528,7 @@
    ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
    ;; reads it from the raw body to decide session-vs-permanent cookie, exactly as on
    ;; `POST /api/session` — for MFA users THIS request is the one that creates the session.
-   {challenge-token :challenge_token, code :code} :- [:map
+   {challenge-token :challenge_token, code :code} :- [:map {:closed true}
                                                       [:challenge_token ms/NonBlankString]
                                                       [:code            ms/NonBlankString]
                                                       [:remember        {:optional true} :boolean]]
@@ -629,7 +629,7 @@
   `POST /mfa/verify` like any other code."
   [_route-params
    _query-params
-   {challenge-token :challenge_token} :- [:map [:challenge_token ms/NonBlankString]]
+   {challenge-token :challenge_token} :- [:map {:closed true} [:challenge_token ms/NonBlankString]]
    request]
   (let [claims (or (session.challenge/verify-challenge-token challenge-token)
                    (throw (ex-info (tru "Authentication session expired. Please log in again.")

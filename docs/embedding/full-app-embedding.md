@@ -26,12 +26,12 @@ Check out the [Full app embedding quick start](./full-app-embedding-quick-start-
 
 ## Prerequisites for full app embedding
 
-1. Make sure you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://store.metabase.com/checkout/login-details).
+1. Make sure you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://www.metabase.com/pricing).
 2. Organize people into Metabase [groups](../people-and-groups/start.md).
 3. Set up [permissions](../permissions/introduction.md) for each group.
 4. Set up [SSO](../people-and-groups/start.md#authentication) to automatically apply permissions and show people the right data upon sign-in. In general, **we recommend using [SSO with JWT](../people-and-groups/authenticating-with-jwt.md)**.
 
-If you're dealing with a [multi-tenant](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics) situation, check out our recommendations for [Configuring permissions for different customer schemas](../permissions/embedding.md).
+If you're dealing with a [multi-tenant](./tenants.md) situation, check out our recommendations for [Configuring permissions for different customer schemas](../permissions/embedding.md).
 
 If you have your app running locally, and you're using the Pro Cloud version, or hosting Metabase and your app in different domains, you'll need to set your Metabase environment's session cookie SameSite option to "none".
 
@@ -141,7 +141,7 @@ You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../conf
 
 If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing embedded items in private/incognito tabs.
 
-Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value).
 
 ## Securing full app embeds
 
@@ -246,6 +246,6 @@ To build a sample full app embed using SSO with JWT, see our reference apps:
 ## Further reading
 
 - [Full app embedding quick start](./full-app-embedding-quick-start-guide.md)
-- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
+- [Embedding introduction](./introduction.md).
 - [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).

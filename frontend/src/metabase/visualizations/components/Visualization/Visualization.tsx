@@ -19,6 +19,8 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { CardQuestionBuilder } from "metabase/metadata-store";
+import { selectQuestionFromCardBuilder } from "metabase/metadata-store";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
@@ -26,7 +28,7 @@ import type { Dispatch, State } from "metabase/redux/store";
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
-import type { IconProps } from "metabase/ui";
+import { Box, Flex, type IconProps } from "metabase/ui";
 import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoize } from "metabase/utils/memoize";
@@ -59,7 +61,6 @@ import {
   prefetchVisualizationComponent,
 } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   Dashboard,
@@ -82,11 +83,7 @@ import { ErrorView } from "./ErrorView";
 import LoadingView, { type LoadingViewProps } from "./LoadingView";
 import { DashCardLoadingView } from "./LoadingView/DashCardLoadingView";
 import NoResultsView from "./NoResultsView";
-import {
-  VisualizationActionButtonsContainer,
-  VisualizationHeader,
-  VisualizationRoot,
-} from "./Visualization.styled";
+import S from "./Visualization.module.css";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
 import { VisualizationRunningState } from "./VisualizationRunningState";
 import { Watermark } from "./Watermark";
@@ -96,6 +93,7 @@ type StateDispatchProps = {
 };
 
 type StateProps = {
+  buildQuestion: CardQuestionBuilder;
   hasDevWatermark: boolean;
   fontFamily: string;
   isEmbeddingSdk: boolean;
@@ -155,7 +153,6 @@ type VisualizationOwnProps = {
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   /** Shown while a custom viz plugin loads. Documents supply their card-embed loading view here. */
   customVizLoadingView?: ReactNode;
-  metadata?: Metadata;
   mode?: ClickActionsMode;
   editSummary?: () => void;
   rawSeries?: VisualizationRawSeries;
@@ -212,6 +209,7 @@ type VisualizationState = {
 };
 
 const mapStateToProps = (state: State): StateProps => ({
+  buildQuestion: selectQuestionFromCardBuilder(state),
   hasDevWatermark: getTokenFeature(state, "development_mode"),
   fontFamily: getFont(state),
   isEmbeddingSdk: isEmbeddingSdk(),
@@ -430,13 +428,6 @@ class Visualization extends PureComponent<
     }
   };
 
-  private static getQuestionForCard(
-    metadata: Metadata | undefined,
-    card: SeriesCard | undefined,
-  ) {
-    return !!card && !!metadata ? new Question(card, metadata) : undefined;
-  }
-
   // Memoized per instance. The cache keys on the arguments, and the object
   // ones are held weakly, so entries go when the click context does.
   private _getClickActionsCached = memoize(
@@ -444,8 +435,8 @@ class Visualization extends PureComponent<
       clickedObject: ClickObject | null | undefined,
       mode: ClickActionsMode | undefined,
       computedSettings: Record<string, string>,
-      dashcard?: DashboardCard,
-      metadata?: Metadata,
+      dashcard: DashboardCard | undefined,
+      buildQuestion: CardQuestionBuilder,
       rawSeries: VisualizationRawSeries = [],
       visualizerRawSeries: RawSeries = [],
       isRawTable = false,
@@ -471,7 +462,7 @@ class Visualization extends PureComponent<
       if (!isQuestionCard(card)) {
         return [];
       }
-      const question = Visualization.getQuestionForCard(metadata, card);
+      const question = buildQuestion(card);
 
       return mode
         ? mode.actionsForClick(
@@ -492,7 +483,7 @@ class Visualization extends PureComponent<
     const {
       mode,
       dashcard,
-      metadata,
+      buildQuestion,
       rawSeries,
       visualizerRawSeries,
       isRawTable,
@@ -507,7 +498,7 @@ class Visualization extends PureComponent<
       mode,
       computedSettings,
       dashcard,
-      metadata,
+      buildQuestion,
       rawSeries,
       visualizerRawSeries,
       isRawTable,
@@ -674,7 +665,6 @@ class Visualization extends PureComponent<
       isSlow,
       isVisualizer,
       isDownloadingToImage,
-      metadata,
       mode,
       editSummary,
       queryBuilderMode,
@@ -795,9 +785,9 @@ class Visualization extends PureComponent<
     }
 
     const extra = (
-      <VisualizationActionButtonsContainer>
+      <Flex component="span" align="center">
         {actionButtons}
-      </VisualizationActionButtonsContainer>
+      </Flex>
     );
 
     let { gridSize, gridUnit } = this.props;
@@ -845,8 +835,8 @@ class Visualization extends PureComponent<
         onError={this.onErrorBoundaryError}
         ref={this.props.forwardedRef}
       >
-        <VisualizationRoot
-          className={className}
+        <Box
+          className={cx(S.root, className)}
           style={style}
           data-testid="visualization-root"
           // `getUiName` should be defined (and is a required field on the TS type), but because we have javascript
@@ -855,7 +845,7 @@ class Visualization extends PureComponent<
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
-            <VisualizationHeader>
+            <Box className={S.header} flex="0 0 auto">
               <ChartCaption
                 series={series}
                 visualizerRawSeries={visualizerRawSeries}
@@ -870,7 +860,7 @@ class Visualization extends PureComponent<
                   canSelectTitle ? this.handleOnChangeCardAndRun : null
                 }
               />
-            </VisualizationHeader>
+            </Box>
           )}
           {replacementContent ? (
             replacementContent
@@ -956,7 +946,6 @@ class Visualization extends PureComponent<
                       isSettings={!!isSettings}
                       isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
                       scrollToLastColumn={scrollToLastColumn}
-                      metadata={metadata}
                       mode={mode}
                       queryBuilderMode={queryBuilderMode}
                       // Unjustified type cast. FIXME
@@ -1030,7 +1019,7 @@ class Visualization extends PureComponent<
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             />
           )}
-        </VisualizationRoot>
+        </Box>
       </ErrorBoundary>
     );
   }

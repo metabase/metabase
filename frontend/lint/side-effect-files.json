@@ -127,7 +127,6 @@
     "frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts": "self",
     "frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx": "self",
     "frontend/src/metabase/dashboard/components/grid/GridLayout.tsx": "self",
-    "frontend/src/metabase/dashboard/selectors.ts": "self",
     "frontend/src/metabase/dashboard/visualizations/Heading/index.ts": "self",
     "frontend/src/metabase/dashboard/visualizations/Text/index.ts": "self",
     "frontend/src/metabase/databases/utils/schema.ts": "self",

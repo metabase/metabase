@@ -95,7 +95,7 @@
   `otpauth_uri` for QR display; enrollment is not active until confirmed with a live code."
   [_route-params
    _query-params
-   {:keys [password]} :- [:map [:password ms/NonBlankString]]]
+   {:keys [password]} :- [:map {:closed true} [:password ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
   (when-not (mfa.settings/mfa-enabled?)
     (throw (ex-info (tru "Two-factor authentication is not enabled on this instance.")
@@ -120,7 +120,7 @@
   factor and returns the single-use recovery codes — the only time they exist in plaintext."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+   {:keys [code]} :- [:map {:closed true} [:code ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
   (let [{:keys [recovery-codes]} (throttled :enroll
                                             (fn []
@@ -136,7 +136,7 @@
   TOTP code or an unused recovery code — never just the password."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+   {:keys [code]} :- [:map {:closed true} [:code ms/NonBlankString]]]
   (throttled :disable
              (fn []
                ;; one transaction so a consumed recovery code and the enrollment removal land together
@@ -180,7 +180,7 @@
   strip its own 2FA with only a cookie, turning transient access into a permanent password bypass."
   [_route-params
    _query-params
-   {user-id :user_id} :- [:map [:user_id ms/PositiveInt]]]
+   {user-id :user_id} :- [:map {:closed true} [:user_id ms/PositiveInt]]]
   (api/check-superuser)
   (when (= user-id api/*current-user-id*)
     (throw (ex-info (tru "You cannot administratively remove your own two-factor authentication. Please use the normal removal method in your account settings.")
@@ -256,7 +256,7 @@
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
   [_route-params
-   {:keys [query]} :- [:map [:query {:optional true} [:maybe :string]]]]
+   {:keys [query]} :- [:map {:closed true} [:query {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (user-list-response true query))
 
@@ -267,7 +267,7 @@
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
   [_route-params
-   {:keys [query]} :- [:map [:query {:optional true} [:maybe :string]]]]
+   {:keys [query]} :- [:map {:closed true} [:query {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (user-list-response false query))
 
@@ -279,7 +279,7 @@
   never rotate the codes. The plaintext codes are returned exactly once; only hashes are stored."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+   {:keys [code]} :- [:map {:closed true} [:code ms/NonBlankString]]]
   (throttled :regenerate
              (fn []
                (t2/with-transaction [_conn]
