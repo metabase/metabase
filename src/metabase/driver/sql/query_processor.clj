@@ -2310,14 +2310,15 @@
 
 (defn- cte-stage-source-form
   "Like [[stage-source-form]], but the source is the CTE containing the previous stage rather than a nested subselect.
-  The CTE is aliased as `__mb_source` so field refs compile identically in either style."
+   The CTE is aliased as `__mb_source` so field refs compile identically in either style."
   [driver prev-stage-idx]
   {:from [[(->honeysql driver (h2x/identifier :table-alias (stage-cte-name prev-stage-idx)))
            [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]})
 
 (defn- stage-cte
-  "HoneySQL `:with` entry for a compiled non-final stage. If the stage has ambiguous output column names, rename them
-  with a CTE column list, the same fix [[stage-source-form]] applies in the nested-subselect style."
+  "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" beocomes\"__mb_stage_N AS (SELECT a FROM t)\".
+   If the stage has ambiguous output column names, rename them with a CTE column list, the same fix
+   [[stage-source-form]] applies in the nested-subselect style."
   [stage-idx hsql stage]
   (let [cte-name         (stage-cte-name stage-idx)
         columns-metadata (get-in stage [:lib/stage-metadata :columns])]
@@ -2326,7 +2327,7 @@
       [cte-name hsql])))
 
 (defn- stages->honeysql-ctes
-  "Compile `stages` to HoneySQL, putting each stage but the last in a CTE that the following stage selects from."
+  "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from."
   [driver stages]
   (let [stages   (vec stages)
         last-idx (dec (count stages))
