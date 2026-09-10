@@ -3,14 +3,9 @@
 ## scopes instead; no legacy scope satisfies any v2 scope, so those clients get HTTP 200 with an empty
 ## tools list and no error. The refresh grant can only narrow, so it never self-heals.
 ##
-## This changeset widens every dynamically registered client's scope snapshot so a
-## re-authorization validates. It is idempotent, and grants nothing: no token gains a scope,
-## the user consents to the six on the new screen.
-##
-## Revoking the legacy-shaped tokens — the step that actually forces the re-authentication —
-## is deliberately NOT here. It logs every connected MCP client out once on upgrade, which is a
-## release decision rather than a migration detail. `RevokeLegacyMcpOAuthTokens` is written and
-## tested; wiring it into a changeset is all that is left. Tracked separately.
+## Two data-only changesets: widen every dynamically registered client's scope snapshot so a
+## re-authorization validates, then revoke the legacy-shaped tokens so the client actually
+## re-authenticates rather than refreshing. Both are idempotent.
 
 databaseChangeLog:
   - changeSet:
@@ -20,4 +15,13 @@ databaseChangeLog:
       changes:
         - customChange:
             class: metabase.app_db.custom_migrations.WidenDynamicOAuthClientScopesForMcpV2
+      rollback: []
+
+  - changeSet:
+      id: v64.2026-09-09T12:00:01
+      author: bryanmaass
+      comment: Revoke OAuth tokens carrying only pre-MCP-v2 scopes
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.RevokeLegacyMcpOAuthTokens
       rollback: []
