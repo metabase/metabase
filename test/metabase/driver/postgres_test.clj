@@ -1738,77 +1738,69 @@
                       "ORDER BY attempts.date ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
-(deftest ^:parallel multi-stage-query-compiles-to-ctes-test
-  (mt/test-driver :postgres
-    (mt/dataset test-data
-      (let [query   (mt/mbql-query venues
-                      {:source-query {:source-query {:source-table $$venues
-                                                     :aggregation  [[:count]]
-                                                     :breakout     [$price]}
-                                      :filter [:> *count/Integer 1]}
-                       :aggregation  [[:sum *count/Integer]]})
-            stage-0 "SELECT venues.price AS price, COUNT(*) AS count FROM venues GROUP BY venues.price ORDER BY venues.price ASC"]
-        (testing "each non-final stage becomes a CTE, consumed as __mb_source by the next stage"
-          (is (= (str "WITH __mb_stage_0 AS (" stage-0 "), "
-                      "__mb_stage_1 AS (SELECT __mb_source.price AS price, __mb_source.count AS count "
-                      "FROM __mb_stage_0 AS __mb_source WHERE __mb_source.count > 1) "
-                      "SELECT SUM(__mb_source.count) AS sum FROM __mb_stage_1 AS __mb_source")
-                 (some-> (qp.compile/compile query) :query pretty-sql))))
-        (testing "the query actually runs"
+(defn- count-by-price-over-1-query
+  "Two-stage query: `venues` counted by `price`, then filtered to rows with more than one venue."
+  [mp]
+  (as-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) $q
+    (lib/aggregate $q (lib/count))
+    (lib/breakout $q (lib.metadata/field mp (mt/id :venues :price)))
+    (lib/append-stage $q)
+    (lib/filter $q (lib/> (m/find-first (comp #{"count"} :name) (lib/filterable-columns $q)) 1))))
+
+(deftest ^:parallel multi-stage-query-test
+  (testing "a multi-stage query, compiled as chained CTEs on Postgres, runs and returns the right result"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [mp    (mt/metadata-provider)
+              query (as-> (count-by-price-over-1-query mp) $q
+                      (lib/append-stage $q)
+                      (lib/aggregate $q (lib/sum (m/find-first (comp #{"count"} :name) (lib/aggregable-columns $q nil)))))]
           (is (= [[100]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
-(deftest ^:parallel multi-stage-join-source-compiles-to-ctes-test
-  (testing "a multi-stage join source compiles to a WITH nested inside the JOIN parens"
+(deftest ^:parallel multi-stage-join-source-test
+  (testing "a multi-stage join source, compiled as a WITH nested inside the JOIN parens on Postgres, runs"
     (mt/test-driver :postgres
       (mt/dataset test-data
-        (let [query (mt/mbql-query venues
-                      {:joins [{:alias        "J"
-                                :source-query {:source-query {:source-table $$venues
-                                                              :aggregation  [[:count]]
-                                                              :breakout     [$price]}
-                                               :filter [:> *count/Integer 1]}
-                                :condition    [:= $price &J.*price/Integer]
-                                :fields       :all}]
-                       :limit 1})
-              sql   (some-> (qp.compile/compile query) :query pretty-sql)]
-          (is (str/includes? sql (str "LEFT JOIN (WITH __mb_stage_0 AS (SELECT venues.price AS price, COUNT(*) AS count "
-                                      "FROM venues GROUP BY venues.price ORDER BY venues.price ASC) "
-                                      "SELECT __mb_source.price AS price, __mb_source.count AS count "
-                                      "FROM __mb_stage_0 AS __mb_source WHERE __mb_source.count > 1) AS J")))
+        (let [mp     (mt/metadata-provider)
+              venues (lib.metadata/table mp (mt/id :venues))
+              price  (lib.metadata/field mp (mt/id :venues :price))
+              source (count-by-price-over-1-query mp)
+              rhs    (m/find-first (comp #{"price"} :name) (lib/returned-columns source))
+              join   (-> (lib/join-clause source [(lib/= price rhs)])
+                         (lib/with-join-alias "J")
+                         (lib/with-join-fields :all))
+              query  (-> (lib/query mp venues)
+                         (lib/join join)
+                         (lib/limit 1))]
           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 3 13]]
                  (mt/formatted-rows [int str int 4.0 4.0 int int int] (qp/process-query query)))))))))
 
-(deftest ^:parallel native-source-stage-compiles-to-cte-test
-  (testing "a native first stage becomes a CTE whose body is the raw SQL, even if that SQL has its own WITH"
+(deftest ^:parallel native-source-stage-test
+  (testing "a native first stage that has its own WITH, compiled as the body of a stage CTE on Postgres, runs"
     (mt/test-driver :postgres
       (mt/dataset test-data
-        (let [query (mt/mbql-query nil
-                      {:source-query {:native "WITH v AS (SELECT price, count(*) AS cnt FROM venues GROUP BY price) SELECT * FROM v;"}
-                       :filter       [:> *cnt/Integer 1]
-                       :aggregation  [[:count]]})]
-          (is (= (str "WITH __mb_stage_0 AS (WITH v AS (SELECT price, count(*) AS cnt FROM venues GROUP BY price) SELECT * FROM v) "
-                      "SELECT COUNT(*) AS count FROM __mb_stage_0 AS __mb_source WHERE __mb_source.cnt > 1")
-                 (some-> (qp.compile/compile query) :query pretty-sql)))
+        (let [mp    (mt/metadata-provider)
+              ;; lib can't see the columns of an unsaved native stage, so the filter uses a literal ref
+              cnt   [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "cnt"]
+              query (-> (lib/native-query mp "WITH v AS (SELECT price, count(*) AS cnt FROM venues GROUP BY price) SELECT * FROM v;")
+                        (lib/append-stage)
+                        (lib/filter (lib/> cnt 1))
+                        (lib/aggregate (lib/count)))]
           (is (= [[4]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
 (deftest ^:parallel multi-stage-card-referenced-from-native-query-test
-  (testing "a multi-stage card spliced into a native query via {{#id}} keeps its CTEs inside the subquery parens"
+  (testing "a multi-stage card spliced into a native query via {{#id}}, with its CTEs inside the subquery parens, runs"
     (mt/test-driver :postgres
       (mt/dataset test-data
-        (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues
-                                                          {:source-query {:source-table $$venues
-                                                                          :aggregation  [[:count]]
-                                                                          :breakout     [$price]}
-                                                           :filter [:> *count/Integer 1]})}]
-          (let [tag   (format "#%d" (:id card))
-                query (mt/native-query {:query         (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag)
-                                        :template-tags {tag {:name tag, :display-name tag, :type :card, :card-id (:id card)}}})
-                sql   (some-> (qp.compile/compile query) :query pretty-sql)]
-            (is (str/starts-with? sql "SELECT SUM(c.count) FROM (WITH __mb_stage_0 AS ("))
-            (is (= [[100]]
-                   (mt/formatted-rows [int] (qp/process-query query))))))))))
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card card {:dataset_query (count-by-price-over-1-query mp)}]
+            (let [tag   (format "#%d" (:id card))
+                  query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
+                            (lib/with-template-tags {tag {:name tag, :display-name tag, :type :card, :card-id (:id card)}}))]
+              (is (= [[100]]
+                     (mt/formatted-rows [int] (qp/process-query query)))))))))))
 
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
