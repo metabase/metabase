@@ -29,24 +29,6 @@
            :type     :native
            :native   {:template-tags {100 [:field-id "WOW"]}}})))))
 
-(deftest ^:parallel stored-query-with-undeclared-keys-test
-  (testing "a stored query carrying a key its schema does not declare reads back without the key, and runnable"
-    (is (= {:lib/type :mbql/query
-            :database 1
-            :stages   [{:lib/type      :mbql.stage/native
-                        :native        "SELECT 1"
-                        :template-tags [{:type :text, :name "t", :display-name "T", :id "id1"}]}]}
-           (-> ((:out lib-be/transform-query)
-                (json/encode {:database 1
-                              :type     :native
-                              :native   {:query         "SELECT 1"
-                                         :template-tags {"t" {:type         "text"
-                                                              :name         "t"
-                                                              :display-name "T"
-                                                              :id           "id1"
-                                                              :bogus        1}}}}))
-               (dissoc :lib/metadata))))))
-
 (deftest ^:parallel normalize-empty-query-test
   (is (= {}
          ((:out lib-be/transform-query) "{}"))))

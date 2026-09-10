@@ -20,7 +20,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.serialize :as lib.serialize]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -172,10 +171,7 @@
   (lib.util/recover
    (fn []
      (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-                         (-> legacy-query
-                             mbql.normalize/normalize-or-throw
-                             lib.convert/->mbql5
-                             lib.serialize/prepare-after-deserialization))
+                         (lib.convert/->mbql5 (mbql.normalize/normalize-or-throw legacy-query)))
            mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
            mbql5-query (add-types-to-fields mbql5-query mp)]
        (merge

@@ -66,10 +66,9 @@
           from-legacy  (lib/query meta/metadata-provider legacy-query)
           ;; how the same card is read after being (re-)saved, i.e. persisted to the app DB as MBQL 5
           from-mbql5   (lib/prepare-for-serialization from-legacy)]
-      (testing "sanity check: a query freshly converted from legacy carries the transient lib marker"
-        (is (contains? (transient-lib-markers from-legacy) :lib/transformation-added-base-type))
-        (testing "while the conversion marker, an internal key, is already dropped when the conversion is deserialized"
-          (is (not (contains? (transient-lib-markers from-legacy) :lib.convert/converted?)))))
+      (testing "sanity check: a query freshly converted from legacy carries the transient markers"
+        (is (contains? (transient-lib-markers from-legacy) :lib.convert/converted?))
+        (is (contains? (transient-lib-markers from-legacy) :lib/transformation-added-base-type)))
       (binding [serdes/*export-database-fk* (constantly "DATABASE")
                 serdes/*export-table-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE"])
                 serdes/*export-field-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE" "FIELD"])]
