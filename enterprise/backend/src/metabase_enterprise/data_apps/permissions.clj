@@ -31,12 +31,9 @@
             :when (not (database-level-permission? (get permissions [group-id database-id perm-type]) :no))]
       (perms/set-database-permission! group-id database-id perm-type :no))))
 
-(defenterprise reconcile-data-app-permissions!
-  "Preserve ordinary groups' data access when app groups are created or database permissions change.
-   Call under the global permissions lock so the source grants and app groups change together."
-  :feature :none
-  [database-ids]
-  (when-let [group-ids (seq (data-apps.db/data-app-group-ids))]
+(defn- reconcile-permissions!
+  [group-ids database-ids]
+  (when-let [group-ids (seq group-ids)]
     (let [legacy-databases (data-apps.db/databases-with-legacy-permissions database-ids)
           permissions (perms/index-database-permissions group-ids database-ids)]
       (doseq [group-id group-ids
@@ -45,3 +42,14 @@
                                       (if (contains? legacy-databases database-id)
                                         :legacy-no-self-service
                                         :blocked))))))
+
+(defn reconcile-app-group-permissions!
+  "Reconcile one app group's data permissions during resource setup."
+  [group-id database-ids]
+  (reconcile-permissions! [group-id] database-ids))
+
+(defenterprise reconcile-data-app-permissions!
+  "Update data app groups after a group's database permission changes."
+  :feature :none
+  [database-ids]
+  (reconcile-permissions! (data-apps.db/data-app-group-ids) database-ids))

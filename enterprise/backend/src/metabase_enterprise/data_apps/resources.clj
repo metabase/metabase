@@ -58,7 +58,7 @@
 
 (defn- apply-resource-permissions!
   [group collection]
-  (data-app.permissions/reconcile-data-app-permissions! (data-apps.db/non-router-database-ids))
+  (data-app.permissions/reconcile-app-group-permissions! (:id group) (data-apps.db/non-router-database-ids))
   (apply-collection-permissions! group collection))
 
 (defn- create-resource-collection! [app]

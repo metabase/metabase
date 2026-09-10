@@ -84,6 +84,19 @@
                      (perms/table-permission-for-user (mt/user->id :rasta) :perms/download-results
                                                       db-id (mt/id :venues)))))))))))
 
+(deftest resource-setup-reconciles-only-its-app-group-test
+  (mt/with-premium-features #{:advanced-permissions :data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [db-id (mt/id)
+            group-id (app-group! "wrens")
+            other-group-id (app-group! "finches")
+            app (t2/select-one :model/DataApp :permission_group_id group-id)]
+        (doseq [id [group-id other-group-id]]
+          (perms/set-database-permission! id db-id :perms/manage-database :yes))
+        (data-app.resources/ensure-resources! app)
+        (is (= :no (database-permission-value group-id db-id :perms/manage-database)))
+        (is (= :yes (database-permission-value other-group-id db-id :perms/manage-database)))))))
+
 (deftest permission-edits-reconcile-all-app-groups-test
   (mt/with-premium-features #{:advanced-permissions :data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]

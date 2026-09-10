@@ -627,7 +627,7 @@
        update-data-perms-graph!*)))
 
 (defenterprise reconcile-data-app-permissions!
-  "Update app groups after ordinary permissions change, within the same permissions transaction."
+  "Update data app groups after ordinary permissions change, within the same permissions transaction."
   metabase-enterprise.data-apps.permissions
   [_database-ids]
   nil)
