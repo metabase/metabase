@@ -87,6 +87,7 @@ export const ColumnItem = ({
       {onColorChange && color && (
         <ChartSettingColorPicker
           value={color}
+          forwardColorName
           onChange={onColorChange}
           pillSize="small"
           accentColorOptions={accentColorOptions}
