@@ -507,4 +507,5 @@
                                (seq ops)      (apply-ops! dash ops attrs validate-only?)
                                validate-only? (do (validate-payload! attrs)
                                                   (dry-run-row dash attrs nil nil))
-                               :else          (saved-row (:id (dashboards.write/update-dashboard! (:id dash) attrs)))))))))))
+                               :else          (saved-row (:id (dashboards.write/update-dashboard! (:id dash) attrs)))))))
+                        nil))))
