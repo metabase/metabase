@@ -77,6 +77,7 @@ const RowChartVisualization = ({
   actionButtons,
   isFullscreen,
   isQueryBuilder,
+  isVisualizer,
   isDashboard,
   onRender,
   onHoverChange,
@@ -248,8 +249,7 @@ const RowChartVisualization = ({
       });
   }, [fontFamily]);
 
-  const hasBreakout =
-    settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
+  const hasBreakout = (settings["graph.dimensions"]?.length ?? 0) > 1;
   const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
 
   return (
@@ -269,6 +269,7 @@ const RowChartVisualization = ({
         width={outerWidth}
         height={outerHeight}
         hasLegend={hasLegend}
+        alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}
         hovered={hovered}

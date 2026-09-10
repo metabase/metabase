@@ -172,3 +172,48 @@ describe("getLegendLayout overflow label", () => {
     ).toEqual({ type: "vertical", width: 58, visibleCount: 7 });
   });
 });
+
+describe("getLegendLayout truncation against the width cap", () => {
+  it("should keep the legend when names only truncate because of the 25% squeeze", () => {
+    // labels 180 < cap room 200 - 14 = 186, but 25% of 568 = 142 forces ellipsis
+    const names = Array.from({ length: 4 }, (_, i) => `${i}`.padEnd(30, "a"));
+    expect(layout(names, { width: 600 })).toMatchObject({
+      type: "vertical",
+      width: 146,
+      visibleCount: 4,
+    });
+  });
+});
+
+describe("getLegendLayout alwaysVisible", () => {
+  const opts = {
+    size: "sm" as const,
+    fontFamily: "Lato",
+    measureText,
+    alwaysVisible: true,
+  };
+
+  it("should show the legend on cards below the minimum size", () => {
+    expect(
+      getLegendLayout({
+        items: createItems(["a", "b"]),
+        width: 300,
+        height: 150,
+        ...opts,
+      }),
+    ).toEqual({ type: "horizontal" });
+  });
+
+  it("should show at least one row even when nothing fits", () => {
+    const names = Array.from({ length: 8 }, () => "a".repeat(40));
+    expect(
+      getLegendLayout({
+        items: createItems(names),
+        width: 300,
+        height: 40,
+        chartHeight: 10,
+        ...opts,
+      }),
+    ).toMatchObject({ type: "vertical", visibleCount: 1 });
+  });
+});

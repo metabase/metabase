@@ -18,7 +18,8 @@ interface LegendLayoutProps {
   width?: number;
   height?: number;
   chartHeight?: number;
-  hasLegend?: boolean;
+  hasLegend: boolean;
+  alwaysVisible?: boolean;
   actionButtons?: ReactNode;
   isFullscreen?: boolean;
   isQueryBuilder?: boolean;
@@ -43,6 +44,7 @@ export const LegendLayout = ({
   height = 0,
   chartHeight,
   hasLegend,
+  alwaysVisible,
   actionButtons,
   isFullscreen,
   isQueryBuilder,
@@ -67,11 +69,21 @@ export const LegendLayout = ({
         size,
         fontFamily,
         measureText,
+        alwaysVisible,
       }),
-    [items, width, height, chartHeight, size, fontFamily, measureText],
+    [
+      items,
+      width,
+      height,
+      chartHeight,
+      size,
+      fontFamily,
+      measureText,
+      alwaysVisible,
+    ],
   );
 
-  const isVisible = hasDimensions && !!hasLegend && layout.type !== "hidden";
+  const isVisible = hasDimensions && hasLegend && layout.type !== "hidden";
   const { horizontalGap, verticalGap } = LEGEND_SIZES[size];
 
   const legendProps = {

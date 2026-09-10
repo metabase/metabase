@@ -194,6 +194,11 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
 
     H.saveDashcardVisualizerModal({ mode: "create" });
+
+    // the new dashcard is below the minimum size for showing a legend,
+    // so enlarge it before asserting on the legend items
+    H.resizeDashboardCard({ card: H.getDashboardCard(0), x: 2000, y: 600 });
+
     // Wait for card queries before saving the dashboard
     H.getDashboardCard(0).within(() => {
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");

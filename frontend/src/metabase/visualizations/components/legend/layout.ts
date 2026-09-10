@@ -69,6 +69,7 @@ interface GetLegendLayoutOptions {
   size: LegendSize;
   fontFamily: string;
   measureText: TextWidthMeasurer;
+  alwaysVisible?: boolean;
 }
 
 const sum = (values: number[]) => values.reduce((total, v) => total + v, 0);
@@ -84,10 +85,11 @@ export function getLegendLayout({
   size,
   fontFamily,
   measureText,
+  alwaysVisible = false,
 }: GetLegendLayoutOptions): LegendLayoutResult {
   const isCardTooSmall =
     width < MIN_LEGEND_CARD_WIDTH || height < MIN_LEGEND_CARD_HEIGHT;
-  if (items.length === 0 || isCardTooSmall) {
+  if (items.length === 0 || (isCardTooSmall && !alwaysVisible)) {
     return { type: "hidden" };
   }
 
@@ -113,9 +115,12 @@ export function getLegendLayout({
     availableWidth * MAX_VERTICAL_WIDTH_RATIO,
     config.maxVerticalWidth,
   );
-  const labelWidth = legendWidth - (config.dotSize + config.dotGap);
-  const truncatedCount = labelWidths.filter((w) => w > labelWidth).length;
-  if (truncatedCount > items.length * MAX_TRUNCATED_ITEMS_RATIO) {
+  const maxLabelWidth =
+    config.maxVerticalWidth - (config.dotSize + config.dotGap);
+  const truncatedCount = labelWidths.filter((w) => w > maxLabelWidth).length;
+  const isMostlyTruncated =
+    truncatedCount > items.length * MAX_TRUNCATED_ITEMS_RATIO;
+  if (isMostlyTruncated && !alwaysVisible) {
     return { type: "hidden" };
   }
 
@@ -125,7 +130,9 @@ export function getLegendLayout({
   const maxRows = Math.floor((availableHeight + config.rowGap) / rowPitch);
   // the last row is reserved for the "+ N more" label when items overflow
   const visibleCount =
-    items.length <= maxRows ? items.length : Math.max(maxRows - 1, 0);
+    items.length <= maxRows
+      ? items.length
+      : Math.max(maxRows - 1, alwaysVisible ? 1 : 0);
   if (visibleCount === 0) {
     return { type: "hidden" };
   }

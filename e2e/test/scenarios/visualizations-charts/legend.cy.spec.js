@@ -264,7 +264,7 @@ describe("scenarios > visualizations > legend", () => {
 
     H.getDashboardCard(1).within(() => {
       H.echartsContainer().findByText("500").should("exist"); // max y-axis value
-      cy.findByText(/And \d+ more/).click();
+      cy.findByText(/\+ \d+ more/).click();
     });
     H.popover()
       .contains('[data-testid="legend-item"]', "TX")

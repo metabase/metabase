@@ -245,6 +245,7 @@ function CartesianChartInner(props: VisualizationProps) {
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
+        alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!showTitle ? actionButtons : undefined}
         hovered={hovered}
