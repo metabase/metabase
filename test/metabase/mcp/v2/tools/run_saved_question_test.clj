@@ -28,24 +28,35 @@
   ([token-scopes args]
    (registry/call-tool token-scopes (str (random-uuid)) "run_saved_question" args)))
 
+(defn- dispatch-error?
+  "Whether a [[call-run-saved-question]] outcome is an error, at either layer: a registry-level
+   rejection (`{:error …}`, from a scope denial or an args-schema failure) or `:isError` tool
+   content."
+  [{:keys [result error]}]
+  (boolean (or error (:isError result))))
+
+(defn- response-text
+  "The outcome's text block, or a registry-level rejection's message."
+  [{:keys [result error]}]
+  (if error (:message error) (-> result :content first :text)))
+
 (defn- tool-result
   "The decoded JSON payload of a successful call, with the steering line (the text after the
-   JSON block) under `::steering`. Throws when the call errored — a tool-level error can never
-   masquerade as an empty result."
-  [result]
-  (when (:isError result)
-    (throw (ex-info (str "Tool call errored: " (-> result :content first :text))
-                    {:result result})))
-  (let [[payload steering] (str/split (-> result :content first :text) #"\n" 2)]
+   JSON block) under `::steering`. Throws when the call errored — an error can never masquerade
+   as an empty result."
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info (str "Tool call errored: " (response-text outcome)) {:outcome outcome})))
+  (let [[payload steering] (str/split (response-text outcome) #"\n" 2)]
     (assoc (json/decode+kw payload) ::steering steering)))
 
 (defn- tool-error
-  "The error text of a failed call. Throws when the call succeeded — a success can never
-   satisfy an error-path assertion."
-  [result]
-  (when-not (:isError result)
-    (throw (ex-info "Expected a tool error but the call succeeded" {:result result})))
-  (-> result :content first :text))
+  "The error text of a failed call, at either layer. Throws when the call succeeded — a success
+   can never satisfy an error-path assertion."
+  [outcome]
+  (when-not (dispatch-error? outcome)
+    (throw (ex-info "Expected a tool error but the call succeeded" {:outcome outcome})))
+  (response-text outcome))
 
 (def ^:private cat-tag-id "aaaaaaaa-bbbb-cccc-dddd-000000000001")
 
