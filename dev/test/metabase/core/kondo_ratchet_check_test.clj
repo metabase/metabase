@@ -1,5 +1,5 @@
 (ns metabase.core.kondo-ratchet-check-test
-  "The Babashka check on the ignore budgets."
+  "Tests for the Babashka ratchet check."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -16,8 +16,7 @@
     {:file "f.clj", :line (inc i), :linters [linter], :justified? true}))
 
 (defn- report-lines
-  "Return [[kondo-ratchet/check-report]] output for `ratchets`. Supply the defaults that
-  [[kondo-ratchet/read-ratchets]] adds to a partial file."
+  "[[kondo-ratchet/check-report]] output, with omitted kondo fields defaulted to empty."
   ([ratchets occurrences text]
    (report-lines ratchets occurrences {} {} text))
   ([ratchets occurrences config-actual text]

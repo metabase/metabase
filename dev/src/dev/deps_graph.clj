@@ -937,11 +937,9 @@
   (into (set (keys graph)) (mapcat val) graph))
 
 (defn strongly-connected-components
-  "The strongly connected components of `graph`, a map of node to successor nodes, as a vector of sets.
-  A node outside every cycle comes back as a singleton set.
+  "Tarjan strongly connected components of `graph`, including acyclic nodes as singleton sets.
   Recursive; intended for the small module graph."
   [graph]
-  ;; Tarjan's algorithm.
   (letfn [(pop-component [state root]
             (loop [state state, component #{}]
               (let [node      (peek (:stack state))
@@ -993,8 +991,7 @@
              (sort (graph-nodes graph))))))
 
 (defn cyclic-components
-  "The strongly connected components of `graph` with more than one node, largest first.
-  Ties sort by their alphabetically first member."
+  "Non-singleton [[strongly-connected-components]], largest first; ties sort by first member."
   [graph]
   (->> (strongly-connected-components graph)
        (filter #(> (count %) 1))
@@ -1002,7 +999,7 @@
        vec))
 
 (defn- cyclic-component-sizes
-  "Size of each [[cyclic-components]] cluster, in nodes and in namespaces per `node->namespace-count`."
+  "Module and namespace counts for each [[cyclic-components]] cluster."
   [graph node->namespace-count]
   (mapv (fn [component]
           {:modules    (count component)
@@ -1010,16 +1007,15 @@
         (cyclic-components graph)))
 
 (defn module-boundary-stats
-  "Measure how tangled the module graph is, for reading at the REPL.
-  No baseline is committed: these move with any change in the repo, so one would conflict on every branch.
+  "REPL diagnostics for the module graph:
 
-  - `:api-any-namespaces`  namespaces owned by `:api :any` modules, all of them effectively public
-  - `:module-count`        modules in the config
-  - `:scc-module-sizes`    modules in each mutual-dependency cluster, largest first
-  - `:scc-namespace-sizes` namespaces in each of those clusters
+  - `:api-any-namespaces`  namespaces exposed by `:api :any` modules
+  - `:module-count`        configured modules
+  - `:scc-module-sizes`    modules per cycle, largest first
+  - `:scc-namespace-sizes` namespaces per cycle, largest first
 
-  Splitting a module inside a cluster grows its module size without taking any namespace out of the cycle.
-  Read progress off the namespace sizes."
+  These values are not ratcheted because any source change can move them. Use namespace sizes to track
+  cycle reduction: splitting a module can grow a cycle's module count without removing namespaces."
   ([]
    (module-boundary-stats (dependencies) (kondo-config)))
   ([deps config]

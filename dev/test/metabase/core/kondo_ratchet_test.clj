@@ -1,8 +1,6 @@
 (ns metabase.core.kondo-ratchet-test
-  "Unit tests for [[dev.kondo-ratchet]]: scanning, policy reading, rendering, merging, and shrinking.
-  [[metabase.core.kondo-ratchet-check-test]] tests the command that checks the source tree.
-  The ignore forms in this file are string fixtures — the scanner masks string literals, so they don't
-  count as suppressions."
+  "Unit tests for ratchet scanning, policies, rendering, merging, and shrinking.
+  String fixtures may contain ignore forms because the scanner masks strings."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -18,8 +16,8 @@
 ;;;; Budget semantics
 ;;;; ---------------------------------------------------------------------------
 
-;; Feature branches may leave budgets above current counts and comment exemptions that are no longer
-;; needed. The shrink workflow lowers budgets after merge; stale exemptions must be removed by hand.
+;; Feature branches may leave stale budgets and exemptions. Automation lowers budgets after merge;
+;; exemptions remain a manual decision.
 (deftest ^:parallel reductions-are-tolerated-test
   (let [occurrences [{:file "f.clj", :line 1, :linters [:a], :justified? false}
                      {:file "g.clj", :line 1, :linters [:b], :justified? true}]]
@@ -177,7 +175,7 @@
            'b {:api #{'b.api}, :friends #{'a}, :uses :any}}))))
 
 (deftest ^:parallel render-test
-  (testing "keys come out sorted, values aligned, module counts come last, and the text round-trips losslessly"
+  (testing "renders stable text with sorted entries and module counts last"
     (let [ratchets {:ignore-counts  {:all              1
                                      :discouraged-var  3
                                      :metabase/modules 2
