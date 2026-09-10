@@ -1,17 +1,11 @@
 #!/usr/bin/env node
-// Guards oxlint rule wiring. Adapted from PR #77361's parity checker for the
-// sole-linter setup, where there is no ESLint config to diff against.
-//
-// #77361 compared two independent sources (the rules ESLint deferred vs the rules
-// oxlint enforces) and failed when the second did not cover the first. We have only
-// one config, and `oxlint --print-config` echoes a rule even when its plugin is not
-// loaded, so that comparison is vacuous here. Instead this checks the two wiring
-// failures that a single config can still hide:
+// Guards oxlint rule wiring. `oxlint --print-config` echoes a rule even when its
+// plugin is not loaded, so the resolved config is not proof that a rule runs.
+// This checks the two wiring failures a single config can hide:
 //
 //   1. A rule enabled under a plugin that is not loaded. oxlint keeps it in the
-//      resolved config but never fires it (the `plugins: []` trap from the
-//      migration). We check every enforced rule's namespace against the plugins and
-//      jsPlugins the config actually loads.
+//      resolved config but never fires it. We check every enforced rule's
+//      namespace against the plugins and jsPlugins the config actually loads.
 //   2. A rule silently added to or dropped from the enforced set, checked against a
 //      committed snapshot. Drift fails until you re-run with `--update`.
 //

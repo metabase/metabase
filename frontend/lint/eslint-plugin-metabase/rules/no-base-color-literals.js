@@ -1,9 +1,8 @@
 /**
  * @fileoverview Rule to disallow base color tokens in application code.
  *
- * Replaces the `no-restricted-syntax` selector
- * `Literal[value=/mb-base-color-/]` from the ESLint config. oxlint does not
- * implement `no-restricted-syntax`, so the ban lives here instead.
+ * oxlint does not implement `no-restricted-syntax`, so the ban is a rule of its
+ * own rather than a `Literal[value=/mb-base-color-/]` selector.
  */
 
 const BASE_COLOR_REGEX = /mb-base-color-/;

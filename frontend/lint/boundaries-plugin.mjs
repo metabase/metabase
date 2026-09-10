@@ -5,9 +5,7 @@
 // `settings["boundaries/elements"]` and the allow/disallow policy from each
 // rule's options. Both come from `module-boundaries.mjs`. A JS plugin can
 // import that module directly, so the graph never has to be inlined into a
-// generated JSON config: this plugin injects it at runtime instead. That
-// removes the `generate-oxlint-boundaries.mjs` step and the staleness it
-// guarded against.
+// generated JSON config: this plugin injects it at runtime instead.
 //
 // meta.name is "boundaries" so the rule names stay `boundaries/element-types`
 // and `boundaries/no-unknown-files`, identical to the upstream plugin.

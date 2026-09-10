@@ -4,7 +4,7 @@
 // the rule actually fires. Pattern-semantic rules can be fully wired yet dead: a
 // `no-restricted-imports` group written with regex lookaround (unsupported by the
 // Rust engine) or an extglob that matches nothing silently bans nothing, and the run
-// stays green. That class bit us during the migration.
+// stays green.
 //
 // Each case writes a tiny fixture at a path that matches the rule's override scope,
 // lints it with the real `.oxlintrc.json`, and asserts the rule does (or, for the
