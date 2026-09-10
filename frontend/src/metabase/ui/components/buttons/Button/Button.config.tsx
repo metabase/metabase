@@ -4,16 +4,6 @@ import ButtonStyles from "./Button.module.css";
 
 type ButtonRootVars = Record<string, string>;
 
-const DEFAULT_VARS: ButtonRootVars = {
-  "--button-color": "var(--mb-color-button_label-default-neutral-default)",
-  "--button-hover-color":
-    "var(--mb-color-button_label-default-neutral-default)",
-  "--button-bg": "var(--mb-color-button-default-neutral-default)",
-  "--button-hover": "var(--mb-color-button-default-neutral-hover)",
-  "--button-pressed": "var(--mb-color-button-default-neutral-pressed)",
-  "--button-bd": "0.5px solid var(--mb-color-border-neutral-strong)",
-};
-
 const COLOR_FAMILIES: Record<string, string> = {
   "core-brand": "brand",
   "feedback-negative": "negative",
@@ -40,28 +30,31 @@ const getFamilyVars = (variant: string, family: string): ButtonRootVars => {
   };
 };
 
+const DEFAULT_VARS: ButtonRootVars = {
+  ...getFamilyVars("default", "neutral"),
+  "--button-bd": "0.5px solid var(--mb-color-border-neutral-strong)",
+};
+
 const TRANSPARENT_VARS: ButtonRootVars = {
   "--button-hover": "transparent",
   "--button-pressed": "transparent",
 };
 
+const getOnDarkVars = (kind: string, borderColor: string): ButtonRootVars => ({
+  "--button-color": `var(--mb-color-button-label-on_dark-${kind})`,
+  "--button-hover-color": `var(--mb-color-button-label-on_dark-${kind})`,
+  "--button-bg": `var(--mb-color-button-on_dark-${kind}-default)`,
+  "--button-hover": `var(--mb-color-button-on_dark-${kind}-hover)`,
+  "--button-pressed": `var(--mb-color-button-on_dark-${kind}-pressed)`,
+  "--button-bd": `0.5px solid ${borderColor}`,
+});
+
 const ON_DARK_VARS: Record<string, ButtonRootVars> = {
-  "on-dark-primary": {
-    "--button-color": "var(--mb-color-button-label-on_dark-primary)",
-    "--button-hover-color": "var(--mb-color-button-label-on_dark-primary)",
-    "--button-bg": "var(--mb-color-button-on_dark-primary-default)",
-    "--button-hover": "var(--mb-color-button-on_dark-primary-hover)",
-    "--button-pressed": "var(--mb-color-button-on_dark-primary-pressed)",
-    "--button-bd": "0.5px solid transparent",
-  },
-  "on-dark-secondary": {
-    "--button-color": "var(--mb-color-button-label-on_dark-secondary)",
-    "--button-hover-color": "var(--mb-color-button-label-on_dark-secondary)",
-    "--button-bg": "var(--mb-color-button-on_dark-secondary-default)",
-    "--button-hover": "var(--mb-color-button-on_dark-secondary-hover)",
-    "--button-pressed": "var(--mb-color-button-on_dark-secondary-pressed)",
-    "--button-bd": "0.5px solid var(--mb-color-border-on_dark)",
-  },
+  "on-dark-primary": getOnDarkVars("primary", "transparent"),
+  "on-dark-secondary": getOnDarkVars(
+    "secondary",
+    "var(--mb-color-border-on_dark)",
+  ),
 };
 
 const NON_BRAND_VARS: Record<string, ButtonRootVars> = {
