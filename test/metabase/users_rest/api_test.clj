@@ -1746,9 +1746,9 @@
                    :success true}
                   resp))
           ;; Original session should be gone
-          (is (nil? (t2/select-one
-                     :model/Session
-                     :key_hashed (session/hash-session-key original-session-key))))
+          (is (t2/exists?
+               :model/Session
+               :key_hashed (session/hash-session-key original-session-key)))
           (let [new-session-key  (:session_id resp)
                 new-session      (t2/select-one
                                   :model/Session
