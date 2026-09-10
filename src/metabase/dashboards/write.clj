@@ -235,7 +235,7 @@
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe int?]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series                 {:optional true} [:maybe [:sequential [:map [:id ms/PositiveInt]]]]]])
 

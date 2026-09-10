@@ -1,6 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { match } from "ts-pattern";
-import _ from "underscore";
 
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
@@ -20,10 +19,10 @@ import {
 
 import type {
   MetabotAgentId,
-  MetabotChatMessage,
-  MetabotUserChatMessage,
+  MetabotContextUsage,
+  MetabotMessage,
 } from "./types";
-import { hasInProgressMessage } from "./utils";
+import { hasInProgressMessage, isGeneratedCardPart, isTextPart } from "./utils";
 
 /*
  * Top Level Selectors
@@ -180,78 +179,54 @@ export const getActiveToolCalls = createSelector(
   (convo) => convo.activeToolCalls,
 );
 
-export const getLastMessage = createSelector(getMessages, (messages) =>
-  _.last(messages),
-);
-
 export const getLastAgentMessageExternalId = createSelector(
   getMessages,
-  (messages) => {
-    const lastAgentMessage = messages.findLast(
-      (m) => m.role === "agent" && "externalId" in m,
-    );
-    return lastAgentMessage && "externalId" in lastAgentMessage
-      ? lastAgentMessage.externalId
-      : undefined;
-  },
+  (messages) => messages.findLast((t) => t.role === "agent")?.externalId,
 );
-
-const splitByTurn = (messages: MetabotChatMessage[]): MetabotChatMessage[][] =>
-  messages.reduce<MetabotChatMessage[][]>((turns, m) => {
-    if (m.role === "user" || turns.length === 0) {
-      turns.push([m]);
-    } else {
-      turns[turns.length - 1].push(m);
-    }
-    return turns;
-  }, []);
 
 export const getFinalChartMessageIdsPerTurn = createSelector(
   getMessages,
   (messages) =>
     new Set(
-      splitByTurn(messages).flatMap((turn) => {
-        const lastChart = turn.findLast(
-          (m) =>
-            m.type === "data_part" &&
-            m.part.type === "data-generated_entity" &&
-            m.part.data.type === "card",
-        );
+      messages.flatMap((message) => {
+        const lastChart = message.parts.findLast(isGeneratedCardPart);
         return lastChart ? [lastChart.id] : [];
       }),
     ),
 );
 
-// if the message id provided is an agent id the first user message
-// that precedes it will be returned. if a user message id is provided
-// that exact message will be returned.
-export const getUserPromptForMessageId = createSelector(
+/**
+ * The user message that prompted `messageId` — the message itself when `messageId`
+ * addresses a user message or one of its parts, otherwise the nearest preceding
+ * one. Retry and rewind both target the message, since that is what the server
+ * regenerates.
+ */
+export const getUserPromptMessage = createSelector(
   [getMessages, (_, __, messageId: string) => messageId],
-  (messages, messageId): MetabotUserChatMessage | undefined => {
-    const messageIndex = messages.findLastIndex((m) => m.id === messageId);
-    const message = messages[messageIndex];
-    if (!message) {
+  (messages, messageId): MetabotMessage | undefined => {
+    const messageIndex = messages.findLastIndex(
+      (t) => t.id === messageId || t.parts.some((p) => p.id === messageId),
+    );
+    if (messageIndex === -1) {
       return undefined;
     }
-
-    if (message.role === "user") {
-      return message;
-    } else {
-      return messages
-        .slice(0, messageIndex)
-        .findLast<MetabotUserChatMessage>((m) => m.role === "user");
-    }
+    return messages[messageIndex].role === "user"
+      ? messages[messageIndex]
+      : messages.slice(0, messageIndex).findLast((t) => t.role === "user");
   },
 );
+
+export const getPromptText = (message: MetabotMessage) =>
+  message.parts.find(isTextPart)?.message ?? "";
 
 export const getMessageIdToRewind = createSelector(
   [getMessages],
   (messages) => {
-    const lastMessage = messages.at(-1);
-    if (lastMessage?.type === "turn_errored") {
-      return messages.findLast((m) => m.role === "user")?.id;
+    if (messages.at(-1)?.status.type !== "errored") {
+      return undefined;
     }
-    return undefined;
+    const promptMessage = messages.findLast((t) => t.role === "user");
+    return promptMessage?.parts.at(0)?.id;
   },
 );
 
@@ -282,15 +257,28 @@ export const getConversationChart = createSelector(
 
 export type MetabotLongChatNoticeVariant = "warning" | "full";
 
+export const getContextUsage = createSelector(
+  [getMessages, getConversation],
+  (messages, convo): MetabotContextUsage | undefined => {
+    const contextTokens = messages.findLast(
+      (m) => m.role === "agent" && m.contextTokens,
+    )?.contextTokens;
+    const { contextWindowTokens } = convo;
+    return contextTokens && contextWindowTokens
+      ? { contextTokens, contextWindowTokens }
+      : undefined;
+  },
+);
+
 export const getContextUsagePercent = createSelector(
-  [getConversation],
-  (convo): number => getContextWindowPercentUsage(convo.lastTokenUsage),
+  getContextUsage,
+  getContextWindowPercentUsage,
 );
 
 export const getLongChatNotice = createSelector(
-  [getConversation, getContextUsagePercent],
-  (convo, percentUsage): MetabotLongChatNoticeVariant | undefined => {
-    if (isContextWindowFull(convo.lastTokenUsage)) {
+  [getContextUsage, getContextUsagePercent],
+  (contextUsage, percentUsage): MetabotLongChatNoticeVariant | undefined => {
+    if (isContextWindowFull(contextUsage)) {
       return "full";
     }
     return percentUsage >= CONTEXT_WINDOW_WARNING_PERCENT

@@ -414,8 +414,8 @@
    (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
          handle-id       (str (UUID/randomUUID))]
      (mcp.db/insert-query-handle!
-      (cond-> {:id              handle-id
-               :mcp_session_id  mcp-session-id
+      handle-id
+      (cond-> {:mcp_session_id  mcp-session-id
                :core_session_id core-session-id
                :encoded_query   encoded-query}
         prompt (assoc :prompt prompt)))

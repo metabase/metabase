@@ -197,7 +197,8 @@
   "Collection types that the root/items endpoint can filter on"
   [:enum "remote-synced"])
 
-(def ^:private CollectionChildrenOptions
+(def CollectionChildrenOptions
+  "The `options` map accepted by [[collection-children]] and [[collection-filter-metadata]]."
   [:map
    [:show-dashboard-questions?     :boolean]
    [:show-exploration-documents?   {:optional true} [:maybe :boolean]]
@@ -1081,22 +1082,25 @@
                         (sql.helpers/where search-clause))
         limit         (request/limit)
         offset        (request/offset)
+        count-only?   (= limit 0)
         ;; We didn't implement collection pagination for snippets namespace for root/items
-        ;; Rip out the limit for now and put it back in when we want it
+        ;; Rip out the limit for now and put it back in when we want it. A count-only request still
+        ;; needs a LIMIT so it doesn't fetch the whole snippets table just to read :total_count.
         limit-query   (if (or
                            (nil? limit)
                            (nil? offset)
-                           (= (:collection-namespace options) "snippets"))
+                           (and (= (:collection-namespace options) "snippets")
+                                (not count-only?)))
                         rows-query
                         (assoc rows-query
                                ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
                                ;; :total_count
-                               :limit  (if (zero? limit) 1 limit)
+                               :limit  (if count-only? 1 limit)
                                :offset offset))
         rows          (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
                         (collections.db/collection-children-rows limit-query))
         res           {:total  (total-count rows rows-query offset)
-                       :data   (if (= limit 0)
+                       :data   (if count-only?
                                  []
                                  (tracing/with-span :db-app "db-app.collection-items-post-process" {:collection/id (:id collection)}
                                    (post-process-rows options collection rows)))
@@ -1144,6 +1148,13 @@
        :offset (request/offset)
        :models valid-models})))
 
+(defn filterable-models
+  "The models that can appear as a filterable item of `collection`. Snippets are never included: they are not a
+  filterable type. When present, `restrict-models` limits the set."
+  [collection restrict-models]
+  (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
+    (seq restrict-models) (filter restrict-models)))
+
 (mu/defn collection-filter-metadata :- [:map
                                         [:available_models [:sequential :string]]]
   "Return the models that have at least one visible item in `collection`. Respect the requested scope and visibility,
@@ -1152,8 +1163,7 @@
   [collection                      :- collection/CollectionWithLocationAndIDOrRoot
    restrict-models                 :- [:maybe [:set :keyword]]
    {:keys [archived?] :as options} :- CollectionChildrenOptions]
-  (let [candidates (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
-                     (seq restrict-models) (filter restrict-models))
+  (let [candidates (filterable-models collection restrict-models)
         options    (-> options
                        (dissoc :models :search-text)
                        (assoc :collection-namespace (:namespace collection)))]

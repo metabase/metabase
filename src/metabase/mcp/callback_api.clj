@@ -58,7 +58,7 @@
    `render_drill_through` tool can fetch it."
   [_route-params
    _query-params
-   {:keys [encodedQuery]} :- [:map [:encodedQuery ms/NonBlankString]]
+   {:keys [encodedQuery]} :- [:map {:closed true} [:encodedQuery ms/NonBlankString]]
    request]
   (let [session-id (mcp-session-id-from-headers request)]
     (check-session-header! session-id api/*current-user-id* request)
@@ -74,7 +74,7 @@
    scoped UI credential it was rendered with. The lookup is user-scoped (see
    [[metabase.mcp.session/find-handle-row]]) and the credential is accepted only on the MCP UI
    request surface, so a handle on its own is not a bearer credential."
-  [{:keys [handle]} :- [:map [:handle ms/UUIDString]]
+  [{:keys [handle]} :- [:map {:closed true} [:handle ms/UUIDString]]
    _query-params
    _body
    request]
@@ -90,12 +90,12 @@
   "Persist MCP Apps visualization feedback."
   [_route-params
    _query-params
-   body :- [:map
-            [:feedback [:map
+   body :- [:map {:closed true}
+            [:feedback [:map {:closed true}
                         [:positive          :boolean]
                         [:issue_type        {:optional true} [:maybe [:string {:max 64}]]]
                         [:freeform_feedback {:optional true} OptionalFeedbackText]]]
-            [:conversation_data [:map
+            [:conversation_data [:map {:closed true}
                                  [:source [:= "mcp"]]
                                  [:prompt {:optional true} OptionalFeedbackText]
                                  [:query  {:optional true} OptionalFeedbackText]]]]

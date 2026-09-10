@@ -2248,13 +2248,17 @@
 
 (define-migration BackfillExampleDashboardIdValueWithAad
   ;; `CreateSampleContentV2` runs before `setting.value_with_aad` exists, so it writes the setting's legacy `value` only.
+  ;; Integer settings are `:encryption :no`, and versions before 0.58 wrote this row as the plaintext dashboard ID even
+  ;; with a key set, so a numeric `value` is taken as-is; anything else must be the encrypted form newer versions write.
   (when-let [value (:value (t2/query-one {:select [:value]
                                           :from   [:setting]
                                           :where  [:and [:= :key "example-dashboard-id"] [:= :value_with_aad nil]]}))]
-    (t2/query {:update :setting
-               :set    {:value_with_aad (encryption/maybe-encrypt (encryption/maybe-decrypt value)
-                                                                  {:aad (mdb.setting/setting-aad "example-dashboard-id")})}
-               :where  [:= :key "example-dashboard-id"]})))
+    (let [plain (if (re-matches #"\d+" value)
+                  value
+                  (encryption/maybe-decrypt value))]
+      (t2/query {:update :setting
+                 :set    {:value_with_aad (encryption/maybe-encrypt plain {:aad (mdb.setting/setting-aad "example-dashboard-id")})}
+                 :where  [:= :key "example-dashboard-id"]}))))
 
 ;;; MCP v1 retirement (GHY-4343): `/api/metabase-mcp` now serves the v2 tool surface, which gates every
 ;;; tool on one of six coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the

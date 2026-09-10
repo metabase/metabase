@@ -601,7 +601,7 @@
                               :metabase.query-processor.util.add-alias-info/source-table 224}]]
                            {:name "avg"
                             :metabase.query-processor.util.add-alias-info/desired-alias "avg"
-                            :metabase.query-processor.util.add-alias-info/position 1
+                            :metabase.query-processor.util.add-alias-info/source-table 224
                             :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
             :source-table 224}
     :type :query}))
@@ -1033,17 +1033,20 @@
 
 (deftest ^:parallel convert-aggregation-reference-test
   (testing "Don't wrap :aggregation in :aggregation options when converting between legacy and MBQL 5"
+    ;; the alias options are spelled out in full, the way `metabase.query-processor.util.add-alias-info` writes them:
+    ;; ref options are a closed schema in both MBQL versions, so an undeclared key would be dropped in the round trip
+    ;; and this test would be measuring the stripping rather than the conversion.
     (let [query {:database 2
                  :type     :query
                  :query    {:aggregation  [[:aggregation-options
-                                            [:sum [:field 100 {:source-table 12, :source-alias "TOTAL"}]]
+                                            [:sum [:field 100 {:metabase.query-processor.util.add-alias-info/source-table 12
+                                                               :metabase.query-processor.util.add-alias-info/source-alias "TOTAL"}]]
                                             {:name "sum"}]]
-                            :order-by     [[:asc [:aggregation 0 {:desired-alias "sum", :position 1}]]
+                            :order-by     [[:asc [:aggregation 0 {:metabase.query-processor.util.add-alias-info/desired-alias "sum"}]]
                                            [:asc
-                                            [:field 99 {:source-table  12
-                                                        :source-alias  "PRODUCT_ID"
-                                                        :desired-alias "PRODUCT_ID"
-                                                        :position      0}]]]
+                                            [:field 99 {:metabase.query-processor.util.add-alias-info/source-table  12
+                                                        :metabase.query-processor.util.add-alias-info/source-alias  "PRODUCT_ID"
+                                                        :metabase.query-processor.util.add-alias-info/desired-alias "PRODUCT_ID"}]]]
                             :source-table 12}}]
       (is (= query
              (-> query lib.convert/->mbql5 lib.convert/->legacy-MBQL))))))

@@ -91,8 +91,8 @@
      analytics
      analytics-interface
      api
-     api-scope
      api-keys
+     api-scope
      appearance
      audit-app
      auth-identity
@@ -121,16 +121,19 @@
      explorations
      formatter
      geojson
+     indexed-entities
      initialization-status
      interestingness
      internal-stats
      llm
      login-history
      mcp
+     measures
      metabot
      mq
      notification
      oauth-server
+     osi
      permissions
      premium-features
      public-sharing
@@ -140,6 +143,7 @@
      sample-data
      search
      secrets
+     segments
      server
      session
      settings
@@ -159,7 +163,8 @@
      util
      version
      view-log
-     warehouse-schema})
+     warehouse-schema
+     xrays})
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.

@@ -164,7 +164,7 @@
    _query-params
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
-   :- [:map
+   :- [:map {:closed true}
        [:term_queries {:optional true
                        :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
         [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
@@ -196,7 +196,7 @@
   `referenced_entities` envelope from before the repr migration) are dropped during request
   decoding, so a caller still sending the old shape is served.
 
-  The inner `:query` value is intentionally typed as an open map ([[ms/Map]]) at this boundary
+  The inner `:query` value is an opaque, string-keyed JSON object ([[ms/OpaqueJSONObject]]) at this boundary
   rather than `::lib.schema/external-query`. Being open matters: a closed map with no declared
   entries would have every key stripped before the handler saw it. Reasons for not naming the
   real schema:
@@ -213,7 +213,7 @@
   [:map {:closed true}
    [:query {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
                                    "`construct_notebook_query` tool for the format reference.")}
-    ms/Map]
+    ms/OpaqueJSONObject]
    ;; The user's original message, when available, captured so `visualize_query` can later
    ;; surface it back to the iframe alongside the query body for feedback submission. The MCP
    ;; layer stores it with the handle (see `metabase.mcp.tools/make-store-construct-query-result`).
@@ -570,7 +570,7 @@
 
 (mr/def ::execute-query-request
   "Request schema for /v1/execute. Accepts a base64-encoded MBQL query."
-  [:map
+  [:map {:closed true}
    [:query {:tool/description "A base64-encoded query string returned by /v1/construct-query. Do not construct this value manually."}
     ms/NonBlankString]])
 
@@ -633,7 +633,7 @@
 
 (mr/def ::execute-sql-request
   "Request shape for /v1/execute-sql. The LLM passes a raw SQL string against a target database."
-  [:map
+  [:map {:closed true}
    [:database_id ms/PositiveInt]
    [:sql         ms/NonBlankString]])
 
@@ -675,7 +675,7 @@
 
 (mr/def ::read-resource-request
   "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
-  [:map
+  [:map {:closed true}
    [:uris [:sequential ms/NonBlankString]]])
 
 (mr/def ::read-resource-item
@@ -877,13 +877,13 @@
     (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]])
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
 
 (mr/def ::create-question-response
   [:map
@@ -927,13 +927,13 @@
 ;;; -------------------------------------------------- Create Metric -------------------------------------------------
 
 (mr/def ::create-metric-request
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]])
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
 
 (mr/def ::create-metric-response
   [:map
@@ -994,12 +994,12 @@
   "Patch shape for `update_metric`. Every field is optional; only the fields the caller
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer) and must still describe a valid metric."
-  [:map
+  [:map {:closed true}
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1035,7 +1035,7 @@
                              "(a query_handle from construct_query) - it must still have exactly one "
                              "aggregation and at most one date/datetime grouping. The target must be a "
                              "metric; use update_question for regular questions.")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-metric-request]
   (let [card-before-update (api/write-check :model/Card id)]
@@ -1052,12 +1052,12 @@
   "Patch shape for `update_question`. Every field is optional; only the fields the caller
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer)."
-  [:map
+  [:map {:closed true}
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1091,7 +1091,7 @@
                              "delete or remove a question; set archived false to restore. "
                              "To replace the underlying query, pass query "
                              "(a query_handle from construct_query or construct_native_query).")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-question-request]
   (apply-agent-card-patch! (api/write-check :model/Card id) body nil))
@@ -1127,7 +1127,7 @@
                              "if the question takes parameters or template-tag input, this returns an "
                              "error.")
            :annotations {:read-only? true :idempotent? true}}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    _body]
   (let [card (api/read-check :model/Card id)]
@@ -1157,7 +1157,7 @@
     (autoplace/get-position-for-new-dashcard placed display)))
 
 (mr/def ::create-dashboard-request
-  [:map
+  [:map {:closed true}
    [:name          ms/NonBlankString]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1295,7 +1295,7 @@
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
    add/add_heading/add_text/update_text/remove/move mutations applied in order."
-  [:map
+  [:map {:closed true}
    [:name          {:optional true} [:maybe ms/NonBlankString]]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1508,7 +1508,7 @@
                              "The response dashcard_ids lists all dashcards in row/col order; "
                              "metabase://dashboard/{id}/items (via read_resource) shows each "
                              "dashcard with its dashcard_id.")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-dashboard-request]
   (let [current-dash (api/write-check :model/Dashboard id)
@@ -1584,7 +1584,7 @@
   "Request shape for `create_collection`. `:parent_collection_id` is named separately from
   the internal `:parent_id` field to make the LLM-facing API less ambiguous (the caller is
   saying \"put it under this parent\", not echoing back a server-set field)."
-  [:map
+  [:map {:closed true}
    [:name                 ms/NonBlankString]
    [:description          {:optional true} [:maybe :string]]
    [:parent_collection_id {:optional true} [:maybe ms/PositiveInt]]])

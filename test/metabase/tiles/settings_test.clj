@@ -69,7 +69,7 @@
   (testing "the setter still accepts the templates admins legitimately configure"
     (mt/with-temporary-setting-values [map-tile-server-url osm-template]
       (doseq [template [osm-template
-                        "http://192.0.2.0/{z}/{x}/{y}.png"                           ; public IP literal
+                        "http://8.8.8.8/{z}/{x}/{y}.png"                           ; public IP literal
                         "https://example.com:8443/{z}/{x}/{y}.png?apikey=SEKRIT"
                         "/local/{z}/{x}/{y}.png"]]                                   ; same-origin, browser-only
         (testing template

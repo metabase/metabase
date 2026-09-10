@@ -39,7 +39,7 @@
    [:map-of key-schema m.document/CardCreateSchema]])
 
 (def ^:private DocumentCreateOptions
-  [:map
+  [:map {:closed true}
    [:name m.document/DocumentName]
    [:document ::prose-mirror/ast]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -47,7 +47,7 @@
    [:cards {:optional true} [:maybe (cards-to-create-schema [:int {:max -1}])]]])
 
 (def ^:private DocumentUpdateOptions
-  [:map
+  [:map {:closed true}
    [:name {:optional true} m.document/DocumentName]
    [:document {:optional true} [:maybe ::prose-mirror/ast]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -61,8 +61,8 @@
   top-level blocks; `nil` appends the embed at the end and out-of-range indexes are clamped.
 
   Optional kwargs:
-  - `:extra-attrs` — map merged onto the `cardEmbed` attrs (e.g. `:stored_result_id`,
-    `:chart_href`, `:child_target_id`, `:host_data`).
+  - `:extra-attrs` — string-keyed map merged onto the `cardEmbed` attrs (e.g. `\"stored_result_id\"`,
+    `\"chart_href\"`, `\"child_target_id\"`, `\"host_data\"`).
 
   Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
   write-checking the document first. The document is re-read inside the transaction so a
@@ -109,7 +109,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
-  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
+  [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
   ;; `m.document/get-document` already does the 404 and read check internally.
   (m.document/get-document document-id))
 
@@ -119,7 +119,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:document-id"
   "Updates an existing `Document`."
-  [{:keys [document-id]} :- [:map
+  [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/PositiveInt]]
    _query-params
    {:keys [collection_id] :as body} :- DocumentUpdateOptions]
@@ -139,7 +139,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:document-id"
   "Permanently deletes an archived Document."
-  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
+  [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
   (let [document (api/check-404 (documents.db/document document-id))]
     (api/write-check document)
     (when-not (:archived document)
@@ -225,10 +225,10 @@
 
 (api.macros/defendpoint :post "/:from-document-id/copy" :- ::documents.schema/document
   "Copy a Document."
-  [{:keys [from-document-id]} :- [:map
+  [{:keys [from-document-id]} :- [:map {:closed true}
                                   [:from-document-id ms/PositiveInt]]
    _query-params
-   {:keys [name collection_id collection_position]} :- [:map
+   {:keys [name collection_id collection_position]} :- [:map {:closed true}
                                                         [:name                {:optional true} [:maybe ms/NonBlankString]]
                                                         [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                                         [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
@@ -248,7 +248,7 @@
   Returns a map containing `:uuid` (the public UUID string).
 
   Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting."
-  [{:keys [document-id]} :- [:map
+  [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -279,7 +279,7 @@
 
   Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.
   Throws a 404 if the Document doesn't exist, is archived, or doesn't have a public link."
-  [{:keys [document-id]} :- [:map
+  [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -339,7 +339,7 @@
   - parameters: Optional query parameters (array of maps or JSON string)
   - format_rows: Whether to apply formatting to results (boolean, default false)
   - pivot_results: Whether to pivot results (boolean, default false)"
-  [{:keys [document-id card-id export-format]} :- [:map
+  [{:keys [document-id card-id export-format]} :- [:map {:closed true}
                                                    [:document-id   ms/PositiveInt]
                                                    [:card-id       ms/PositiveInt]
                                                    [:export-format :keyword]]
@@ -348,7 +348,7 @@
     pivot-results? :pivot_results
     format-rows?   :format_rows
     :as            _body}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]

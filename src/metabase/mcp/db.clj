@@ -7,7 +7,11 @@
   HoneySQL."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mcp.schema :as mcp.schema]
    [metabase.session.core :as session]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn select-one-by-id
@@ -128,9 +132,9 @@
              :archived (boolean archived?)
              {:order-by [[:%lower.name :asc]]}))
 
-(defn insert-feedback!
-  "Insert the McpFeedback `row`."
-  [row]
+(mu/defn insert-feedback!
+  "Insert the McpFeedback `row`, returning the number inserted."
+  [row :- ::mcp.schema/mcp-feedback.update]
   (t2/insert! :model/McpFeedback row))
 
 (defn session-user-ids
@@ -142,11 +146,12 @@
   [key-hashed]
   (t2/select-fn-set :user_id :core_session :key_hashed key-hashed))
 
-(defn get-or-create-core-session!
+(mu/defn get-or-create-core-session!
   "The `core_session` row for `key-hashed` and `user-id`, creating one with a freshly generated session id if none
   exists. Uses the raw `:core_session` table (not `:model/Session`) to bypass the after-insert hook, which would
   otherwise publish a spurious `:event/user-login` event."
-  [key-hashed user-id]
+  [key-hashed :- :string
+   user-id    :- ::lib.schema.id/user]
   (app-db/select-or-insert!
    :core_session
    {:key_hashed key-hashed
@@ -156,14 +161,16 @@
       :anti_csrf_token nil
       :created_at      :%now})))
 
-(defn insert-query-handle!
-  "Insert the McpQueryHandle `row`."
-  [row]
-  (t2/insert! :model/McpQueryHandle row))
+(mu/defn insert-query-handle!
+  "Insert the McpQueryHandle `row` under the client-generated `handle-id`, returning the number inserted."
+  [handle-id :- ms/UUIDString
+   row       :- ::mcp.schema/mcp-query-handle.update]
+  (t2/insert! :model/McpQueryHandle (assoc row :id handle-id)))
 
-(defn query-handle-for-user
+(mu/defn query-handle-for-user
   "The McpQueryHandle with `handle-id` whose session belongs to the User with `user-id`, or nil."
-  [handle-id user-id]
+  [handle-id :- :string
+   user-id   :- ::lib.schema.id/user]
   (t2/select-one :model/McpQueryHandle
                  {:select [:mqh.*]
                   :from   [[:mcp_query_handle :mqh]]
@@ -177,9 +184,10 @@
   [cutoff]
   (t2/delete! :model/McpQueryHandle {:where [:< :created_at cutoff]}))
 
-(defn delete-session-for-user!
+(mu/defn delete-session-for-user!
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
-  [key-hashed user-id]
+  [key-hashed :- :string
+   user-id    :- ::lib.schema.id/user]
   (t2/query {:delete-from :core_session
              :where       [:and
                            [:= :key_hashed key-hashed]

@@ -13,7 +13,7 @@ The Security Center is the main way we (Metabase the company) let people who are
 
 ![Security center](./images/security-center.png)
 
-Security center is available for (and relevant to) self-hosted Metabases on Pro/Enterprise plans. Metabase Cloud instances are automatically patched as soon as issues are discovered and resolved. Air-gapped Metabases will not get the security center (regardless of the plan) because security center needs to check Metabases's security registry for updates, which would violate air-gapping.
+Security center is available for (and relevant to) self-hosted Metabases on Pro/Enterprise plans. Metabase Cloud instances are automatically patched as soon as issues are discovered and resolved. Air-gapped Metabases will not get the security center (regardless of the plan) because security center needs to check Metabase's security registry for updates, which would violate air-gapping.
 
 ## See security issues affecting your instance
 

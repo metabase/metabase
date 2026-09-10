@@ -186,14 +186,6 @@
   ;; #{"segment" "database" "action" "indexed-entity"}
   (set/difference (set search.spec/search-models) appdb-scorer-models))
 
-(defn appdb-scorers
-  "The appdb-based scorers for search ranking results. Like `base-scorers`, but for scorers that need to query the appdb."
-  [search-ctx]
-  (when-not (search.scoring/no-scoring-required? search-ctx)
-    {:bookmarked search.scoring/bookmark-score-expr
-     :user-recency (search.scoring/inverse-duration
-                    (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)}))
-
 (defn with-appdb-scores
   "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.
 
@@ -208,7 +200,8 @@
     (if-not (and (seq search-results-to-score)
                  (seq appdb-scorers))
       search-results
-      (->> (semantic-search.db/appdb-scored-rows search-results-to-score search-ctx appdb-scorers)
+      (->> (semantic-search.db/appdb-scored-rows (mapv #(select-keys % [:id :model]) search-results-to-score)
+                                                 search-ctx)
            (update-with-appdb-scores weights (keys appdb-scorers) search-results)
            (sort-by :score >)
            vec))))

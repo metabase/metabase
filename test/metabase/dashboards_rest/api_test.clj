@@ -5072,7 +5072,6 @@
                                                                  :type :temporal-unit
                                                                  :sectionId "temporal-unit"}]})
     (t2/update! :model/DashboardCard :id dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
-                                                                            :type :temporal-unit
                                                                             :card_id card-id
                                                                             :target [:dimension
                                                                                      (mt/$ids orders !day.$created_at)]}]})

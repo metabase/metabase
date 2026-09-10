@@ -993,7 +993,8 @@
         columns (for [column (some-> schema .getFields fields->metabase-field-info)]
                   (-> column
                       (set/rename-keys {:base-type :base_type})
-                      (dissoc :database-type :database-position)))
+                      ;; `:nested-fields` describes a RECORD's sub-fields for sync, not a result column
+                      (dissoc :database-type :database-position :nested-fields)))
         cols {:cols columns}
         results (eduction (map (fn [^FieldValueList row]
                                  (perf/mapv parse-field-value row parsers)))

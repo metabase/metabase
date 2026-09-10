@@ -27,6 +27,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.core :as parameters]
@@ -80,7 +81,7 @@
   *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
   {:deprecated true}
   [_route-params
-   {:keys [f]} :- [:map
+   {:keys [f]} :- [:map {:closed true}
                    [:f {:optional true} [:maybe [:enum "all" "mine" "archived"]]]]]
   (let [dashboards (dashboards-list f)
         edit-infos (:dashboard (revisions/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
@@ -168,7 +169,7 @@
   [_route-params
    _query-params
    {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard}
-   :- [:map
+   :- [:map {:closed true}
        [:name                ms/NonBlankString]
        [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
        [:description         {:optional true} [:maybe :string]]
@@ -565,11 +566,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:from-dashboard-id/copy"
   "Copy a Dashboard."
-  [{:keys [from-dashboard-id]} :- [:map
+  [{:keys [from-dashboard-id]} :- [:map {:closed true}
                                    [:from-dashboard-id ms/PositiveInt]]
    _query-params
    {:keys [name description collection_id collection_position
-           is_deep_copy], :as _dashboard} :- [:map
+           is_deep_copy], :as _dashboard} :- [:map {:closed true}
                                               [:name                {:optional true} [:maybe ms/NonBlankString]]
                                               [:description         {:optional true} [:maybe :string]]
                                               [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
@@ -659,9 +660,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {dashboard-load-id :dashboard_load_id} :- [:map
+   {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
                                               [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
   (with-dashboard-load-id dashboard-load-id
     (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
@@ -678,10 +679,10 @@
   action drive the download). Parameters left unspecified fall back to the dashboard's own defaults.
 
   `paper_size` is `\"a4\"` (default) or `\"letter\"`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [parameters paper_size]} :- [:map
+   {:keys [parameters paper_size]} :- [:map {:closed true}
                                        [:parameters {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                                        [:paper_size {:default "a4"} [:maybe [:enum "a4" "letter"]]]]
    _request
@@ -708,7 +709,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/items"
   "Get Dashboard with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   ;; Output should match the shape of api/collection/<:id|root>/items. There's a test that asserts that this remains
   ;; the case, but if you change one, you'll want to change both.
@@ -740,7 +741,7 @@
   "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
   This will remove also any questions/models/segments/metrics that use this database."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [dashboard (api/write-check :model/Dashboard id)]
     (dashboards-rest.db/delete-dashboard! id)
@@ -755,7 +756,11 @@
 (mu/defn- check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
-  [parameter-mappings :- [:sequential ::parameters.schema/parameter-mapping]]
+  [parameter-mappings :- [:sequential [:merge
+                                       ::parameters.schema/parameter-mapping
+                                       [:map {:closed true}
+                                        [:dashcard-id {:optional true} [:maybe ms/PositiveInt]]
+                                        [:card-id     {:optional true} [:maybe ms/PositiveInt]]]]]]
   (when (seq parameter-mappings)
     (let [card-ids       (into #{} (keep :card-id) parameter-mappings)
           card-id->query (when (seq card-ids)
@@ -851,7 +856,7 @@
                           (create-dashcards! dashboard to-create))}))
 
 (def ^:private UpdatedDashboardCard
-  [:map
+  [:map {:closed true}
    ;; id can be negative, it indicates a new card and BE should create them
    [:id                                      int?]
    [:size_x                                  ms/PositiveInt]
@@ -862,12 +867,12 @@
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe int?]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-   [:series                 {:optional true} [:maybe [:sequential [:map [:id ms/PositiveInt]]]]]])
+   [:series                 {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]])
 
 (def ^:private UpdatedDashboardTab
-  [:map
+  [:map {:closed true}
    ;; id can be negative, it indicates a new card and BE should create them
    [:id       ms/Int]
    [:name     ms/NonBlankString]
@@ -1078,7 +1083,7 @@
 
 (def ^:private DashUpdates
   "Schema for Dashboard Updates."
-  [:map
+  [:map {:closed true}
    [:name                    {:optional true} [:maybe ms/NonBlankString]]
    [:description             {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
@@ -1105,7 +1110,7 @@
 (api.macros/defendpoint :put "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
   structure as the response from `GET /api/dashboard/:id`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    dash-updates :- DashUpdates]
@@ -1130,10 +1135,10 @@
                      ...]
      :tabs [{:id       ... ; DashboardTab ID
                      :name     ...}]}"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [cards tabs]} :- [:map
+   {:keys [cards tabs]} :- [:map {:closed true}
                             [:cards (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
                             [:tabs  {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]]]]
   (log/warn
@@ -1152,9 +1157,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {dashboard-load-id :dashboard_load_id} :- [:map
+   {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
                                               [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
   (with-dashboard-load-id dashboard-load-id
     (perms/with-relevant-permissions-for-user api/*current-user-id*
@@ -1175,7 +1180,7 @@
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
-  [{:keys [dashboard-id]} :- [:map
+  [{:keys [dashboard-id]} :- [:map {:closed true}
                               [:dashboard-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -1200,7 +1205,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
-  [{:keys [dashboard-id]} :- [:map
+  [{:keys [dashboard-id]} :- [:map {:closed true}
                               [:dashboard-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -1219,23 +1224,23 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (dashboards-rest.db/dashboard id) api/read-check xrays/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
 (def ^:private TransientCard
-  [:map
+  [:map {:closed true}
    [:id                     {:optional true} [:maybe [:or ms/PositiveInt ms/NonBlankString]]]
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]])
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
 
 (def ^:private TransientDashboardCard
-  [:map
+  [:map {:closed true}
    [:card                   {:optional true} [:maybe TransientCard]]
    [:series                 {:optional true} [:maybe [:sequential TransientCard]]]
    [:row                    {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
@@ -1244,10 +1249,10 @@
    [:size_y                 {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/Int]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]])
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
 
 (def ^:private TransientDashboard
-  [:map
+  [:map {:closed true}
    [:name               {:optional true} [:maybe ms/NonBlankString]]
    [:description        {:optional true} [:maybe :string]]
    [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
@@ -1262,7 +1267,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/save/collection/:parent-collection-id"
   "Save a denormalized description of dashboard into collection with ID `:parent-collection-id`."
-  [{:keys [parent-collection-id]} :- [:map
+  [{:keys [parent-collection-id]} :- [:map {:closed true}
                                       [:parent-collection-id ms/PositiveInt]]
    _query-params
    dashboard :- TransientDashboard]
@@ -1301,10 +1306,10 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
-  [{:keys [id param-key]}      :- [:map
+  [{:keys [id param-key]}      :- [:map {:closed true}
                                    [:id ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]
-   constraint-param-key->value :- [:map-of string? any?]]
+   constraint-param-key->value :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
@@ -1323,11 +1328,11 @@
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
   Currently limited to first 1000 results."
-  [{:keys [id param-key query]} :- [:map
+  [{:keys [id param-key query]} :- [:map {:closed true}
                                     [:id    ms/PositiveInt]
                                     [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
-   constraint-param-key->value  :- [:map-of string? any?]]
+   constraint-param-key->value  :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true
@@ -1343,10 +1348,10 @@
 
     ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
     GET /api/dashboard/1/params/abc/remapping?value=100"
-  [{:keys [id param-key]} :- [:map
+  [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ms/PositiveInt]
                               [:param-key ms/NonBlankString]]
-   {:keys [value]}        :- [:map [:value :string]]]
+   {:keys [value]}        :- [:map {:closed true} [:value :string]]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]
       (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
@@ -1377,7 +1382,7 @@
 
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [_route-params
-   {:keys [filtered filtering]} :- [:map
+   {:keys [filtered filtering]} :- [:map {:closed true}
                                     [:filtered  (ms/QueryVectorOf ::lib.schema.id/field)]
                                     [:filtering {:optional true} [:maybe (ms/QueryVectorOf ::lib.schema.id/field)]]]]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
@@ -1393,11 +1398,11 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  [{:keys [dashboard-id dashcard-id]} :- [:map
+  [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
-   {:keys [parameters]} :- [:map
+   {:keys [parameters]} :- [:map {:closed true}
                             [:parameters {:optional true} ::actions.schema/prefetch-parameter-values]]]
   (api/read-check :model/Dashboard dashboard-id)
   (let [dashcard (api/check-404 (dashboards-rest.db/dashcard-in-dashboard dashcard-id dashboard-id))]
@@ -1414,11 +1419,11 @@
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  [{:keys [dashboard-id dashcard-id]} :- [:map
+  [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
-   {:keys [parameters]} :- [:map
+   {:keys [parameters]} :- [:map {:closed true}
                             [:parameters {:optional true}
                              [:maybe ::actions.schema/execute-parameter-values.string-keys]]]]
   (api/read-check :model/Dashboard dashboard-id)
@@ -1432,12 +1437,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  [{:keys [dashboard-id dashcard-id card-id]} :- [:map
+  [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
                                                   [:card-id      ms/PositiveInt]]
    _query-params
-   {:keys [dashboard_load_id], :as body} :- [:map
+   {:keys [dashboard_load_id], :as body} :- [:map {:closed true}
                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
                                              [:parameters        {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (with-dashboard-load-id dashboard_load_id
@@ -1458,7 +1463,7 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map
+  [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map {:closed true}
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
                                                                 [:card-id       ms/PositiveInt]
@@ -1467,7 +1472,7 @@
    {:keys          [parameters]
     format-rows?   :format_rows
     pivot-results? :pivot_results}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
@@ -1495,12 +1500,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
-  [{:keys [dashboard-id dashcard-id card-id]} :- [:map
+  [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
                                                   [:card-id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge

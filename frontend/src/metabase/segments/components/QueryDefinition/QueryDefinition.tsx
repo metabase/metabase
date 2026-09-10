@@ -1,4 +1,3 @@
-import { getMetadata } from "metabase/metadata-store";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
@@ -20,8 +19,9 @@ export function QueryDefinition({
   tableId,
   definition,
 }: QueryDefinitionProps) {
-  const metadata = useSelector(getMetadata);
-  const query = getSegmentQuery(definition, tableId, metadata);
+  const query = useSelector((state) =>
+    getSegmentQuery(state, definition, tableId),
+  );
   if (!query) {
     return null;
   }

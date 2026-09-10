@@ -166,7 +166,7 @@ _Admin > Table Metadata > Database > Table > Field_
 ### Field visibility
 
 - **Everywhere**: By default, users can see all of the columns in a table.
-- **Only in detail views**: The detail view is the view you seen when you expand a single row in a table. This will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. For example, you could use this setting on a column like "Customer Comments" if you already have a column for "Customer Rating".
+- **Only in detail views**: The detail view is the view you see when you expand a single row in a table. This will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. For example, you could use this setting on a column like "Customer Comments" if you already have a column for "Customer Rating".
 - **Do not include**: Columns won't show up in the query builder or data reference. You can set this option on sensitive columns (such as PII) or irrelevant columns. But this visibility option is a simple omit/hide option; **it's not a permissions feature**. These columns are still accessible for people with native query privileges; they can write `SELECT hidden_column FROM table` or `SELECT * FROM table` in the [SQL editor](../questions/native-editor/writing-sql.md) and they'll be able to view these fields and their values.
 
 To restrict what data people can view and query, see [data permissions](../permissions/data.md).

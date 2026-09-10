@@ -27,7 +27,7 @@
   [handler-schema recipient-schema]
   [:merge
    handler-schema
-   [:map
+   [:map {:closed true}
     [:template   {:optional true} [:multi {:dispatch map?}
                                    [true ::models.channel/ChannelTemplateUserProvided]
                                    [false :nil]]]
@@ -128,7 +128,7 @@
   - `card_id`: if provided returns only notification that has card_id as payload"
   [_route-params
    {:keys [creator_id creator_or_recipient_id recipient_id card_id include_inactive payload_type]} :-
-   [:map
+   [:map {:closed true}
     [:creator_id              {:optional true} ms/PositiveInt]
     [:recipient_id            {:optional true} ms/PositiveInt]
     [:creator_or_recipient_id {:optional true} ms/PositiveInt]
@@ -148,7 +148,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get a notification by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (-> (get-notification id)
       api/read-check))
 
@@ -272,7 +272,7 @@
   `creator_id` (owner) can be reassigned here only by superusers (e.g. the admin 'Edit alert'
   modal's owner picker). `mi/can-update?` rejects a non-superuser reassignment attempt with 403;
   the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiUpdateInput]
   (update-notification! id body))
@@ -283,9 +283,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/send"
   "Send a notification by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query
-   {:keys [handler_ids]} :- [:map [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
+   {:keys [handler_ids]} :- [:map {:closed true} [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (let [notification (cond-> (get-notification id)
                        (seq handler_ids)
                        (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]
@@ -343,6 +343,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (unsubscribe-user! id api/*current-user-id*)
   api/generic-204-no-content)
