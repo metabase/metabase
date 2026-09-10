@@ -13,16 +13,14 @@
     ;; ignore namespaces outside of the module system
     (when-let [current-module (modules/module config current-ns)]
       (doseq [required-namespace required-namespaces]
-        ;; ignore namespaces outside of the module system.
-        (when (modules/module config required-namespace)
-          (when-let [error (modules/usage-error config current-ns current-module required-namespace)]
-            (hooks/reg-finding! (assoc (meta node)
-                                       :message error
-                                       :type    :metabase/modules))))))))
+        (when-let [error (modules/usage-error config current-module required-namespace)]
+          (hooks/reg-finding! (assoc (meta node)
+                                     :message error
+                                     :type    :metabase/modules)))))))
 
 (defn- lint-dynamic-require* [node current-ns config]
   (when (and (not (modules/ignored-namespace? config current-ns))
-             (modules/module current-ns))
+             (modules/module config current-ns))
     (hooks/reg-finding! (assoc (meta node)
                                :message "Module dependency cannot be statically determined from a dynamic require"
                                :type    :metabase/modules))))

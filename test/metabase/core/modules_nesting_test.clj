@@ -256,29 +256,6 @@
       (is (= #{}                     (open-children config 'query-processor)))
       (is (= #{}                     (open-children {} 'lib))))))
 
-(deftest ^:parallel externally-visible?-test
-  (testing "A module is externally visible iff every ancestor is either top-level or opened by its parent"
-    (let [externally-visible? (hook-fn 'externally-visible?)]
-      (testing "top-level modules are always externally visible"
-        (is (true? (externally-visible? {} 'lib)))
-        (is (true? (externally-visible? {} 'query-processor))))
-      (testing "a nested module whose parent opens it is visible (parent is top-level)"
-        (let [config {:metabase/modules {'lib {:module-exports #{'lib.schema}}}}]
-          (is (true? (externally-visible? config 'lib.schema)))))
-      (testing "a nested module whose parent does NOT open it is NOT visible"
-        (let [config {:metabase/modules {'lib {:module-exports #{}}}}]
-          (is (false? (externally-visible? config 'lib.schema)))))
-      (testing "a grandchild is visible only if both its parent and grandparent open the chain"
-        (let [ok       {:metabase/modules {'outer        {:module-exports #{'outer.middle}}
-                                           'outer.middle {:module-exports #{'outer.middle.deepest}}}}
-              bad-mid  {:metabase/modules {'outer        {:module-exports #{}}
-                                           'outer.middle {:module-exports #{'outer.middle.deepest}}}}
-              bad-deep {:metabase/modules {'outer        {:module-exports #{'outer.middle}}
-                                           'outer.middle {:module-exports #{}}}}]
-          (is (true?  (externally-visible? ok       'outer.middle.deepest)))
-          (is (false? (externally-visible? bad-mid  'outer.middle.deepest)))
-          (is (false? (externally-visible? bad-deep 'outer.middle.deepest))))))))
-
 (deftest ^:parallel visibility-root-test
   (testing "`visibility-root` is the nearest ancestor that does not export the module below it"
     (let [visibility-root (hook-fn 'visibility-root)]
@@ -316,38 +293,10 @@
 ;;;; usage-error behavior under nesting
 ;;;; -------------------------------------------------------------------------
 
-(defn- synthesize-ns-for-module
-  "Given a module symbol and its config entry, produce a plausible namespace
-  symbol that resolves to that module. Used in test fixtures where the exact
-  caller namespace doesn't matter — we just need something the module
-  resolver recognizes as belonging to the module."
-  [config module-sym]
-  (let [prefix (or (get-in config [:metabase/modules module-sym :ns-prefix])
-                   (if (= (namespace module-sym) "enterprise")
-                     (str "metabase-enterprise." (name module-sym))
-                     (str "metabase." (name module-sym))))]
-    (symbol (str prefix ".core"))))
-
 (defn- usage-error
-  "Test helper that calls the loaded kondo hook's `usage-error`.
-
-  Three-arg form: pass a module symbol as the caller. The helper synthesizes
-  a plausible namespace for that module (`<ns-prefix>.core`) and passes it
-  as `current-ns` to the real function. Use this when the test doesn't
-  care about the caller's specific namespace.
-
-  Four-arg form: pass both `current-ns` and `current-module` explicitly.
-  Use this when the test specifically exercises behavior that depends on
-  which namespace inside the module is doing the require — e.g., the
-  `:private` rule that allows only `<parent>.init`/`.core` to load
-  private children."
-  ([config current-module required-namespace]
-   (usage-error config
-                (synthesize-ns-for-module config current-module)
-                current-module
-                required-namespace))
-  ([config current-ns current-module required-namespace]
-   ((hook-fn 'usage-error) config current-ns current-module required-namespace)))
+  "Call the loaded kondo hook's `usage-error`."
+  [config current-module required-namespace]
+  ((hook-fn 'usage-error) config current-module required-namespace))
 
 (deftest ^:parallel usage-error-parent-needs-explicit-uses-and-api-test
   (testing "Parent accessing descendant must declare :uses AND obey the child's :api"
@@ -685,8 +634,7 @@
                                      'enterprise/cache  {:api :any
                                                          :uses #{}}}}]
       (testing "enterprise/core can statically require enterprise/cache"
-        (is (nil? (usage-error config 'metabase-enterprise.core.init 'enterprise/core
-                               'metabase-enterprise.cache.core)))))))
+        (is (nil? (usage-error config 'enterprise/core 'metabase-enterprise.cache.core)))))))
 
 (deftest ^:parallel usage-error-enterprise-shorthand-same-subtree-access-test
   (testing "OSS X and enterprise/X are same-subtree after shorthand — both in X's subtree"
@@ -695,11 +643,9 @@
                                      'enterprise/cache  {:api :any
                                                          :uses #{'cache}}}}]
       (testing "OSS cache → enterprise/cache via :uses is allowed (same subtree)"
-        (is (nil? (usage-error config 'metabase.cache.init 'cache
-                               'metabase-enterprise.cache.core))))
+        (is (nil? (usage-error config 'cache 'metabase-enterprise.cache.core))))
       (testing "enterprise/cache → OSS cache via :uses is allowed (same subtree, reverse direction)"
-        (is (nil? (usage-error config 'metabase-enterprise.cache.init 'enterprise/cache
-                               'metabase.cache.core)))))))
+        (is (nil? (usage-error config 'enterprise/cache 'metabase.cache.core)))))))
 
 (deftest ^:parallel usage-error-enterprise-without-oss-counterpart-stays-top-level-test
   (testing (str "An `enterprise/X` module whose OSS counterpart `X` is NOT declared stays "
@@ -713,8 +659,7 @@
       ;; has no OSS parent (sandbox isn't declared), so it's top-level
       ;; and externally referenceable.
       (testing "unrelated can reach top-level enterprise/sandbox"
-        (is (nil? (usage-error config 'metabase.unrelated.core 'unrelated
-                               'metabase-enterprise.sandbox.core)))))))
+        (is (nil? (usage-error config 'unrelated 'metabase-enterprise.sandbox.core)))))))
 
 (deftest ^:parallel usage-error-backwards-compat-flat-config-test
   (testing "With no nested modules declared, behavior matches the flat pre-nesting model"

@@ -377,11 +377,14 @@
     (is (= "metabase.lib-be"
            (#'mage.modules/explicit-ns-prefix '{lib.be {:ns-prefix "metabase.lib-be"}} 'lib.be)))))
 
-(deftest dotted-module-exact-test-files-mark-correct-module-changes
-  (testing "module-level dotted test files resolve back to the dotted module when a dotted prefix exists"
+(deftest dotted-module-files-mark-correct-module-changes
+  (testing "dotted module files resolve to the dotted module when its prefix exists"
     (let [build-prefix->module @#'mage.modules/build-prefix->module
           file->module         @#'mage.modules/file->module
           prefix->module       (build-prefix->module {'lib.schema {}})]
       (is (= 'lib.schema
              (file->module prefix->module
-                           "test/metabase/lib/schema_test.cljc"))))))
+                           "test/metabase/lib/schema_test.cljc")))
+      (is (= 'lib.schema
+             (file->module prefix->module
+                           "src/metabase/lib/schema/config.edn"))))))

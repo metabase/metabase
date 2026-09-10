@@ -25,9 +25,9 @@
 ;;;; -------------------------------------------------------------------------
 
 (defn- declared-modules
-  "Set of module symbols declared in the `:metabase/modules` map of `config`."
+  "Map keyed by the module symbols declared in `config`."
   [config]
-  (set (keys (get config :metabase/modules))))
+  (:metabase/modules config))
 
 (defn- split-module
   "Split a module symbol into `[ns-part name-parts]` where `ns-part` is the
@@ -219,30 +219,19 @@
   [config m]
   (:ancestor (blocking-export config m)))
 
-(defn- externally-visible?
-  "True if `m` may be named in the `:uses` of any module at all, wherever it sits in the tree.
-  This is the case iff `m` is top-level, OR `m`'s parent has `m` in its `:module-exports` set
-  AND the parent is itself externally visible — i.e. iff `m` has no [[visibility-root]].
-
-  Used by the subtree-membership lint to validate `:uses` declarations.
-  NOT used at require-lint time — requires are checked strictly against
-  the caller's declared `:uses` and the target's `:api`."
-  [config m]
-  (nil? (visibility-root config m)))
-
 (defn- namable-from?
   "True if `current-module` may name `required-module` at all under the strict model: either the
   target is externally visible (top-level, or in `:module-exports` of every ancestor up to the
   root), or `current-module` sits inside the subtree of the target's [[visibility-root]] — the
-  nearest ancestor keeping it private. Mirrors `can-be-named-by?` in `metabase.core.modules-test`,
-  which validates declared `:uses` sets; this require-time version covers modules whose `:uses` is
-  `:any` and therefore declare nothing for that test to check."
+  nearest ancestor keeping it private. Kept in sync with
+  `dev.deps-graph/module-namable-from?`, which applies the same rule while expanding `:uses :any`."
   [config current-module required-module]
-  (let [declared (declared-modules config)]
-    (or (externally-visible? config required-module)
+  (let [declared (declared-modules config)
+        root     (visibility-root config required-module)]
+    (or (nil? root)
         (descendant-of? declared
                         current-module
-                        (visibility-root config required-module)))))
+                        root))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; Namespace → module resolution (prefix-map based)
@@ -312,29 +301,13 @@
                       (select-keys config [:metabase/modules]))]
     (assoc config ::prefix->module (cached-prefix->module config))))
 
-(defn- ns-starts-with-prefix?
-  "True if namespace string `ns-str` is either exactly equal to `prefix` or
-  begins with `prefix` followed by a `.` (segment boundary). Prevents false
-  matches like `metabase.lib.bert` vs prefix `metabase.lib.be`."
-  [ns-str prefix]
-  (or (= ns-str prefix)
-      (str/starts-with? ns-str (str prefix "."))))
-
 (defn- longest-matching-prefix
-  "Scan `prefix->module` and return the module whose `:ns-prefix` is the
-  longest string prefix of `ns-str` at segment boundaries. Returns `nil`
-  if no declared module owns the namespace."
+  "Return the module at the longest dotted ancestor of `ns-str`."
   [prefix->module ns-str]
-  (second
-   (reduce-kv
-    (fn [[best-prefix :as best] prefix module]
-      (if (and (ns-starts-with-prefix? ns-str prefix)
-               (or (nil? best-prefix)
-                   (> (count prefix) (count best-prefix))))
-        [prefix module]
-        best))
-    nil
-    prefix->module)))
+  (loop [candidate ns-str]
+    (or (get prefix->module candidate)
+        (when-let [dot (str/last-index-of candidate ".")]
+          (recur (subs candidate 0 dot))))))
 
 (defn- normalize-test-namespace
   "Normalize exact `-test` namespaces back to their module/source namespace
@@ -467,7 +440,7 @@
     (or (= allowed-modules :any)
         ;; coerce to a set: `:uses` is normally a set, but a hand-edited vector would make `contains?`
         ;; test index membership and reject every legitimately-declared dependency.
-        (boolean (contains? (set allowed-modules) required-module)))))
+        (contains? (set allowed-modules) required-module))))
 
 (defn- rest-module?
   "Whether `module` is a canonical nested `.rest` module or uses the deprecated `-rest` compatibility form."
@@ -491,7 +464,9 @@
 (defn- allowed-rest-consumer?
   "Whether `module` may depend on REST modules."
   [module]
-  ((some-fn rest-module? routes-module? core-module?) module))
+  (or (rest-module? module)
+      (routes-module? module)
+      (core-module? module)))
 
 (defn- allowed-module-namespace?
   "True if `ns-symb` (the namespace being required) is an allowed reference
@@ -515,9 +490,8 @@
        namespace must be in the required module's `:api` set, OR
        `current-module` must appear in the required module's `:friends`
        list (as an audited bypass)."
-  [config current-module ns-symb]
-  (let [required-module (module config ns-symb)
-        declared        (declared-modules config)]
+  [config current-module required-module ns-symb]
+  (let [declared (declared-modules config)]
     (if (descendant-of? declared current-module required-module)
       true
       (let [api-namespaces (module-api-namespaces config required-module)
@@ -527,9 +501,9 @@
             (contains? friends current-module))))))
 
 (defn usage-error
-  "Find usage errors when a `required-namespace` is required from `current-ns`
-  (which belongs to `current-module`). Returns a string describing the error
-  type if there is one, otherwise `nil` if there are no errors.
+  "Find usage errors when `required-namespace` is required from
+  `current-module`. Returns a string describing the error type if there is one,
+  otherwise `nil`.
 
   The required module must be in current's `:uses` (always, even between
   relatives), and the required namespace must be in the required module's
@@ -538,12 +512,8 @@
   modules, except for route aggregators and core initializers. See
   [[allowed-module-namespace?]] for the access-path details. When current's
   `:uses` is `:any`, the namability rule (see [[namable-from?]]) is additionally
-  enforced here, since the config-level test only covers set-valued `:uses`.
-
-  `current-ns` is accepted but currently unused by the check. It's kept in
-  the signature because the hook callers already have it handy and future
-  lints may want the caller namespace for more precise error messages."
-  [config _current-ns current-module required-namespace]
+  enforced here, since the config-level test only covers set-valued `:uses`."
+  [config current-module required-namespace]
   ;; ignore stuff not in a module i.e. non-Metabase stuff.
   (when-let [required-module (module config required-namespace)]
     (when-not (= current-module required-module)
@@ -575,7 +545,7 @@
                   ancestor
                   ancestor))
 
-        (not (allowed-module-namespace? config current-module required-namespace))
+        (not (allowed-module-namespace? config current-module required-module required-namespace))
         (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
                 required-namespace
                 required-module

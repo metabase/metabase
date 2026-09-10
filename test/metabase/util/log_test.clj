@@ -106,4 +106,9 @@
     (is (= "Querying Platform" (log/ns->team* 'metabase.lib.schema.expression)))
     (is (= "UX West" (log/ns->team* 'metabase-enterprise.analytics.stats))))
   (testing "nested modules can override their ancestor's team"
-    (is (= "Metabot" (log/ns->team* 'metabase.agent-lib.core)))))
+    (is (= "Metabot" (log/ns->team* 'metabase.agent-lib.core))))
+  (testing "module-level test namespaces resolve like their source namespace"
+    (let [prefix->module {"metabase.lib"        'lib
+                          "metabase.lib.schema" 'lib.schema}]
+      (is (= 'lib.schema
+             (#'log/module-for-ns prefix->module 'metabase.lib.schema-test))))))

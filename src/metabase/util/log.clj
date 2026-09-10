@@ -109,30 +109,24 @@
   `(with-thread-context-fn ~context-map
      (fn [] ~@body)))
 
+(defn- module-for-ns
+  [prefix->module ns-sym]
+  (loop [candidate (str/replace (str ns-sym) #"-test$" "")]
+    (or (get prefix->module candidate)
+        (when-let [dot (str/last-index-of candidate ".")]
+          (recur (subs candidate 0 dot))))))
+
 (let [config (-> (if (config/jar?)
                    (io/resource "metabase/config/modules.edn")
                    (io/file ".clj-kondo/config/modules/config.edn"))
                  slurp edn/read-string :metabase/modules)
-      declared-modules (set (keys config))
+      declared-modules config
       module-prefix (fn module-prefix [module]
                       (or (get-in config [module :ns-prefix])
                           (if (= "enterprise" (namespace module))
                             (str "metabase-enterprise." (name module))
                             (str "metabase." (name module)))))
-      prefix->module (into {} (map (juxt module-prefix identity)) declared-modules)
-      module-for-ns (fn module-for-ns [ns-sym]
-                      (let [ns-str (str ns-sym)]
-                        (second
-                         (reduce-kv
-                          (fn [[best-prefix :as best] prefix module]
-                            (if (and (or (= ns-str prefix)
-                                         (str/starts-with? ns-str (str prefix ".")))
-                                     (or (nil? best-prefix)
-                                         (> (count prefix) (count best-prefix))))
-                              [prefix module]
-                              best))
-                          nil
-                          prefix->module))))
+      prefix->module (into {} (map (juxt module-prefix identity)) (keys declared-modules))
       module-parent (fn module-parent [module]
                       (let [parts (str/split (name module) #"\.")]
                         (cond
@@ -157,7 +151,8 @@
     [ns-sym]
     (if ('#{metabase.server.middleware.log} ns-sym)
       ::skip
-      (some-> ns-sym module-for-ns module-team))))
+      (some-> (module-for-ns prefix->module ns-sym)
+              module-team))))
 
 (let [attribution (if (config/config-bool :mb-log-team-attribution)
                     (memoize ns->team*)

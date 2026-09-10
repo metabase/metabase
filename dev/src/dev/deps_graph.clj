@@ -122,24 +122,13 @@
         (map (fn [m] [(module-ns-prefix modules-config m) m]))
         (keys modules-config)))
 
-(defn- ns-starts-with-prefix? [ns-str prefix]
-  (or (= ns-str prefix)
-      (str/starts-with? ns-str (str prefix "."))))
-
 (defn- longest-matching-prefix
-  "Scan `prefix->module` and return the module whose ns-prefix is the longest
-  string prefix of `ns-str` at segment boundaries."
+  "Return the module at the longest dotted ancestor of `ns-str`."
   [prefix->module ns-str]
-  (second
-   (reduce-kv
-    (fn [[best-prefix :as best] prefix module]
-      (if (and (ns-starts-with-prefix? ns-str prefix)
-               (or (nil? best-prefix)
-                   (> (count prefix) (count best-prefix))))
-        [prefix module]
-        best))
-    nil
-    prefix->module)))
+  (loop [candidate ns-str]
+    (or (get prefix->module candidate)
+        (when-let [dot (str/last-index-of candidate ".")]
+          (recur (subs candidate 0 dot))))))
 
 (defn- normalize-test-namespace [ns-symb]
   (if (str/ends-with? (name ns-symb) "-test")
@@ -521,9 +510,7 @@
         ;; grow monotonically: dropping the seed set each round loses members whose own deps don't
         ;; re-reach them, which oscillates forever on cyclic graphs (StackOverflowError).
         expand-deps (fn expand-deps [deps]
-                      (let [deps' (into (into (sorted-set) deps)
-                                        (mapcat deps-graph)
-                                        deps)]
+                      (let [deps' (into deps (mapcat deps-graph deps))]
                         (if (= deps deps')
                           deps
                           (recur deps'))))]
@@ -608,12 +595,11 @@
 (defn module-team-source
   "Closest module at or above `module` that explicitly declares `:team`, or `nil` when none does."
   [config module]
-  (let [declared-modules (set (keys config))]
-    (loop [module module]
-      (cond
-        (contains? (get config module) :team) module
-        :else (when-let [parent (module-parent declared-modules module)]
-                (recur parent))))))
+  (loop [module module]
+    (cond
+      (contains? (get config module) :team) module
+      :else (when-let [parent (module-parent config module)]
+              (recur parent)))))
 
 (defn module-team
   "Effective team for `module`, inherited from its closest configured ancestor when omitted locally."
@@ -644,24 +630,23 @@
       (symbol (str prefix ".core"))
       (symbol (str prefix ".init"))}))
 
-(defn- module-visibility-root
+(defn module-visibility-root
   "The module whose subtree `module` is private to, or `nil` if it may be named from anywhere.
   Mirror of `hooks.common.modules/visibility-root` — see that function for the semantics."
   [config module]
-  (let [declared-modules (set (keys config))]
-    (loop [module module]
-      (when-let [parent (module-parent declared-modules module)]
-        (if (contains? (expanded-module-exports config parent) module)
-          (recur parent)
-          parent)))))
+  (loop [module module]
+    (when-let [parent (module-parent config module)]
+      (if (contains? (expanded-module-exports config parent) module)
+        (recur parent)
+        parent))))
 
-(defn- module-namable-from?
+(defn module-namable-from?
+  "Whether `caller` may name `target`, based on the target's visibility root."
   [config caller target]
-  (let [declared-modules (set (keys config))
-        root             (module-visibility-root config target)]
+  (let [root (module-visibility-root config target)]
     (or (nil? root)
         (= root caller)
-        (boolean (some #(= root %) (module-ancestor-chain declared-modules caller))))))
+        (boolean (some #(= root %) (module-ancestor-chain config caller))))))
 
 (defn- expanded-module-uses
   [config module]
@@ -1067,6 +1052,7 @@
           (remove nil?)
           (distinct)
           (mapcat #(module->dependents deps %))
+          (distinct)
           (mapcat #(module->test-files modules-config prefix->mod %)))
     source-filenames)))
 
