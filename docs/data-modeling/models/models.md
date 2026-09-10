@@ -232,7 +232,7 @@ See [Convert existing models to transforms](../transforms/query.md#convert-model
 - [Models in Metabase][learn-models]
 - [Troubleshooting models][troubleshooting-models].
 
-[column-type]: ../../data-modeling/semantic-types.md
+[column-type]: ../metadata/semantic-types.md
 [cte]: https://www.metabase.com/learn/sql/working-with-sql/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/dimensions-and-measures
 [question]: ../../questions/start.md
