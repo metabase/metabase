@@ -3,8 +3,8 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
-   [metabase.app-db.core :as app-db]
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
