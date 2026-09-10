@@ -3,6 +3,7 @@
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [mage.color]
    [mage.modules]))
 
 ;; Referenced by core_test.clj to ensure namespace is loaded
@@ -279,7 +280,7 @@
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
 
-(defn modules-affecting-drivers []
+(defn- modules-affecting-drivers []
   (let [deps (mage.modules/dependencies)
         all (keys deps)]
     (filter #(mage.modules/driver-deps-affected? [%]) all)))
@@ -325,3 +326,62 @@
       (is (-> [changed-file]
               mage.modules/updated-files->updated-modules
               mage.modules/driver-deps-affected?)))))
+
+(deftest module-tree-sorts-enterprise-last
+  (testing "siblings are alphabetical, except enterprise modules sort after everything else"
+    (let [config {'queries {} 'enterprise/audit {} 'actions {} 'enterprise/sso {} 'util {}}
+          tree   (#'mage.modules/module-display-tree config)
+          lines  (binding [mage.color/*disable-colors* true]
+                   (into []
+                         (mapcat (fn [[segment node]]
+                                   (#'mage.modules/tree-node-lines config false [segment] node)))
+                         (#'mage.modules/sorted-children tree)))]
+      (is (= ["actions" "queries" "util" "enterprise/audit" "enterprise/sso"]
+             lines)))))
+
+(deftest module-tree-lines-test
+  (let [config '{lib                  {}
+                 lib.be               {:ns-prefix "metabase.lib-be"}
+                 transforms           {}
+                 transforms.base      {:ns-prefix "metabase.transforms-base"}
+                 transforms.base.deep {}
+                 transforms.python    {:ns-prefix "metabase.transforms-python"}
+                 enterprise-tools     {}
+                 enterprise/transforms {}
+                 enterprise/transforms.python {:ns-prefix "metabase-enterprise.transforms-python"}
+                 enterprise/billing   {}}
+        tree   (#'mage.modules/module-display-tree config)
+        lines  (binding [mage.color/*disable-colors* true]
+                 (into []
+                       (mapcat (fn [[segment node]]
+                                 (#'mage.modules/tree-node-lines config false [segment] node)))
+                       (#'mage.modules/sorted-children tree)))]
+    (testing "alphabetical roots, enterprise last among siblings, dotted display names, stars on :ns-prefix"
+      (is (= ["enterprise-tools"
+              "lib"
+              "- lib.be *"
+              "transforms"
+              "- transforms.base *"
+              "-- transforms.base.deep"
+              "- transforms.python *"
+              "- transforms.enterprise"
+              "-- transforms.enterprise.python *"
+              "enterprise/billing"]
+             lines)))))
+
+(deftest module-tree-enterprise-default-prefix-not-starred-test
+  (testing "the implicit metabase-enterprise. prefix is canonical, and so is an explicit :ns-prefix equal to the default"
+    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {}} 'enterprise/billing)))
+    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {:ns-prefix "metabase-enterprise.billing"}}
+                                                 'enterprise/billing)))
+    (is (= "metabase.lib-be"
+           (#'mage.modules/explicit-ns-prefix '{lib.be {:ns-prefix "metabase.lib-be"}} 'lib.be)))))
+
+(deftest dotted-module-exact-test-files-mark-correct-module-changes
+  (testing "module-level dotted test files resolve back to the dotted module when a dotted prefix exists"
+    (let [build-prefix->module @#'mage.modules/build-prefix->module
+          file->module         @#'mage.modules/file->module
+          prefix->module       (build-prefix->module {'lib.schema {}})]
+      (is (= 'lib.schema
+             (file->module prefix->module
+                           "test/metabase/lib/schema_test.cljc"))))))

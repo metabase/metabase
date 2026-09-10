@@ -1,17 +1,29 @@
 (ns hooks.metabase.toucan.db-ns
-  "Lint that application database query calls -- Toucan 2's `t2/select`, `t2/query`, `t2/insert!`, `t2/update!`,
-  `t2/delete!` and friends, plus the `metabase.app-db.core` wrappers around them such as `mdb/query` and
-  `mdb/update-or-insert!` -- live in a module's `db` namespace, i.e. `metabase[-enterprise].<module>.db` (or `metabase.driver.<driver>.db` for
-  driver modules). Every other namespace in a module goes through those functions instead of talking to the
-  application database directly.
+  "Lints application database calls -- Toucan 2's `t2/select`, `t2/query`, `t2/insert!` and friends, plus
+  the `metabase.app-db.core` wrappers such as `mdb/query` -- outside their module's `db` namespace.
 
-  Registered as an `:analyze-call` hook on each of those functions in `.clj-kondo/config.edn`. The hook
-  returns its input unchanged so Kondo's normal analysis of the call (arity, var usage) still runs."
+  A module's `db` namespace is its effective `:ns-prefix` plus `.db`: `metabase.queries.db` for a top-level
+  module, `metabase.metabot.llm.db` for a nested one. Driver namespaces and test files are exempt.
+
+  Registered as an `:analyze-call` hook on each of those functions in `.clj-kondo/config.edn`."
   (:require
-   [clj-kondo.hooks-api :as hooks]))
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.common.modules :as modules]))
 
-(defn- db-namespace? [ns-sym]
-  (boolean (re-matches #"^metabase(?:-enterprise)?\.(?:driver\.)?[^.]+\.db$" (name ns-sym))))
+(def ^:private driver-db-namespace
+  "`metabase.driver.<driver>.db`. Drivers live under the one `driver` module, so no `:ns-prefix` names them."
+  #"^metabase\.driver\.[^.]+\.db$")
+
+(defn- db-namespace?
+  "Whether `ns-symb` is the `db` namespace of the module that owns it."
+  [config ns-symb]
+  (let [ns-str (name ns-symb)]
+    (boolean
+     ;; Resolved through the module config rather than matched by name: `metabase.queries.models.db` is
+     ;; shaped like a module db namespace but names no module, and has to stay a finding.
+     (or (when-let [module (modules/module config ns-symb)]
+           (= ns-str (str (modules/module-ns-prefix config module) ".db")))
+         (re-matches driver-db-namespace ns-str)))))
 
 (defn- test-file?
   "Whether `filename` is in a test source tree. Test namespaces are exempt through the `test-namespaces` group in
@@ -20,16 +32,16 @@
   (boolean (and filename (re-find #"(?:^|/)test/" filename))))
 
 (defn lint-query-call
-  "Register a `:metabase/t2-query-namespace` finding when a Toucan 2 query call appears outside a `<module>.db`
-  namespace."
+  "Registers a `:metabase/t2-query-namespace` finding when the call in `input` sits outside its module's `db`
+  namespace. Returns `input` unchanged, so Kondo's own analysis of the call still runs."
   [{:keys [node ns filename] :as input}]
   (when (and ns
-             (not (db-namespace? ns))
+             (not (db-namespace? (modules/config input) ns))
              (not (test-file? filename)))
     (let [fn-node (first (:children node))]
       (hooks/reg-finding!
        (assoc (meta fn-node)
-              :message (format "Application database query calls like `%s` must live in metabase[-enterprise].<module>.db (or metabase.driver.<driver>.db) namespaces"
+              :message (format "Application database calls like `%s` belong in their module's `db` namespace"
                                (hooks/sexpr fn-node))
               :type :metabase/t2-query-namespace))))
   input)

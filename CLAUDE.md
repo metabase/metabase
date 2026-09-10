@@ -84,6 +84,23 @@ Run all repository-level checks, or one named suite:
 ./bin/mage project-tests <backend|migrations|modules|ratchets>
 ```
 
+### Nested modules
+
+A module name says where it sits in a tree. `lib.schema` is a child of `lib`, and `enterprise/search` is a
+child of `search` whenever OSS `search` is declared. `./bin/mage modules-tree` prints the result.
+
+Namespaces resolve to the most specific module whose prefix matches, so declaring `lib.schema` moves
+`metabase.lib.schema.*` out of `lib` without moving a file. Set `:ns-prefix` when a module's namespaces
+don't follow its name.
+
+A module may use an ancestor's internals without going through its `:api`. The reverse does not hold: a
+parent goes through its child's `:api` like anyone else. `:uses` is still required both ways, so the
+dependency still shows up in the graph.
+
+A child is namable from outside its parent's subtree only if every ancestor up to the root lists the next
+module on the path in `:module-exports`. `X` exports `enterprise/X` automatically, so
+`metabase-enterprise.core.init` can reference it.
+
 ## Kondo Ignore Ratchets
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
