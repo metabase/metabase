@@ -60,13 +60,17 @@
 
 ;;; Table (entity) Types
 
-(derive :entity/GenericTable :entity/*)
-(derive :entity/UserTable :entity/GenericTable)
-(derive :entity/CompanyTable :entity/GenericTable)
-(derive :entity/TransactionTable :entity/GenericTable)
-(derive :entity/ProductTable :entity/GenericTable)
-(derive :entity/SubscriptionTable :entity/GenericTable)
-(derive :entity/EventTable :entity/GenericTable)
+(def entity-hierarchy
+  "Hierarchy of table entity types, i.e. a Table's `:entity_type`. Not part of Clojure's global hierarchy, so `isa?`
+  on these keywords must be passed this hierarchy explicitly."
+  (-> (make-hierarchy)
+      (derive :entity/GenericTable :entity/*)
+      (derive :entity/UserTable :entity/GenericTable)
+      (derive :entity/CompanyTable :entity/GenericTable)
+      (derive :entity/TransactionTable :entity/GenericTable)
+      (derive :entity/ProductTable :entity/GenericTable)
+      (derive :entity/SubscriptionTable :entity/GenericTable)
+      (derive :entity/EventTable :entity/GenericTable)))
 
 ;;; Modifier Types
 
