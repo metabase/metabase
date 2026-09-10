@@ -4,7 +4,7 @@ import {
   EMBEDDING_SDK_CONFIG,
   isDataAppDev,
 } from "metabase/embedding-sdk/config";
-import { resetPluginSlots } from "metabase/plugin-slots";
+import { resetPluginSlots } from "metabase/plugins/slot";
 import { getUrlTarget, openUrl } from "metabase/urls";
 
 import { isEmbedPreview, setDataApp } from "./config";

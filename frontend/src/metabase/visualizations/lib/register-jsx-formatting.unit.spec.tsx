@@ -8,7 +8,7 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { enterSdkMode } from "metabase/embedding-sdk/lib/enter-sdk-mode";
-import { resetPluginSlots } from "metabase/plugin-slots";
+import { resetPluginSlots } from "metabase/plugins/slot";
 import { formatValue } from "metabase/value-formatting";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { ColumnSettings } from "metabase-types/api";
