@@ -19,7 +19,7 @@
 (mu/defn check-card-can-be-saved!
   "Throw a 400 when a `:metric` card's `dataset-query` can't be saved. No-op for other card types."
   [dataset-query :- [:maybe ::lib-be.schema/maybe-legacy-query]
-   card-type     :- [:maybe ::queries.schema/card-type]]
+   card-type     :- [:maybe ::queries.schema/card.type]]
   (when (and (seq dataset-query) (= card-type :metric))
     (when-not (lib/can-save? dataset-query card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
