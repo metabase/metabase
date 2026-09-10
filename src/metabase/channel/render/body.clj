@@ -187,6 +187,65 @@
   (fn [chart-type _render-type _timezone-id _card _dashcard _data]
     chart-type))
 
+;;; --------------------------------------------------- pivot grids ---------------------------------------------------
+
+(defn- setting-value
+  "Look up `k` in a viz-settings map that may be keyed by either keywords or strings."
+  [settings k]
+  (or (get settings k) (get settings (name k))))
+
+(defn- pivot-cell->str
+  "Display string for an assembled pivot cell (a formatter wrapper, a plain string, or nil)."
+  [x]
+  (cond
+    (nil? x)    ""
+    (string? x) x
+    :else       (or (:num-str x) (:text-str x) (str x))))
+
+(defn- pivot->hiccup
+  "Render the assembled 2D pivot `rows` (header row first, then data rows) as an HTML table. Cells are
+  `white-space: nowrap` so the table takes whatever width it needs (the surrounding pulse body provides
+  horizontal scrolling). `opts` may include `:color-data`/`:color-settings` (the query results and viz-settings the
+  conditional-formatting rules evaluate against, see [[js.color/cell-background-colors]]), `:left-width` (number of
+  leading row-label columns), and `:measure-names` (ordered measure column names) to apply the card's conditional
+  formatting to the measure value cells."
+  [rows {:keys [color-data color-settings left-width measure-names]}]
+  (let [measure-count (max 1 (count measure-names))
+        colorable-cell (fn [cell ^long c]
+                         ;; value cells are NumericWrapper; map each value column back to its measure column
+                         ;; so the matching conditional-formatting rule applies. Row highlighting is disabled
+                         ;; for pivots (:table.pivot in pivot-table-content), so the row index is unused.
+                         (when (and color-data (formatter/NumericWrapper? cell))
+                           (let [vpos (- c (long left-width))]
+                             (when (nat-int? vpos)
+                               [cell 0 (nth measure-names (mod vpos measure-count))]))))
+        ;; all value-cell colors are fetched in one batched JS call up front, keyed by [row col] position
+        keyed-cells (for [[r row]  (map-indexed vector rows)
+                          [c cell] (map-indexed vector row)
+                          :let     [colorable (colorable-cell cell c)]
+                          :when    colorable]
+                      [[r c] colorable])
+        cell-colors (zipmap (map first keyed-cells)
+                            (js.color/cell-background-colors (or color-data {:cols [] :rows []})
+                                                             color-settings
+                                                             (mapv second keyed-cells)))]
+    [:table {:style (style/style (style/pivot-table-style))}
+     [:tbody
+      (map-indexed
+       (fn [r row]
+         [:tr
+          (map-indexed
+           (fn [c cell]
+             (let [header?    (zero? r)
+                   first-col? (zero? c)
+                   label?     (and (pos? r) first-col?)
+                   bg         (get cell-colors [r c])]
+               [(if (or header? label?) :th :td)
+                {:style (style/style (style/pivot-cell-style header? label? first-col? bg))}
+                (h (pivot-cell->str cell))]))
+           row)])
+       rows)]]))
+
 (defn- order-data [data viz-settings]
   (if (some? (::mb.viz/table-columns viz-settings))
     (let [;; Deduplicate table-columns by name to handle duplicated viz settings
@@ -646,63 +705,6 @@
       (render :table render-type timezone-id card dashcard data))))
 
 ;;; ------------------------------------------------ pivot tables ------------------------------------------------
-
-(defn- setting-value
-  "Look up `k` in a viz-settings map that may be keyed by either keywords or strings."
-  [settings k]
-  (or (get settings k) (get settings (name k))))
-
-(defn- pivot-cell->str
-  "Display string for an assembled pivot cell (a formatter wrapper, a plain string, or nil)."
-  [x]
-  (cond
-    (nil? x)    ""
-    (string? x) x
-    :else       (or (:num-str x) (:text-str x) (str x))))
-
-(defn- pivot->hiccup
-  "Render the assembled 2D pivot `rows` (header row first, then data rows) as an HTML table. Cells are
-  `white-space: nowrap` so the table takes whatever width it needs (the surrounding pulse body provides
-  horizontal scrolling). `opts` may include `:color-data`/`:color-settings` (the query results and viz-settings the
-  conditional-formatting rules evaluate against, see [[js.color/cell-background-colors]]), `:left-width` (number of
-  leading row-label columns), and `:measure-names` (ordered measure column names) to apply the card's conditional
-  formatting to the measure value cells."
-  [rows {:keys [color-data color-settings left-width measure-names]}]
-  (let [measure-count (max 1 (count measure-names))
-        colorable-cell (fn [cell ^long c]
-                         ;; value cells are NumericWrapper; map each value column back to its measure column
-                         ;; so the matching conditional-formatting rule applies. Row highlighting is disabled
-                         ;; for pivots (:table.pivot in pivot-table-content), so the row index is unused.
-                         (when (and color-data (formatter/NumericWrapper? cell))
-                           (let [vpos (- c (long left-width))]
-                             (when (nat-int? vpos)
-                               [cell 0 (nth measure-names (mod vpos measure-count))]))))
-        ;; all value-cell colors are fetched in one batched JS call up front, keyed by [row col] position
-        keyed-cells (for [[r row]  (map-indexed vector rows)
-                          [c cell] (map-indexed vector row)
-                          :let     [colorable (colorable-cell cell c)]
-                          :when    colorable]
-                      [[r c] colorable])
-        cell-colors (zipmap (map first keyed-cells)
-                            (js.color/cell-background-colors (or color-data {:cols [] :rows []})
-                                                             color-settings
-                                                             (mapv second keyed-cells)))]
-    [:table {:style (style/style (style/pivot-table-style))}
-     [:tbody
-      (map-indexed
-       (fn [r row]
-         [:tr
-          (map-indexed
-           (fn [c cell]
-             (let [header?    (zero? r)
-                   first-col? (zero? c)
-                   label?     (and (pos? r) first-col?)
-                   bg         (get cell-colors [r c])]
-               [(if (or header? label?) :th :td)
-                {:style (style/style (style/pivot-cell-style header? label? first-col? bg))}
-                (h (pivot-cell->str cell))]))
-           row)])
-       rows)]]))
 
 (defn- pivot-table-content
   "Assemble a `:pivot` card's flat (pivot-grouping) result into a Hiccup pivot table, or nil if it can't be
