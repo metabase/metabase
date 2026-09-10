@@ -18,6 +18,7 @@
    [metabase.mcp.v2.tools.query :as tools.query]
    [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]))
 
@@ -33,37 +34,46 @@
 
 (defn- call!
   "Call `execute_query` through the registry dispatch seam as the already-bound current user,
-   with the execute scope. Mints a query handle on every successful call."
+   with the execute scope. Mints a query handle on every successful call. Returns the whole
+   dispatch outcome: `{:result <mcp content>}` for anything that reached the handler,
+   `{:error {:code .. :message ..}}` for a registry-level rejection (scope denial, args-schema
+   failure)."
   [session-id arguments]
   (registry/call-tool execute-scope session-id "execute_query" arguments))
 
+(defn- dispatch-error?
+  "Whether a [[call!]] outcome is an error, at either layer."
+  [{:keys [result error]}]
+  (boolean (or error (:isError result))))
+
 (defn- response-text
-  [result]
-  (-> result :content first :text))
+  "The outcome's text block, or a registry-level rejection's message."
+  [{:keys [result error]}]
+  (if error (:message error) (-> result :content first :text)))
 
 (defn- payload
-  "Parse the JSON payload line of a successful execute_query response. Throws if the tool
-   returned an error, so a tool-level error can never masquerade as an empty result."
-  [result]
-  (when (:isError result)
-    (throw (ex-info "expected success, got tool error" {:result result})))
-  (-> result response-text str/split-lines first json/decode+kw))
+  "Parse the JSON payload line of a successful execute_query response. Throws if the call
+   errored at either layer, so an error can never masquerade as an empty result."
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info "expected success, got tool error" {:outcome outcome})))
+  (-> outcome response-text str/split-lines first json/decode+kw))
 
 (defn- steering-line
   "The steering sentence appended after the JSON payload, or nil on an unsteered response.
-   Throws on a tool-level error for the same reason as [[payload]]."
-  [result]
-  (when (:isError result)
-    (throw (ex-info "expected success, got tool error" {:result result})))
-  (second (str/split-lines (response-text result))))
+   Throws on an error at either layer, for the same reason as [[payload]]."
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info "expected success, got tool error" {:outcome outcome})))
+  (second (str/split-lines (response-text outcome))))
 
 (defn- error-text
-  "The error message of a tool-level error response. Throws if the call succeeded, so a
-   passing call can never satisfy an error assertion."
-  [result]
-  (when-not (:isError result)
-    (throw (ex-info "expected tool error, got success" {:result result})))
-  (response-text result))
+  "The message of an errored call, at either layer. Throws if the call succeeded, so a passing
+   call can never satisfy an error assertion."
+  [outcome]
+  (when-not (dispatch-error? outcome)
+    (throw (ex-info "expected tool error, got success" {:outcome outcome})))
+  (response-text outcome))
 
 (defn- table-name-ref
   "The `[database schema table]` portable name array for a test-data table."
@@ -102,6 +112,21 @@
   [{:keys [cols rows]}]
   (let [idx (col-index cols "ID")]
     (mapv #(nth % idx) rows)))
+
+(tx/defdataset big-ids
+  "Key values straddling the JS-safe integer boundary, 2^53-1 = 9007199254740991. Every
+   execute_query run carries `js-int-to-string?`, which renders anything past that boundary as a
+   STRING rather than a number, so these rows exercise a cursor boundary that arrives as text
+   while the column it is compared against stays numeric. The first two rows sit at or below the
+   boundary and page as ordinary numbers; the rest cross it."
+  [["big_ids"
+    [{:field-name "big_id" :base-type :type/BigInteger}]
+    [[9007199254740989]
+     [9007199254740991]
+     [9007199254740993]
+     [9007199254740995]
+     [9007199254740997]
+     [9007199254741001]]]])
 
 ;;; ------------------------------------------------ Happy paths ---------------------------------------------------
 
@@ -312,6 +337,97 @@
                 "the second page of groups starts strictly past the first page's boundary")))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest non-unique-projection-refuses-cursor-test
+  ;; GHY-4363: a projection with no unique key has no total order. The full-tuple tiebreaker ties
+  ;; on every duplicate row, and a strictly-past-the-boundary keyset then skips every row tied
+  ;; with the boundary. PRODUCTS holds 200 rows across 4 categories, so a CATEGORY-only
+  ;; projection that minted a cursor would serve 4 pages, drop 180 rows, and report itself
+  ;; complete — the exact silent gap the cursor contract exists to prevent.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            query  {:lib/type "mbql/query"
+                    :stages   [{:lib/type     "mbql.stage/mbql"
+                                :source-table (table-name-ref :products)
+                                :fields       [(field-name-ref :products :category)]}]}
+            result (call! sid {:query query :row_limit 5})
+            body   (payload result)]
+        (testing "GHY-4363: a projection without a unique key is an explicit dead end, not a cursor"
+          (is (= 5 (:returned body)))
+          (is (true? (:truncated body)))
+          (is (nil? (:next_cursor body)))
+          (is (not (str/includes? (steering-line result) "continue with `cursor`"))
+              "offering a cursor affordance with no cursor would strand the agent")
+          (is (str/includes? (steering-line result) "narrow the query")))
+        (testing "GHY-4363: projecting the PK alongside restores the cursor — the refusal is about uniqueness, not about `fields`"
+          (let [with-pk (assoc-in query [:stages 0 :fields]
+                                  [(field-name-ref :products :id)
+                                   (field-name-ref :products :category)])
+                pk-body (payload (call! sid {:query with-pk :row_limit 5}))]
+            (is (true? (:truncated pk-body)))
+            (is (string? (:next_cursor pk-body)))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest aggregated-cursor-chain-continues-past-the-appended-stage-test
+  ;; GHY-4363: page 1 of an aggregated chain appends a stage to carry the keyset, so every later
+  ;; page reads a query whose LAST stage is that appended one — unaggregated, with no projected
+  ;; PK. The uniqueness proof has to look back through it to the aggregating stage; a proof that
+  ;; only inspects the last stage kills the chain at page 2.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid       (str (random-uuid))
+            page-size 3
+            n-pages   4
+            uids      (loop [args  {:query (orders-query {:aggregation [["count" {}]]
+                                                          :breakout    [(field-name-ref :orders :user_id)]
+                                                          :order-by    [["asc" {} (field-name-ref :orders :user_id)]]})
+                                    :row_limit page-size}
+                             acc   []
+                             pages 0]
+                        (let [body (payload (call! sid args))
+                              idx  (col-index (:cols body) "USER_ID")
+                              acc' (into acc (map #(nth % idx) (:rows body)))]
+                          (if (or (>= (inc pages) n-pages) (not (:next_cursor body)))
+                            acc'
+                            (recur {:cursor (:next_cursor body) :row_limit page-size} acc' (inc pages)))))]
+        (testing "GHY-4363: an aggregated chain keeps paging past the appended stage, with no gaps or repeats"
+          (is (= (* page-size n-pages) (count uids)))
+          (is (apply < uids) "strictly increasing => no boundary repeats and no groups skipped")
+          (is (= (count uids) (count (distinct uids)))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest large-integer-boundary-paging-test
+  ;; GHY-4363: the cursor boundary is read straight out of the row that was served, and
+  ;; `js-int-to-string?` has already turned any integer past 2^53-1 into a string by then — so the
+  ;; minted predicate really does compare a numeric column against a string literal. It compiles
+  ;; correctly only because the query processor re-types it on the way in:
+  ;; `wrap-value-literals` gives the bare literal the column's effective type and
+  ;; `auto-parse-filter-values` parses it back to a bigint, both above the driver layer, so every
+  ;; driver sees a number. That dependency is invisible from the cursor code and nothing else
+  ;; pins it — pin it here, across the threshold, in one exact chain.
+  (mt/dataset big-ids
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [sid   (str (random-uuid))
+              query {:lib/type "mbql/query"
+                     :stages   [{:lib/type     "mbql.stage/mbql"
+                                 :source-table (table-name-ref :big_ids)
+                                 :order-by     [["asc" {} (field-name-ref :big_ids :big_id)]]}]}
+              seen  (loop [args {:query query :row_limit 2}, acc [], pages 0]
+                      (let [body (payload (call! sid args))
+                            idx  (col-index (:cols body) "BIG_ID")
+                            acc' (into acc (map #(nth % idx) (:rows body)))]
+                        (if (or (>= pages 10) (not (:next_cursor body)))
+                          acc'
+                          (recur {:cursor (:next_cursor body) :row_limit 2} acc' (inc pages)))))]
+          (testing "GHY-4363: every row is served exactly once across a boundary that crosses 2^53"
+            ;; compared as strings: the rows below the boundary come back as numbers and the ones
+            ;; past it as strings, which is the whole point.
+            (is (= ["9007199254740989" "9007199254740991" "9007199254740993"
+                    "9007199254740995" "9007199254740997" "9007199254741001"]
+                   (mapv str seen)))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest remapped-column-paging-test
   ;; The remap middleware injects a display column into every row (PEOPLE.NAME beside
   ;; ORDERS.USER_ID), so the row no longer matches the projection position for position.
@@ -372,6 +488,36 @@
                  (:prompt (v2.queries/resolve-query-handle! sid uid (:query_handle body))))))))))
 
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest cursor-page-handle-carries-no-page-boundary-test
+  ;; GHY-4363: a cursor page's stored query embeds the keyset boundary it resumed from — that is
+  ;; how paging works at all. But the handle the response hands back is what `question_write`
+  ;; saves and what the UI visualizes, and a boundary is a scroll position, not part of the
+  ;; question: saving page 3 must save "orders", never "orders from row 4171 onward". The cursor
+  ;; keeps its boundary; the handle does not.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            stored (fn [handle]
+                     (:query (v2.queries/resolve-query-handle! sid (mt/user->id :rasta) handle)))
+            page1  (payload (call! sid {:query (orders-query) :row_limit 5}))
+            page2  (payload (call! sid {:cursor (:next_cursor page1) :row_limit 5}))
+            page3  (payload (call! sid {:cursor (:next_cursor page2) :row_limit 5}))]
+        (testing "the chain really did resume from a boundary — otherwise this pins nothing"
+          (is (< (apply max (row-ids page1)) (apply min (row-ids page3)))))
+        (testing "GHY-4363: the deep page's handle carries no page boundary"
+          (is (empty? (:filters (last (:stages (stored (:query_handle page3))))))))
+        (testing "GHY-4363: so re-running it serves the question from the top, not the page again"
+          (let [rerun (payload (call! sid {:query_handle (:query_handle page3)}))]
+            (is (= (row-ids page1) (vec (take 5 (row-ids rerun)))))))
+        (testing "GHY-4363: a filter the caller wrote is part of the question and survives"
+          (let [f1 (payload (call! sid {:query     (orders-query {:filters [[">" {} (field-name-ref :orders :id) 100]]})
+                                        :row_limit 5}))
+                f2 (payload (call! sid {:cursor (:next_cursor f1) :row_limit 5}))
+                fs (:filters (last (:stages (stored (:query_handle f2)))))]
+            (is (= 1 (count fs)) "the caller's clause, and only it")
+            (is (= ">" (ffirst fs)))))))))
 
 (deftest ^:parallel input-exclusivity-test
   ;; Error paths mint nothing, so these calls go straight through registry/call-tool and stay
@@ -439,10 +585,10 @@
 (deftest ^:parallel scope-gating-test
   (mt/with-current-user (mt/user->id :rasta)
     (let [sid (str (random-uuid))]
-      (testing "GHY-4142: a token without the execute scope is denied"
-        (let [result (registry/call-tool #{"agent:content:read"} sid "execute_query" {})]
-          (is (:isError result))
-          (is (= "Insufficient scope to call tool: execute_query" (response-text result)))))
+      (testing "GHY-4142: a token without the execute scope is denied before dispatch"
+        ;; A scope denial is a JSON-RPC error, not `isError` tool content — nothing reaches the handler.
+        (let [{:keys [error]} (registry/call-tool #{"agent:content:read"} sid "execute_query" {})]
+          (is (= "Insufficient scope to call tool: execute_query" (:message error)))))
       (testing "GHY-4142: the identical call with the execute scope reaches the handler (positive control)"
         ;; It fails input validation — proof it got past the scope gate without minting anything.
         (is (str/starts-with? (error-text (registry/call-tool execute-scope sid "execute_query" {}))
@@ -802,9 +948,9 @@
         (mt/with-dynamic-fn-redefs [qp/process-query (fn [query]
                                                        (reset! captured query)
                                                        fake-qp-result)]
-          (let [result (call! (str (random-uuid)) arguments)]
-            (when (:isError result)
-              (throw (ex-info "expected success, got tool error" {:result result})))))))
+          (let [outcome (call! (str (random-uuid)) arguments)]
+            (when (dispatch-error? outcome)
+              (throw (ex-info "expected success, got tool error" {:outcome outcome})))))))
     (or @captured
         (throw (ex-info "process-query was never called" {:arguments arguments})))))
 

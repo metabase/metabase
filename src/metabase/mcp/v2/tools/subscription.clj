@@ -38,11 +38,48 @@
 
 ;;; ------------------------------------------------- Schedule -----------------------------------------------------
 
+(def ^:private schedule-fields-used
+  "The schedule fields the pulse channel writer reads, per schedule type. Anything outside its
+   type's set is dropped on the floor. Mirrors `alert_write`'s table over this tool's vocabulary,
+   which has no `:schedule_minute`."
+  {"hourly"  #{}
+   "daily"   #{:schedule_hour}
+   "weekly"  #{:schedule_hour :schedule_day}
+   "monthly" #{:schedule_hour :schedule_frame :schedule_day}})
+
+(def ^:private schedule-field-advice
+  "What to do instead, per field a schedule type doesn't read."
+  {:schedule_hour  "an hourly schedule sends every hour — use \"daily\", \"weekly\", or \"monthly\" to send at one hour"
+   :schedule_day   "use \"weekly\", or \"monthly\" with schedule_frame \"first\" or \"last\", to send on a weekday"
+   :schedule_frame "only a monthly schedule sends on a frame of the month"})
+
+(defn- check-ignored-schedule-fields!
+  "Reject a schedule field the caller's `schedule_type` doesn't read. `create-pulse-channel!`
+   nils such a field out silently, so the subscription would deliver on a schedule nobody asked
+   for while the call reports success — `{hourly, schedule_hour 9}` sends 24 times a day, not once
+   at nine. Only a non-nil value counts: the strict-client transform lists every property as
+   required and spells \"no value\" as null, so a filled-in null is an omission, not a request."
+  [{:keys [schedule_type] :as schedule}]
+  (let [used    (get schedule-fields-used schedule_type #{})
+        ignored (->> (keys schedule-field-advice)
+                     (filter #(some? (get schedule %)))
+                     (remove used)
+                     sort
+                     first)]
+    (when ignored
+      (common/throw-teaching-error
+       (format "%s %s schedule doesn't use %s, so it would be ignored — %s."
+               (if (= "hourly" schedule_type) "An" "A")
+               schedule_type (name ignored) (schedule-field-advice ignored))))))
+
 (defn- check-schedule!
-  "Reject a schedule the pulse channel would reject. `create-pulse-channel!`'s validation is an
+  "Reject a schedule the pulse channel would reject or mis-encode: one missing a field its type
+   needs, or one carrying a field its type doesn't read. `create-pulse-channel!`'s validation is an
    assertion, so an incomplete schedule would otherwise surface as a generic internal error
-   instead of a sentence naming the missing field."
-  [{:keys [schedule_type schedule_hour schedule_day schedule_frame]}]
+   instead of a sentence naming the missing field, and it drops a surplus field silently. Kept in
+   step with `alert_write`'s check of the same vocabulary, so an agent that has learned one tool's
+   schedule has learned the other's."
+  [{:keys [schedule_type schedule_hour schedule_day schedule_frame] :as schedule}]
   (letfn [(require! [v field explanation]
             (when (nil? v)
               (common/throw-teaching-error
@@ -56,7 +93,8 @@
                     (require! schedule_frame "schedule_frame" "\"first\", \"mid\", or \"last\"")
                     (when (and (= "mid" schedule_frame) schedule_day)
                       (common/throw-teaching-error
-                       "A monthly schedule with schedule_frame \"mid\" sends on the 15th, so it cannot also take a schedule_day — drop schedule_day, or use frame \"first\" or \"last\" to send on a particular weekday."))))))
+                       "A monthly schedule with schedule_frame \"mid\" sends on the 15th, so it cannot also take a schedule_day — drop schedule_day, or use frame \"first\" or \"last\" to send on a particular weekday.")))))
+  (check-ignored-schedule-fields! schedule))
 
 ;;; ------------------------------------------------- Channels -----------------------------------------------------
 
@@ -73,7 +111,9 @@
 
 (defn- slack-details
   "The `details` map for a Slack channel: the cached channel's display name, which is what the
-   sender reads. An unknown name is rejected here rather than at send time, hours later."
+   sender reads, plus its `channel_id`. The sender prefers the id over the name, so that delivery
+   survives a channel rename; a details map carrying only the name is the legacy fallback shape.
+   An unknown name is rejected here rather than at send time, hours later."
   [slack-channel]
   (when-not (channel.settings/slack-configured?)
     (common/throw-teaching-error
@@ -81,14 +121,18 @@
   (when (str/blank? slack-channel)
     (common/throw-teaching-error
      "channel \"slack\" needs a slack_channel — the name of the channel to post to, e.g. \"data-team\"."))
-  (let [display-name (some-> slack-channel
-                             channel.settings/find-cached-slack-channel-or-username
-                             :display-name)]
+  (let [entry        (channel.settings/find-cached-slack-channel-or-username slack-channel)
+        display-name (:display-name entry)]
     (when-not display-name
       (common/throw-teaching-error
        (format "Metabase can't see a Slack channel or user named %s, so a subscription to it would deliver nowhere — check the name, or invite the Metabase Slack app to the channel."
                (pr-str slack-channel))))
-    {:channel display-name}))
+    ;; Unconditional rather than `cond->`: the details map is merged onto the stored one, and the
+    ;; sender prefers `:channel_id` over the name. An entry without an id would otherwise leave the
+    ;; *previous* channel's id in place, so a repoint would show the new name and deliver to the old
+    ;; channel. Every cache entry the Slack API builds carries an id, so this only rules out a shape
+    ;; that cannot occur — cheaply.
+    {:channel display-name :channel_id (:id entry)}))
 
 (def ^:private schedule-keys
   [:schedule_type :schedule_hour :schedule_day :schedule_frame])
@@ -142,8 +186,13 @@
                                   (recipient-maps recipients)
                                   (or (:recipients existing)
                                       [{:id api/*current-user-id*}]))}
+           ;; Same hazard as the email branch: the pulse-channel update rewrites `:details`
+           ;; wholesale, so repointing a Slack channel has to merge onto what is already stored
+           ;; rather than replace it — otherwise `include_pdf`/`attachment_only` set in the app are
+           ;; erased. `slack-details` supplies a fresh `:channel_id`, which overwrites the stale one
+           ;; for the channel we just moved off.
            "slack" {:details (if slack_channel
-                               (slack-details slack_channel)
+                               (merge (:details existing) (slack-details slack_channel))
                                (or (not-empty (:details existing))
                                    (slack-details nil)))}
            ;; `:http` (webhook) is a real PulseChannel type this tool doesn't build, and
@@ -252,14 +301,24 @@
 ;;; -------------------------------------------------- Update ------------------------------------------------------
 
 (defn- fetch-subscription
-  "The subscription behind its read check, hydrated. Alerts share the Pulse id space but are a
-   different concept with their own tool, so one collapses to not-found here."
+  "The subscription behind its *write* check, hydrated. Alerts share the Pulse id space but are a
+   different concept with their own tool, so one collapses to not-found here.
+
+   The gate is `write-check` rather than `read-check` because everything [[update!]] does before
+   `update-pulse-with-perm-checks!` runs its own check — resolving parameter ids against the
+   dashboard, classifying recipients, naming the channel topology — would otherwise run for a
+   caller who only satisfies `can-read?`. For a subscription that is `(or superuser? creator?
+   recipient?)`, so merely being on the recipient list buys those answers about a dashboard in a
+   collection the caller cannot see. It also collapses the write check's 403 into the same
+   not-found everyone else gets, which is what keeps rejections from telling a recipient's
+   subscriptions apart from ids they know nothing about (the GHY-4217 pattern `alert_write`
+   carries). `update-pulse-with-perm-checks!` re-runs the check regardless, so this is additive."
   [id-or-eid]
   (v2.resolve/resolve-and-read-with
    :model/Pulse id-or-eid
    (fn [id]
      (when (mcp.db/subscription-pulse-exists? id)
-       (api/read-check (pulse/retrieve-pulse id))))))
+       (api/write-check (pulse/retrieve-pulse id))))))
 
 (defn- patched-channels
   "The subscription's full channel list with the targeted one replaced (or appended). The pulse
@@ -427,4 +486,5 @@
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (projections/project :subscription :concise
                                              (projections/subscription-row
-                                              (redaction/redact-pulse (pulse/retrieve-pulse id))))))))
+                                              (redaction/redact-pulse (pulse/retrieve-pulse id))))
+                        nil))))

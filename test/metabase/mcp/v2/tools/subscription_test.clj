@@ -4,6 +4,7 @@
    gating, nil-arg stripping, Malli validation, and teaching-error conversion are exercised for
    free."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
    [metabase.mcp.v2.registry :as registry]
@@ -18,25 +19,34 @@
 (comment tools.subscription/keep-me)
 
 (defn- call-tool!
+  "Returns the whole dispatch outcome: `{:result <mcp content>}` for anything that reached the
+   handler, `{:error {:code .. :message ..}}` for a registry-level rejection (scope denial,
+   args-schema failure)."
   [user scopes args]
   (mt/with-current-user (if (keyword? user) (mt/user->id user) user)
     (registry/call-tool scopes nil "subscription_write" args)))
 
-(defn- tool-result
+(defn- dispatch-error?
+  "Whether a [[call-tool!]] outcome is an error, at either layer."
   [{:keys [result error]}]
-  (when error
-    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
-  (when (:isError result)
-    (throw (ex-info (str "tool call failed: " (-> result :content first :text))
-                    {:result result})))
-  (-> result :content first :text json/decode+kw))
+  (boolean (or error (:isError result))))
+
+(defn- response-text
+  "The outcome's text block, or a registry-level rejection's message."
+  [{:keys [result error]}]
+  (if error (:message error) (-> result :content first :text)))
+
+(defn- tool-result
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info (str "tool call failed: " (response-text outcome)) {:outcome outcome})))
+  (-> outcome response-text json/decode+kw))
 
 (defn- tool-error
-  [{:keys [result error]}]
-  (cond
-    error             (:message error)
-    (:isError result) (-> result :content first :text)
-    :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
+  [outcome]
+  (when-not (dispatch-error? outcome)
+    (throw (ex-info "expected a tool error, got success" {:outcome outcome})))
+  (response-text outcome))
 
 (defn- wire
   "Round-trip through JSON, as the JSON-RPC transport does, so tests can't pass shapes a real
@@ -174,7 +184,9 @@
                                                          :slack_channel "data-team"})))
                   channel (first (pulse-channels (:id result)))]
               (is (= :slack (:channel_type channel)))
-              (is (= "#data-team" (get-in channel [:details :channel]))))))))))
+              (is (= "#data-team" (get-in channel [:details :channel])))
+              (is (= "C123" (get-in channel [:details :channel_id]))
+                  "the sender prefers the id over the name so delivery survives a channel rename"))))))))
 
 (deftest slack-channel-is-required-for-slack-test
   (testing "GHY-4156: channel \"slack\" without slack_channel is a teaching error, not a channel
@@ -342,21 +354,25 @@
 ;;; ------------------------------------------------ parameters ----------------------------------------------------
 
 (deftest create-with-parameters-test
-  (testing "GHY-4156: parameters make a filtered subscription — only {id, value} is stored, and the
+  ;; `enable-dashboard-subscription-filters?` is `(and config/ee-available? (has-feature? ...))`, so
+  ;; on an OSS build the feature reads false whatever the token says and the call fails on the
+  ;; feature refusal instead. Guard the whole body out, as `redaction_test` does for the same reason.
+  (mt/when-ee-evailable
+   (testing "GHY-4156: parameters make a filtered subscription — only {id, value} is stored, and the
             dashboard's own definition of that parameter is merged in at send time"
-    (mt/with-premium-features #{:dashboard-subscription-filters}
-      (mt/with-model-cleanup [:model/Pulse]
-        (mt/with-temp [:model/Card {card-id :id} {}
-                       :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
-                                                                     :type "string/=" :slug "category"}]}
-                       :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-          (let [result (tool-result (call-tool! :crowberto nil
-                                                (wire {:method       "create"
-                                                       :dashboard_id dash-id
-                                                       :schedule     {:schedule_type "hourly"}
-                                                       :parameters   [{:id "cat" :value "Gadget"}]})))]
-            (is (= [{:id "cat" :value "Gadget"}]
-                   (t2/select-one-fn :parameters :model/Pulse :id (:id result))))))))))
+     (mt/with-premium-features #{:dashboard-subscription-filters}
+       (mt/with-model-cleanup [:model/Pulse]
+         (mt/with-temp [:model/Card {card-id :id} {}
+                        :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
+                                                                      :type "string/=" :slug "category"}]}
+                        :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+           (let [result (tool-result (call-tool! :crowberto nil
+                                                 (wire {:method       "create"
+                                                        :dashboard_id dash-id
+                                                        :schedule     {:schedule_type "hourly"}
+                                                        :parameters   [{:id "cat" :value "Gadget"}]})))]
+             (is (= [{:id "cat" :value "Gadget"}]
+                    (t2/select-one-fn :parameters :model/Pulse :id (:id result)))))))))))
 
 (deftest parameters-need-the-subscription-filters-feature-test
   (testing "without the dashboard-subscription-filters feature the send-time merge is the OSS no-op, so the
@@ -380,19 +396,25 @@
                                                        :schedule     {:schedule_type "hourly"}})))))))))))
 
 (deftest unknown-parameter-id-is-a-teaching-error-test
-  (testing "GHY-4156: a parameter id the dashboard doesn't have would be stored and then silently
+  ;; Same OSS guard as `create-with-parameters-test` above: the feature getter is gated on
+  ;; `config/ee-available?`, which `with-premium-features` cannot flip.
+  (mt/when-ee-evailable
+   (testing "GHY-4156: a parameter id the dashboard doesn't have would be stored and then silently
             ignored at send time, so it's rejected up front with the ids that do exist"
-    (mt/with-temp [:model/Card {card-id :id} {}
-                   :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
-                                                                 :type "string/=" :slug "category"}]}
-                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (let [err (tool-error (call-tool! :crowberto nil
-                                        (wire {:method       "create"
-                                               :dashboard_id dash-id
-                                               :schedule     {:schedule_type "hourly"}
-                                               :parameters   [{:id "nope" :value "x"}]})))]
-        (is (re-find #"nope" err))
-        (is (re-find #"cat" err))))))
+     ;; `resolve-parameters` refuses any `parameters` at all without this feature, and that check runs
+     ;; first — without it the call fails on the feature, never reaching the unknown-id check this pins.
+     (mt/with-premium-features #{:dashboard-subscription-filters}
+       (mt/with-temp [:model/Card {card-id :id} {}
+                      :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
+                                                                    :type "string/=" :slug "category"}]}
+                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+         (let [err (tool-error (call-tool! :crowberto nil
+                                           (wire {:method       "create"
+                                                  :dashboard_id dash-id
+                                                  :schedule     {:schedule_type "hourly"}
+                                                  :parameters   [{:id "nope" :value "x"}]})))]
+           (is (re-find #"nope" err))
+           (is (re-find #"cat" err))))))))
 
 ;;; ------------------------------------------------- update -------------------------------------------------------
 
@@ -667,9 +689,113 @@
                                                     :schedule_type :daily :schedule_hour 15}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
                                                    :user_id (mt/user->id :rasta)}]
-      (is (some? (tool-error (call-tool! :rasta nil
-                                         (wire {:method "update" :id pulse-id :archived true})))))
+      (is (re-find #"not found"
+                   (tool-error (call-tool! :rasta nil
+                                           (wire {:method "update" :id pulse-id :archived true}))))
+          "the refusal must be the collapsed not-found, not a distinguishable 403 — rasta is a
+           recipient, so a 403 here would tell subscriptions she is a target of apart from ids
+           she knows nothing about")
       (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))))
+
+(deftest update-is-write-checked-before-it-computes-anything-test
+  (testing "GHY-4217: `mi/can-read?` on a subscription is (or superuser? creator? recipient?), a
+            weaker gate than can-write?, so everything update! does before the pulse API's own
+            write check would otherwise run for a mere recipient. Being on the recipient list must
+            buy nothing: not the dashboard's parameter vocabulary, not user existence, not the
+            channel topology — and every rejection must be the same collapsed not-found an
+            unrelated id gets, so the responses can't be walked into an existence oracle."
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:collection_id coll-id}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id
+                                                     :parameters [{:id "secret_param" :name "Department"
+                                                                   :type "string/=" :slug "department"}]}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
+                     :model/Pulse {pulse-id :id} {:name "Confidential weekly" :dashboard_id dash-id
+                                                  :creator_id (mt/user->id :crowberto)}
+                     :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                     :model/PulseChannel {pc-id :id} {:pulse_id pulse-id :channel_type :email
+                                                      :schedule_type :daily :schedule_hour 15}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
+                                                     :user_id (mt/user->id :rasta)}]
+        (let [unrelated-id (inc (or (t2/select-one-pk :model/Pulse {:order-by [[:id :desc]]}) 0))
+              baseline     (tool-error (call-tool! :rasta nil
+                                                   (wire {:method "update" :id unrelated-id :archived true})))]
+          (testing "an unknown parameter id does not disclose the dashboard's parameter vocabulary"
+            (let [err (tool-error (call-tool! :rasta nil
+                                              (wire {:method "update" :id pulse-id
+                                                     :parameters [{:id "zzz" :value 1}]})))]
+              (is (not (re-find #"secret_param" err)))
+              (is (re-find #"not found" err))))
+          (testing "a recipient id does not disclose whether that user exists and is active"
+            (is (re-find #"not found"
+                         (tool-error (call-tool! :rasta nil
+                                                 (wire {:method "update" :id pulse-id
+                                                        :recipients [Integer/MAX_VALUE]}))))))
+          (testing "the rejection is byte-identical to the one an id she knows nothing about gets"
+            (is (= (str/replace baseline (str unrelated-id) "<id>")
+                   (str/replace (tool-error (call-tool! :rasta nil
+                                                        (wire {:method "update" :id pulse-id :archived true})))
+                                (str pulse-id) "<id>"))))
+          (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))))))
+
+(deftest a-schedule-field-the-type-ignores-is-a-teaching-error-test
+  (testing "the pulse channel writer nils out a schedule field the type doesn't read, so
+            {hourly, schedule_hour 9} would deliver 24 times a day while the call reports success.
+            Kept in step with alert_write, which refuses the same shapes."
+    (mt/with-model-cleanup [:model/Pulse]
+      (mt/with-temp [:model/Card {card-id :id} {}
+                     :model/Dashboard {dash-id :id} {}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (doseq [[schedule ignored] [[{:schedule_type "hourly" :schedule_hour 9}            "schedule_hour"]
+                                    [{:schedule_type "daily" :schedule_hour 9
+                                      :schedule_day "mon"}                                 "schedule_day"]
+                                    [{:schedule_type "weekly" :schedule_hour 9 :schedule_day "mon"
+                                      :schedule_frame "first"}                             "schedule_frame"]]]
+          (testing (pr-str schedule)
+            ;; `tool-error` throws on an unexpected success, which would abort the whole doseq and
+            ;; report only the first regressed schedule type. Read the outcome directly so each
+            ;; case is asserted independently.
+            (let [outcome (call-tool! :crowberto nil
+                                      (wire {:method       "create"
+                                             :dashboard_id dash-id
+                                             :schedule     schedule}))
+                  err     (response-text outcome)]
+              (is (dispatch-error? outcome) "the surplus field must be refused, not silently dropped")
+              (is (re-find (re-pattern ignored) err))
+              (is (re-find #"would be ignored" err)))))
+        (testing "an explicit null is an omission, not a request, so it is not refused"
+          (is (some? (tool-result (call-tool! :crowberto nil
+                                              (wire {:method       "create"
+                                                     :dashboard_id dash-id
+                                                     :schedule     {:schedule_type "hourly"
+                                                                    :schedule_hour nil}}))))))))))
+
+(deftest slack-channel-keeps-its-details-on-repoint-test
+  (testing "the pulse-channel update rewrites :details wholesale, so repointing a Slack
+            subscription has to merge onto what is stored — otherwise include_pdf set in the app is
+            erased and the next send silently drops the PDF"
+    (with-slack
+      (fn []
+        (mt/with-temp [:model/Card {card-id :id} {}
+                       :model/Dashboard {dash-id :id} {}
+                       :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
+                       :model/Pulse {pulse-id :id} {:name "Slack weekly" :dashboard_id dash-id
+                                                    :creator_id (mt/user->id :crowberto)}
+                       :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                       :model/PulseChannel {pc-id :id} {:pulse_id pulse-id :channel_type :slack
+                                                        :schedule_type :daily :schedule_hour 15
+                                                        :details {:channel "#old-team"
+                                                                  :channel_id "COLD999"
+                                                                  :include_pdf true}}]
+          (tool-result (call-tool! :crowberto nil
+                                   (wire {:method "update" :id pulse-id :slack_channel "data-team"})))
+          (let [details (t2/select-one-fn :details :model/PulseChannel :id pc-id)]
+            (is (= "#data-team" (:channel details)))
+            (is (true? (:include_pdf details))
+                "the format details the app set must survive a repoint")
+            (is (= "C123" (:channel_id details))
+                "the stale channel_id must be replaced by the new channel's, not left behind")))))))
 
 (deftest create-requires-dashboard-read-permission-test
   (testing "GHY-4156: subscribing to a dashboard you can't read is refused — a subscription would

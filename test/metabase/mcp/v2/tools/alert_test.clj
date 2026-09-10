@@ -26,25 +26,34 @@
 (use-fixtures :once (fixtures/initialize :notifications))
 
 (defn- call-tool!
+  "Returns the whole dispatch outcome: `{:result <mcp content>}` for anything that reached the
+   handler, `{:error {:code .. :message ..}}` for a registry-level rejection (scope denial,
+   args-schema failure)."
   [user scopes args]
   (mt/with-current-user (if (keyword? user) (mt/user->id user) user)
     (registry/call-tool scopes nil "alert_write" args)))
 
-(defn- tool-result
+(defn- dispatch-error?
+  "Whether a [[call-tool!]] outcome is an error, at either layer."
   [{:keys [result error]}]
-  (when error
-    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
-  (when (:isError result)
-    (throw (ex-info (str "tool call failed: " (-> result :content first :text))
-                    {:result result})))
-  (-> result :content first :text json/decode+kw))
+  (boolean (or error (:isError result))))
+
+(defn- response-text
+  "The outcome's text block, or a registry-level rejection's message."
+  [{:keys [result error]}]
+  (if error (:message error) (-> result :content first :text)))
+
+(defn- tool-result
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info (str "tool call failed: " (response-text outcome)) {:outcome outcome})))
+  (-> outcome response-text json/decode+kw))
 
 (defn- tool-error
-  [{:keys [result error]}]
-  (cond
-    error             (:message error)
-    (:isError result) (-> result :content first :text)
-    :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
+  [outcome]
+  (when-not (dispatch-error? outcome)
+    (throw (ex-info "expected a tool error, got success" {:outcome outcome})))
+  (response-text outcome))
 
 (defn- wire
   "Round-trip through JSON, so tests exercise the argument shapes an MCP client actually sends."
