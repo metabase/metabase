@@ -402,11 +402,13 @@
 
 (deftest validate-metabot-provider-google-model-format-test
   (with-connections [configured-anthropic configured-google]
-    (testing "accepts a publisher-qualified model"
+    (testing "accepts a publisher-qualified model, or a Model Garden endpoint"
       (mt/with-temporary-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
         (is (= "google/google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider))))
       (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-haiku-4-5@20251001"]
-        (is (= "google/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider)))))))
+        (is (= "google/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider))))
+      (mt/with-temporary-setting-values [llm-metabot-provider "google/endpoints/1234567890123456789"]
+        (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider)))))))
 
 (deftest validate-metabot-provider-google-rejects-an-unqualified-model-test
   (with-connections [configured-anthropic configured-google]
