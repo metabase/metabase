@@ -1,176 +1,113 @@
 (ns metabase.core.modules-nesting-test
-  "Tests for the nested-modules mechanism: longest-prefix namespace→module
-  resolution and `:module-exports`-based visibility.
-
-  The kondo hook at `.clj-kondo/src/hooks/common/modules.clj` lives in
-  clj-kondo's isolated classpath and cannot be `require`d from the test
-  classpath directly. To test it, we `load-file` the hook source into the
-  test JVM, creating the `hooks.common.modules` namespace on-the-fly.
-
-  These tests use **fixture configs** — hand-constructed maps shaped like
-  the real `:metabase/modules` config — to exercise the hook's resolution
-  and visibility logic in isolation. No production config is read."
+  "Tests nested-module resolution and access rules against fixture configs."
   (:require
    [clojure.test :refer :all]
    [dev.deps-graph]
-   [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]))
+   [hooks.common.modules :as modules]))
 
 (set! *warn-on-reflection* true)
 
-;; Load the kondo hook source into this test JVM so we can call its functions.
-;; The hook only depends on `clojure.string`, so this is safe.
-(load-file ".clj-kondo/src/hooks/common/modules.clj")
-
-;; Resolve hook functions via the namespace (which was just created by
-;; load-file). We use `ns-resolve` rather than direct references because
-;; the namespace isn't required at compile time.
-(def ^:private hook-ns (find-ns 'hooks.common.modules))
-
-(defn- hook-fn [sym]
-  (let [v (ns-resolve hook-ns sym)]
-    (assert v (str "hooks.common.modules/" sym " not found"))
-    v))
-
 ;;;; -------------------------------------------------------------------------
-;;;; Longest-prefix module resolution
+;;;; Namespace resolution
 ;;;; -------------------------------------------------------------------------
-
-(deftest ^:parallel module-resolution-single-arg-is-flat-test
-  (testing "Single-arg `module` uses flat first-segment extraction regardless of config"
-    (let [module (hook-fn 'module)]
-      (is (= 'lib                    (module 'metabase.lib.schema.foo)))
-      (is (= 'lib                    (module 'metabase.lib.core)))
-      (is (= 'query-processor        (module 'metabase.query-processor.middleware.foo)))
-      (is (= 'enterprise/transforms  (module 'metabase-enterprise.transforms.core)))
-      (is (nil? (module 'clojure.core)))
-      (is (nil? (module 'clj-kondo.impl.config))))))
-
-(deftest ^:parallel module-resolution-two-arg-with-empty-config-is-flat-test
-  (testing "Two-arg `module` with empty/nil config degenerates to flat extraction"
-    (let [module (hook-fn 'module)]
-      (is (= 'lib (module nil 'metabase.lib.schema.foo)))
-      (is (= 'lib (module {} 'metabase.lib.schema.foo)))
-      (is (= 'lib (module {:metabase/modules {}} 'metabase.lib.schema.foo))))))
 
 (deftest ^:parallel module-resolution-longest-prefix-test
-  (testing "Two-arg `module` does longest-prefix matching against declared modules"
-    (let [module (hook-fn 'module)
-          config {:metabase/modules {'lib        {}
-                                     'lib.schema {}}}]
-      (testing "resolves to the most-specific declared ancestor"
-        (is (= 'lib.schema (module config 'metabase.lib.schema.foo)))
-        (is (= 'lib.schema (module config 'metabase.lib.schema.nested.deeper))))
-      (testing "falls back to parent when deeper child isn't declared"
-        (is (= 'lib (module config 'metabase.lib.core))))
-      (testing "unrelated namespaces still hit the flat fallback"
-        (is (= 'query-processor (module config 'metabase.query-processor.foo)))))))
+  (let [config {:metabase/modules {'lib        {}
+                                   'lib.schema {}}}]
+    (testing "resolves to the most-specific declared ancestor"
+      (is (= 'lib.schema (modules/module config 'metabase.lib.schema.foo)))
+      (is (= 'lib.schema (modules/module config 'metabase.lib.schema.nested.deeper))))
+    (testing "falls back to parent when deeper child isn't declared"
+      (is (= 'lib (modules/module config 'metabase.lib.core))))
+    (testing "an undeclared metabase namespace resolves to a module named for its first segment"
+      (is (= 'query-processor (modules/module config 'metabase.query-processor.foo)))
+      (is (= 'enterprise/transforms (modules/module config 'metabase-enterprise.transforms.core))))
+    (testing "namespaces outside metabase resolve to nil"
+      (is (nil? (modules/module config 'clojure.core)))
+      (is (nil? (modules/module config 'clj-kondo.impl.config))))))
 
 (deftest ^:parallel module-resolution-enterprise-dotted-children-test
-  (testing "Enterprise dotted children resolve correctly"
-    (let [module (hook-fn 'module)
-          config {:metabase/modules {'enterprise/transforms         {}
-                                     'enterprise/transforms.python  {}}}]
-      (is (= 'enterprise/transforms.python
-             (module config 'metabase-enterprise.transforms.python.runner)))
-      (is (= 'enterprise/transforms
-             (module config 'metabase-enterprise.transforms.core))))))
+  (let [config {:metabase/modules {'enterprise/transforms        {}
+                                   'enterprise/transforms.python {}}}]
+    (is (= 'enterprise/transforms.python
+           (modules/module config 'metabase-enterprise.transforms.python.runner)))
+    (is (= 'enterprise/transforms
+           (modules/module config 'metabase-enterprise.transforms.core)))))
 
 (deftest ^:parallel module-resolution-three-level-nesting-test
-  (testing "Three-level nesting: longest-prefix walks down through multiple declared ancestors"
-    (let [module (hook-fn 'module)
-          config {:metabase/modules {'outer                {}
-                                     'outer.middle         {}
-                                     'outer.middle.deepest {}}}]
-      (is (= 'outer.middle.deepest
-             (module config 'metabase.outer.middle.deepest.foo)))
-      (is (= 'outer.middle
-             (module config 'metabase.outer.middle.other)))
-      (is (= 'outer
-             (module config 'metabase.outer.top))))))
+  (let [config {:metabase/modules {'outer                {}
+                                   'outer.middle         {}
+                                   'outer.middle.deepest {}}}]
+    (is (= 'outer.middle.deepest (modules/module config 'metabase.outer.middle.deepest.foo)))
+    (is (= 'outer.middle (modules/module config 'metabase.outer.middle.other)))
+    (is (= 'outer (modules/module config 'metabase.outer.top)))))
 
 (deftest ^:parallel module-resolution-test-namespace-suffix-stripping-test
-  (testing "`-test` suffix on the first segment is stripped (legacy behavior)"
-    (let [module (hook-fn 'module)]
-      (is (= 'driver (module 'metabase.driver-test))))))
+  (testing "a trailing `-test` resolves like the namespace it tests"
+    (let [config {:metabase/modules {'driver     {}
+                                     'lib        {}
+                                     'lib.schema {}}}]
+      (is (= 'driver (modules/module config 'metabase.driver-test)))
+      (is (= 'lib.schema (modules/module config 'metabase.lib.schema-test))))))
 
 ;;;; -------------------------------------------------------------------------
-;;;; :ns-prefix — explicit override of the name-derived default
+;;;; Custom namespace prefixes
 ;;;; -------------------------------------------------------------------------
 
 (deftest ^:parallel default-ns-prefix-test
-  (testing "`default-ns-prefix` derives the prefix string from the module name"
-    (let [default-ns-prefix (hook-fn 'default-ns-prefix)]
-      (is (= "metabase.lib"                         (default-ns-prefix 'lib)))
-      (is (= "metabase.lib.schema"                  (default-ns-prefix 'lib.schema)))
-      (is (= "metabase.query-processor"             (default-ns-prefix 'query-processor)))
-      (is (= "metabase-enterprise.transforms"       (default-ns-prefix 'enterprise/transforms)))
-      (is (= "metabase-enterprise.transforms.python"
-             (default-ns-prefix 'enterprise/transforms.python))))))
+  (is (= "metabase.lib" (modules/default-ns-prefix 'lib)))
+  (is (= "metabase.lib.schema" (modules/default-ns-prefix 'lib.schema)))
+  (is (= "metabase.query-processor" (modules/default-ns-prefix 'query-processor)))
+  (is (= "metabase-enterprise.transforms" (modules/default-ns-prefix 'enterprise/transforms)))
+  (is (= "metabase-enterprise.transforms.python" (modules/default-ns-prefix 'enterprise/transforms.python))))
 
 (deftest ^:parallel module-ns-prefix-explicit-override-test
-  (testing "`module-ns-prefix` returns explicit `:ns-prefix` when set, else default"
-    (let [module-ns-prefix (hook-fn 'module-ns-prefix)
-          config {:metabase/modules {'lib        {}
-                                     'lib.be     {:ns-prefix "metabase.lib-be"}
-                                     'lib.schema {}}}]
-      (is (= "metabase.lib"         (module-ns-prefix config 'lib)))
-      (is (= "metabase.lib-be"      (module-ns-prefix config 'lib.be)))
-      (is (= "metabase.lib.schema"  (module-ns-prefix config 'lib.schema))))))
+  (let [modules '{lib        {}
+                  lib.be     {:ns-prefix "metabase.lib-be"}
+                  lib.schema {}}]
+    (is (= "metabase.lib" (modules/module-ns-prefix modules 'lib)))
+    (is (= "metabase.lib-be" (modules/module-ns-prefix modules 'lib.be)))
+    (is (= "metabase.lib.schema" (modules/module-ns-prefix modules 'lib.schema)))))
 
 (deftest ^:parallel module-resolution-explicit-ns-prefix-test
-  (testing "Namespace resolution respects explicit `:ns-prefix` on a module"
-    (let [module (hook-fn 'module)
-          config {:metabase/modules {'lib        {}
-                                     'lib.schema {}
-                                     'lib.be     {:ns-prefix "metabase.lib-be"}
-                                     'lib.legacy-mbql {:ns-prefix "metabase.legacy-mbql"}}}]
-      (testing "hyphenated source namespace resolves to the nested module"
-        (is (= 'lib.be (module config 'metabase.lib-be.core)))
-        (is (= 'lib.be (module config 'metabase.lib-be.models.query))))
-      (testing "unrelated hyphenated namespace resolves to its own nested module"
-        (is (= 'lib.legacy-mbql (module config 'metabase.legacy-mbql.util)))
-        (is (= 'lib.legacy-mbql (module config 'metabase.legacy-mbql.schema.macros))))
-      (testing "default-prefixed sibling still resolves correctly"
-        (is (= 'lib.schema (module config 'metabase.lib.schema.foo))))
-      (testing "parent resolves to itself for its own namespaces"
-        (is (= 'lib (module config 'metabase.lib.core)))))))
+  (let [config {:metabase/modules {'lib             {}
+                                   'lib.schema      {}
+                                   'lib.be          {:ns-prefix "metabase.lib-be"}
+                                   'lib.legacy-mbql {:ns-prefix "metabase.legacy-mbql"}}}]
+    (testing "hyphenated source namespace resolves to the nested module"
+      (is (= 'lib.be (modules/module config 'metabase.lib-be.core)))
+      (is (= 'lib.be (modules/module config 'metabase.lib-be.models.query))))
+    (testing "unrelated hyphenated namespace resolves to its own nested module"
+      (is (= 'lib.legacy-mbql (modules/module config 'metabase.legacy-mbql.util)))
+      (is (= 'lib.legacy-mbql (modules/module config 'metabase.legacy-mbql.schema.macros))))
+    (testing "default-prefixed sibling still resolves correctly"
+      (is (= 'lib.schema (modules/module config 'metabase.lib.schema.foo))))
+    (testing "parent resolves to itself for its own namespaces"
+      (is (= 'lib (modules/module config 'metabase.lib.core))))))
 
 (deftest ^:parallel module-resolution-segment-boundary-test
-  (testing "Longest-prefix matching only accepts matches at segment boundaries"
-    (let [module (hook-fn 'module)
-          config {:metabase/modules {'lib    {}
-                                     'lib.be {:ns-prefix "metabase.lib-be"}}}]
-      (testing "`metabase.lib-be.foo` matches `metabase.lib-be` at segment boundary"
-        (is (= 'lib.be (module config 'metabase.lib-be.foo))))
-      (testing "`metabase.lib-bert.foo` does NOT match `metabase.lib-be` (mid-segment)"
-        ;; No declared prefix matches at a segment boundary, so the primary
-        ;; path returns nil. The fallback single-segment regex returns the
-        ;; first segment after `metabase.` literally — `lib-bert` — which is
-        ;; NOT `lib.be`.
-        (is (not= 'lib.be (module config 'metabase.lib-bert.foo)))
-        (is (= 'lib-bert (module config 'metabase.lib-bert.foo))))
-      (testing "exact match works"
-        (is (= 'lib.be (module config 'metabase.lib-be))))
-      (testing "unrelated namespace outside the declared set falls through to flat fallback"
-        (is (= 'query-processor (module config 'metabase.query-processor.foo)))))))
+  (let [config {:metabase/modules {'lib    {}
+                                   'lib.be {:ns-prefix "metabase.lib-be"}}}]
+    (testing "`metabase.lib-be.foo` matches `metabase.lib-be` at segment boundary"
+      (is (= 'lib.be (modules/module config 'metabase.lib-be.foo))))
+    (testing "`metabase.lib-bert.foo` does not match `metabase.lib-be` mid-segment"
+      (is (= 'lib-bert (modules/module config 'metabase.lib-bert.foo))))
+    (testing "exact match works"
+      (is (= 'lib.be (modules/module config 'metabase.lib-be))))))
 
 (deftest ^:parallel build-prefix->module-test
-  (testing "`build-prefix->module` assembles the lookup map from declared modules"
-    (let [build-prefix->module (hook-fn 'build-prefix->module)
-          config {:metabase/modules {'lib    {}
-                                     'lib.be {:ns-prefix "metabase.lib-be"}
-                                     'query-processor {}}}
-          result (build-prefix->module config)]
-      (is (= {"metabase.lib"             'lib
-              "metabase.lib-be"          'lib.be
-              "metabase.query-processor" 'query-processor}
-             result)))))
+  (is (= {"metabase.lib"             'lib
+          "metabase.lib-be"          'lib.be
+          "metabase.query-processor" 'query-processor}
+         (modules/build-prefix->module '{lib             {}
+                                         lib.be          {:ns-prefix "metabase.lib-be"}
+                                         query-processor {}}))))
 
 (deftest ^:parallel descendant-api-generation-is-monotonic-test
-  (let [deps [{:namespace 'metabase.parent.child.core
-               :module 'parent.child
-               :deps [{:namespace 'metabase.parent.internal
-                       :module 'parent}]}]
+  (let [deps        [{:namespace 'metabase.parent.child.core
+                      :module    'parent.child
+                      :deps      [{:namespace 'metabase.parent.internal
+                                   :module    'parent}]}]
         base-config '{parent       {:api #{}}
                       parent.child {:uses #{parent}}}]
     (testing "a new descendant-only use does not become public API"
@@ -182,152 +119,97 @@
              (dev.deps-graph/externally-used-namespaces-ignoring-friends
               deps (assoc-in base-config ['parent :api] '#{metabase.parent.internal}) 'parent))))))
 
-(deftest default-dependency-helpers-use-configured-prefixes-test
-  (testing (str "Helpers reach `dependencies` through the arity that resolves against the current "
-                "module config, not by passing `nil`, which would select the flat pre-nesting "
-                "extraction and silently attribute nested namespaces to their top-level parent.")
-    (let [config '{parent       {}
-                   parent.child {:ns-prefix "metabase.special-child"}}
-          seen-args (promise)]
-      (with-dynamic-fn-redefs [dev.deps-graph/kondo-config (constantly config)
-                               ;; variadic: the helpers call the no-arg arity, and capturing the
-                               ;; argument vector is what distinguishes it from an explicit `nil`
-                               ;; (flat resolution).
-                               dev.deps-graph/dependencies (fn [& args]
-                                                             (deliver seen-args (vec args))
-                                                             [])]
-        (is (= [] (dev.deps-graph/external-usages 'parent)))
-        ;; Timed deref: the promise is delivered only from inside the redef, so if `external-usages`
-        ;; ever stops calling `dependencies` a bare `@` would hang forever instead of failing, which
-        ;; is much harder to diagnose in CI than a red assertion.
-        (let [seen (deref seen-args 5000 ::not-delivered)]
-          (is (not= ::not-delivered seen)
-              "external-usages never called dependencies at all")
-          (is (= [] seen)
-              "external-usages must use the config-resolving no-arg arity, never (dependencies nil)")))))
-  (testing "and that no-arg arity builds its prefix map from the configured modules"
-    (let [config '{parent       {}
-                   parent.child {:ns-prefix "metabase.special-child"}}]
-      (is (= {"metabase.parent" 'parent, "metabase.special-child" 'parent.child}
-             (dev.deps-graph/build-prefix->module config))))))
-
 (deftest ^:parallel simulate-rename-preserves-nested-module-ownership-test
-  (let [prefix->module {"metabase.parent" 'parent
+  (let [prefix->module {"metabase.parent"       'parent
                         "metabase.parent.child" 'parent.child}
-        deps [{:namespace 'metabase.consumer.core
-               :module 'consumer
-               :deps [{:namespace 'metabase.old.core
-                       :module 'old}]}]
-        renamed (#'dev.deps-graph/simulate-rename
-                 deps prefix->module {'metabase.old.core 'metabase.parent.child.core})]
+        deps           [{:namespace 'metabase.consumer.core
+                         :module    'consumer
+                         :deps      [{:namespace 'metabase.old.core
+                                      :module    'old}]}]
+        renamed        (#'dev.deps-graph/simulate-rename
+                        deps prefix->module {'metabase.old.core 'metabase.parent.child.core})]
     (is (= 'parent.child (:module (first (:deps (first renamed))))))))
 
 ;;;; -------------------------------------------------------------------------
-;;;; Visibility helpers (parent-module, ancestor-chain, etc.)
+;;;; Module tree
 ;;;; -------------------------------------------------------------------------
 
 (deftest ^:parallel parent-module-test
-  (testing "`parent-module` derives the parent from a dotted name"
-    (let [parent-module (hook-fn 'parent-module)]
-      (is (= 'lib          (parent-module 'lib.schema)))
-      (is (= 'lib.schema   (parent-module 'lib.schema.foo)))
-      (is (nil?            (parent-module 'lib)))
-      (is (= 'enterprise/transforms (parent-module 'enterprise/transforms.python)))
-      (is (nil?            (parent-module 'enterprise/transforms))))))
+  (testing "a dotted name's parent is its prefix"
+    (is (= 'lib (modules/parent-module {} 'lib.schema)))
+    (is (= 'lib.schema (modules/parent-module {} 'lib.schema.foo)))
+    (is (= 'enterprise/transforms (modules/parent-module '{transforms {}} 'enterprise/transforms.python))))
+  (testing "top-level modules have no parent"
+    (is (nil? (modules/parent-module {} 'lib)))
+    (is (nil? (modules/parent-module {} 'enterprise/internal-stats))))
+  (testing "`enterprise/X` sits under OSS `X` only when `X` is declared"
+    (is (= 'internal-stats (modules/parent-module '{internal-stats {}} 'enterprise/internal-stats)))
+    (is (nil? (modules/parent-module '{other-module {}} 'enterprise/internal-stats)))))
 
-(deftest ^:parallel ancestor-chain-test
-  (testing "`ancestor-chain` returns the seq of ancestors from direct parent up"
-    (let [ancestor-chain (hook-fn 'ancestor-chain)]
-      (is (= '(lib.schema lib)     (ancestor-chain 'lib.schema.foo)))
-      (is (= '(lib)                (ancestor-chain 'lib.schema)))
-      (is (= ()                    (ancestor-chain 'lib)))
-      (is (= '(enterprise/transforms)
-             (ancestor-chain 'enterprise/transforms.python))))))
+(deftest ^:parallel descendant-of?-test
+  (let [modules '{lib {}, lib.schema {}, lib.schema.foo {}, transforms {}, enterprise/transforms {}}]
+    (is (modules/descendant-of? modules 'lib.schema.foo 'lib))
+    (is (modules/descendant-of? modules 'lib 'lib) "a module sits in its own subtree")
+    (is (not (modules/descendant-of? modules 'lib 'lib.schema)) "an ancestor is not a descendant")
+    (is (modules/descendant-of? modules 'enterprise/transforms 'transforms))
+    (is (not (modules/descendant-of? modules 'lib.schema 'transforms)))))
 
-;;;; -------------------------------------------------------------------------
-;;;; :module-exports set
-;;;; -------------------------------------------------------------------------
-
-(deftest ^:parallel open-children-test
-  (testing "`open-children` returns the set declared under `:module-exports` on the parent"
-    (let [open-children (hook-fn 'open-children)
-          config {:metabase/modules {'lib {:module-exports #{'lib.schema 'lib.be}}}}]
-      (is (= #{'lib.schema 'lib.be} (open-children config 'lib)))
-      (is (= #{}                     (open-children config 'query-processor)))
-      (is (= #{}                     (open-children {} 'lib))))))
-
-(deftest ^:parallel visibility-root-test
-  (testing "`visibility-root` is the nearest ancestor that does not export the module below it"
-    (let [visibility-root (hook-fn 'visibility-root)]
-      (testing "top-level modules are visible everywhere, so they have no root"
-        (is (nil? (visibility-root {} 'lib)))
-        (is (nil? (visibility-root {:metabase/modules {'lib {}}} 'lib))))
-      (testing "an unopened child is scoped to its direct parent"
-        (let [config {:metabase/modules {'lib {:module-exports #{}}}}]
-          (is (= 'lib (visibility-root config 'lib.schema)))))
-      (testing "a fully-exported chain reaches top-level, so there is no root"
-        (let [config {:metabase/modules {'lib {:module-exports #{'lib.schema}}}}]
-          (is (nil? (visibility-root config 'lib.schema)))))
-      (testing "each export widens the scope by exactly one level"
-        (let [none  {:metabase/modules {'outer   {:module-exports #{}}
-                                        'outer.a {:module-exports #{}}}}
-              inner {:metabase/modules {'outer   {:module-exports #{}}
-                                        'outer.a {:module-exports #{'outer.a.leaf}}}}
-              both  {:metabase/modules {'outer   {:module-exports #{'outer.a}}
-                                        'outer.a {:module-exports #{'outer.a.leaf}}}}]
-          (is (= 'outer.a (visibility-root none  'outer.a.leaf)))
-          (is (= 'outer   (visibility-root inner 'outer.a.leaf)))
-          (is (nil?       (visibility-root both  'outer.a.leaf))))))))
-
-;;;; -------------------------------------------------------------------------
-;;;; STRICT MODEL: every cross-module access is an explicit :uses + :api
-;;;; check. There is no implicit visibility of any kind. Same-module access
-;;;; is the only thing that bypasses the lint, and that's just because
-;;;; there's no module boundary to cross.
-;;;;
-;;;; The `internally-visible?` helper has been removed entirely; the
-;;;; visibility-question tests below cover the strict model directly.
-;;;; -------------------------------------------------------------------------
+(deftest ^:parallel blocking-export-test
+  (let [blocking-export #'modules/blocking-export
+        leaf-config     '{outer {}, outer.a {}, outer.a.leaf {}}]
+    (testing "top-level modules are never blocked"
+      (is (nil? (blocking-export '{lib {}} 'lib))))
+    (testing "an unexported child is blocked at its parent"
+      (is (= '{:ancestor lib, :child lib.schema}
+             (blocking-export '{lib {}, lib.schema {}} 'lib.schema))))
+    (testing "an exported child is not"
+      (is (nil? (blocking-export '{lib {:module-exports #{lib.schema}}, lib.schema {}} 'lib.schema))))
+    (testing "each export widens the scope by exactly one level"
+      (is (= '{:ancestor outer.a, :child outer.a.leaf}
+             (blocking-export leaf-config 'outer.a.leaf)))
+      (is (= '{:ancestor outer, :child outer.a}
+             (blocking-export (assoc-in leaf-config ['outer.a :module-exports] '#{outer.a.leaf}) 'outer.a.leaf)))
+      (is (nil? (blocking-export (-> leaf-config
+                                     (assoc-in ['outer.a :module-exports] '#{outer.a.leaf})
+                                     (assoc-in ['outer :module-exports] '#{outer.a}))
+                                 'outer.a.leaf))))
+    (testing "`X` exports its declared `enterprise/X` child implicitly"
+      (is (nil? (blocking-export '{cache {}, enterprise/cache {}} 'enterprise/cache))))
+    (testing "a dotted child of an `enterprise/` module needs an explicit export"
+      (is (= '{:ancestor enterprise/transforms, :child enterprise/transforms.python}
+             (blocking-export '{transforms {}, enterprise/transforms {}, enterprise/transforms.python {}}
+                              'enterprise/transforms.python))))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; usage-error behavior under nesting
 ;;;; -------------------------------------------------------------------------
 
-(defn- usage-error
-  "Call the loaded kondo hook's `usage-error`."
-  [config current-module required-namespace]
-  ((hook-fn 'usage-error) config current-module required-namespace))
-
 (deftest ^:parallel usage-error-parent-needs-explicit-uses-and-api-test
-  (testing "Parent accessing descendant must declare :uses AND obey the child's :api"
+  (testing "a parent must declare its child in :uses and use the child's :api"
     (let [config-without-uses
           {:metabase/modules {'lib        {:uses #{}}
                               'lib.schema {:api  #{'metabase.lib.schema.foo}
                                            :uses #{}}}}]
-      (is (some? (usage-error config-without-uses 'lib 'metabase.lib.schema.foo))
+      (is (some? (modules/usage-error config-without-uses 'lib 'metabase.lib.schema.foo))
           "lib does not declare :uses #{lib.schema} so the access is denied"))
     (let [config-with-uses
           {:metabase/modules {'lib        {:uses #{'lib.schema}}
                               'lib.schema {:api  #{'metabase.lib.schema.foo}
                                            :uses #{}}}}]
       (testing "namespace in lib.schema's :api — allowed"
-        (is (nil? (usage-error config-with-uses 'lib 'metabase.lib.schema.foo))))
-      (testing "namespace NOT in lib.schema's :api — denied even though lib is the parent"
-        ;; Subtree trust is UNIDIRECTIONAL: descendants can read their
-        ;; ancestors' internals, but ancestors must respect their
-        ;; descendants' :api. The child's :api is its outward-facing
-        ;; contract, and even its parent must go through it.
-        (is (some? (usage-error config-with-uses 'lib 'metabase.lib.schema.private-ns)))))))
+        (is (nil? (modules/usage-error config-with-uses 'lib 'metabase.lib.schema.foo))))
+      (testing "namespace not in lib.schema's :api — denied even though lib is the parent"
+        (is (some? (modules/usage-error config-with-uses 'lib 'metabase.lib.schema.private-ns)))))))
 
 (deftest ^:parallel usage-error-siblings-need-explicit-uses-and-api-test
-  (testing "Siblings must declare :uses and go through each other's :api — no sibling trust"
+  (testing "siblings must declare :uses and use each other's :api"
     (let [config-without-uses
           {:metabase/modules {'lib        {}
                               'lib.schema {:api  #{'metabase.lib.schema.foo}
                                            :uses #{}}
                               'lib.be     {:api  :any
                                            :uses #{}}}}]
-      (is (some? (usage-error config-without-uses 'lib.be 'metabase.lib.schema.foo))
+      (is (some? (modules/usage-error config-without-uses 'lib.be 'metabase.lib.schema.foo))
           "lib.be does not declare :uses #{lib.schema}, so even sibling access is denied"))
     (let [config-with-uses
           {:metabase/modules {'lib        {}
@@ -335,19 +217,19 @@
                                            :uses #{}}
                               'lib.be     {:api  :any
                                            :uses #{'lib.schema}}}}]
-      (is (nil? (usage-error config-with-uses 'lib.be 'metabase.lib.schema.foo))
+      (is (nil? (modules/usage-error config-with-uses 'lib.be 'metabase.lib.schema.foo))
           "with :uses declared and the namespace in lib.schema's :api, the access is allowed")
-      (is (some? (usage-error config-with-uses 'lib.be 'metabase.lib.schema.private-ns))
-          "even with :uses declared, namespaces NOT in lib.schema's :api are denied"))))
+      (is (some? (modules/usage-error config-with-uses 'lib.be 'metabase.lib.schema.private-ns))
+          "even with :uses declared, namespaces not in lib.schema's :api are denied"))))
 
 (deftest ^:parallel usage-error-child-must-declare-uses-on-parent-test
-  (testing "Child accessing parent must declare :uses, but :api is waived by subtree trust"
+  (testing "a child must declare its parent in :uses but may use internal namespaces"
     (let [config-without-uses
           {:metabase/modules {'lib        {:api  #{'metabase.lib.core}
                                            :uses #{}}
                               'lib.schema {:api  :any
                                            :uses #{}}}}]
-      (is (some? (usage-error config-without-uses 'lib.schema 'metabase.lib.core))
+      (is (some? (modules/usage-error config-without-uses 'lib.schema 'metabase.lib.core))
           "lib.schema does not declare :uses #{lib} so it cannot access lib's namespaces"))
     (let [config-with-uses
           {:metabase/modules {'lib        {:api  #{'metabase.lib.core}
@@ -355,149 +237,114 @@
                               'lib.schema {:api  :any
                                            :uses #{'lib}}}}]
       (testing "namespace in lib's :api — allowed"
-        (is (nil? (usage-error config-with-uses 'lib.schema 'metabase.lib.core))))
-      (testing "namespace NOT in lib's :api — ALSO allowed (subtree trust)"
-        (is (nil? (usage-error config-with-uses 'lib.schema 'metabase.lib.internal))
-            (str "Under subtree trust, a child reaching into its parent's internals is "
-                 "allowed regardless of :api — this is the ancestor-descendant relaxation."))))))
+        (is (nil? (modules/usage-error config-with-uses 'lib.schema 'metabase.lib.core))))
+      (testing "namespace not in lib's :api — also allowed (subtree trust)"
+        (is (nil? (modules/usage-error config-with-uses 'lib.schema 'metabase.lib.internal)))))))
 
 (deftest ^:parallel usage-error-encapsulated-grandchild-denied-test
   (testing "Outside module cannot reach into an unopened nested module"
-    ;; `lib.schema` is nested under `lib` but lib does not open it, so
-    ;; lib.schema is encapsulated behind lib. Outside callers see only
-    ;; lib's :api and cannot reach lib.schema's contents — even if
-    ;; lib.schema's own :api declares those namespaces. This is strict
-    ;; encapsulation: :module-exports is the only way to expose a nested child.
-    ;;
-    ;; An explicit empty `:api` exports nothing; only `:api :any` is
-    ;; unrestricted. This fixture uses a non-empty API so it can verify both
-    ;; access to lib's public namespace and denial of its private child.
     (let [config {:metabase/modules {'lib             {:module-exports #{}
-                                                       :api  #{'metabase.lib.core}
-                                                       :uses #{}}
+                                                       :api            #{'metabase.lib.core}
+                                                       :uses           #{}}
                                      'lib.schema      {:api  #{'metabase.lib.schema.public-ns}
                                                        :uses #{}}
                                      'query-processor {:uses #{'lib}
                                                        :api  :any}}}]
       (testing "access to a private descendant namespace is denied"
-        (is (some? (usage-error config 'query-processor 'metabase.lib.schema.private-ns))))
-      (testing "access to lib's own api is allowed"
-        (is (nil? (usage-error config 'query-processor 'metabase.lib.core))))
-      (testing "access to lib.schema's own :api is ALSO denied — lib.schema is fully encapsulated"
-        ;; lib.schema's :api declares `metabase.lib.schema.public-ns`, but
-        ;; lib does NOT open lib.schema, so lib.schema's API is invisible
-        ;; to outside callers. The only way for query-processor to reach
-        ;; this would be for lib to explicitly `:module-exports #{lib.schema}` or
-        ;; for lib to re-export the namespace in its own :api.
-        (is (some? (usage-error config 'query-processor 'metabase.lib.schema.public-ns)))))))
+        (is (some? (modules/usage-error config 'query-processor 'metabase.lib.schema.private-ns))))
+      (testing "access to lib's own API is allowed"
+        (is (nil? (modules/usage-error config 'query-processor 'metabase.lib.core))))
+      (testing "access to lib.schema's own :api is also denied — lib does not export lib.schema"
+        (is (some? (modules/usage-error config 'query-processor 'metabase.lib.schema.public-ns)))))))
 
 (deftest ^:parallel usage-error-opened-child-allowed-test
-  (testing "Outside module CAN reach into an opened nested module when listed in :module-exports"
+  (testing "Outside module can reach into a nested module its parent lists in :module-exports"
     (let [config {:metabase/modules {'lib             {:module-exports #{'lib.schema}
-                                                       :api  :any}
+                                                       :api            :any}
                                      'lib.schema      {:api  :any
                                                        :uses #{}}
                                      'query-processor {:uses #{'lib.schema}
                                                        :api  :any}}}]
-      (is (nil? (usage-error config 'query-processor 'metabase.lib.schema.foo))))))
+      (is (nil? (modules/usage-error config 'query-processor 'metabase.lib.schema.foo))))))
 
 (deftest ^:parallel usage-error-subtree-trust-is-unidirectional-test
-  (testing "Subtree trust is UNIDIRECTIONAL: descendants can read ancestors' internals, but ancestors must respect descendants' :api"
-    (let [config {:metabase/modules {'outer              {:uses #{'outer.middle.inner}
-                                                          :api  #{'metabase.outer.public}}
-                                     'outer.middle       {:api  #{}}
-                                     'outer.middle.inner {:api  #{'metabase.outer.middle.inner.public}
-                                                          :uses #{'outer}}}}]
-      (testing "grandchild → grandparent bypasses :api (descendant reading ancestor)"
-        (is (nil? (usage-error config 'outer.middle.inner 'metabase.outer.internal))
-            (str "outer.middle.inner declares :uses on outer; the grandparent's :api is "
-                 "waived because descendants can read ancestors' internals.")))
-      (testing "grandparent → grandchild must go through grandchild's :api"
-        (is (some? (usage-error config 'outer 'metabase.outer.middle.inner.internal))
-            (str "outer declares :uses on outer.middle.inner, but the grandchild's "
-                 ":api is enforced — parents (and grandparents) do NOT get free "
-                 "access to their descendants' internals. The :api is the outward "
-                 "contract, and even its ancestors must respect it.")))
-      (testing "grandparent → grandchild CAN access the grandchild's public :api"
-        (is (nil? (usage-error config 'outer 'metabase.outer.middle.inner.public)))))))
+  (let [config {:metabase/modules {'outer              {:uses #{'outer.middle.inner}
+                                                        :api  #{'metabase.outer.public}}
+                                   'outer.middle       {:api #{}}
+                                   'outer.middle.inner {:api  #{'metabase.outer.middle.inner.public}
+                                                        :uses #{'outer}}}}]
+    (testing "grandchild → grandparent bypasses :api"
+      (is (nil? (modules/usage-error config 'outer.middle.inner 'metabase.outer.internal))))
+    (testing "grandparent → grandchild must go through grandchild's :api"
+      (is (some? (modules/usage-error config 'outer 'metabase.outer.middle.inner.internal))))
+    (testing "grandparent → grandchild can access the grandchild's public :api"
+      (is (nil? (modules/usage-error config 'outer 'metabase.outer.middle.inner.public))))))
 
 (deftest ^:parallel usage-error-subtree-trust-does-not-extend-to-cousins-test
-  (testing "Cousins (same grandparent, different parents) are NOT subtree-trusted — they go through :api"
-    (let [config {:metabase/modules {'outer             {}
-                                     'outer.a           {}
-                                     'outer.a.leaf      {:api  #{'metabase.outer.a.leaf.public}
-                                                         :uses #{}}
-                                     'outer.b           {}
-                                     'outer.b.leaf      {:api  :any
-                                                         :uses #{'outer.a.leaf}}}}]
-      (testing "namespace in cousin's :api — allowed"
-        (is (nil? (usage-error config 'outer.b.leaf 'metabase.outer.a.leaf.public))))
-      (testing "namespace NOT in cousin's :api — denied (no subtree trust between cousins)"
-        (is (some? (usage-error config 'outer.b.leaf 'metabase.outer.a.leaf.internal))
-            "cousins are not in an ancestor-descendant relationship, so :api still applies")))))
+  (let [config {:metabase/modules {'outer        {}
+                                   'outer.a      {}
+                                   'outer.a.leaf {:api  #{'metabase.outer.a.leaf.public}
+                                                  :uses #{}}
+                                   'outer.b      {}
+                                   'outer.b.leaf {:api  :any
+                                                  :uses #{'outer.a.leaf}}}}]
+    (testing "namespace in cousin's :api — allowed"
+      (is (nil? (modules/usage-error config 'outer.b.leaf 'metabase.outer.a.leaf.public))))
+    (testing "namespace not in cousin's :api — denied"
+      (is (some? (modules/usage-error config 'outer.b.leaf 'metabase.outer.a.leaf.internal))))))
 
 (deftest ^:parallel usage-error-uses-must-name-resolved-module-exactly-test
-  (testing "`:uses` is matched exactly against the resolved required module — no walking up the tree"
+  (testing "`:uses` must name the resolved module exactly"
     (let [config {:metabase/modules {'lib             {:api  :any
                                                        :uses #{}}
                                      'lib.schema      {:api  :any
                                                        :uses #{}}
                                      'query-processor {:uses #{'lib}
                                                        :api  :any}}}]
-      (is (some? (usage-error config 'query-processor 'metabase.lib.schema.foo))
-          (str ":uses #{lib} does NOT cover lib.schema even though lib is its parent. "
-               "The required namespace resolves to lib.schema (via longest-prefix matching) "
-               "and the :uses entry must name lib.schema directly."))
-      (is (nil? (usage-error config 'query-processor 'metabase.lib.core))
-          ":uses #{lib} covers references to namespaces that resolve to lib itself"))
-    (let [config {:metabase/modules {'lib             {:api  :any
-                                                       :uses #{}}
-                                     'lib.schema      {:api  :any
-                                                       :uses #{}}
-                                     'query-processor {:uses #{'lib 'lib.schema}
-                                                       :api  :any}}}]
-      (is (nil? (usage-error config 'query-processor 'metabase.lib.schema.foo))
+      (is (some? (modules/usage-error config 'query-processor 'metabase.lib.schema.foo))
+          ":uses #{lib} does not cover lib.schema even though lib is its parent")
+      (is (nil? (modules/usage-error config 'query-processor 'metabase.lib.core))
+          ":uses #{lib} covers references to namespaces that resolve to lib itself")
+      (is (nil? (modules/usage-error (assoc-in config [:metabase/modules 'query-processor :uses] #{'lib 'lib.schema})
+                                     'query-processor
+                                     'metabase.lib.schema.foo))
           "with both lib and lib.schema in :uses, the access works"))))
 
 (deftest ^:parallel usage-error-explicit-empty-api-denies-external-access-test
   (let [config {:metabase/modules {'private-module {:api #{}}
                                    'caller         {:uses #{'private-module}}}}]
     (testing "an explicit empty API exports no namespaces"
-      (is (some? (usage-error config 'caller 'metabase.private-module.api))))
+      (is (some? (modules/usage-error config 'caller 'metabase.private-module.api))))
     (testing "`:api :any` remains the unrestricted API sentinel"
-      (is (nil? (usage-error (assoc-in config [:metabase/modules 'private-module :api] :any)
-                             'caller
-                             'metabase.private-module.internal))))
+      (is (nil? (modules/usage-error (assoc-in config [:metabase/modules 'private-module :api] :any)
+                                     'caller
+                                     'metabase.private-module.internal))))
     (testing "friends may still bypass an explicitly empty API"
-      (is (nil? (usage-error (assoc-in config [:metabase/modules 'private-module :friends] #{'caller})
-                             'caller
-                             'metabase.private-module.internal))))))
+      (is (nil? (modules/usage-error (assoc-in config [:metabase/modules 'private-module :friends] #{'caller})
+                                     'caller
+                                     'metabase.private-module.internal))))))
 
 (deftest ^:parallel usage-error-uses-any-namability-test
-  (testing "`:uses :any` allows any *namable* module reference (subject to :api); namability is enforced
-            at require time for `:any` callers since the config-level test only covers set-valued `:uses`"
-    (let [config {:metabase/modules {'lib        {:api  :any}
-                                     'lib.schema {:api  :any}
+  (testing "`:uses :any` may name any module it could name with a set-valued `:uses`"
+    (let [config {:metabase/modules {'lib        {:api :any}
+                                     'lib.schema {:api :any}
                                      'caller     {:uses :any
                                                   :api  :any}}}]
       (testing "top-level modules are always namable"
-        (is (nil? (usage-error config 'caller 'metabase.lib.core))))
+        (is (nil? (modules/usage-error config 'caller 'metabase.lib.core))))
       (testing "a nested child not in its parent's :module-exports is private to its subtree"
-        (is (some? (usage-error config 'caller 'metabase.lib.schema.foo))))
+        (is (some? (modules/usage-error config 'caller 'metabase.lib.schema.foo))))
       (testing "exporting the child makes it namable from anywhere"
-        (is (nil? (usage-error (assoc-in config [:metabase/modules 'lib :module-exports] #{'lib.schema})
-                               'caller
-                               'metabase.lib.schema.foo))))
+        (is (nil? (modules/usage-error (assoc-in config [:metabase/modules 'lib :module-exports] #{'lib.schema})
+                                       'caller
+                                       'metabase.lib.schema.foo))))
       (testing "same-subtree callers may name private children"
-        (is (nil? (usage-error (assoc-in config [:metabase/modules 'lib.other] {:uses :any, :api :any})
-                               'lib.other
-                               'metabase.lib.schema.foo)))))))
+        (is (nil? (modules/usage-error (assoc-in config [:metabase/modules 'lib.other] {:uses :any, :api :any})
+                                       'lib.other
+                                       'metabase.lib.schema.foo)))))))
 
 (deftest ^:parallel usage-error-privacy-scoped-to-nearest-non-opening-ancestor-test
-  (testing (str "An unopened nested child is private to the subtree of the nearest ancestor that "
-                "does NOT export it — not to its whole top-level subtree. `outer.a` keeps "
-                "`outer.a.leaf` private, so only the `outer.a` subtree may name it; a cousin "
-                "under the same top-level `outer` may not.")
+  (testing "An unexported child is private to its nearest non-exporting ancestor's subtree, not the top-level one"
     (let [config {:metabase/modules {'outer        {:module-exports #{}
                                                     :uses           :any
                                                     :api            :any}
@@ -514,27 +361,25 @@
                                      'outer.b.deep {:uses :any
                                                     :api  :any}}}]
       (testing "the nearest non-opening ancestor and its descendants may name it"
-        (is (nil? (usage-error config 'outer.a 'metabase.outer.a.leaf.foo)))
-        (is (nil? (usage-error config 'outer.a.sib 'metabase.outer.a.leaf.foo))))
-      (testing "a cousin sharing only the top-level ancestor may NOT name it"
-        (is (some? (usage-error config 'outer.b 'metabase.outer.a.leaf.foo))
-            (str "outer.b is outside outer.a's subtree; sharing the top-level module `outer` "
-                 "is not enough to see a module outer.a keeps private."))
-        (is (some? (usage-error config 'outer.b.deep 'metabase.outer.a.leaf.foo))))
-      (testing "an ancestor above the nearest non-opening ancestor may NOT name it either"
-        (is (some? (usage-error config 'outer 'metabase.outer.a.leaf.foo))))
+        (is (nil? (modules/usage-error config 'outer.a 'metabase.outer.a.leaf.foo)))
+        (is (nil? (modules/usage-error config 'outer.a.sib 'metabase.outer.a.leaf.foo))))
+      (testing "a cousin sharing only the top-level ancestor may not name it"
+        (is (some? (modules/usage-error config 'outer.b 'metabase.outer.a.leaf.foo)))
+        (is (some? (modules/usage-error config 'outer.b.deep 'metabase.outer.a.leaf.foo))))
+      (testing "an ancestor above the nearest non-opening ancestor may not name it either"
+        (is (some? (modules/usage-error config 'outer 'metabase.outer.a.leaf.foo))))
       (testing "exporting the leaf one level up widens the scope to the whole `outer` subtree"
         (let [config (assoc-in config [:metabase/modules 'outer.a :module-exports] #{'outer.a.leaf})]
-          (is (nil? (usage-error config 'outer 'metabase.outer.a.leaf.foo)))
-          (is (nil? (usage-error config 'outer.b 'metabase.outer.a.leaf.foo)))
-          (is (nil? (usage-error config 'outer.b.deep 'metabase.outer.a.leaf.foo)))
+          (is (nil? (modules/usage-error config 'outer 'metabase.outer.a.leaf.foo)))
+          (is (nil? (modules/usage-error config 'outer.b 'metabase.outer.a.leaf.foo)))
+          (is (nil? (modules/usage-error config 'outer.b.deep 'metabase.outer.a.leaf.foo)))
           (testing "but not to a module outside the `outer` subtree"
             (let [config (assoc-in config [:metabase/modules 'unrelated] {:uses :any, :api :any})]
               (is (= (str "Module outer.a.leaf is nested and not exported by its ancestors; "
                           "unrelated may not use it. Add outer.a to outer's :module-exports, "
                           "or move the caller into the outer subtree. "
                           "[:metabase/modules outer :module-exports]")
-                     (usage-error config 'unrelated 'metabase.outer.a.leaf.foo))))))))))
+                     (modules/usage-error config 'unrelated 'metabase.outer.a.leaf.foo))))))))))
 
 (deftest ^:parallel usage-error-uses-any-rest-module-test
   (testing "`:uses :any` does not allow domain modules to depend on REST modules"
@@ -542,10 +387,10 @@
                                      'actions.rest {:ns-prefix "metabase.actions-rest"
                                                     :api       :any}
                                      'caller       {:uses :any
-                                                    :api  :any}}}
-          expected (str "Do not use REST modules (actions.rest) in non-REST modules (caller) "
-                        "-- move things from actions.rest to actions if needed")]
-      (is (= expected (usage-error config 'caller 'metabase.actions-rest.api))))))
+                                                    :api  :any}}}]
+      (is (= (str "Do not use REST modules (actions.rest) in non-REST modules (caller) "
+                  "-- move things from actions.rest to actions if needed")
+             (modules/usage-error config 'caller 'metabase.actions-rest.api))))))
 
 (deftest ^:parallel usage-error-rest-module-exceptions-test
   (testing "REST modules, route aggregators, and core initializers may use REST modules"
@@ -560,116 +405,56 @@
                                                       :api  :any}
                                      'core           {:uses :any
                                                       :api  :any}}}]
-      (are [caller] (nil? (usage-error config caller 'metabase.actions-rest.api))
+      (are [caller] (nil? (modules/usage-error config caller 'metabase.actions-rest.api))
         'questions.rest
         'api-routes
         'core))))
 
 ;;;; -------------------------------------------------------------------------
-;;;; `enterprise/X` shorthand: EE module as a nested child of OSS X
+;;;; Enterprise companion modules
 ;;;;
-;;;; When an `enterprise/X` module is declared in config and an OSS module
-;;;; `X` is also declared, the system treats `enterprise/X` as if it were a
-;;;; nested child of `X` — same subtree, auto-opened in `X`'s `:module-exports` set.
-;;;; This lets EE modules be organized as companions to their OSS
-;;;; counterparts without needing to rename anything or declare explicit
-;;;; `:ns-prefix` / `:module-exports` entries.
-;;;;
-;;;; If `X` is NOT declared (e.g. `enterprise/sandbox` with no OSS
-;;;; counterpart), the shorthand falls back: `enterprise/sandbox` stays a
-;;;; top-level module, externally referenceable by anyone.
+;;;; A declared `enterprise/X` sits under OSS `X` and is exported implicitly.
+;;;; Without OSS `X`, it remains top-level.
 ;;;; -------------------------------------------------------------------------
 
-(deftest ^:parallel parent-module-shorthand-test
-  (testing "`parent-module` honors the `enterprise/X` shorthand when declared modules are known"
-    (let [parent-module (hook-fn 'parent-module)]
-      (testing "no declared modules: enterprise/X is top-level (pure syntactic)"
-        (is (nil? (parent-module 'enterprise/internal-stats))))
-      (testing "empty declared set: same as no declared — no shorthand activation"
-        (is (nil? (parent-module #{} 'enterprise/internal-stats))))
-      (testing "declared set includes OSS X: enterprise/X's parent is X"
-        (is (= 'internal-stats
-               (parent-module #{'internal-stats} 'enterprise/internal-stats))))
-      (testing "declared set does NOT include OSS X: enterprise/X is still top-level"
-        (is (nil? (parent-module #{'other-module} 'enterprise/internal-stats))))
-      (testing "dotted-name children still work via pure syntactic rule"
-        (is (= 'lib
-               (parent-module #{'lib} 'lib.schema))))
-      (testing "deeply-nested enterprise names fall back to syntactic rule"
-        (is (= 'enterprise/transforms
-               (parent-module #{'transforms} 'enterprise/transforms.python)))))))
-
-(deftest ^:parallel open-children-auto-opens-enterprise-test
-  (testing "`open-children` auto-includes `enterprise/X` when X is a declared OSS top-level"
-    (let [open-children (hook-fn 'open-children)]
-      (testing "no enterprise counterpart declared: only the explicit :module-exports set"
-        (let [config {:metabase/modules {'lib {:module-exports #{'lib.schema}}}}]
-          (is (= #{'lib.schema} (open-children config 'lib)))))
-      (testing "enterprise/X counterpart declared: auto-included in :module-exports"
-        (let [config {:metabase/modules {'cache            {}
-                                         'enterprise/cache {}}}]
-          (is (= #{'enterprise/cache} (open-children config 'cache)))))
-      (testing "combines explicit and auto-opened"
-        (let [config {:metabase/modules {'lib             {:module-exports #{'lib.schema}}
-                                         'enterprise/lib  {}}}]
-          (is (= #{'lib.schema 'enterprise/lib} (open-children config 'lib)))))
-      (testing "nested modules (not top-level) do NOT get auto-opened enterprise counterparts"
-        ;; `foo.bar` is not top-level (has a dot in its name), so
-        ;; `enterprise/foo.bar` is not auto-opened on it even if declared.
-        ;; `foo.bar` has no explicit `:module-exports` set, so open-children should be #{}.
-        (let [config {:metabase/modules {'foo                 {:module-exports #{'foo.bar}}
-                                         'foo.bar             {}
-                                         'enterprise/foo.bar  {}}}]
-          (is (= #{} (open-children config 'foo.bar))))))))
-
 (deftest ^:parallel usage-error-enterprise-shorthand-allows-cross-subtree-access-test
-  (testing (str "Under the shorthand, `enterprise/X` is in the X subtree. Other modules "
-                "can still reach it via the auto-opened `:module-exports` set. `enterprise/core`'s "
-                "init chain, for instance, can statically require `enterprise/cache` "
-                "because `cache` auto-opens `enterprise/cache`.")
-    (let [config {:metabase/modules {'core              {:api :any}
-                                     'cache             {:api :any}
-                                     'enterprise/core   {:api :any
-                                                         :uses #{'enterprise/cache}}
-                                     'enterprise/cache  {:api :any
-                                                         :uses #{}}}}]
-      (testing "enterprise/core can statically require enterprise/cache"
-        (is (nil? (usage-error config 'enterprise/core 'metabase-enterprise.cache.core)))))))
+  (testing "enterprise/core can require enterprise/cache because cache exports it implicitly"
+    (let [config {:metabase/modules {'core             {:api :any}
+                                     'cache            {:api :any}
+                                     'enterprise/core  {:api  :any
+                                                        :uses #{'enterprise/cache}}
+                                     'enterprise/cache {:api  :any
+                                                        :uses #{}}}}]
+      (is (nil? (modules/usage-error config 'enterprise/core 'metabase-enterprise.cache.core))))))
 
 (deftest ^:parallel usage-error-enterprise-shorthand-same-subtree-access-test
-  (testing "OSS X and enterprise/X are same-subtree after shorthand — both in X's subtree"
-    (let [config {:metabase/modules {'cache             {:api :any
-                                                         :uses #{'enterprise/cache}}
-                                     'enterprise/cache  {:api :any
-                                                         :uses #{'cache}}}}]
-      (testing "OSS cache → enterprise/cache via :uses is allowed (same subtree)"
-        (is (nil? (usage-error config 'cache 'metabase-enterprise.cache.core))))
-      (testing "enterprise/cache → OSS cache via :uses is allowed (same subtree, reverse direction)"
-        (is (nil? (usage-error config 'enterprise/cache 'metabase.cache.core)))))))
+  (testing "OSS X and enterprise/X share X's subtree"
+    (let [config {:metabase/modules {'cache            {:api  :any
+                                                        :uses #{'enterprise/cache}}
+                                     'enterprise/cache {:api  :any
+                                                        :uses #{'cache}}}}]
+      (testing "OSS cache → enterprise/cache"
+        (is (nil? (modules/usage-error config 'cache 'metabase-enterprise.cache.core))))
+      (testing "enterprise/cache → OSS cache"
+        (is (nil? (modules/usage-error config 'enterprise/cache 'metabase.cache.core)))))))
 
 (deftest ^:parallel usage-error-enterprise-without-oss-counterpart-stays-top-level-test
-  (testing (str "An `enterprise/X` module whose OSS counterpart `X` is NOT declared stays "
-                "top-level — no phantom parent. Anyone can name it directly since top-level "
-                "modules are always externally referenceable.")
-    (let [config {:metabase/modules {'enterprise/sandbox {:api :any
+  (testing "enterprise/X without a declared OSS X is top-level, so anyone may name it"
+    (let [config {:metabase/modules {'enterprise/sandbox {:api  :any
                                                           :uses #{}}
-                                     'unrelated          {:api :any
+                                     'unrelated          {:api  :any
                                                           :uses #{'enterprise/sandbox}}}}]
-      ;; `unrelated` is in a different subtree, but `enterprise/sandbox`
-      ;; has no OSS parent (sandbox isn't declared), so it's top-level
-      ;; and externally referenceable.
-      (testing "unrelated can reach top-level enterprise/sandbox"
-        (is (nil? (usage-error config 'unrelated 'metabase-enterprise.sandbox.core)))))))
+      (is (nil? (modules/usage-error config 'unrelated 'metabase-enterprise.sandbox.core))))))
 
 (deftest ^:parallel usage-error-backwards-compat-flat-config-test
-  (testing "With no nested modules declared, behavior matches the flat pre-nesting model"
+  (testing "a config without nested modules keeps flat-module behavior"
     (let [config {:metabase/modules {'lib             {:api  #{'metabase.lib.core
                                                                'metabase.lib.schema.foo}
                                                        :uses #{}}
                                      'query-processor {:api  :any
                                                        :uses #{'lib}}}}]
       (testing "flat :uses lib is sufficient for namespaces in lib's api"
-        (is (nil? (usage-error config 'query-processor 'metabase.lib.core)))
-        (is (nil? (usage-error config 'query-processor 'metabase.lib.schema.foo))))
+        (is (nil? (modules/usage-error config 'query-processor 'metabase.lib.core)))
+        (is (nil? (modules/usage-error config 'query-processor 'metabase.lib.schema.foo))))
       (testing "namespaces not in :api are denied"
-        (is (some? (usage-error config 'query-processor 'metabase.lib.internal)))))))
+        (is (some? (modules/usage-error config 'query-processor 'metabase.lib.internal)))))))

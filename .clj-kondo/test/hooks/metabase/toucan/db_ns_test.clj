@@ -6,8 +6,9 @@
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]))
 
 (defn- lint-query-call
-  "Runs the hook over `form` as if it appeared in `ns-sym`, with optional `filename` and `modules` (the
-  `:metabase/modules` map). Returns the findings it registered."
+  "Run the hook for `form` in `ns-sym` and return its findings.
+
+  Accepts optional `filename` and `:metabase/modules` values."
   [form ns-sym & {:keys [filename modules]}]
   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}}}
                                         :ignores    (atom nil)

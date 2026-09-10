@@ -4,8 +4,6 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [dev.deps-graph :as deps-graph]
-   [dev.model-boundary-config :as mbc]
    [dev.modules-config :as mc]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]))
@@ -55,23 +53,6 @@
       (is (= #{:model/Beta :model/Gamma} (get-in desired ['alpha :model-imports]))))
     (testing "a :bypass module drives no imports and its references don't force exports"
       (is (= #{} (get-in desired ['gamma :model-imports]))))))
-
-(deftest compute-desired-scans-with-the-configured-prefixes-test
-  (let [config '{parent       {:team "T"}
-                 parent.child {:ns-prefix "metabase.special-child"}}
-        expected-prefixes (deps-graph/build-prefix->module config)
-        seen-prefixes (promise)]
-    (with-redefs [deps-graph/kondo-config (constantly config)
-                  deps-graph/dependencies (fn [prefix->module]
-                                            (deliver seen-prefixes prefix->module)
-                                            [])
-                  deps-graph/model-ownership (constantly {})
-                  deps-graph/model-references-by-module (constantly {})
-                  deps-graph/generate-config (constantly {})
-                  mbc/compute-model-boundaries (constantly {})]
-      (mc/compute-desired)
-      (is (= expected-prefixes @seen-prefixes)
-          "the rewrite scan must resolve explicit and nested namespace prefixes like validation does"))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Sorting (must match metabase.core.modules-test)

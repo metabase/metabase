@@ -110,49 +110,45 @@
      (fn [] ~@body)))
 
 (defn- module-for-ns
+  "Resolve `ns-sym` to a declared module.
+
+  The packaged application cannot load `hooks.common.modules`, so this mirrors
+  its dotted-prefix lookup. Undeclared modules are omitted because they have no
+  team metadata."
   [prefix->module ns-sym]
   (loop [candidate (str/replace (str ns-sym) #"-test$" "")]
     (or (get prefix->module candidate)
         (when-let [dot (str/last-index-of candidate ".")]
           (recur (subs candidate 0 dot))))))
 
-(let [config (-> (if (config/jar?)
-                   (io/resource "metabase/config/modules.edn")
-                   (io/file ".clj-kondo/config/modules/config.edn"))
-                 slurp edn/read-string :metabase/modules)
-      declared-modules config
-      module-prefix (fn module-prefix [module]
-                      (or (get-in config [module :ns-prefix])
-                          (if (= "enterprise" (namespace module))
-                            (str "metabase-enterprise." (name module))
-                            (str "metabase." (name module)))))
-      prefix->module (into {} (map (juxt module-prefix identity)) (keys declared-modules))
-      module-parent (fn module-parent [module]
-                      (let [parts (str/split (name module) #"\.")]
-                        (cond
-                          (> (count parts) 1)
-                          (let [parent-name (str/join "." (butlast parts))]
-                            (if-let [ns-part (namespace module)]
-                              (symbol ns-part parent-name)
-                              (symbol parent-name)))
-
-                          (= "enterprise" (namespace module))
-                          (let [oss-module (symbol (name module))]
-                            (when (contains? declared-modules oss-module)
-                              oss-module)))))
-      module-team (fn module-team [module]
-                    (loop [module module]
-                      (when module
-                        (if (contains? (get config module) :team)
-                          (get-in config [module :team])
-                          (recur (module-parent module))))))]
+(let [config         (-> (if (config/jar?)
+                           (io/resource "metabase/config/modules.edn")
+                           (io/file ".clj-kondo/config/modules/config.edn"))
+                         slurp edn/read-string :metabase/modules)
+      prefix->module (into {}
+                           (map (fn [[module {:keys [ns-prefix]}]]
+                                  [(or ns-prefix
+                                       (str (if (= "enterprise" (namespace module)) "metabase-enterprise." "metabase.")
+                                            (name module)))
+                                   module]))
+                           config)
+      parent         (fn [module]
+                       (let [module-name (name module)]
+                         (if-let [dot (str/last-index-of module-name ".")]
+                           (symbol (namespace module) (subs module-name 0 dot))
+                           (when (= "enterprise" (namespace module))
+                             (let [oss (symbol module-name)]
+                               (when (contains? config oss)
+                                 oss))))))]
   (defn ns->team*
-    "Resolve the namespace's owning module and its nearest explicitly configured team. Should be memoized for speed."
+    "Return the nearest configured team for the namespace's module.
+
+    The caller should memoize this lookup."
     [ns-sym]
     (if ('#{metabase.server.middleware.log} ns-sym)
       ::skip
-      (some-> (module-for-ns prefix->module ns-sym)
-              module-team))))
+      (when-let [module (module-for-ns prefix->module ns-sym)]
+        (some #(get-in config [% :team]) (take-while some? (iterate parent module)))))))
 
 (let [attribution (if (config/config-bool :mb-log-team-attribution)
                     (memoize ns->team*)

@@ -86,20 +86,17 @@ Run all repository-level checks, or one named suite:
 
 ### Nested modules
 
-A module name says where it sits in a tree. `lib.schema` is a child of `lib`, and `enterprise/search` is a
-child of `search` whenever OSS `search` is declared. `./bin/mage modules-tree` prints the result.
+Module names form a tree: `lib.schema` is a child of `lib`. When OSS module `search` exists,
+`enterprise/search` is its child. Run `./bin/mage modules-tree` to inspect the hierarchy.
 
-Namespaces resolve to the most specific module whose prefix matches, so declaring `lib.schema` moves
-`metabase.lib.schema.*` out of `lib` without moving a file. Set `:ns-prefix` when a module's namespaces
-don't follow its name.
-
-A module may use an ancestor's internals without going through its `:api`. The reverse does not hold: a
-parent goes through its child's `:api` like anyone else. `:uses` is still required both ways, so the
-dependency still shows up in the graph.
-
-A child is namable from outside its parent's subtree only if every ancestor up to the root lists the next
-module on the path in `:module-exports`. `X` exports `enterprise/X` automatically, so
-`metabase-enterprise.core.init` can reference it.
+- Namespace ownership uses the most specific matching prefix. Declaring `lib.schema` assigns
+  `metabase.lib.schema.*` to it without moving files. Use `:ns-prefix` when namespaces do not match the
+  module name.
+- Every cross-module dependency still requires `:uses`.
+- A child may use an ancestor's internal namespaces. Parents, siblings, and unrelated modules must use the
+  target's `:api`.
+- To make a nested module available outside its parent's subtree, export each link to the root with
+  `:module-exports`. OSS module `X` exports its `enterprise/X` companion automatically.
 
 ## Kondo Ignore Ratchets
 

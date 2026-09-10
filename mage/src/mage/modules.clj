@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [hooks.common.modules :as modules]
    [mage.be-dev :as be-dev]
    [mage.color :as c]
    [mage.util :as u]))
@@ -21,107 +22,27 @@
   '#{query-processor transforms
      enterprise/transforms enterprise/transforms-python})
 
-;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
-;;; everything that depends on that module directly or indirectly in `src`
-;;;
-;;; MIRROR: this is the file-path-based equivalent of the namespace-symbol-based
-;;; module resolution in three other sites:
-;;;
-;;;   - .clj-kondo/src/hooks/common/modules.clj  (canonical)
-;;;   - dev/src/dev/deps_graph.clj               (deps graph mirror)
-;;;   - src/metabase/util/log.clj                 (logging attribution mirror)
-;;;
-;;; Invariant: given a file at path P containing namespace ns-symb, this
-;;; function must return the same module symbol that the other three sites
-;;; return when given ns-symb. The test `metabase.core.modules-consistency-test`
-;;; verifies the four sites stay in sync.
-;;;
-;;; If you change the module resolution algorithm (e.g. adding longest-prefix
-;;; matching for nested modules), update ALL FOUR sites.
+;;; TODO (Cam 2025-11-07): A test-file change should run only that module's tests,
+;;; not the tests of every source dependent. See DEV-1487.
 
 (defn- file->ns-symbol
-  "Derive a namespace-like symbol from a path beneath a Metabase src/test root,
-  converting path segments to dotted namespace form (with underscores replaced
-  by hyphens). This also handles non-Clojure resources so changes beneath a
-  nested module are attributed to that module.
+  "Infer the namespace of a file under a backend source or test root.
 
-  Examples:
-
-    src/metabase/lib/schema/foo.clj         => metabase.lib.schema.foo
-    enterprise/backend/src/metabase_enterprise/transforms/python/foo.clj
-                                            => metabase-enterprise.transforms.python.foo
-    src/metabase/lib_be/core.clj            => metabase.lib-be.core"
+  Also works for non-Clojure resources. For example,
+  `src/metabase/lib_be/core.clj` becomes `metabase.lib-be.core`."
   [filename]
-  (letfn [(normalize-module-path [module-path]
-            (let [module-path (str/replace module-path #"\.[^./]+$" "")]
-              (if (or (str/starts-with? filename "test/")
-                      (str/starts-with? filename "enterprise/backend/test/"))
-                (str/replace module-path #"[_-]test$" "")
-                module-path)))]
-    (or
-     (when-let [[_match module-path] (re-matches #"^(?:src|test)/metabase/(.+)$" filename)]
-       (symbol (str "metabase."
-                    (-> (normalize-module-path module-path)
-                        (str/replace #"/" ".")
-                        (str/replace #"_" "-")))))
-     (when-let [[_match module-path] (re-matches #"^enterprise/backend/(?:src|test)/metabase_enterprise/(.+)$" filename)]
-       (symbol (str "metabase-enterprise."
-                    (-> (normalize-module-path module-path)
-                        (str/replace #"/" ".")
-                        (str/replace #"_" "-"))))))))
-
-(defn- default-ns-prefix-for [m]
-  (if (= (namespace m) "enterprise")
-    (str "metabase-enterprise." (name m))
-    (str "metabase." (name m))))
-
-(defn- module-ns-prefix
-  [modules-config module]
-  (or (get-in modules-config [module :ns-prefix])
-      (default-ns-prefix-for module)))
-
-(defn- build-prefix->module
-  "Build the `{ns-prefix-string module-symbol}` map from the `:metabase/modules`
-  map read from the kondo config. Mirror of the same function in the kondo
-  hook and dev.deps-graph."
-  [modules-config]
-  (into {}
-        (map (fn [module]
-               [(module-ns-prefix modules-config module) module]))
-        (keys modules-config)))
-
-(defn- longest-matching-prefix [prefix->module ns-str]
-  (loop [candidate ns-str]
-    (or (get prefix->module candidate)
-        (when-let [dot (str/last-index-of candidate ".")]
-          (recur (subs candidate 0 dot))))))
+  (when (re-find #"^(?:(?:src|test)/metabase|enterprise/backend/(?:src|test)/metabase_enterprise)/" filename)
+    (-> filename
+        (str/replace #"^(?:enterprise/backend/)?(?:src|test)/" "")
+        (str/replace #"\.[^./]+$" "")
+        (str/replace "/" ".")
+        (str/replace "_" "-")
+        symbol)))
 
 (defn- file->module
-  "Resolve a file path to a module symbol.
-
-  With one arg (legacy / backwards-compat): extracts the single first-path
-  segment after `metabase/` or `metabase_enterprise/`, matching the flat
-  pre-nested-modules behavior.
-
-  With two args, the first being a `prefix->module` map (as produced by
-  `build-prefix->module`), derives the namespace symbol from the file path
-  and does longest-matching-prefix lookup at segment boundaries. Analogous
-  to the namespace-symbol-based resolution in `deps_graph` and the kondo
-  hook."
-  ([filename]
-   (file->module nil filename))
-  ([prefix->module filename]
-   (or
-    ;; Primary: derive ns symbol from file path, do longest-prefix lookup.
-    (when (seq prefix->module)
-      (when-let [ns-sym (file->ns-symbol filename)]
-        (longest-matching-prefix prefix->module (str ns-sym))))
-    ;; Fallback: single-segment extraction. Regex literals preserved
-    ;; byte-for-byte-equivalent to the pre-nesting behavior.
-    (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
-      (symbol (str/replace module #"_" "-")))
-    (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
-      (symbol "enterprise" (str/replace module #"_" "-"))))))
+  "Resolve `filename` to its owning module through its inferred namespace."
+  [prefix->module filename]
+  (some->> (file->ns-symbol filename) (modules/resolve-module prefix->module)))
 
 (defn- read-modules-config
   []
@@ -129,17 +50,9 @@
         (edn/read r))
       :metabase/modules))
 
-(defn- read-prefix->module
-  "Read the `:metabase/modules` map from kondo config and build the
-  `{ns-prefix-string module-symbol}` lookup map used for file→module
-  resolution."
-  []
-  (-> (read-modules-config)
-      build-prefix->module))
-
 (defn- updated-files->updated-modules
   ([updated-files]
-   (updated-files->updated-modules (read-prefix->module) updated-files))
+   (updated-files->updated-modules (modules/build-prefix->module (read-modules-config)) updated-files))
   ([prefix->module updated-files]
    (into (sorted-set)
          (keep (partial file->module prefix->module))
@@ -153,26 +66,19 @@
 (def ^:private backend-test-source-file-extensions
   [".clj" ".cljc"])
 
-(defn- ns-prefix->test-path-fragment [ns-prefix]
-  (->> (str/split ns-prefix #"\.")
-       (map #(str/replace % #"-" "_"))
-       (str/join "/")))
-
 (defn- module->test-path-prefix
+  "The path prefix for `module`'s test file and directory.
+
+  For example, `lib.schema` maps to `test/metabase/lib/schema`."
   [modules-config module]
-  (let [ns-prefix   (module-ns-prefix modules-config module)
-        [parent-dir ns-fragment]
-        (if (str/starts-with? ns-prefix "metabase-enterprise.")
-          ["enterprise/backend/test/metabase_enterprise/"
-           (subs ns-prefix (count "metabase-enterprise."))]
-          ["test/metabase/"
-           (subs ns-prefix (count "metabase."))])]
-    (str parent-dir
-         (ns-prefix->test-path-fragment ns-fragment))))
+  (let [ns-prefix (modules/module-ns-prefix modules-config module)]
+    (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
+         "test/"
+         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
 
 (defn- module->test-paths
   ([modules-config module]
-   (module->test-paths modules-config (build-prefix->module modules-config) module))
+   (module->test-paths modules-config (modules/build-prefix->module modules-config) module))
   ([modules-config prefix->module module]
    (let [path-prefix (module->test-path-prefix modules-config module)
          test-dir    (io/file path-prefix)
@@ -193,11 +99,11 @@
            test-files))))
 
 (defn- dependencies
-  "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
+  "Map each module to the modules in its `:uses` config."
   ([] (dependencies (read-modules-config)))
   ([modules-config]
    (let [config (-> modules-config
-                    ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
+                    ;; This module comes from a library, not this repository.
                     (dissoc 'connection-pool))]
      (into (sorted-map)
            (map (fn [[k config]]
@@ -349,7 +255,7 @@
   "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
   (let [modules-config         (read-modules-config)
-        prefix->module        (build-prefix->module modules-config)
+        prefix->module        (modules/build-prefix->module modules-config)
         deps                   (dependencies modules-config)
         updated                (updated-modules prefix->module git-ref)
         affected               (affected-modules deps updated)
@@ -370,33 +276,30 @@
 ;;;; =============================================================================
 
 (defn- module->tree-path
-  "Path segments a module occupies in the display tree. An `enterprise/` module nests under its OSS
-  counterpart as a trailing segment — `enterprise/transforms` sits under `transforms` as
-  `transforms.enterprise` — so enterprise extensions group with the module they extend. An enterprise
-  module with no OSS counterpart is its own root, displayed with its full `enterprise/` name."
+  "The path segments used to display `module` in the tree.
+
+  An enterprise module appears under its OSS counterpart when one exists.
+  Otherwise its full `enterprise/` name appears at the root."
   [modules-config module]
   (let [segments (str/split (name module) #"\.")]
     (if (= (namespace module) "enterprise")
       (if (contains? modules-config (symbol (first segments)))
-        ;; nest under the OSS root with "enterprise" as the next segment, so a dotted child like
-        ;; enterprise/transforms.python lands at transforms -> enterprise -> python rather than
-        ;; transforms.python.enterprise.
+        ;; Keep an enterprise subtree together under its OSS module.
         (into [(first segments) "enterprise"] (rest segments))
         (into [(str "enterprise/" (first segments))] (rest segments)))
       segments)))
 
 (defn- explicit-ns-prefix
-  "The module's `:ns-prefix` when it differs from the default derived from the module name, i.e. when the
-  namespaces have not (yet) been physically moved to match the module name. The implicit
-  `metabase-enterprise.` prefix of `enterprise/` modules is canonical and does not count."
+  "Return a module's custom `:ns-prefix`, or `nil` when it uses the default."
   [modules-config module]
   (let [prefix (get-in modules-config [module :ns-prefix])]
-    (when (and prefix (not= prefix (default-ns-prefix-for module)))
+    (when (and prefix (not= prefix (modules/default-ns-prefix module)))
       prefix)))
 
 (defn- module-display-tree
-  "Nest all module names into `{:children {segment {:module sym, :children {...}}}}`. Intermediate nodes
-  that are not themselves modules have no `:module`."
+  "Build the nested map consumed by [[tree-node-lines]].
+
+  Grouping nodes that are not modules omit `:module`."
   [modules-config]
   (reduce (fn [tree module]
             (update-in tree
@@ -406,7 +309,7 @@
           (keys modules-config)))
 
 (defn- sorted-children
-  "Child entries of a tree node, alphabetical except `enterprise` always sorts last among its siblings."
+  "Sort child nodes alphabetically, with enterprise nodes last."
   [node]
   (sort-by (fn [[segment _]] [(if (or (= segment "enterprise")
                                       (str/starts-with? segment "enterprise/"))
@@ -416,10 +319,10 @@
            (:children node)))
 
 (defn- tree-node-lines
-  "Render a tree node and its descendants as display lines. Depth 1 gets `- `, each further level one
-  more dash. Nodes that only group children (not modules themselves) print dark; modules whose
-  namespaces still live at an explicit `:ns-prefix` get a yellow `*`, or the prefix itself in yellow
-  parens when `show-prefixes?`."
+  "Render a tree node and its descendants.
+
+  Dashes show depth. Grouping nodes are dimmed. Modules with a custom prefix
+  show `*`, or the prefix itself when `show-prefixes?` is true."
   [modules-config show-prefixes? path node]
   (let [depth   (dec (count path))
         module  (:module node)
@@ -437,8 +340,9 @@
           (sorted-children node))))
 
 (defn cli-print-module-tree
-  "Print the module hierarchy as an indented tree, with enterprise extensions nested under the module
-  they extend and ns-prefixed (not yet moved) modules starred."
+  "Print the module tree, nesting enterprise extensions under their OSS module.
+
+  Marks modules whose namespace prefix differs from their name."
   [{:keys [options] :as _parsed}]
   (let [modules-config (read-modules-config)
         tree           (module-display-tree modules-config)
@@ -453,9 +357,9 @@
                           (count (filter #(= (namespace %) "enterprise") (keys modules-config)))
                           " enterprise"
                           (when (pos? starred)
-                            (str ", " starred " ns-prefixed ("
+                            (str ", " starred " with custom prefixes ("
                                  (if (:prefixes options) "prefix in parens " "* ")
-                                 "= namespaces not moved to match the module name)")))))
+                                 "= namespace differs from module name)")))))
     (u/exit 0)))
 
 (defn- changes-important-file-for-drivers?
@@ -480,8 +384,7 @@
    (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
                                                   modules-triggering-cloud-drivers)))
   ([deps modules trigger-modules]
-   ;; an undeclared trigger is never in the unaffected set, which silently makes EVERY module
-   ;; "affect drivers" -- fail loudly instead (renames must update the trigger constants).
+   ;; Fail clearly when a renamed trigger is missing from the config.
    (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
      (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
                           (pr-str missing))
@@ -498,7 +401,7 @@
     ./bin/mage can-skip-driver-tests [git-ref]"
   [[git-ref, :as _arguments]]
   (let [modules-config    (read-modules-config)
-        prefix->module   (build-prefix->module modules-config)
+        prefix->module   (modules/build-prefix->module modules-config)
         deps             (dependencies modules-config)
         git-ref          (or git-ref "master")
         updated-files    (u/updated-files git-ref)
@@ -733,7 +636,7 @@
         ;; analysis is not consulted there.
         analysis (when-not (or force-run only-driver)
                    (let [modules-config (read-modules-config)
-                         prefix->module (build-prefix->module modules-config)
+                         prefix->module (modules/build-prefix->module modules-config)
                          deps (dependencies modules-config)
                          updated-files (u/updated-files git-ref)
                          updated (updated-files->updated-modules prefix->module updated-files)
