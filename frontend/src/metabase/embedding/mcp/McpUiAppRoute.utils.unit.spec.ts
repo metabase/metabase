@@ -1,7 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getParameterValuesForQuestion } from "metabase/query_builder";
 import { utf8_to_b64 } from "metabase/utils/encoding";
+import Question from "metabase-lib/v1/Question";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
 
@@ -129,5 +131,36 @@ describe("getMcpDeserializedQuery", () => {
     // number-typed parameter the same way on the path to the request, so this is the shape a
     // filter widget produces too, not an MCP quirk.
     expect(Object.values(parameterValues)).toEqual([["meow"]]);
+  });
+
+  // The whole chain, mirroring `loadQuestionSdk`: build the question from the card, apply template
+  // tag parameters, derive values from `initialSqlParameters`, set them, then assemble the request
+  // parameters exactly as `runQuestionQuery` does. This is the payload the QP receives — if the
+  // bound value is missing here, the embed reports `missing required parameters`.
+  it("sends the bound value in the request parameters", () => {
+    const deserialized = getMcpDeserializedQuery(
+      utf8_to_b64(
+        JSON.stringify({ ...NATIVE_QUERY, parameters: BOUND_PARAMETERS }),
+      ),
+    );
+    const card = deserialized!.card;
+    const metadata = createMockMetadata({});
+
+    let question = new Question(card, metadata).applyTemplateTagParameters();
+    question = question.setParameterValues(
+      getParameterValuesForQuestion({
+        card,
+        metadata,
+        queryParams: deserialized!.initialSqlParameters,
+      }),
+    );
+
+    const requestParameters = normalizeParameters(question.parameters());
+    expect(requestParameters).toEqual([
+      expect.objectContaining({
+        value: ["meow"],
+        target: ["variable", ["template-tag", "cat"]],
+      }),
+    ]);
   });
 });
