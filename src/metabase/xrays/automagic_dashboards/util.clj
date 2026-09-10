@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -42,7 +43,15 @@
 (mu/defn filter-tables :- [:sequential ::ads/source]
   "filter `tables` by `tablespec`, which is just an entity type (eg. :entity/GenericTable)"
   [tablespec tables :- [:maybe [:sequential ::ads/source]]]
-  (filter #(-> % :entity_type (isa? tablespec)) tables))
+  (filter #(isa? types/entity-hierarchy (:entity_type %) tablespec) tables))
+
+(defn ancestor-count
+  "Number of ancestors of one entry of a template's `applies_to` / `field_type`, which mixes entity types and field
+  types. Entity types live in [[types/entity-hierarchy]]; field and semantic types are still in the global hierarchy."
+  [t]
+  (count (if (isa? types/entity-hierarchy t :entity/*)
+           (ancestors types/entity-hierarchy t)
+           (ancestors t))))
 
 (defn saved-metric?
   "Is this a saved aggregation clause? True for V2 Metrics and Measures."

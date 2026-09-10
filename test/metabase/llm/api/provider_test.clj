@@ -76,7 +76,7 @@
                                 :required true
                                 :advanced false
                                 :prefix   "sk-ant-"
-                                :docs_url "https://console.anthropic.com/settings/keys"}
+                                :docs_url "https://platform.claude.com/settings/keys"}
                                {:key      "base-url"
                                 :label    "API base URL"
                                 :type     "text"

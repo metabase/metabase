@@ -4,7 +4,8 @@
    [metabase.analytics.stats :as stats]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]))
 
 ;; I don't think this endpoint is actually used anywhere for anything.
 ;;
@@ -20,18 +21,19 @@
   (stats/legacy-anonymous-usage-stats))
 
 (def ^:private InternalAnalyticsEvent
-  [:map
+  [:map {:closed true}
    [:op     [:enum :inc :dec :set :observe :clear]]
    [:metric :keyword]
-   [:labels {:optional true} [:maybe [:map-of :keyword :string]]]
+   [:labels {:optional true} [:maybe (ms/string-keyed-map :string)]]
    [:amount {:optional true} [:maybe number?]]])
 
 (api.macros/defendpoint :post "/internal" :- :nil
   "Receive a batch of internal analytics events from the frontend and record them as Prometheus metrics."
   [_route-params
    _query-params
-   {:keys [events]} :- [:map [:events [:sequential InternalAnalyticsEvent]]]]
-  (doseq [{:keys [op metric labels amount]} events]
+   {:keys [events]} :- [:map {:closed true} [:events [:sequential InternalAnalyticsEvent]]]]
+  (doseq [{:keys [op metric labels amount]} events
+          :let [labels (some-> labels (update-keys keyword))]]
     (try
       (case op
         :inc     (prometheus/inc! metric labels (or amount 1))

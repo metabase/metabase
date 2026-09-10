@@ -55,7 +55,7 @@
                      :required?   true
                      :placeholder "sk-ant-api03-..."
                      :prefix      "sk-ant-"
-                     :docs-url    "https://console.anthropic.com/settings/keys"}
+                     :docs-url    "https://platform.claude.com/settings/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
                      :validate  llm.settings/llm-url-problem
@@ -367,6 +367,12 @@
   []
   (or (premium-features/is-hosted?)
       (nil? (premium-features/canonically-has-feature? :hosting))))
+
+(defn config-field-keys
+  "Every key a connection's `:config` may carry: the `:fields` of every registered provider type, taken together. Which
+  of them a given connection may use depends on its type; [[validate-config!]] checks that."
+  []
+  (into (sorted-set) (comp (mapcat :fields) (map :key)) provider-type-registry))
 
 (defn provider-type
   "The registry entry for `type-name`, or nil when it is not a known provider type."

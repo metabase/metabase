@@ -182,11 +182,14 @@ describe(
       H.setupLdap();
       cy.visit("/admin/settings/authentication/ldap");
 
-      cy.findByTestId("ldap-user-provisioning-enabled?-setting")
-        .findByText(/^Disabled/)
-        .click();
+      cy.findByRole("switch", { name: "User provisioning" })
+        .should("be.checked")
+        .click({ force: true });
 
       H.undoToast().findByText("Changes saved").should("be.visible");
+      cy.findByRole("switch", { name: "User provisioning" }).should(
+        "not.be.checked",
+      );
     });
 
     it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {

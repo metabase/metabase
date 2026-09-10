@@ -12,6 +12,8 @@ import type {
   IconName,
 } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 export type MetabotSlashCommandHandler = (args: {
   command: SlashCommand;
   conversationId: string;
@@ -51,11 +53,4 @@ const getDefaultPluginAudit = () => ({
   handleMetabotSlashCommand: ((_args) => false) as MetabotSlashCommandHandler,
 });
 
-export const PLUGIN_AUDIT = getDefaultPluginAudit();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_AUDIT, getDefaultPluginAudit());
-}
+export const PLUGIN_AUDIT = definePluginSlot(getDefaultPluginAudit);

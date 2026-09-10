@@ -113,8 +113,12 @@
 (def param-field-columns
   "The only Field columns appropriate for returning in public/embedded API endpoints, which make heavy use of the
   functions in this namespace. Used to narrow the Fields selected here, and by the public/embed endpoints to strip
-  every other column from the Fields (and their hydrated `:target`/`:name_field`) in `:param_fields`."
-  [:id :table_id :display_name :base_type :name :semantic_type :has_field_values :fk_target_field_id])
+  every other column from the Fields (and their hydrated `:target`/`:name_field`) in `:param_fields`.
+
+  A parameter widget reads all of these. `:effective_type` decides which widget a coerced Field gets, and
+  `:settings` formats the values it shows."
+  [:id :table_id :display_name :base_type :effective_type :name :semantic_type :has_field_values
+   :fk_target_field_id :settings])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
@@ -221,7 +225,7 @@
   columns)."
   [:map
    [:dashcard              :map]
-   [:param-mapping         ::parameters.schema/parameter-mapping]
+   [:param-mapping         ::parameters.schema/parameter-mapping-with-dashcard]
    [:param-target-field-id [:maybe ::lib.schema.id/field]]])
 
 (mu/defn- card->filterable-columns-query :- [:maybe ::lib.schema/query]
@@ -361,7 +365,7 @@
   "Build the `param-dashcard-info` for a parameter `mapping` on `dashcard`, resolving `:param-target-field-id` when the
   target is already field-id-based."
   [dashcard :- :map
-   mapping  :- ::parameters.schema/parameter-mapping]
+   mapping  :- ::parameters.schema/parameter-mapping-with-dashcard]
   (let [card (find-card-for-mapping dashcard mapping)]
     {:dashcard              dashcard
      :param-mapping         mapping
@@ -420,7 +424,7 @@
 
 (mu/defn dashboard-param->field-ids :- [:set ::lib.schema.id/field]
   "Return field ids mapped to the parameter. `dashcard` and `card` must be present for each mapping."
-  [{:keys [mappings]} :- ::parameters.schema/parameter]
+  [{:keys [mappings]} :- ::parameters.schema/resolved-parameter]
   (let [param-dashcard-infos (mapv (fn [mapping]
                                      (mapping->param-dashcard-info (:dashcard mapping) mapping))
                                    mappings)]
