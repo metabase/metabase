@@ -775,9 +775,15 @@
                       [:not [:in :id excluded-table-ids]]]}))
 
 (mu/defn field-visibility-info
-  "The ID, visibility type, and Table ID of the Fields with `field-ids`."
+  "The ID, Table ID, and `visibility_type` as users see it of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :visibility_type :table_id] :id [:in field-ids]))
+  (t2/select :model/Field
+             {:select    [:f.id
+                          [[:coalesce :u.visibility_type :f.visibility_type] :visibility_type]
+                          :f.table_id]
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
+              :where     [:in :f.id field-ids]}))
 
 (mu/defn instance-by-id
   "The instance of `model` with `id`, or nil."

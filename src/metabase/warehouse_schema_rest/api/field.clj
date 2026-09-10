@@ -15,6 +15,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.models.field :as field]
@@ -160,7 +161,9 @@
                   [:settings           {:optional true} [:maybe ms/Map]]
                   [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
                   [:json_unfolding     {:optional true} [:maybe :boolean]]]]
-  (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
+  (let [field             (-> (warehouse-schema/field-with-user-settings id)
+                              api/write-check
+                              (t2/hydrate :dimensions))
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
         (cond (not (contains? body :coercion_strategy))
@@ -187,29 +190,22 @@
                (not removed-fk?)
                (not= (:display_name field) display-name))
       (warehouse-schema-rest.db/rename-dimension-for-field! id display-name))
-    ;; everything checks out, now update the field
-    (api/check-500
-     (t2/with-transaction [_conn]
-       (when removed-fk?
-         (clear-dimension-on-fk-change! field))
-       (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-       (let [body (assoc body
-                         :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                         :effective_type effective-type
-                         :coercion_strategy coercion-strategy)]
-         (schema.field-user-settings/upsert-user-settings field body)
-         (warehouse-schema-rest.db/update-field!
-          id
-          (u/select-keys-when body
-                              {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
-                                          :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding
-                                          :data_sensitivity}
-                               :non-nil #{:display_name :visibility_type :settings}})))))
+    ;; everything checks out, now record the user's values -- metabase_field itself is sync-owned and unchanged
+    (t2/with-transaction [_conn]
+      (when removed-fk?
+        (clear-dimension-on-fk-change! field))
+      (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
+      (schema.field-user-settings/upsert-user-settings
+       field
+       (assoc body
+              :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+              :effective_type effective-type
+              :coercion_strategy coercion-strategy)))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (-> (warehouse-schema-rest.db/field id)
+    (u/prog1 (-> (warehouse-schema/field-with-user-settings id)
                  (t2/hydrate :dimensions :has_field_values)
                  (field/hydrate-target-with-write-perms))
       (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
@@ -291,7 +287,7 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [field (api/query-check (warehouse-schema-rest.db/field id))]
+  (let [field (api/query-check (warehouse-schema/field-with-user-settings id))]
     (parameters.field/field->values field)))
 
 (defn- validate-human-readable-pairs
@@ -317,7 +313,7 @@
    _query-params
    {value-pairs :values} :- [:map
                              [:values [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]]]]
-  (let [field (api/write-check :model/Field id)]
+  (let [field (api/write-check (warehouse-schema/field-with-user-settings id))]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
@@ -416,4 +412,4 @@
   "Return related entities."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (warehouse-schema-rest.db/field id) api/read-check xrays/related))
+  (-> (warehouse-schema/field-with-user-settings id) api/read-check xrays/related))

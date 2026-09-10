@@ -25,7 +25,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.table :as schema.table]))
 
 (mu/defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
@@ -57,7 +57,9 @@
   [card-id :- ::lib.schema.id/card]
   (let [query              (actions.db/card-query card-id)
         {:keys [table-id]} (query/query->database-and-table-ids query)]
-    (t2/hydrate (actions.db/table table-id) :fields)))
+    (-> [(actions.db/table table-id)]
+        schema.table/hydrate-fields-with-user-settings
+        first)))
 
 (defn- execute-custom-action! [action request-parameters]
   (let [{action-type :type} action]

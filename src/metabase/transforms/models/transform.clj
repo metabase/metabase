@@ -21,6 +21,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.table :as schema.table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -421,7 +422,8 @@
   (let [table-ids (into #{} (keep :target_table_id) transforms)
         id->table (when (seq table-ids)
                     (m/index-by :id (-> (transforms.db/tables table-ids)
-                                        (t2/hydrate :db :fields))))]
+                                        schema.table/hydrate-fields-with-user-settings
+                                        (t2/hydrate :db))))]
     (for [transform transforms]
       (assoc transform :table
              (get id->table (:target_table_id transform))))))

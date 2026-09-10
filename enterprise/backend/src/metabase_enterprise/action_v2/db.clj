@@ -7,6 +7,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2]))
 
 (mu/defn table
@@ -30,9 +31,17 @@
   (t2/select :model/Field :id [:in field-ids]))
 
 (mu/defn pk-fields-for-table
-  "The active primary key Fields of the Table with `table-id`."
+  "The active primary key Fields of the Table with `table-id`, as users see them; honors the user's
+  `semantic_type`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true))
+  (t2/select :model/Field
+             {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:and
+                          [:= :f.table_id table-id]
+                          [:= (warehouse-schema/field-user-settings-column :semantic_type :f :u) "type/PK"]
+                          :f.active]}))
 
 (mu/defn fields-by-name
   "The Fields of the Table with `table-id` named one of `field-names`."
@@ -52,16 +61,17 @@
 
 (mu/defn category-list-field-ids-by-name
   "The `:id` and `:lower_name` rows of the category list Fields of the Table with `table-id` whose name matches one
-  of `names`, case-insensitively."
+  of `names`, case-insensitively; honors the user's `has_field_values`/`semantic_type`."
   [table-id :- ::lib.schema.id/table
    names    :- [:sequential :string]]
-  (t2/query {:select [:id [[:lower :name] :lower_name]]
-             :from   [(t2/table-name :model/Field)]
-             :where  [:and
-                      [:= :table_id table-id]
-                      [:in [:lower :name] (map u/lower-case-en names)]
-                      [:in :has_field_values ["list" "auto-list"]]
-                      [:= :semantic_type "type/Category"]]}))
+  (t2/query {:select    [:f.id [[:lower :f.name] :lower_name]]
+             :from      [[(t2/table-name :model/Field) :f]]
+             :left-join (warehouse-schema/field-user-settings-join :f :u)
+             :where     [:and
+                         [:= :f.table_id table-id]
+                         [:in [:lower :f.name] (map u/lower-case-en names)]
+                         [:in (warehouse-schema/field-user-settings-column :has_field_values :f :u) ["list" "auto-list"]]
+                         [:= (warehouse-schema/field-user-settings-column :semantic_type :f :u) "type/Category"]]}))
 
 (mu/defn field-values-of-fields
   "The value lists of the FieldValues of the Fields with `field-ids`."

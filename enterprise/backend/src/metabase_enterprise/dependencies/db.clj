@@ -857,17 +857,24 @@
                 :limit     batch-size})))
 
 (mu/defn table-ids-with-outdated-findings
-  "The IDs of the Tables of the Database with `db-id` whose dependents were analyzed before the Table or one of
-  its Fields last changed."
+  "The IDs of the Tables of the Database with `db-id` whose dependents were analyzed before the Table, one of its
+  Fields, or one of its Fields' user settings last changed."
   [db-id :- ::lib.schema.id/database]
   (t2/select-fn-set :table_id :model/AnalysisFinding
                     {:select     [:field_updates/table_id]
                      :from       [[^:allow-subquery {:select    [[:table/id :table_id]
                                                                  [:table/updated_at :last_table_update]
-                                                                 [[:max :field/updated_at] :last_field_update]]
+                                                                 [[:max [:case
+                                                                         [:>= :field/updated_at
+                                                                          [:coalesce :field_settings/updated_at :field/updated_at]]
+                                                                         :field/updated_at
+                                                                         :else :field_settings/updated_at]]
+                                                                  :last_field_update]]
                                                      :from      [[(t2/table-name :model/Table) :table]]
                                                      :left-join [[(t2/table-name :model/Field) :field]
-                                                                 [:= :field/table_id :table/id]]
+                                                                 [:= :field/table_id :table/id]
+                                                                 [(t2/table-name :model/FieldUserSettings) :field_settings]
+                                                                 [:= :field_settings/field_id :field/id]]
                                                      :where     [:= :table/db_id db-id]
                                                      :group-by  [:table/id
                                                                  :table/updated_at]}

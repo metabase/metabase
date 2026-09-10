@@ -3,9 +3,11 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.humanization :as humanization]
    [metabase.queries.schema :as queries.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.core :as warehouse-schema]
+   [metabase.warehouse-schema.humanization :as humanization]
    [toucan2.core :as t2]))
 
 (mu/defn current-database
@@ -44,27 +46,45 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field :table_id table-id :active true))
 
+(mu/defn user-edited-field-names
+  "The lower-cased `names`, among the Fields of the Table with `table-id`, that have a user-set display name
+  recorded in FieldUserSettings."
+  [table-id :- ::lib.schema.id/table
+   names    :- [:set :string]]
+  (t2/select-fn-set (comp u/lower-case-en :name)
+                    :model/Field
+                    {:select    [:f.name]
+                     :from      [[(t2/table-name :model/Field) :f]]
+                     :left-join (warehouse-schema/field-user-settings-join :f :u)
+                     :where     [:and
+                                 [:= :f.table_id table-id]
+                                 [:in [:lower :f.name] names]
+                                 [:not= :u.display_name nil]]}))
+
 (mu/defn set-field-display-names!
   "Set the display name of each Field of the Table with `table-id` whose lower-cased name is a key of
-  `name->display-name` to the corresponding value, unless its current display name no longer matches the
-  automatic humanization of its name (i.e. it was manually edited, in which case it is left alone)."
+  `name->display-name` to the corresponding value, unless the Field has a user-set display name recorded in
+  FieldUserSettings or its display name is not the automatic humanization of its name (in which case it is left
+  alone)."
   [table-id           :- ::lib.schema.id/table
    name->display-name :- [:map-of :string :string]]
-  ;; A raw update rather than `t2/update!`, which produces an invalid query for certain versions of PostgreSQL:
-  ;; SELECT * FROM "metabase_field" WHERE "id" AND ("table_id" = ?) AND ... (argument of AND must be type boolean).
-  (t2/query {:update (t2/table-name :model/Field)
-             :set    {:display_name (into [:case]
-                                          (mapcat identity)
-                                          (for [[n display-name] name->display-name]
-                                            [[:= [:lower :name] n]
-                                             [:case
-                                              ;; Only update the display name if it still matches the automatic humanization.
-                                              [:= :display_name (humanization/name->human-readable-name n)] display-name
-                                              ;; Otherwise, it could have been set manually, so leave it as is.
-                                              true                                                          :display_name]]))}
-             :where  [:and
-                      [:= :table_id table-id]
-                      [:in [:lower :name] (keys name->display-name)]]}))
+  (let [user-edited        (user-edited-field-names table-id (set (keys name->display-name)))
+        name->display-name (apply dissoc name->display-name user-edited)]
+    (when (seq name->display-name)
+      ;; A raw update rather than `t2/update!`, which produces an invalid query for certain versions of
+      ;; PostgreSQL: SELECT * FROM "metabase_field" WHERE "id" AND ("table_id" = ?) AND ... (argument of AND
+      ;; must be type boolean).
+      (t2/query {:update (t2/table-name :model/Field)
+                 :set    {:display_name (into [:case]
+                                              (mapcat identity)
+                                              (for [[n display-name] name->display-name]
+                                                [[:= [:lower :name] n]
+                                                 [:case
+                                                  [:= :display_name (humanization/name->human-readable-name n)] display-name
+                                                  :else                                                       :display_name]]))}
+                 :where  [:and
+                          [:= :table_id table-id]
+                          [:in [:lower :name] (keys name->display-name)]]}))))
 
 (mu/defn mark-table-upload!
   "Flag the Table with `table-id` as an authoritative, writable upload table."

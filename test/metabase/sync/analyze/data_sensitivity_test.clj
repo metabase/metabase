@@ -110,7 +110,7 @@
           (is (= :PII (label ssn))))))))
 
 (deftest user-label-in-mirror-wins-test
-  (testing "a mirror-only user label is what the field reads after the classifier writes"
+  (testing "a mirror-only user label survives the classifier writing its own inference to the raw Field"
     (mt/with-temp [:model/Database db     {}
                    :model/Table    table  {:db_id (:id db) :name "app_users"}
                    :model/Field    ssn    {:table_id (:id table) :name "ssn" :base_type :type/Text}
@@ -119,16 +119,17 @@
       (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
       (is (nil? (label ssn)))
       (is (nil? (label notes)))
-      (testing "stats count the rule result, the overlay decides what is stored"
+      (testing "the scan still classifies both fields on the raw Field"
         (is (= {:fields-scanned 2 :fields-labeled 1 :fields-failed 0}
                (sync.data-sensitivity/scan-data-sensitivity! db))))
-      (is (= :PUBLIC (label ssn)))
+      (is (= :PII (label ssn)))
       (is (= :PUBLIC (mirror-label ssn)))
-      (is (= :PHI (label notes)))
+      (is (= :PUBLIC (label notes)))
       (is (= :PHI (mirror-label notes)))
-      (testing "a forced rescan still cannot override the user's PUBLIC"
+      (testing "a forced rescan does not revisit a categorized Field, mirror or not"
         (sync.data-sensitivity/scan-data-sensitivity! db :force? true)
-        (is (= :PUBLIC (label ssn)))))))
+        (is (= :PII (label ssn)))
+        (is (= :PUBLIC (mirror-label ssn)))))))
 
 (deftest reset-data-sensitivity-test
   (mt/with-temp [:model/Database db       {}
@@ -146,7 +147,7 @@
     (t2/insert! :model/FieldUserSettings {:field_id (:id email)})
     (sync.data-sensitivity/scan-data-sensitivity! db)
     (sync.data-sensitivity/scan-data-sensitivity! other-db)
-    (is (= [:PII :PUBLIC :PHI :PII :PUBLIC :PII]
+    (is (= [:PII :PUBLIC :PUBLIC :PII :PUBLIC :PII]
            (map label [ssn foo notes email total far])))
     (testing "a table scope clears only that table's classifier labels"
       (is (= 1 (sync.data-sensitivity/reset-data-sensitivity! orders)))
@@ -155,8 +156,8 @@
     (testing "a database scope clears categories and PUBLIC alike, including fields with a label-less mirror row"
       (is (= 3 (sync.data-sensitivity/reset-data-sensitivity! db)))
       (is (= [nil nil nil] (map label [ssn foo email]))))
-    (testing "a label backed by the mirror is human-set and survives"
-      (is (= :PHI (label notes)))
+    (testing "a label backed by the mirror is human-set; the raw classifier label is untouched by the reset"
+      (is (= :PUBLIC (label notes)))
       (is (= :PHI (mirror-label notes))))
     (testing "other databases are untouched"
       (is (= :PII (label far))))
@@ -179,8 +180,8 @@
         (is (= {:fields-scanned 1 :fields-labeled 1 :fields-failed 0 :fields-reset 1}
                (sync.data-sensitivity/scan-data-sensitivity! db :reset? true)))
         (is (= :SEC_KEY (label ssn))))
-      (testing "the user's label is neither reset nor rescanned"
-        (is (= :PHI (label notes)))
+      (testing "the user's label in the mirror is untouched; the raw classifier label is unaffected by the reset"
+        (is (= :SEC_KEY (label notes)) "reclassified by the earlier forced scan, which also revisits PUBLIC fields")
         (is (= :PHI (mirror-label notes)))))))
 
 (deftest classification-failure-is-counted-and-retried-test

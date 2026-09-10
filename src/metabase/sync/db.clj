@@ -10,6 +10,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -243,11 +244,20 @@
   (t2/select :model/Field :id [:in field-ids]))
 
 (mu/defn fields-for-field-values
-  "The columns needed to scan FieldValues of the Fields with `field-ids`."
+  "The columns needed to scan FieldValues of the Fields with `field-ids`, with the user's overrides applied; the
+  eligibility decision (`visibility_type`/`has_field_values`) must see what the user set."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type
-              :table_id :has_field_values]
-             :id [:in field-ids]))
+  (t2/select :model/Field
+             {:select    [:f.name :f.id :f.base_type
+                          [(warehouse-schema/field-user-settings-column :effective_type :f :u) :effective_type]
+                          [(warehouse-schema/field-user-settings-column :coercion_strategy :f :u) :coercion_strategy]
+                          [(warehouse-schema/field-user-settings-column :semantic_type :f :u) :semantic_type]
+                          [(warehouse-schema/field-user-settings-column :visibility_type :f :u) :visibility_type]
+                          :f.table_id
+                          [(warehouse-schema/field-user-settings-column :has_field_values :f :u) :has_field_values]]
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:in :f.id field-ids]}))
 
 (defn- base-types->descendants
   "Given a set of `base-types`, an expanded set including those types and all their descendants in the type
@@ -276,12 +286,14 @@
           versions+base-types)))
 
 (def ^:private fields-to-fingerprint-base-clause
+  "Honey SQL clause over `metabase_field` aliased `f` with its user settings joined as `u` (see
+  [[fields-needing-fingerprint-update]]): a user marking a Field sensitive or retired stops fingerprinting it."
   [:and
    [:= :active true]
    [:or
-    [:not (app-db/isa :semantic_type :type/PK)]
-    [:= :semantic_type nil]]
-   [:not-in :visibility_type ["retired" "sensitive"]]
+    [:not (app-db/isa (warehouse-schema/field-user-settings-column :semantic_type :f :u) :type/PK)]
+    [:= (warehouse-schema/field-user-settings-column :semantic_type :f :u) nil]]
+   [:not-in (warehouse-schema/field-user-settings-column :visibility_type :f :u) ["retired" "sensitive"]]
    [:not-in :base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
                              (u/qualified-name :type/*))]])
 
@@ -302,11 +314,14 @@
    version->base-types :- [:map-of :int [:set [:or :keyword :string]]]
    limit              :- ms/PositiveInt]
   (t2/select :model/Field
-             {:where    [:and
-                         [:= :table_id table-id]
-                         (needs-fingerprint-update-clause refingerprint? version->base-types)]
-              :order-by [[:id :asc]]
-              :limit    limit}))
+             {:select    [:f.*]
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:and
+                          [:= :table_id table-id]
+                          (needs-fingerprint-update-clause refingerprint? version->base-types)]
+              :order-by  [[:id :asc]]
+              :limit     limit}))
 
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
@@ -567,42 +582,48 @@
 ;;; ------------------------------------------ Field data sensitivity ------------------------------------------
 
 (defn- data-sensitivity-to-scan-clause
-  "Honey SQL clause matching Fields the data-sensitivity classifier still has to scan: unlabeled ones, plus those it
-  labeled `PUBLIC` when `rescan-public?`."
+  "Honey SQL clause matching Fields, aliased `f`, the data-sensitivity classifier still has to scan: unlabeled ones,
+  plus those it labeled `PUBLIC` when `rescan-public?`."
   [rescan-public?]
   (if rescan-public?
-    [:or [:= :data_sensitivity nil] [:= :data_sensitivity "PUBLIC"]]
-    [:= :data_sensitivity nil]))
+    [:or [:= :f.data_sensitivity nil] [:= :f.data_sensitivity "PUBLIC"]]
+    [:= :f.data_sensitivity nil]))
 
 (mu/defn fields-to-scan-for-data-sensitivity
   "The active, non-retired Fields of the Table with `table-id` that the data-sensitivity classifier still has to scan
-  (see [[data-sensitivity-to-scan-clause]]), ordered by ID."
+  (see [[data-sensitivity-to-scan-clause]]), ordered by ID. Honors the user's `visibility_type`: a user-retired Field
+  is skipped even when sync hasn't re-synced it since."
   [table-id       :- ::lib.schema.id/table
    rescan-public? :- [:maybe :boolean]]
   (t2/select :model/Field
-             {:where    [:and
-                         [:= :table_id table-id]
-                         [:= :active true]
-                         [:not= :visibility_type "retired"]
-                         (data-sensitivity-to-scan-clause rescan-public?)]
-              :order-by [[:id :asc]]}))
+             {:select    [:f.*]
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:and
+                          [:= :table_id table-id]
+                          [:= :active true]
+                          [:not= (warehouse-schema/field-user-settings-column :visibility_type :f :u) "retired"]
+                          (data-sensitivity-to-scan-clause rescan-public?)]
+              :order-by  [[:id :asc]]}))
 
 (mu/defn table-ids-with-fields-to-scan-for-data-sensitivity
   "The IDs of the active Tables of the Database with `database-id` that have active, non-retired Fields the
-  data-sensitivity classifier still has to scan (see [[data-sensitivity-to-scan-clause]])."
+  data-sensitivity classifier still has to scan (see [[data-sensitivity-to-scan-clause]]). Honors the user's
+  `visibility_type`."
   [database-id    :- ::lib.schema.id/database
    rescan-public? :- [:maybe :boolean]]
   (t2/select-fn-set :table_id :model/Field
-                    {:select   [[:metabase_field.table_id :table_id]]
-                     :from     [:metabase_field]
-                     :join     [[:metabase_table] [:= :metabase_field.table_id :metabase_table.id]]
-                     :where    [:and
-                                [:= :metabase_table.db_id database-id]
-                                [:= :metabase_table.active true]
-                                [:= :metabase_field.active true]
-                                [:not= :metabase_field.visibility_type "retired"]
-                                (data-sensitivity-to-scan-clause rescan-public?)]
-                     :group-by [:metabase_field.table_id]}))
+                    {:select    [:f.table_id]
+                     :from      [[(t2/table-name :model/Field) :f]]
+                     :join      [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
+                     :left-join (warehouse-schema/field-user-settings-join :f :u)
+                     :where     [:and
+                                 [:= :t.db_id database-id]
+                                 [:= :t.active true]
+                                 [:= :f.active true]
+                                 [:not= (warehouse-schema/field-user-settings-column :visibility_type :f :u) "retired"]
+                                 (data-sensitivity-to-scan-clause rescan-public?)]
+                     :group-by  [:f.table_id]}))
 
 (mu/defn tables-by-schema-and-name-reducible
   "Reducible Tables with `table-ids`, ordered by schema and name."

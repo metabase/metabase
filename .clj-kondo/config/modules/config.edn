@@ -110,6 +110,7 @@
            search
            settings
            util
+           warehouse-schema
            warehouses}
    :model-exports #{:model/Action}
    :model-imports #{:model/Card
@@ -1269,6 +1270,7 @@
                     :model/Database
                     :model/Dimension
                     :model/Field
+                    :model/FieldUserSettings
                     :model/FieldValues
                     :model/Measure
                     :model/NativeQuerySnippet
@@ -1446,6 +1448,7 @@
               transforms
               transforms-base
               util
+              warehouse-schema
               warehouses}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
@@ -1516,7 +1519,6 @@
   models
   {:team "DevEx"
    :api  #{metabase.models.db
-           metabase.models.humanization
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
@@ -1530,7 +1532,6 @@
            classloader
            legacy-mbql
            lib
-           settings
            util}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1712,6 +1713,7 @@
    :model-imports #{:model/Collection
                     :model/Database
                     :model/Field
+                    :model/FieldUserSettings
                     :model/Table
                     :model/User}}
 
@@ -2592,7 +2594,8 @@
            task-history
            tracing
            transforms-base
-           util}
+           util
+           warehouse-schema}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2846,8 +2849,10 @@
 
   warehouse-schema
   {:team "UX West"
-   :api  #{metabase.warehouse-schema.field
+   :api  #{metabase.warehouse-schema.core
+           metabase.warehouse-schema.field
            metabase.warehouse-schema.field-values.distinct-batch
+           metabase.warehouse-schema.humanization
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
@@ -2871,6 +2876,7 @@
            query-processor
            remote-sync
            search
+           settings
            util
            warehouses}
    :model-exports #{:model/Dimension
@@ -3025,7 +3031,8 @@
            models
            query-processor
            sync
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -3385,12 +3392,14 @@
            task
            transforms
            transforms-base
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Document
                     :model/Field
+                    :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/Sandbox
@@ -3987,7 +3996,8 @@
            tracing
            transforms
            transforms-base
-           util}
+           util
+           warehouse-schema}
    :model-exports #{:model/PythonLibrary}
    :model-imports #{:model/Database
                     :model/Field

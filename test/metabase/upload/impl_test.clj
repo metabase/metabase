@@ -35,6 +35,7 @@
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream File FileOutputStream)))
@@ -2520,8 +2521,9 @@
               (is (= (header-with-auto-pk ["A"])
                      (column-display-names-for-table table))))
             (testing "But we can configure it"
-              (t2/update! :model/Field {:name "a" :table_id (:id table)}
-                          {:display_name bespoke-name})
+              (field-user-settings/upsert-user-settings
+               {:id (t2/select-one-pk :model/Field :name "a" :table_id (:id table))}
+               {:display_name bespoke-name})
               (is (= (header-with-auto-pk [bespoke-name])
                      (column-display-names-for-table table))))
             (let [file (csv-file-with data (mt/random-name))]

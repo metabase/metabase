@@ -1,8 +1,11 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
@@ -28,13 +31,30 @@
 
 (methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
-(defn upsert-user-settings
-  "Upsert FieldUserSettings"
-  [{:keys [id]} settings]
-  (let [filtered-settings (u/select-keys-when settings :present field/field-user-settings)]
-    (when-not (warehouse-schema.db/field-user-settings-exist? id)
-      (warehouse-schema.db/insert-field-user-settings! {:field_id id}))
-    (warehouse-schema.db/update-field-user-settings! id filtered-settings)))
+(mu/defn upsert-user-settings
+  "Record the user-settable Field columns present in `settings` as the user values of `field`, flagging the
+  [[lib-be/field-user-settings-flags]] among them as set."
+  [{:keys [id]} :- [:map [:id ::lib.schema.id/field]]
+   settings     :- :map]
+  (let [settings (u/select-keys-when settings :present field/field-user-settings)
+        flags    (into {} (keep (fn [[k flag]] (when (contains? settings k) [flag true]))) lib-be/field-user-settings-flags)]
+    (when (seq settings)
+      (when-not (warehouse-schema.db/field-user-settings-exist? id)
+        (warehouse-schema.db/insert-field-user-settings! {:field_id id}))
+      (warehouse-schema.db/update-field-user-settings! id (merge settings flags)))))
+
+(mu/defn unset-user-settings!
+  "Drop the user values of the Field columns `ks` for `field`, so its sync values show again. Used when sync
+  invalidates them, e.g. a base type change voids a user-set coercion."
+  [{:keys [id]} :- [:map [:id ::lib.schema.id/field]]
+   ks           :- [:sequential :keyword]]
+  (when (warehouse-schema.db/field-user-settings-exist? id)
+    (warehouse-schema.db/update-field-user-settings!
+     id
+     (into {} (mapcat (fn [k]
+                        (cond-> [[k nil]]
+                          (lib-be/field-user-settings-flags k) (conj [(lib-be/field-user-settings-flags k) false]))))
+           ks))))
 
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
 
@@ -61,7 +81,11 @@
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
-               :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity]
+               :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity
+               :description_set :semantic_type_set :fk_target_field_id_set]
+   :defaults  {:description_set        false
+               :semantic_type_set      false
+               :fk_target_field_id_set false}
    :transform {:created_at   (serdes/date)
                :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true

@@ -1,13 +1,15 @@
-(ns metabase.models.humanization-test
+(ns metabase.warehouse-schema.settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.humanization :as humanization]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
+   [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.settings :as warehouse-schema.settings]
    [toucan2.core :as t2]))
 
 (defn- get-humanized-display-name! [actual-name strategy]
-  (mt/with-dynamic-fn-redefs [humanization/humanization-strategy (constantly strategy)]
+  (tu/with-temporary-setting-values [humanization-strategy strategy]
     (mt/with-temp [:model/Table {table-id :id} {:name actual-name}]
       (t2/select-one-fn :display_name :model/Table, :id table-id))))
 
@@ -37,11 +39,11 @@
               (is (= (:initial expected)
                      (display-name))))
             (testing "switch to :simple"
-              (humanization/humanization-strategy! "simple")
+              (warehouse-schema.settings/humanization-strategy! "simple")
               (is (= (:simple expected)
                      (display-name))))
             (testing "switch to :none"
-              (humanization/humanization-strategy! "none")
+              (warehouse-schema.settings/humanization-strategy! "none")
               (is (= (:none expected)
                      (display-name))))))))))
 
@@ -52,11 +54,24 @@
         (mt/with-temp [:model/Table {table-id :id} {:name "toucansare_cool", :display_name "My Favorite Table"}]
           (doseq [new-strategy ["simple" "none"]]
             (testing (format "switch from %s -> %s" initial-strategy new-strategy)
-              (humanization/humanization-strategy! new-strategy)
+              (warehouse-schema.settings/humanization-strategy! new-strategy)
               (is (= "My Favorite Table"
                      (t2/select-one-fn :display_name :model/Table, :id table-id))))))))))
 
+(deftest do-not-overwrite-user-set-field-display-names-test
+  (testing "a Field's display name is custom now when it's set in FieldUserSettings, not when it merely differs
+            from the old strategy's humanization; fields without a user-set display name are always rewritten"
+    (tu/with-temporary-setting-values [humanization-strategy "simple"]
+      (mt/with-temp [:model/Field {custom-field-id :id} {:name "toucansare_cool", :display_name "Some Other Name"}
+                     :model/Field {synced-field-id :id} {:name "fussybird_sightings", :display_name "Some Other Name"}]
+        (field-user-settings/upsert-user-settings {:id custom-field-id} {:display_name "User's Name"})
+        (warehouse-schema.settings/humanization-strategy! "none")
+        (testing "the user-set Field's raw display name is left alone"
+          (is (= "Some Other Name" (t2/select-one-fn :display_name :model/Field, :id custom-field-id))))
+        (testing "the other Field is rewritten to the new strategy regardless of its prior raw value"
+          (is (= "fussybird_sightings" (t2/select-one-fn :display_name :model/Field, :id synced-field-id))))))))
+
 (deftest invalid-strategies-default-to-simple
   (tu/with-temporary-raw-setting-values [humanization-strategy "invalid-choice"]
-    (is (= :simple (humanization/humanization-strategy)))
+    (is (= :simple (warehouse-schema.settings/humanization-strategy)))
     (is (= "Foo Bar" (humanization/name->human-readable-name "foo_bar")))))

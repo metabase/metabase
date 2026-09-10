@@ -11,7 +11,8 @@
 (defn get-field
   "Get `Field` with ID."
   [id {:keys [include-editable-data-model?]}]
-  (let [field (-> (api/check-404 (warehouse-schema.db/field id))
+  (let [field (-> (warehouse-schema.db/field-with-user-settings id)
+                  api/check-404
                   (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field (if include-editable-data-model?
                 (field/hydrate-target-with-write-perms field)
@@ -40,7 +41,7 @@
   "Get `Field`s with IDs in `ids`."
   [ids]
   (when (seq ids)
-    (let [fields (warehouse-schema.db/fields ids)]
+    (let [fields (warehouse-schema.db/fields-with-user-settings {:field-ids ids})]
       (prime-table-perms-for-fields! fields)
       (-> (filter mi/can-read? fields)
           (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field)))))

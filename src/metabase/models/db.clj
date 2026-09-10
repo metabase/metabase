@@ -82,16 +82,6 @@
                                           [:in filter-column filter-ids])]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
-(mu/defn table-names-reducible
-  "A reducible of the id, name, and display name of every Table."
-  []
-  (t2/reducible-select [:model/Table :id :name :display_name]))
-
-(mu/defn field-names-reducible
-  "A reducible of the id, name, and display name of every Field."
-  []
-  (t2/reducible-select [:model/Field :id :name :display_name]))
-
 (mu/defn update-entity!
   "Apply `changes` to the `model` row with `id`, returning the number updated.
 
@@ -100,18 +90,6 @@
    id      :- [:or :int :string]
    changes :- [:map-of :keyword [:maybe :some]]]
   (t2/update! model id changes))
-
-(mu/defn set-table-display-name!
-  "Set the display name of the Table with `id`, returning the number updated."
-  [id           :- ::lib.schema.id/table
-   display-name :- :string]
-  (t2/update! :model/Table id {:display_name display-name}))
-
-(mu/defn set-field-display-name!
-  "Set the display name of the Field with `id`, returning the number updated."
-  [id           :- ::lib.schema.id/field
-   display-name :- :string]
-  (t2/update! :model/Field id {:display_name display-name}))
 
 (mu/defn insert-entity!
   "Insert the `model` `row` and return the inserted instance.

@@ -13,7 +13,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (mu/defn run
@@ -198,12 +197,6 @@
   "Whether an active Field points at one of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/exists? :model/Field :fk_target_field_id [:in field-ids] :active true))
-
-(mu/defn update-field!
-  "Apply `changes` to the Field with `field-id`, returning the number updated."
-  [field-id :- ::lib.schema.id/field
-   changes  :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field field-id changes))
 
 (mu/defn sandbox-exists-for-table?
   "Whether a Sandbox is defined on the Table with `table-id`."

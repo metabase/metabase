@@ -7,6 +7,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2]))
 
 (mu/defn database
@@ -47,34 +48,37 @@
 
 (mu/defn candidate-tables-with-field-stats
   "The id, schema, name, entity type, Database, field count, and list-likeness of the active, visible Tables of the
-  Database with `database-id` (optionally narrowed to `schema`) that have at least one non-key Field."
+  Database with `database-id` (optionally narrowed to `schema`) that have at least one non-key Field. PK/FK counts
+  honor the user's `semantic_type` overrides."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
-  (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
-              [:ts.count :num-fields]
-              [[:and
-                [:>= :ts.count 2]
-                [:= :ts.count_non_pks 1]] :list-like?]]
-             {:inner-join [[^:allow-subquery {:select   [:f.table_id
-                                                         [:%count.* "count"]
-                                                         [[:count [:case [:or [:not= :semantic_type "type/PK"]
-                                                                          [:= :f.semantic_type nil]]
-                                                                   [:inline 1] :else [:inline nil]]]
-                                                          :count_non_pks]
-                                                         [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
-                                                                   [:inline 1] :else [:inline nil]]]
-                                                          :count_pks_and_fks]]
-                                              :from     [[:metabase_field :f]]
-                                              :where    [:= :f.active true]
-                                              :group-by [:f.table_id]} :ts]
-                           [:and [:= :ts.table_id :id]
-                            [:> :ts.count 0]
-                            [:!= :ts.count :ts.count_pks_and_fks]]]
-              :where (cond-> [:and
-                              [:= :db_id database-id]
-                              [:= :visibility_type nil]
-                              [:= :active true]]
-                       schema (conj [:= :schema schema]))}))
+  (let [semantic-type (warehouse-schema/field-user-settings-column :semantic_type :f :u)]
+    (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
+                [:ts.count :num-fields]
+                [[:and
+                  [:>= :ts.count 2]
+                  [:= :ts.count_non_pks 1]] :list-like?]]
+               {:inner-join [[^:allow-subquery {:select    [:f.table_id
+                                                            [:%count.* "count"]
+                                                            [[:count [:case [:or [:not= semantic-type "type/PK"]
+                                                                             [:= semantic-type nil]]
+                                                                      [:inline 1] :else [:inline nil]]]
+                                                             :count_non_pks]
+                                                            [[:count [:case [:in semantic-type ["type/PK" "type/FK"]]
+                                                                      [:inline 1] :else [:inline nil]]]
+                                                             :count_pks_and_fks]]
+                                                :from      [[(t2/table-name :model/Field) :f]]
+                                                :left-join (warehouse-schema/field-user-settings-join :f :u)
+                                                :where     [:= :f.active true]
+                                                :group-by  [:f.table_id]} :ts]
+                             [:and [:= :ts.table_id :id]
+                              [:> :ts.count 0]
+                              [:!= :ts.count :ts.count_pks_and_fks]]]
+                :where (cond-> [:and
+                                [:= :db_id database-id]
+                                [:= :visibility_type nil]
+                                [:= :active true]]
+                         schema (conj [:= :schema schema]))})))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
@@ -92,27 +96,49 @@
   (t2/select-one :metadata/column :id field-id))
 
 (mu/defn fields-targeting
-  "The Fields whose FK target is the Field with `field-id`."
+  "The Fields whose FK target is the Field with `field-id`, as users see them; honors a user-set FK target."
   [field-id :- ::lib.schema.id/field]
-  (t2/select :model/Field :fk_target_field_id field-id))
+  (t2/select :model/Field
+             {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:= (warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) field-id]}))
 
 (mu/defn fk-fields-for-tables
-  "The FK Fields of the Tables with `table-ids`."
+  "The FK Fields of the Tables with `table-ids`, as users see them; honors user-set FK targets."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :fk_target_field_id [:not= nil] :table_id [:in table-ids]))
+  (t2/select :model/Field
+             {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:and
+                          [:not= (warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) nil]
+                          [:in :f.table_id table-ids]]}))
 
 (mu/defn active-fk-fields-for-table
-  "The active FK Fields of the Table with `table-id`."
+  "The active FK Fields of the Table with `table-id`, as users see them; honors user-set FK targets."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :fk_target_field_id [:not= nil] :active true))
+  (t2/select :model/Field
+             {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:and
+                          [:= :f.table_id table-id]
+                          [:not= (warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) nil]
+                          :f.active]}))
 
 (mu/defn fk-target-field-ids-for-table
-  "The FK target Field ids of the active Fields of the Table with `table-id`."
+  "The FK target Field ids of the active Fields of the Table with `table-id`, honoring user-set FK targets."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-set :fk_target_field_id :model/Field
-                    :table_id           table-id
-                    :fk_target_field_id [:not= nil]
-                    :active             true))
+  (into #{}
+        (keep :fk_target_field_id)
+        (t2/query {:select    [[(warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) :fk_target_field_id]]
+                   :from      [[(t2/table-name :model/Field) :f]]
+                   :left-join (warehouse-schema/field-user-settings-join :f :u)
+                   :where     [:and
+                               [:= :f.table_id table-id]
+                               [:not= (warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) nil]
+                               :f.active]})))
 
 (mu/defn active-field-ids-for-table
   "The ids of the active Fields of the Table with `table-id`."
@@ -120,28 +146,45 @@
   (t2/select-fn-set :id :model/Field :table_id table-id :active true))
 
 (mu/defn table-ids-of-fields-targeting
-  "The Table ids of the active Fields whose FK target is one of `field-ids`."
+  "The Table ids of the active Fields whose FK target is one of `field-ids`, honoring user-set FK targets."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :fk_target_field_id [:in field-ids] :active true))
+  (into #{}
+        (keep :table_id)
+        (t2/query {:select    [:f.table_id]
+                   :from      [[(t2/table-name :model/Field) :f]]
+                   :left-join (warehouse-schema/field-user-settings-join :f :u)
+                   :where     [:and
+                               [:in (warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) field-ids]
+                               :f.active]})))
 
 (mu/defn visible-fields-for-tables
-  "The active, normally visible, previewable Fields of the Tables with `table-ids`."
+  "The active, normally visible, previewable Fields of the Tables with `table-ids`, as users see them; honors the
+  user's `visibility_type`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Field
-             :table_id [:in table-ids]
-             :visibility_type "normal"
-             :preview_display true
-             :active true))
+             {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:and
+                          [:in :f.table_id table-ids]
+                          [:= (warehouse-schema/field-user-settings-column :visibility_type :f :u) "normal"]
+                          :f.preview_display
+                          :f.active]}))
 
 (mu/defn other-visible-fields-in-table
-  "The active, normally visible Fields of the Table with `table-id` other than `field-id`."
+  "The active, normally visible Fields of the Table with `table-id` other than `field-id`, as users see them;
+  honors the user's `visibility_type`."
   [table-id :- [:maybe ::lib.schema.id/table]
    field-id :- [:maybe ::lib.schema.id/field]]
   (t2/select :model/Field
-             :table_id        table-id
-             :id              [:not= field-id]
-             :visibility_type "normal"
-             :active          true))
+             {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:and
+                          [:= :f.table_id table-id]
+                          [:not= :f.id field-id]
+                          [:= (warehouse-schema/field-user-settings-column :visibility_type :f :u) "normal"]
+                          :f.active]}))
 
 (mu/defn card
   "The Card with `card-id`, or nil."

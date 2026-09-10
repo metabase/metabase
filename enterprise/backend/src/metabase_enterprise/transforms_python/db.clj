@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2]))
 
 (mu/defn table-database-ids
@@ -58,12 +59,19 @@
   (t2/select-fn->fn :path :source :model/PythonLibrary))
 
 (mu/defn top-level-fields-metadata
-  "The export metadata columns of the active top-level Fields of the Table with `table-id`, in database order."
+  "The export metadata columns of the active, top-level (non-nested) Fields of the Table with `table-id`, in
+  database order, with the user's `effective_type`/`semantic_type` overrides applied."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
-             :table_id table-id
-             :active true
-             ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
-             :parent_id nil
-             :nfc_path nil
-             {:order-by [[:database_position :asc]]}))
+  (t2/select :model/Field
+             {:select    [:f.id :f.name :f.base_type
+                          [(warehouse-schema/field-user-settings-column :effective_type :f :u) :effective_type]
+                          [(warehouse-schema/field-user-settings-column :semantic_type :f :u) :semantic_type]
+                          :f.database_type :f.database_position]
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:and
+                          [:= :f.table_id table-id]
+                          :f.active
+                          [:= :f.parent_id nil]
+                          [:= :f.nfc_path nil]]
+              :order-by  [[:f.database_position :asc]]}))

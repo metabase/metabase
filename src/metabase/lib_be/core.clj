@@ -1,5 +1,6 @@
 (ns metabase.lib-be.core
   (:require
+   [metabase.lib-be.db]
    [metabase.lib-be.hash]
    [metabase.lib-be.metadata.bootstrap]
    [metabase.lib-be.metadata.jvm]
@@ -17,6 +18,11 @@
   metabase.lib-be.settings/keep-me)
 
 (p/import-vars
+ [metabase.lib-be.db
+  field-user-settings-column
+  field-user-settings-flags
+  field-user-settings-join
+  user-settable-field-columns]
  [metabase.lib-be.hash
   query-hash]
  [metabase.lib-be.metadata.bootstrap

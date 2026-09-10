@@ -29,12 +29,6 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn update-field!
-  "Apply `changes` to the Field with `field-id`."
-  [field-id :- ::lib.schema.id/field
-   changes  :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field field-id changes))
-
 (mu/defn set-nested-fields-active!
   "Set the active flag of the Fields of the Table with `table-id` whose NFC path matches the SQL LIKE
   `nfc-path-pattern`, returning the number updated."

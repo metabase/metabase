@@ -6,8 +6,10 @@
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2]))
 
 (defn- format-union
@@ -24,13 +26,15 @@
   [field-id mapping-type]
   ^:allow-subquery
   {:select    [[:dest.id :id] [^:allow-raw-sql [:inline mapping-type] :mapping_type]]
-   :from      [[:metabase_field :source]]
-   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-               [:metabase_field :dest] [:= :dest.table_id :table.id]]
+   :from      [[(t2/table-name :model/Field) :source]]
+   :left-join (into (warehouse-schema/field-user-settings-join :source :source-settings)
+                    (concat [[:metabase_table :table] [:= :source.table_id :table.id]
+                             [(t2/table-name :model/Field) :dest] [:= :dest.table_id :table.id]]
+                            (warehouse-schema/field-user-settings-join :dest :dest-settings)))
    :where     [:and
                [:= :source.id field-id]
-               (mdb/isa :source.semantic_type :type/PK)
-               (mdb/isa :dest.semantic_type :type/Name)]
+               (mdb/isa (warehouse-schema/field-user-settings-column :semantic_type :source :source-settings) :type/PK)
+               (mdb/isa (warehouse-schema/field-user-settings-column :semantic_type :dest :dest-settings) :type/Name)]
    :limit     1})
 
 (mu/defn remapped-field
@@ -53,11 +57,12 @@
                                [;; Implicit FK Field -> PK Field -> [Name] Field remapping
                                 (implicit-pk->name-mapping-query
                                  ^:allow-subquery
-                                 {:select    [:fk_target_field_id]
-                                  :from      [:metabase_field]
+                                 {:select    [[(warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) :fk_target_field_id]]
+                                  :from      [[(t2/table-name :model/Field) :f]]
+                                  :left-join (warehouse-schema/field-user-settings-join :f :u)
                                   :where     [:and
-                                              [:= :id field-id]
-                                              (mdb/isa :semantic_type :type/FK)]
+                                              [:= :f.id field-id]
+                                              (mdb/isa (warehouse-schema/field-user-settings-column :semantic_type :f :u) :type/FK)]
                                   :limit     1}
                                  "fk->pk->name")
                                 ;; Implicit PK Field-> [Name] Field remapping
@@ -76,14 +81,25 @@
   (t2/select :model/Field :id [:in field-ids]))
 
 (mu/defn fields-fk-info
-  "The id, FK target, and semantic type of the Fields with `field-ids`."
+  "The id, FK target, and semantic type of the Fields with `field-ids`, with user overrides applied."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids]))
+  (t2/select :model/Field
+             {:select    [:f.id
+                          [(warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) :fk_target_field_id]
+                          [(warehouse-schema/field-user-settings-column :semantic_type :f :u) :semantic_type]]
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:in :f.id field-ids]}))
 
 (mu/defn field-fk-target-field-id
-  "The FK target Field id of the Field with `field-id`, or nil."
+  "The FK target Field id of the Field with `field-id`, with the user override applied, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fk_target_field_id :model/Field field-id))
+  (:fk_target_field_id
+   (t2/query-one
+    {:select    [[(warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) :fk_target_field_id]]
+     :from      [[(t2/table-name :model/Field) :f]]
+     :left-join (warehouse-schema/field-user-settings-join :f :u)
+     :where     [:= :f.id field-id]})))
 
 (mu/defn field-base-type
   "The base type of the Field with `field-id`, or nil."
@@ -135,13 +151,22 @@
   (mdb/select-or-insert! :model/FieldValues {:field_id field-id, :type :advanced, :hash_key hash-key} insert-fn))
 
 (mu/defn active-name-fields-for-tables
-  "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."
+  "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`, with user overrides applied to
+  any user-settable column among `columns`."
   [columns   :- [:sequential :keyword]
    table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select (into [:model/Field] columns)
-             :table_id      [:in table-ids]
-             :semantic_type (mdb/isa :type/Name)
-             :active        true))
+  (t2/select :model/Field
+             {:select    (mapv (fn [column]
+                                 (if (contains? warehouse-schema/user-settable-field-columns column)
+                                   [(warehouse-schema/field-user-settings-column column :f :u) column]
+                                   (u/qualified-key :f column)))
+                               columns)
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:and
+                          [:in :f.table_id table-ids]
+                          (mdb/isa (warehouse-schema/field-user-settings-column :semantic_type :f :u) :type/Name)
+                          :f.active]}))
 
 (mu/defn fields-with-columns
   "The `columns` of the Fields with `field-ids`."
@@ -151,21 +176,23 @@
 
 (mu/defn fk-relationships-for-database
   "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)
-  for active Fields in the Database with `database-id`."
+  for active Fields in the Database with `database-id`, honoring user-set FK targets."
   [database-id :- ::lib.schema.id/database]
-  (mdb/query {:select    [[:fk-field.id :f1]
-                          [:fk-table.id :t1]
-                          [:pk-field.id :f2]
-                          [:pk-field.table_id :t2]]
-              :from      [[:metabase_field :fk-field]]
-              :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                          :fk-table.active]
-                          [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                          [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                          :pk-field.active]]
-              :where     [:and
-                          [:= :database.id database-id]
-                          [:not= :fk-field.fk_target_field_id nil]
-                          :fk-field.active]
-              :order-by  [[:fk-field.id :desc]
-                          [:pk-field.id :desc]]}))
+  (let [fk-target (warehouse-schema/field-user-settings-column :fk_target_field_id :fk-field :fk-settings)]
+    (mdb/query {:select    [[:fk-field.id :f1]
+                            [:fk-table.id :t1]
+                            [:pk-field.id :f2]
+                            [:pk-field.table_id :t2]]
+                :from      [[(t2/table-name :model/Field) :fk-field]]
+                :left-join (into (warehouse-schema/field-user-settings-join :fk-field :fk-settings)
+                                 [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
+                                                                  :fk-table.active]
+                                  [:metabase_database :database] [:= :fk-table.db_id :database.id]
+                                  [(t2/table-name :model/Field) :pk-field]    [:and [:= fk-target :pk-field.id]
+                                                                               :pk-field.active]])
+                :where     [:and
+                            [:= :database.id database-id]
+                            [:not= fk-target nil]
+                            :fk-field.active]
+                :order-by  [[:fk-field.id :desc]
+                            [:pk-field.id :desc]]})))

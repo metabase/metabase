@@ -158,24 +158,24 @@
    (next-method query-type model parsed-args honeysql)
    {:select    [:field/active
                 :field/base_type
-                :field/coercion_strategy
-                :field/data_sensitivity
+                [(lib-be.db/field-user-settings-column :coercion_strategy :field :settings) :coercion_strategy]
+                [(lib-be.db/field-user-settings-column :data_sensitivity :field :settings) :data_sensitivity]
+                [(lib-be.db/field-user-settings-column :description :field :settings) :description]
+                [(lib-be.db/field-user-settings-column :display_name :field :settings) :display_name]
                 :field/database_partitioned
                 :field/database_type
-                :field/description
-                :field/display_name
-                :field/effective_type
+                [(lib-be.db/field-user-settings-column :effective_type :field :settings) :effective_type]
                 :field/fingerprint
-                :field/fk_target_field_id
+                [(lib-be.db/field-user-settings-column :fk_target_field_id :field :settings) :fk_target_field_id]
                 :field/id
                 :field/name
-                :field/nfc_path
+                [(lib-be.db/field-user-settings-column :nfc_path :field :settings) :nfc_path]
                 :field/parent_id
                 :field/position
-                :field/semantic_type
-                :field/settings
+                [(lib-be.db/field-user-settings-column :semantic_type :field :settings) :semantic_type]
+                [(lib-be.db/field-user-settings-column :settings :field :settings) :settings]
                 :field/table_id
-                :field/visibility_type
+                [(lib-be.db/field-user-settings-column :visibility_type :field :settings) :visibility_type]
                 :dimension/human_readable_field_id
                 :dimension/id
                 :dimension/name
@@ -183,16 +183,17 @@
                 :values/human_readable_values
                 :values/values]
     :from      [[(t2/table-name :model/Field) :field]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :field/table_id :table/id]
-                [(t2/table-name :model/Dimension) :dimension]
-                [:and
-                 [:= :dimension/field_id :field/id]
-                 [:in :dimension/type ["external" "internal"]]]
-                [(t2/table-name :model/FieldValues) :values]
-                [:and
-                 [:= :values/field_id :field/id]
-                 [:= :values/type "full"]]]}))
+    :left-join (into [[(t2/table-name :model/Table) :table]
+                      [:= :field/table_id :table/id]
+                      [(t2/table-name :model/Dimension) :dimension]
+                      [:and
+                       [:= :dimension/field_id :field/id]
+                       [:in :dimension/type ["external" "internal"]]]
+                      [(t2/table-name :model/FieldValues) :values]
+                      [:and
+                       [:= :values/field_id :field/id]
+                       [:= :values/type "full"]]]
+                     (lib-be.db/field-user-settings-join :field :settings))}))
 
 (t2/define-after-select :metadata/column
   [field]
