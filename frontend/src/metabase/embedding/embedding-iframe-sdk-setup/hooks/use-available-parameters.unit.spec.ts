@@ -21,7 +21,7 @@ jest.mock("metabase/parameters/utils/dashboards", () => ({
 
 // This spec has no store: it mocks `metabase/redux` wholesale and exercises the
 // hook's branching, not parameter derivation. So the card's parameters are
-// stubbed at the store door the hook now uses.
+// stubbed at the store door the hook reads.
 const mockCardParameters = jest.fn();
 
 jest.mock("metabase/metadata-store", () => ({
