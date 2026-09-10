@@ -60,11 +60,7 @@ export function findDefinitionSources(
   );
 }
 
-/**
- * Writes a generated ID back into its definition. The file is re-parsed here
- * because reconciliation injects sequentially, and an earlier injection into the
- * same file invalidates the offsets captured during discovery.
- */
+/** Writes a generated ID back into its definition. */
 export function injectGeneratedId(
   target: QuerySource,
   kind: DefinitionKind,
@@ -73,30 +69,44 @@ export function injectGeneratedId(
   const source = inspectFile(target.filePath, kind).find(
     ({ exportName }) => exportName === target.exportName,
   );
+
   if (!source) {
     throw new Error(
       `Could not find ${target.exportName} in ${target.filePath}.`,
     );
   }
 
+  // Keep the definition's other properties and spreads, removing the old ID.
+  const propertiesWithoutId = source.object.properties.filter(
+    (prop) =>
+      !(
+        prop.name &&
+        (ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name)) &&
+        prop.name.text === kind.idKey
+      ),
+  );
+
+  // Put the generated ID last so a spread cannot overwrite it with an old ID.
+  const updatedDefinition = ts.factory.updateObjectLiteralExpression(
+    source.object,
+    [
+      ...propertiesWithoutId,
+
+      ts.factory.createPropertyAssignment(
+        kind.idKey,
+        ts.factory.createNumericLiteral(id),
+      ),
+    ],
+  );
+
+  const replacement = ts
+    .createPrinter()
+    .printNode(ts.EmitHint.Expression, updatedDefinition, source.sourceFile);
+
   const contents = source.sourceFile.text;
-  // Recovery re-injects over an ID that is already there, so replace the
-  // existing assignment rather than adding a second key.
-  const existing = findIdProperty(source.object, kind.idKey);
-  const replacement = `${kind.idKey}: ${id}`;
-  const updated = existing
-    ? `${contents.slice(0, existing.getStart(source.sourceFile))}${replacement}${contents.slice(existing.getEnd())}`
-    : `${contents.slice(0, source.object.getStart(source.sourceFile) + 1)}\n  ${replacement},${contents.slice(source.object.getStart(source.sourceFile) + 1)}`;
+  const updated = `${contents.slice(0, source.object.getStart(source.sourceFile))}${replacement}${contents.slice(source.object.getEnd())}`;
   fs.writeFileSync(target.filePath, updated);
 }
-
-const findIdProperty = (object: ts.ObjectLiteralExpression, idKey: string) =>
-  object.properties.find(
-    (item): item is ts.PropertyAssignment =>
-      ts.isPropertyAssignment(item) &&
-      (ts.isIdentifier(item.name) || ts.isStringLiteral(item.name)) &&
-      item.name.text === idKey,
-  );
 
 function listQueryFiles(directory: string): string[] {
   if (!fs.existsSync(directory)) {

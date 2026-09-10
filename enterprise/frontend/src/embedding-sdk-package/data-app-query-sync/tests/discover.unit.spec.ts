@@ -1,6 +1,10 @@
 import fs from "node:fs";
 
-import { QUERY_DEFINITIONS, injectGeneratedId } from "../ast/query-source";
+import {
+  ACTION_DEFINITIONS,
+  QUERY_DEFINITIONS,
+  injectGeneratedId,
+} from "../ast/query-source";
 import { discoverActions, discoverQueries } from "../discover";
 import { checkResourcesSynced } from "../sync";
 
@@ -62,6 +66,34 @@ describe("query discovery", () => {
     expect(contents).not.toContain('savedQuestionSourceId": 10');
   });
 
+  it.each([
+    ["a shorthand ID", "savedQuestionSourceId"],
+    ["a spread ID", "...defaults"],
+    [
+      "an explicit ID followed by a spread",
+      "savedQuestionSourceId: 10, ...defaults",
+    ],
+  ])("reuses the generated query ID instead of %s", async (_, properties) => {
+    const appRoot = makeApp();
+
+    writeQuery(
+      appRoot,
+      `const savedQuestionSourceId = 10;
+       const defaults = { savedQuestionSourceId };
+       export const Orders = defineQuery({ ${properties}, source: { type: "table", id: 1 } });`,
+    );
+
+    const [query] = await discoverQueries(appRoot);
+    injectGeneratedId(query, QUERY_DEFINITIONS, 20);
+
+    const [updatedQuery] = await discoverQueries(appRoot);
+    expect(updatedQuery.savedQuestionSourceId).toBe(20);
+    injectGeneratedId(updatedQuery, QUERY_DEFINITIONS, 30);
+
+    const [recoveredQuery] = await discoverQueries(appRoot);
+    expect(recoveredQuery.savedQuestionSourceId).toBe(30);
+  });
+
   it("fails a read-only build check when source and lockfile drift", async () => {
     const appRoot = makeApp();
 
@@ -77,6 +109,7 @@ describe("query discovery", () => {
         savedQuestionSourceId: 10,
       },
     ]);
+
     await expect(checkResourcesSynced(appRoot)).rejects.toThrow(
       "is not synchronized",
     );
@@ -107,6 +140,23 @@ describe("action discovery", () => {
       { exportName: "Create", sourceActionId: 51, copiedActionId: 91 },
       { exportName: "Update", sourceActionId: 52, copiedActionId: undefined },
     ]);
+  });
+
+  it("reuses the generated action ID instead of shorthand and spread IDs", async () => {
+    const appRoot = makeApp();
+
+    writeAction(
+      appRoot,
+      `const copiedActionId = 91;
+       const defaults = { copiedActionId };
+       export const Create = defineAction({ copiedActionId, ...defaults, action: { id: 51, parameters: [] } });`,
+    );
+
+    const [action] = await discoverActions(appRoot);
+    injectGeneratedId(action, ACTION_DEFINITIONS, 92);
+
+    const [updatedAction] = await discoverActions(appRoot);
+    expect(updatedAction.copiedActionId).toBe(92);
   });
 
   it("rejects two definitions claiming the same source action", async () => {
