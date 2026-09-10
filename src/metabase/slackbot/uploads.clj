@@ -45,7 +45,7 @@
     (if (and (integer? status-code)
              (<= 400 status-code 499)
              (nil? (ex-cause e))
-             (some? (ex-message e)))
+             (not (str/blank? (ex-message e))))
       (ex-message e)
       generic-upload-error)))
 

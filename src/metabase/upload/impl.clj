@@ -220,9 +220,9 @@
       (for [[value parser] (u/map-all vector row parsers)]
         (do
           (when-not parser
-            (throw (ex-info (format "Column count in data (%s) exceeds the number of columns in the header (%s)"
-                                    (count row)
-                                    (count parsers))
+            (throw (ex-info (tru "Column count in data ({0}) exceeds the number of columns in the header ({1})"
+                                 (count row)
+                                 (count parsers))
                             {:status-code      422
                              :settings         settings
                              :col-upload-types col-upload-types
@@ -320,7 +320,7 @@
         (InputStreamReader. charset))))
 
 (defn- assert-separator-chosen [s]
-  (or s (throw (ex-info "Unable to determine separator" {:status-code 422}))))
+  (or s (throw (ex-info (tru "Unable to determine separator") {:status-code 422}))))
 
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
