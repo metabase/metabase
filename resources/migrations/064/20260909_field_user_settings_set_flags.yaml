@@ -8,7 +8,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-09-09T00:00:00
       author: ranquild
-      comment: Add description_set, semantic_type_set and fk_target_field_id_set to metabase_field_user_settings
+      comment: Add description_set to metabase_field_user_settings
       changes:
         - addColumn:
             tableName: metabase_field_user_settings
@@ -20,6 +20,15 @@ databaseChangeLog:
                   remarks: "Whether the user set description, so a NULL description overrides the sync value."
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v64.2026-09-09T00:00:01
+      author: ranquild
+      comment: Add semantic_type_set to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
               - column:
                   name: semantic_type_set
                   type: ${boolean.type}
@@ -27,6 +36,15 @@ databaseChangeLog:
                   remarks: "Whether the user set semantic_type, so a NULL semantic_type overrides the sync value."
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v64.2026-09-09T00:00:02
+      author: ranquild
+      comment: Add fk_target_field_id_set to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
               - column:
                   name: fk_target_field_id_set
                   type: ${boolean.type}
@@ -36,7 +54,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v64.2026-09-09T00:00:01
+      id: v64.2026-09-09T00:00:03
       author: ranquild
       comment: Mark the description, semantic_type and fk_target_field_id user settings already recorded as set
       changes:
@@ -49,7 +67,7 @@ databaseChangeLog:
       rollback: # not necessary
 
   - changeSet:
-      id: v64.2026-09-09T00:00:02
+      id: v64.2026-09-09T00:00:04
       author: ranquild
       comment: Update v_fields to show display_name, description, visibility_type, fk_target_field_id and
         has_field_values as users see them, overlaying metabase_field_user_settings

@@ -217,15 +217,19 @@
                     {:join  [[:metabase_field :f] [:= :f.id :field_id]]
                      :where [:= :f.table_id table-id]}))
 
+(def ^:private field-user-settings-update-keys
+  "The columns an insert or update of a FieldUserSettings accepts."
+  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set])
+
 (mu/defn insert-field-user-settings!
   "Insert one FieldUserSettings map or a sequence of them, returning the number inserted."
-  [rows :- [:or (mut/select-keys ::warehouse-schema.schema/field-user-settings.update [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set]) [:sequential (mut/select-keys ::warehouse-schema.schema/field-user-settings.update [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set])]]]
+  [rows :- [:or (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys) [:sequential (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]]]
   (t2/insert! :model/FieldUserSettings rows))
 
 (mu/defn update-field-user-settings!
   "Apply `changes` to the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
-   changes  :- (mut/select-keys ::warehouse-schema.schema/field-user-settings.update [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set])]
+   changes  :- (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]
   (t2/update! :model/FieldUserSettings field-id changes))
 
 (mu/defn clear-user-settings-fk-targets-to-field!

@@ -197,10 +197,12 @@
       (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
       (schema.field-user-settings/upsert-user-settings
        field
-       (assoc body
-              :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-              :effective_type effective-type
-              :coercion_strategy coercion-strategy)))
+       (cond-> body
+         (or removed-fk? (contains? body :fk_target_field_id))
+         (assoc :fk_target_field_id (when-not removed-fk? fk-target-field-id))
+
+         (contains? body :coercion_strategy)
+         (assoc :effective_type effective-type :coercion_strategy coercion-strategy))))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
@@ -382,7 +384,7 @@
                        [:value {:optional true} ms/NonBlankString]]]
   (when-not value
     (api/check-400 (request/limit) "Limit required if value is omitted"))
-  (let [field        (api/check-404 (warehouse-schema-rest.db/field id))
+  (let [field        (api/check-404 (warehouse-schema/field-with-user-settings id))
         search-field (api/check-404 (warehouse-schema-rest.db/field search-id))]
     (api/check-403 (mi/can-read? field))
     (api/check-403 (mi/can-read? search-field))
@@ -399,8 +401,8 @@
                                 [:remapped-id ms/PositiveInt]]
    {:keys [value]} :- [:map
                        [:value ms/NonBlankString]]]
-  (let [field          (api/read-check :model/Field id)
-        remapped-field (api/read-check :model/Field remapped-id)
+  (let [field          (-> (warehouse-schema/field-with-user-settings id) api/check-404 api/read-check)
+        remapped-field (-> (warehouse-schema/field-with-user-settings remapped-id) api/check-404 api/read-check)
         value          (parameters.field/parse-query-param-value-for-field field value)]
     (parameters.field/remapped-value field remapped-field value)))
 

@@ -71,9 +71,9 @@
     :limit  1}))
 
 (mu/defn field
-  "The Field with `field-id`, or nil."
+  "The Field with `field-id` as users see it, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (warehouse-schema/field-with-user-settings field-id))
 
 (mu/defn fields
   "The Fields with `field-ids`."

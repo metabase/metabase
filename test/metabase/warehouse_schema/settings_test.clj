@@ -59,17 +59,19 @@
                      (t2/select-one-fn :display_name :model/Table, :id table-id))))))))))
 
 (deftest do-not-overwrite-user-set-field-display-names-test
-  (testing "a Field's display name is custom now when it's set in FieldUserSettings, not when it merely differs
-            from the old strategy's humanization; fields without a user-set display name are always rewritten"
+  (testing "a Field's display name is custom when it's set in FieldUserSettings or differs from the old strategy's humanization"
     (tu/with-temporary-setting-values [humanization-strategy "simple"]
-      (mt/with-temp [:model/Field {custom-field-id :id} {:name "toucansare_cool", :display_name "Some Other Name"}
-                     :model/Field {synced-field-id :id} {:name "fussybird_sightings", :display_name "Some Other Name"}]
-        (field-user-settings/upsert-user-settings {:id custom-field-id} {:display_name "User's Name"})
+      (mt/with-temp [:model/Field {user-set-id :id} {:name "toucansare_cool", :display_name "Toucansare Cool"}
+                     :model/Field {custom-id :id} {:name "fussybird_sightings", :display_name "Some Other Name"}
+                     :model/Field {synced-id :id} {:name "bird_watchers", :display_name "Bird Watchers"}]
+        (field-user-settings/upsert-user-settings {:id user-set-id} {:display_name "User's Name"})
         (warehouse-schema.settings/humanization-strategy! "none")
         (testing "the user-set Field's raw display name is left alone"
-          (is (= "Some Other Name" (t2/select-one-fn :display_name :model/Field, :id custom-field-id))))
-        (testing "the other Field is rewritten to the new strategy regardless of its prior raw value"
-          (is (= "fussybird_sightings" (t2/select-one-fn :display_name :model/Field, :id synced-field-id))))))))
+          (is (= "Toucansare Cool" (t2/select-one-fn :display_name :model/Field, :id user-set-id))))
+        (testing "a raw display name that differs from the old humanization is left alone"
+          (is (= "Some Other Name" (t2/select-one-fn :display_name :model/Field, :id custom-id))))
+        (testing "a humanized display name is rewritten to the new strategy"
+          (is (= "bird_watchers" (t2/select-one-fn :display_name :model/Field, :id synced-id))))))))
 
 (deftest invalid-strategies-default-to-simple
   (tu/with-temporary-raw-setting-values [humanization-strategy "invalid-choice"]

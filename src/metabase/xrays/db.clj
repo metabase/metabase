@@ -102,7 +102,7 @@
              {:select    (warehouse-schema/fields-with-user-settings-select :f :u)
               :from      [[(t2/table-name :model/Field) :f]]
               :left-join (warehouse-schema/field-user-settings-join :f :u)
-              :where     [:= (warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) field-id]}))
+              :where     (warehouse-schema/field-user-settings-column-where :fk_target_field_id :f :u := field-id)}))
 
 (mu/defn fk-fields-for-tables
   "The FK Fields of the Tables with `table-ids`, as users see them; honors user-set FK targets."
@@ -154,7 +154,7 @@
                    :from      [[(t2/table-name :model/Field) :f]]
                    :left-join (warehouse-schema/field-user-settings-join :f :u)
                    :where     [:and
-                               [:in (warehouse-schema/field-user-settings-column :fk_target_field_id :f :u) field-ids]
+                               (warehouse-schema/field-user-settings-column-where :fk_target_field_id :f :u :in field-ids)
                                :f.active]})))
 
 (mu/defn visible-fields-for-tables

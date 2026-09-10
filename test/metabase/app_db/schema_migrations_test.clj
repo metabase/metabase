@@ -3364,9 +3364,9 @@
           (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field_user_settings :field_id field-id))))))))
 
 (deftest backfill-field-user-settings-set-flags-test
-  (testing "v64.2026-09-09T00:00:01: description_set, semantic_type_set and fk_target_field_id_set are backfilled
+  (testing "v64.2026-09-09T00:00:03: description_set, semantic_type_set and fk_target_field_id_set are backfilled
            from whether the corresponding column is already non-NULL"
-    (impl/test-migrations ["v64.2026-09-09T00:00:00" "v64.2026-09-09T00:00:01"] [migrate!]
+    (impl/test-migrations ["v64.2026-09-09T00:00:00" "v64.2026-09-09T00:00:03"] [migrate!]
       (let [db-id        (t2/insert-returning-pk! :metabase_database {:name       "FUS Flags Test DB"
                                                                       :engine     "h2"
                                                                       :created_at :%now
