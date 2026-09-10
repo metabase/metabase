@@ -113,9 +113,9 @@
     (map? document)
     (prose-mirror/update-ast (fn match-card-to-update [{:keys [type attrs]}]
                                (and (= type prose-mirror/card-embed-type)
-                                    (contains? card-id-map (:id attrs))))
+                                    (contains? card-id-map (get attrs "id"))))
                              (fn update-card-id [embed]
-                               (update-in embed [:attrs :id] card-id-map)))))
+                               (update-in embed [:attrs "id"] card-id-map)))))
 
 (mu/defn- create-cards-for-document! :- [:map-of ms/NegativeInt ms/PositiveInt]
   "Creates cards for a document from the cards map.
@@ -158,8 +158,8 @@
   - map of old-card-id -> cloned-card-id"
   [{:keys [id collection_id] :as document}]
   (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
-                                                                (pos-int? (-> % :attrs :id)))
-                                                       (-> % :attrs :id)))
+                                                                (pos-int? (get-in % [:attrs "id"])))
+                                                       (get-in % [:attrs "id"])))
         to-clone (when (seq card-ids)
                    (documents.db/cards-not-in-document card-ids id))]
     (m.document/with-content-gate-cache
@@ -201,10 +201,10 @@
           {:document document :content_type content-type}
           (fn [{:keys [type attrs]}]
             (when (and (= prose-mirror/card-embed-type type)
-                       (contains? draft-card-id-map (:id attrs))
-                       (:stored_result_id attrs))
-              [(get draft-card-id-map (:id attrs))
-               (:stored_result_id attrs)])))
+                       (contains? draft-card-id-map (get attrs "id"))
+                       (get attrs "stored_result_id"))
+              [(get draft-card-id-map (get attrs "id"))
+               (get attrs "stored_result_id")])))
          distinct
          vec)))
 
@@ -214,8 +214,8 @@
   top-level blocks; `nil` appends the embed at the end and out-of-range indexes are clamped.
 
   Optional kwargs:
-  - `:extra-attrs` — map merged onto the `cardEmbed` attrs (e.g. `:stored_result_id`,
-    `:chart_href`, `:child_target_id`, `:host_data`).
+  - `:extra-attrs` — string-keyed map merged onto the `cardEmbed` attrs (e.g. `\"stored_result_id\"`,
+    `\"chart_href\"`, `\"child_target_id\"`, `\"host_data\"`).
 
   Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
   write-checking the document first. The document is re-read inside the transaction so a

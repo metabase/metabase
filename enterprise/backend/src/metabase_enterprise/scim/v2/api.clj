@@ -7,6 +7,7 @@
    [metabase-enterprise.scim.db :as scim.db]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -54,7 +55,7 @@
    [:locale {:optional true} [:maybe ms/NonBlankString]]
    [:active {:optional true} boolean?]
    [:meta {:optional true} [:map {:closed true}
-                            [:resourceType ms/NonBlankString]]]])
+                            [:resourceType {:optional true} ms/NonBlankString]]]])
 
 (def SCIMUserList
   "Malli schema for a list of SCIM users"
@@ -97,7 +98,7 @@
                   [:$ref {:optional true} ms/NonBlankString]
                   [:display {:optional true} ms/NonBlankString]]]]
    [:meta {:optional true} [:map {:closed true}
-                            [:resourceType ms/NonBlankString]]]])
+                            [:resourceType {:optional true} ms/NonBlankString]]]])
 
 (def SCIMGroupList
   "Malli schema for a list of SCIM groups"
@@ -333,7 +334,11 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]
    _query-params
-   patch-ops :- UserPatch]
+   patch-ops :- UserPatch
+   request]
+  (doseq [[raw-operation operation] (map vector (get-in request [:body :Operations]) (:Operations patch-ops))
+          :when (map? (:value operation))]
+    (api/check-no-dropped-entries (:value raw-operation) (:value operation)))
   (with-prometheus-counters
     (t2/with-transaction [_conn]
       (let [user    (get-user-by-entity-id id)

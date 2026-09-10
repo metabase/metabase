@@ -27,6 +27,7 @@
    [malli.util]
    [medley.core :as m]
    [metabase.api.common.internal]
+   [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.macros.scope]
    [metabase.api.open-api :as open-api]
@@ -512,14 +513,16 @@
   "Impl for [[endpoint-core-fn]]: validate the schemas used for validation at evaluation time, so we can get instant
   feedback if they're bad as opposed to waiting for someone to actually use the endpoint."
   [schema-type schema]
-  (try
-    (mc/schema schema)
-    (catch Throwable e#
-      (throw (ex-info (format "Invalid %s schema: %s\n\n%s"
-                              (name schema-type)
-                              (ex-message e#)
-                              (u/pprint-to-str schema))
-                      {:schema schema})))))
+  (let [schema (try
+                 (mc/schema schema)
+                 (catch Throwable e#
+                   (throw (ex-info (format "Invalid %s schema: %s\n\n%s"
+                                           (name schema-type)
+                                           (ex-message e#)
+                                           (u/pprint-to-str schema))
+                                   {:schema schema}))))]
+    (closed-schemas/check! schema-type schema)
+    schema))
 
 (defmacro endpoint-core-fn-with-optimized-schemas
   "Helper macro for [[endpoint-core-fn]]. This is not strictly necessary, but improves performance somewhat by

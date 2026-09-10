@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.tenants.core :as tenants]
+   [metabase.users.schema :as users.schema]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -12,7 +13,7 @@
 (def ^:private UserAttributes
   "Login attributes keyed by the attribute names the admin chose, so string-keyed; they are stored as JSON."
   (mu/with-api-error-message
-   ms/OpaqueJSONObject
+   users.schema/LoginAttributes
    (deferred-tru "value must be a valid user attributes map (name -> value)")))
 
 ;; TODO - not sure we need this endpoint now that we're just letting you edit from the regular `PUT /api/user/:id

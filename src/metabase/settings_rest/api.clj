@@ -58,7 +58,9 @@
   "Update multiple `Settings` values. If called by a non-superuser, only user-local settings can be updated."
   [_route-params
    _query-params
-   settings :- (ms/string-keyed-map SettingValue)]
+   settings :- (ms/string-keyed-map SettingValue)
+   request]
+  (api/check-no-dropped-entries (:body request) settings)
   (with-setting-access-control
     (setting/set-many! (update-keys settings #(keyword (u/->kebab-case-en %)))))
   (add-settings-last-updated-cookie api/generic-204-no-content))

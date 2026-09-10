@@ -4,7 +4,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [metabase.util :as u]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -14,28 +13,16 @@
              (update-vals (fn [order]
                             (into {} (map vector order (range))))))))
 
-(defn- compare-keys
-  "Compare two map keys, which are not always of one kind: a JSON column can hold keyword keys next to the string keys
-  of the objects it does not type, and `compare` cannot order a keyword against a string."
-  [k1 k2]
-  (if (or (and (keyword? k1) (keyword? k2))
-          (and (string? k1) (string? k2)))
-    (compare k1 k2)
-    (compare (u/qualified-name k1) (u/qualified-name k2))))
-
 (defn- serialization-sorted-map* [order-key]
   (if-let [order (or (get @serialization-order order-key)
                      (get @serialization-order (last order-key)))]
     ;; known columns are sorted by their order, then unknown are sorted alphabetically
-    (sorted-map-by (fn [k1 k2]
-                     (let [i1 (get order k1)
-                           i2 (get order k2)]
-                       (cond
-                         (and i1 i2) (compare i1 i2)
-                         i1          -1
-                         i2          1
-                         :else       (compare-keys k1 k2)))))
-    (sorted-map-by compare-keys)))
+    (let [getter #(if (contains? order %)
+                    [0 (get order %)]
+                    [1 %])]
+      (sorted-map-by (fn [k1 k2]
+                       (compare (getter k1) (getter k2)))))
+    (sorted-map)))
 
 (def ^:private serialization-sorted-map (memoize/memo serialization-sorted-map*))
 

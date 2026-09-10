@@ -14,9 +14,10 @@
     constrain the value and the `:any` only carries a decoder;
   - the entries of a map whose `:decode/api` is [[metabase.lib.schema.common/remove-internal-keys]] that are internal
     keys: the API decoder removes them from every request, so what they hold never arrives from a client;
-  - the schemas marked `::mr/deliberately-open`: the deliberately open maps in [[metabase.util.malli.schema]] and the
-    `cljc` twin of one of them, `:metabase.lib.schema.common/visualization-settings`, for values whose keys belong to
-    a driver, the frontend or a settings registry. Nothing else should carry that marker.
+  - the schemas marked `::mr/deliberately-open`: the deliberately open maps in [[metabase.util.malli.schema]] and two
+    `cljc` twins in Lib, `:metabase.lib.schema.common/visualization-settings` and the non-string `:native` body of a
+    native stage, for values whose shape belongs to a driver, the frontend or a settings registry. Nothing else should
+    carry that marker.
 
   Registry schemas are walked once per JVM: a key already visited by an earlier endpoint is not walked again, so the
   first endpoint to reach an offending registry schema is the one that fails on it."
@@ -51,10 +52,15 @@
 
 (def ^:private open-map-of-key-schemas
   "`:map-of` key schemas that make the map an open bag of arbitrary keys."
-  #{:keyword 'keyword? :any :some 'any?})
+  #{:keyword 'keyword? :any :some 'any? 'some?})
 
 (def ^:private any-schemas
-  #{:any 'any?})
+  "Schemas that let a value of any shape through: `:any`, `:some`, and the `map?` predicate, which is an open map."
+  #{:any 'any? :some 'some? 'map?})
+
+(def ^:private value-schemas
+  "Schemas whose children are values, not schemas, and are not walked."
+  #{:= :not= :enum :fn :re})
 
 (defn- deliberately-open? [schema]
   (true? (::mr/deliberately-open (mc/properties schema))))
@@ -96,22 +102,35 @@
                  (not (some default-entry? (mc/children schema))))
             (swap! findings conj (finding schema trail :open-map))
 
-            (and (= schema-type :map-of) (contains? open-map-of-key-schemas (mc/form (first (mc/children schema)))))
+            (and (= schema-type :map-of)
+                 (let [key-schema (first (mc/children schema))]
+                   (or (contains? open-map-of-key-schemas (mc/form key-schema))
+                       (contains? open-map-of-key-schemas (mc/type key-schema)))))
             (swap! findings conj (finding schema trail :keyword-keyed-map-of))
 
             (and (contains? any-schemas schema-type) (not conjunct?))
             (swap! findings conj (finding schema trail :any)))
-          (if (mc/-ref-schema? schema)
+          (cond
+            (mc/-ref-schema? schema)
             (when-let [dereffed (deref-safe schema)]
               (walk-schema! dereffed trail visited findings conjunct?))
-            (let [conjunct? (or (= schema-type :and) conjunct?)
+
+            (contains? value-schemas schema-type)
+            nil
+
+            :else
+            (let [conjunct? (case schema-type
+                              :and                                          true
+                              (:schema :multi)                              conjunct?
+                              (:sequential :vector :set :tuple :maybe :or)  false
+                              conjunct?)
                   skip-key? (if (and (= schema-type :map) (strips-internal-keys? schema))
                               lib.schema.common/internal-key?
                               (constantly false))]
               (doseq [[i child] (map-indexed vector (mc/children schema))]
                 (cond
                   (and (vector? child) (= 3 (count child)) (mc/schema? (nth child 2)))
-                  (when-not (skip-key? (first child))
+                  (when-not (and (not (default-entry? child)) (skip-key? (first child)))
                     (walk-schema! (nth child 2) (conj trail (first child)) visited findings
                                   (if (= schema-type :map)
                                     (and conjunct? (default-entry? child))

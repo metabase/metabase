@@ -63,17 +63,28 @@
 (deftest ^:parallel keyword-keyed-map-of-is-found-test
   (are [schema] (= [:keyword-keyed-map-of] (kinds schema))
     [:map-of :keyword :int]
-    [:map-of :some :string]
-    [:map {:closed true} [:bag [:map-of :keyword :string]]]))
+    [:map-of [:keyword {:description "a key"}] :int]
+    [:map {:closed true} [:bag [:map-of :keyword :string]]])
+  (testing "a `:some` key is both an open bag of keys and a value of any type"
+    (is (= [:keyword-keyed-map-of :any] (kinds [:map-of :some :string])))))
 
 (deftest ^:parallel any-is-found-test
   (are [schema] (= [:any] (kinds schema))
     :any
     any?
+    :some
+    map?
     [:maybe :any]
     [:map {:closed true} [:value :any]]
+    [:map {:closed true} [:settings map?]]
     [:map-of :string :any]
     (ms/string-keyed-map :any)))
+
+(deftest ^:parallel values-are-not-walked-test
+  (are [schema] (empty? (kinds schema))
+    [:enum :type/Text :type/Integer]
+    [:= :any]
+    [:fn map?]))
 
 (deftest ^:parallel a-default-entry-declares-the-other-keys-test
   (testing "a map with a `::mc/default` entry is not open: the default schema says what the other keys are"
@@ -88,7 +99,13 @@
       [:and [:map {:closed true} [:a :int]] [:schema {:decode/normalize identity} :any]]
       [:and :int [:multi {:dispatch pos?} [true :int] [false :any]]]))
   (testing "a map entry inside a conjunct is a hole again"
-    (is (= [:any] (kinds [:and [:map {:closed true} [:a :any]] [:fn map?]])))))
+    (is (= [:any] (kinds [:and [:map {:closed true} [:a :any]] [:fn map?]]))))
+  (testing "and so is anything inside a collection or an alternative"
+    (are [schema] (= [:any] (kinds schema))
+      [:and [:sequential :any] [:fn seq]]
+      [:and [:tuple :int :any] [:fn vector?]]
+      [:and [:maybe :any] [:fn some?]]
+      [:and [:or :int :any] [:fn some?]])))
 
 (deftest ^:parallel internal-keys-the-api-strips-are-skipped-test
   (let [strips [:map {:closed true, :decode/api lib.schema.common/remove-internal-keys}
@@ -96,7 +113,10 @@
                 [:qp/internal {:optional true} [:map [:anything :any]]]]]
     (is (empty? (kinds strips)))
     (testing "only when the map's API decoder really strips them"
-      (is (= [:open-map :any] (kinds (assoc strips 1 {:closed true})))))))
+      (is (= [:open-map :any] (kinds (assoc strips 1 {:closed true})))))
+    (testing "and never the default entry, whose key is not a key at all"
+      (is (= [:any] (kinds [:map {:closed true, :decode/api lib.schema.common/remove-internal-keys}
+                            [::mc/default [:map-of :string :any]]]))))))
 
 (deftest ^:parallel every-finding-carries-its-trail-test
   (is (= [{:kind :open-map, :trail [::nested :inner ::open]}]

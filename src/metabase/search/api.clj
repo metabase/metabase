@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -188,14 +187,13 @@
 (api.macros/defendpoint :put "/weights"
   "Update the current weights being used to rank the search results"
   [_route-params
-   {:keys [context], :as overrides} :- [:map {:closed true}
-                                        [:context {:default :default} :keyword]
-                                        [:search_engine {:optional true} [:maybe :string]]
-                                        [::mc/default (ms/string-keyed-map :string)]]]
+   overrides :- (ms/string-keyed-object
+                 ["context"       {:default :default} :keyword]
+                 ["search_engine" {:optional true} [:maybe :string]])]
   ;; remove cookie
   ;; normalize so overrides are stored under the same key search reads them from
-  (let [context   (search.config/normalized-context context)
-        overrides (-> overrides (dissoc :search_engine :context) (update-keys keyword) (update-vals parse-double))]
+  (let [context   (search.config/normalized-context (get overrides "context"))
+        overrides (-> overrides (dissoc "search_engine" "context") (update-keys keyword) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
     (search.config/weights {:context context})))

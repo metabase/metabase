@@ -6,7 +6,6 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [java-time.clock]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -300,10 +299,8 @@
   "Creates a query from a test query spec."
   [_route-params
    _query-params
-   {:keys [database], :as query-spec} :- [:map {:closed true}
-                                          [:database ::lib.schema.id/database]
-                                          [::mc/default ms/OpaqueJSONObject]]]
-  (-> (lib-be/application-database-metadata-provider database)
+   query-spec :- (ms/string-keyed-object ["database" ::lib.schema.id/database])]
+  (-> (lib-be/application-database-metadata-provider (get query-spec "database"))
       (lib/test-query (walk/keywordize-keys query-spec))))
 
 (def ^:private TestAdvisory
@@ -335,10 +332,8 @@
   "Creates a native query from a test query spec."
   [_route-params
    _query-params
-   {:keys [database], :as native-query-spec} :- [:map {:closed true}
-                                                 [:database ::lib.schema.id/database]
-                                                 [::mc/default ms/OpaqueJSONObject]]]
-  (-> (lib-be/application-database-metadata-provider database)
+   native-query-spec :- (ms/string-keyed-object ["database" ::lib.schema.id/database])]
+  (-> (lib-be/application-database-metadata-provider (get native-query-spec "database"))
       (lib/test-native-query (walk/keywordize-keys native-query-spec))))
 
 ;;;; Metabot AI usage seeding

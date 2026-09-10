@@ -103,6 +103,7 @@
    query :- ::lib-be.schema/maybe-legacy-or-internal-query]
   (run-streaming-query
    (-> query
+       (dissoc :cache-strategy)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)))
 
@@ -156,7 +157,7 @@
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
         query                         (-> query
-                                          (dissoc :constraints)
+                                          (dissoc :constraints :cache-strategy)
                                           (assoc :viz-settings viz-settings)
                                           (update :middleware #(-> %
                                                                    (select-keys [:ignore-cached-results?])
@@ -240,7 +241,9 @@
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [rff :api]
-      (qp.pivot/run-pivot-query (assoc (update query :middleware select-keys [:js-int-to-string? :ignore-cached-results?])
+      (qp.pivot/run-pivot-query (assoc (-> query
+                                           (dissoc :cache-strategy)
+                                           (update :middleware select-keys [:js-int-to-string? :ignore-cached-results?]))
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
                                 rff)

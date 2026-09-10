@@ -1447,6 +1447,7 @@
               transforms
               transforms-base
               util
+              warehouse-schema
               warehouses}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot

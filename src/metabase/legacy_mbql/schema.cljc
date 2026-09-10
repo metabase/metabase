@@ -1903,6 +1903,10 @@
      [:remapped_from      {:optional true} [:maybe :string]]
      [:remapped_to        {:optional true} [:maybe :string]]
      [:remapped_from_index {:optional true} [:maybe :int]]
+     [:source_alias       {:optional true} [:maybe :string]]
+     [:aggregation_index  {:optional true} [:maybe :int]]
+     [:expression_name    {:optional true} [:maybe :string]]
+     [:special_type       {:optional true} [:maybe [:or :string :keyword]]]
      [:remapping          {:optional true} [:maybe [:map-of [:ref ::lib.schema.literal/literal] [:ref ::lib.schema.literal/literal]]]]
      [:selected?          {:optional true} :boolean]
      ;; name is allowed to be empty in some databases like SQL Server.

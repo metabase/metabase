@@ -54,13 +54,21 @@
 (def ^:private execute-parameter-values-message
   (deferred-tru "value must map parameter ids to scalar values."))
 
+(def ^:private execute-parameter-value
+  "A parameter value on an execute request. [[::lib.schema.parameter/parameter.value]] would do, but its normalizer
+  turns a collection into `nil` while the request is decoded, and the action would then run with the parameter missing
+  instead of the request being rejected."
+  [:or
+   [:ref ::lib.schema.parameter/parameter.value.scalar]
+   [:sequential [:ref ::lib.schema.parameter/parameter.value.scalar]]])
+
 (mr/def ::execute-parameter-values
   "Parameter values for executing an action, keyed by the action's parameter names -- string-keyed, like every map whose
   keys are not ours to declare (see [[metabase.util.malli.schema/string-keyed-map]])."
   (parameter-values-schema
    {:decoded-key-schema :string
     :key-schema         :string
-    :value-schema       [:ref ::lib.schema.parameter/parameter.value]
+    :value-schema       execute-parameter-value
     :message            execute-parameter-values-message
     :decode             (fn [m] (cond-> m (map? m) (update-keys name)))}))
 
@@ -68,7 +76,7 @@
   (parameter-values-schema
    {:decoded-key-schema :string
     :key-schema         [:ref ::lib.schema.parameter/id]
-    :value-schema       [:ref ::lib.schema.parameter/parameter.value]
+    :value-schema       execute-parameter-value
     :message            execute-parameter-values-message}))
 
 (mr/def ::type
@@ -174,7 +182,7 @@
                                [:parameters             {:optional true}    [:maybe [:sequential ::action.parameter]]]
                                [:database_id            {:optional true}    [:maybe ::lib.schema.id/database]]
                                [:parameter_mappings     {:optional true}    [:maybe ::parameters.schema/parameter-mappings]]
-                               [:visualization_settings {:optional true}    [:maybe map?]]]
+                               [:visualization_settings {:optional true}    [:maybe ms/VisualizationSettings]]]
                               [[:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
                                [:updated_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
                                [:public_uuid        {:optional true} [:maybe ms/UUIDString]]

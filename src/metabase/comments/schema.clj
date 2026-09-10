@@ -1,7 +1,6 @@
 (ns metabase.comments.schema
   "Malli schemas for the comments module."
   (:require
-   [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -9,12 +8,13 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::prose-mirror-node.attrs
-  "The `attrs` of a ProseMirror node in a comment: the ones this code reads by name, and, string-keyed, whatever else
-  the editor put there."
-  [:map
-   [::mc/default ms/OpaqueJSONObject]
-   [:model    {:optional true} [:maybe :string]]
-   [:entityId {:optional true} [:maybe [:or :int :string]]]])
+  "The `attrs` of a ProseMirror node in a comment: the ones this code reads by name, and whatever else the editor put
+  there. Every key, declared or not, is a string, so the map never mixes keyword and string keys."
+  (ms/string-keyed-object
+   ["model"    {:optional true} [:maybe :string]]
+   ["entityId" {:optional true} [:maybe [:or :int :string]]]
+   ["label"    {:optional true} [:maybe :string]]
+   ["level"    {:optional true} [:maybe :int]]))
 
 (mr/def ::prose-mirror-node
   "One node of the ProseMirror/TipTap document a comment is written in, in the shape ProseMirror's `Node.toJSON`

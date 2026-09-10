@@ -2,7 +2,6 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
-   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
@@ -453,15 +452,14 @@
   "The multipart parts a CSV upload may carry. A part under any other name is rejected rather than dropped, so a second
   file cannot be smuggled past the upload: `::mc/default` keeps the extra parts, and the check below refuses them."
   [:and
-   [:map {:closed true}
-    [:file
+   (ms/string-keyed-object
+    ["file"
      [:map {:closed true}
       [:filename :string]
       [:tempfile (ms/InstanceOfClass java.io.File)]]]
-    [:collection_id {:optional true} :string]
-    [::mc/default ms/OpaqueJSONObject]]
+    ["collection_id" {:optional true} :string])
    (mu/with-api-error-message
-    [:fn (fn [parts] (every? #{:file :collection_id} (keys parts)))]
+    [:fn (fn [parts] (every? #{"file" "collection_id"} (keys parts)))]
     (deferred-tru "unexpected multipart part"))])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -478,7 +476,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [file]} :- CsvUploadParts]
+   {:strs [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
                 :filename (:filename file)
                 :file     (:tempfile file)
@@ -498,7 +496,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [file]} :- CsvUploadParts]
+   {:strs [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
                 :filename (:filename file)
                 :file     (:tempfile file)

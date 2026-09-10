@@ -1038,7 +1038,11 @@
 (def ^:private RequestPermissionsGroups
   "The `:groups` of a [[PermissionsGraph]] as it arrives in a `PUT /graph` body, before [[decode-graph]] coerces its
   keys."
-  [:map-of RequestId [:map-of [:or [:= :root] RequestId] (ms/enum-keywords-and-strings :write :read :none)]])
+  [:multi {:dispatch map?}
+   [true  [:map-of RequestId [:multi {:dispatch map?}
+                              [true  [:map-of [:or [:= :root] RequestId] (ms/enum-keywords-and-strings :write :read :none)]]
+                              [false [:fn {:error/message "map"} map?]]]]]
+   [false [:fn {:error/message "map"} map?]]])
 
 (def ^:private graph-decoder
   "Building it this way is a lot faster then calling mc/decode <value> <schema> <transformer>"
@@ -1072,8 +1076,13 @@
    {:keys [namespace revision groups]} :- [:map {:closed true}
                                            [:namespace {:optional true} [:maybe ms/NonBlankString]]
                                            [:revision  {:optional true} [:maybe ms/Int]]
-                                           [:groups    RequestPermissionsGroups]]]
+                                           [:groups    RequestPermissionsGroups]]
+   request]
   (api/check-superuser)
+  (let [raw-groups (get-in request [:body :groups])]
+    (api/check-no-dropped-entries raw-groups groups)
+    (doseq [[group-id collection-id->perm] groups]
+      (api/check-no-dropped-entries (get raw-groups (keyword group-id)) collection-id->perm)))
   (update-graph! namespace
                  (decode-graph {:revision revision :groups groups})
                  skip-graph

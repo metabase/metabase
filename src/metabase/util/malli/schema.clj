@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -260,6 +261,28 @@
   map this code builds and reads by keyword is not opaque and gets a schema of its own. The marker property is what
   lets [[metabase.api.macros.defendpoint.closed-schemas]] accept the `:any`."
   (mu/with (string-keyed-map :any true) {::mr/deliberately-open true}))
+
+(defn string-keyed-object
+  "Schema for a JSON object of which this code reads a few keys and keeps the rest as they arrived: an
+  [[OpaqueJSONObject]] whose `entries` declare, with string keys, the keys this code reads and their types.
+
+    (string-keyed-object [\"id\" :int] [\"label\" {:optional true} [:maybe :string]])
+
+  Every key of the object is a string, the declared ones included, so the map never mixes keyword and string keys and
+  code reads the declared keys the same way it would any other: `(get attrs \"id\")`. Decoding stringifies the keys of
+  the object itself first of all -- a request on its way in, or a keywordized JSON column read back from the
+  application database -- so the declared entries, their defaults included, are found under their string keys; the
+  values of the undeclared keys are stringified all the way down, the declared ones only as their schemas say. Prefer a
+  fully typed map when the keys are known: this is for objects another party owns, like an editor's node attributes."
+  [& entries]
+  (doseq [[k] entries]
+    (assert (string? k) (str "string-keyed-object keys must be strings, got: " (pr-str k))))
+  (into [:map
+         {:decode/string    {:enter stringify-keys}
+          :decode/json      {:enter stringify-keys}
+          :decode/normalize {:enter stringify-keys}}
+         [::mc/default OpaqueJSONObject]]
+        entries))
 
 (def Email
   "Schema for a valid email string."

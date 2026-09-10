@@ -111,4 +111,6 @@
       [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
       [:show-row-totals    {:optional true} [:maybe :boolean]]
       [:show-column-totals {:optional true} [:maybe :boolean]]
-      [:column-sort-order  {:optional true} [:maybe [:map-of [:maybe [:int {:min 0}]] [:maybe :keyword]]]]]]]])
+      [:column-sort-order  {:optional true} [:maybe [:multi {:dispatch map?}
+                                                     [true  [:map-of [:maybe [:int {:min 0}]] [:maybe :keyword]]]
+                                                     [false [:fn {:error/message "map"} map?]]]]]]]]])

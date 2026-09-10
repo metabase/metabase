@@ -450,7 +450,7 @@
         (do-response-formats [response-format request-options]
           (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
                         "missing a `:locked` parameter")
-            (is (= "You must specify a value for venue_id in the JWT."
+            (is (= "You must specify a value for :venue_id in the JWT."
                    (client/client :get 400 (card-query-url card response-format)))))
           (testing "if `:locked` param is present, request should succeed"
             ;; embed tests still assert via the deprecated helper; not yet migrated
@@ -559,13 +559,13 @@
         (mt/with-temp
           [:model/Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :locked})]
           (testing "an empty value with `nil` as the param's value is invalid and should result in an error"
-            (is (= "You must specify a value for date in the JWT."
+            (is (= "You must specify a value for :date in the JWT."
                    (client/client :get 400 (card-query-url card "" {:params {:date nil}}))))
             (testing "check this is different to when a non-nil value is provided"
               (is (= [[138]]
                      (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date "Q2-2014"}})))))))
           (testing "an empty string value is invalid and should result in an error"
-            (is (= "You must specify a value for date in the JWT."
+            (is (= "You must specify a value for :date in the JWT."
                    (client/client :get 400 (card-query-url card "" {:params {:date ""}}))))))))))
 
 (defn- card-with-date-field-filter []
@@ -1090,14 +1090,14 @@
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "locked"}}}]
       (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
                     "missing a `:locked` parameter")
-        (is (= "You must specify a value for venue_id in the JWT."
+        (is (= "You must specify a value for :venue_id in the JWT."
                (client/client :get 400 (dashcard-url dashcard)))))
       (testing "if `:locked` param is supplied, request should succeed"
         (is (=? {:status   "completed"
                  :data     {:rows [[1]]}}
                 (client/client :get 202 (dashcard-url dashcard {:params {:venue_id 100}})))))
       (testing "if `:locked` parameter is present in URL params, request should fail"
-        (is (= "You must specify a value for venue_id in the JWT."
+        (is (= "You must specify a value for :venue_id in the JWT."
                (client/client :get 400 (str (dashcard-url dashcard) "?venue_id=100"))))))))
 
 (deftest dashboard-disabled-params-test
@@ -1166,13 +1166,13 @@
         (testing "if the param is locked"
           (mt/with-temp-vals-in-db :model/Dashboard (u/the-id dashboard) {:embedding_params {:date "locked"}}
             (testing "an empty value specified as `nil` is invalid and should result in an error"
-              (is (= "You must specify a value for date in the JWT."
+              (is (= "You must specify a value for :date in the JWT."
                      (client/client :get 400 (dashcard-url dashcard {:params {:date nil}}))))
               (testing "check this is different to when a non-nil value is provided"
                 (is (= [[138]]
                        (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date "Q2-2014"}})))))))
             (testing "an empty string value is invalid and should result in an error"
-              (is (= "You must specify a value for date in the JWT."
+              (is (= "You must specify a value for :date in the JWT."
                      (client/client :get 400 (dashcard-url dashcard {:params {:date ""}})))))))))))
 
 ;;; -------------------------------------------------- Other Tests ---------------------------------------------------
@@ -1552,7 +1552,7 @@
       (testing "Requests should fail if the token is missing a locked parameter"
         (doseq [url [(values-url) (search-url)]]
           (testing (str "\n" url)
-            (is (= "You must specify a value for price in the JWT."
+            (is (= "You must specify a value for :price in the JWT."
                    (client/client :get 400 url))))))
       (testing "if `:locked` param is supplied, request should succeed"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
@@ -1713,7 +1713,7 @@
                                        :dashcard {:parameter_mappings []}}]
           (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
                         "missing a `:locked` parameter")
-            (is (= "You must specify a value for abc in the JWT."
+            (is (= "You must specify a value for :abc in the JWT."
                    (client/client :get 400 (pivot-dashcard-url dashcard)))))
           (testing "if `:locked` param is supplied, request should succeed"
             (let [result (client/client :get 202 (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}}))
@@ -1730,7 +1730,7 @@
               (is (= 6 (count (get-in eid-result [:data :cols]))))
               (is (= 1144 (count eid-rows)))))
           (testing "if `:locked` parameter is present in URL params, request should fail"
-            (is (= "You must specify a value for abc in the JWT."
+            (is (= "You must specify a value for :abc in the JWT."
                    (client/client :get 400 (str (pivot-dashcard-url dashcard) "?abc=100"))))))))))
 
 (deftest pivot-dashcard-disabled-params-test
@@ -1953,10 +1953,10 @@
                     :params   {:category nil}}]]
             (testing test-str
               (let [token (dash-token dashboard-id {:params params})]
-                (is (= "You must specify a value for category in the JWT."
+                (is (= "You must specify a value for :category in the JWT."
                        (mt/user-http-request :crowberto :get 400
                                              (format "embed/dashboard/%s/dashcard/%s/card/%s" token dashcard-id card-id))))
-                (is (= "You must specify a value for category in the JWT."
+                (is (= "You must specify a value for :category in the JWT."
                        (mt/user-http-request :crowberto :get 400
                                              (format "embed/dashboard/%s/params/%s/values" token "7ef6f58c")))))))
           (doseq [{:keys [test-str params expected-row-count expected-values-count]}
@@ -2033,7 +2033,7 @@
               (is (= "Cannot get remapped value for parameter: \"price\" is not an enabled parameter."
                      (mt/user-http-request :crowberto :get 400
                                            (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "price-param" "15.69"))))
-              (is (= "You must specify a value for price in the JWT."
+              (is (= "You must specify a value for :price in the JWT."
                      (mt/user-http-request :crowberto :get 400
                                            (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "user-id-param" 437)))))))
         (doseq [{:keys [test-str params expected]}

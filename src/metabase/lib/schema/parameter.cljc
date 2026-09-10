@@ -446,6 +446,7 @@
     [:sectionid            {:optional true} [:maybe :string]]
     [:filteringparameters  {:optional true} [:maybe [:sequential [:ref ::id]]]]
     [:ismultiselect        {:optional true} [:maybe :boolean]]
+    [:hasvariabletemplatetagtarget {:optional true} [:maybe :boolean]]
     [:position             {:optional true} [:maybe :int]]
     [:values-query-type    {:optional true} [:maybe [:ref ::values-query-type]]]
     [:values-source-type   {:optional true} [:maybe [:ref ::values-source-type]]]

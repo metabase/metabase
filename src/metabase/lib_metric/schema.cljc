@@ -196,6 +196,15 @@
                          arg))
                    args))))))
 
+(mr/def ::filter-clause.options
+  "The options of a metric filter clause: MBQL options plus the offset [[metabase.lib-metric.filter]] puts on a
+  relative date filter (`previous N units, starting M units ago`)."
+  [:merge
+   ::lib.schema.common/options
+   [:map
+    [:offset-unit  {:optional true} [:ref ::lib.schema.temporal-bucketing/unit]]
+    [:offset-value {:optional true} :int]]])
+
 (mr/def ::filter-clause
   "MBQL filter clause with normalization for API input.
    Handles string operators and dimension references. After normalization every clause is a tag, an options map and
@@ -203,7 +212,7 @@
   [:schema {:decode/normalize normalize-filter-clause}
    [:cat
     :keyword
-    [:schema [:ref ::lib.schema.common/options]]
+    [:schema [:ref ::filter-clause.options]]
     [:* [:or
          [:schema [:ref ::dimension-reference]]
          [:schema [:ref ::lib.schema.literal/literal]]

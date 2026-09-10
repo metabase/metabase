@@ -123,7 +123,11 @@
      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
      ;; Only restriction is that, if present, it is non-nil.
      ;; It is valid to have a blank query like `{:type :native}` in legacy.
-     [:native {:optional true} some?]
+     [:native {:optional true} [:or
+                                :string
+                                [:schema {::mr/deliberately-open true
+                                          :description "a driver's native query when it is not a string, e.g. a MongoDB pipeline or a query with its parameters; its shape is the driver's"}
+                                 :some]]]
      ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
      ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
      ;; nil.
@@ -618,7 +622,7 @@
 (mr/def ::cache-strategy.on-query
   "What is added to a strategy once it is attached to a query."
   [:map {:closed true}
-   [:invalidated-at   {:optional true} [:maybe :some]]
+   [:invalidated-at   {:optional true} [:maybe [:or :string #?@(:clj [(common/instance-of-class java.time.temporal.Temporal)])]]]
    [:avg-execution-ms {:optional true} [:int {:min 0}]]])
 
 (mr/def ::cache-strategy

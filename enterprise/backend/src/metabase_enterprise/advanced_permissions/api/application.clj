@@ -69,8 +69,13 @@
    body :- [:map {:closed true}
             [:revision {:optional true} [:maybe ms/Int]]
             [:force    {:optional true} [:maybe :boolean]]
-            [:groups   RequestGroups]]]
+            [:groups   RequestGroups]]
+   request]
   (api/check-superuser)
+  (let [raw-groups (get-in request [:body :groups])]
+    (api/check-no-dropped-entries raw-groups (:groups body))
+    (doseq [[group-id perm-type->perm] (:groups body)]
+      (api/check-no-dropped-entries (get raw-groups (keyword group-id)) perm-type->perm)))
   (-> body
       dejsonify-graph
       (a-perms/update-graph! force?))

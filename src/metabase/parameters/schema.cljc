@@ -82,6 +82,7 @@
    [:display-name         {:optional true} [:maybe :string]]
    ;; TODO (Cam 9/18/25) -- why are we mixing `camelCase` and `snake_case` here? Is this to make me sad?
    [:filteringParameters  {:optional true} [:maybe [:sequential ::lib.schema.parameter/id]]]
+   [:hasVariableTemplateTagTarget {:optional true} [:maybe :boolean]]
    [:id                   ::lib.schema.parameter/id]
    ;; whether the widget lets you pick more than one value. Saved on the parameter by the "A single value"/"Multiple
    ;; values" picker, and read back by the frontend to choose the widget, so it has to survive a round trip.

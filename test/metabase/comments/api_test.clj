@@ -136,7 +136,7 @@
                                                     (str (:common_name (mt/fetch-user :lucky)) " replied to a thread"))}]}]}
                             (first (swap-vals! mt/inbox empty))))))))
             (testing "creates a comment for part of an entity"
-              (let [part-id (-> doc :content first :attrs :_id)
+              (let [part-id (get-in doc [:content 0 :attrs "_id"])
                     created (mt/user-http-request :rasta :post 200 "comment/"
                                                   {:target_type     "document"
                                                    :target_id       doc-id

@@ -5,7 +5,6 @@
    [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
-   [malli.core :as mc]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.oauth-server.consent-page :as consent-page]
@@ -275,7 +274,6 @@
   "Handles the authorization endpoint (GET /oauth/authorize)."
   [_route-params
    query-params :- [:map {:closed true}
-                    [::mc/default           (ms/string-keyed-map [:maybe [:or :string [:sequential :string]]])]
                     [:client_id             {:optional true} [:maybe :string]]
                     [:response_type         {:optional true} [:maybe :string]]
                     [:redirect_uri          {:optional true} [:maybe :string]]
@@ -322,7 +320,6 @@
   [_route-params
    _query-params
    body :- [:map {:closed true, :decode/api {:enter (fn [body] (if (map? body) body {}))}}
-            [::mc/default           (ms/string-keyed-map [:maybe :string])]
             [:csrf_token            {:optional true} [:maybe :string]]
             [:params_sig            {:optional true} [:maybe :string]]
             [:approved              {:optional true} [:maybe :string]]
@@ -380,7 +377,6 @@
   [_route-params
    _query-params
    body :- [:map {:closed true, :decode/api {:enter (fn [body] (if (map? body) body {}))}}
-            [::mc/default   (ms/string-keyed-map [:maybe :string])]
             [:grant_type    {:optional true} [:maybe :string]]
             [:code          {:optional true} [:maybe :string]]
             [:redirect_uri  {:optional true} [:maybe :string]]
