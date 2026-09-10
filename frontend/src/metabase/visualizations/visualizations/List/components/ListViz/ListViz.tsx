@@ -1,7 +1,8 @@
 import cx from "classnames";
 import { useMemo } from "react";
 
-import { useQuestionFromCard } from "metabase/metadata-store";
+import { getShallowTables, useQuestionFromCard } from "metabase/metadata-store";
+import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import type {
   VisualizationPassThroughProps,
@@ -25,6 +26,7 @@ const ListVizComponent = ({
   onZoomRow,
 }: VisualizationProps & VisualizationPassThroughProps) => {
   const buildQuestion = useQuestionFromCard();
+  const tables = useSelector(getShallowTables);
   const question = useMemo(
     () => (card ? buildQuestion(card) : null),
     [card, buildQuestion],
@@ -54,17 +56,15 @@ const ListVizComponent = ({
     try {
       const query = question.query();
       const sourceTableId = Lib.sourceTableOrCardId(query);
-      const table = question.metadata().table(sourceTableId);
-
-      // Return the entity type if available, otherwise undefined
-      // Use type assertion since entity_type exists in the database but not in TypeScript types
-      return (table as any)?.entity_type;
+      return sourceTableId != null
+        ? (tables[sourceTableId]?.entity_type ?? undefined)
+        : undefined;
     } catch (error) {
       // If there's an error getting the entity type, return undefined
       console.warn("Could not determine entity type:", error);
       return undefined;
     }
-  }, [question]);
+  }, [question, tables]);
 
   const handleSort = (column: DatasetColumn) => {
     onVisualizationClick({ column });
