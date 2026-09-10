@@ -84,11 +84,7 @@ const formatSegmentRange = ({ min, max }: ResolvedOpenEndedGoalSegment) => {
     return `≥ ${min}`;
   }
 
-  if (max != null) {
-    return `≤ ${max}`;
-  }
-
-  return "";
+  return `≤ ${max}`;
 };
 
 export function getColor(
