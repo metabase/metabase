@@ -4,9 +4,13 @@ name: Bundle Size Stats
 # emitted JS) plus the bundle-stats and embedding-sdk artifacts, measures
 # initial/total bundle sizes, and appends them to eng-stats-importer.
 
+# Triggered by "Run tests", which is the workflow that builds the uberjar on a
+# master merge. It used to watch "Build Uberjar" directly, until that workflow
+# lost its push trigger and became reachable only through `workflow_call`. A
+# reusable workflow reached that way raises no `workflow_run` event of its own.
 on:
   workflow_run:
-    workflows: ["Build Uberjar"]
+    workflows: ["Run tests"]
     types: [completed]
     # Master only: releases form non-linear lines whose deltas are meaningless,
     # so their sizes are backfilled separately rather than logged here.
@@ -17,8 +21,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # "Run tests" concludes `failure` on master more often than `success`, from
+  # jobs that have nothing to do with the jar, so its conclusion is not a usable
+  # gate. The artifact is one: the uberjar job publishes it, and a docs-only
+  # merge that skipped that job publishes none.
+  uberjar-built:
+    if: ${{ github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      found: ${{ steps.probe.outputs.fetch-hit }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: probe
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.workflow_run.head_sha }}
+          edition: ee
+          download: false
+
   bundle-size-stats:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.repository == 'metabase/metabase' }}
+    needs: [uberjar-built]
+    if: ${{ needs.uberjar-built.outputs.found == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
