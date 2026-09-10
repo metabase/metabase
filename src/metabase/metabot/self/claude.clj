@@ -348,7 +348,6 @@
     :ai-proxy?    true
     :auth         anthropic-auth
     :headers      {"anthropic-version" anthropic-version}
-    :span         :metabot.claude/request
     :errors       {401 #(tru "Anthropic API key expired or invalid")
                    403 #(tru "Anthropic API key has insufficient permissions")
                    404 #(tru "Anthropic API endpoint is unavailable or the model was not found")
