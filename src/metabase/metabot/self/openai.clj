@@ -257,9 +257,10 @@
    "gpt-5.4-pro"   {:display-name "GPT-5.4 Pro"   :context-window 922000}
    "gpt-5.4-mini"  {:display-name "GPT-5.4 Mini"  :context-window 272000}})
 
-(def context-window-tokens
+(defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
-  (adapter/context-window-fn supported-models))
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (defn list-models
   "List the OpenAI chat models supported by this adapter, by intersecting [[supported-models]] with the

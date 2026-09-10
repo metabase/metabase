@@ -173,9 +173,10 @@
    "openai.gpt-5.5"             {:display-name "GPT-5.5"               :context-window 272000}
    "openai.gpt-5.5-2026-04-23"  {:display-name "GPT-5.5 (2026-04-23)"  :context-window 272000}})
 
-(def context-window-tokens
+(defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
-  (adapter/context-window-fn supported-models))
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (defn- available-model?
   "Whether a `/v1/models` catalog entry is available.

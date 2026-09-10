@@ -75,9 +75,10 @@
    "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576}})
 
-(def context-window-tokens
+(defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
-  (adapter/context-window-fn supported-models))
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (defn list-models
   "List the OpenRouter models supported by this adapter (see [[supported-models]]).
