@@ -179,14 +179,14 @@
   [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ModelString])
 
 (def valid-pinned-state-values
-  "Valid values for the `?pinned_state=` param accepted by endpoints in this namespace."
+  "Valid values for the `?pinned-state=` param accepted by endpoints in this namespace."
   #{"all" "is_pinned" "is_not_pinned"})
 
 (def valid-sort-columns
-  "Valid values for the `?sort_column=` param accepted by the collection-items endpoints."
+  "Valid values for the `?sort-column=` param accepted by the collection-items endpoints."
   #{"name" "last_edited_at" "last_edited_by" "model" "description"})
 (def valid-sort-directions
-  "Valid values for the `?sort_direction=` param accepted by the collection-items endpoints."
+  "Valid values for the `?sort-direction=` param accepted by the collection-items endpoints."
   #{"asc" "desc"})
 (defn normalize-sort-choice
   "Normalize a sort param string to the keyword form [[collection-children]] expects."

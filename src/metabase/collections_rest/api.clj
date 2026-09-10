@@ -384,22 +384,22 @@
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [_route-params
-   {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
-           include_library collection_type show_dashboard_questions
-           q include_available_models show_exploration_documents]} :- [:map {:closed true}
+   {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
+           include-library collection-type show-dashboard-questions
+           q include-available-models show-exploration-documents]} :- [:map {:closed true}
                                                                        [:models                      {:optional true} [:maybe collections.children/Models]]
-                                                                       [:collection_type             {:optional true} collections.children/CollectionType]
+                                                                       [:collection-type             {:optional true} collections.children/CollectionType]
                                                                        [:archived                    {:default false} [:maybe ms/BooleanValue]]
                                                                        [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                                                       [:include_library             {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:pinned_state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
-                                                                       [:sort_column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
-                                                                       [:sort_direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
-                                                                       [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                       [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                       [:include-library             {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:pinned-state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
+                                                                       [:sort-column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
+                                                                       [:sort-direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
+                                                                       [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                       [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
                                                                        [:q                           {:optional true} [:maybe :string]]
-                                                                       [:include_available_models    {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:show_exploration_documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+                                                                       [:include-available-models    {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -409,26 +409,26 @@
                                   (not (mi/can-read? root-collection)))
                           #{:collection})
         options         {:archived?                   (boolean archived)
-                         :show-dashboard-questions?   (boolean show_dashboard_questions)
-                         :show-exploration-documents? (boolean show_exploration_documents)
-                         :collection-type             collection_type
-                         :include-library?            include_library
+                         :show-dashboard-questions?   (boolean show-dashboard-questions)
+                         :show-exploration-documents? (boolean show-exploration-documents)
+                         :collection-type             collection-type
+                         :include-library?            include-library
                          :models                      (if-not (contains? collections.children/namespaces-holding-non-collection-types namespace)
                                                         #{:collection}
                                                         model-kwds)
-                         :pinned-state                (keyword pinned_state)
+                         :pinned-state                (keyword pinned-state)
                          :search-text                 q
-                         :sort-info                   {:sort-column                 (or (some-> sort_column collections.children/normalize-sort-choice) :name)
-                                                       :sort-direction              (or (some-> sort_direction collections.children/normalize-sort-choice) :asc)
+                         :sort-info                   {:sort-column                 (or (some-> sort-column collections.children/normalize-sort-choice) :name)
+                                                       :sort-direction              (or (some-> sort-direction collections.children/normalize-sort-choice) :asc)
                                                        ;; default to sorting official collections first, but provide the option not to
-                                                       :official-collections-first? (or (nil? official_collections_first)
-                                                                                        (boolean official_collections_first))}}]
+                                                       :official-collections-first? (or (nil? official-collections-first)
+                                                                                        (boolean official-collections-first))}}]
     ;; scope the document content-gate cache over the listing: each document row's hydration
     ;; adjudicates the gate, and the cache keeps that to once per document (see
     ;; `post-process-collection-children :document` in `metabase.collections.children`)
     (documents/with-content-gate-cache
       (cond-> (collections.children/collection-children root-collection options)
-        include_available_models
+        include-available-models
         (merge (collections.children/collection-filter-metadata root-collection restrict-models options))))))
 
 (api.macros/defendpoint :get "/root/items/metadata" :- ::ItemsMetadata

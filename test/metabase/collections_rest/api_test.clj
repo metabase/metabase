@@ -1186,7 +1186,7 @@
                      :model/Dashboard _ {:name "UXW5016 root dashboard" :collection_id nil}]
         (let [metadata (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata")
               listed   (mt/user-http-request :crowberto :get 200 "collection/root/items"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (set/subset? #{"card" "dashboard"} (set (:available_models metadata))))
           (is (= (:available_models listed) (:available_models metadata)))
           (is (= (:total listed) (:total_items metadata))))))
@@ -1333,7 +1333,7 @@
       (testing "searches root items and reports models before search filtering"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :q "UXW4950 ROOT revenue"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (= 1 (:total response)))
           (is (= #{["card" "UXW4950 root revenue"]}
                  (set (map (juxt :model :name) (:data response)))))
@@ -1342,13 +1342,13 @@
       (testing "restricts metadata to namespace-valid models"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :namespace "currency"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (= ["collection"] (:available_models response)))
           (is (some #(= (:id currency-collection) (:id %)) (:data response)))))
       (testing "never reports snippets in available models"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :namespace "snippets"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (some #(= (:model %) "snippet") (:data response)))
           (is (not (contains? (set (:available_models response)) "snippet")))))
       (testing "restricts metadata to collections for a user without root read permission"
@@ -1356,7 +1356,7 @@
           (perms/grant-collection-read-permissions! (perms/all-users-group) visible-collection)
           (let [response         (mt/user-http-request :rasta :get 200 "collection/root/items"
                                                        :q "UXW4950 ROOT revenue"
-                                                       :include_available_models true)
+                                                       :include-available-models true)
                 available-models (set (:available_models response))]
             (is (= [] (:data response)))
             (is (= #{"collection"} available-models))))))))
@@ -2182,7 +2182,7 @@
                all-types (map :type (:data response))]
            (is (not-any? #{collection/library-collection-type} all-types))))
        (testing "Can choose to include include library items"
-         (let [response (mt/user-http-request :rasta :get 200 "collection/root/items" :include_library true)
+         (let [response (mt/user-http-request :rasta :get 200 "collection/root/items" :include-library true)
                all-types (map :type (:data response))]
            (is (some #{collection/library-collection-type} all-types))))))))
 
@@ -2911,7 +2911,7 @@
                                             :is_remote_synced true}
                        :model/Collection _ {:name "Second Normal Collection"}]
           (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
-                                               :collection_type "remote-synced")
+                                               :collection-type "remote-synced")
                 collections (->> (:data response)
                                  (filter #(= (:model %) "collection")))
                 collection-names (set (map :name collections))]
