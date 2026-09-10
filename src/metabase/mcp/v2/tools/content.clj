@@ -1,9 +1,13 @@
 (ns metabase.mcp.v2.tools.content
   "The v2 MCP `get_content` tool: a batched, typed fetch over every content type an agent can
-   hold a `{type, id}` pair for. Each item is scope-checked, resolved (numeric id or entity_id),
-   read-checked, and projected through the shared concise/detailed machinery with per-type
-   `include` sections. Items are fault-isolated: one bad id, denied read, or teaching error
-   becomes that item's `{type, id, error}` object and never sinks the rest of the batch.
+   hold a `{type, id}` pair for. Each item is resolved (numeric id or entity_id), read-checked, and
+   projected through the shared concise/detailed machinery with per-type `include` sections. Items
+   are fault-isolated: one bad id, denied read, or teaching error becomes that item's
+   `{type, id, error}` object and never sinks the rest of the batch.
+
+   The scope gate is the tool's alone — one `agent:content:read` check at the registry boundary,
+   covering every type. The per-entity read scopes these types once needed folded into it in
+   GHY-4225, so there is deliberately no per-type scope here.
 
    Per-type notes:
    - question/model/metric ride one Card fetch; `definition` returns the stored `dataset_query`
@@ -21,11 +25,13 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
+   [metabase.metabot.metadata-perms :as metadata-perms]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
@@ -93,19 +99,9 @@
   [row]
   (some-> (::query row) lib/prepare-for-serialization))
 
-;; The question/model projection (`:question`) is the one canonical card projection, registered
-;; in [[metabase.mcp.v2.projections]] because browse_collection shares it. metric/measure/etc.
-;; below are get_content's own and registered here.
-(def ^:private metric-concise-keys
-  [:id :name :type :description :collection_id :database_id :table_id :source_card_id
-   :archived :query_summary])
-
-(def ^:private metric-detailed-keys
-  (into metric-concise-keys
-        [:entity_id :display :creator_id :created_at :updated_at]))
-
-(projections/register-key-projection! :metric metric-concise-keys
-                                      :detailed-keys metric-detailed-keys)
+;; The projections another tool also builds on — `:question` (browse_collection), `:metric`
+;; (metric_write), `:document` (document_write) — are registered in [[metabase.mcp.v2.projections]],
+;; the namespace every consumer requires. The ones registered below are get_content's alone.
 
 ;;; ------------------------------------------------ measure / segment ---------------------------------------------
 
@@ -129,7 +125,7 @@
    or nil when the stored definition can't be serialized."
   [kind row]
   (try
-    (let [table          (t2/select-one :model/Table :id (:table_id row))
+    (let [table          (mcp.db/table-by-id (:table_id row))
           mp             (lib-be/application-database-metadata-provider (:db_id table))
           metadata       (case kind
                            :measure (lib.metadata/measure mp (:id row))
@@ -152,11 +148,17 @@
                                 :metric  [:metadata/metric :model/Card]
                                 :measure [:metadata/measure :model/Measure])]
     (when-let [computed (metrics/compute-dimensions metadata-type (:id row))]
-      (let [fresh (-> (t2/select-one model :id (:id row))
+      (let [fresh (-> (mcp.db/select-one-by-id model (:id row))
                       (merge computed)
-                      metrics/filter-dimensions-for-user)]
-        (u/remove-nils {:dimensions         (vec (:dimensions fresh))
-                        :dimension_mappings (not-empty (vec (:dimension_mappings fresh)))})))))
+                      metrics/filter-dimensions-for-user
+                      ;; Both endpoints drop orphaned dimensions unless asked for them; an agent
+                      ;; that grouped by one would be querying a column that no longer exists.
+                      metrics/without-orphaned-dimensions)]
+        ;; Encoded the way the endpoints encode them — snake_case keys and qualified type strings.
+        ;; The internal shape is kebab-case and carries `:lib/source`, which no other field in this
+        ;; tool's output uses and which the REST wire shape has never exposed.
+        {:dimensions         (metrics/->api-dimensions (:dimensions fresh))
+         :dimension_mappings (metrics/->api-dimension-mappings (:dimension_mappings fresh))}))))
 
 ;;; -------------------------------------------------- collection --------------------------------------------------
 
@@ -182,37 +184,44 @@
 
 ;;; --------------------------------------------------- document ---------------------------------------------------
 
-(def ^:private document-concise-keys
-  [:id :name :collection_id :archived :content_markdown])
-
-(def ^:private document-detailed-keys
-  (into document-concise-keys
-        [:entity_id :creator_id :created_at :updated_at]))
-
-(projections/register-key-projection! :document document-concise-keys
-                                      :detailed-keys document-detailed-keys)
+;; The `:document` projection is registered in [[metabase.mcp.v2.projections]] because
+;; `document_write` echoes through it too.
 
 (defn- fetch-document
   [id-or-eid]
   (let [doc (v2.resolve/resolve-and-read-with :model/Document id-or-eid
-                                              (fn [id] (documents/get-document id)))
+                                              ;; `:log-view? false` — this tool is readOnlyHint, and
+                                              ;; an agent's read has no business in a user's recents.
+                                              (fn [id] (documents/get-document id :log-view? false)))
         ;; The Metabase-flavored Markdown body — the same text document_write's old_str edits
         ;; match against — plus the node-id -> character-offset spans the comments include
         ;; anchors threads with. A body the serializer can't render (e.g. an unrecognized node
-        ;; type) degrades to the flattened plain prose, with no spans, rather than failing the
-        ;; read.
+        ;; type) omits the key rather than failing the read.
+        ;;
+        ;; `content_markdown` is omitted rather than filled with a degraded rendering, matching
+        ;; `document_write`'s body-projection and for the same reason: `content_markdown` is the
+        ;; key document_write takes as a whole-body rewrite, and the flattened prose
+        ;; `prose-mirror/ast->text` produces drops headings, card embeds and layout containers.
+        ;; Writing it back replaces the stored AST with a single paragraph and orphans every
+        ;; anchored comment thread — and both tool descriptions route a read-modify-write through
+        ;; exactly this key, so a degraded value here is a destructive round trip the agent has no
+        ;; way to see. `Throwable`, again matching body-projection: an unrenderable body is exactly
+        ;; the input that finds a way to fail that isn't an `Exception`.
         ser (try
               (documents/serialize (:document doc))
-              (catch Exception e
-                (log/warn e "Falling back to flattened text for document" (:id doc))
+              (catch Throwable e
+                (log/warn e "document body has no Markdown rendering; omitting content_markdown"
+                          (:id doc))
                 nil))]
     (-> doc
-        (select-keys document-detailed-keys)
-        (assoc :content_markdown (if ser
-                                   (:markdown ser)
-                                   (prose-mirror/ast->text (:document doc)))
-               ::document doc
-               ::spans (:spans ser)))))
+        (assoc ::document doc
+               ::spans (:spans ser))
+        (merge (if ser
+                 {:content_markdown (:markdown ser)}
+                 {:content_markdown_unavailable
+                  (str "This document's body contains a block that has no Markdown form, so "
+                       "content_markdown is omitted and edits cannot be applied to it. Writing "
+                       "this document back through content_markdown would discard that block.")})))))
 
 (defn- document-layout
   "Top-level node outline of the document's ProseMirror AST: one entry per block, with the
@@ -315,7 +324,7 @@
   (when-not (int? id-or-eid)
     (common/throw-teaching-error
      (format "%ss take a numeric id — they have no entity_id." (str/capitalize tool-type))))
-  (let [notification (t2/select-one :model/Notification :id id-or-eid :payload_type payload-type)]
+  (let [notification (mcp.db/notification-by-payload-type id-or-eid payload-type)]
     (when-not (and notification (mi/can-read? notification))
       (common/throw-not-found (keyword tool-type) id-or-eid))
     (projections/notification-row
@@ -341,15 +350,13 @@
    an unrelated notification that happens to share the numeric id."
   [id-or-eid]
   (let [pulse-id (subscription-pulse-id id-or-eid)]
-    (if (and pulse-id (t2/exists? :model/Pulse :id pulse-id :alert_condition nil))
+    (if (and pulse-id (mcp.db/subscription-pulse-exists? pulse-id))
       (let [pulse-row (pulse/retrieve-pulse pulse-id)]
         (if (and pulse-row (mi/can-read? pulse-row))
           (projections/subscription-row (redaction/redact-pulse pulse-row))
           (common/throw-not-found :subscription id-or-eid)))
       (or (when (int? id-or-eid)
-            (let [notification (t2/select-one :model/Notification
-                                              :id id-or-eid
-                                              :payload_type :notification/dashboard)]
+            (let [notification (mcp.db/notification-by-payload-type id-or-eid :notification/dashboard)]
               (when (and notification (mi/can-read? notification))
                 (projections/notification-row
                  (redaction/hydrate-and-redact-notification notification)))))
@@ -420,14 +427,36 @@
       {:definition definition})))
 
 (def ^:private card-definition-include (definition-include card-definition))
-(defn- fields-include [row] {:result_metadata (vec (:result_metadata row))})
+
+(defn- strip-restricted-fingerprints
+  "Drop `:fingerprint` from any column belonging to a table whose rows the current user only sees
+   part of. A fingerprint is computed over the whole table: `:min` and `:max` are individual cell
+   values, and `:distinct-count` counts every row — so handing one to a sandboxed caller reports
+   data the sandbox exists to hide, and a caller with no data permission at all gets the same
+   numbers. Nothing else in the column metadata is data-derived — names, types, semantic types and
+   field ids are schema, not rows — so only this key moves.
+
+   `row-restricted-table-ids` fails closed, so a table whose restriction can't be resolved is
+   treated as restricted and loses its fingerprints."
+  [columns]
+  (let [restricted (metadata-perms/row-restricted-table-ids
+                    (into #{} (keep :table_id) columns))]
+    (cond->> columns
+      (seq restricted) (mapv (fn [col]
+                               (cond-> col
+                                 (contains? restricted (:table_id col)) (dissoc :fingerprint)))))))
+
+(defn- fields-include [row]
+  {:result_metadata (vec (strip-restricted-fingerprints (:result_metadata row)))})
 
 (def ^:private type->spec
   "Per-type dispatch, co-located. Each entry carries the fetch fn (`:fetch`, id-or-eid ->
-   permission-checked row), the extra runtime `:scope` the type needs on top of the tool's base
-   `agent:resource:read`, and the `:includes` sections it supports (section name -> a
+   permission-checked row) and the `:includes` sections it supports (section name -> a
    `(row -> fragment)` builder). `:proj` (the projection key) defaults to `(keyword type)` and is
-   only spelled out when it differs — a model reads with the question projection."
+   only spelled out when it differs — a model reads with the question projection.
+
+   No entry carries a scope: every type here is gated by the tool's single `agent:content:read`
+   check (see the ns docstring)."
   {"question"     {:fetch #(fetch-card :question %)
                    :includes {"definition" card-definition-include "fields" fields-include}}
    "model"        {:proj :question   :fetch #(fetch-card :model %)
@@ -441,7 +470,7 @@
    "segment"      {:fetch #(fetch-measure-or-segment :model/Segment %)
                    :includes {"definition" (definition-include #(measure-or-segment-definition :segment %))}}
    "dashboard"    {:fetch fetch-dashboard
-                   :includes {"parameters" (fn [row] {:parameters (vec (get-in row [::dashboard :parameters]))})
+                   :includes {"parameters" (fn [row] {:parameters (vec (:parameters row))})
                               "layout"     (fn [row] {:layout (dashboard-layout row)})}}
    "document"     {:fetch fetch-document
                    :includes {"layout"   (fn [row] {:layout (document-layout row)})
@@ -541,7 +570,7 @@
              "concise" "detailed"]]]])
 
 (registry/deftool get-content
-  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming; alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
+  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
   {:name         "get_content"
    :scope        metabot.scope/agent-content-read
    :annotations  {:readOnlyHint true :idempotentHint true}

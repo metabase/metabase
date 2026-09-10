@@ -9,8 +9,6 @@ summary: Metabot is Metabase's AI assistant that helps you analyze data, create 
 
 Metabot helps you analyze your data by creating charts from natural language, generating SQL queries, fixing query errors, and analyzing existing visualizations.
 
-> Join us for AI Analytics Week: three live sessions on trusting AI answers, rolling out AI safely, and building on top of AI. [Details and registration →](https://metaba.se/ai-analytics-week)
-
 ## Set up Metabot
 
 To set up Metabot, see [Metabot settings](./settings.md).

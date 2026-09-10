@@ -21,26 +21,30 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import type {
+  MetabotAgentDataPartMessage,
   MetabotChatMessage,
+  MetabotDataPart,
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
 import { Box, Flex, Stack, Text } from "metabase/ui";
-import type {
-  AddResearchGroupsResponse,
-  RemoveFromResearchPlanResponse,
-} from "metabase-types/api";
+import type { RemoveFromResearchPlanResponse } from "metabase-types/api";
 
 import S from "./NewExplorationChat.module.css";
 
 export const EXPLORATIONS_AGENT_ID = "explorations";
 
-const ADD_RESEARCH_GROUPS_TOOL = "add_research_groups";
 const REMOVE_FROM_RESEARCH_PLAN_TOOL = "remove_from_research_plan";
 const SET_RESEARCH_NAME_TOOL = "set_research_name";
 const SELECT_RESEARCH_TIMELINES_TOOL = "select_research_timelines";
 
 type MetabotToolCallMessageWithResult = MetabotDebugToolCallMessage & {
   result: string;
+};
+
+// `add_research_groups` delivers its picker hydration on a data part rather than in its tool
+// result, because that result is also the agent's LLM context.
+type ResearchPlanUpdateMessage = MetabotAgentDataPartMessage & {
+  part: Extract<MetabotDataPart, { type: "data-research_plan_update" }>;
 };
 
 export interface NewExplorationChatProps {
@@ -103,18 +107,16 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   const [sendToast] = useToast();
 
-  const handleAddResearchGroupsToolCallMessages = useCallback(
-    (messages: MetabotToolCallMessageWithResult[]) => {
+  const handleResearchPlanUpdateMessages = useCallback(
+    (messages: ResearchPlanUpdateMessage[]) => {
       const trackMetricsEdited = once(() =>
         trackExplorationPlanEdited("agent", "metrics"),
       );
 
       try {
         for (const message of messages) {
-          // tool result shape verified by the backend
-          const { metrics, dimension_groups, groups } = JSON.parse(
-            message.result,
-          ) as AddResearchGroupsResponse;
+          // data part shape verified by the backend
+          const { metrics, dimension_groups, groups } = message.part.data;
 
           const metricsById = new Map(metrics.map((m) => [m.id, m] as const));
           const dimensionsById = indexDimensionsById(dimension_groups);
@@ -249,8 +251,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       processedMessageIdsRef.current.add(message.id);
     }
 
-    handleAddResearchGroupsToolCallMessages(
-      unprocessedMessages.filter(isAddResearchGroupsToolCallMessage),
+    handleResearchPlanUpdateMessages(
+      unprocessedMessages.filter(isResearchPlanUpdateMessage),
     );
     handleRemoveFromResearchPlanToolCallMessages(
       unprocessedMessages.filter(isRemoveFromResearchPlanToolCallMessage),
@@ -263,7 +265,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     );
   }, [
     isDoingScience,
-    handleAddResearchGroupsToolCallMessages,
+    handleResearchPlanUpdateMessages,
     handleRemoveFromResearchPlanToolCallMessages,
     handleSetExplorationNameToolCallMessages,
     handleSelectExplorationTimelinesToolCallMessages,
@@ -274,14 +276,14 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   return (
     <>
-      <Stack flex={1} mih={0} gap="md" bg="background-secondary">
+      <Stack flex={1} mih={0} gap="lg" bg="background-secondary">
         {hasMessages ? (
           <Stack
             flex={1}
             mih={0}
             gap={0}
-            px="lg"
-            pt="lg"
+            px="xl"
+            pt="xl"
             className={S.messagesContainer}
           >
             <Messages
@@ -306,8 +308,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         <Flex
           bg="background-primary"
           bd="1px solid border"
-          bdrs="md"
-          mx="lg"
+          bdrs="sm"
+          mx="xl"
           pr="0.75rem"
           flex="none"
           className={S.inputContainer}
@@ -331,7 +333,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
             />
           )}
         </Flex>
-        <Flex mb="lg" mx="lg" align="center" justify="center">
+        <Flex mb="xl" mx="xl" align="center" justify="center">
           <Text
             c="text-secondary"
             size="sm"
@@ -348,15 +350,13 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
   );
 }
 
-function isAddResearchGroupsToolCallMessage(
+function isResearchPlanUpdateMessage(
   message: MetabotChatMessage,
-): message is MetabotToolCallMessageWithResult {
+): message is ResearchPlanUpdateMessage {
   return (
     message.role === "agent" &&
-    message.type === "tool_call" &&
-    message.name === ADD_RESEARCH_GROUPS_TOOL &&
-    !message.is_error &&
-    !!message.result
+    message.type === "data_part" &&
+    message.part.type === "data-research_plan_update"
   );
 }
 

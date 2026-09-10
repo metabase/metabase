@@ -6,12 +6,12 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.search.config :as search.config]
+   [metabase.search.db :as search.db]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2])
+   [metabase.util.i18n :refer [tru]])
   (:import
    (java.time LocalDate)))
 
@@ -132,9 +132,7 @@
     "only-mine"
     [:or
      [:= :collection.personal_owner_id current-user-id]
-     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection
-                                                                    :personal_owner_id [:= current-user-id]
-                                                                    :location          "/"))]]
+     [:like :collection.location (format "/%d/%%" (search.db/personal-collection-root-id current-user-id))]]
 
     "exclude-others"
     (let [with-filter #(personal-collections-where-clause

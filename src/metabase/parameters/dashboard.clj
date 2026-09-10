@@ -3,7 +3,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.params :as params]
@@ -19,21 +18,10 @@
   "How many results to return when chain filtering"
   1000)
 
-(defn- param-type->op [type]
-  (if (get-in lib.schema.parameter/types [type :operator])
-    (keyword (name type))
-    :=))
-
-(defn param-type->default-options
-  "Default chain-filter constraint options based on parameter type."
-  [type]
-  (when (#{:string/contains :string/does-not-contain :string/starts-with :string/ends-with} type)
-    {:case-sensitive false}))
-
 (mu/defn- param->fields
   [param :- ::parameters.schema/parameter & {:keys [op-override]}]
-  (let [op      (or op-override (param-type->op (:type param)))
-        options (or (:options param) (param-type->default-options (:type param)))]
+  (let [op      (or op-override (params/param-type->op (:type param)))
+        options (or (:options param) (params/param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]
       {:field-id field-id
        :op       op

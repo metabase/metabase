@@ -105,7 +105,7 @@ export function RelativeDatePicker({
               onSubmit={handleSubmit}
             />
           ) : (
-            <Box p="md">
+            <Box p="lg">
               <CurrentDatePicker
                 value={value}
                 availableUnits={availableUnits}

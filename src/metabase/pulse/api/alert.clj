@@ -9,9 +9,9 @@
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.notification.api :as notification.api]
+   [metabase.pulse.db :as pulse.db]
    [metabase.util.cron :as u.cron]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,7 +23,7 @@
   [notification]
   (let [subscription      (-> notification :subscriptions first)
         notification-card (-> notification :payload)
-        card              (->> notification :payload :card_id (t2/select-one :model/Card))]
+        card              (->> notification :payload :card_id pulse.db/card)]
     (merge
      (select-keys notification [:id :creator_id :creator :created_at :updated_at])
      {:name                nil

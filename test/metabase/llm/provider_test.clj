@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [medley.core :as m]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -184,6 +186,86 @@
     (is (nil? (llm.provider/validate-config! "google" {:oauth-access-token "ya29.token"
                                                        :project-id         "my-project"})))))
 
+(deftest validate-config!-key-pair-test
+  (testing "a bedrock key is taken only together with the other, so half a pair never reaches the signer"
+    (is (nil? (llm.provider/validate-config! "bedrock" {})))
+    (is (nil? (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                        :secret-access-key "test-secret"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"bedrock takes Access key ID only together with Secret access key"
+         (llm.provider/validate-config! "bedrock" {:access-key-id "AKIAIOSFODNN7EXAMPLE"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"bedrock takes Access key ID only together with Secret access key"
+         (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                   :secret-access-key "  "})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"bedrock takes Secret access key only together with Access key ID"
+         (llm.provider/validate-config! "bedrock" {:secret-access-key "test-secret"})))))
+
+(deftest config-complete?-requires-test
+  (testing "a session token rides along with the bedrock pair, never alone"
+    (is (false? (llm.provider/config-complete? "bedrock" {:session-token "FwoGZXIvYXdzEXAMPLE"})))
+    (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                         :secret-access-key "test-secret"
+                                                         :session-token     "FwoGZXIvYXdzEXAMPLE"})))))
+
+(deftest validate-config!-requires-test
+  (testing "a dependent field is taken only together with the fields it requires"
+    (is (nil? (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                        :secret-access-key "test-secret"
+                                                        :session-token     "FwoGZXIvYXdzEXAMPLE"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"bedrock takes Session token only together with Access key ID \+ Secret access key"
+         (llm.provider/validate-config! "bedrock" {:session-token "FwoGZXIvYXdzEXAMPLE"})))))
+
+(deftest hosted-bedrock-requires-key-pair-test
+  (testing "on a hosted deployment keyless bedrock is neither valid nor complete, since the default chain would sign as the operator"
+    (mt/with-premium-features #{:hosting}
+      (is (false? (llm.provider/config-complete? "bedrock" {})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
+           (llm.provider/validate-config! "bedrock" {})))
+      (testing "the pair is a mandatory set, so the form marks each of its fields required"
+        (is (= {:access-key-id true :secret-access-key true :region false :session-token false}
+               (->> (llm.provider/provider-type "bedrock")
+                    :fields
+                    (into {} (map (juxt :key (comp boolean :required?))))))))
+      (testing "an explicit customer pair stays valid"
+        (is (nil? (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                            :secret-access-key "test-secret"})))
+        (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                             :secret-access-key "test-secret"})))))))
+
+(deftest indeterminate-hosting-bedrock-requires-key-pair-test
+  (testing "a token status the token service could not confirm counts as hosted, since the chain would sign as the
+            operator on a Cloud instance that cannot reach it"
+    (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly nil)]
+      (is (true? (llm.provider/hosted?)))
+      (is (false? (llm.provider/config-complete? "bedrock" {})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
+           (llm.provider/validate-config! "bedrock" {})))))
+  (testing "a token the service did answer for leaves a self-hosted deployment keyless"
+    (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly false)]
+      (is (false? (llm.provider/hosted?)))
+      (is (nil? (llm.provider/validate-config! "bedrock" {}))))))
+
+(deftest provider-types-carry-hosted-policy-test
+  (testing "enumeration applies hosted policy too, so the connection form sees the same requirements as validation"
+    (mt/with-premium-features #{:hosting}
+      (let [bedrock   (m/find-first #(= "bedrock" (:type %)) (llm.provider/provider-types))
+            key-field (m/find-first #(= :access-key-id (:key %)) (:fields bedrock))]
+        (is (true? (:required? key-field)))
+        (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+               (str (:help key-field))))))
+    (testing "and leaves the self-hosted entry alone"
+      (let [key-field (->> (llm.provider/provider-types)
+                           (m/find-first #(= "bedrock" (:type %)))
+                           :fields
+                           (m/find-first #(= :access-key-id (:key %))))]
+        (is (nil? (:required? key-field)))
+        (is (str/starts-with? (str (:help key-field)) "Leave the keys blank"))))))
+
 (deftest validate-config!-field-validator-test
   (testing "a field's own validator runs on a non-blank value"
     (is (thrown-with-msg?
@@ -268,13 +350,16 @@
     (is (false? (llm.provider/config-complete? "vllm" {:api-key "local-dev-key"})))
     (is (false? (llm.provider/config-complete? "vllm" {:base-url "  "})))
     (is (false? (llm.provider/config-complete? "vllm" nil))))
-  (testing "bedrock needs both AWS keys, and neither the region nor the session token"
+  (testing "bedrock takes both AWS keys or none: a keyless connection signs with the AWS default credentials chain"
     (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                          :secret-access-key "test-secret"})))
-    (is (false? (llm.provider/config-complete? "bedrock" {:access-key-id "AKIAIOSFODNN7EXAMPLE"})))
-    (is (false? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
-                                                          :secret-access-key ""})))
-    (is (false? (llm.provider/config-complete? "bedrock" {:secret-access-key "test-secret"}))))
+    (is (true? (llm.provider/config-complete? "bedrock" {})))
+    (is (true? (llm.provider/config-complete? "bedrock" nil)))
+    (testing "but half a pair authenticates nothing and is not complete"
+      (is (false? (llm.provider/config-complete? "bedrock" {:access-key-id "AKIAIOSFODNN7EXAMPLE"})))
+      (is (false? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                            :secret-access-key ""})))
+      (is (false? (llm.provider/config-complete? "bedrock" {:secret-access-key "test-secret"})))))
   (testing "the managed type carries no credentials and is complete exactly when the LLM proxy is configured"
     (mt/with-premium-features #{:metabase-ai-managed}
       (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example.com"]
@@ -347,6 +432,23 @@
       (testing "and a key on its own does not: it authenticates nothing without a server to send it to"
         (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "local-dev-key"]
           (is (= [] (llm.provider/connections)))))))
+  (testing "Bedrock's region is a credential too: a keyless connection signs with the AWS default chain, so it alone synthesizes one"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-bedrock-region "eu-central-1"]
+        (is (= [{:key        "bedrock"
+                 :type       "bedrock"
+                 :name       "Amazon Bedrock"
+                 :source     :env
+                 :env-vars   #{"MB_LLM_BEDROCK_REGION"}
+                 :env-fields #{:region}
+                 :config     {:region "eu-central-1"}}]
+               (llm.provider/connections)))
+        (is (true? (llm.provider/connection-usable? "bedrock"))))
+      (testing "and a lone key synthesizes a connection that is not usable: half a pair authenticates nothing"
+        (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"]
+          (is (=? [{:key "bedrock" :config {:access-key-id "AKIAIOSFODNN7EXAMPLE"}}]
+                  (llm.provider/connections)))
+          (is (false? (llm.provider/connection-usable? "bedrock")))))))
   (testing "a metabase/ reference pinned by the environment synthesizes the managed connection it names"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
