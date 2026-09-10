@@ -180,10 +180,15 @@
 
    Superseding is sound, not merely tidy: every row the new predicate admits lies strictly past a
    boundary row that itself satisfied the old one, so the new predicate implies the old and
-   dropping it cannot widen the result. It is an optimization all the same — the marker rides in a
-   clause's options map, which no schema declares, so should Lib ever start stripping undeclared
-   option keys the predicates would simply accumulate again as they did before, with the same
-   results and a larger query."
+   dropping it cannot widen the result.
+
+   The marker rides in a clause's options map, and `metabase.lib.schema.common/::options` is
+   `:closed true` — so it has to be DECLARED there, alongside the keys Mongo, SQL Server and the
+   add-alias-info/add-remaps middleware stamp. An undeclared key is rejected, not tolerated:
+   `lib/filter` refuses the stamped clause outright, and because [[next-page-cursor!]] treats any
+   failure to build a cursor as \"this query cannot be paged\", the rejection surfaces as cursors
+   silently never being minted rather than as an error. `internal-keys-fixture-covers-the-schemas-test`
+   is what keeps the declaration and its serialization fixture in step."
   ::keyset)
 
 (defn- minted-keyset?
