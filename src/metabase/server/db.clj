@@ -37,7 +37,6 @@
      (first
       (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
-                            [:session.id :session-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]

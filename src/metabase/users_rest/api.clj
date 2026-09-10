@@ -14,6 +14,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.session.core :as session]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
@@ -632,19 +633,24 @@
                                                                                     :password old_password})))
                   "old_password"
                   (tru "Invalid password")))
-    ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
-    (auth-identity/set-password! id password)
-    ;; after a successful password update go ahead and offer the client a new session that they can use
-    (when (= id api/*current-user-id*)
-      ;; Propagate MFA info from current session so that users aren't auto-logged out
-      (let [mfa-auth-identity-id            (when-let [{:keys [session-id]} request]
-                                              (when-let [session (t2/select-one [:model/Session :mfa_auth_identity_id]
-                                                                                :id session-id)]
-                                                (:mfa_auth_identity_id session)))
-            {session-key :key, :as session} (auth-identity/create-session-with-auth-tracking! user (request/device-info request) :provider/password mfa-auth-identity-id)
-            response                        {:success    true
-                                             :session_id (str session-key)}]
-        (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
+    ;; We want to propagate MFA info from the old session so that users aren't auto-logged out.
+    ;; This needs to be done before we delete the old session.
+    (let [mfa-auth-identity-id (when-let [session-key (:metabase-session-key request)]
+                                 (when-let [session (t2/select-one [:model/Session :mfa_auth_identity_id]
+                                                                   :key_hashed (session/hash-session-key session-key))]
+                                   (:mfa_auth_identity_id session)))]
+      ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
+      (auth-identity/set-password! id password)
+      ;; after a successful password update go ahead and offer the client a new session that they can use
+      (when (= id api/*current-user-id*)
+        (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking!
+                                               user
+                                               (request/device-info request)
+                                               :provider/password
+                                               mfa-auth-identity-id)
+              response                        {:success    true
+                                               :session_id (str session-key)}]
+          (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                    Password Reset URL -- POST /api/user/:id/password-reset-url                                 |
