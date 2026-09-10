@@ -2316,60 +2316,6 @@
           "type" : "boolean"
         } ]
       },
-      "metabase-enterprise.security-center.schema.advisory-id" : {
-        "type" : "string",
-        "minLength" : 1
-      },
-      "metabase-enterprise.security-center.schema.affected-versions" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.version-range"
-        }
-      },
-      "metabase-enterprise.security-center.schema.download-jar-url" : {
-        "description" : "A downloadable JAR for a given fixed version.",
-        "type" : "object",
-        "properties" : {
-          "url" : {
-            "type" : "string"
-          },
-          "version" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
-          }
-        },
-        "required" : [ "version", "url" ]
-      },
-      "metabase-enterprise.security-center.schema.download-jar-urls" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.download-jar-url"
-        }
-      },
-      "metabase-enterprise.security-center.schema.match-status" : {
-        "type" : "string",
-        "enum" : [ "unknown", "active", "resolved", "not_affected", "error" ]
-      },
-      "metabase-enterprise.security-center.schema.semver" : {
-        "type" : "string",
-        "pattern" : "^\\d+(?:\\.\\d+)*$"
-      },
-      "metabase-enterprise.security-center.schema.severity" : {
-        "type" : "string",
-        "enum" : [ "critical", "high", "medium", "low" ]
-      },
-      "metabase-enterprise.security-center.schema.version-range" : {
-        "description" : "A single affected version range with inclusive min and exclusive fixed.",
-        "type" : "object",
-        "properties" : {
-          "fixed" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
-          },
-          "min" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
-          }
-        },
-        "required" : [ "min", "fixed" ]
-      },
       "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
         "description" : "Schema for POST /api/ee/support-access-grants request body.",
         "type" : "object",
@@ -5715,6 +5661,60 @@
           "required" : [ "channel_type" ]
         } ]
       },
+      "metabase.collections-rest.api.Collection" : {
+        "description" : "A Collection as the REST API returns it. Deliberately open: which hydrated keys come back varies by endpoint and\n  by what the Collection is. `POST /` returns the freshly inserted row with no permission flags; `/root` describes a\n  virtual Collection with a string id and none of the database-backed columns; `/tree` nests `:children`. Only `:id`\n  and `:name` are present in every case, so only those are required here.",
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.collections-rest.api.CollectionId"
+          },
+          "name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "anyOf" : [ { }, { } ]
+            } ]
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
+      "metabase.collections-rest.api.CollectionId" : {
+        "description" : "A Collection's ID: an integer for a real row, or the string \"root\" for the virtual Root Collection.",
+        "anyOf" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "type" : "integer",
+          "minimum" : 1
+        }, {
+          "type" : "string"
+        } ]
+      },
+      "metabase.collections-rest.api.CollectionTreeNode" : {
+        "description" : "A Collection in the `/tree` response. `:children` are nested tree nodes, except under `?shallow=true`, where the\n  endpoint returns only the requested level and `:children` degrades to a boolean saying whether any exist.",
+        "type" : "object",
+        "properties" : {
+          "children" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.collections-rest.api.CollectionTreeNode"
+              }
+            } ]
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.collections-rest.api.CollectionId"
+          },
+          "name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "anyOf" : [ { }, { } ]
+            } ]
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
       "metabase.collections-rest.api.DashboardQuestionCandidate" : {
         "type" : "object",
         "properties" : {
@@ -5769,6 +5769,72 @@
           }
         },
         "required" : [ "data", "total" ]
+      },
+      "metabase.collections-rest.api.ItemsMetadata" : {
+        "type" : "object",
+        "properties" : {
+          "available_models" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "total_items" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "available_models", "total_items" ]
+      },
+      "metabase.collections-rest.api.ItemsResponse" : {
+        "description" : "A page of a Collection's items. `:available_models` is present only when the request asked for it, and\n  `:limit`/`:offset` are dropped entirely in the `snippets` namespace, which is not paginated.",
+        "type" : "object",
+        "properties" : {
+          "available_models" : {
+            "type" : "array",
+            "items" : { }
+          },
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "models" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "total", "data", "models" ]
       },
       "metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse" : {
         "type" : "object",
@@ -6234,16 +6300,6 @@
         "description" : "Valid Document ID",
         "type" : "integer",
         "minimum" : 1
-      },
-      "metabase.documents.schema.document" : {
-        "description" : "Schema for an instance of a `:model/Document`.",
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
-          }
-        },
-        "required" : [ "id" ]
       },
       "metabase.driver.connection.connection-type" : {
         "type" : "string",
@@ -12276,6 +12332,175 @@
           }
         } ]
       },
+      "metabase.metabot.schema.client-message" : {
+        "description" : "One persisted message as the client models it.",
+        "type" : "object",
+        "properties" : {
+          "contextTokens" : {
+            "type" : "integer"
+          },
+          "externalId" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "parts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.metabot.schema.client-message-part"
+            }
+          },
+          "role" : {
+            "type" : "string",
+            "enum" : [ "user", "agent" ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase.metabot.schema.client-message-status"
+          }
+        },
+        "required" : [ "id", "role", "parts", "status" ]
+      },
+      "metabase.metabot.schema.client-message-part" : {
+        "description" : "One part of a persisted message: its a text, tool call, or data blob.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "string"
+            },
+            "message" : {
+              "type" : "string"
+            },
+            "role" : {
+              "type" : "string",
+              "enum" : [ "user", "agent" ]
+            },
+            "type" : {
+              "const" : "text"
+            }
+          },
+          "required" : [ "id", "role", "type", "message" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "args" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "id" : {
+              "type" : "string"
+            },
+            "is_error" : {
+              "type" : "boolean"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "result" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "role" : {
+              "const" : "agent"
+            },
+            "status" : {
+              "type" : "string",
+              "enum" : [ "started", "ended" ]
+            },
+            "type" : {
+              "const" : "tool_call"
+            }
+          },
+          "required" : [ "id", "role", "type", "name", "args", "status" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "string"
+            },
+            "part" : {
+              "type" : "object",
+              "properties" : {
+                "data" : { },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "data" ]
+            },
+            "role" : {
+              "const" : "agent"
+            },
+            "type" : {
+              "const" : "data_part"
+            }
+          },
+          "required" : [ "id", "role", "type", "part" ]
+        } ]
+      },
+      "metabase.metabot.schema.client-message-status" : {
+        "description" : "Where a message's turn got to.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "type" : {
+              "const" : "done"
+            }
+          },
+          "required" : [ "type" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "type" : {
+              "const" : "aborted"
+            }
+          },
+          "required" : [ "type" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "type" : {
+              "const" : "in_progress"
+            }
+          },
+          "required" : [ "type" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "error" : {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "object",
+                "properties" : {
+                  "data" : { },
+                  "message" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "type" : {
+                    "type" : "string"
+                  }
+                }
+              } ]
+            },
+            "type" : {
+              "const" : "errored"
+            }
+          },
+          "required" : [ "type", "error" ]
+        } ]
+      },
       "metabase.metabot.schema.state" : {
         "type" : "object",
         "properties" : {
@@ -14677,7 +14902,7 @@
           "$ref" : "#/components/schemas/metabase.permissions-rest.schema.perms"
         } ]
       },
-      "metabase.queries.schema.card-type" : {
+      "metabase.queries.schema..card.type" : {
         "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
       },
       "metabase.query-processor.schema..query-result.data" : {
@@ -14794,6 +15019,60 @@
           }
         },
         "required" : [ "status", "row_count" ]
+      },
+      "metabase.security-center.schema.advisory-id" : {
+        "type" : "string",
+        "minLength" : 1
+      },
+      "metabase.security-center.schema.affected-versions" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.security-center.schema.version-range"
+        }
+      },
+      "metabase.security-center.schema.download-jar-url" : {
+        "description" : "A downloadable JAR for a given fixed version.",
+        "type" : "object",
+        "properties" : {
+          "url" : {
+            "type" : "string"
+          },
+          "version" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.semver"
+          }
+        },
+        "required" : [ "version", "url" ]
+      },
+      "metabase.security-center.schema.download-jar-urls" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.security-center.schema.download-jar-url"
+        }
+      },
+      "metabase.security-center.schema.match-status" : {
+        "type" : "string",
+        "enum" : [ "unknown", "active", "resolved", "not_affected", "error" ]
+      },
+      "metabase.security-center.schema.semver" : {
+        "type" : "string",
+        "pattern" : "^\\d+(?:\\.\\d+)*$"
+      },
+      "metabase.security-center.schema.severity" : {
+        "type" : "string",
+        "enum" : [ "critical", "high", "medium", "low" ]
+      },
+      "metabase.security-center.schema.version-range" : {
+        "description" : "A single affected version range with inclusive min and exclusive fixed.",
+        "type" : "object",
+        "properties" : {
+          "fixed" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.semver"
+          },
+          "min" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.semver"
+          }
+        },
+        "required" : [ "min", "fixed" ]
       },
       "metabase.segments.schema.definition" : {
         "description" : "value must be a valid MBQL query with a source table and filters.",
@@ -19017,7 +19296,7 @@
                   },
                   "type" : {
                     "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.queries.schema.card-type"
+                      "$ref" : "#/components/schemas/metabase.queries.schema..card.type"
                     }, {
                       "type" : "null"
                     } ]
@@ -19739,7 +20018,7 @@
                   },
                   "type" : {
                     "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.queries.schema.card-type"
+                      "$ref" : "#/components/schemas/metabase.queries.schema..card.type"
                     }, {
                       "type" : "null"
                     } ]
@@ -20941,7 +21220,17 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20959,7 +21248,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21040,7 +21336,38 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "groups" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "object",
+                        "additionalProperties" : {
+                          "allOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "string",
+                            "enum" : [ "write", "read", "none" ]
+                          } ]
+                        }
+                      }
+                    },
+                    "revision" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "groups" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21082,7 +21409,23 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "revision" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21147,7 +21490,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21190,7 +21540,7 @@
       "get" : {
         "operationId" : "get-api-collection-root-items",
         "summary" : "GET /api/collection/root/items",
-        "description" : "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection\n  doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no\n  `collection_id` exist. It does, however, have its own set of Permissions.\n\n  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection\n  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective\n  location of `/`.\n\n  This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the\n  top-level objects you're allowed to access.\n\n  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as\n  `snippets`, you can pass the `?namespace=` parameter.\n\n  By default, library collections are excluded from the results; to include them, pass `?include_library=true`.\n\n  Pass `?q=` to filter items by name or last editor. Pass `?include_available_models=true` to include the models that\n  have at least one visible item in the requested scope.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
+        "description" : "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection\n  doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no\n  `collection_id` exist. It does, however, have its own set of Permissions.\n\n  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection\n  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective\n  location of `/`.\n\n  This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the\n  top-level objects you're allowed to access.\n\n  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as\n  `snippets`, you can pass the `?namespace=` parameter.\n\n  By default, library collections are excluded from the results; to include them, pass `?include-library=true`.\n\n  Pass `?q=` to filter items by name or last editor. Pass `?include-available-models=true` to include the models that\n  have at least one visible item in the requested scope.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
         "parameters" : [ {
           "in" : "query",
           "name" : "models",
@@ -21208,7 +21558,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "collection_type",
+          "name" : "collection-type",
           "required" : false,
           "schema" : {
             "type" : "string",
@@ -21240,7 +21590,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "include_library",
+          "name" : "include-library",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -21252,7 +21602,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "pinned_state",
+          "name" : "pinned-state",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21264,7 +21614,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "sort_column",
+          "name" : "sort-column",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21276,7 +21626,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "sort_direction",
+          "name" : "sort-direction",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21288,7 +21638,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "official_collections_first",
+          "name" : "official-collections-first",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21299,7 +21649,18 @@
           }
         }, {
           "in" : "query",
-          "name" : "show_dashboard_questions",
+          "name" : "show-dashboard-questions",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-exploration-documents",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21321,7 +21682,61 @@
           }
         }, {
           "in" : "query",
-          "name" : "include_available_models",
+          "name" : "include-available-models",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.ItemsResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/collection" ]
+      }
+    },
+    "/api/collection/root/items/metadata" : {
+      "get" : {
+        "operationId" : "get-api-collection-root-items-metadata",
+        "summary" : "GET /api/collection/root/items/metadata",
+        "description" : "Metadata about the Root Collection's items list: the models with at least one visible item plus the item count.\n  Unlike `GET /api/collection/root/items`, the result does not depend on search text; pass that endpoint's other\n  scope params so the metadata describes the list being shown.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "models",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -21333,9 +21748,66 @@
           }
         }, {
           "in" : "query",
-          "name" : "show_exploration_documents",
+          "name" : "namespace",
           "required" : false,
           "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "pinned-state",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "is_not_pinned", "is_pinned", "all" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "collection-type",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "remote-synced" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include-library",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-dashboard-questions",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-exploration-documents",
+          "required" : false,
+          "schema" : {
+            "default" : false,
             "oneOf" : [ {
               "type" : "boolean"
             }, {
@@ -21345,7 +21817,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.ItemsMetadata"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21416,7 +21895,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21523,7 +22009,17 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.collections-rest.api.CollectionTreeNode"
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21558,7 +22054,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21585,7 +22088,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21665,7 +22175,16 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "value must be an integer greater or equal to than zero.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "description" : "value must be an integer greater or equal to than zero.",
+                  "type" : "integer",
+                  "minimum" : 0
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21717,7 +22236,7 @@
       "get" : {
         "operationId" : "get-api-collection-id-items",
         "summary" : "GET /api/collection/{id}/items",
-        "description" : "Fetch a specific Collection's items with the following options:\n\n  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models\n  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.\n  *  `pinned_state` - when `is_pinned`, return pinned objects only.\n                   when `is_not_pinned`, return non pinned objects only.\n                   when `all`, return everything. By default returns everything.\n  *  `q` - filter items by name or last editor. Blank or whitespace-only values are ignored.\n  *  `include_available_models` - include the models that have at least one visible item in the requested scope.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
+        "description" : "Fetch a specific Collection's items with the following options:\n\n  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models\n  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.\n  *  `pinned-state` - when `is_pinned`, return pinned objects only.\n                   when `is_not_pinned`, return non pinned objects only.\n                   when `all`, return everything. By default returns everything.\n  *  `q` - filter items by name or last editor. Blank or whitespace-only values are ignored.\n  *  `include-available-models` - include the models that have at least one visible item in the requested scope.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -21762,7 +22281,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "pinned_state",
+          "name" : "pinned-state",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21774,7 +22293,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "sort_column",
+          "name" : "sort-column",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21786,7 +22305,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "sort_direction",
+          "name" : "sort-direction",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21798,7 +22317,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "official_collections_first",
+          "name" : "official-collections-first",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21809,7 +22328,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "show_dashboard_questions",
+          "name" : "show-dashboard-questions",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -21821,7 +22340,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "show_exploration_documents",
+          "name" : "show-exploration-documents",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -21844,7 +22363,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "include_available_models",
+          "name" : "include-available-models",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -21857,7 +22376,119 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.ItemsResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/collection" ]
+      }
+    },
+    "/api/collection/{id}/items/metadata" : {
+      "get" : {
+        "operationId" : "get-api-collection-id-items-metadata",
+        "summary" : "GET /api/collection/{id}/items/metadata",
+        "description" : "Metadata about the collection's items list: the models with at least one visible item plus the item count. Unlike\n  `GET /api/collection/:id/items`, the result does not depend on search text; pass that endpoint's other scope\n  params -- `models`, `archived`, `pinned-state`, `show-dashboard-questions`, `show-exploration-documents` -- so the\n  metadata describes the list being shown.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "description" : "String must be a valid 21-character NanoID string.",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "models",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "pinned-state",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "is_not_pinned", "is_pinned", "all" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-dashboard-questions",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-exploration-documents",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.ItemsMetadata"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -26916,7 +27547,13 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.documents.schema.document"
+                  "type" : "object",
+                  "properties" : {
+                    "id" : {
+                      "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
+                    }
+                  },
+                  "required" : [ "id" ]
                 }
               }
             }
@@ -29659,6 +30296,83 @@
         "tags" : [ "/api/ee/data-studio/table" ]
       }
     },
+    "/api/ee/data-studio/table/{id}/publishing-info" : {
+      "get" : {
+        "operationId" : "get-api-ee-data-studio-table-id-publishing-info",
+        "summary" : "GET /api/ee/data-studio/table/{id}/publishing-info",
+        "description" : "Return the latest valid publishing information for a published table, or no content when unavailable.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "type" : "object",
+                    "properties" : {
+                      "published_at" : {
+                        "type" : "string",
+                        "format" : "date-time"
+                      },
+                      "published_by" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "common_name" : {
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "required" : [ "id", "common_name" ],
+                          "additionalProperties" : false
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "published_at", "published_by" ],
+                    "additionalProperties" : false
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
     "/api/ee/database-replication/connection/{database-id}" : {
       "post" : {
         "operationId" : "post-api-ee-database-replication-connection-database-id",
@@ -31423,8 +32137,15 @@
                     "messages" : {
                       "type" : "array",
                       "items" : {
+                        "description" : "One persisted message as the client models it.",
                         "type" : "object",
                         "properties" : {
+                          "contextTokens" : {
+                            "type" : "integer"
+                          },
+                          "externalId" : {
+                            "type" : "string"
+                          },
                           "id" : {
                             "type" : "string"
                           },
@@ -31435,15 +32156,21 @@
                               "type" : "null"
                             } ]
                           },
+                          "parts" : {
+                            "type" : "array",
+                            "items" : {
+                              "$ref" : "#/components/schemas/metabase.metabot.schema.client-message-part"
+                            }
+                          },
                           "role" : {
                             "type" : "string",
                             "enum" : [ "user", "agent" ]
                           },
-                          "type" : {
-                            "type" : "string"
+                          "status" : {
+                            "$ref" : "#/components/schemas/metabase.metabot.schema.client-message-status"
                           }
                         },
-                        "required" : [ "id", "parent_message_id", "role", "type" ]
+                        "required" : [ "id", "role", "parts", "status", "parent_message_id" ]
                       }
                     },
                     "ip_address" : {
@@ -34130,7 +34857,7 @@
                         "type" : "object",
                         "properties" : {
                           "download_jar_urls" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.download-jar-urls"
+                            "$ref" : "#/components/schemas/metabase.security-center.schema.download-jar-urls"
                           },
                           "published_at" : {
                             "type" : "string",
@@ -34153,7 +34880,7 @@
                             } ]
                           },
                           "match_status" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                            "$ref" : "#/components/schemas/metabase.security-center.schema.match-status"
                           },
                           "acknowledged_by" : {
                             "oneOf" : [ {
@@ -34183,17 +34910,17 @@
                             "minLength" : 1
                           },
                           "affected_versions" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.affected-versions"
+                            "$ref" : "#/components/schemas/metabase.security-center.schema.affected-versions"
                           },
                           "remediation" : {
                             "type" : "string",
                             "minLength" : 1
                           },
                           "advisory_id" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                            "$ref" : "#/components/schemas/metabase.security-center.schema.advisory-id"
                           },
                           "severity" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.severity"
+                            "$ref" : "#/components/schemas/metabase.security-center.schema.severity"
                           },
                           "description" : {
                             "type" : "string",
@@ -34283,10 +35010,10 @@
                         } ]
                       },
                       "advisory_id" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                        "$ref" : "#/components/schemas/metabase.security-center.schema.advisory-id"
                       },
                       "match_status" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                        "$ref" : "#/components/schemas/metabase.security-center.schema.match-status"
                       }
                     },
                     "required" : [ "advisory_id", "match_status", "acknowledged_by", "acknowledged_at" ]
@@ -34473,10 +35200,10 @@
                       } ]
                     },
                     "advisory_id" : {
-                      "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                      "$ref" : "#/components/schemas/metabase.security-center.schema.advisory-id"
                     },
                     "match_status" : {
-                      "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                      "$ref" : "#/components/schemas/metabase.security-center.schema.match-status"
                     }
                   },
                   "required" : [ "advisory_id", "match_status", "acknowledged_by", "acknowledged_at" ]
@@ -34973,7 +35700,7 @@
                       "minimum" : 1
                     }
                   },
-                  "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                  "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                   "additionalProperties" : false
                 }
               }
@@ -35086,7 +35813,7 @@
                             "minimum" : 1
                           }
                         },
-                        "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                        "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                         "additionalProperties" : false
                       }
                     }
@@ -35177,7 +35904,7 @@
                       "minimum" : 1
                     }
                   },
-                  "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                  "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                   "additionalProperties" : false
                 }
               }
@@ -35290,7 +36017,7 @@
                       "minimum" : 1
                     }
                   },
-                  "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                  "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                   "additionalProperties" : false
                 }
               }
@@ -39894,6 +40621,15 @@
                           "required" : [ "id", "display_name" ]
                         }
                       },
+                      "requires" : {
+                        "type" : "object",
+                        "additionalProperties" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }
+                      },
                       "available" : {
                         "type" : "boolean"
                       },
@@ -39907,7 +40643,7 @@
                         }
                       }
                     },
-                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "fields" ]
+                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "requires", "fields" ]
                   }
                 }
               }
@@ -41027,29 +41763,45 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "user_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "context_window_tokens" : {
+                      "type" : "integer"
+                    },
+                    "title" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     },
-                    "created_at" : {
-                      "type" : "string",
-                      "format" : "date-time"
-                    },
-                    "forked_from_conversation_id" : {
+                    "state" : {
                       "oneOf" : [ {
-                        "description" : "value must be a valid UUID.",
-                        "type" : "string",
-                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
                       }, {
                         "type" : "null"
                       } ]
                     },
+                    "created_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    },
                     "messages" : {
                       "type" : "array",
                       "items" : {
-                        "type" : "object",
-                        "properties" : { }
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.client-message"
                       }
                     },
                     "saved_entities" : {
@@ -41073,25 +41825,11 @@
                         "required" : [ "card_id", "chart_id" ]
                       }
                     },
-                    "state" : {
+                    "forked_from_conversation_id" : {
                       "oneOf" : [ {
-                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "title" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "user_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                       }, {
                         "type" : "null"
                       } ]
@@ -41135,29 +41873,45 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "user_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "context_window_tokens" : {
+                      "type" : "integer"
+                    },
+                    "title" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     },
-                    "created_at" : {
-                      "type" : "string",
-                      "format" : "date-time"
-                    },
-                    "forked_from_conversation_id" : {
+                    "state" : {
                       "oneOf" : [ {
-                        "description" : "value must be a valid UUID.",
-                        "type" : "string",
-                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
                       }, {
                         "type" : "null"
                       } ]
                     },
+                    "created_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    },
                     "messages" : {
                       "type" : "array",
                       "items" : {
-                        "type" : "object",
-                        "properties" : { }
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.client-message"
                       }
                     },
                     "saved_entities" : {
@@ -41181,25 +41935,11 @@
                         "required" : [ "card_id", "chart_id" ]
                       }
                     },
-                    "state" : {
+                    "forked_from_conversation_id" : {
                       "oneOf" : [ {
-                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "title" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "user_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                       }, {
                         "type" : "null"
                       } ]

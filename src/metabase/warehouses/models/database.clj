@@ -718,14 +718,8 @@
   false)
 
 (defmethod serdes/extract-query "Database"
-  [_model-name {:keys [where]}]
-  (warehouses.db/databases-reducible (cond-> [:and
-                                              (or where true)
-                                              [:= :router_database_id nil]
-                                              ;; never export the sample database, regardless of its driver
-                                              [:not= :is_sample true]]
-                                       (not *include-h2-in-extract?*)
-                                       (conj [:not= :engine "h2"]))))
+  [_model-name {:keys [filter-column filter-ids]}]
+  (warehouses.db/databases-for-serdes-reducible filter-column filter-ids (boolean *include-h2-in-extract?*)))
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
