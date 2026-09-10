@@ -4,17 +4,31 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
+   [malli.core :as mc]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 ;;; -------------------------------------------------- Utils --------------------------------------------------
+
+(defn- stringify-keys
+  "Turn the keyword keys of `x`, if it is a map, into strings, keeping their namespaces -- and, when `recursive?`, the
+  keys of every map nested inside it too. Request decoding keywordizes every JSON object key; this undoes that for the
+  objects we do not type."
+  ([x]
+   (stringify-keys x false))
+  ([x recursive?]
+   (if recursive?
+     (walk/postwalk stringify-keys x)
+     (cond-> x
+       (map? x) (update-keys #(if (keyword? %) (u/qualified-name %) %))))))
 
 ;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
 ;;;
@@ -196,11 +210,73 @@
    [:fn #(isa? (keyword %) :Coercion/*)]
    (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
 
-(def Map
-  "Schema for a valid map. Open: it constrains nothing about its keys, so its contents pass through as they arrived."
+(defn- open-map
+  "A map whose keys are deliberately not ours to declare. The marker property is what lets
+  [[metabase.api.macros.defendpoint.closed-schemas]] accept it; nothing outside this namespace should set it."
+  [description]
   (mu/with-api-error-message
-   [:map {:closed false}]
+   [:map {:closed false, ::mr/deliberately-open true, :description description}]
    (deferred-tru "Value must be a map.")))
+
+(def VisualizationSettings
+  "Chart-rendering settings authored by the frontend. The backend stores and echoes them and reads no fixed key set, so
+  the keys are whatever the visualization the user picked needs."
+  (open-map "visualization settings"))
+
+(def DatabaseDetails
+  "Connection details for a Database. The keys are the driver's `connection-properties`, so they differ per driver and
+  are not knowable here."
+  (open-map "database connection details"))
+
+(def DatabaseSettings
+  "A Database's `:settings`: database-local settings, whose keys are owned by the settings registry rather than by this
+  schema. Not for any other bag of settings."
+  (open-map "database settings"))
+
+(defn string-keyed-map
+  "Schema for a JSON object whose keys are not ours to declare, as a `:map-of` string keys to `value-schema`.
+  Normalizing stringifies its keys -- a request on its way in, or a keywordized JSON column read back from the
+  application database -- so the value looks the way it did on the wire and nothing can quietly start reading it by
+  keyword. Only the keys of the map itself, unless `recursive?`, which stringifies the keys of every map nested inside
+  it as well. Dispatching on `map?` keeps a value that is not a map out of the `:map-of`, whose request-decoding strip
+  step would otherwise throw on it instead of leaving it to validation."
+  ([value-schema]
+   (string-keyed-map value-schema false))
+  ([value-schema recursive?]
+   (mu/with-api-error-message
+    [:multi {:dispatch map?}
+     [true  [:map-of {:decode/normalize {:enter #(stringify-keys % recursive?)}} :string value-schema]]
+     [false (mu/with-api-error-message [:fn map?] (deferred-tru "Value must be a map."))]]
+    (deferred-tru "Value must be a map."))))
+
+(def OpaqueJSONObject
+  "A JSON object this code stores, echoes back or forwards as it arrived, and never reads by key: a
+  [[string-keyed-map]] of anything, stringified all the way down. Under no circumstances may its keys be keywords: a
+  map this code builds and reads by keyword is not opaque and gets a schema of its own. The marker property is what
+  lets [[metabase.api.macros.defendpoint.closed-schemas]] accept the `:any`."
+  (mu/with (string-keyed-map :any true) {::mr/deliberately-open true}))
+
+(defn string-keyed-object
+  "Schema for a JSON object of which this code reads a few keys and keeps the rest as they arrived: an
+  [[OpaqueJSONObject]] whose `entries` declare, with string keys, the keys this code reads and their types.
+
+    (string-keyed-object [\"id\" :int] [\"label\" {:optional true} [:maybe :string]])
+
+  Every key of the object is a string, the declared ones included, so the map never mixes keyword and string keys and
+  code reads the declared keys the same way it would any other: `(get attrs \"id\")`. Decoding stringifies the keys of
+  the object itself first of all -- a request on its way in, or a keywordized JSON column read back from the
+  application database -- so the declared entries, their defaults included, are found under their string keys; the
+  values of the undeclared keys are stringified all the way down, the declared ones only as their schemas say. Prefer a
+  fully typed map when the keys are known: this is for objects another party owns, like an editor's node attributes."
+  [& entries]
+  (doseq [[k] entries]
+    (assert (string? k) (str "string-keyed-object keys must be strings, got: " (pr-str k))))
+  (into [:map
+         {:decode/string    {:enter stringify-keys}
+          :decode/json      {:enter stringify-keys}
+          :decode/normalize {:enter stringify-keys}}
+         [::mc/default OpaqueJSONObject]]
+        entries))
 
 (def Email
   "Schema for a valid email string."
@@ -240,18 +316,6 @@
     [:fn #(u/ignore-exceptions (boolean (u.date/parse %)))]]
    (deferred-tru "value must be a valid date string")))
 
-(def JSONString
-  "Schema for a string that is valid serialized JSON."
-  (mu/with-api-error-message
-   [:and
-    :string
-    [:fn #(try
-            (json/decode %)
-            true
-            (catch Throwable _
-              false))]]
-   (deferred-tru "value must be a valid JSON string.")))
-
 (def BooleanValue
   "Schema for a valid representation of a boolean
   (one of `\"true\"` or `true` or `\"false\"` or `false`.).
@@ -272,23 +336,24 @@
       (mu/with-api-error-message
        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
 
+(def FieldValue
+  "One value of a Field: a JSON scalar as kept in the `field_values.values` and `human_readable_values` columns, or, on
+  the way there, a UUID or `java.time` object as the query returned it."
+  [:maybe [:or :string number? :boolean uuid? (InstanceOfClass java.time.temporal.Temporal)]])
+
 (def RemappedFieldValue
   "Has two components:
-    1. <value-of-field>          (can be anything)
+    1. <value-of-field>
     2. <value-of-remapped-field> (must be a string)"
-  [:tuple :any :string])
+  [:tuple FieldValue :string])
 
 (def NonRemappedFieldValue
   "Has one component: <value-of-field>"
-  [:tuple :any])
+  [:tuple FieldValue])
 
 (def FieldValuesList
   "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
   [:sequential [:or RemappedFieldValue NonRemappedFieldValue]])
-
-(def FieldValue
-  "One stored value of a Field, as kept in the `field_values.values` and `human_readable_values` columns."
-  [:maybe [:or :string number? :boolean]])
 
 (def FieldValues
   "The stored values of a Field: the decoded `field_values.values` or `human_readable_values` column."
@@ -302,11 +367,11 @@
 
 ;;; TODO -- move to `embedding`
 (def EmbeddingParams
-  "Schema for a valid map of embedding params."
+  "Schema for a valid map of embedding params: parameter slug -> how the embed treats that parameter. The slugs are the
+  embed author's, so the map is string-keyed on its way in; it is stored as JSON and read back keywordized like every
+  other JSON column."
   (mu/with-api-error-message
-   [:maybe [:map-of
-            :keyword
-            [:enum "disabled" "enabled" "locked"]]]
+   [:maybe (string-keyed-map [:enum "disabled" "enabled" "locked"])]
    (deferred-tru "value must be a valid embedding params map.")))
 
 (def ValidLocale
