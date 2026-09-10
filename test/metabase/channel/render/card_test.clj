@@ -565,23 +565,25 @@
 
 (deftest ^:parallel render-resolves-dynamic-goal-line-test
   (testing "a graph.goal_value entity ref is substituted before the settings reach the JS renderer"
-    (let [captured (atom nil)
-          card     {:id                     1
-                    :name                   "bar with dynamic goal"
-                    :display                :bar
-                    :visualization_settings {:graph.dimensions ["x"]
-                                             :graph.metrics    ["y"]
-                                             :graph.show_goal  true
-                                             :graph.goal_value goal-ref}}
-          data     {:cols             [{:name "x" :base_type :type/Text}
-                                       {:name "y" :base_type :type/Integer :source :aggregation}]
-                    :rows             [["a" 1] ["b" 2]]
-                    :referenced_entities goal-referenced-entities}]
-      (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
-                                                    (reset! captured viz-settings)
-                                                    {:type :svg :content "<svg></svg>"})]
-        (channel.render/render-pulse-card-for-display nil card {:data data}))
-      (is (= 80 (:graph.goal_value @captured))))))
+    (doseq [display [:line :bar]]
+      (testing display
+        (let [captured (atom nil)
+              card     {:id                     1
+                        :name                   "chart with dynamic goal"
+                        :display                display
+                        :visualization_settings {:graph.dimensions ["x"]
+                                                 :graph.metrics    ["y"]
+                                                 :graph.show_goal  true
+                                                 :graph.goal_value goal-ref}}
+              data     {:cols                [{:name "x" :base_type :type/Text}
+                                              {:name "y" :base_type :type/Integer :source :aggregation}]
+                        :rows                [["a" 1] ["b" 2]]
+                        :referenced_entities goal-referenced-entities}]
+          (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                        (reset! captured viz-settings)
+                                                        {:type :svg :content "<svg></svg>"})]
+            (channel.render/render-pulse-card-for-display nil card {:data data}))
+          (is (= 80 (:graph.goal_value @captured))))))))
 
 (deftest ^:parallel render-resolves-dynamic-goal-on-dashcard-test
   (testing "a card ref in the dashcard's own viz settings is substituted too"
