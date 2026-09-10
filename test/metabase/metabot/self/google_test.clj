@@ -1275,12 +1275,13 @@
 
 (defn- endpoint-requests!
   "Run `google-raw` `n` times against a stubbed endpoint in us-central1 and return the requests it issued."
-  [token model endpoint n]
+  [token model endpoint n & {:keys [base-url]}]
   (let [calls (atom [])]
     (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  token
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
-                                       llm.settings/llm-google-location            "us-central1"]
+                                       llm.settings/llm-google-location            "us-central1"
+                                       llm.settings/llm-google-api-base-url        base-url]
       (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
                                   self.core/reducible-with-api-errors (fn [r _ _] r)
                                   debug/capture-stream                (fn [r _] r)
@@ -1331,11 +1332,37 @@
                    (:url post-req)))))))))
 
 (deftest google-raw-endpoint-host-cached-test
-  (testing "repeated requests to an endpoint under one access token read its resource once"
-    (let [endpoint "3456789012345678901"]
-      (is (= [:get :post :post]
-             (map :method (endpoint-requests! (unique-token) (str "endpoints/" endpoint)
-                                              (endpoint-resource endpoint) 2)))))))
+  (testing "repeated requests to an endpoint read its resource once, across the access tokens a service account key mints"
+    (let [endpoint "3456789012345678901"
+          sa-key   (test-service-account-json (str "cache-" (subs (str (random-uuid)) 0 8)))
+          tokens   (atom 0)
+          calls    (atom [])]
+      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                         llm.settings/llm-google-service-account-key sa-key
+                                         llm.settings/llm-google-project-id          nil
+                                         llm.settings/llm-google-location            "us-central1"]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                    self.core/reducible-with-api-errors (fn [r _ _] r)
+                                    debug/capture-stream                (fn [r _] r)
+                                    google/fresh-bearer-headers         (fn [_]
+                                                                          {"Authorization" (str "Bearer t" (swap! tokens inc))})
+                                    http/request                        (stub-endpoint calls (endpoint-resource endpoint) [])]
+          (dotimes [_ 2]
+            (google-raw {:model (str "endpoints/" endpoint) :input [{:role :user :content "hi"}]}))))
+      (is (= [:get :post :post] (map :method @calls)))
+      (is (< 1 (count (into #{} (map #(get-in % [:headers "Authorization"])) @calls)))
+          "the token did rotate between the requests"))))
+
+(deftest google-raw-endpoint-keeps-an-explicit-base-url-test
+  (testing "a base URL the admin set is kept for a dedicated endpoint too, the way it is for every other route"
+    (let [endpoint "7890123456789012345"
+          proxy    "https://gemini.proxy.example.com"
+          [get-req post-req] (endpoint-requests! (unique-token) (str "endpoints/" endpoint)
+                                                 (endpoint-resource endpoint (str endpoint ".us-central1-123456789.prediction.vertexai.goog"))
+                                                 1 :base-url proxy)]
+      (is (str/starts-with? (:url get-req) (str proxy "/")))
+      (is (= (str proxy "/v1/projects/my-project/locations/us-central1/endpoints/" endpoint "/chat/completions")
+             (:url post-req))))))
 
 (deftest google-endpoint-stream-test
   (testing "an endpoint's Chat Completions events off the wire are translated by the vLLM chunk translation"
@@ -1370,23 +1397,50 @@
     (is (nil? (google/context-window-tokens "endpoints/1234567890123456789")))))
 
 (deftest list-models-endpoint-probe-test
-  (testing "list-models validates an endpoint by reading its resource, and reports it as the probed model"
+  (testing "list-models reads the endpoint's resource, then runs a one-token completion on the host it names, and reports the endpoint as the probed model"
     (let [token    (unique-token)
           endpoint "5678901234567890123"
+          host     (str endpoint ".us-central1-123456789.prediction.vertexai.goog")
           calls    (atom [])]
       (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  token
                                          llm.settings/llm-google-service-account-key nil
                                          llm.settings/llm-google-project-id          "my-project"
                                          llm.settings/llm-google-location            "us-central1"]
-        (mt/with-dynamic-fn-redefs [http/request (stub-endpoint calls (endpoint-resource endpoint) [])]
+        (mt/with-dynamic-fn-redefs [http/request (stub-endpoint calls (endpoint-resource endpoint host) [])]
           (is (= {:models         []
                   :learned-config {:probed-model (str "endpoints/" endpoint)}}
                  (list-models {:model (str "endpoints/" endpoint) :probe? true})))
           (is (=? [{:method  :get
                     :url     (str "https://us-central1-aiplatform.googleapis.com/v1/projects/my-project"
                                   "/locations/us-central1/endpoints/" endpoint)
-                    :headers {"Authorization" (str "Bearer " token)}}]
+                    :headers {"Authorization" (str "Bearer " token)}}
+                   {:method  :post
+                    :url     (str "https://" host "/v1/projects/my-project/locations/us-central1/endpoints/" endpoint
+                                  "/chat/completions")
+                    :headers {"Authorization" (str "Bearer " token)}
+                    :body    (json/encode {:messages [{:role "user" :content "hi"}] :max_tokens 1})}]
                   @calls)))))))
+
+(deftest list-models-endpoint-without-predict-permission-rejected-test
+  (testing "a credential that can read the endpoint but not run it is refused, with Google's 403 message"
+    (let [endpoint "8901234567890123456"]
+      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  (unique-token)
+                                         llm.settings/llm-google-service-account-key nil
+                                         llm.settings/llm-google-project-id          "my-project"
+                                         llm.settings/llm-google-location            "us-central1"]
+        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [method]}]
+                                                   (if (= :get method)
+                                                     {:status 200 :body (endpoint-resource endpoint)}
+                                                     (throw (ex-info "clj-http: status 403"
+                                                                     {:status  403
+                                                                      :headers {"content-type" "application/json"}
+                                                                      :body    (json/encode {:error {:code    403
+                                                                                                     :message "Permission 'aiplatform.endpoints.predict' denied on resource"
+                                                                                                     :status  "PERMISSION_DENIED"}})}))))]
+          (let [e (try (list-models {:model (str "endpoints/" endpoint)}) nil (catch Exception e e))]
+            (is (= "Google API credentials have insufficient permissions or the API is not enabled for this project"
+                   (ex-message e)))
+            (is (=? {:api-error true :status 403} (ex-data e)))))))))
 
 (deftest list-models-endpoint-without-a-deployed-model-rejected-test
   (testing "an endpoint whose model has been undeployed is refused with a 400 the connection form can show"

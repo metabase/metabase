@@ -19,8 +19,8 @@
 
 (def ^:private provider-notes-resources
   "Hand-written prose appended to a provider type's section, keyed by type. The managed provider's section is otherwise
-  a models table, and what an admin needs to know about it — that it's a Metabase Cloud offering, how it's billed, how
-  it authenticates — is prose rather than anything the registry holds. Google's covers the Model Garden endpoints its
+  a models table, and what an admin needs to know about it (that it's a Metabase Cloud offering, how it's billed, how
+  it authenticates) is prose rather than anything the registry holds. Google's covers the Model Garden endpoints its
   fixed catalog cannot list."
   {"metabase" "metabase/cmd/resources/ai-provider-metabase.md"
    "google"   "metabase/cmd/resources/ai-provider-google.md"})
