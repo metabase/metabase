@@ -17,12 +17,12 @@
    ;; hello-world tool; each later PR adds its tool's require line here alongside the tool file.
    [metabase.mcp.v2.tools.bookmark]
    [metabase.mcp.v2.tools.collection]
+   [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.document]
    [metabase.mcp.v2.tools.learn]
    [metabase.mcp.v2.tools.metric]
    [metabase.mcp.v2.tools.parameters]
    [metabase.mcp.v2.tools.question]
-   [metabase.mcp.v2.tools.search]
    [metabase.mcp.v2.tools.ui-credential]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.scope :as metabot.scope]))
