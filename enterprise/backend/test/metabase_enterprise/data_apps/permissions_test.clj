@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.block-permissions :as block-perms]
+   [metabase-enterprise.data-apps.permissions :as data-app.permissions]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -21,6 +22,41 @@
   [group-id db-id]
   (t2/select [:model/DataPermissions :id :table_id :perm_value]
              :group_id group-id :db_id db-id :perm_type :perms/view-data))
+
+(defn- database-permission-value
+  [group-id db-id perm-type]
+  (t2/select-one-fn :perm_value :model/DataPermissions
+                    :group_id group-id :db_id db-id :perm_type perm-type :table_id nil))
+
+(deftest reconcile-resets-create-queries-left-by-the-database-defaults-test
+  (testing "an app group that predates the first non-audit database is given
+            create-queries :query-builder-and-native by `set-new-database-permissions!`, alongside the
+            :blocked view-data it special-cases for app groups. Reconciling has to reset it, or a user
+            with data access through another group gains native query authoring by joining the app."
+    (mt/with-premium-features #{:advanced-permissions :data-apps}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (mt/with-restored-data-perms-for-group! (:id (perms/all-users-group))
+          (let [db-id    (mt/id)
+                group-id (app-group! "finches")]
+            ;; Written as a row, the way the database defaults insert it -- the model rejects updates,
+            ;; so they delete and re-insert too. `set-database-permission!` is no use here: it cascades
+            ;; view-data to :unrestricted for any create-queries value other than :no, so no permission
+            ;; API call can produce this pairing.
+            (t2/delete! :model/DataPermissions
+                        :group_id group-id :db_id db-id :perm_type :perms/create-queries)
+            (t2/insert! :model/DataPermissions
+                        {:group_id   group-id
+                         :db_id      db-id
+                         :perm_type  :perms/create-queries
+                         :perm_value :query-builder-and-native})
+            (is (= :query-builder-and-native
+                   (database-permission-value group-id db-id :perms/create-queries))
+                "precondition: the permissive grant is in place")
+            (is (=? [{:table_id nil :perm_value :blocked}] (view-data-rows group-id db-id))
+                "precondition: view-data is already blocked, so nothing cascades")
+            (data-app.permissions/reconcile-data-app-permissions! #{db-id})
+            (is (= :no (database-permission-value group-id db-id :perms/create-queries)))
+            (is (=? [{:table_id nil :perm_value :blocked}] (view-data-rows group-id db-id)))))))))
 
 (deftest membership-preserves-legacy-block-permission-check-test
   (mt/with-premium-features #{:advanced-permissions :data-apps}
