@@ -97,7 +97,7 @@ export function BucketPickerPopover({
           miw="35%"
           maw="50%"
           size="compact-md"
-          variant="subtle"
+          variant="transparent"
           color="core-white"
           classNames={{ label: S.triggerButtonLabel }}
         >

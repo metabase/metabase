@@ -56,7 +56,7 @@ export const MetabotLongChatNotice = ({
               .jt`This chat is nearing the ${contextLimit}.`}
       </Text>
       <Button
-        variant="subtle"
+        variant="transparent"
         size="compact-md"
         onClick={onNewChat}
         data-testid="metabot-long-chat-new-chat"
