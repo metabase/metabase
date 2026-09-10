@@ -135,6 +135,7 @@ function McpUiAppRouteContent({
     useMcpUserAndSettingsFetch({
       instanceUrl,
       uiCredential,
+      mcpSessionId,
       store,
     });
 

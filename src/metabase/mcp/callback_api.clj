@@ -1,9 +1,13 @@
 (ns metabase.mcp.callback-api
-  "Iframe-callback endpoints for the embedded MCP UI. The MCP iframe POSTs here to
-   stash query payloads server-side so the agent never has to carry them in the
-   model context — it just receives a handle UUID it can pass to the corresponding
-   MCP tool. Mounted as a sibling of `/api/metabase-mcp` so the JSON-RPC handler doesn't
-   have to special-case non-protocol routes."
+  "Server-side endpoints for the embedded MCP UI, mounted at `/api/embed-mcp`. Two kinds of route live here:
+
+   - Iframe callbacks: the iframe POSTs query payloads here to stash them server-side so the agent never has to
+     carry them in the model context — it just receives a handle UUID it can pass to the corresponding MCP tool.
+   - Bootstrap: the projection of the user and settings the iframe needs to mount, so the UI credential never has
+     to authenticate the general `/api/user/current` and `/api/session/properties` endpoints.
+
+   Mounted as a sibling of `/api/metabase-mcp` so the JSON-RPC handler doesn't have to special-case non-protocol
+   routes."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -12,8 +16,12 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.config :as metabot.config]
+   [metabase.permissions.core :as perms]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn- mcp-session-id-from-headers
   [request]
@@ -34,6 +42,63 @@
   (when-let [credential-session-id (:mcp-ui-session-id request)]
     (api/check (= credential-session-id session-id)
                [404 (tru "Invalid or expired session")])))
+
+;;; ------------------------------------------------- Bootstrap --------------------------------------------------
+
+(def ^:private bootstrap-setting-visibilities
+  "Setting visibilities the iframe may read: exactly what a non-admin authenticated user sees, even when the
+   credential holder is an admin. The iframe renders one visualization and needs no admin-only setting, and a
+   credential minted from a narrow MCP scope must not widen into instance configuration."
+  #{:public :authenticated :admin-write-authed-read})
+
+(mr/def ::bootstrap-user
+  "The projection of the current user the MCP iframe may read. Closed on purpose: a field belongs here only when
+   something the iframe renders reads it, so widening the projection is a decision someone has to make in this file
+   rather than a side effect of the shared `GET /api/user/current` response growing.
+
+   Deliberately absent: `email`, `login_attributes`, `jwt_attributes`, `attributes`, `sso_source`, `group_ids` and
+   the advanced-permissions flags. Nothing in the visualization reads them, and they are what made the general
+   endpoint a scope-escalation target. The name fields are absent for the same reason: the iframe displays no
+   user, and `common_name` falls back to the email address when a user has neither first nor last name."
+  [:map {:closed true}
+   [:id                     ms/PositiveInt]
+   [:locale                 [:maybe :string]]
+   [:is_superuser           :boolean]
+   [:is_data_analyst        :boolean]
+   [:is_qbnewb              :boolean]
+   ;; the holder's own tenant; `getIsTenantUser` on the client branches on it
+   [:tenant_id              [:maybe ms/PositiveInt]]
+   [:personal_collection_id [:maybe ms/PositiveInt]]
+   [:permissions [:map {:closed true}
+                  [:can_create_queries        :boolean]
+                  [:can_create_native_queries :boolean]]]])
+
+(defn- bootstrap-user
+  "The [[::bootstrap-user]] projection of the current user."
+  []
+  (let [user (api/check-404 @api/*current-user*)
+        {:keys [can-create-queries can-create-native-queries]}
+        (perms/query-creation-capabilities (:id user))]
+    (-> user
+        (t2/hydrate :personal_collection_id)
+        (select-keys [:id :locale :is_superuser :is_data_analyst :is_qbnewb
+                      :tenant_id :personal_collection_id])
+        (assoc :permissions {:can_create_queries        can-create-queries
+                             :can_create_native_queries can-create-native-queries}))))
+
+(api.macros/defendpoint :get "/bootstrap" :- [:map {:closed true}
+                                              [:user     ::bootstrap-user]
+                                              [:settings [:map-of :keyword :any]]]
+  "Everything the MCP Apps iframe needs to mount, so its UI credential never authenticates a general REST endpoint.
+   Replaces the iframe's calls to `GET /api/user/current` and `GET /api/session/properties`."
+  [_route-params
+   _query-params
+   _body
+   request]
+  (let [session-id (mcp-session-id-from-headers request)]
+    (check-session-header! session-id api/*current-user-id* request)
+    {:user     (bootstrap-user)
+     :settings (setting/user-readable-values-map bootstrap-setting-visibilities)}))
 
 (def ^:private feedback-text-max-length
   10000)

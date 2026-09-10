@@ -199,11 +199,11 @@
 
   Mounted on the `/api/dataset` route tree by [[+refuse-unscoped-native-sql]].
 
-  The iframe's credential is stamped `::scope/unrestricted` on purpose — none of the routes on its allowlist declare
-  a `:scope`, so a narrower stamp would 403 the iframe at bootstrap. That makes the endpoint scope middleware unable
-  to stop a credential lifted out of the resource HTML from POSTing native SQL to the query endpoints. The minting
-  session's real scopes are meant to ride along on the credential and be spent here: raw SQL needs an SQL-execution
-  scope (`agent:sql:run`, or v1's concrete `agent:sql:execute`) and the `mcp-execute-sql-enabled` kill switch.
+  The query endpoints declare no `:scope` of their own, so the endpoint scope middleware cannot tell a native
+  query apart from any other one: [[metabase.mcp.ui-surface/request-surface]] charges the whole `/api/dataset`
+  tree a single `agent:query:run`, which a credential lifted out of the resource HTML holds. Raw SQL costs
+  more, and that difference is spent here: it needs an SQL-execution scope (`agent:sql:run`, or v1's concrete
+  `agent:sql:execute`) off the credential's signed claim, and the `mcp-execute-sql-enabled` kill switch.
 
   A credential whose claim is simply absent fails closed: a rolling deploy can hand this node one minted before
   the claim existed.

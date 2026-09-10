@@ -1,7 +1,10 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import type { SubmitMcpAppsFeedbackRequest } from "metabase-types/api";
+import type {
+  McpAppsBootstrapResponse,
+  SubmitMcpAppsFeedbackRequest,
+} from "metabase-types/api";
 
 type StoreDrillQueryRequest = {
   instanceUrl: string;
@@ -18,6 +21,45 @@ type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
   instanceUrl: string;
   uiCredential: string;
 };
+
+type McpBootstrapRequest = {
+  instanceUrl: string;
+  uiCredential: string;
+  mcpSessionId: string;
+};
+
+/**
+ * Fetches the user and settings the iframe needs to mount.
+ *
+ * The UI credential authenticates this endpoint and nothing on the general REST API,
+ * so a failure here is the whole app's auth story. The status rides along on the error
+ * so the caller can tell "credential rejected" from "MCP is switched off".
+ */
+export async function fetchMcpBootstrap({
+  instanceUrl,
+  uiCredential,
+  mcpSessionId,
+}: McpBootstrapRequest): Promise<McpAppsBootstrapResponse> {
+  const response = await fetch(`${instanceUrl}/api/embed-mcp/bootstrap`, {
+    method: "GET",
+    headers: {
+      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      "X-Metabase-Mcp-Ui-Auth": uiCredential,
+      "Mcp-Session-Id": mcpSessionId,
+    },
+  });
+
+  if (!response.ok) {
+    throw Object.assign(
+      new Error(
+        `fetchMcpBootstrap failed: ${response.status} ${response.statusText}`,
+      ),
+      { status: response.status },
+    );
+  }
+
+  return response.json();
+}
 
 /**
  * Stores the drill-through's query on the server and returns a handle UUID
