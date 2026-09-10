@@ -516,7 +516,9 @@
   type: [\"snippet\"] searches SQL snippets you can read by name and must be requested on its own, not alongside
   other types. Transforms are searchable by admins only — other users browse them with browse_collection(namespace:
   \"transforms\"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking
-  limit — so a large total is a floor (the response says \"at least N\")."  {:name "search"
+  limit — so a large total is a floor (the response says \"at least N\"). An empty {data: [], total: 0} means no
+  match against the search index, which on a freshly started instance can still be building — if content you can
+  reach with browse_collection or browse_data does not turn up here, prefer those over concluding it is absent."  {:name "search"
                                                                              :scope        metabot.scope/agent-content-read
                                                                              :annotations  {:readOnlyHint true :idempotentHint true}
                                                                              :args         search-args-schema}
