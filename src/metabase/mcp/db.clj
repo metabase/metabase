@@ -42,6 +42,25 @@
   [field-id]
   (t2/select-one [:model/Field :base_type :effective_type] :id field-id))
 
+(defn nullable-fields-with-fingerprints
+  "The Fields among `field-ids` the warehouse declares nullable, carrying their `:fingerprint`.
+  `field-ids` is expected non-empty — an empty `:in` is a SQL error rather than an empty result,
+  so callers guard it."
+  [field-ids]
+  (t2/select [:model/Field :id :database_is_nullable :fingerprint]
+             :id [:in field-ids]
+             :database_is_nullable true))
+
+(defn active-user-exists?
+  "Whether an active User with `user-id` exists."
+  [user-id]
+  (t2/exists? :model/User :id user-id :is_active true))
+
+(defn dashboard-parameters
+  "The `parameters` of the Dashboard with `dashboard-id`, or nil."
+  [dashboard-id]
+  (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))
+
 (defn browsable-database
   "The Database with `database-id` restricted by the HoneySQL `browsable-where` clause, or nil.
 
@@ -152,6 +171,11 @@
                   :where  [:and
                            [:= :mqh.id handle-id]
                            [:= :cs.user_id user-id]]}))
+
+(defn delete-query-handles-created-before!
+  "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
+  [cutoff]
+  (t2/delete! :model/McpQueryHandle {:where [:< :created_at cutoff]}))
 
 (defn delete-session-for-user!
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."

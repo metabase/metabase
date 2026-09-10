@@ -34,37 +34,46 @@
 
 (defn- call!
   "Call `execute_query` through the registry dispatch seam as the already-bound current user,
-   with the execute scope. Mints a query handle on every successful call."
+   with the execute scope. Mints a query handle on every successful call. Returns the whole
+   dispatch outcome: `{:result <mcp content>}` for anything that reached the handler,
+   `{:error {:code .. :message ..}}` for a registry-level rejection (scope denial, args-schema
+   failure)."
   [session-id arguments]
   (registry/call-tool execute-scope session-id "execute_query" arguments))
 
+(defn- dispatch-error?
+  "Whether a [[call!]] outcome is an error, at either layer."
+  [{:keys [result error]}]
+  (boolean (or error (:isError result))))
+
 (defn- response-text
-  [result]
-  (-> result :content first :text))
+  "The outcome's text block, or a registry-level rejection's message."
+  [{:keys [result error]}]
+  (if error (:message error) (-> result :content first :text)))
 
 (defn- payload
-  "Parse the JSON payload line of a successful execute_query response. Throws if the tool
-   returned an error, so a tool-level error can never masquerade as an empty result."
-  [result]
-  (when (:isError result)
-    (throw (ex-info "expected success, got tool error" {:result result})))
-  (-> result response-text str/split-lines first json/decode+kw))
+  "Parse the JSON payload line of a successful execute_query response. Throws if the call
+   errored at either layer, so an error can never masquerade as an empty result."
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info "expected success, got tool error" {:outcome outcome})))
+  (-> outcome response-text str/split-lines first json/decode+kw))
 
 (defn- steering-line
   "The steering sentence appended after the JSON payload, or nil on an unsteered response.
-   Throws on a tool-level error for the same reason as [[payload]]."
-  [result]
-  (when (:isError result)
-    (throw (ex-info "expected success, got tool error" {:result result})))
-  (second (str/split-lines (response-text result))))
+   Throws on an error at either layer, for the same reason as [[payload]]."
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info "expected success, got tool error" {:outcome outcome})))
+  (second (str/split-lines (response-text outcome))))
 
 (defn- error-text
-  "The error message of a tool-level error response. Throws if the call succeeded, so a
-   passing call can never satisfy an error assertion."
-  [result]
-  (when-not (:isError result)
-    (throw (ex-info "expected tool error, got success" {:result result})))
-  (response-text result))
+  "The message of an errored call, at either layer. Throws if the call succeeded, so a passing
+   call can never satisfy an error assertion."
+  [outcome]
+  (when-not (dispatch-error? outcome)
+    (throw (ex-info "expected tool error, got success" {:outcome outcome})))
+  (response-text outcome))
 
 (defn- table-name-ref
   "The `[database schema table]` portable name array for a test-data table."
@@ -576,10 +585,10 @@
 (deftest ^:parallel scope-gating-test
   (mt/with-current-user (mt/user->id :rasta)
     (let [sid (str (random-uuid))]
-      (testing "GHY-4142: a token without the execute scope is denied"
-        (let [result (registry/call-tool #{"agent:content:read"} sid "execute_query" {})]
-          (is (:isError result))
-          (is (= "Insufficient scope to call tool: execute_query" (response-text result)))))
+      (testing "GHY-4142: a token without the execute scope is denied before dispatch"
+        ;; A scope denial is a JSON-RPC error, not `isError` tool content — nothing reaches the handler.
+        (let [{:keys [error]} (registry/call-tool #{"agent:content:read"} sid "execute_query" {})]
+          (is (= "Insufficient scope to call tool: execute_query" (:message error)))))
       (testing "GHY-4142: the identical call with the execute scope reaches the handler (positive control)"
         ;; It fails input validation — proof it got past the scope gate without minting anything.
         (is (str/starts-with? (error-text (registry/call-tool execute-scope sid "execute_query" {}))
@@ -939,9 +948,9 @@
         (mt/with-dynamic-fn-redefs [qp/process-query (fn [query]
                                                        (reset! captured query)
                                                        fake-qp-result)]
-          (let [result (call! (str (random-uuid)) arguments)]
-            (when (:isError result)
-              (throw (ex-info "expected success, got tool error" {:result result})))))))
+          (let [outcome (call! (str (random-uuid)) arguments)]
+            (when (dispatch-error? outcome)
+              (throw (ex-info "expected success, got tool error" {:outcome outcome})))))))
     (or @captured
         (throw (ex-info "process-query was never called" {:arguments arguments})))))
 
