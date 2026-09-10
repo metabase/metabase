@@ -54,7 +54,7 @@ describe("scenarios > collection pinned items overview", () => {
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
-    cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
+    cy.intercept("GET", "/api/**/items?pinned-state*").as("getPinnedItems");
     cy.intercept("GET", "/api/**/items?models*").as("getCollectionItems");
   });
 

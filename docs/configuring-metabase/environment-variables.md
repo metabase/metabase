@@ -439,6 +439,19 @@ Should custom visualizations be enabled for this instance?
 
 Whether dashboards should default to a user's last used parameters on load.
 
+### `MB_DATA_SENSITIVITY_SCAN_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+When true, the analyze phase of sync labels every unlabeled field with a data_sensitivity category inferred from
+  its name, types, and fingerprint, writing PUBLIC when nothing matches. Metadata only: the label does not mask or
+  restrict anything. Labels set by a user are never overwritten.
+
+Scans run with the scheduled analyze pass and with Sync database schema now on a database's admin
+  page. Fields that already carry a label, including PUBLIC, are not rescanned.
+
 ### `MB_DB_CONNECTION_TIMEOUT_MS`
 
 - Type: integer
@@ -1305,6 +1318,21 @@ When set to `true`, users who log in via LDAP will automatically get a Metabase 
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
 
+### `MB_LLM_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `external-only`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Controls which networks Metabase may connect to for LLM provider base URLs. Set through the environment only; on Metabase Cloud the default applies.
+Options:
+- external-only (default; only globally reachable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+The Metabase AI service and LLM proxy are deployment configuration and may always use private addresses.
+
+Set this when a self-hosted vLLM server is on your private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. With a JVM-wide HTTP(S) proxy, Metabase checks destination addresses available through local DNS; the deployment proxy must enforce destination restrictions on its outbound connections. Proxy-only DNS is supported. Metabase enforces destination addresses at connection time for direct requests.
+
 ### `MB_LLM_ANTHROPIC_API_BASE_URL`
 
 - Type: string
@@ -1379,7 +1407,7 @@ Backed by the azure connection in the admin AI settings provider list: reads and
 - Default: `null`
 - [Configuration file name](./config-file.md): `llm-bedrock-access-key-id`
 
-The AWS Access Key ID for Amazon Bedrock.
+The AWS Access Key ID for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the secret access key to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required.
 
 Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
@@ -1391,7 +1419,7 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 
 The AWS region for Amazon Bedrock (e.g. us-east-1).
 
-Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured.
 
 ### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
 
@@ -1399,7 +1427,7 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 - Default: `null`
 - [Configuration file name](./config-file.md): `llm-bedrock-secret-access-key`
 
-The AWS Secret Access Key for Amazon Bedrock.
+The AWS Secret Access Key for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the access key ID to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required.
 
 Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
@@ -1615,7 +1643,6 @@ Backed by the openrouter connection in the admin AI settings provider list: read
 
 - Type: json
 - Default: `[]`
-- [Configuration file name](./config-file.md): `llm-providers`
 
 JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type's credential fields.
 
@@ -2951,7 +2978,7 @@ Note: Users with row or column security restrictions will never see suggestions.
 
 Controls which networks Metabase may connect to for warehouse connections.
 Options:
-- external-only (only globally routable public addresses)
+- external-only (only globally reachable public addresses)
 - allow-private (external + private networks but NOT loopback or link-local)
 - allow-all (no restrictions).
 Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
@@ -3177,6 +3204,13 @@ Type: string<br>
 Default: `null`
 
 Used during development of third-party drivers. Set the value to have that plugin manifest get loaded during startup. Specify multiple plugin manifests by comma-separating them.
+
+### `MB_DISABLE_LEGACY_STARTUP_ENCRYPTION`
+
+Type: boolean<br>
+Default: `false`
+
+By default, when [MB_ENCRYPTION_SECRET_KEY](#mb_encryption_secret_key) is set, Metabase encrypts on startup any values that an older version of Metabase stored unencrypted, and logs a warning for each column it had to encrypt. When `true`, Metabase will refuse to start instead of encrypting such values, including settings saved by an older version.
 
 ### `MB_DISABLE_SCHEDULER`
 

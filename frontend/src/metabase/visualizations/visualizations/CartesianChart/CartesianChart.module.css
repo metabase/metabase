@@ -1,0 +1,10 @@
+.root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.legendLayout {
+  flex: 1 1 auto;
+}

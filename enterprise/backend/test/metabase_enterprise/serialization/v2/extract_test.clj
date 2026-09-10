@@ -618,7 +618,7 @@
                                                                                             :name         "snippet",
                                                                                             :snippet-id   s1-id,
                                                                                             :snippet-name "snip",
-                                                                                            :type         :number}}})}]
+                                                                                            :type         :snippet}}})}]
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
           (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s1-id))]
@@ -1815,14 +1815,14 @@
         (is (= {(:id dc1) [s]}
                (#'serdes/transform->nested (-> spec :transform :series) {} [dc1])))
         (is (=? (assoc dc1 :series [s])
-                (u/rfirst (serdes/extract-query "DashboardCard" {:where [:= :id (:id dc1)]})))))
+                (u/rfirst (serdes/extract-query "DashboardCard" {:filter-column :id :filter-ids [(:id dc1)]})))))
       (let [spec (serdes/make-spec "Dashboard" nil)]
         (is (= {(:id d) [(assoc dc1 :series [s])]}
                (#'serdes/transform->nested (-> spec :transform :dashcards) {} [d])))
         (is (=? (assoc d
                        :dashcards [(assoc dc1 :series [s])]
                        :tabs nil)
-                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]}))))))))
+                (u/rfirst (serdes/extract-query "Dashboard" {:filter-column :id :filter-ids [(:id d)]}))))))))
 
 (deftest extract-nested-efficient-test
   (testing "extract-nested is efficient"
@@ -1846,7 +1846,7 @@
                          :tabs nil)}
                 (into #{} (map (fn [dashboard]
                                  (update dashboard :dashcards #(sort-by :id %))))
-                      (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+                      (serdes/extract-query "Dashboard" {:filter-column :id :filter-ids [(:id d1) (:id d2)]}))))
         ;; 1 per dashboard/dashcard/series/tabs
         (is (= 4 (qc)))))))
 
@@ -1860,8 +1860,9 @@
                                                          :card_id      (:id c1)})))]
         (t2/with-call-count [qc]
           (is (=? [(assoc d :dashcards dcs)]
-                  (into [] (serdes/extract-query "Dashboard" {:batch-limit 5
-                                                              :where [:= :id (:id d)]}))))
+                  (into [] (serdes/extract-query "Dashboard" {:batch-limit   5
+                                                              :filter-column :id
+                                                              :filter-ids    [(:id d)]}))))
           ;; query count breakdown:
           ;; - 1 for dashboard
           ;; - 1 for tabs, there are none
@@ -2074,16 +2075,16 @@
                        :model/Table table {:name "linked_table"}]
       (t2/update! :model/Document :id (u/the-id document) {:document {:type "doc"
                                                                       :content [{:type "cardEmbed"
-                                                                                 :attrs {:id (u/the-id card)}}
+                                                                                 :attrs {"id" (u/the-id card)}}
                                                                                 {:type "smartLink"
-                                                                                 :attrs {:entityId (u/the-id linked-card)
-                                                                                         :model "card"}}
+                                                                                 :attrs {"entityId" (u/the-id linked-card)
+                                                                                         "model" "card"}}
                                                                                 {:type "smartLink"
-                                                                                 :attrs {:entityId (u/the-id table)
-                                                                                         :model "table"}}
+                                                                                 :attrs {"entityId" (u/the-id table)
+                                                                                         "model" "table"}}
                                                                                 {:type "smartLink"
-                                                                                 :attrs {:entityId (u/the-id dashboard)
-                                                                                         :model "dashboard"}}]}})
+                                                                                 :attrs {"entityId" (u/the-id dashboard)
+                                                                                         "model" "dashboard"}}]}})
       (testing "document extraction"
         (let [ser (ts/extract-one "Document" (u/the-id document))]
           (is (=? {:serdes/meta [{:model "Document" :id (:entity_id document)}]
@@ -2091,16 +2092,16 @@
                    :entity_id (:entity_id document)
                    :document {:type "doc"
                               :content [{:type "cardEmbed"
-                                         :attrs {:id [{:model "Card" :id (:entity_id card)}]}}
+                                         :attrs {"id" [{:model "Card" :id (:entity_id card)}]}}
                                         {:type "smartLink"
-                                         :attrs {:entityId [{:model "Card" :id (:entity_id linked-card)}]
-                                                 :model "card"}}
+                                         :attrs {"entityId" [{:model "Card" :id (:entity_id linked-card)}]
+                                                 "model" "card"}}
                                         {:type "smartLink"
-                                         :attrs {:entityId (serdes/generate-path "Table" table)
-                                                 :model "table"}}
+                                         :attrs {"entityId" (serdes/generate-path "Table" table)
+                                                 "model" "table"}}
                                         {:type "smartLink"
-                                         :attrs {:entityId [{:model "Dashboard" :id (:entity_id dashboard)}]
-                                                 :model "dashboard"}}]}
+                                         :attrs {"entityId" [{:model "Dashboard" :id (:entity_id dashboard)}]
+                                                 "model" "dashboard"}}]}
                    :creator_id (:email user)
                    :collection_id (:entity_id collection)
                    :content_type "application/json+vnd.prose-mirror"

@@ -217,7 +217,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-mysql:
     needs: app-db-matrix
@@ -311,7 +310,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-postgres:
     needs: app-db-matrix
@@ -388,7 +386,6 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   app-db-tests-result:
     needs:
