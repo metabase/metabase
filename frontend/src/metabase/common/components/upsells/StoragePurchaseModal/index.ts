@@ -1,3 +1,4 @@
+export { PLUGIN_STORAGE_SETUP } from "./plugins";
 export {
   StorageSetupContext,
   StorageSetupProvider,

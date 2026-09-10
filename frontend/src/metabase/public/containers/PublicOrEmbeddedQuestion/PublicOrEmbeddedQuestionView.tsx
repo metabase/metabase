@@ -132,7 +132,6 @@ export function PublicOrEmbeddedQuestionView({
             // including the "No results" message
             isDashboard
             isStandaloneQuestion
-            metadata={metadata}
             onChangeCardAndRun={() => {}}
             tableFooterExtraButtons={
               downloadInFooter ? questionResultDownloadButton : null

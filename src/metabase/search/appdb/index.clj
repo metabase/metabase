@@ -8,7 +8,6 @@
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
-   [metabase.search.config :as search.config]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -140,54 +139,13 @@
       (catch Exception e
         (log/warnf "Failed to clean up obsolete indexes: %s" (ex-message e))))))
 
-(defn- ->db-type [t]
-  (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))
-
-(defn- ->db-column [c]
-  (or (get {:id         :model_id
-            :created-at :model_created_at
-            :updated-at :model_updated_at}
-           c)
-      (keyword (u/->snake_case_en (name c)))))
-
-(def ^:private not-null
-  #{:archived :name})
-
-(def ^:private default
-  {:archived false})
-
-;; If this fails, we'll need to increase the size of :model below
-(assert (>= 32 (transduce (map (comp count name)) max 0 search.config/all-models)))
-
-(def ^:private base-schema
-  (into [[:model [:varchar 32] :not-null]
-         [:display_data :text :not-null]
-         [:legacy_input :text :not-null]
-         ;; useful for tracking the speed and age of the index
-         [:created_at :timestamp-with-time-zone
-          [:default ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"]]
-          :not-null]
-         [:updated_at :timestamp-with-time-zone :not-null]]
-        (keep (fn [[k t]]
-                (when t
-                  (into [(->db-column k) (->db-type t)]
-                        (concat
-                         (when (not-null k)
-                           [:not-null])
-                         (when-some [d (default k)]
-                           [[:default d]]))))))
-        search.spec/attr-types))
-
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
   ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
   ;; even when already running in a transaction
   (t2/with-transaction [_ (mdb/app-db)]
-    (search.db/create-search-index-table! table-name (specialization/table-schema base-schema))
-    (let [table-name (name table-name)]
-      (doseq [stmt (specialization/post-create-statements table-name table-name)]
-        (search.db/run-search-index-statement! stmt)))))
+    (search.db/create-search-index-table! table-name)))
 
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
@@ -424,19 +382,12 @@
   []
   (search.db/active-index-created-at (search.spec/index-version-hash) (i18n/site-locale-string)))
 
-(defn search-query
-  "Query fragment for all models corresponding to a query parameter `:search-term`."
-  ([search-term search-ctx]
-   (search-query search-term search-ctx [:model_id :model]))
-  ([search-term search-ctx select-items]
-   (when-let [index-table (active-table)]
-     (specialization/base-query index-table search-term search-ctx select-items))))
-
 (defn search
   "Use the index table to search for records."
   [search-term & [search-ctx]]
-  (map (juxt :model :name)
-       (search.db/search-index-rows (search-query search-term search-ctx [:model :name]))))
+  (when-let [index-table (active-table)]
+    (map (juxt :model :name)
+         (search.db/search-index-rows index-table search-term (:search-native-query search-ctx) [:model :name]))))
 
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
