@@ -12,7 +12,6 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.session.models.session :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -1723,10 +1722,6 @@
                                 :auth_identity_id auth-identity-id
                                 :mfa_auth_identity_id mfa_auth_identity_id})
     session-key))
-
-(defn- session-valid?
-  [session-key]
-  (boolean (#'mw.session/current-user-info-for-session session-key nil)))
 
 (deftest reset-password-propagates-mfa-test
   (testing "PUT /api/user/:id/password"
