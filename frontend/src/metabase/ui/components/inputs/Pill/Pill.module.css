@@ -52,8 +52,6 @@
   opacity: 1;
 }
 
-/* Figma's dark Pill has a 0.5px inner border on top of the elevation. An inset ring keeps the pill the same size
-   in both themes; a real border would add 1px. */
 [data-mantine-color-scheme="dark"] .root {
   box-shadow:
     inset 0 0 0 0.5px var(--mb-color-border-neutral-strong),
