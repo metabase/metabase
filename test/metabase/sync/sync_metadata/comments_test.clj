@@ -19,8 +19,7 @@
   "The name and description sync itself recorded for each Field of `db`, ignoring any description a user set."
   [db]
   (let [table-ids (t2/select-pks-set :model/Table :db_id (u/the-id db))]
-    (warehouse-schema.db/with-sync-values
-      (set (map (partial into {}) (t2/select ['Field :name :description] :table_id [:in table-ids]))))))
+    (set (map (partial into {}) (t2/select ['Field :name :description] :table_id [:in table-ids])))))
 
 (tx/defdataset basic-field-comments
   [["basic_field_comments"
@@ -66,7 +65,7 @@
                      {:name (mt/format-name "updated_desc"), :description "original comment"}}
                    (db->fields (mt/db))))
             (is (= "updated description"
-                   (:description (t2/select-one :model/Field :id field-id))))))))))
+                   (:description (t2/select-one :model/Field :id field-id {:from [(warehouse-schema.db/field-query)]}))))))))))
 
 (tx/defdataset ^:private comment-after-sync
   [["comment_after_sync"

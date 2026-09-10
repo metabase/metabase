@@ -1,6 +1,5 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -34,11 +33,11 @@
 
 (mu/defn upsert-user-settings
   "Record the user-settable Field columns present in `settings` as the user values of `field`, flagging the
-  [[lib-be/field-user-settings-flags]] among them as set."
+  [[warehouse-schema.db/field-user-settings-flags]] among them as set."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/field]]
    settings     :- ::warehouse-schema.schema/field.update]
   (let [settings (u/select-keys-when settings :present field/field-user-settings)
-        flags    (into {} (keep (fn [[k flag]] (when (contains? settings k) [flag true]))) lib-be/field-user-settings-flags)]
+        flags    (into {} (keep (fn [[k flag]] (when (contains? settings k) [flag true]))) warehouse-schema.db/field-user-settings-flags)]
     (when (seq settings)
       (when-not (warehouse-schema.db/field-user-settings-exist? id)
         (warehouse-schema.db/insert-field-user-settings! {:field_id id}))
@@ -48,13 +47,13 @@
   "Drop the user values of the Field columns `ks` for `field`, so its sync values show again. Used when sync
   invalidates them, e.g. a base type change voids a user-set coercion."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/field]]
-   ks           :- [:sequential (into [:enum] lib-be/user-settable-field-columns)]]
+   ks           :- [:sequential (into [:enum] warehouse-schema.db/user-settable-field-columns)]]
   (when (warehouse-schema.db/field-user-settings-exist? id)
     (warehouse-schema.db/update-field-user-settings!
      id
      (into {} (mapcat (fn [k]
                         (cond-> [[k nil]]
-                          (lib-be/field-user-settings-flags k) (conj [(lib-be/field-user-settings-flags k) false]))))
+                          (warehouse-schema.db/field-user-settings-flags k) (conj [(warehouse-schema.db/field-user-settings-flags k) false]))))
            ks))))
 
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)

@@ -12,7 +12,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -111,10 +110,9 @@
            (mt/user-http-request :crowberto :get 200 (format "field/%d/summary" (mt/id :categories :name)))))))
 
 (defn- sync-field
-  "The Field row as sync wrote it, ignoring the user's values: what `metabase_field` itself still holds. An ordinary
-  `t2/select :model/Field` shows the user's values instead."
+  "The Field row as sync wrote it: what `metabase_field` itself holds, with no user values applied."
   [field-id]
-  (warehouse-schema.db/with-sync-values (t2/select-one :model/Field :id field-id)))
+  (t2/select-one :model/Field :id field-id))
 
 (defn simple-field-details [field]
   (select-keys field [:name

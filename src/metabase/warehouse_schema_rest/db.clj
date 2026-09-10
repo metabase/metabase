@@ -9,6 +9,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
@@ -27,7 +28,7 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn set-nested-fields-active!
   "Set the active flag of the Fields of the Table with `table-id` whose NFC path matches the SQL LIKE
@@ -158,7 +159,8 @@
 (mu/defn active-unretired-field-ids-for-table
   "The ids of the active, unretired Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field, :table_id table-id, :visibility_type [:not= "retired"], :active true))
+  (t2/select-pks-set :model/Field :table_id table-id :visibility_type [:not= "retired"] :active true
+                     {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn field-ids-for-table
   "The ids of the Fields of the Table with `table-id`, or nil."
@@ -168,7 +170,7 @@
 (mu/defn active-fields-targeting
   "The active Fields whose FK target, as users see it, is one of `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true))
+  (t2/select :model/Field :fk_target_field_id [:in field-ids] :active true {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn delete-field-values-for-fields!
   "Delete the FieldValues of the Fields with `field-ids`."

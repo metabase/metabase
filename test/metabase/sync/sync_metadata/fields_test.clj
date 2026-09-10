@@ -169,7 +169,7 @@
           (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:coercion_strategy :Coercion/String->Integer})
           (sync/sync-database! db)
           (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
-                  (t2/select-one :model/Field :id (:id field))))
+                  (t2/select-one :model/Field :id (:id field) {:from [(warehouse-schema.db/field-query)]})))
           (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
           (sync/sync-database! db)
           (testing "the base type change unsets the user's coercion, on the Field and for the user"
@@ -310,7 +310,7 @@
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
-                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
+                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id {:from [(warehouse-schema.db/field-query)]})}))]
         (testing "before"
           (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
@@ -331,7 +331,8 @@
       (letfn [(state []
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
-                      {:keys [semantic_type fk_target_field_id]} (t2/select-one :model/Field :id (mt/id :checkins :user_id))]
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one :model/Field :id (mt/id :checkins :user_id)
+                                                                                {:from [(warehouse-schema.db/field-query)]})]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
@@ -351,8 +352,7 @@
                  (state)))
           (testing "sync's own row still carries the FK it detected, under the user's :type/Name"
             (is (=? {:semantic_type :type/FK :fk_target_field_id int?}
-                    (warehouse-schema.db/with-sync-values
-                      (t2/select-one :model/Field :id (mt/id :checkins :user_id)))))))))))
+                    (t2/select-one :model/Field :id (mt/id :checkins :user_id))))))))))
 
 (deftest case-sensitive-conflict-test
   (testing "Two columns with same lower-case name can be synced (#17387)"
@@ -536,12 +536,14 @@
             (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
                   field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
               (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:visibility_type :normal})
-              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id)))
+              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id
+                                                              {:from [(warehouse-schema.db/field-query)]})))
                   "Manual change should set visibility_type to :normal"))
             (sync/sync-database! database)
             (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
                   field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
-              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id)))
+              (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id
+                                                              {:from [(warehouse-schema.db/field-query)]})))
                   "Second sync should preserve manually set :normal visibility_type"))))))))
 
 (deftest user-set-fks-are-preserved-by-sync-test
@@ -566,7 +568,7 @@
           :fk_target_field_id (u/the-id birds-example-name-field)})
         (testing "after sync, user-set FK is preserved"
           (sync/sync-database! (mt/db))
-          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field))]
+          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field) {:from [(warehouse-schema.db/field-query)]})]
             (is (= :type/FK (:semantic_type field-after-sync)))
             (is (= (u/the-id birds-example-name-field) (:fk_target_field_id field-after-sync)))))))))
 
@@ -607,8 +609,7 @@
                               [["ngoc@metabase.com"]]]]
       (let [db       (mt/db)
             field-id (mt/id :sens_table :email)
-            field    #(warehouse-schema.db/with-sync-values
-                        (t2/select-one-fn :data_sensitivity :model/Field :id field-id))
+            field    #(t2/select-one-fn :data_sensitivity :model/Field :id field-id)
             mirror   #(t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)]
         (testing "a freshly synced field is unclassified and has no user-settings row"
           (is (nil? (field)))
@@ -630,8 +631,7 @@
                                {:field-name "ssn", :base-type :type/Text}
                                {:field-name "notes", :base-type :type/Text}]
                               [["ngoc@metabase.com" "123-45-6789" "called back twice"]]]]
-      (let [field  #(warehouse-schema.db/with-sync-values
-                      (t2/select-one-fn :data_sensitivity :model/Field :id (mt/id :app_users %)))
+      (let [field  #(t2/select-one-fn :data_sensitivity :model/Field :id (mt/id :app_users %))
             mirror #(t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id (mt/id :app_users %))]
         (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :app_users :email)) {:data_sensitivity "PUBLIC"})
         (is (nil? (field :ssn)))
@@ -656,8 +656,7 @@
         (let [db       (mt/db)
               db-spec  (sql-jdbc.conn/db->pooled-connection-spec db)
               field-id (mt/id :readd_table :email)
-              field    #(warehouse-schema.db/with-sync-values
-                          (t2/select-one [:model/Field :active :data_sensitivity] :id field-id))
+              field    #(t2/select-one [:model/Field :active :data_sensitivity] :id field-id)
               mirror   #(t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)]
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PHI"})
           (jdbc/execute! db-spec ["ALTER TABLE \"READD_TABLE\" DROP COLUMN \"EMAIL\";"])

@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -133,7 +134,7 @@
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field, :table_id [:in table-ids], :semantic_type (mdb/isa :type/PK)))
+  (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK) {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn databases-for-serdes-reducible
   "A reducible of the Databases to export via serdes: routing destinations and the sample database are always

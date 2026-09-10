@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouse-schema.models.table :as schema.table]
    [toucan2.core :as t2]))
 
@@ -32,7 +33,8 @@
 (mu/defn active-fields-for-tables
   "The active Fields of the Tables with `table-ids`, in field order."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field {:where    [:and
+  (t2/select :model/Field {:from     [(warehouse-schema/field-query)]
+                           :where    [:and
                                       [:in :table_id table-ids]
                                       [:= :active true]]
                            :order-by schema.table/field-order-rule}))
@@ -40,6 +42,7 @@
 (mu/defn active-fields
   "The active Fields with `field-ids`."
   [field-ids :- [:or [:set ::lib.schema.id/field] [:sequential ::lib.schema.id/field]]]
-  (t2/select :model/Field {:where [:and
+  (t2/select :model/Field {:from  [(warehouse-schema/field-query)]
+                           :where [:and
                                    [:in :id field-ids]
                                    [:= :active true]]}))

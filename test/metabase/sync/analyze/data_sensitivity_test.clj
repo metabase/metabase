@@ -13,13 +13,13 @@
 (defn- label
   "The `data_sensitivity` a user sees: their own label when they set one, else the classifier's."
   [field-or-id]
-  (t2/select-one-fn :data_sensitivity :model/Field :id (u/the-id field-or-id)))
+  (t2/select-one-fn :data_sensitivity :model/Field :id (u/the-id field-or-id)
+                    {:from [(warehouse-schema.db/field-query {:alias :f})]}))
 
 (defn- sync-label
   "The `data_sensitivity` the classifier itself wrote to `metabase_field`."
   [field-or-id]
-  (warehouse-schema.db/with-sync-values
-    (t2/select-one-fn :data_sensitivity :model/Field :id (u/the-id field-or-id))))
+  (t2/select-one-fn :data_sensitivity :model/Field :id (u/the-id field-or-id)))
 
 (defn- mirror-label [field-or-id]
   (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id (u/the-id field-or-id)))

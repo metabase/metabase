@@ -4,7 +4,6 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouse-schema.humanization :as humanization]
@@ -47,19 +46,10 @@
   (t2/select :model/Field :table_id table-id :active true))
 
 (mu/defn user-edited-field-names
-  "The lower-cased `names`, among the Fields of the Table with `table-id`, that have a user-set display name
-  recorded in FieldUserSettings."
+  "The lower-cased `names`, among the Fields of the Table with `table-id`, that have a user-set display name."
   [table-id :- ::lib.schema.id/table
    names    :- [:set :string]]
-  (t2/select-fn-set (comp u/lower-case-en :name)
-                    :model/Field
-                    {:select    [:f.name]
-                     :from      [[(t2/table-name :model/Field) :f]]
-                     :left-join (warehouse-schema/field-user-settings-join :f :u)
-                     :where     [:and
-                                 [:= :f.table_id table-id]
-                                 [:in [:lower :f.name] names]
-                                 [:not= :u.display_name nil]]}))
+  (warehouse-schema/user-renamed-field-names table-id names))
 
 (mu/defn set-field-display-names!
   "Set the display name of each Field of the Table with `table-id` whose lower-cased name is a key of

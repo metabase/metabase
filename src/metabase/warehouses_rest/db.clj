@@ -11,6 +11,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -203,7 +204,8 @@
              :%lower.metabase_field/name     [:like like-pattern]
              :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
              :table.db_id                    database-id
-             {:order-by   [[[:lower :metabase_field.name] :asc]
+             {:from       [(warehouse-schema/field-query)]
+              :order-by   [[[:lower :metabase_field.name] :asc]
                            [[:lower :table.name] :asc]]
               ;; checking for table.active in join makes query faster when there are a lot of inactive tables
               :inner-join [[:metabase_table :table] [:and :table.active
@@ -220,7 +222,8 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
              :table_id        [:in table-ids]
-             :visibility_type [:not-in ["sensitive" "retired"]]))
+             :visibility_type [:not-in ["sensitive" "retired"]]
+             {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn insert-database!
   "Insert the Database `row` and return the inserted instance."

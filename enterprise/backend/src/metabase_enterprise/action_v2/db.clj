@@ -7,6 +7,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2]))
 
 (mu/defn table
@@ -27,23 +28,23 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn pk-fields-for-table
   "The active primary key Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true))
+  (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn fields-by-name
   "The Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
-  (t2/select :model/Field :table_id table-id :name [:in field-names]))
+  (t2/select :model/Field :table_id table-id :name [:in field-names] {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn active-fields-in-position-order
   "The active Fields of the Table with `table-id`, in position order."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]}))
+  (t2/select :model/Field :table_id table-id :active true {:from [(warehouse-schema/field-query)], :order-by [[:position]]}))
 
 (mu/defn field-requirements-by-name
   "A map of name to the name, required flag, and base type of the Fields of the Table with `table-id`."
@@ -56,7 +57,7 @@
   [table-id :- ::lib.schema.id/table
    names    :- [:sequential :string]]
   (t2/query {:select [:id [[:lower :name] :lower_name]]
-             :from   [(t2/table-name :model/Field)]
+             :from   [(warehouse-schema/field-query)]
              :where  [:and
                       [:= :table_id table-id]
                       [:in [:lower :name] (map u/lower-case-en names)]

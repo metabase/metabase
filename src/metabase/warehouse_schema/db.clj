@@ -5,7 +5,6 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.db :as models.db]
    [metabase.util :as u]
@@ -18,12 +17,101 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
-;;; ------------------------------------------------- ::warehouse-schema.schema/field -------------------------------------------------
+;;; ---------------------------------------- Fields as users see them ----------------------------------------
+
+(def user-settable-field-columns
+  "The Field columns users can set. Their user values live in `metabase_field_user_settings`, never in `metabase_field`."
+  #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy
+    :fk_target_field_id :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity})
+
+(def field-user-settings-flags
+  "The user-settable Field columns that are nullable on the Field and also written by sync, mapped to the
+  `metabase_field_user_settings` flag recording that the user made the call: for these a user's NULL beats the sync
+  value."
+  {:description        :description_set
+   :semantic_type      :semantic_type_set
+   :fk_target_field_id :fk_target_field_id_set})
+
+(mu/defn- field-user-settings-join
+  "The `:left-join` entries joining `metabase_field_user_settings` as `settings-alias` to the Field table aliased
+  `field-alias`; see [[field-user-settings-column]]."
+  [field-alias    :- :keyword
+   settings-alias :- :keyword]
+  [[(t2/table-name :model/FieldUserSettings) settings-alias]
+   [:= (u/qualified-key settings-alias :field_id) (u/qualified-key field-alias :id)]])
+
+(mu/defn- field-user-settings-column
+  "Honey SQL expression for the user-settable Field column `column` as users see it: the value in
+  `metabase_field_user_settings` (aliased `settings-alias`) when the user set it, else the Field's (aliased
+  `field-alias`). A user's NULL counts as set for the [[field-user-settings-flags]] when their flag is true, and for
+  `coercion_strategy` whenever the user set `effective_type`. Requires [[field-user-settings-join]]."
+  [column         :- (into [:enum] user-settable-field-columns)
+   field-alias    :- :keyword
+   settings-alias :- :keyword]
+  (let [field-column    (u/qualified-key field-alias column)
+        settings-column (u/qualified-key settings-alias column)
+        flag            (field-user-settings-flags column)]
+    (cond
+      flag
+      [:case [:= (u/qualified-key settings-alias flag) true] settings-column :else field-column]
+
+      (= column :coercion_strategy)
+      [:case [:not= (u/qualified-key settings-alias :effective_type) nil] settings-column :else field-column]
+
+      ;; a CASE on the boolean gives every app DB a value its JDBC driver reads back as a boolean or a number
+      (= column :json_unfolding)
+      [:case [:= [:coalesce settings-column field-column] true] true :else false]
+
+      :else
+      [:coalesce settings-column field-column])))
+
+(def ^:private sync-owned-field-columns
+  "The columns of `metabase_field` users cannot set."
+  (sort (remove user-settable-field-columns (mu/map-schema-keys ::warehouse-schema.schema/field))))
+
+(mu/defn field-query :- [:tuple :map :keyword]
+  "The source a query over Fields reads from, for its `:from` or a join: a subquery over `metabase_field` left joined
+  to `metabase_field_user_settings`, projecting every Field column with the user-settable ones replaced by the value
+  users see.
+
+    (t2/select :model/Field :table_id table-id {:from [(field-query)]})
+
+  By default it stands in under the Field table's own name, so kv-args, column subsets and `:order-by` keep working
+  untouched. Pass `:alias` when the query joins something else and has to qualify its columns:
+
+    (t2/select :model/Field {:from  [(field-query {:alias :f})]
+                             :join  [[:metabase_table :t] [:= :f.table_id :t.id]]
+                             :where [:= :t.db_id database-id]})
+
+  Every query over Fields reads from this -- selecting `metabase_field` directly shows sync's values rather than the
+  user's. `{:user-settings? false}` asks for sync's own values instead, which sync needs where it diffs the columns
+  it last wrote against the warehouse.
+
+  Application DBs flatten the subquery, so a predicate on a sync-owned column still reaches that column's index."
+  ([]
+   (field-query nil))
+
+  ([{:keys [alias user-settings?]
+     :or   {alias          (t2/table-name :model/Field)
+            user-settings? true}} :- [:maybe [:map
+                                              [:alias          {:optional true} :keyword]
+                                              [:user-settings? {:optional true} :boolean]]]]
+   [(if user-settings?
+      ^:allow-subquery
+      {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
+                        (map (fn [column] [(field-user-settings-column column :f :u) column]))
+                        (sort user-settable-field-columns))
+       :from      [[(t2/table-name :model/Field) :f]]
+       :left-join (field-user-settings-join :f :u)}
+      ^:allow-subquery
+      {:select [:f.*]
+       :from   [[(t2/table-name :model/Field) :f]]})
+    alias]))
 
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/Field :id field-id {:from [(field-query)]}))
 
 (mu/defn field-in-path
   "The ::warehouse-schema.schema/field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
@@ -35,12 +123,12 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (t2/select :model/Field :id [:in field-ids] {:from [(field-query)]}))
 
 (mu/defn fields-by-id
   "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids]))
+  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids] {:from [(field-query)]}))
 
 (mu/defn field-table-id-rows
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
@@ -62,7 +150,8 @@
 (mu/defn field-values-eligibility
   "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id))
+  (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id
+                 {:from [(field-query)]}))
 
 (mu/defn field-ids-for-table
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
@@ -93,7 +182,8 @@
   or `:alphabetical`)."
   [table-id    :- ::lib.schema.id/table
    field-order :- [:enum :custom :smart :database :alphabetical]]
-  (t2/select [:model/Field :id] :table_id table-id {:order-by (field-order-order-by field-order)}))
+  (t2/select [:model/Field :id] :table_id table-id {:from     [(field-query)]
+                                                    :order-by (field-order-order-by field-order)}))
 
 (mu/defn active-fields-for-tables
   "The active, unretired Fields of the Tables with `table-ids`, in field order."
@@ -102,7 +192,7 @@
              :active true
              :table_id [:in table-ids]
              :visibility_type [:not= "retired"]
-             {:order-by field-order-rule}))
+             {:from [(field-query)], :order-by field-order-rule}))
 
 (mu/defn pk-field-ids-by-table
   "A map of ::warehouse-schema.schema/table ID to the ID of its visible primary key ::warehouse-schema.schema/field for `table-ids`."
@@ -110,7 +200,8 @@
   (t2/select-fn->fn :table_id :id :model/Field
                     :table_id [:in table-ids]
                     :semantic_type (app-db/isa :type/PK)
-                    :visibility_type [:not-in ["sensitive" "retired"]]))
+                    :visibility_type [:not-in ["sensitive" "retired"]]
+                    {:from [(field-query {:alias :f})]}))
 
 (mu/defn update-field!
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
@@ -134,42 +225,20 @@
   [table-id :- ::lib.schema.id/table]
   (t2/delete! :model/Field :table_id table-id))
 
-(def ^:dynamic *sync-values*
-  "When true, reading a `:model/Field` yields the values sync wrote to `metabase_field` rather than the ones users
-  see. Bind it with [[with-sync-values]]; do not set it directly."
-  false)
-
-(defmacro with-sync-values
-  "Run `body` reading `:model/Field` as sync wrote it, ignoring the user's values in `metabase_field_user_settings`.
-  Sync itself needs this: it compares the columns it last wrote against the warehouse to decide what changed, and a
-  user's `display_name` or `semantic_type` would make every sync see a spurious difference.
-
-  The binding is conveyed on the current thread only, so wrap the query itself rather than a whole sync run -- work
-  handed to another thread or a future does not inherit it."
-  [& body]
-  `(binding [*sync-values* true] ~@body))
-
-(def ^:private sync-owned-field-columns
-  "The columns of `metabase_field` users cannot set."
-  (sort (remove lib-be/user-settable-field-columns (mu/map-schema-keys ::warehouse-schema.schema/field))))
-
-(mu/defn field-source
-  "A `:from`/`:join` source of Fields as users see them, aliased `field-alias`: a subquery over `metabase_field` left
-  joined to `metabase_field_user_settings`, projecting every Field column with the user-settable ones replaced by
-  [[lib-be/field-user-settings-column]].
-
-  `:model/Field` selects already read from this (see `metabase.warehouse-schema.models.field`), so reach for it only
-  in a hand-written query that names `metabase_field` itself; then refer to `field-alias.column` as usual, with no
-  second helper to remember. Application DBs flatten the subquery, so a predicate on a sync-owned column still
-  reaches that column's index."
-  [field-alias :- :keyword]
-  [^:allow-subquery
-   {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
-                     (map (fn [column] [(lib-be/field-user-settings-column column :f :u) column]))
-                     (sort lib-be/user-settable-field-columns))
-    :from      [[(t2/table-name :model/Field) :f]]
-    :left-join (lib-be/field-user-settings-join :f :u)}
-   field-alias])
+(mu/defn user-renamed-field-names :- [:set :string]
+  "The lower-cased names, among `names`, of the Fields of the Table with `table-id` whose display name a user set.
+  Uploads use it to leave those Fields alone when appending re-derives display names from the CSV header."
+  [table-id :- ::lib.schema.id/table
+   names    :- [:set :string]]
+  (t2/select-fn-set (comp u/lower-case-en :name)
+                    :model/Field
+                    {:select    [:f.name]
+                     :from      [[(t2/table-name :model/Field) :f]]
+                     :left-join (field-user-settings-join :f :u)
+                     :where     [:and
+                                 [:= :f.table_id table-id]
+                                 [:in [:lower :f.name] names]
+                                 [:not= :u.display_name nil]]}))
 
 (mu/defn field-names-reducible
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/field, plus its user-set display
@@ -178,7 +247,7 @@
   (t2/reducible-query
    {:select    [:f.id :f.name :f.display_name [:u.display_name :user_display_name]]
     :from      [[(t2/table-name :model/Field) :f]]
-    :left-join (lib-be/field-user-settings-join :f :u)}))
+    :left-join (field-user-settings-join :f :u)}))
 
 (mu/defn set-field-display-name!
   "Set the display name of the ::warehouse-schema.schema/field with `id`, returning the number updated."

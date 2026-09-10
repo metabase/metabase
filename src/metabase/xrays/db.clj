@@ -65,7 +65,7 @@
                                                          [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
                                                                    [:inline 1] :else [:inline nil]]]
                                                           :count_pks_and_fks]]
-                                              :from     [(warehouse-schema/field-source :f)]
+                                              :from     [(warehouse-schema/field-query {:alias :f})]
                                               :where    [:= :f.active true]
                                               :group-by [:f.table_id]} :ts]
                            [:and [:= :ts.table_id :id]
@@ -80,7 +80,7 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
+  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn field-name
   "The name of the Field with `field-id`, or nil."
@@ -95,17 +95,17 @@
 (mu/defn fields-targeting
   "The Fields whose FK target is the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select :model/Field :fk_target_field_id field-id))
+  (t2/select :model/Field :fk_target_field_id field-id {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn fk-fields-for-tables
   "The FK Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :fk_target_field_id [:not= nil] :table_id [:in table-ids]))
+  (t2/select :model/Field :fk_target_field_id [:not= nil] :table_id [:in table-ids] {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn active-fk-fields-for-table
   "The active FK Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :fk_target_field_id [:not= nil] :active true))
+  (t2/select :model/Field :table_id table-id :fk_target_field_id [:not= nil] :active true {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn fk-target-field-ids-for-table
   "The FK target Field ids of the active Fields of the Table with `table-id`."
@@ -113,7 +113,8 @@
   (t2/select-fn-set :fk_target_field_id :model/Field
                     :table_id           table-id
                     :fk_target_field_id [:not= nil]
-                    :active             true))
+                    :active             true
+                    {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn active-field-ids-for-table
   "The ids of the active Fields of the Table with `table-id`."
@@ -123,7 +124,7 @@
 (mu/defn table-ids-of-fields-targeting
   "The Table ids of the active Fields whose FK target is one of `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :fk_target_field_id [:in field-ids] :active true))
+  (t2/select-fn-set :table_id :model/Field :fk_target_field_id [:in field-ids] :active true {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn visible-fields-for-tables
   "The active, normally visible, previewable Fields of the Tables with `table-ids`."
@@ -132,7 +133,8 @@
              :table_id [:in table-ids]
              :visibility_type "normal"
              :preview_display true
-             :active true))
+             :active true
+             {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn other-visible-fields-in-table
   "The active, normally visible Fields of the Table with `table-id` other than `field-id`."
@@ -142,7 +144,8 @@
              :table_id        table-id
              :id              [:not= field-id]
              :visibility_type "normal"
-             :active          true))
+             :active          true
+             {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn card
   "The Card with `card-id`, or nil."

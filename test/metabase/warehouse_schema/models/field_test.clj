@@ -307,16 +307,14 @@
   (testing "a user-set label lives in the user settings and does not touch the Field"
     (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
       (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
-      (is (= :PII (warehouse-schema.db/with-sync-values
-                    (t2/select-one-fn :data_sensitivity :model/Field :id field-id))))
+      (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
       (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))
       (is (= :PUBLIC (:data_sensitivity (warehouse-schema.db/field field-id))))))
   (testing "a bare update to the Field is written as given and stays hidden behind the user label"
     (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
       (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
       (t2/update! :model/Field field-id {:data_sensitivity :PHI})
-      (is (= :PHI (warehouse-schema.db/with-sync-values
-                    (t2/select-one-fn :data_sensitivity :model/Field :id field-id))))
+      (is (= :PHI (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
       (is (= :PUBLIC (:data_sensitivity (warehouse-schema.db/field field-id))))))
   (testing "upsert-user-settings with a nil value clears a previously set label on the mirror"
     (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
@@ -336,8 +334,7 @@
     (field-user-settings/upsert-user-settings edited {:display_name "User Name" :description nil :semantic_type nil})
     (testing "the sync row is untouched"
       (is (=? {:display_name "Sync Name" :description "sync description" :semantic_type :type/Category}
-              (warehouse-schema.db/with-sync-values
-                (t2/select-one :model/Field :id edited-id)))))
+              (t2/select-one :model/Field :id edited-id))))
     (testing "user values, a user NULL included, replace the sync ones; the rest of the row and its transforms are intact"
       (is (=? {:id edited-id :display_name "User Name" :description nil :semantic_type nil :base_type :type/Text
                :effective_type :type/Text :coercion_strategy nil :visibility_type :normal}
@@ -374,26 +371,27 @@
       (field-user-settings/upsert-user-settings field {:name "nope" :position 3})
       (is (nil? (:name (t2/select-one :model/FieldUserSettings :field_id field-id)))))))
 
-(deftest field-user-settings-column-test
-  (testing "the Honey SQL helpers render per column kind"
-    (is (= [[:metabase_field_user_settings :u] [:= :u.field_id :f.id]]
-           (warehouse-schema/field-user-settings-join :f :u)))
-    (is (= [:coalesce :u.display_name :f.display_name]
-           (warehouse-schema/field-user-settings-column :display_name :f :u)))
-    (is (= [:case [:= :u.description_set true] :u.description :else :f.description]
-           (warehouse-schema/field-user-settings-column :description :f :u)))
-    (is (= [:case [:not= :u.effective_type nil] :u.coercion_strategy :else :f.coercion_strategy]
-           (warehouse-schema/field-user-settings-column :coercion_strategy :f :u))))
-  (testing "they read the user values on the app DB"
+(deftest field-query-test
+  (testing "a query sourced from field-query reads the user's values, a user NULL included"
     (mt/with-temp [:model/Field {field-id :id :as field} {:display_name "Sync" :description "sync" :semantic_type :type/Category}]
       (field-user-settings/upsert-user-settings field {:display_name "User" :description nil})
-      (is (= [{:display_name "User" :description nil :semantic_type "type/Category"}]
-             (t2/query {:select    [[(warehouse-schema/field-user-settings-column :display_name :f :u) :display_name]
-                                    [(warehouse-schema/field-user-settings-column :description :f :u) :description]
-                                    [(warehouse-schema/field-user-settings-column :semantic_type :f :u) :semantic_type]]
-                        :from      [[:metabase_field :f]]
-                        :left-join (warehouse-schema/field-user-settings-join :f :u)
-                        :where     [:= :f.id field-id]}))))))
+      (is (=? {:display_name "User" :description nil :semantic_type :type/Category}
+              (t2/select-one :model/Field :id field-id {:from [(warehouse-schema/field-query)]})))
+      (testing "and metabase_field itself still holds sync's values"
+        (is (=? {:display_name "Sync" :description "sync" :semantic_type :type/Category}
+                (t2/select-one :model/Field :id field-id))))))
+  (testing "{:user-settings? false} asks for sync's values from the same helper"
+    (mt/with-temp [:model/Field {field-id :id :as field} {:display_name "Sync"}]
+      (field-user-settings/upsert-user-settings field {:display_name "User"})
+      (is (= "Sync" (:display_name (t2/select-one :model/Field :id field-id
+                                                  {:from [(warehouse-schema/field-query {:user-settings? false})]}))))))
+  (testing "a coercion the user cleared reads as cleared, following their effective_type"
+    (mt/with-temp [:model/Field {field-id :id :as field} {:base_type      :type/Text
+                                                          :effective_type :type/Number
+                                                          :coercion_strategy :Coercion/String->Number}]
+      (field-user-settings/upsert-user-settings field {:effective_type :type/Text :coercion_strategy nil})
+      (is (=? {:effective_type :type/Text :coercion_strategy nil}
+              (t2/select-one :model/Field :id field-id {:from [(warehouse-schema/field-query)]}))))))
 
 (deftest deactivating-fk-target-unsets-user-fk-test
   (testing "retiring a Field drops the user-set FKs pointing at it so the sync values show again"

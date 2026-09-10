@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2]))
 
 (mu/defn table-database-ids
@@ -66,4 +67,5 @@
              ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
              :parent_id nil
              :nfc_path nil
-             {:order-by [[:database_position :asc]]}))
+             {:from     [(warehouse-schema/field-query)]
+              :order-by [[:database_position :asc]]}))

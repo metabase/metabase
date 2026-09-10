@@ -241,15 +241,17 @@
 (mu/defn fields
   "The Fields with `field-ids` as sync wrote them. Feeds `our-metadata`, which is diffed against the warehouse."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (warehouse-schema/with-sync-values
-    (t2/select :model/Field :id [:in field-ids])))
+  (t2/select :model/Field :id [:in field-ids]
+             {:from [(warehouse-schema/field-query {:user-settings? false})]}))
 
 (mu/defn fields-for-field-values
-  "The columns needed to scan FieldValues of the Fields with `field-ids`."
+  "The columns needed to scan FieldValues of the Fields with `field-ids`, as users see them: the eligibility decision
+  (`visibility_type`/`has_field_values`) has to see what the user set."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type
               :table_id :has_field_values]
-             :id [:in field-ids]))
+             :id [:in field-ids]
+             {:from [(warehouse-schema/field-query)]}))
 
 (defn- base-types->descendants
   "Given a set of `base-types`, an expanded set including those types and all their descendants in the type
@@ -320,15 +322,15 @@
   `update-field-metadata-if-needed!` diffs these against the warehouse to decide what changed, so they must be sync's
   own values: a user's `semantic_type` or `description` would read as a difference on every sync."
   [table-id :- ::lib.schema.id/table]
-  (warehouse-schema/with-sync-values
-    (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
-                :parent_id :id :description :database_position :nfc_path
-                :database_is_auto_increment :database_required
-                :database_default :database_is_generated :database_is_nullable :database_is_pk
-                :database_partitioned :json_unfolding :position :preview_display]
-               :table_id table-id
-               :active true
-               {:order-by table/field-order-rule})))
+  (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
+              :parent_id :id :description :database_position :nfc_path
+              :database_is_auto_increment :database_required
+              :database_default :database_is_generated :database_is_nullable :database_is_pk
+              :database_partitioned :json_unfolding :position :preview_display]
+             :table_id table-id
+             :active true
+             {:from     [(warehouse-schema/field-query {:user-settings? false})]
+              :order-by table/field-order-rule}))
 
 (mu/defn normal-fields-for-table
   "Up to `limit` active, normal-visibility Fields of the Table with `table-id`, ordered by ID."
@@ -338,7 +340,7 @@
              :table_id table-id
              :active true
              :visibility_type "normal"
-             {:order-by [[:id :asc]], :limit limit}))
+             {:from [(warehouse-schema/field-query)], :order-by [[:id :asc]], :limit limit}))
 
 (mu/defn inactive-fields-by-lower-name
   "The inactive Fields of the Table with `table-id` under `parent-id` whose lower-cased name is one of `lower-names`."
@@ -360,7 +362,8 @@
              :active true
              :visibility_type [:not-in ["sensitive" "retired"]]
              :fingerprint_version fingerprint-version
-             :last_analyzed nil))
+             :last_analyzed nil
+             {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn name-field-count-for-table
   "The number of active, visible Fields of the Table with `table-id` whose semantic type is `:type/Name`."
@@ -369,13 +372,15 @@
             :table_id table-id
             :active true
             :visibility_type [:not-in ["sensitive" "retired"]]
-            :semantic_type :type/Name))
+            :semantic_type :type/Name
+            {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn unscored-fields-for-database-reducible
   "Reducible active, visible Fields of the Database with `database-id` without a dimension interestingness score."
   [database-id :- ::lib.schema.id/database]
   (t2/reducible-select :model/Field
-                       {:where [:and
+                       {:from  [(warehouse-schema/field-query)]
+                        :where [:and
                                 [:= :active true]
                                 [:= :dimension_interestingness nil]
                                 [:not-in :visibility_type ["sensitive" "retired"]]
@@ -585,14 +590,14 @@
   left to scan from the label it wrote, not from the one a user chose."
   [table-id       :- ::lib.schema.id/table
    rescan-public? :- [:maybe :boolean]]
-  (warehouse-schema/with-sync-values
-    (t2/select :model/Field
-               {:where    [:and
-                           [:= :table_id table-id]
-                           [:= :active true]
-                           [:not= :visibility_type "retired"]
-                           (data-sensitivity-to-scan-clause rescan-public?)]
-                :order-by [[:id :asc]]})))
+  (t2/select :model/Field
+             {:from     [(warehouse-schema/field-query {:user-settings? false})]
+              :where    [:and
+                         [:= :table_id table-id]
+                         [:= :active true]
+                         [:not= :visibility_type "retired"]
+                         (data-sensitivity-to-scan-clause rescan-public?)]
+              :order-by [[:id :asc]]}))
 
 (mu/defn table-ids-with-fields-to-scan-for-data-sensitivity
   "The IDs of the active Tables of the Database with `database-id` that have active, non-retired Fields the

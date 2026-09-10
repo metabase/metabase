@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -28,4 +29,5 @@
   (t2/select-fn-set :name [:model/Field :name]
                     :table_id table-id
                     :base_type :type/JSON
-                    :json_unfolding false))
+                    :json_unfolding false
+                    {:from [(warehouse-schema/field-query)]}))

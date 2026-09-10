@@ -5,61 +5,8 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
-
-;;; ------------------------------------------ Field user settings ------------------------------------------
-;;;
-;;; The user's values for a Field live in `metabase_field_user_settings`; these helpers apply them in app-DB SQL.
-
-(def user-settable-field-columns
-  "The Field columns users can set. Their user values live in `metabase_field_user_settings`, never in `metabase_field`."
-  #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy
-    :fk_target_field_id :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity})
-
-(def field-user-settings-flags
-  "The user-settable Field columns that are nullable on the Field and also written by sync, mapped to the
-  `metabase_field_user_settings` flag recording that the user made the call: for these a user's NULL beats the sync
-  value."
-  {:description        :description_set
-   :semantic_type      :semantic_type_set
-   :fk_target_field_id :fk_target_field_id_set})
-
-(mu/defn field-user-settings-join
-  "The `:left-join` entries joining `metabase_field_user_settings` as `settings-alias` to the Field table aliased
-  `field-alias`; see [[field-user-settings-column]]."
-  [field-alias    :- :keyword
-   settings-alias :- :keyword]
-  [[(t2/table-name :model/FieldUserSettings) settings-alias]
-   [:= (u/qualified-key settings-alias :field_id) (u/qualified-key field-alias :id)]])
-
-(mu/defn field-user-settings-column
-  "Honey SQL expression for the user-settable Field column `column` as users see it: the value in
-  `metabase_field_user_settings` (aliased `settings-alias`) when the user set it, else the Field's (aliased
-  `field-alias`). A user's NULL counts as set for the [[field-user-settings-flags]] when their flag is true, and for
-  `coercion_strategy` whenever the user set `effective_type`. Requires [[field-user-settings-join]]."
-  [column         :- (into [:enum] user-settable-field-columns)
-   field-alias    :- :keyword
-   settings-alias :- :keyword]
-  (let [field-column    (u/qualified-key field-alias column)
-        settings-column (u/qualified-key settings-alias column)
-        flag            (field-user-settings-flags column)]
-    (cond
-      flag
-      [:case [:= (u/qualified-key settings-alias flag) true] settings-column :else field-column]
-
-      (= column :coercion_strategy)
-      [:case [:not= (u/qualified-key settings-alias :effective_type) nil] settings-column :else field-column]
-
-      ;; a CASE on the boolean gives every app DB a value its JDBC driver reads back as a boolean or a number
-      (= column :json_unfolding)
-      [:case [:= [:coalesce settings-column field-column] true] true :else false]
-
-      :else
-      [:coalesce settings-column field-column])))
-
-;;; ----------------------------------------- Databases and Cards -----------------------------------------
 
 (mu/defn card-database-ids
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
@@ -133,13 +80,12 @@
 
     :metadata/column
     (let [excluded-visibility-types (cond-> ["retired"]
-                                      (not include-sensitive?) (conj "sensitive"))
-          visibility-type           (field-user-settings-column :visibility_type :field :settings)]
+                                      (not include-sensitive?) (conj "sensitive"))]
       [:and
        [:= :field/active true]
        [:or
-        [:= visibility-type nil]
-        [:not-in visibility-type excluded-visibility-types]]])
+        [:= :field/visibility_type nil]
+        [:not-in :field/visibility_type excluded-visibility-types]]])
 
     :metadata/card
     [:= :card/archived false]

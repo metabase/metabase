@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -23,7 +22,6 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -136,23 +134,6 @@
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
 
-(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
-                                         #_model          :model/Field
-                                         #_resolved-query clojure.lang.IPersistentMap]
-  "Read Fields as users see them. A user's values live in `metabase_field_user_settings`, so selecting `metabase_field`
-  alone shows sync's values rather than the user's; point the default source at
-  [[warehouse-schema.db/field-source]], which merges the two, so callers get user values without asking. Aliasing it
-  as the table name keeps kv-args, column subsets and `:order-by` referring to it.
-
-  A query that brings its own `:from` is left alone, and so is every DML query type: writes still go straight to
-  `metabase_field`. [[warehouse-schema.db/with-sync-values]] opts a read out."
-  [query-type model parsed-args honeysql]
-  (let [built (next-method query-type model parsed-args honeysql)]
-    (cond-> built
-      (and (not warehouse-schema.db/*sync-values*)
-           (= (:from built) [[(t2/table-name :model/Field)]]))
-      (assoc :from [(warehouse-schema.db/field-source (t2/table-name :model/Field))]))))
-
 (t2/define-after-select :model/Field
   [field]
   (dissoc field :is_defective_duplicate :unique_field_helper))
@@ -190,8 +171,8 @@
         enforce-effective-type-invariant)))
 
 (def field-user-settings
-  "Set of user-settable values for a Field; see [[lib-be/user-settable-field-columns]]."
-  lib-be/user-settable-field-columns)
+  "Set of user-settable values for a Field; see [[warehouse-schema.db/user-settable-field-columns]]."
+  warehouse-schema.db/user-settable-field-columns)
 
 (t2/define-before-update :model/Field
   [field]

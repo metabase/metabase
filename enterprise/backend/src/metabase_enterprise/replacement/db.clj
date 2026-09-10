@@ -13,6 +13,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2]))
 
 (mu/defn run
@@ -186,7 +187,7 @@
 (mu/defn active-fields-of-table
   "The active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true))
+  (t2/select :model/Field :table_id table-id :active true {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn active-field-ids-of-table
   "The IDs of the active Fields of the Table with `table-id`."
@@ -196,7 +197,7 @@
 (mu/defn active-fk-to-fields-exists?
   "Whether an active Field points at one of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/exists? :model/Field :fk_target_field_id [:in field-ids] :active true))
+  (t2/exists? :model/Field :fk_target_field_id [:in field-ids] :active true {:from [(warehouse-schema/field-query)]}))
 
 (mu/defn sandbox-exists-for-table?
   "Whether a Sandbox is defined on the Table with `table-id`."

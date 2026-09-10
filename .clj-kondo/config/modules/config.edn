@@ -111,6 +111,7 @@
            settings
            users
            util
+           warehouse-schema
            warehouses}
    :model-exports #{:model/Action}
    :model-imports #{:model/Card
@@ -1265,12 +1266,12 @@
            lib
            models
            settings
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Dimension
                     :model/Field
-                    :model/FieldUserSettings
                     :model/FieldValues
                     :model/Measure
                     :model/NativeQuerySnippet
@@ -1703,6 +1704,7 @@
            tracing
            users
            util
+           warehouse-schema
            enterprise/advanced-permissions}
    :model-exports #{:model/ApplicationPermissionsRevision
                     :model/CollectionPermissionGraphRevision
@@ -2741,7 +2743,8 @@
            models
            settings
            task
-           util}}
+           util
+           warehouse-schema}}
 
   user-key-value
   {:team "UX West"
@@ -2851,6 +2854,7 @@
   warehouse-schema
   {:team "UX West"
    :api  #{metabase.warehouse-schema.core
+           metabase.warehouse-schema.db
            metabase.warehouse-schema.field
            metabase.warehouse-schema.field-values.distinct-batch
            metabase.warehouse-schema.humanization
@@ -2943,7 +2947,8 @@
            secrets
            settings
            sync
-           util}
+           util
+           warehouse-schema}
    :model-exports #{:model/Database}
    :model-imports #{:model/Card
                     :model/Field
@@ -3033,7 +3038,8 @@
            models
            query-processor
            sync
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -3970,7 +3976,8 @@
            tracing
            transforms
            transforms-base
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table
@@ -3996,7 +4003,8 @@
            tracing
            transforms
            transforms-base
-           util}
+           util
+           warehouse-schema}
    :model-exports #{:model/PythonLibrary}
    :model-imports #{:model/Database
                     :model/Field
