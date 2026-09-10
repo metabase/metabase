@@ -98,6 +98,23 @@ Module names form a tree: `lib.schema` is a child of `lib`. When OSS module `sea
 - Each `:module-exports` entry widens a nested module's visibility by one ancestor. Export every link to
   make it available everywhere. OSS module `X` exports its `enterprise/X` companion automatically.
 
+### Module boundary ratchets
+
+`.clj-kondo/config/modules/ratchets.edn` counts the config's escape hatches: `:api :any` and `:uses :any`
+modules, and `:friends` grants. `metabase.core.modules-test` fails when a count goes up. Fix the boundary,
+or raise the number by hand and say why in the commit.
+
+Record a count that went down:
+
+```bash
+clojure -X:dev dev.deps-graph/update-module-boundary-ratchets!
+```
+
+It refuses increases, so it is safe to run blind.
+
+`(dev.deps-graph/module-boundary-stats)` sizes every mutual-dependency cluster, in modules and in
+namespaces. Nothing commits those numbers: they move with any change anywhere in the repo.
+
 ## Kondo Ignore Ratchets
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
