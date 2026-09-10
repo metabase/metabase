@@ -71,11 +71,14 @@
                     {:provider provider}))))
 
 (defn- normalize-known-model
-  "Check one adapter's `supported-models` value is a map containing at least `:display-name` (and optionally
-  `:context-window`). Anything else throws, so an adapter that invents a different shape fails loudly instead of
-  quietly documenting a model with no name."
+  "Check one adapter's `supported-models` value carries a `:display-name` (and optionally a
+  `:context-window`). Anything else throws, so an adapter that invents a different shape fails loudly
+  instead of quietly documenting a model with no name — [[metabase.cmd.ai-provider-dox]] falls back to the
+  model id in the Model column, which reads as a name rather than as a gap.
+
+  The lookup covers a non-map too, since a keyword reads nil off anything that isn't one."
   [provider model-id value]
-  (if (map? value)
+  (if (:display-name value)
     value
     (throw (ex-info (str "Unrecognized supported-models entry for " provider)
                     {:provider provider :model model-id :value value}))))

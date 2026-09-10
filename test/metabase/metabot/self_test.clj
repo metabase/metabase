@@ -2068,4 +2068,16 @@
   (testing "an entry that is not a map throws"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Unrecognized supported-models entry"
-                          (#'self/normalize-known-model "anthropic" "some-model" 42)))))
+                          (#'self/normalize-known-model "anthropic" "some-model" 42))))
+  (testing "so does a map with no display name — the dox table would print the model id as its name"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" {})))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" {:context-window 200000}))))
+  (testing "every provider that publishes an allow-list names every model in it"
+    (doseq [provider ["anthropic" "bedrock" "deepseek" "mistral" "moonshot" "openai" "openrouter" "zai"]]
+      (let [models (self/known-models provider)]
+        (is (seq models) provider)
+        (is (every? (comp string? :display-name val) models) provider)))))
