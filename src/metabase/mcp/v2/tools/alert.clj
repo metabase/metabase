@@ -340,9 +340,17 @@
             "changing its schedule here would silently drop the others. Edit it in Metabase instead.")))
     ;; The permission rejection [[fetch-alert]] has to hide is already spent; any 403 from here on
     ;; is about the edit itself, and says so.
+    ;;
+    ;; `existing` and `payload` are hydrated for reads (ids, timestamps, the nested Card and User) —
+    ;; the update schema is closed over a narrower write shape, so only that shape is sent back.
+    ;; `:subscriptions`/`:handlers` still carry their full existing rows when untouched, since the
+    ;; update spec deletes whatever a body omits.
     (let [updated (notification.api/update-notification!
                    id
-                   (cond-> (assoc existing :payload payload)
+                   (cond-> {:payload_type  :notification/card
+                            :payload       (select-keys payload [:card_id :send_condition :send_once])
+                            :subscriptions (:subscriptions existing)
+                            :handlers      (:handlers existing)}
                      (some? active) (assoc :active (boolean active))
                      schedule       (assoc :subscriptions (cron-subscription schedule))
                      delivery?      (assoc :handlers [(build-handler args (first (:handlers existing)))])))]
