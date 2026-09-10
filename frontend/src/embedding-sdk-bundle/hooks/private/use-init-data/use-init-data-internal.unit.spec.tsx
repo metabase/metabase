@@ -1,8 +1,15 @@
 import { renderHook } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import {
+  getSdkStore,
+  sdkReducers,
+  useSdkStore,
+} from "embedding-sdk-bundle/store";
+import { initAuth } from "embedding-sdk-bundle/store/auth";
+import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { PLUGIN_API } from "metabase/api/client";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
@@ -20,14 +27,15 @@ jest.mock("metabase/dashboard/visualizations/register", () => ({
   registerDashboardVisualizations: jest.fn(),
 }));
 
-const fakeReduxStore = () =>
-  // A stub store: the test only reads `initStatus` and calls `dispatch`/`subscribe`,
-  // so it stubs those three members rather than the full `SdkStore` surface.
-  ({
-    getState: () => ({ sdk: { initStatus: { status: "success" } } }),
-    dispatch: jest.fn(),
-    subscribe: () => () => {},
-  }) as unknown as SdkStore;
+function createInitializedStore() {
+  const store = getSdkStore();
+  store.dispatch(
+    initAuth.fulfilled(undefined, "test-request", {
+      metabaseInstanceUrl: "http://localhost:3000",
+    }),
+  );
+  return store;
+}
 
 const setup = ({
   dataApp,
@@ -37,12 +45,12 @@ const setup = ({
   store.setProps({
     authConfig: { metabaseInstanceUrl: "http://localhost:3000" },
   });
-  store.updateInternalProps({ reduxStore: fakeReduxStore(), dataApp });
+  store.updateInternalProps({ reduxStore: createInitializedStore(), dataApp });
 
   return renderHook(() => useInitData());
 };
 
-describe("useInitData » data-app context", () => {
+describe("useInitData", () => {
   const originalConfig = { ...EMBEDDING_SDK_CONFIG };
   const originalHandlers = { ...PLUGIN_API.onBeforeRequestHandlers };
 
@@ -51,10 +59,8 @@ describe("useInitData » data-app context", () => {
     Object.assign(PLUGIN_API.onBeforeRequestHandlers, originalHandlers);
   });
 
-  it("configures the data-app headers from internalProps.dataApp (dev Vite flow)", () => {
-    // Unmount before the test ends: the sdk project's global afterEach resets
-    // the props store, which re-renders a still-mounted subscriber against the
-    // empty state and makes useInitData throw.
+  it("configures headers for a development data app", () => {
+    // Unmount before the SDK test harness resets the provider-props store.
     const { unmount } = setup({ dataApp: { name: "sales", isDev: true } });
 
     expect(EMBEDDING_SDK_CONFIG.isDataApp).toBe(true);
@@ -89,11 +95,21 @@ describe("useInitDataInternal with an initialized store", () => {
   }
 
   function InitializedProvider() {
+    const reduxStore = useSdkStore();
     useInitDataInternal({
-      reduxStore: fakeReduxStore(),
+      reduxStore,
       authConfig: { metabaseInstanceUrl: "http://localhost:3000" },
     });
     return <TransformName />;
+  }
+
+  function setup() {
+    return renderWithProviders(<InitializedProvider />, {
+      customReducers: sdkReducers,
+      storeInitialState: createMockState({
+        sdk: createMockSdkState({ initStatus: { status: "success" } }),
+      }),
+    });
   }
 
   beforeEach(() => {
@@ -106,23 +122,19 @@ describe("useInitDataInternal with an initialized store", () => {
   });
 
   it("loads a child's transform on the first render with an initialized store", async () => {
-    const { unmount } = renderWithProviders(<InitializedProvider />);
+    const { unmount } = setup();
     expect(await screen.findByText(transform.name)).toBeInTheDocument();
     unmount();
   });
 
   it("loads transforms after plugins are reset between provider mounts", async () => {
-    const { unmount: unmountFirst } = renderWithProviders(
-      <InitializedProvider />,
-    );
+    const { unmount: unmountFirst } = setup();
     expect(await screen.findByText(transform.name)).toBeInTheDocument();
     unmountFirst();
 
     reinitialize();
 
-    const { unmount: unmountSecond } = renderWithProviders(
-      <InitializedProvider />,
-    );
+    const { unmount: unmountSecond } = setup();
     expect(await screen.findByText(transform.name)).toBeInTheDocument();
     unmountSecond();
   });
