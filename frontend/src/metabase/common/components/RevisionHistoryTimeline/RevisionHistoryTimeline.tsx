@@ -98,7 +98,7 @@ export function RevisionHistoryTimeline({
                   <Tooltip label={t`Revert to this version`}>
                     <Button
                       className={S.revertButton}
-                      variant="transparent"
+                      variant="subtle"
                       onClick={() => handleRevert(revision)}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}

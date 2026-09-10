@@ -193,7 +193,7 @@ class SnippetSidebarInner extends Component<
                     }}
                   />
                   <Button
-                    variant="transparent"
+                    variant="subtle"
                     onClick={this.hideSearch}
                     className={S.HeaderButton}
                   >
@@ -222,7 +222,7 @@ class SnippetSidebarInner extends Component<
 
                     {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
                       <Button
-                        variant="transparent"
+                        variant="subtle"
                         onClick={this.showSearch}
                         className={S.HeaderButton}
                       >
@@ -233,10 +233,7 @@ class SnippetSidebarInner extends Component<
                     {showAddMenu && (
                       <Menu position="bottom-end">
                         <Menu.Target>
-                          <Button
-                            variant="transparent"
-                            className={S.HeaderButton}
-                          >
+                          <Button variant="subtle" className={S.HeaderButton}>
                             <Icon name="add" />
                           </Button>
                         </Menu.Target>
