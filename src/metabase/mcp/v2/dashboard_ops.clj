@@ -267,9 +267,13 @@
                     :action_id          action_id
                     :dashboard_tab_id   (:tab op)
                     :parameter_mappings []
+                    ;; the frontend keys off `:virtual_card` to recognize an action dashcard, so an
+                    ;; action carries the same wrapper as the other card-less dashcards
                     :visualization_settings
-                    (cond-> {:actionDisplayType (or display "button")}
-                      label (assoc "button.label" label))}
+                    (dashboard-card/virtual-card-settings
+                     "action"
+                     (cond-> {:actionDisplayType (or display "button")}
+                       label (assoc "button.label" label)))}
                    :action))
 
 (defmethod apply-op "duplicate_card"
@@ -338,7 +342,10 @@
                          {:dashboard_tab_id tab-id}
                          (if position
                            {:row (:row position) :col (:col position)}
-                           (select-keys (placement state
+                           ;; autoplace against the other cards on the tab: the card being moved is
+                           ;; not its own sibling, or the search can never return the slot it holds
+                           (select-keys (placement (update state :dashcards
+                                                           (partial filterv #(not= dashcard_id (:id %))))
                                                    {:size (select-keys dc [:size_x :size_y])}
                                                    tab-id
                                                    :table)
@@ -529,6 +536,8 @@
 (defmethod apply-op "move_parameter"
   [state idx {:keys [parameter_id index dashcard_id] :as op}]
   (resolve-parameter! state idx parameter_id)
+  (when (and (contains? op :index) (contains? op :dashcard_id))
+    (op-error! idx "move_parameter): pass exactly one of `index` or `dashcard_id`."))
   (cond
     (contains? op :dashcard_id)
     (do (resolve-dashcard! state idx dashcard_id)

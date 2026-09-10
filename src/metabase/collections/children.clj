@@ -20,6 +20,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.util :as collections.util]
    [metabase.lib-be.core :as lib-be]
@@ -53,9 +54,7 @@
 
 (defn- remove-other-users-personal-subcollections
   [user-id collections]
-  (let [personal-ids         (set (t2/select-fn-set :id :model/Collection
-                                                    {:where
-                                                     [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
+  (let [personal-ids         (set (collections.db/other-users-personal-collection-ids user-id))
         personal-descendant? (fn [collection]
                                (let [first-parent-collection-id (-> collection
                                                                     :location
@@ -80,47 +79,47 @@
   By default, library-type collections are excluded. "
   [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
   (cond->>
-   (t2/select :model/Collection
-              {:where [:and
-                       (case archived
-                         nil nil
-                         false [:and
-                                [:not= :id (collection/trash-collection-id)]
-                                [:not :archived]]
-                         true [:or
-                               [:= :id (collection/trash-collection-id)]
-                               :archived])
-                       (when shallow
-                         (location-from-collection-id-clause collection-id))
-                       (when personal-only
-                         [:!= :personal_owner_id nil])
-                       (when exclude-other-user-collections
-                         [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
-                       (when-not include-library?
-                         [:or [:= nil :type]
-                          [:not-in :type [collection/library-collection-type
-                                          collection/library-data-collection-type
-                                          collection/library-metrics-collection-type]]])
-                       [:or
-                        (when (contains? namespaces nil)
-                          [:= :namespace nil])
-                        (when (seq namespaces)
-                          [:in :namespace namespaces])]
-                       (collection/visible-collection-filter-clause
-                        :id
-                        {:include-archived-items    (if archived
-                                                      :only
-                                                      :exclude)
-                         :include-trash-collection? true
-                         :permission-level          :read
-                         :archive-operation-id      nil})]
-               ;; Order NULL collection types first so that audit collections are last
-               :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-                          [[[:case
-                             [:= :type nil] 0
-                             [:= :type collection/trash-collection-type] 1
-                             :else 2]] :asc]
-                          [:%lower.name :asc]]})
+   (collections.db/collections-matching
+    {:where [:and
+             (case archived
+               nil nil
+               false [:and
+                      [:not= :id (collection/trash-collection-id)]
+                      [:not :archived]]
+               true [:or
+                     [:= :id (collection/trash-collection-id)]
+                     :archived])
+             (when shallow
+               (location-from-collection-id-clause collection-id))
+             (when personal-only
+               [:!= :personal_owner_id nil])
+             (when exclude-other-user-collections
+               [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
+             (when-not include-library?
+               [:or [:= nil :type]
+                [:not-in :type [collection/library-collection-type
+                                collection/library-data-collection-type
+                                collection/library-metrics-collection-type]]])
+             [:or
+              (when (contains? namespaces nil)
+                [:= :namespace nil])
+              (when (seq namespaces)
+                [:in :namespace namespaces])]
+             (collection/visible-collection-filter-clause
+              :id
+              {:include-archived-items    (if archived
+                                            :only
+                                            :exclude)
+               :include-trash-collection? true
+               :permission-level          :read
+               :archive-operation-id      nil})]
+     ;; Order NULL collection types first so that audit collections are last
+     :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+                [[[:case
+                   [:= :type nil] 0
+                   [:= :type collection/trash-collection-type] 1
+                   :else 2]] :asc]
+                [:%lower.name :asc]]})
     exclude-other-user-collections
     (remove-other-users-personal-subcollections api/*current-user-id*)))
 
@@ -777,9 +776,10 @@
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
-  (let [descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-filter-clause
-                                                                         :id
-                                                                         {:include-archived-items :all}))
+  (let [descendant-collections (collection/descendants-flat parent-coll nil
+                                                            (collection/visible-collection-filter-clause
+                                                             :id
+                                                             {:include-archived-items :all}))
 
         descendant-collection-ids (mapv u/the-id descendant-collections)
 
@@ -793,24 +793,15 @@
                  :metric  #{}
                  :card    #{}}
                 (when (seq descendant-collection-ids)
-                  (t2/reducible-query {:select-distinct [:collection_id :type]
-                                       :from            [:report_card]
-                                       :where           [:and
-                                                         (when-not show-dashboard-questions?
-                                                           [:= :dashboard_id nil])
-                                                         [:= :archived false]
-                                                         [:in :collection_id descendant-collection-ids]]})))
+                  (collections.db/unarchived-card-collection-types-in-reducible
+                   descendant-collection-ids
+                   (not show-dashboard-questions?))))
 
         ;; Tables in collections are an EE feature (library)
         collections-containing-tables
         (if (premium-features/has-feature? :library)
           (->> (when (seq descendant-collection-ids)
-                 (t2/query {:select-distinct [:collection_id]
-                            :from :metabase_table
-                            :where [:and
-                                    [:= :is_published true]
-                                    [:= :archived_at nil]
-                                    [:in :collection_id descendant-collection-ids]]}))
+                 (collections.db/published-table-collection-ids-in descendant-collection-ids))
                (map :collection_id)
                (into #{}))
           #{})
@@ -818,22 +809,14 @@
         collections-containing-transforms
         (if (seq (transforms.gating/enabled-source-types))
           (->> (when (seq descendant-collection-ids)
-                 (t2/query {:select-distinct [:collection_id]
-                            :from :transform
-                            :where [:and
-                                    [:in :collection_id descendant-collection-ids]
-                                    [:in :source_type (transforms.gating/enabled-source-types)]]}))
+                 (collections.db/transform-collection-ids-in descendant-collection-ids (transforms.gating/enabled-source-types)))
                (map :collection_id)
                (into #{}))
           #{})
 
         collections-containing-dashboards
         (->> (when (seq descendant-collection-ids)
-               (t2/query {:select-distinct [:collection_id]
-                          :from :report_dashboard
-                          :where [:and
-                                  [:= :archived false]
-                                  [:in :collection_id descendant-collection-ids]]}))
+               (collections.db/unarchived-dashboard-collection-ids-in descendant-collection-ids))
              (map :collection_id)
              (into #{}))
 
@@ -1068,7 +1051,7 @@
   [rows rows-query offset]
   (or (some-> rows first :total_count)
       (when (pos? (or offset 0))
-        (some-> (mdb/query (assoc rows-query :limit 1)) first :total_count))
+        (some-> (collections.db/collection-children-rows (assoc rows-query :limit 1)) first :total_count))
       0))
 
 (defn- collection-children*
@@ -1111,7 +1094,7 @@
                                :limit  (if (zero? limit) 1 limit)
                                :offset offset))
         rows          (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
-                        (mdb/query limit-query))
+                        (collections.db/collection-children-rows limit-query))
         res           {:total  (total-count rows rows-query offset)
                        :data   (if (= limit 0)
                                  []
@@ -1183,7 +1166,7 @@
                         :permission-level          (if archived? :write :read)
                         :include-trash-collection? archived?}
             row        (first
-                        (mdb/query
+                        (collections.db/collection-filter-metadata-rows
                          {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                           :select (vec
                                    (for [model candidates]

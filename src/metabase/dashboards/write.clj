@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
@@ -46,16 +47,10 @@
 
 (defn- stored-references
   [dashboard-id]
-  {:cards   (into (set (t2/select-fn-vec :card_id :model/ParameterCard
-                                         :parameterized_object_type "dashboard"
-                                         :parameterized_object_id   dashboard-id))
-                  (concat (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dashboard-id)
-                          (t2/select-fn-vec :card_id :model/DashboardCardSeries
-                                            {:where [:in :dashboardcard_id
-                                                     ^:allow-subquery {:select [:id]
-                                                                       :from   [(t2/table-name :model/DashboardCard)]
-                                                                       :where  [:= :dashboard_id dashboard-id]}]})))
-   :actions (set (t2/select-fn-vec :action_id :model/DashboardCard :dashboard_id dashboard-id))})
+  {:cards   (into (set (dashboards.db/parameter-card-card-ids dashboard-id))
+                  (concat (dashboards.db/dashcard-card-ids dashboard-id)
+                          (dashboards.db/dashcard-series-card-ids dashboard-id)))
+   :actions (set (dashboards.db/dashcard-action-ids dashboard-id))})
 
 (def ^:private no-references {:cards #{} :actions #{}})
 
@@ -103,7 +98,7 @@
                          ;; collection to change position, check that and fix up if needed
                          (api/maybe-reconcile-collection-position! dashboard-data)
                          ;; Ok, now save the Dashboard
-                         (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
+                         (dashboards.db/insert-dashboard! dashboard-data))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
@@ -132,7 +127,7 @@
   (when (seq parameter-mappings)
     (let [card-ids       (into #{} (keep :card-id) parameter-mappings)
           card-id->query (when (seq card-ids)
-                           (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+                           (dashboards.db/card-queries card-ids))
           field-ids      (into []
                                (keep (fn [{:keys [target card-id]}]
                                        (when target
@@ -154,7 +149,7 @@
   [dashboard-id]
   (m/map-vals (fn [mappings]
                 (into #{} (map #(select-keys % [:target :parameter_id])) mappings))
-              (t2/select-pk->fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id)))
+              (dashboards.db/dashcard-parameter-mappings dashboard-id)))
 
 (defn- check-updated-parameter-mapping-permissions
   "In 0.41.0+ you now require data permissions for the Table in question to add or modify Dashboard parameter mappings.
@@ -172,9 +167,9 @@
                                          (assoc mapping :dashcard-id dashcard-id))
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
-                                         (t2/select-pk->fn :card_id :model/DashboardCard
-                                                           :dashboard_id dashboard-id
-                                                           :id           [:in (set (map :dashcard-id new-mappings))]))
+                                         (dashboards.db/dashcard-card-ids-by-dashcard-id
+                                          dashboard-id
+                                          (set (map :dashcard-id new-mappings))))
         new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
                                          (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
@@ -182,7 +177,7 @@
 (defn- create-dashcards!
   [dashboard dashcards]
   (doseq [card-id (into #{} (comp (mapcat dashcard-card-ids) (filter pos-int?)) dashcards)]
-    (api/check-not-archived (t2/select-one :model/Card :id card-id)))
+    (api/check-not-archived (dashboards.db/card card-id)))
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
@@ -196,7 +191,7 @@
   dashcards)
 
 (defn- delete-dashcards! [dashcard-ids]
-  (let [dashboard-cards (t2/select :model/DashboardCard :id [:in dashcard-ids])]
+  (let [dashboard-cards (dashboards.db/dashcards-by-ids dashcard-ids)]
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
 
@@ -208,11 +203,9 @@
   [existing-dashboard new-dashcards]
   (let [grandfathered-ids (into #{} (mapcat dashcard-card-ids) (:dashcards existing-dashboard))]
     (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids new-dashcards)))]
-      (api/check-400 (not (t2/exists? :model/Card
-                                      {:where [:and
-                                               [:not= :dashboard_id (u/the-id existing-dashboard)]
-                                               [:not= :dashboard_id nil]
-                                               [:in :id (set card-ids)]]}))))))
+      (api/check-400 (not (dashboards.db/card-internal-to-other-dashboard?
+                           (u/the-id existing-dashboard)
+                           (set card-ids)))))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
@@ -301,7 +294,7 @@
           ;; the notifications were broken by the update.
           {original-params :resolved-params} (when parameters
                                                (t2/hydrate
-                                                (t2/select-one :model/Dashboard id)
+                                                (dashboards.db/dashboard id)
                                                 [:dashcards :card]
                                                 :resolved-params))
           changes-stats                      (atom nil)
@@ -324,7 +317,7 @@
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
              (dashboard/cascade-card-state-from-dashboard-update! current-dash dash-updates)
-             (t2/update! :model/Dashboard id updates)
+             (dashboards.db/update-dashboard! id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
              ;; Handle broken subscriptions, if any, when parameters changed
@@ -369,7 +362,7 @@
                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
            (collections/check-for-remote-sync-update current-dash))
          true))
-      (let [dashboard (t2/select-one :model/Dashboard id)]
+      (let [dashboard (dashboards.db/dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position
         (when-not (= #{:collection_position}
                      (set (keys dash-updates)))
@@ -475,11 +468,11 @@
 
 (defn- duplicate-tabs
   [new-dashboard existing-tabs]
-  (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab
-                                              (for [tab existing-tabs]
-                                                (-> tab
-                                                    (assoc :dashboard_id (:id new-dashboard))
-                                                    (dissoc :id :entity_id :created_at :updated_at))))]
+  (let [new-tab-ids (dashboards.db/insert-dashboard-tabs!
+                     (for [tab existing-tabs]
+                       (-> tab
+                           (assoc :dashboard_id (:id new-dashboard))
+                           (dissoc :id :entity_id :created_at :updated_at))))]
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
 (defn- update-colvalmap-setting
@@ -559,7 +552,7 @@
   "Does the dashboard with `id` hold any live questions saved inside it? Such a dashboard cannot be
   shallow-copied — the questions would have nowhere to live."
   [id]
-  (t2/exists? :model/Card :dashboard_id id :archived false))
+  (dashboards.db/dashboard-question-exists? id))
 
 (defn copy-dashboard!
   "Copy the dashboard with `from-dashboard-id` into `:collection_id` (nil = root) and return the saved
@@ -590,7 +583,7 @@
                          ;; collection to change position, check that and fix up if needed
                          (api/maybe-reconcile-collection-position! dashboard-data)
                          ;; Ok, now save the Dashboard
-                         (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
+                         (let [dash (dashboards.db/insert-dashboard! dashboard-data)
                                {id->new-card :copied
                                 id->referenced-card :referenced
                                 uncopied :discarded}

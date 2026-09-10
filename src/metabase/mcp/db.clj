@@ -42,6 +42,70 @@
   [field-id]
   (t2/select-one [:model/Field :base_type :effective_type] :id field-id))
 
+(defn nullable-fields-with-fingerprints
+  "The Fields among `field-ids` the warehouse declares nullable, carrying their `:fingerprint`.
+  `field-ids` is expected non-empty — an empty `:in` is a SQL error rather than an empty result,
+  so callers guard it."
+  [field-ids]
+  (t2/select [:model/Field :id :database_is_nullable :fingerprint]
+             :id [:in field-ids]
+             :database_is_nullable true))
+
+(defn active-user-exists?
+  "Whether an active User with `user-id` exists."
+  [user-id]
+  (t2/exists? :model/User :id user-id :is_active true))
+
+(defn dashboard-parameters
+  "The `parameters` of the Dashboard with `dashboard-id`, or nil."
+  [dashboard-id]
+  (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))
+
+(defn browsable-database
+  "The Database with `database-id` restricted by the HoneySQL `browsable-where` clause, or nil.
+
+  Takes an assembled clause rather than the values behind it, for the same reason
+  as [[select-users-where]]: which databases an agent may reach at all is a permission decision and
+  belongs with the permission check."
+  [database-id browsable-where]
+  (t2/select-one :model/Database :id database-id {:where browsable-where}))
+
+(defn browsable-databases
+  "The `columns` of the Databases matching the HoneySQL `browsable-where` clause, in name order. Naming the
+  columns keeps the `details`/`settings` blobs from being decrypted on every row."
+  [columns browsable-where]
+  (t2/select (into [:model/Database] columns)
+             {:where    browsable-where
+              :order-by [[:%lower.name :asc]]}))
+
+(defn browsable-database-ids
+  "The subset of `database-ids` matching the HoneySQL `browsable-where` clause, as a set. `database-ids` is
+  expected non-empty — an empty `:in` is a SQL error rather than an empty result, so callers guard it."
+  [database-ids browsable-where]
+  (t2/select-pks-set :model/Database {:where [:and [:in :id database-ids] browsable-where]}))
+
+(defn unarchived-models-in-database
+  "The `columns` of the unarchived Models of the Database with `database-id`, in name order."
+  [columns database-id]
+  (t2/select columns :type :model :database_id database-id :archived false {:order-by [[:%lower.name :asc]]}))
+
+(defn active-tables-by-ids
+  "The active Tables with `table-ids`. `table-ids` is expected non-empty — an empty `:in` is a SQL error
+  rather than an empty result, so callers guard it."
+  [table-ids]
+  (t2/select :model/Table :id [:in table-ids] :active true))
+
+(defn active-visible-fields-for-tables
+  "The id, name, table id, and position of the active, non-hidden Fields of the Tables with `table-ids`, in
+  table position then id order. `table-ids` is expected non-empty — an empty `:in` is a SQL error rather than
+  an empty result, so callers guard it."
+  [table-ids]
+  (t2/select [:model/Field :id :name :table_id :position]
+             :table_id [:in table-ids]
+             :active true
+             :visibility_type [:not-in ["hidden" "sensitive" "retired"]]
+             {:order-by [[:position :asc] [:id :asc]]}))
+
 (defn collections-for-read-check
   "The Collections with `ids`, carrying the columns [[metabase.models.interface/can-read?]] consults.
   `:namespace` and `:type` are selected for that check, not for display."
@@ -148,25 +212,6 @@
   "The Notification with `id` whose `payload_type` is `payload-type`, or nil."
   [id payload-type]
   (t2/select-one :model/Notification :id id :payload_type payload-type))
-
-(defn nullable-fields-with-fingerprints
-  "The Fields among `field-ids` the warehouse declares nullable, carrying their `:fingerprint`.
-  `field-ids` is expected non-empty — an empty `:in` is a SQL error rather than an empty result,
-  so callers guard it."
-  [field-ids]
-  (t2/select [:model/Field :id :database_is_nullable :fingerprint]
-             :id [:in field-ids]
-             :database_is_nullable true))
-
-(defn active-user-exists?
-  "Whether an active User with `user-id` exists."
-  [user-id]
-  (t2/exists? :model/User :id user-id :is_active true))
-
-(defn dashboard-parameters
-  "The `parameters` of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id]
-  (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))
 
 (defn subscription-pulse-exists?
   "Whether a Pulse with `pulse-id` exists and is a subscription — a nil `alert_condition` — rather than an alert."
