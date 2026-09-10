@@ -34,10 +34,17 @@
 
 (defn- call-tool!
   "Drive `tool` through the real dispatch seam as `user` (test-user keyword or user id) with
-   bearer-style `scopes` (nil = internal caller, which bypasses the scope gate)."
+   bearer-style `scopes` (nil = internal caller, which bypasses the scope gate).
+
+   `call-tool` answers `{:result …}` once a handler ran, or `{:error …}` when the registry rejects
+   the call before dispatch. Both are presented here in the `{:isError true}` MCP shape a handler
+   error takes, so the helpers below read a refusal as a value without knowing which layer refused."
   [user scopes tool args]
   (mt/with-current-user (if (keyword? user) (mt/user->id user) user)
-    (registry/call-tool scopes nil tool args)))
+    (let [{:keys [result error]} (registry/call-tool scopes nil tool args)]
+      (if error
+        {:isError true :content [{:type "text" :text (:message error)}]}
+        result))))
 
 (defn- tool-result
   "Decoded success payload of a tool response; throws when the call errored, so a tool-level
