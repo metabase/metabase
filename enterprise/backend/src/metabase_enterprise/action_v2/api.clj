@@ -9,6 +9,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -29,9 +30,10 @@
 (mr/def ::api-action-expression
   "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside.
 
-  Open ([[ms/Map]]) rather than a bare `:map`: the shape is deliberately unspecified here, and a closed map with no
-  declared entries would have every key stripped during request decoding, so the handler would only ever see `{}`."
-  ms/Map)
+  Opaque ([[ms/OpaqueJSONObject]]) rather than a bare `:map`: the shape is deliberately unspecified here, and a closed
+  map with no declared entries would have every key stripped during request decoding, so the handler would only ever
+  see `{}`."
+  ms/OpaqueJSONObject)
 
 (mr/def ::api-action-id-or-expression
   "All the various ways of referring to an action with the v2 APIs."
@@ -44,17 +46,16 @@
   [:ref ::lib.schema.parameter/parameter.value])
 
 (def ^:private strict-action-value-map
-  [:map-of :keyword [:ref ::action-value]])
+  [:map-of :string [:ref ::action-value]])
 
 (mr/def ::action-value-map
-  "A map from parameter name / column name to a value. Keys are keywords: the request decoder keywordizes map keys and
-  the handler reads them via `(keyword ...)`, so the FE never sends anything else.
+  "A map from parameter name / column name to a value. The names are the action's and the table's, so the map is
+  string-keyed, here and all the way down to the action that runs it.
 
-  Same shape as [[metabase.actions.schema/execute-parameter-values]]. Decoding sees a permissive
-  `[:map-of :keyword :any]` and the values are validated against, rather than decoded through,
-  [[strict-action-value-map]]."
+  Same shape as [[metabase.actions.schema/execute-parameter-values]]. Decoding sees a permissive string-keyed map and the
+  values are validated against, rather than decoded through, [[strict-action-value-map]]."
   [:and
-   [:map-of :keyword :any]
+   ms/OpaqueJSONObject
    [:fn {:error/message "value must be a scalar, or a sequence of scalars"}
     #(mr/validate strict-action-value-map %)]])
 
@@ -100,7 +101,8 @@
     (merge input params)
     (reduce-kv
      (fn [acc k v]
-       (let [override (when-not (:visible v) (get params k))]
+       (let [k        (u/qualified-name k)
+             override (when-not (:visible v) (get params k))]
          (case (:sourceType v)
            ;; It seems like misconfiguration to configure a default :value for "ask-user", but some tests do it.
            "ask-user" (assoc acc k (if (contains? params k) override (:value v)))
@@ -127,8 +129,8 @@
              (= ::input x)  input
              (= ::params x) params
              ;; specific key
-             (tag? ::key x)   (get root (keyword (second x)))
-             (tag? ::param x) (get params (keyword (second x)))
+             (tag? ::key x)   (get root (second x))
+             (tag? ::param x) (get params (second x))
              :else
              x))
          mapping)))))
@@ -172,9 +174,7 @@
   [{}
    {}
    {:keys [action scope params input]}
-   ;; `params` and `input` are open ([[ms/Map]]): their keys are the action's parameter names and the table's column
-   ;; names, so nothing here can be declared, and a bare `:map` would be stripped down to `{}` before the handler ran.
-   :- [:map
+   :- [:map {:closed true}
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:params {:optional true} ::action-value-map]
@@ -213,7 +213,7 @@
    {}
    {:keys [action scope inputs params]}
    ;; see the note on `POST /execute` for why `inputs` and `params` are open
-   :- [:map
+   :- [:map {:closed true}
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:inputs [:sequential {:min 1} ::action-value-map]]
@@ -239,7 +239,7 @@
    {}
    ;; TODO support for bulk actions
    {:keys [action scope input]}
-   :- [:map
+   :- [:map {:closed true}
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:input {:optional true} ::action-value-map]]]

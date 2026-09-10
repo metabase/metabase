@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -10,11 +11,7 @@
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
   [:and
-   [:map-of
-    (mu/with-api-error-message
-     ms/KeywordOrString
-     (deferred-tru "login attribute keys must be a keyword or string"))
-    :any]
+   (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
    ;; checked over the whole map rather than as part of the key schema: a key that fails the key schema is stripped
    ;; from the request, which would drop the attribute silently instead of telling the caller.
    (mu/with-api-error-message
@@ -39,7 +36,7 @@
 (mr/def ::user-group-membership
   "Group Membership info of a User.
   In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  [:map
+  [:map {:closed true}
    [:id ms/PositiveInt]
    [:is_group_manager
     {:optional true, :description "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key."}
@@ -48,7 +45,7 @@
 (def InviteTarget
   "The dashboard or question an invite points at, as `{:type :id :name}`. Drives the post-signup
   landing redirect and the scoped invite email. Not an access grant; collection permissions still apply."
-  [:map
+  [:map {:closed true}
    [:type [:enum "dashboard" "question"]]
    [:id   ms/PositiveInt]
    [:name ms/NonBlankString]])

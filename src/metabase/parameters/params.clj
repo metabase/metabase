@@ -225,7 +225,7 @@
   columns)."
   [:map
    [:dashcard              :map]
-   [:param-mapping         ::parameters.schema/parameter-mapping]
+   [:param-mapping         ::parameters.schema/parameter-mapping-with-dashcard]
    [:param-target-field-id [:maybe ::lib.schema.id/field]]])
 
 (mu/defn- card->filterable-columns-query :- [:maybe ::lib.schema/query]
@@ -365,7 +365,7 @@
   "Build the `param-dashcard-info` for a parameter `mapping` on `dashcard`, resolving `:param-target-field-id` when the
   target is already field-id-based."
   [dashcard :- :map
-   mapping  :- ::parameters.schema/parameter-mapping]
+   mapping  :- ::parameters.schema/parameter-mapping-with-dashcard]
   (let [card (find-card-for-mapping dashcard mapping)]
     {:dashcard              dashcard
      :param-mapping         mapping
@@ -424,7 +424,7 @@
 
 (mu/defn dashboard-param->field-ids :- [:set ::lib.schema.id/field]
   "Return field ids mapped to the parameter. `dashcard` and `card` must be present for each mapping."
-  [{:keys [mappings]} :- ::parameters.schema/parameter]
+  [{:keys [mappings]} :- ::parameters.schema/resolved-parameter]
   (let [param-dashcard-infos (mapv (fn [mapping]
                                      (mapping->param-dashcard-info (:dashcard mapping) mapping))
                                    mappings)]
