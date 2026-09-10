@@ -69,7 +69,7 @@ export const AgentDataPartMessage = ({
       );
 
       return (
-        <Stack gap="md">
+        <Stack gap="lg">
           {debug && <NavigateToDataPart type={part.type} path={part.data} />}
           {sourcePills}
         </Stack>
@@ -85,7 +85,7 @@ export const AgentDataPartMessage = ({
       );
 
       return (
-        <Stack gap="md">
+        <Stack gap="lg">
           {debug && <CodeEditDataPart type={part.type} value={part.data} />}
           {sourcePills}
         </Stack>
@@ -94,7 +94,7 @@ export const AgentDataPartMessage = ({
     .with(
       { part: { type: "data-generated_entity", data: { type: "card" } } },
       ({ part }) => (
-        <Stack gap="md">
+        <Stack gap="lg">
           {debug && <DataPartJsonCard type={part.type} value={part.data} />}
           <MetabotInlineChart
             value={part.data}
@@ -111,14 +111,14 @@ export const AgentDataPartMessage = ({
     .with(
       { part: { type: "data-generated_entity", data: { type: "dashboard" } } },
       ({ part }) => (
-        <Stack gap="md">
+        <Stack gap="lg">
           {debug && <DataPartJsonCard type={part.type} value={part.data} />}
           <MetabotInlineDashboardLink value={part.data} />
         </Stack>
       ),
     )
     .with({ part: { type: "data-entity_saved" } }, ({ part }) => (
-      <Stack gap="md">
+      <Stack gap="lg">
         {debug && <DataPartJsonCard type={part.type} value={part.data} />}
         <EntitySavedMessage value={part.data} />
       </Stack>
@@ -127,6 +127,9 @@ export const AgentDataPartMessage = ({
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
     .with({ part: { type: "data-static_viz" } }, ({ part }) =>
+      debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
+    )
+    .with({ part: { type: "data-research_plan_update" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
     .exhaustive((msg: unknown) => {
@@ -228,10 +231,10 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
     align="center"
     justify="space-between"
     bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="sm"
+    bdrs="xs"
     className={Styles.agentPartCard}
     p="sm"
-    pl="md"
+    pl="lg"
   >
     <Flex align="center">
       <Icon name="document" c="text-secondary" mr="sm" />
@@ -269,12 +272,12 @@ const DataPartJsonCard = ({
   return (
     <Box
       bd="1px solid var(--mb-color-border-neutral)"
-      bdrs="sm"
+      bdrs="xs"
       className={Styles.agentPartCard}
     >
       <Flex
         py="sm"
-        px="md"
+        px="lg"
         direction="row"
         align="center"
         justify="space-between"
@@ -296,8 +299,8 @@ const DataPartJsonCard = ({
         bg="background_page-primary"
         style={{
           borderTop: "1px solid var(--mb-color-border-neutral)",
-          borderBottomLeftRadius: "var(--mantine-radius-sm)",
-          borderBottomRightRadius: "var(--mantine-radius-sm)",
+          borderBottomLeftRadius: "var(--mantine-radius-xs)",
+          borderBottomRightRadius: "var(--mantine-radius-xs)",
         }}
       >
         <Box
@@ -330,12 +333,12 @@ const CodeEditDataPart = ({
   return (
     <Box
       bd="1px solid var(--mb-color-border-neutral)"
-      bdrs="sm"
+      bdrs="xs"
       className={Styles.agentPartCard}
     >
       <Flex
         py="sm"
-        px="md"
+        px="lg"
         direction="row"
         align="center"
         justify="space-between"
@@ -359,8 +362,8 @@ const CodeEditDataPart = ({
       <Box
         style={{
           borderTop: "1px solid var(--mb-color-border-neutral)",
-          borderBottomLeftRadius: "var(--mantine-radius-sm)",
-          borderBottomRightRadius: "var(--mantine-radius-sm)",
+          borderBottomLeftRadius: "var(--mantine-radius-xs)",
+          borderBottomRightRadius: "var(--mantine-radius-xs)",
           overflow: "hidden",
         }}
       >

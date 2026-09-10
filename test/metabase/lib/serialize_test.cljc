@@ -1,10 +1,29 @@
 (ns metabase.lib.serialize-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.core]
+   [metabase.lib.schema :as-alias lib.schema]
+   [metabase.lib.schema.binning :as-alias lib.schema.binning]
+   [metabase.lib.schema.constraints :as-alias lib.schema.constraints]
+   [metabase.lib.schema.middleware-options :as-alias lib.schema.middleware-options]
+   [metabase.lib.schema.parameter :as-alias lib.schema.parameter]
+   [metabase.lib.schema.template-tag :as-alias lib.schema.template-tag]
    [metabase.lib.serialize :as lib.serialize]))
 
 (comment metabase.lib.core/keep-me)
+
+(deftest ^:parallel strip-internal-keys-test
+  (doseq [[schema m]
+          [[::lib.schema.binning/binning                       {:strategy :num-bins, :num-bins 8}]
+           [::lib.schema.parameter/parameter                   {:type :category, :id "p1"}]
+           [::lib.schema.template-tag/template-tag             {:type :text, :name "t", :display-name "T", :id "id1"}]
+           [::lib.schema.constraints/constraints               {:max-results 10}]
+           [::lib.schema.middleware-options/middleware-options {:userland-query? true}]
+           [::lib.schema/page                                  {:page 1, :items 10}]]
+          f      [lib.serialize/prepare-after-deserialization
+                  lib.serialize/prepare-for-serialization]]
+    (testing (str schema " via " f)
+      (is (= m (f schema (assoc m :a/b 1)))))))
 
 (deftest ^:parallel remove-info-test
   (is (= {:lib/type :mbql/query

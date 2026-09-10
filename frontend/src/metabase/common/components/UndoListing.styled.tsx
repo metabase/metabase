@@ -10,7 +10,7 @@ export const UndoList = styled.ul`
   position: fixed;
   left: 0;
   bottom: 0;
-  margin: var(--mantine-spacing-md);
+  margin: var(--mantine-spacing-lg);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -62,7 +62,7 @@ export const UndoButton = styled(Link)`
 export const DismissIcon = styled(Icon)<{ color?: string }>`
   position: relative;
   top: 1px;
-  margin-left: var(--mantine-spacing-md);
+  margin-left: var(--mantine-spacing-lg);
   cursor: pointer;
 
   :hover {

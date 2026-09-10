@@ -59,7 +59,7 @@ export function SameSiteSelectWidget() {
       settingDetails={settingDetails}
       settingKey="session-cookie-samesite"
     >
-      <Stack gap="xs">
+      <Stack gap="xxs">
         <SettingHeader
           id="session-cookie-samesite"
           title={t`SameSite cookie setting`}

@@ -124,7 +124,7 @@ export const TableColumnCard = ({
   );
 
   return (
-    <Paper withBorder radius="md" pos="relative" data-can-remove={!!onRemove}>
+    <Paper withBorder radius="sm" pos="relative" data-can-remove={!!onRemove}>
       {onRemove && (
         <UnstyledButton
           className={S.RemoveButton}
@@ -135,7 +135,7 @@ export const TableColumnCard = ({
         </UnstyledButton>
       )}
 
-      <Stack gap="lg" p="lg">
+      <Stack gap="xl" p="xl">
         <Box>
           <Text fw="bold" size="md" mb={4}>
             {t`Table`}
@@ -155,7 +155,7 @@ export const TableColumnCard = ({
             px="0.75rem"
             py="sm"
             bg="background_page-primary"
-            bdrs="xs"
+            bdrs="xxs"
           >
             <Text
               c={selectedTableName ? "text-primary" : "text-disabled"}

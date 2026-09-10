@@ -58,7 +58,7 @@ export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
       validationContext={validationContext}
       onSubmit={onSubmit}
     >
-      <Form as={Stack} gap="md" mt="md">
+      <Form as={Stack} gap="lg" mt="lg">
         <UserFieldGroup>
           <FormTextInput
             name="first_name"

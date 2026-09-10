@@ -9,12 +9,12 @@
    [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-run-cancelation :as wr.cancelation]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.time OffsetDateTime)
    (java.util.concurrent Executors ScheduledExecutorService TimeUnit)))
@@ -193,7 +193,7 @@
                                      (try
                                        ;; Skip silently if the run was deleted between cancelation insert and now
                                        ;; — `chan-signal-cancel!` would be a no-op anyway in that case.
-                                       (when-let [run (t2/select-one :model/TransformRun :id id)]
+                                       (when-let [run (transforms.db/run id)]
                                          (cancel-run! run request-time))
                                        (catch Throwable t
                                          (log/error (str "Error canceling " id ": " (ex-message t)))))))

@@ -21,7 +21,7 @@ export function MetricDimensionsPage({
   return (
     <MetricPageCard cardId={cardId}>
       {(card, metadata) => (
-        <PageContainer data-testid="metric-dimensions-page" gap="xl">
+        <PageContainer data-testid="metric-dimensions-page" gap="xxl">
           <MetricPageShell
             card={card}
             urls={urls}

@@ -39,7 +39,7 @@ export function TransformRunItem({ transformRun }: TransformRunItemProps) {
   return (
     <Group
       className={S.transformItem}
-      p="md"
+      p="lg"
       gap="sm"
       wrap="nowrap"
       align="start"
@@ -108,7 +108,7 @@ type TransformRunTimesProps = {
 
 function TransformRunTimes({ run }: TransformRunTimesProps) {
   return (
-    <Group gap="xs" wrap="nowrap">
+    <Group gap="xxs" wrap="nowrap">
       <DateTime value={run.start_time} unit="minute" />
       {run.end_time != null && (
         <>

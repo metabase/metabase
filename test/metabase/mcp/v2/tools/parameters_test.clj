@@ -11,6 +11,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -26,28 +27,41 @@
   ([token-scopes args]
    (registry/call-tool token-scopes "test-session" "get_parameter_values" args)))
 
+(defn- success-text
+  "The text block of a successful response. Throws when the registry rejected the call before
+   dispatch, so a rejection can never masquerade as a result."
+  [{:keys [result error]}]
+  (when error
+    (throw (ex-info (str "get_parameter_values was rejected before dispatch: " (:message error))
+                    {:error error})))
+  (when (:isError result)
+    (throw (ex-info (str "get_parameter_values returned a tool-level error: "
+                         (-> result :content first :text))
+                    {:result result})))
+  (-> result :content first :text))
+
 (defn- params-text
   ([args] (params-text nil args))
-  ([token-scopes args] (-> (call-params token-scopes args) :content first :text)))
+  ([token-scopes args] (success-text (call-params token-scopes args))))
 
 (defn- params-result
-  "The decoded JSON payload of a successful call. Throws on a tool-level error so a rejection can
-   never masquerade as an empty value list."
+  "The decoded JSON payload of a successful call — the first line of the text block, since a
+   steering line may follow it."
   ([args] (params-result nil args))
   ([token-scopes args]
-   (let [result (call-params token-scopes args)]
-     (when (:isError result)
-       (throw (ex-info (str "get_parameter_values returned a tool-level error: "
-                            (-> result :content first :text))
-                       {:result result})))
-     (-> result :content first :text (str/split-lines) first json/decode+kw))))
+   (-> (params-text token-scopes args) str/split-lines first json/decode+kw)))
 
 (defn- params-error
+  "The error text of a rejected call, registry-level (scope, argument validation) and tool-level
+   (teaching error) alike. Throws when the call succeeded, so a passing call can never satisfy an
+   error assertion."
   ([args] (params-error nil args))
   ([token-scopes args]
-   (let [result (call-params token-scopes args)]
-     (is (:isError result) "expected a tool-level error")
-     (-> result :content first :text))))
+   (let [{:keys [result error]} (call-params token-scopes args)]
+     (cond
+       error             (:message error)
+       (:isError result) (-> result :content first :text)
+       :else             (throw (ex-info "expected a tool error, got success" {:result result}))))))
 
 (defn- steering-line
   "The sentence appended after the JSON payload, or nil when the response is the whole story."
@@ -146,6 +160,70 @@
           (is (= [["African"] ["American"] ["Artisan"]] values))
           (is (= 3 returned))
           (is (true? has_more_values)))))))
+
+(deftest constraints-value-must-not-name-a-column-test
+  (testing "a constraints value shaped like a field reference is refused, not compiled into one"
+    ;; Reported by galdre on #81245; this is his repro. The caller below can READ the dashboard and may
+    ;; see the data, but holds `:perms/create-queries :no` — it can author no query at all, asserted
+    ;; before the attack. `*param-values-query*` deliberately relaxes that gate so filter values still
+    ;; load, which is exactly what made a smuggled clause dangerous: `[["field" <id> nil]]` was compiled
+    ;; as a field reference rather than bound as a literal, so the server evaluated
+    ;; `WHERE VENUES.PRICE = VENUES.CATEGORY_ID` and handed back the matching rows — data this caller
+    ;; cannot query, from a column it never named.
+    (mt/with-temp
+      [:model/Collection collection {}
+       :model/Dashboard {dash-id :id}
+       {:collection_id (:id collection)
+        :parameters    [{:name "Venue Name" :slug "venue_name" :id "_NAME_" :type "category"}
+                        {:name "Price" :slug "price" :id "_PRICE_" :type "category"}]}
+       :model/Card {card-id :id} {:collection_id (:id collection)
+                                  :database_id   (mt/id)
+                                  :table_id      (mt/id :venues)
+                                  :dataset_query (table-query (mt/id :venues))}
+       :model/DashboardCard _ {:card_id            card-id
+                               :dashboard_id       dash-id
+                               :parameter_mappings [{:parameter_id "_NAME_"
+                                                     :card_id      card-id
+                                                     :target       [:dimension (mt/$ids venues $name)]}
+                                                    {:parameter_id "_PRICE_"
+                                                     :card_id      card-id
+                                                     :target       [:dimension (mt/$ids venues $price)]}]}]
+      (perms.test-util/with-restored-data-perms!
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (mt/with-test-user :rasta
+          (let [category-id (mt/id :venues :category_id)
+                base        {:target "dashboard" :id dash-id :parameter_id "_NAME_" :limit 1000}]
+            (testing "precondition: the caller cannot run a query of its own against VENUES"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query (table-query (mt/id :venues))))))
+            (let [unconstrained (:values (params-result base))]
+              (testing "anti-vacuity control: the call reaches the warehouse and a literal narrows it"
+                (is (= 100 (count unconstrained)))
+                (let [literal (:values (params-result (assoc base :constraints {:_PRICE_ 2})))]
+                  (is (seq literal))
+                  (is (< (count literal) (count unconstrained)))))
+              (testing "an id-shaped field reference is refused"
+                (is (string? (params-error (assoc base :constraints
+                                                  {:_PRICE_ [["field" category-id nil]]})))))
+              (testing "a name-shaped field reference is refused, so no field id is needed to exploit it"
+                (is (string? (params-error (assoc base :constraints
+                                                  {:_PRICE_ [["field" {"base-type" "type/Integer"} "CATEGORY_ID"]]})))))
+              (testing "a reference to a column hidden as sensitive is refused"
+                (mt/with-temp-vals-in-db :model/Field category-id {:visibility_type :sensitive}
+                  (is (string? (params-error (assoc base :constraints
+                                                    {:_PRICE_ [["field" category-id nil]]}))))))
+              (testing "an arithmetic expression over a column is refused"
+                (is (string? (params-error (assoc base :constraints
+                                                  {:_PRICE_ [["+" ["field" category-id nil] 1]]})))))
+              (testing "a :value clause is refused"
+                (is (string? (params-error (assoc base :constraints
+                                                  {:_PRICE_ [["value" 2 {"base-type" "type/Integer"}]]})))))
+              (testing "a literal constraint still works, so the refusal is shape-based rather than blanket"
+                (is (seq (:values (params-result (assoc base :constraints {:_PRICE_ 2})))))))))))))
 
 (deftest dashboard-values-entity-id-test
   (testing "GHY-4141: id accepts a 21-char entity_id as well as a numeric id"
@@ -500,7 +578,7 @@
                 "filter values come back despite the caller having no table query permission")))))))
 
 (deftest scope-gate-test
-  (testing "GHY-4141: the tool requires agent:resource:read"
+  (testing "GHY-4141: the tool requires agent:content:read"
     (with-fixtures [{:keys [dashboard]}]
       (mt/with-test-user :rasta
         (is (re-find #"Insufficient scope"
@@ -623,3 +701,72 @@
               (is (re-find #"silently ignore it" error))))
           (testing "and without any constraint the multi-field target still returns its values"
             (is (seq (:values (params-result {:target "dashboard" :id dash-id :parameter_id "_MULTI_"}))))))))))
+
+(deftest unparseable-date-constraint-test
+  (testing "GHY-4141: a constraint on a temporal field whose value isn't a date string chain filtering can parse is
+            rejected, not silently dropped. `chain-filter/add-filter` takes a date branch for a string value on a
+            temporal field and catches a parse failure into `nil`, dropping that filter — so the fetch returns
+            unnarrowed values the agent believes were filtered. This is the same silent-drop class as the unmapped
+            and unreachable cases, reached through the value rather than the field."
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp
+        [:model/Dashboard {dash-id :id}
+         {:parameters [{:name "Venue" :slug "venue" :id "_VENUE_" :type "category"}
+                       {:name "Date" :slug "date" :id "_DATE_" :type "date/all-options"}]}
+         :model/Card {checkins-card :id} {:database_id   (mt/id)
+                                          :table_id      (mt/id :checkins)
+                                          :dataset_query (table-query (mt/id :checkins))}
+         :model/DashboardCard _ {:card_id            checkins-card
+                                 :dashboard_id       dash-id
+                                 :parameter_mappings [{:parameter_id "_VENUE_" :card_id checkins-card
+                                                       :target [:dimension (mt/$ids checkins $venue_id)]}
+                                                      {:parameter_id "_DATE_" :card_id checkins-card
+                                                       :target [:dimension (mt/$ids checkins $date)]}]}]
+        (mt/with-test-user :rasta
+          (let [base {:target "dashboard" :id dash-id :parameter_id "_VENUE_"}]
+            (testing "an unparseable date value is rejected"
+              (let [error (params-error (assoc base :constraints {:_DATE_ "sometime last spring"}))]
+                (is (re-find #"_DATE_" error))
+                (is (re-find #"date" error))))
+            (testing "a parseable date range is still accepted, and genuinely narrows"
+              (let [unnarrowed (:values (params-result base))
+                    narrowed   (:values (params-result (assoc base :constraints
+                                                              {:_DATE_ "2015-01-01~2015-01-31"})))]
+                (is (seq narrowed) "the constrained fetch still returns values")
+                (is (< (count narrowed) (count unnarrowed))
+                    "and fewer than the unconstrained fetch — the accepted constraint was applied")))))))))
+
+(deftest constraints-with-query-test
+  (testing "GHY-4141: constraints and `query` narrow together — the search runs inside the chain-filtered set rather
+            than over the whole column. This is the tool's only route through `chain-filter-search` with constraints
+            (and the `*allow-implicit-uuid-field-remapping*` binding the search path pins), and neither
+            constraints-test nor query-search-test reaches it."
+    (with-fixtures [{:keys [dashboard]}]
+      (mt/with-test-user :rasta
+        (let [base {:target "dashboard" :id (:id dashboard) :parameter_id "_CATEGORY_NAME_"}]
+          (testing "both narrowings apply"
+            (is (= [["Steakhouse"]]
+                   (:values (params-result (assoc base :query "Steak" :constraints {:_PRICE_ 4}))))))
+          (testing "a value matching the query but excluded by the constraint is absent — the constraint is not
+                    dropped just because a query is also present"
+            (is (= [["African"]] (:values (params-result (assoc base :query "African"))))
+                "African is a real category, so the query alone finds it")
+            (is (= [] (:values (params-result (assoc base :query "African" :constraints {:_PRICE_ 4}))))
+                "but no price-4 venue is African, so the chain-filtered search excludes it")))))))
+
+(deftest no-match-for-query-blames-the-query-test
+  (testing "GHY-4141: when a `query` matches nothing the steering line must name the query as the reason. The
+            generic zero-values sentence offers only causes the agent can't act on — empty source, sandboxed away,
+            free-text filter — and reads as \"this parameter is broken\" when the actual recovery is to search for
+            something else. Both targets, since both reach the same line."
+    (with-fixtures [{:keys [dashboard native-card]}]
+      (mt/with-test-user :rasta
+        (doseq [args [{:target "dashboard" :id (:id dashboard) :parameter_id "_CATEGORY_NAME_" :query "zzzznope"}
+                      {:target "question" :id (:id native-card) :parameter_id "_CARD_NAME_" :query "zzzznope"}]]
+          (testing (:target args)
+            (is (= {:values [] :returned 0 :has_more_values false} (params-result args)))
+            (let [line (steering-line args)]
+              (is (re-find #"zzzznope" line)
+                  "the line quotes the search that found nothing")
+              (is (not (re-find #"source may be empty" line))
+                  "and doesn't offer causes that can't explain a failed search"))))))))

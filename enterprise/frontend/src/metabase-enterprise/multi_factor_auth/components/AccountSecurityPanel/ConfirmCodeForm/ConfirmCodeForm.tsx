@@ -48,7 +48,7 @@ export function ConfirmCodeForm({
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="md">
+        <Stack gap="lg">
           <Text c="text-secondary">{message}</Text>
           <FormTextInput
             name="code"

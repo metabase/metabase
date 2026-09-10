@@ -9,6 +9,7 @@
    entries carry their `dimension_mappings`, `:dimensions` entries carry the dim type
    snapshot — so a block is self-contained for both planning and per-row materialization."
   (:require
+   [metabase.explorations.db :as explorations.db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -44,14 +45,14 @@
   ([instance]
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [g (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id pk)]
+   (when-let [g (explorations.db/block-thread-id-row pk)]
      (mi/can-read? :model/ExplorationThread (:exploration_thread_id g)))))
 
 (defmethod mi/can-write? :model/ExplorationBlock
   ([instance]
    (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [g (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id pk)]
+   (when-let [g (explorations.db/block-thread-id-row pk)]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id g)))))
 
 (defn dimension-label
