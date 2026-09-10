@@ -3,12 +3,10 @@ import { css } from "@emotion/react";
 import Color from "color";
 
 import type { MantineTheme, MantineThemeOverride } from "metabase/ui";
-import { isDark, isLight } from "metabase/ui/colors";
+import { isDark, isLight } from "metabase/ui";
 
-import type { ColorOperation } from "../types/private/css-variables";
-
+import type { ColorOperation } from "./dynamic-css-vars-config";
 import { DYNAMIC_CSS_VARIABLES } from "./dynamic-css-vars-config";
-import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
 
 const isColorDefined = (color?: string): color is string =>
   !!color && color !== "transparent" && color !== "unset";
@@ -40,7 +38,9 @@ export function applyColorOperation(
 /**
  * Determine if the current color scheme is dark based on the palette.
  */
-export function getIsDarkThemeFromPalette(theme: MantineThemeOverride) {
+export function getIsDarkThemeFromPalette(
+  theme: Pick<MantineThemeOverride, "fn">,
+) {
   const backgroundColor = theme.fn?.themeColor?.("background_page-primary");
   const foregroundColor = theme.fn?.themeColor?.("text-primary");
 
@@ -61,34 +61,17 @@ export function getIsDarkThemeFromPalette(theme: MantineThemeOverride) {
  * Dynamically-generated CSS variables based on the theme.
  * These colors are derived from the palette, with a configured tint and shade percentage.
  */
-export function getDynamicCssVariables(theme: MantineTheme) {
+export function getDynamicCssVariables(theme: Pick<MantineTheme, "fn">) {
   const isDarkTheme = getIsDarkThemeFromPalette(theme);
 
   const mappings = Object.entries(DYNAMIC_CSS_VARIABLES)
     .map(([cssVar, config]) => {
-      let operation: ColorOperation | null = null;
-
-      if (isDarkTheme && config.dark) {
-        operation = config.dark;
-      } else if (!isDarkTheme && config.light) {
-        operation = config.light;
-      }
-
-      // Do not define the CSS variable if the source color or operation is not defined.
-      // In addition, do not use chart color as source color to sample from.
-      if (!operation || operation?.source === "charts") {
+      const operation = isDarkTheme ? config.dark : config.light;
+      if (!operation) {
         return [cssVar, null];
       }
 
-      // One SDK color will be mapped to multiple main app colors.
-      // All of those colors will have the same value, so we sample from the first one.
-      const colorKeys = SDK_TO_MAIN_APP_COLORS_MAPPING[operation.source];
-
-      if (!colorKeys) {
-        return [cssVar, null];
-      }
-
-      const baseColor = theme.fn.themeColor(colorKeys?.[0]);
+      const baseColor = theme.fn.themeColor(operation.source);
       const mappedColor = applyColorOperation(baseColor, operation);
 
       return [cssVar, mappedColor];

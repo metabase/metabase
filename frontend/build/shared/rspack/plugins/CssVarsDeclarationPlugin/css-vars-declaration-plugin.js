@@ -24,19 +24,16 @@ const PLUGIN_NAME = "CssVarsDeclarationPlugin";
 /** @type {CssVarConfig[]} */
 const CSS_VAR_CONFIGS = [
   {
-    path: "metabase/embedding-sdk/theme/css-vars-to-sdk-theme.ts",
+    path: "metabase/styled-components/theme/component-theme-css-variables.ts",
     sources: [
       {
         type: "objectKeys",
-        names: [
-          "CSS_VARIABLES_TO_SDK_THEME_MAP",
-          "COLLECTION_BROWSER_THEME_OPTIONS",
-        ],
+        names: ["COMPONENT_THEME_CSS_VARIABLES"],
       },
     ],
   },
   {
-    path: "metabase/embedding-sdk/theme/dynamic-css-vars-config.ts",
+    path: "metabase/styled-components/theme/dynamic-css-vars-config.ts",
     sources: [{ type: "objectKeys", names: ["DYNAMIC_CSS_VARIABLES"] }],
   },
   {

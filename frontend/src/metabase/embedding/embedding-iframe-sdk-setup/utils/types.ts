@@ -1,5 +1,10 @@
 import type { MetabaseColor } from "metabase/embedding-sdk/theme";
-import type { DynamicColorDefinition } from "metabase/embedding-sdk/types/private/css-variables";
+import type { ColorOperation } from "metabase/styled-components/theme/dynamic-css-vars-config";
+
+type DynamicColorDefinition = {
+  light?: ColorOperation & { source: MetabaseColor };
+  dark?: ColorOperation & { source: MetabaseColor };
+};
 
 /**
  * A mapping of SDK color names to their dynamic color definition.
