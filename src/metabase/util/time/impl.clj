@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.date-2.common :as u.date.common]
    [metabase.util.i18n :as i18n]
    [metabase.util.time.impl-common :as common])
   (:import
@@ -62,10 +63,9 @@
 
 ;;; ---------------------------------------------- information -------------------------------------------------------
 (defn first-day-of-week
-  "The first day of the week varies by locale, but Metabase has a setting that overrides it.
-  In JVM, we can just read the setting directly."
+  "The first day of the week varies by locale, but Metabase has a setting that overrides it."
   []
-  ((requiring-resolve 'metabase.settings.core/get) :start-of-week))
+  (u.date.common/start-of-week))
 
 (def default-options
   "The default map of options."
