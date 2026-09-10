@@ -168,11 +168,6 @@
   [id payload-type]
   (t2/select-one :model/Notification :id id :payload_type payload-type))
 
-(defn active-user-exists?
-  "Whether an active User with `user-id` exists."
-  [user-id]
-  (t2/exists? :model/User :id user-id :is_active true))
-
 (defn subscription-pulse-exists?
   "Whether a Pulse with `pulse-id` exists and is a subscription — a nil `alert_condition` — rather than an alert."
   [pulse-id]
