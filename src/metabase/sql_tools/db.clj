@@ -14,11 +14,12 @@
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential :string]]
   (t2/select-pks-set :model/Table
-                     {:where [:and
+                     {:from  [(warehouse-schema-overlay/table-query)]
+                      :where [:and
                               [:= :db_id database-id]
                               ;; `lower()` cannot use an index on the name column, but it still beats fetching every
                               ;; row for the Database.
-                              [:in [:lower :name] (into #{:from [(warehouse-schema-overlay/table-query)]} (map u/lower-case-en) table-names)]
+                              [:in [:lower :name] (into #{} (map u/lower-case-en) table-names)]
                               ;; Mirrors the Table filter the MetadataProvider applies to an unfiltered fetch; an
                               ;; `:id` lookup does not apply it, so it has to happen here.
                               [:= :active true]
