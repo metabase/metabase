@@ -270,9 +270,9 @@
   ([] (list-models {}))
   ([opts]
    (adapter/listing supported-models
-                    (adapter/fetch-catalog provider (assoc opts
-                                                           :path    "/v1/models"
-                                                           :extract adapter/data-entries)))))
+                    (adapter/fetch-catalog provider opts
+                                           {:path    "/v1/models"
+                                            :extract adapter/data-entries}))))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
@@ -328,13 +328,12 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for OpenAI and throws when true."
-  [{:keys [model credentials ai-proxy?] :as opts
+  [{:keys [model] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (adapter/stream! provider {:model       model
-                             :path        "/v1/responses"
-                             :body        (openai-request-body opts)
-                             :credentials credentials
-                             :ai-proxy?   ai-proxy?}))
+  (let [opts (assoc opts :model model)]
+    (adapter/stream! provider opts
+                     {:path "/v1/responses"
+                      :body (openai-request-body opts)})))
 
 (defn openai
   "Call OpenAI API, return AISDK stream."

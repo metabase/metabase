@@ -329,6 +329,16 @@
        {:type "text"
         :text suffix}])))
 
+(defn- anthropic-auth
+  "Anthropic's `:auth`. Identical to [[adapter/bearer-auth]] except that the key travels bare in
+  `x-api-key` rather than as a bearer token."
+  [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
+  (core/resolve-auth slug display-name
+                     (when-let [k (not-empty (:api-key credentials))]
+                       {:url     (:base-url credentials)
+                        :headers {"x-api-key" k}})
+                     ai-proxy?))
+
 (def ^:private provider
   "Anthropic is the one provider the Metabase Cloud AI proxy can serve, so `:ai-proxy?` is true here and a
   proxied request goes through rather than being rejected."
@@ -336,7 +346,7 @@
    {:slug         "anthropic"
     :display-name "Anthropic"
     :ai-proxy?    true
-    :auth-scheme  #(hash-map "x-api-key" %)
+    :auth         anthropic-auth
     :headers      {"anthropic-version" anthropic-version}
     :span         :metabot.claude/request
     :errors       {401 #(tru "Anthropic API key expired or invalid")
@@ -374,9 +384,9 @@
   ([] (list-models {}))
   ([opts]
    (adapter/listing supported-models
-                    (adapter/fetch-catalog provider (assoc opts
-                                                           :path    "/v1/models"
-                                                           :extract adapter/data-entries))
+                    (adapter/fetch-catalog provider opts
+                                           {:path    "/v1/models"
+                                            :extract adapter/data-entries})
                     true)))
 
 (defn- strip-vendor-prefix
@@ -537,21 +547,19 @@
   "Perform a streaming request to Claude API.
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing."
-  [{:keys [model credentials ai-proxy?] :as opts
+  [{:keys [model] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [opts (cond-> opts (fast-mode-cooling-down?) (assoc :fast? false))
+  (let [opts (cond-> (assoc opts :model model)
+               (fast-mode-cooling-down?) (assoc :fast? false))
         req  (claude-request-body opts)]
-    (adapter/stream! provider
-                     {:model       model
-                      :path        "/v1/messages"
-                      :body        req
-                      :headers     (when (:speed req) {"anthropic-beta" fast-mode-beta})
-                      :credentials credentials
-                      :ai-proxy?   ai-proxy?
-                      :on-error    #(fast-mode-retry-or-throw!
-                                     req
-                                     (fn [] (claude-raw (assoc opts :fast? false)))
-                                     %)})))
+    (adapter/stream! provider opts
+                     {:path     "/v1/messages"
+                      :body     req
+                      :headers  (when (:speed req) {"anthropic-beta" fast-mode-beta})
+                      :on-error #(fast-mode-retry-or-throw!
+                                  req
+                                  (fn [] (claude-raw (assoc opts :fast? false)))
+                                  %)})))
 
 (defn claude
   "Call Claude API, return AISDK stream"

@@ -87,9 +87,9 @@
   ([] (list-models {}))
   ([opts]
    (adapter/listing supported-models
-                    (adapter/fetch-catalog provider (assoc opts
-                                                           :path    "/v1/models"
-                                                           :extract adapter/data-entries))
+                    (adapter/fetch-catalog provider opts
+                                           {:path    "/v1/models"
+                                            :extract adapter/data-entries})
                     true)))
 
 ;;; Streaming response → AISDK v5 chunks
@@ -183,13 +183,12 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
-  [{:keys [model credentials ai-proxy?] :as opts
+  [{:keys [model] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (adapter/stream! provider {:model       model
-                             :path        "/v1/chat/completions"
-                             :body        (openrouter-request-body opts)
-                             :credentials credentials
-                             :ai-proxy?   ai-proxy?}))
+  (let [opts (assoc opts :model model)]
+    (adapter/stream! provider opts
+                     {:path "/v1/chat/completions"
+                      :body (openrouter-request-body opts)})))
 
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."

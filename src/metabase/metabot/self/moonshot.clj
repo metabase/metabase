@@ -85,13 +85,12 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for Moonshot and throws when true."
-  [{:keys [model credentials ai-proxy?] :as opts
+  [{:keys [model] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (adapter/stream! provider {:model       model
-                             :path        "/chat/completions"
-                             :body        (moonshot-request-body (assoc opts :model model))
-                             :credentials credentials
-                             :ai-proxy?   ai-proxy?}))
+  (let [opts (assoc opts :model model)]
+    (adapter/stream! provider opts
+                     {:path "/chat/completions"
+                      :body (moonshot-request-body opts)})))
 
 (defn moonshot->aisdk-chunks-xf
   "Translates Moonshot Chat Completions streaming chunks into AI SDK v5 protocol chunks."

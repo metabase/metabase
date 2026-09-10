@@ -98,16 +98,6 @@
             :error-code  :api-key-missing
             :status-code 403}))
 
-(def ^:private provider
-  (adapter/provider
-   {:slug         "azure"
-    :display-name "Azure"
-    :errors       {401 #(tru "Azure rejected the API key for this resource")
-                   403 #(tru "Azure API key lacks permission for this resource or deployment")
-                   404 #(tru "Azure API endpoint or deployment was not found — check the base URL and deployment name")
-                   429 #(tru "Azure has rate limited us")
-                   500 #(tru "Azure is not working but not saying why")}}))
-
 (defn- ensure-credentials
   "Validate the credentials of the connection serving this request.
   Throws when the API key or base URL is missing."
@@ -117,31 +107,35 @@
   credentials)
 
 (defn- azure-auth
-  "Resolve auth for a request against the Azure resource's compatible surface, from the
-  `{:api-key ... :base-url ...}` credentials of the connection serving it.
-  `ai-proxy?` is accepted for parity with the other provider adapters but is not supported:
-  throws when true. Auth goes through [[core/resolve-auth]] so proxy redirection is already
-  wired up should Azure proxying ever be supported."
-  [credentials ai-proxy?]
-  (adapter/reject-ai-proxy! provider ai-proxy?)
+  "Azure's `:auth`. Bearer, like most providers, but it validates the whole credential pair up front so a
+  half-configured connection fails with its own message instead of a 401 from Azure.
+  `ai-proxy?` is accepted for parity with the other adapters but is not supported: throws when true.
+  Auth still goes through [[core/resolve-auth]] so proxy redirection is wired up should Azure proxying
+  ever be supported."
+  [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
   (let [{:keys [api-key base-url]} (ensure-credentials credentials)]
-    (core/resolve-auth "azure" "Azure"
+    (core/resolve-auth slug display-name
                        {:url     base-url
                         :headers {"Authorization" (str "Bearer " api-key)}}
                        ai-proxy?)))
 
+(def ^:private provider
+  (adapter/provider
+   {:slug         "azure"
+    :display-name "Azure"
+    :auth         azure-auth
+    :errors       {401 #(tru "Azure rejected the API key for this resource")
+                   403 #(tru "Azure API key lacks permission for this resource or deployment")
+                   404 #(tru "Azure API endpoint or deployment was not found — check the base URL and deployment name")
+                   429 #(tru "Azure has rate limited us")
+                   500 #(tru "Azure is not working but not saying why")}}))
+
 (defn- azure-request
   "Perform an HTTP request against the Azure resource's compatible surface.
   `headers` are extra headers (e.g. `anthropic-version`)."
-  [{:keys [method path body as headers credentials ai-proxy?]}]
-  (let [auth (azure-auth credentials ai-proxy?)]
-    (core/request auth
-                  (cond-> {:method  method
-                           :url     path
-                           :headers headers}
-                    as   (assoc :as as)
-                    body (-> (assoc :body body)
-                             (assoc-in [:headers "Content-Type"] "application/json"))))))
+  [{:keys [body] :as req}]
+  (adapter/request! provider (cond-> req
+                               body (assoc-in [:headers "Content-Type"] "application/json"))))
 
 ;;; ---------------------------------------------- Connect validation -------------------------------------------
 
@@ -205,22 +199,22 @@
   "Perform a streaming request to an Azure-hosted model deployment.
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing. `:ai-proxy?` is not supported for Azure and throws when true."
-  [{:keys [model credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
+  [{:keys [model] :as opts} :- core/LLMRequestOpts]
   (let [family (model->family model)
-        opts   (assoc opts :model (model->deployment model) :reasoning? false :fast? false)
+        ;; the body names the Azure deployment; the span keeps the `{family}/{deployment}` model it was called with
+        deployed (assoc opts :model (model->deployment model) :reasoning? false :fast? false)
         {:keys [path headers req]}
         (case family
           :anthropic {:path    "/v1/messages"
                       :headers {"anthropic-version" anthropic-version}
-                      :req     (claude/claude-request-body opts)}
+                      :req     (claude/claude-request-body deployed)}
           :openai    {:path "/v1/responses"
-                      :req  (openai/openai-request-body opts)})]
-    (adapter/stream! provider {:model      model
-                               :path       path
-                               :body       req
-                               :headers    headers
-                               :span-attrs {:family family}
-                               :auth       (azure-auth credentials ai-proxy?)})))
+                      :req  (openai/openai-request-body deployed)})]
+    (adapter/stream! provider opts
+                     {:path       path
+                      :body       req
+                      :headers    headers
+                      :span-attrs {:family family}})))
 
 (defn- model->aisdk-chunks-xf
   "The SSE->AISDK translating transducer for an Azure model string.
