@@ -90,7 +90,7 @@
      :assetOnErrorJS         (load-inline-js "asset_loading_error")
      :userLocalizationJSON   (escape-script (load-localization (when should-load-locale-params? (:locale params))))
      :siteLocalizationJSON   (escape-script (load-localization (system/site-locale)))
-     :nonceJSON              (escape-script (json/encode nonce))
+     :nonce                  (hiccup.util/escape-html nonce)
      :language               (hiccup.util/escape-html (or (i18n/user-locale-string) (system/site-locale)))
      :userColorScheme        (escape-script (json/encode (users-settings/color-scheme)))
      :favicon                (hiccup.util/escape-html (let [custom-favicon (appearance/application-favicon-url)]

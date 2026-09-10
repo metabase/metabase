@@ -67,7 +67,7 @@
 (api.macros/defendpoint :get "/" :- [:map {:closed true} [:data [:sequential Tenant]]]
   "Get all tenants"
   [_
-   {:keys [status]} :- [:map
+   {:keys [status]} :- [:map {:closed true}
                         [:status {:default "all"} [:enum "all" "deactivated" "active"]]]
    _]
   (api/check-403 (or api/*is-superuser?* (not (:tenant_id @api/*current-user*))))

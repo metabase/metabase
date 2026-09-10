@@ -122,9 +122,54 @@ describe("scenarios > data apps > sandbox isolation", () => {
     runProbe("isolation-dom-parser");
   });
 
+  it("keeps a createHTMLDocument iframe adopted into the realm gated", () => {
+    setUp();
+    runProbe("isolation-adopt-html-doc-iframe");
+  });
+
+  it("keeps a createHTMLDocument iframe imported into the realm gated", () => {
+    setUp();
+    runProbe("isolation-import-html-doc-iframe");
+  });
+
+  it("keeps a createDocument iframe adopted into the realm gated", () => {
+    setUp();
+    runProbe("isolation-xml-doc-iframe");
+  });
+
+  it("keeps a template owner-document iframe adopted into the realm gated", () => {
+    setUp();
+    runProbe("isolation-template-doc-iframe");
+  });
+
   it("keeps a raw API out of the SDK endowments", () => {
     setUp();
     runProbe("isolation-endowment-api");
+  });
+
+  it("keeps an Error.prepareStackTrace realm reference gated", () => {
+    setUp();
+    runProbe("isolation-stack-trace-realm");
+  });
+
+  it("keeps window.parent within the gated realm", () => {
+    setUp();
+    runProbe("isolation-window-parent");
+  });
+
+  it("keeps window.top within the gated realm", () => {
+    setUp();
+    runProbe("isolation-window-top");
+  });
+
+  it("keeps window.frameElement's owner realm gated", () => {
+    setUp();
+    runProbe("isolation-frame-element");
+  });
+
+  it("keeps window.parent.parent within the gated realm", () => {
+    setUp();
+    runProbe("isolation-parent-chain");
   });
 
   it("gates document.cookie on the parent realm", () => {
@@ -152,6 +197,16 @@ describe("scenarios > data apps > sandbox isolation", () => {
     runProbe("isolation-parent-caches");
   });
 
+  it("keeps indexed window.frames access gated", () => {
+    setUp();
+    runProbe("isolation-window-frames");
+  });
+
+  it("keeps window.opener's realm gated", () => {
+    setUp();
+    runProbe("isolation-window-opener");
+  });
+
   it("gates FontFace.load", () => {
     setUp();
     runProbe("isolation-font-face");
@@ -175,6 +230,29 @@ describe("scenarios > data apps > sandbox isolation", () => {
   it("keeps a custom element's upgrade callback in the gated realm", () => {
     setUp();
     runProbe("isolation-custom-element");
+  });
+
+  it("keeps a host iframe's realm gated", () => {
+    setUp();
+
+    // A srcless (about:blank) iframe is same-origin, so its `contentWindow` is a
+    // live realm with an un-gated `fetch` — the same capability html2canvas's
+    // clone iframe has. Create it in the PARENT (whose createElement the host
+    // guard never patched) and adopt it into the data-app document, mimicking a
+    // host-created child frame the guest then reaches for.
+    H.dataAppIframe(APP_DISPLAY_NAME).then(($body) => {
+      const doc = $body[0].ownerDocument;
+      const parentDoc = doc.defaultView!.parent.document;
+      const iframe = parentDoc.createElement("iframe");
+      iframe.style.display = "none";
+      doc.body.appendChild(doc.adoptNode(iframe));
+
+      expect(iframe.contentWindow !== null, "adopted iframe realm").to.equal(
+        true,
+      );
+    });
+
+    runProbe("isolation-child-frame-grab");
   });
 
   it("gates an allowed_host redirect to the instance", () => {
