@@ -6,13 +6,12 @@ import {
   type ActiveStatus,
 } from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getTenantsBasePath } from "metabase/common/tenants";
+import { isEmbeddingHubTenancy } from "metabase/common/tenants";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
 import { SettingsSection } from "metabase/settings-components";
 import { Box, Group, Tabs, Title } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButton";
@@ -54,20 +53,24 @@ export const TenantsListingApp = () => {
 
   const hasNoTenants = data?.data?.length === 0;
 
-  const isMountedInEmbeddingHub =
-    getTenantsBasePath() === Urls.embeddingHubTenancy();
+  const isEmbeddingHub = isEmbeddingHubTenancy();
 
   return (
     // Narrower when there are no tenants. 50rem matches the embedding hub's
     // content column, which mounts this same listing.
     <Box maw={hasNoTenants ? "50rem" : undefined} mx="auto">
-      <Group justify="space-between" w="100%" mb="xl">
-        <Title order={1}>{t`Tenants`}</Title>
+      <Group
+        justify={isEmbeddingHub ? "flex-end" : "space-between"}
+        w="100%"
+        mb="xl"
+      >
+        {/* The hub's Tenancy tab already names this page above the sub-tabs. */}
+        {!isEmbeddingHub && <Title order={1}>{t`Tenants`}</Title>}
 
         <Group gap="sm">
           {/* The embedding hub's Tenancy page links to the same docs above the
               listing, so this would be the second link to one destination. */}
-          {!isMountedInEmbeddingHub && <TenantsDocsButton />}
+          {!isEmbeddingHub && <TenantsDocsButton />}
           <EditUserStrategySettingsButton page="tenants" />
         </Group>
       </Group>

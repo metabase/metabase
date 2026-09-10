@@ -24,9 +24,11 @@ import { GroupsListing } from "../components/GroupsListing";
 export const GroupsListingApp = ({
   external,
   description,
+  showTitle = true,
 }: {
   external?: boolean;
   description?: string;
+  showTitle?: boolean;
 }) => {
   const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);
@@ -76,7 +78,7 @@ export const GroupsListingApp = ({
   }, [external, isUsingTenants]);
 
   return (
-    <SettingsPageWrapper title={pageTitle}>
+    <SettingsPageWrapper title={showTitle ? pageTitle : undefined}>
       <SettingsSection>
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
           <GroupsListing

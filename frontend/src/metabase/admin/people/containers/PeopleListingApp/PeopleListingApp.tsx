@@ -26,11 +26,13 @@ export function PeopleListingApp({
   children = <Outlet />,
   external = false,
   showInviteButton = true,
+  showTitle = true,
   noResultsMessage = DEFAULT_NO_RESULTS_MESSAGE(),
 }: {
   children?: React.ReactNode;
   external?: boolean;
   showInviteButton?: boolean;
+  showTitle?: boolean;
   noResultsMessage?: string;
 }) {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -100,13 +102,15 @@ export function PeopleListingApp({
 
   return (
     <div>
-      <Group justify="space-between" w="100%" mb="xl">
-        <Title order={1}>{pageTitle}</Title>
+      {(showTitle || !external) && (
+        <Group justify="space-between" w="100%" mb="xl">
+          {showTitle && <Title order={1}>{pageTitle}</Title>}
 
-        {!external && (
-          <PLUGIN_TENANTS.EditUserStrategySettingsButton page="people" />
-        )}
-      </Group>
+          {!external && (
+            <PLUGIN_TENANTS.EditUserStrategySettingsButton page="people" />
+          )}
+        </Group>
+      )}
 
       {isAdmin && hasDeactivatedUsers && (
         <Tabs
