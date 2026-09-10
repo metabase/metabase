@@ -48,7 +48,7 @@ type ResolvedGoalSegmentWithBounds<TBound> = {
 
 export type ResolvedGoalSegment = ResolvedGoalSegmentWithBounds<number>;
 
-// A null bound was left empty in the settings; at least one bound is always set.
+// Open-ended means that at least one bound is always set.
 export type ResolvedOpenEndedGoalSegment = ResolvedGoalSegmentWithBounds<
   number | null
 >;
@@ -328,7 +328,6 @@ export function resolveGoalSegments(
   });
 }
 
-// An empty bound stays open; a bound that is set must still resolve to a number.
 export function resolveOpenEndedGoalSegments(
   data: GoalData,
   segments: GoalSegment[] | undefined,
