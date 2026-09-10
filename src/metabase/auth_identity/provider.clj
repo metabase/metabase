@@ -255,12 +255,13 @@
   :hierarchy #'auth-identity.hierarchy/hierarchy)
 
 (mu/defn- create-session!
-  "Create a new session for a user with the given provider.
-   Updates the last_used_at timestamp on the corresponding AuthIdentity."
+  "Create a new session for a user, attributed to the AuthIdentity of `(:session/provider request)` when a `login!`
+  method set one, otherwise to that of `provider`. Updates the last_used_at timestamp on that AuthIdentity."
   [request :- [:map
                [:user [:map
                        [:id ms/PositiveInt]
                        [:is_active :boolean]]]
+               [:session/provider {:optional true} [:maybe :keyword]]
                [:device-info {:optional true} [:maybe [:map
                                                        [:device_id {:optional true} [:maybe ms/NonBlankString]]
                                                        [:device_description {:optional true} [:maybe ms/NonBlankString]]
@@ -271,7 +272,8 @@
            :error disabled-account-snippet
            :message disabled-account-message)
     (let [{:keys [user device-info]} request
-          session (auth-session/create-session-with-auth-tracking! user device-info provider)]
+          session (auth-session/create-session-with-auth-tracking! user device-info
+                                                                   (or (:session/provider request) provider))]
       (assoc request :session session))))
 
 (methodical/defmethod login! ::provider
@@ -299,9 +301,12 @@
   [_provider login-result]
   login-result)
 
+;; Keys the login pipeline produces itself, stripped off the incoming request before anything runs. A caller must not
+;; be able to hand itself a user-id, a session, or — via :session/provider — the AuthIdentity its session is
+;; attributed to.
 (def ^:private authenticate-owned-keys
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
-   :error :message :mfa/pending? :mfa/methods :mfa/first-factor
+   :error :message :mfa/pending? :mfa/methods :mfa/first-factor :session/provider
    :jwt-data :claims
    :tenant-slug :tenant-attributes :user-provisioning-enabled?])
 
