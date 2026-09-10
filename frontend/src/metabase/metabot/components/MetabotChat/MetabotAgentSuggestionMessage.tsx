@@ -6,6 +6,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useLazyGetTransformQuery } from "metabase/api";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { MetabotContext } from "metabase/metabot/context";
 import {
   type MetabotAgentDataPartMessage,
@@ -13,10 +14,9 @@ import {
   activateSuggestedTransform,
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
   Collapse,
@@ -30,8 +30,8 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  DatabaseId,
   MetabotSuggestedTransform,
   MetabotTransformInfo,
   SuggestedTransform,
@@ -81,7 +81,6 @@ export const AgentSuggestionMessage = ({
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const metadata = useSelector(getMetadata);
   const { suggestionActions } = useContext(MetabotContext);
   const { sendErrorToast } = useMetadataToasts();
   const [isApplying, setIsApplying] = useState(false);
@@ -141,10 +140,8 @@ export const AgentSuggestionMessage = ({
     };
   }, []);
 
-  const oldSource = originalTransform
-    ? getSourceCode(originalTransform, metadata)
-    : "";
-  const newSource = getSourceCode(suggestedTransform, metadata);
+  const oldSource = useSourceCode(originalTransform);
+  const newSource = useSourceCode(suggestedTransform);
 
   const handleApply = async () => {
     dispatch(activateSuggestedTransform(suggestedTransform));
@@ -173,13 +170,13 @@ export const AgentSuggestionMessage = ({
   return (
     <Paper
       shadow="none"
-      radius="md"
+      radius="sm"
       bg="background_page-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
       <Group
-        p="md"
+        p="lg"
         align="center"
         justify="space-between"
         onClick={toggle}
@@ -193,7 +190,7 @@ export const AgentSuggestionMessage = ({
           <Text size="sm" c={isNew ? "core-blue-saturated" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
-          <Flex align="center" justify="center" h="md" w="md">
+          <Flex align="center" justify="center" h="lg" w="lg">
             <Icon name={opened ? "chevrondown" : "chevronup"} size=".75rem" />
           </Flex>
         </Flex>
@@ -207,7 +204,7 @@ export const AgentSuggestionMessage = ({
         {match({ isLoading: isLoading || !isPreviewLoaded, error })
           .with({ error: P.not(P.nullish) }, () => (
             <Flex
-              p="md"
+              p="lg"
               bg="background_page-secondary"
               justify="center"
               align="center"
@@ -221,7 +218,7 @@ export const AgentSuggestionMessage = ({
           ))
           .with({ isLoading: true }, () => (
             <Flex
-              p="md"
+              p="lg"
               bg="background_page-secondary"
               justify="center"
               align="center"
@@ -240,7 +237,7 @@ export const AgentSuggestionMessage = ({
           .exhaustive()}
 
         <Group
-          py="xs"
+          py="xxs"
           px="sm"
           align="center"
           justify="space-between"
@@ -277,16 +274,21 @@ export const AgentSuggestionMessage = ({
   );
 };
 
-function getSourceCode(
-  transform: Pick<MetabotTransformInfo, "source">,
-  metadata: Metadata,
+function getSourceDatabaseId(
+  transform: Pick<MetabotTransformInfo, "source"> | undefined,
+): DatabaseId | null {
+  return transform?.source.type === "query"
+    ? transform.source.query.database
+    : null;
+}
+
+function useSourceCode(
+  transform: Pick<MetabotTransformInfo, "source"> | undefined,
 ): string {
+  const metadataProvider = useMetadataProvider(getSourceDatabaseId(transform));
+
   return match(transform)
     .with({ source: { type: "query" } }, (t) => {
-      const metadataProvider = Lib.metadataProvider(
-        t.source.query.database,
-        metadata,
-      );
       const query = Lib.fromJsQuery(metadataProvider, t.source.query);
       if (Lib.queryDisplayInfo(query).isNative) {
         return Lib.rawNativeQuery(query);

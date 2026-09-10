@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.mcp.core :as mcp]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.scopes :as scopes]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
@@ -90,7 +91,16 @@
 (defn resolve-access-token
   "Validate an OAuth bearer access token string against the token store. Returns
    `{:user-id <int> :scopes <set-of-strings>}` on success, or nil on failure (unknown,
-   expired, or revoked token, or a token with no associated user).
+   expired, or revoked token, a token with no associated user, or a token whose user has since
+   been deactivated).
+
+   The `is_active` gate here is defense in depth, not the primary control: deactivating a user through
+   the model fires `:event/user-credentials-revoked`, and `metabase.oauth-server.events.revoke-on-deactivation`
+   stamps `revoked_at` on every token, which the store lookup above already filters on. This gate covers
+   the paths that don't go through the model hook — a direct SQL or migration update of `core_user`, a
+   restored backup — and keeps the invariant local to the one resolver every bearer caller shares (the
+   v1 MCP transport dispatches straight on the returned `:user-id` with no re-check of its own). It costs
+   one indexed primary-key lookup per bearer request.
 
    This is the single token-resolution lookup shared by the MCP transport and the core
    session middleware's bearer-token bridge — keep it the only place an access token is
@@ -100,8 +110,11 @@
     (when-let [provider (get-provider)]
       (when-let [token-data (oidc.store/get-access-token (:token-store provider) token-string)]
         (let [expiry (:expiry token-data)]
-          (when (or (nil? expiry)
-                    (t/after? (t/instant expiry) (t/instant)))
+          (when (and (or (nil? expiry)
+                         (t/after? (t/instant expiry) (t/instant)))
+                     ;; Fail closed if the issuing client is gone (SEC-863).
+                     (oauth-server.db/oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
-              {:user-id user-id
-               :scopes  (or (some->> (:scope token-data) (into #{})) #{})})))))))
+              (when (oauth-server.db/active-user-exists? user-id)
+                {:user-id user-id
+                 :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))

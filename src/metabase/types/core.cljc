@@ -60,13 +60,17 @@
 
 ;;; Table (entity) Types
 
-(derive :entity/GenericTable :entity/*)
-(derive :entity/UserTable :entity/GenericTable)
-(derive :entity/CompanyTable :entity/GenericTable)
-(derive :entity/TransactionTable :entity/GenericTable)
-(derive :entity/ProductTable :entity/GenericTable)
-(derive :entity/SubscriptionTable :entity/GenericTable)
-(derive :entity/EventTable :entity/GenericTable)
+(def entity-hierarchy
+  "Hierarchy of table entity types, i.e. a Table's `:entity_type`. Not part of Clojure's global hierarchy, so `isa?`
+  on these keywords must be passed this hierarchy explicitly."
+  (-> (make-hierarchy)
+      (derive :entity/GenericTable :entity/*)
+      (derive :entity/UserTable :entity/GenericTable)
+      (derive :entity/CompanyTable :entity/GenericTable)
+      (derive :entity/TransactionTable :entity/GenericTable)
+      (derive :entity/ProductTable :entity/GenericTable)
+      (derive :entity/SubscriptionTable :entity/GenericTable)
+      (derive :entity/EventTable :entity/GenericTable)))
 
 ;;; Modifier Types
 
@@ -405,6 +409,7 @@
   DEPRECATED: Prefer using MBQL 5 + [[metabase.lib.types.isa/temporal?]] going forward."
   {:deprecated "0.57.0"}
   [field :- ::snake-cased-type-info]
+  ;; deprecated shim delegating to the equally-deprecated field-is-type?; both go away together
   #_{:clj-kondo/ignore [:deprecated-var]}
   (field-is-type? :type/Temporal field))
 

@@ -1,32 +1,36 @@
 (ns ^:instrument/always metabase.actions.args
   (:require
+   [metabase.actions.db :as actions.db]
+   [metabase.actions.hierarchy :as actions.hierarchy]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (defmulti action-arg-map-schema
   "Return the appropriate malli schema to use to validate the arg map passed to [[perform-action!*]].
 
     (action-arg-map-schema :model.row/create) => :actions.args.crud/row.create"
   {:arglists '([action]), :added "0.44.0"}
-  keyword)
+  keyword
+  :hierarchy #'actions.hierarchy/hierarchy)
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
   {:arglists '([action arg-map]), :added "0.44.0"}
   (fn [action _arg-map]
-    (keyword action)))
+    (keyword action))
+  :hierarchy #'actions.hierarchy/hierarchy)
 
 (defmulti validate-inputs!
   "Check whether the given action is supported for the given inputs, and if not throw an error."
   {:arglists '([action inputs]), :added "0.57.0"}
   (fn [action _inputs]
-    (keyword action)))
+    (keyword action))
+  :hierarchy #'actions.hierarchy/hierarchy)
 
 (defmethod normalize-action-arg-map :default
   [_action arg-map]
@@ -156,9 +160,9 @@
 
 ;;;; `:table.row/create`, `:table.row/delete`, `:table.row/update` -- these all have the exact same shapes
 
-(derive :table.row/create :table.row/common)
-(derive :table.row/update :table.row/common)
-(derive :table.row/delete :table.row/common)
+(actions.hierarchy/derive! :table.row/create :table.row/common)
+(actions.hierarchy/derive! :table.row/update :table.row/common)
+(actions.hierarchy/derive! :table.row/delete :table.row/common)
 
 (defmethod action-arg-map-schema :table.row/common
   [_action]
@@ -169,6 +173,6 @@
   (when (seq row-arg)
     (log/warn ":arg is deprecated, use :row instead"))
   ;; TODO it would be nice to use cached-database-via-table-id here, but need to solve circular dependency.
-  {:database (or database (when table-id (t2/select-one-fn :db_id [:model/Table :db_id] table-id)))
+  {:database (or database (when table-id (actions.db/table-database-id table-id)))
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})

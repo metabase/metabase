@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { useValidatePassword } from "metabase/common/hooks";
@@ -13,6 +12,7 @@ import {
 import type { UserInfo } from "metabase/redux/store";
 import { Flex, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
+import { memoize } from "metabase/utils/memoize";
 
 import { UserFieldGroup } from "./UserForm.styled";
 
@@ -44,7 +44,7 @@ interface UserFormProps {
 export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
   const validatePassword = useValidatePassword();
   const validationContext = useMemo(
-    () => ({ onValidatePassword: _.memoize(validatePassword) }),
+    () => ({ onValidatePassword: memoize(validatePassword) }),
     [validatePassword],
   );
   const initialValues = useMemo(() => {
@@ -58,7 +58,7 @@ export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
       validationContext={validationContext}
       onSubmit={onSubmit}
     >
-      <Form as={Stack} gap="md" mt="md">
+      <Form as={Stack} gap="lg" mt="lg">
         <UserFieldGroup>
           <FormTextInput
             name="first_name"

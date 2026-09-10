@@ -20,6 +20,8 @@ import type {
   RemoteSyncEntity,
 } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
   selectedId?: number | string;
@@ -115,11 +117,4 @@ export const PLUGIN_REMOTE_SYNC: {
   useHasTransformDirtyChanges: () => boolean;
   getIsRemoteSyncReadOnly: (state: State) => boolean;
   useRemoteSyncDirtyState: () => RemoteSyncDirtyState;
-} = getDefaultPluginRemoteSync();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_REMOTE_SYNC, getDefaultPluginRemoteSync());
-}
+} = definePluginSlot(getDefaultPluginRemoteSync);

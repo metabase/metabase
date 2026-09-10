@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.measures.db :as measures.db]
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
@@ -22,7 +23,7 @@
    [:id                  ms/PositiveInt]
    [:name                ms/NonBlankString]
    [:table_id            ms/PositiveInt]
-   [:definition          ms/Map]
+   [:definition          ::measures.schema/definition]
    [:description         {:optional true} [:maybe :string]]
    [:archived            :boolean]
    [:creator_id          ms/PositiveInt]
@@ -45,26 +46,22 @@
   "Create a new `Measure`. The Measure's table is derived from its `definition`."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body} :- [:map
+   {:keys [name description definition], :as body} :- [:map {:closed true}
                                                        [:name        ms/NonBlankString]
                                                        [:definition  ::measures.schema/definition]
                                                        [:description {:optional true} [:maybe :string]]]]
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Measure (assoc body :table_id table-id))
     (let [measure (api/check-500
-                   (first (t2/insert-returning-instances! :model/Measure
-                                                          :creator_id  api/*current-user-id*
-                                                          :name        name
-                                                          :description description
-                                                          :definition  definition)))]
+                   (measures.db/insert-measure! api/*current-user-id* name description definition))]
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
 
 (mu/defn- hydrated-measure [id :- ms/PositiveInt
                             include-orphaned? :- :boolean]
-  (api/read-check (t2/select-one :model/Measure :id id))
+  (api/read-check (measures.db/measure id))
   (metrics/sync-dimensions! :metadata/measure id)
-  (cond-> (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
+  (cond-> (-> (t2/hydrate (measures.db/measure id) :creator)
               metrics/filter-dimensions-for-user)
     (not include-orphaned?) metrics/without-orphaned-dimensions))
 
@@ -79,9 +76,9 @@
 
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include-orphaned]} :- [:map
+   {:keys [include-orphaned]} :- [:map {:closed true}
                                   [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
   (let [measure (hydrated-measure id (boolean include-orphaned))]
     (-> measure
@@ -91,10 +88,10 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (let [measures  (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]})
+  (let [measures  (measures.db/unarchived-measures)
         table-ids (into #{} (keep :table_id) measures)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+                                                 (measures.db/table-database-ids table-ids))
                                     :table-ids table-ids})
     (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
          (mapv with-api-dimensions))))
@@ -118,17 +115,17 @@
         (when (not= new-table-id (:table_id existing))
           (api/create-check :model/Measure {:table_id new-table-id}))))
     (when changes
-      (t2/update! :model/Measure id changes))
+      (measures.db/update-measure! id changes))
     (u/prog1 (hydrated-measure id false)
       (events/publish-event! :event/measure-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
 (api.macros/defendpoint :put "/:id" :- ::measure
   "Update a `Measure` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
             [:definition              {:optional true} [:maybe ::measures.schema/definition]]
             [:revision_message        ms/NonBlankString]
@@ -155,7 +152,7 @@
    - values: list of [value] or [value, display-name] tuples
    - field_id: the underlying field ID
    - has_more_values: boolean indicating if there are more values"
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
   (let [measure (hydrated-measure id false)]
@@ -169,10 +166,10 @@
   "Search for values of a dimension that contain the query string.
 
    Returns field values matching the search query in the same format as the field values API."
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
+   {:keys [query]}            :- [:map {:closed true} [:query ms/NonBlankString]]]
   (let [measure (hydrated-measure id false)]
     (metrics/dimension-search-values
      (:dimensions measure)
@@ -185,10 +182,10 @@
   "Fetch remapped value for a specific dimension value.
 
    Returns a pair [value, display-name] if remapping exists, or [value] otherwise."
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [value]}             :- [:map [:value :string]]]
+   {:keys [value]}             :- [:map {:closed true} [:value :string]]]
   (let [measure (hydrated-measure id false)]
     (metrics/dimension-remapped-value
      (:dimensions measure)

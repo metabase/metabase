@@ -20,13 +20,28 @@
      ~@body))
 
 (defmacro with-temp-index-table
-  "Create a temporary index table for the duration of the body."
+  "Create a temporary index table for the duration of the body.
+
+  The table belongs to the app DB, so app-DB support is the condition. [[metabase.search.core/supports-index?]] is
+  true for any active engine, so with semantic search enabled it would make MySQL and MariaDB try to build a table
+  their app DB cannot hold."
   [& body]
-  `(when (search/supports-index?)
+  `(when (search.engine/supported-engine? :search.engine/appdb)
      (search.index/with-temp-index-table
        ;; We need ingestion to happen on the same thread so that it uses the right search index.
        (with-sync-search-indexing
          ~@body))))
+
+(defmacro with-temp-index-table-if-supported
+  "Like [[with-temp-index-table]], but always runs `body`, even when the app DB cannot support an index.
+
+  Use this for tests that cover both indexed and non-indexed behavior. Wrapping such a test in
+  [[with-temp-index-table]] would skip it entirely on MySQL and MariaDB."
+  [& body]
+  `(let [thunk# (fn [] ~@body)]
+     (if (search.engine/supported-engine? :search.engine/appdb)
+       (with-temp-index-table (thunk#))
+       (thunk#))))
 
 (defmacro with-appdb-search-if-available*
   "Create a temporary index table for the duration of the body."
@@ -42,20 +57,6 @@
        (search/reindex! {:async? false :in-place? true})
        ~@body)))
 
-(defmacro with-appdb-search-if-available-otherwise-legacy
-  "Create a temporary index table for the duration of the body."
-  [& body]
-  `(if (search/supports-index?)
-     (with-appdb-search-if-available* ~@body)
-     ~@body))
-
-(defmacro with-appdb-search-if-available-without-fallback
-  "Create a temporary index table for the duration of the body.
-   Only runs if the appdb search engine is supported."
-  [& body]
-  `(when (search.engine/supported-engine? :search.engine/appdb)
-     (with-appdb-search-if-available* ~@body)))
-
 (defmacro with-legacy-search
   "Ensure legacy search, which doesn't require an index, is used.
    Semantic queries go to :search.engine/semantic and keyword queries fall back to :search.engine/in-place."
@@ -68,6 +69,22 @@
                                                               (when (search.engine/supported-engine? :search.engine/semantic)
                                                                 [:search.engine/semantic]))]
      ~@body))
+
+(defmacro with-appdb-search-if-available-otherwise-legacy
+  "Create a temporary index table for the duration of the body, or run it under legacy search."
+  [& body]
+  `(if (search.engine/supported-engine? :search.engine/appdb)
+     (with-appdb-search-if-available* ~@body)
+     ;; Pin the engine rather than taking whatever the default is. Semantic can be active here, and the body is
+     ;; expects an index that this app DB cannot hold.
+     (with-legacy-search ~@body)))
+
+(defmacro with-appdb-search-if-available-without-fallback
+  "Create a temporary index table for the duration of the body.
+   Only runs if the app DB search engine is supported."
+  [& body]
+  `(when (search.engine/supported-engine? :search.engine/appdb)
+     (with-appdb-search-if-available* ~@body)))
 
 (defmacro with-appdb-search-and-legacy-search
   "Run the body twice, once with the legacy search engine, and once with the appdb search engine."

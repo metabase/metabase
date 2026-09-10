@@ -621,15 +621,16 @@
         (is (not (contains? opts :a/b)))))))
 
 (deftest adhoc-query-decode-strips-extra-keys-test
-  (testing "adhoc queries are validated and stripped of undeclared properties"
+  (testing "adhoc queries are validated and stripped of the query processor's internal keys"
+    ;; `:qp/stage-had-source-card` is a key the QP adds to a stage while a query runs and that permissions later read,
+    ;; so a client must never be able to send it in through an x-ray's adhoc query.
     (mt/with-test-user :rasta
       (let [q      {:database (mt/id)
                     :type     "query"
-                    :query    {:source-table (mt/id :venues)
-                               :a            1
-                               :a/b          2}}
+                    :query    {:source-table             (mt/id :venues)
+                               :qp/stage-had-source-card 1}}
             dq     (:dataset_query (#'api.magic/adhoc-query-instance q))]
         (is (mr/validate ::ads/query dq)
             "decoded adhoc query is a valid MBQL query")
-        (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages dq))
-            "undeclared properties are stripped from every stage")))))
+        (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages dq))
+            "internal keys are stripped from every stage")))))

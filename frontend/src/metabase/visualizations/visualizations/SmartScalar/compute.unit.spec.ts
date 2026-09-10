@@ -1,13 +1,13 @@
 import { color, colors } from "metabase/ui/colors";
 import { isNumber } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
-import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
   CHANGE_ARROW_ICONS,
   CHANGE_TYPE_OPTIONS,
   type Trend,
   computeTrend as _computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
+import { computeChange } from "metabase/viz-core";
 import type {
   DatasetColumn,
   RowValue,
@@ -239,6 +239,91 @@ describe("SmartScalar > compute", () => {
           settings,
         );
         expect(getTrend(trend)).toEqual(expected);
+      });
+    });
+
+    describe("scalar.show_comparison_value", () => {
+      const cols = [
+        createMockColumn({
+          name: "Month",
+          base_type: "type/DateTime",
+          effective_type: "type/DateTime",
+        }),
+        createMockColumn({
+          name: "Count",
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+        }),
+      ];
+      const insights = createMockInsights({ col: "Count", unit: "month" });
+      const comparisons = [{ id: "1", type: COMPARISON_TYPES.PREVIOUS_PERIOD }];
+      const hideComparisonValue = createMockVisualizationSettings({
+        "scalar.field": "Count",
+        "scalar.comparisons": comparisons,
+        "scalar.show_comparison_value": false,
+      });
+      const getComparison = (
+        rows: RowValue[][],
+        settings = hideComparisonValue,
+      ) =>
+        computeTrend(series({ rows, cols }), insights, settings).trend
+          ?.comparisons[0];
+
+      it("should keep the comparison value by default", () => {
+        const comparison = getComparison(
+          [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ],
+          createMockVisualizationSettings({
+            "scalar.field": "Count",
+            "scalar.comparisons": comparisons,
+          }),
+        );
+
+        expect(comparison?.comparisonValue).toBe(100);
+        expect(comparison?.display.comparisonValue).toBe("100");
+      });
+
+      it("should drop the value of a changed comparison when hidden", () => {
+        const comparison = getComparison([
+          ["2019-10-01", 100],
+          ["2019-11-01", 300],
+        ]);
+
+        expect(comparison?.changeType).toBe(
+          CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE,
+        );
+        expect(comparison?.percentChange).toBe(2);
+        expect(comparison?.comparisonValue).toBeUndefined();
+        expect(comparison?.display.comparisonValue).toBe("");
+      });
+
+      it("should drop the value of an unchanged comparison when hidden", () => {
+        const comparison = getComparison([
+          ["2019-10-01", 100],
+          ["2019-11-01", 100],
+        ]);
+
+        expect(comparison?.changeType).toBe(
+          CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE,
+        );
+        expect(comparison?.comparisonValue).toBeUndefined();
+        expect(comparison?.display.comparisonValue).toBe("");
+      });
+
+      it("should keep the (No data) status of a missing comparison when hidden", () => {
+        const comparison = getComparison([
+          ["2019-10-01", null],
+          ["2019-11-01", 100],
+        ]);
+
+        expect(comparison?.changeType).toBe(
+          CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE,
+        );
+        expect(comparison?.display.comparisonValue).toBe(
+          CHANGE_TYPE_OPTIONS.MISSING.COMPARISON_VALUE_STR,
+        );
       });
     });
 

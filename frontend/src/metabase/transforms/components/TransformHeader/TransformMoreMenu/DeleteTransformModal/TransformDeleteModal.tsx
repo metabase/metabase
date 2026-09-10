@@ -46,7 +46,7 @@ export function DeleteTransformModal({
     <Modal
       title={getModalTitle(transform)}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
@@ -92,7 +92,7 @@ function DeleteTransformForm({
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
-        <Stack gap="lg">
+        <Stack gap="xl">
           <Text>{getFormMessage(transform)}</Text>
           {transform.table && (
             <Radio.Group

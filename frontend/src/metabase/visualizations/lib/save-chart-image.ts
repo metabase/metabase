@@ -1,18 +1,18 @@
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
+import {
+  canvasToBlob,
+  resolveSvgVarPaint,
+  restoreNestedSvgOverflow,
+  runWithinExportGrant,
+} from "metabase/viz-core";
 
-import { runWithinExportGrant } from "./chart-export-iframe-grant";
 import {
   createBrandingElement,
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
-import {
-  canvasToBlob,
-  resolveSvgVarPaint,
-  restoreNestedSvgOverflow,
-} from "./image-exports";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";

@@ -1,5 +1,7 @@
-import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  BaseCartesianChartModel,
+  ComputedVisualizationSettings,
+} from "metabase/viz-core";
 
 export const useAreAllDataPointsOutOfRange = (
   chartModel: BaseCartesianChartModel,

@@ -5,6 +5,7 @@
   protocol function, and rasterize the resulting SVG to PNG bytes via Batik."
   (:require
    [clojure.string :as str]
+   [hiccup.util :as hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.channel.render.image-buffer :as image-buffer]
    [metabase.channel.render.js.protocol :as js.protocol]
@@ -81,7 +82,8 @@
   (let [s (sanitize-svg s)
         factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes ^String s StandardCharsets/UTF_8))]
-      (.createDocument factory "file:///fake.svg" is))))
+      ;; The document deliberately gets no base URI so that Batik will not fetch any external references or local files
+      (.createDocument factory nil is))))
 
 (def ^:dynamic ^:private *svg-render-width*
   "Width to render svg images. Intentionally large to improve quality. Consumers should be aware and resize as
@@ -207,8 +209,12 @@
    :bell      "M14.254 5.105c-7.422.874-8.136 7.388-8.136 11.12 0 4.007 0 5.61-.824 6.411-.549.535-1.647.802-3.294.802v4.006h28v-4.006c-1.647 0-2.47 0-3.294-.802-.55-.534-.824-3.205-.824-8.013-.493-5.763-3.205-8.936-8.136-9.518a2.365 2.365 0 0 0 .725-1.701C18.47 2.076 17.364 1 16 1s-2.47 1.076-2.47 2.404c0 .664.276 1.266.724 1.7zM11.849 29c.383 1.556 1.793 2.333 4.229 2.333s3.845-.777 4.229-2.333h-8.458z"})
 
 (defn- icon-svg-string
+  "Raw SVG for `icon-name` filled with `color`. Both are escaped: `color` is the whitelabel brand color, which is a free
+  string an admin can set to anything, and unescaped it can close the `fill` attribute and inject elements of its own
+  (SEC-722)."
   [icon-name color]
-  (str "<svg xmlns=\"http://www.w3.org/2000/svg\"><path d=\"" (get icon-paths icon-name) "\" fill=\"" color "\"/></svg>"))
+  (str "<svg xmlns=\"http://www.w3.org/2000/svg\"><path d=\"" (hiccup.util/escape-html (get icon-paths icon-name))
+       "\" fill=\"" (hiccup.util/escape-html color) "\"/></svg>"))
 
 (defn icon
   "Entrypoint for rendering an SVG icon as a PNG, with a specific color"

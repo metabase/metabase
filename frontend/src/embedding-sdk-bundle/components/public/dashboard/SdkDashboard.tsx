@@ -4,6 +4,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -35,8 +36,12 @@ import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/
 import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
 import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
+  clearGuestToken,
+  setInitialGuestToken,
+} from "embedding-sdk-bundle/store/guest-embed";
+import {
+  getGuestTokenForMount,
   getIsGuestEmbed,
   getPlugins,
   getSessionTokenState,
@@ -64,7 +69,11 @@ import {
   type DashboardContextProviderHandle,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
+import {
+  getDashboardComplete,
+  getIsDirty,
+  getIsEditing,
+} from "metabase/dashboard/selectors";
 import type { RefreshPeriod } from "metabase/dashboard/types";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
@@ -89,17 +98,23 @@ const MaybeStyledWrapper = ({
   skip,
   className,
   style,
+  fullHeight,
   children,
 }: {
   skip: boolean;
   className?: string;
   style?: React.CSSProperties;
+  fullHeight?: boolean;
   children: React.ReactNode;
 }) =>
   skip ? (
     <>{children}</>
   ) : (
-    <SdkDashboardStyledWrapper className={className} style={style}>
+    <SdkDashboardStyledWrapper
+      className={className}
+      style={style}
+      fullHeight={fullHeight}
+    >
       {children}
     </SdkDashboardStyledWrapper>
   );
@@ -213,7 +228,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   Partial<
     Pick<
       DashboardContextProps,
-      | "getClickActionMode"
+      | "clickActionMode"
       | "dashboardActions"
       | "dashcardMenu"
       | "navigateToNewCardFromDashboard"
@@ -245,7 +260,7 @@ const SdkDashboardInner = ({
   renderDrillThroughQuestion: AdHocQuestionView,
   dashboardActions,
   dashcardMenu,
-  getClickActionMode,
+  clickActionMode,
   navigateToNewCardFromDashboard,
   className,
   style,
@@ -256,6 +271,9 @@ const SdkDashboardInner = ({
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
   const [isFirstRender, setIsFirstRender] = useState(true);
+  // Stable per-mount id: keeps this mount's guest token isolated from any
+  // other guest StaticQuestion/StaticDashboard sharing the same MetabaseProvider.
+  const mountId = useId();
 
   useWarnConflictingParameterProps({
     initialParameters,
@@ -274,15 +292,26 @@ const SdkDashboardInner = ({
     onParametersChange,
   });
 
-  const { rawToken: tokenFromStore, error: tokenFetchError } =
-    useSdkSelector(getSessionTokenState);
+  const { error: tokenFetchError } = useSdkSelector(getSessionTokenState);
+  const tokenFromStore = useSdkSelector((state) =>
+    getGuestTokenForMount(state, mountId),
+  );
 
   // Store token so the refresh handler can check expiry. No need to await — not used here.
   useEffect(() => {
     if (rawToken && isGuestEmbed) {
-      dispatch(setInitialGuestToken(rawToken));
+      dispatch(setInitialGuestToken({ mountId, token: rawToken }));
     }
-  }, [rawToken, isGuestEmbed, dispatch]);
+  }, [rawToken, isGuestEmbed, dispatch, mountId]);
+
+  // Own effect: folding this into the one above would clear the token on every
+  // rawToken change, leaving a window with no token for the refresh handler.
+  useEffect(
+    () => () => {
+      dispatch(clearGuestToken(mountId));
+    },
+    [dispatch, mountId],
+  );
 
   useEffect(() => {
     setIsFirstRender(false);
@@ -351,6 +380,7 @@ const SdkDashboardInner = ({
     useState<number>();
 
   const dashboard = useSelector(getDashboardComplete);
+  const isEditing = useSelector(getIsEditing);
   const autoScrollToDashcardId = useMemo(
     () =>
       dashboard?.dashcards.find(
@@ -594,7 +624,7 @@ const SdkDashboardInner = ({
         onLoad={handleLoad}
         onLoadWithoutCards={handleLoadWithoutCards}
         onError={(error) => dispatch(setErrorPage(error))}
-        getClickActionMode={getClickActionMode}
+        clickActionMode={clickActionMode}
         dashcardMenu={finalDashcardMenu}
         dashboardActions={dashboardActions}
         onAddQuestion={(dashboard) => {
@@ -629,6 +659,7 @@ const SdkDashboardInner = ({
                   skip={skipStyledWrapper}
                   className={className}
                   style={style}
+                  fullHeight={isEditing}
                 >
                   <Dashboard className={EmbedFrameS.EmbedFrame} />
                   <AutoRefreshController refreshPeriod={autoRefreshInterval} />
@@ -652,6 +683,7 @@ const SdkDashboardInner = ({
                 skip={skipStyledWrapper}
                 className={className}
                 style={style}
+                fullHeight
               >
                 <DashboardQueryBuilder
                   onCreate={(question) => {

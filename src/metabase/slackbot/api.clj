@@ -15,6 +15,7 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.config :as slackbot.config]
+   [metabase.slackbot.db :as slackbot.db]
    [metabase.slackbot.events :as slackbot.events]
    [metabase.slackbot.persistence :as slackbot.persistence]
    [metabase.slackbot.settings :as slackbot.settings]
@@ -29,8 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2])
+   [ring.util.codec :as codec])
   (:import
    (java.util.concurrent ExecutorService Executors ThreadFactory)))
 
@@ -102,12 +102,7 @@
   signing secret version, so that rotating the secret automatically invalidates existing identity links. Legacy
   identities without an explicit version are treated as version 0."
   [slack-user-id]
-  (let [identity (t2/select-one [:model/AuthIdentity :user_id :metadata]
-                                :provider "slack-connect"
-                                :provider_id slack-user-id
-                                {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
-                                 :where    [:= :user.is_active true]
-                                 :order-by [[:created_at :desc]]})]
+  (let [identity (slackbot.db/active-slack-connect-identity slack-user-id)]
     (when (= (auth-identity-signing-secret-version identity)
              (current-signing-secret-version))
       (:user_id identity))))
@@ -436,7 +431,7 @@
                     :dispatch         :type}
             ["url_verification" slackbot.events/SlackUrlVerificationEvent]
             ["event_callback"   slackbot.events/SlackEventCallbackEvent]
-            [::mc/default       [:map [:type :string]]]]
+            [::mc/default       [:map {:closed true} [:type :string]]]]
    request]
   (log/debugf "[slackbot] Incoming Slack request type=%s slack_event_type=%s request_ts=%s"
               (:type body)
@@ -453,7 +448,7 @@
 (def SlackBotSettingsRequest
   "Malli schema for the request body of PUT /api/metabot/slack/settings.
    All credential fields must be provided together (either all set or all nil)."
-  [:map
+  [:map {:closed true}
    [:slack-connect-client-id      [:maybe ms/NonBlankString]]
    [:slack-connect-client-secret  [:maybe ms/NonBlankString]]
    [:metabot-slack-signing-secret [:maybe ms/NonBlankString]]])
@@ -591,9 +586,7 @@
   [{:keys [message_external_id channel_id message_ts]}]
   (or message_external_id
       (when (and channel_id message_ts)
-        (t2/select-one-fn :external_id :model/MetabotMessage
-                          :channel_id   channel_id
-                          :slack_msg_id message_ts))))
+        (slackbot.db/metabot-message-external-id channel_id message_ts))))
 
 (defn- handle-feedback-modal-submission
   "Handle submission of the feedback details modal.
@@ -628,7 +621,7 @@
   "Handle interactive payloads from Slack (button clicks, modal submissions)."
   [_route-params
    _query-params
-   {:keys [payload]} :- [:map
+   {:keys [payload]} :- [:map {:closed true}
                          [:payload ms/NonBlankString]]
    request]
   (assert-valid-slack-req request)

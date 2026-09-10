@@ -10,7 +10,6 @@ import { fetchTableData } from "metabase/reference/fetch-data";
 import * as actions from "metabase/reference/reference";
 import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 
 import type { ClearStateProps } from "../reference";
 import {
@@ -41,9 +40,6 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
   const field = useSelector((state) => getField(state, { params }));
   const tableId = useSelector((state) => getTableId(state, { params }));
   const isEditing = useSelector(getIsEditing);
-  // `FieldDetail` reads `metadata` but doesn't select it itself.
-  const metadata = useSelector(getMetadata);
-
   const { loading, loadingError } = useReferenceFetch(() =>
     fetchTableData(dispatch, tableId),
   );
@@ -64,7 +60,6 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
     >
       <FieldDetail
         params={params}
-        metadata={metadata}
         loading={loading}
         loadingError={loadingError}
       />
