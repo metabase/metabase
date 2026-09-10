@@ -157,6 +157,9 @@ export function AdminAuthCard() {
   const showEnforcementOptions =
     enforcement === "required" || enforcement === "optional";
 
+  const isSwitchDisabled = enforcement === "off" && hasNoPasswordLogin;
+  const isEnforcementDisabled = hasNoPasswordLogin;
+
   return (
     <SettingsSection
       data-testid="mfa-setting"
@@ -164,41 +167,47 @@ export function AdminAuthCard() {
       description={t`Let users secure their account with an authenticator app.`}
     >
       <Tooltip
-        disabled={!hasNoPasswordLogin || enforcement !== "off"}
+        disabled={!isSwitchDisabled}
         label={t`Enable password or LDAP authentication to enable two-factor authentication`}
       >
         <Switch
           label={t`Allow two-factor authentication`}
           checked={enforcement !== "off"}
           onChange={(event) => handleEnable(event.currentTarget.checked)}
-          disabled={enforcement === "off" && hasNoPasswordLogin}
+          disabled={isSwitchDisabled}
           w="fit-content"
         />
       </Tooltip>
       {showEnforcementOptions && (
         <Box>
-          <Radio.Group
-            label={t`Require two-factor authentication`}
-            labelProps={{ fw: "bold", mb: "sm" }}
-            value={getEnforcementValue()}
-            onChange={(value) =>
-              isEnforcementOption(value) && handleRequire(value)
-            }
-            // this disabled value will override the per option disabled values
-            disabled={hasNoPasswordLogin || undefined}
+          <Tooltip
+            disabled={!isEnforcementDisabled}
+            label={t`Enable password or LDAP authentication to adjust two-factor authentication enforcement`}
           >
-            <Stack gap="sm">
-              {getEnforcementOptions().map(({ label, value }) => (
-                <Radio
-                  key={value}
-                  value={value}
-                  label={label}
-                  disabled={value === "optional" ? !hasFeature : !canRequire}
-                />
-              ))}
-            </Stack>
-          </Radio.Group>
-          {hasFeature && !canRequire && (
+            <Radio.Group
+              label={t`Require two-factor authentication`}
+              labelProps={{ fw: "bold", mb: "sm" }}
+              value={getEnforcementValue()}
+              onChange={(value) =>
+                isEnforcementOption(value) && handleRequire(value)
+              }
+              // this disabled value will override the per option disabled values
+              disabled={isEnforcementDisabled || undefined}
+              w="fit-content"
+            >
+              <Stack gap="sm">
+                {getEnforcementOptions().map(({ label, value }) => (
+                  <Radio
+                    key={value}
+                    value={value}
+                    label={label}
+                    disabled={value === "optional" ? !hasFeature : !canRequire}
+                  />
+                ))}
+              </Stack>
+            </Radio.Group>
+          </Tooltip>
+          {hasFeature && !canRequire && !hasNoPasswordLogin && (
             <Text size="sm" c="text-secondary" mt="sm">
               {jt`${(
                 <Anchor
