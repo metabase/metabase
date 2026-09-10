@@ -58,7 +58,7 @@ export function PanelHeader({
   );
 
   return (
-    <Stack className={S.root} p="lg" gap="lg">
+    <Stack className={S.root} p="xl" gap="xl">
       <Group wrap="nowrap">
         <Title flex={1} order={4} lh="1rem">
           {getHeaderLabel(node, groupType)}

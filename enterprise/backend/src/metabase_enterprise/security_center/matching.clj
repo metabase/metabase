@@ -2,6 +2,7 @@
   "Advisory matching engine. Evaluates HoneySQL queries against the appdb
    and combines with version checks to determine match status."
   (:require
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.schema :as schema]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
@@ -10,8 +11,7 @@
    [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [next.jdbc.result-set :as rs]
-   [toucan2.core :as t2])
+   [next.jdbc.result-set :as rs])
   (:import
    (org.semver4j Semver)))
 
@@ -148,11 +148,11 @@
              reactivated? (and (#{:active :error} match-status)
                                currently-unaffected
                                (some? (:acknowledged_at advisory)))]
-         (t2/update! :model/SecurityAdvisory (:id advisory)
-                     (cond-> {:match_status      match-status
-                              :last_evaluated_at (mi/now)}
-                       reactivated? (assoc :acknowledged_at nil
-                                           :acknowledged_by nil))))))))
+         (security-center.db/update-advisory! (:id advisory)
+                                              (cond-> {:match_status      match-status
+                                                       :last_evaluated_at (mi/now)}
+                                                reactivated? (assoc :acknowledged_at nil
+                                                                    :acknowledged_by nil))))))))
 
 (defn evaluate-all-advisories!
   "Re-evaluate every advisory, including acknowledged ones — an acked
@@ -160,12 +160,12 @@
   []
   (let [instance-version (parse-version (:tag config/mb-version-info))]
     (->>
-     (t2/reducible-select :model/SecurityAdvisory)
+     (security-center.db/advisories-reducible)
      (run! (fn [advisory]
              (try
                (evaluate-advisory! advisory instance-version)
                (catch Exception e
                  (log/warnf "Error evaluating advisory %s: %s" (:advisory_id advisory) (ex-message e))
-                 (t2/update! :model/SecurityAdvisory (:id advisory)
-                             {:match_status      :error
-                              :last_evaluated_at (mi/now)}))))))))
+                 (security-center.db/update-advisory! (:id advisory)
+                                                      {:match_status      :error
+                                                       :last_evaluated_at (mi/now)}))))))))

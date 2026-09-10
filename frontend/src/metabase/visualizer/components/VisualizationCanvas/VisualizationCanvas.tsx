@@ -146,7 +146,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           className={`${S.SwapAffordance} ${isSwapAffordanceVisible ? S.visible : ""}`}
         >
           <Center className={S.SwapAffordanceIcon}>
-            <Stack align="center" gap="xs" p="xs">
+            <Stack align="center" gap="xxs" p="xxs">
               <Icon name="sync" />
               <Text c="core-white" size="sm">
                 {t`Replace`}

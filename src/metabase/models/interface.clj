@@ -20,6 +20,7 @@
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.models.db :as models.db]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
@@ -39,7 +40,6 @@
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
-   [toucan2.tools.identity-query :as t2.identity-query]
    [toucan2.util :as t2.u])
   (:import
    (java.sql Blob)
@@ -621,7 +621,7 @@
   {:pre [(map? row-map)]}
   (let [model (t2/resolve-model modelable)]
     (try
-      (t2/select-one model (t2.identity-query/identity-query [row-map]))
+      (models.db/after-select-via-identity-query model row-map)
       (catch Throwable e
         (throw (ex-info (format "Error doing after-select for model %s: %s" model (ex-message e))
                         {:model model}
@@ -773,7 +773,7 @@
     a-model       :- qualified-keyword?
     object-id     :- [:or pos-int? string?]]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (first (t2/primary-keys a-model)) object-id))))
+       (check-perms-with-fn fn-symb read-or-write (models.db/entity-by-pk a-model (first (t2/primary-keys a-model)) object-id))))
 
   ([fn-symb       :- qualified-symbol?
     read-or-write :- [:enum :read :write]
@@ -783,7 +783,8 @@
 
   ([fn-symb   :- qualified-symbol?
     perms-set :- [:set :string]]
-   (let [f (requiring-resolve fn-symb)]
+   ;; resolves the permissions implementation lazily to avoid a models -> permissions load cycle
+   (let [f #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve fn-symb)]
      (assert f)
      (u/prog1 (f (current-user-permissions-set) perms-set)
        (log/tracef "Perms check: %s -> %s" (pr-str (list fn-symb (current-user-permissions-set) perms-set)) <>)))))

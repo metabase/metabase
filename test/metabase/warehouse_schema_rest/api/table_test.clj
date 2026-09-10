@@ -393,6 +393,18 @@
                (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
             "Make sure that getting the User table does *not* include password info")))))
 
+(deftest query-metadata-data-sensitivity-test
+  (testing "GET api/table/:id/query_metadata returns each field's data_sensitivity, nil when unclassified"
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db)}
+                   :model/Field    _     {:table_id (:id table) :name "email" :data_sensitivity :PII}
+                   :model/Field    _     {:table_id (:id table) :name "id"}]
+      (is (= {"email" "PII"
+              "id"    nil}
+             (->> (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" (:id table)))
+                  :fields
+                  (into {} (map (juxt :name :data_sensitivity)))))))))
+
 (deftest query-metadata-transform-hydration-test
   (testing "GET /api/table/:id/query_metadata hydrates the source :transform based on transforms availability (GDGT-2523)"
     (mt/with-temp [:model/Transform transform {:name   "My transform"

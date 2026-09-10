@@ -2669,11 +2669,11 @@
 
 (defn- numeric-field-id-error!
   "Detect any `[field, <opts>, <id>]` clause whose third slot is an integer (the sexp /
-  legacy-MBQL numeric field-id form). repr requires a portable FK in the third slot:
-  either a vector `[<db>, <schema>, <table>, <column>]` (resolved against the metadata
-  provider) OR a string column name (cross-stage reference). lib's schema rejects bare
-  numeric ids, but the error is a generic shape mismatch; this detector gives an
-  LLM-actionable explanation pointing at the portable-FK syntax.
+  legacy-MBQL numeric field-id form). On the portable-only surface repr requires a portable FK
+  in the third slot: either a vector `[<db>, <schema>, <table>, <column>]` (resolved against the
+  metadata provider) OR a string column name (cross-stage reference). Such a clause fails
+  downstream anyway, but as a generic shape mismatch; this detector gives an LLM-actionable
+  explanation pointing at the portable-FK syntax instead.
 
   Carried over from the sexp pipeline's
   `validate/operators.clj/validate-operator-specific!` `field` branch. A no-op on surfaces

@@ -47,6 +47,7 @@ import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initMetaplow } from "metabase/utils/metaplow";
@@ -104,6 +105,7 @@ function _init(
   });
 
   initializeInteractiveEmbedding(store.dispatch);
+  captureClickModifierKeys();
 
   const rootElement = document.getElementById("root");
   if (!rootElement) {

@@ -15,6 +15,13 @@
   [text]
   {:type "paragraph" :attrs {:_id (str (random-uuid))} :content [{:type "text" :text text}]})
 
+(defn- collect-type
+  "Every node of `type` anywhere in `ast`."
+  [ast type]
+  (let [found (atom [])]
+    (walk/postwalk (fn [n] (when (and (map? n) (= type (:type n))) (swap! found conj n)) n) ast)
+    @found))
+
 (defn- text+marks
   [node]
   ((juxt :text :marks) node))
@@ -1075,3 +1082,97 @@
           out (md/splice ast {:markdown m} s (+ s 4) "BETA")]
       (is (identical? (nth (:content ast) 0) (nth (:content out) 0)))
       (is (= "BETA" (get-in out [:content 1 :content 0 :text]))))))
+
+(deftest ^:parallel code-fence-behind-list-marker-is-opaque-test
+  (testing "a fence opening on a list item's marker line still makes its content code, so token
+           syntax inside it stays text instead of being read as structure"
+    (doseq [src ["- ```\n  {% card id=99 %}\n  ```\n"
+                 "1. ```\n   {% card id=99 %}\n   ```\n"
+                 "* ```\n  {% card id=99 %}\n  ```\n"]]
+      (testing (pr-str src)
+        (is (empty? (collect-type (md/parse src) "cardEmbed"))))))
+  (testing "a card token outside any fence is still a real embed"
+    (is (= 1 (count (collect-type (md/parse "{% card id=99 %}\n")
+                                  "cardEmbed"))))))
+
+(deftest ^:parallel splice-keeps-untokenized-card-attrs-test
+  (testing "re-parsing a card embed keeps the attrs its token does not carry -- child_target_id
+           anchors comments and the rest is user-visible visualization state"
+    (let [card {:type "cardEmbed"
+                :attrs {:id 7 :name "Chart" :_id "c1" :stored_result_id 42 :sort "asc"
+                        :chart_href "/q/7" :child_target_id "anchor-9" :host_data {:k "v"}}}
+          ast  {:type "doc" :content [(para "intro") card]}
+          ser  (md/serialize ast)
+          s    (str/index-of (:markdown ser) "\n\n")
+          out  (md/splice ast ser s (+ s 2) "\n\n\n")
+          out-card (first (collect-type out "cardEmbed"))]
+      (is (= (:attrs card) (:attrs out-card)))))
+  (testing "a freshly parsed value still wins over the carried one, so retargeting a card works"
+    (let [card {:type "cardEmbed"
+                :attrs {:id 7 :name "Chart" :_id "c1" :stored_result_id 42 :child_target_id "anchor-9"}}
+          ast  {:type "doc" :content [(para "intro") card]}
+          ser  (md/serialize ast)
+          m    (:markdown ser)
+          s    (str/index-of m "{%")
+          out  (md/splice ast ser s (count m) "{% card id=1234 name=\"Other\" %}")
+          out-card (first (collect-type out "cardEmbed"))]
+      (is (= 1234 (get-in out-card [:attrs :id])))
+      (is (= "Other" (get-in out-card [:attrs :name])))
+      (is (= "anchor-9" (get-in out-card [:attrs :child_target_id]))))))
+
+(deftest ^:parallel lone-cr-cannot-manufacture-a-card-embed-test
+  (testing "the scanner and the parser have to agree on where a line begins. `str/split-lines`
+           breaks on \\r?\\n and leaves a lone CR sitting inside the line it returns, but the parser
+           ends the line there — so a CR in a code fence's info line hides the fence from the
+           scanner while the parser still opens one, and a `{% card %}` the author fenced as code
+           is promoted to a real embed: a permission-scoped read of a card they never referenced."
+    (doseq [[label separator] parser-line-endings]
+      (let [fenced (str "```sql" separator "SELECT 1\n{% card id=999 %}\n```")]
+        (is (empty? (collect-type (md/parse fenced) "cardEmbed"))
+            (format "%s in a code fence info line manufactured a card embed" label))))))
+
+(deftest ^:parallel tab-indented-token-is-code-not-structure-test
+  (testing "a tab advances to the next 4-column tab stop, so a leading tab indents to column 4 and
+           opens an indented code block. The token and fence regexes bound their indent by
+           character count, which reads that same tab as one column of indent — the scanner
+           promotes to structure exactly what the parser reads as content."
+    (doseq [[label line] {"a tab"            (str \tab "{% card id=118 %}")
+                          "a space and tab"  (str \space \tab "{% card id=118 %}")
+                          "four spaces"      "    {% card id=118 %}"}]
+      (is (empty? (collect-type (md/parse line) "cardEmbed"))
+          (format "%s before a card token manufactured a card embed" label)))
+    (testing "and a container fence indented the same way is code too"
+      (is (empty? (collect-type (md/parse (str \tab "::: flex\n" \tab "{% card id=1 %}\n" \tab ":::"))
+                                "cardEmbed"))))
+    (testing "while a token indented within the parser's 3-column budget is still structure"
+      (is (= [7] (mapv #(get-in % [:attrs :id])
+                       (collect-type (md/parse "   {% card id=7 %}") "cardEmbed")))))
+    (testing "and a blank line separates blocks however wide its whitespace — measuring the indent
+             must not turn one into a code block"
+      (doseq [[label blank] {"four spaces"  "    "
+                             "eight spaces" "        "
+                             "one tab"      "\t"
+                             "two tabs"     "\t\t"}]
+        (is (= (strip-ids (:content (md/parse "para one\n\npara two")))
+               (strip-ids (:content (md/parse (str "para one\n" blank "\npara two")))))
+            (format "a blank line parsed differently from an empty one: %s" label))))))
+
+(deftest ^:parallel indented-code-line?-measures-the-first-content-column-test
+  (testing "a line is indented code when its first non-whitespace character sits at column 4 or
+           later, counting a tab to the next 4-column stop"
+    (are [expected line] (= expected (#'md/indented-code-line? line))
+      true  "    x"
+      true  "\tx"
+      true  " \tx"
+      true  "     x"
+      false "   x"
+      false "x"))
+  (testing "a whitespace-only line is blank however wide — it separates blocks rather than opening
+           a code block, so the column test must run on a content character, not on entry"
+    (are [line] (false? (#'md/indented-code-line? line))
+      ""
+      "   "
+      "    "
+      "        "
+      "\t"
+      "\t\t")))

@@ -10,6 +10,7 @@
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
@@ -702,7 +703,7 @@
                          (cond-> {:select [:*]
                                   :from   [[^:allow-subquery {:union-all nested-queries} :dummy_alias]]}
                            (seq ctes) (assoc :with ctes)))]
-    (into #{} (map :model) (some-> query mdb/query))))
+    (into #{} (map :model) (some-> query search.db/in-place-model-set-rows))))
 
 (mu/defn full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to a trivial case
@@ -735,7 +736,7 @@
 (defn- results
   [search-ctx]
   (let [search-query (full-search-query search-ctx)]
-    (mdb/streaming-reducible-query search-query)))
+    (search.db/in-place-search-reducible search-query)))
 
 (defmethod search.engine/results
   :search.engine/in-place

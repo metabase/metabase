@@ -43,19 +43,22 @@
 (defn- tool-result
   "Decoded success payload of a tool response; throws when the call errored, so a tool-level
    error can never masquerade as a result."
-  [response]
-  (when (:isError response)
-    (throw (ex-info (str "tool call failed: " (-> response :content first :text))
-                    {:response response})))
-  (-> response :content first :text json/decode+kw))
+  [{:keys [result error]}]
+  (when error
+    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+  (when (:isError result)
+    (throw (ex-info (str "tool call failed: " (-> result :content first :text))
+                    {:result result})))
+  (-> result :content first :text json/decode+kw))
 
 (defn- tool-error
   "Tool-level error text of a tool response; throws when the call succeeded, so a passing call
    can never satisfy an error assertion."
-  [response]
-  (when-not (:isError response)
-    (throw (ex-info "expected a tool error, got success" {:response response})))
-  (-> response :content first :text))
+  [{:keys [result error]}]
+  (cond
+    error             (:message error)
+    (:isError result) (-> result :content first :text)
+    :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
 
 (defn- wire
   "Round-trip a value through JSON, producing exactly the keywordized shape tool arguments have
@@ -198,6 +201,7 @@
                    :type          "metric"
                    :collection_id coll-id
                    :archived      false
+                   :display       "scalar"
                    :url           string?}
                   created))
           (is (str/includes? (:url created) (str "/metric/" (:id created)))
@@ -284,6 +288,53 @@
         (is (pos-int? (:id result)))
         (is (= "metric" (:type result)))))))
 
+;;; ------------------------------------------------- Display ------------------------------------------------------
+
+;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
+(deftest create-display-test
+  (testing "GHY-4146: `display` on create is persisted, so a metric with a grouping is not stuck as a
+            single number. The tool accepts a breakout, so hard-coding scalar (as it did) rendered
+            `count by month` unfixably wrong through MCP; agent-api's create_metric took a display."
+    (mt/with-model-cleanup [:model/Card]
+      (let [created (tool-result (call-tool! :crowberto write-scope "metric_write"
+                                             {:method "create"
+                                              :name "metric-test display line"
+                                              :display "line"
+                                              :definition (temporal-breakout-definition)}))]
+        (is (= :line (t2/select-one-fn :display :model/Card :id (:id created))))
+        (is (= "line" (:display created))
+            "the write echo confirms the display that was written"))))
+  (testing "GHY-4146: an omitted `display` still defaults to scalar — pinned so the default can't drift"
+    (mt/with-model-cleanup [:model/Card]
+      (let [created (tool-result (call-tool! :crowberto write-scope "metric_write"
+                                             {:method "create"
+                                              :name "metric-test display default"
+                                              :definition (count-definition)}))]
+        (is (= :scalar (t2/select-one-fn :display :model/Card :id (:id created))))
+        (is (= "scalar" (:display created))
+            "the echo surfaces the defaulted display, which the caller never named")))))
+
+(deftest ^:parallel update-display-test
+  (testing "GHY-4146: `display` on update rewrites an existing metric's visualization"
+    (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                :display       :scalar
+                                                :dataset_query (orders-count-query)}]
+      (tool-result (call-tool! :crowberto write-scope "metric_write"
+                               {:method "update" :id metric-id :display "bar"}))
+      (is (= :bar (t2/select-one-fn :display :model/Card :id metric-id))))))
+
+(deftest ^:parallel display-rejects-unknown-value-test
+  (testing "GHY-4146: a display outside the accepted set is rejected at the schema layer, so an
+            LLM-invented value is a teaching error rather than junk persisted on the card"
+    (let [msg (tool-error (call-tool! :crowberto write-scope "metric_write"
+                                      {:method "create" :name "metric-test bad display"
+                                       :display "potato"
+                                       :definition (count-definition)}))]
+      (is (str/starts-with? msg "Invalid arguments"))
+      (is (str/includes? msg "display"))
+      (is (not (str/includes? msg "disallowed key"))
+          "rejected because the value is outside the accepted set, not because `display` is unknown"))))
+
 ;;; --------------------------------------------- Metric shape gate ------------------------------------------------
 
 (deftest ^:parallel metric-shape-teaching-test
@@ -334,6 +385,22 @@
                                        :definition {:not "a query"}}))]
       (is (str/includes? msg "definition"))
       (is (not= "Internal error" msg)))))
+
+(deftest ^:parallel empty-definition-teaching-test
+  (testing "GHY-4146: an empty `definition` map — what a strict client sends when it fills every declared
+            property — is a teaching error, not an internal error"
+    (testing "create"
+      (let [msg (tool-error (call-tool! :crowberto write-scope "metric_write"
+                                        {:method "create" :name "metric-test empty definition"
+                                         :definition {}}))]
+        (is (str/includes? msg "definition"))
+        (is (not= "Internal error" msg))))
+    (testing "update"
+      (mt/with-temp [:model/Card {metric-id :id} {:type :metric :dataset_query (orders-count-query)}]
+        (let [msg (tool-error (call-tool! :crowberto write-scope "metric_write"
+                                          {:method "update" :id metric-id :definition {}}))]
+          (is (str/includes? msg "definition"))
+          (is (not= "Internal error" msg)))))))
 
 ;;; ---------------------------------------------- Query sources ---------------------------------------------------
 

@@ -150,14 +150,14 @@ export const InviteToViewModal = ({
     );
   } else if (isLoadingGroups || isFetchingAccessGroupIds) {
     body = (
-      <Center py="xl">
+      <Center py="xxl">
         <Loader />
       </Center>
     );
   } else if (isGroupsError || isAccessGroupIdsError) {
     // Without the access data the picker loses its "can view" safety net, so fail loudly instead.
     body = (
-      <Stack gap="lg" align="center" py="xl">
+      <Stack gap="xl" align="center" py="xxl">
         <Text>{t`Couldn't load groups. Please try again.`}</Text>
         <Button
           onClick={() => {
@@ -206,7 +206,7 @@ export const InviteToViewModal = ({
   }
 
   return (
-    <Modal opened title={title} padding="xl" onClose={onClose}>
+    <Modal opened title={title} padding="xxl" onClose={onClose}>
       {body}
     </Modal>
   );
@@ -219,7 +219,7 @@ const EmailSetupPrompt = ({
   shareUrl: string;
   onClose: () => void;
 }) => (
-  <Stack gap="lg">
+  <Stack gap="xl">
     <Text>{t`To invite people by email, set up email first. Or share this link, they'll land on it after signing in:`}</Text>
     <CopyTextInput label={t`Link to share`} value={shareUrl} />
     <Group justify="flex-end">
@@ -247,7 +247,7 @@ const TemporaryPasswordSuccess = ({
   shareUrl: string;
   onClose: () => void;
 }) => (
-  <Stack gap="lg">
+  <Stack gap="xl">
     <Text>
       {jt`We couldn't send an email invitation. Share this temporary password with ${(
         <strong key="email">{email}</strong>
