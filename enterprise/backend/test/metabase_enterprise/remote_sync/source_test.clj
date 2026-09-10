@@ -1,11 +1,17 @@
 (ns metabase-enterprise.remote-sync.source-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures])
+  (:import
+   (org.eclipse.jgit.lib ObjectChecker)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -44,6 +50,15 @@
               "merged-version")
             (abort-commit! [_] nil))))
       (version [_] "remote-tip"))))
+
+(deftest entity->path-uses-git-separators-test
+  (testing "paths are git tree paths joined with / and never the host filesystem separator (#74095)"
+    (let [path (source/entity->path (serdes/storage-base-context) (create-test-entity "A" "a" "Card"))]
+      (is (= "collections/main/test_a.yaml" path))
+      (is (not (str/includes? path "\\")))
+      (testing "JGit's Windows path checker accepts the path, so pushing from a Windows host does not fail"
+        (let [checker (doto (ObjectChecker.) (.setSafeForWindows true))]
+          (is (nil? (.checkPath checker ^String path))))))))
 
 (deftest preview-merge-clean-test
   (testing "preview-merge reports a clean merge and summary without writing"
