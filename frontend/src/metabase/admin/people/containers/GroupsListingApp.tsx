@@ -9,6 +9,7 @@ import {
   useUpdatePermissionsGroupMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { isEmbeddingHubTenancy } from "metabase/common/tenants";
 import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -24,11 +25,9 @@ import { GroupsListing } from "../components/GroupsListing";
 export const GroupsListingApp = ({
   external,
   description,
-  showTitle = true,
 }: {
   external?: boolean;
   description?: string;
-  showTitle?: boolean;
 }) => {
   const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);
@@ -77,8 +76,10 @@ export const GroupsListingApp = ({
     return external ? t`Tenant groups` : t`Internal groups`;
   }, [external, isUsingTenants]);
 
+  const isEmbeddingHub = isEmbeddingHubTenancy();
+
   return (
-    <SettingsPageWrapper title={showTitle ? pageTitle : undefined}>
+    <SettingsPageWrapper title={isEmbeddingHub ? undefined : pageTitle}>
       <SettingsSection>
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
           <GroupsListing

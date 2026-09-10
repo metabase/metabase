@@ -64,7 +64,6 @@ export const TenantsListingApp = () => {
         w="100%"
         mb="xl"
       >
-        {/* The hub's Tenancy tab already names this page above the sub-tabs. */}
         {!isEmbeddingHub && <Title order={1}>{t`Tenants`}</Title>}
 
         <Group gap="sm">
