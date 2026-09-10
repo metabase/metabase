@@ -9,9 +9,7 @@ name: Bundle Load Stats
 # document this measures.
 
 # Triggered by "Run tests", which is the workflow that builds the uberjar on a
-# master merge. It used to watch "Build Uberjar" directly, until that workflow
-# lost its push trigger and became reachable only through `workflow_call`. A
-# reusable workflow reached that way raises no `workflow_run` event of its own.
+# master merge.
 on:
   workflow_run:
     workflows: ["Run tests"]
@@ -19,10 +17,6 @@ on:
     # Master only: a release forms a non-linear line whose times cannot be
     # compared against the commit before it.
     branches: [master]
-  # A `workflow_run` workflow always runs the copy on the default branch, so a
-  # change here cannot be tried out before it merges. The call lets a PR run
-  # this branch's copy against the uberjar CI already built. A called run
-  # measures and reports; it does not write rows to Stats.
   workflow_call:
     inputs:
       commit:
