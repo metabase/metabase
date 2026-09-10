@@ -349,7 +349,7 @@ jobs:
             SPEC_ARGS=(--spec "$SPECS")
           fi
           node e2e/runner/run_cypress_ci.js component \
-            --expose grepTags="-@skip-backward-compatibility" \
+            --env grepTags="-@skip-backward-compatibility" \
             "${SPEC_ARGS[@]}"
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
