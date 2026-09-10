@@ -739,16 +739,20 @@
 
 (deftest render-scalar-with-referenced-segment-test
   (testing "Static-viz Scalar colors its value by a segment whose bound is another card's value"
+    ;; venues count is 100, checkins count is 1000: the value is below the goal, so only the `:max` segment may match
     (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
                    :model/Card card          {:display                :scalar
                                               :dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
                                               :visualization_settings {:scalar.segments
-                                                                       [{:max   {:id goal-id :type "card" :column "count"}
+                                                                       [{:min   {:id goal-id :type "card" :column "count"}
+                                                                         :color "#FF0000"}
+                                                                        {:max   {:id goal-id :type "card" :column "count"}
                                                                          :color "#84BB4C"}]}}]
       (let [result  (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))
-            content (:content (channel.render/render-pulse-card :inline "UTC" card nil result))]
+            content (html (:content (channel.render/render-pulse-card :inline "UTC" card nil result)))]
         (is (= 1000 (get-in result [:data :referenced_entities "card" (str goal-id) :data :rows 0 0])))
-        (is (str/includes? (html content) "#84BB4C"))))))
+        (is (str/includes? content "#84BB4C"))
+        (is (not (str/includes? content "#FF0000")))))))
 
 (def ^:private funnel-rows
   [["cart" 1500]
