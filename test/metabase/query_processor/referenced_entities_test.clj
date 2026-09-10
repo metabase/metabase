@@ -177,7 +177,11 @@
     (testing "a :graph.goal_value GoalSource"
       (is (= [{:type "card" :id 1 :columns ["total"]}]
              (referenced-entities/viz-settings->goal-specs
-              {:graph.goal_value {:id 1 :type "card" :column "total"}}))))
+              {:graph.show_goal true, :graph.goal_value {:id 1 :type "card" :column "total"}}))))
+    (testing "a :graph.goal_value GoalSource the chart doesn't show is skipped"
+      (are [viz] (nil? (referenced-entities/viz-settings->goal-specs viz))
+        {:graph.goal_value {:id 1 :type "card" :column "total"}}
+        {:graph.show_goal false, :graph.goal_value {:id 1 :type "card" :column "total"}}))
     (testing ":gauge.segments and :scalar.segments min/max, grouped + de-duped by entity"
       (is (= {["card" 1]    ["sum" "avg"]
               ["measure" 2] ["total"]}
@@ -193,7 +197,8 @@
                                           :max {:id 1 :type "measure" :column "b"}}]})))))
     (testing "static numbers and bare-string self-column references are ignored"
       (is (nil? (referenced-entities/viz-settings->goal-specs
-                 {:graph.goal_value 100
+                 {:graph.show_goal  true
+                  :graph.goal_value 100
                   :gauge.segments   [{:min 0 :max 50}
                                      {:min "self_col" :max 100}]})))))
   (testing "no goal settings at all -> nil"
@@ -203,7 +208,8 @@
   (testing "POST /api/card/:id/query derives referenced entities from a :graph.goal_value GoalSource"
     (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
                    :model/Card {chart-id :id} {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
-                                               :visualization_settings {:graph.goal_value {:id     goal-id
+                                               :visualization_settings {:graph.show_goal  true
+                                                                        :graph.goal_value {:id     goal-id
                                                                                            :type   "card"
                                                                                            :column "count"}}}]
       (let [response (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))
@@ -286,7 +292,8 @@
                                                     :table_id   (mt/id :venues)
                                                     :definition (venues-count-measure)}
                    :model/Card    {chart-id :id}   {:dataset_query          (mt/mbql-query checkins {:aggregation [[:count]]})
-                                                    :visualization_settings {:graph.goal_value {:id     measure-id
+                                                    :visualization_settings {:graph.show_goal  true
+                                                                             :graph.goal_value {:id     measure-id
                                                                                                 :type   "measure"
                                                                                                 :column "count"}}}]
       (let [response (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))

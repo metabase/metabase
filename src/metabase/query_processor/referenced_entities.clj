@@ -168,7 +168,7 @@
                             (comp (keep dynamic-goals/goal-source)
                                   ;; a goal pointing at something we can't run is dropped rather than failing the request
                                   (filter (comp entity-types :type)))
-                            (dynamic-goals/goal-values viz)))]
+                            (dynamic-goals/shown-goal-values viz)))]
     (perf/mapv (fn [[[entity-type id] ss]]
                  {:type    entity-type
                   :id      id

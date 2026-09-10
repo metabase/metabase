@@ -856,11 +856,12 @@
                                                         :collection_id  coll-id
                                                         :exploration_id expl-id}]
       (let [eid       #(t2/select-one-fn :entity_id :model/Document :id %)
-            ;; A caller-supplied `:where` must still compose — this is also the shape a full
+            ;; A caller-supplied id filter must still compose — this is also the shape a full
             ;; (untargeted) export takes, where the Collection descendants filter never runs.
             extracted (into #{}
                             (map :entity_id)
-                            (serdes/extract-all "Document" {:where [:in :id [plain-id summary-id]]}))]
+                            (serdes/extract-all "Document" {:filter-column :id
+                                                            :filter-ids    [plain-id summary-id]}))]
         (is (contains? extracted (eid plain-id))
             "an ordinary document is still exported")
         (is (not (contains? extracted (eid summary-id)))

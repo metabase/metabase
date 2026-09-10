@@ -216,11 +216,13 @@
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
     ;; resolve dynamic goals up front so every render path below sees plain numbers in the settings;
     ;; an unresolvable goal throws into the catch below and renders as the standard error box
-    (let [resolve-goals (fn [m]
+    (let [;; toggles come off the merge, since either half can flip graph.show_goal
+          effective     (merge (:visualization_settings card) (:visualization_settings dashcard))
+          resolve-goals (fn [m]
                           (cond-> m
                             (:visualization_settings m)
                             (update :visualization_settings
-                                    dynamic-goals/resolve-dynamic-goals (:referenced_entities data))))
+                                    dynamic-goals/resolve-dynamic-goals (:referenced_entities data) effective)))
           card          (resolve-goals card)
           dashcard      (some-> dashcard resolve-goals)
           chart-type    (or (detect-pulse-chart-type card dashcard data)

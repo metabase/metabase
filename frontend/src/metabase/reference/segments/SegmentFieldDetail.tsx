@@ -6,9 +6,8 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import {
-  type MetadataProviderFactory,
   getShallowFields,
-  selectMetadataProviderFactory,
+  selectMetadataProvider,
 } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import S from "metabase/reference/Reference.module.css";
@@ -20,6 +19,7 @@ import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateField } from "metabase/reference/update-actions";
+import type * as Lib from "metabase-lib";
 import type { NormalizedField, User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
@@ -48,7 +48,7 @@ interface SegmentFieldDetailFormFields
 const interestingQuestions = (
   table: StubbedTable,
   field: StubbedField,
-  getMetadataProvider: MetadataProviderFactory,
+  metadataProvider: Lib.MetadataProvider,
   breakoutField: NormalizedField | undefined,
 ) => {
   return [
@@ -61,7 +61,7 @@ const interestingQuestions = (
         tableId: table.id,
         breakoutField,
         getCount: true,
-        metadataProvider: getMetadataProvider(table.db_id ?? null),
+        metadataProvider: metadataProvider,
       }),
     },
     {
@@ -70,7 +70,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         tableId: table.id,
         breakoutField,
-        metadataProvider: getMetadataProvider(table.db_id ?? null),
+        metadataProvider: metadataProvider,
       }),
     },
   ];
@@ -88,7 +88,10 @@ const mapStateToProps = (
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
-    getMetadataProvider: selectMetadataProviderFactory(state),
+    metadataProvider: selectMetadataProvider(
+      state,
+      getTable(state, props)?.db_id ?? null,
+    ),
     // `getFieldBySegment` falls back to a stub with only an id, which cannot
     // describe a column, so the breakout takes the loaded field or nothing
     breakoutField: getShallowFields(state)?.[getFieldId(state, props)],
@@ -111,7 +114,7 @@ interface SegmentFieldDetailProps {
   endEditing: () => void;
   loading?: boolean;
   loadingError?: unknown;
-  getMetadataProvider: MetadataProviderFactory;
+  metadataProvider: Lib.MetadataProvider;
   breakoutField: NormalizedField | undefined;
 
   onSubmit: (fields: SegmentFieldDetailFormFields, props: any) => Promise<void>;
@@ -122,7 +125,7 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
     style,
     entity,
     table,
-    getMetadataProvider,
+    metadataProvider,
     breakoutField,
     loadingError,
     loading,
@@ -255,7 +258,7 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
                       questions={interestingQuestions(
                         table,
                         entity,
-                        getMetadataProvider,
+                        metadataProvider,
                         breakoutField,
                       )}
                     />
