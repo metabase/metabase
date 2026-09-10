@@ -260,15 +260,6 @@
   (testing "a credential carrying no scopes claim fails closed — a rolling deploy can mint one"
     (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
                                 {:mcp-ui-credential {:uid 1 :sid "session"}} legacy-native)))))
-  (testing "GHY-4318: a credential explicitly marked `:legacy` skips the gate. Only v1's frozen surface mints
-            those (`mcp.session/issue-ui-credential`'s 2-arity), and v1's iframe visualizes execute_sql handles
-            that legitimately hold raw SQL — wiring this guard must not change v1's behavior. The marker is
-            explicit precisely so the unmarked case above keeps failing closed.
-
-            TRIPWIRE: delete this branch, and this assertion, when v1 retires — together with the 2-arity."
-    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                       {:mcp-ui-credential {:uid 1 :sid "session" :legacy true}}
-                                       legacy-native)))))
   (testing "the kill switch outranks the grant"
     (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
       (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!

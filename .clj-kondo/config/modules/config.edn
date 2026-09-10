@@ -161,6 +161,7 @@
    :api     #{metabase.agent-api.api
               metabase.agent-api.init
               metabase.agent-api.query-guards
+              metabase.agent-api.settings
               metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
@@ -593,7 +594,8 @@
 
   collections
   {:team "UX West"
-   :api  #{metabase.collections.core
+   :api  #{metabase.collections.children
+           metabase.collections.core
            metabase.collections.curation
            metabase.collections.init
            metabase.collections.models.collection
@@ -605,12 +607,19 @@
            audit-app
            config
            events
+           lib-be
            models
            notification
            permissions
            premium-features
+           queries
            remote-sync
+           request
+           revisions
            search
+           tracing
+           transforms
+           upload
            util}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
@@ -633,32 +642,17 @@
   {:team "UX West"
    :api  #{metabase.collections-rest.api}
    :uses #{api
-           app-db
            collections
            documents
            eid-translation
            events
-           lib-be
            models
            permissions
            premium-features
            queries
            request
-           revisions
-           tracing
-           transforms
-           upload
            util}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/Document
-                    :model/Exploration
-                    :model/NativeQuerySnippet
-                    :model/Pulse
-                    :model/Table
-                    :model/Timeline
-                    :model/Transform}}
+   :model-imports #{:model/Card :model/Collection}}
 
   comments
   {:team "UX West"
@@ -728,8 +722,10 @@
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
            metabase.dashboards.schema
-           metabase.dashboards.settings}
-   :uses #{api
+           metabase.dashboards.settings
+           metabase.dashboards.write}
+   :uses #{analytics
+           api
            app-db
            audit-app
            collections
@@ -741,6 +737,7 @@
            parameters
            permissions
            public-sharing
+           pulse
            queries
            query-permissions
            query-processor
@@ -758,6 +755,7 @@
                     :model/Collection
                     :model/DashboardBookmark
                     :model/ModerationReview
+                    :model/ParameterCard
                     :model/Pulse
                     :model/PulseCard
                     :model/Revision
@@ -772,7 +770,6 @@
            app-db
            channel
            collections
-           collections-rest
            dashboards
            eid-translation
            embedding
@@ -1335,42 +1332,64 @@
 
   mcp
   {:team "Metabot"
-   :api  #{metabase.mcp.api
-           metabase.mcp.callback-api
+   :api  #{metabase.mcp.callback-api
            metabase.mcp.core
            metabase.mcp.init
            metabase.mcp.usage
            metabase.mcp.v2.api}
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
-   :uses #{agent-api
+   :uses #{activity-feed
+           agent-api
            ai-tracing
            api
            app-db
            bookmarks
            channel
            collections
+           comments
            config
            dashboards
+           documents
            eid-translation
+           lib
+           lib-be
            llm
            metabot
+           metrics
            models
            notification
            oauth-server
+           parameters
            permissions
            premium-features
            pulse
+           queries
+           query-processor
            request
            server
            session
            settings
            system
-           util}
+           task
+           transforms
+           users
+           util
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/Database
                     :model/Document
+                    :model/Field
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/Notification
+                    :model/Pulse
+                    :model/Segment
+                    :model/Table
+                    :model/Transform
+                    :model/TransformTag
                     :model/User}}
 
   measures
@@ -1399,7 +1418,9 @@
               metabase.metabot.scope
               metabase.metabot.self
               metabase.metabot.settings
-              metabase.metabot.tools.entity-details}
+              metabase.metabot.tools.construct
+              metabase.metabot.tools.entity-details
+              metabase.metabot.tools.search}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics
@@ -1668,6 +1689,7 @@
            metabase.parameters.field
            metabase.parameters.field-values
            metabase.parameters.init
+           metabase.parameters.mapping-targets
            metabase.parameters.params
            metabase.parameters.schema
            metabase.parameters.shared}
@@ -1834,6 +1856,7 @@
   pulse
   {:team "Gadget"
    :api  #{metabase.pulse.api
+           metabase.pulse.broken-subscriptions
            metabase.pulse.core
            metabase.pulse.init}
    :uses #{api
@@ -2840,7 +2863,9 @@
            api
            app-db
            audit-app
+           classloader
            collections
+           config
            driver
            lib
            lib-be
@@ -2852,7 +2877,8 @@
            remote-sync
            search
            util
-           warehouses}
+           warehouses
+           enterprise/advanced-permissions}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings

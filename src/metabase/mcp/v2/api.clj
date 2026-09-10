@@ -15,10 +15,25 @@
    [metabase.mcp.v2.resources :as v2.resources]
    ;; Tool namespaces self-register via `deftool` when loaded. The core surface ships with the `learn`
    ;; hello-world tool; each later PR adds its tool's require line here alongside the tool file.
+   [metabase.mcp.v2.tools.alert]
    [metabase.mcp.v2.tools.bookmark]
+   [metabase.mcp.v2.tools.browse]
    [metabase.mcp.v2.tools.collection]
+   [metabase.mcp.v2.tools.content]
+   [metabase.mcp.v2.tools.dashboard]
+   [metabase.mcp.v2.tools.definitions]
+   [metabase.mcp.v2.tools.document]
+   [metabase.mcp.v2.tools.duplicate]
    [metabase.mcp.v2.tools.learn]
+   [metabase.mcp.v2.tools.metric]
+   [metabase.mcp.v2.tools.parameters]
+   [metabase.mcp.v2.tools.query]
+   [metabase.mcp.v2.tools.question]
+   [metabase.mcp.v2.tools.search]
+   [metabase.mcp.v2.tools.subscription]
+   [metabase.mcp.v2.tools.transform]
    [metabase.mcp.v2.tools.ui-credential]
+   [metabase.mcp.v2.tools.visualize]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.scope :as metabot.scope]))
 

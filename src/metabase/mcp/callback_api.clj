@@ -129,6 +129,26 @@
     (check-session-header! session-id api/*current-user-id* request)
     {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
 
+(api.macros/defendpoint :get "/queries/:handle" :- [:map
+                                                    [:query  ms/NonBlankString]
+                                                    [:prompt [:maybe :string]]]
+  "Resolve a query handle to the base64-encoded MBQL the iframe should render.
+
+   This is how the v2 MCP Apps tools keep result data out of the model context: `visualize_query`
+   and `render_drill_through` return only a handle, and the iframe exchanges it here using the
+   scoped UI credential it was rendered with. The lookup is user-scoped (see
+   [[metabase.mcp.session/find-handle-row]]) and the credential is accepted only on the MCP UI
+   request surface, so a handle on its own is not a bearer credential."
+  [{:keys [handle]} :- [:map [:handle ms/UUIDString]]
+   _query-params
+   _body
+   request]
+  (let [session-id (mcp-session-id-from-headers request)]
+    (check-session-header! session-id api/*current-user-id* request)
+    (api/let-404 [{:keys [encoded_query prompt]}
+                  (mcp.session/resolve-query-handle session-id api/*current-user-id* handle)]
+      {:query encoded_query :prompt prompt})))
+
 (api.macros/defendpoint :post "/feedback" :- [:map
                                               [:status [:= 204]]
                                               [:body :nil]]

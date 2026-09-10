@@ -1,6 +1,8 @@
 (ns metabase.mcp.v2.resolve
   "Id resolution for v2 MCP tools: numeric-or-entity_id translation and the read-check pairing
-   that collapses \"doesn't exist\" and \"exists but not readable\" into one not-found error."
+   that collapses \"doesn't exist\" and \"exists but not readable\" into one not-found error.
+   Landed with its first consumers: the entity-id machinery with `bookmark_content`, collection
+   resolution with `collection_write`."
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]

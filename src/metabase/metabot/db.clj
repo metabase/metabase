@@ -396,6 +396,24 @@
   [table-id]
   (t2/select-one-fn :db_id :model/Table :id table-id))
 
+(defn readable-active-table-database-id
+  "The Database ID of the active Table with `table-id`, or nil when there is no such table *or*
+  the current user cannot read it.
+
+  Collapsing those two cases is the point. A caller resolving an agent-authored numeric id has
+  no metadata provider yet — this lookup is what decides which one to build — so a bare
+  existence answer here runs ahead of every permission check, and lets the id argument
+  enumerate table ids across databases the caller cannot otherwise see.
+
+  Selects the whole row rather than the two columns this fn returns: `mi/can-read?` for a Table
+  is polymorphic over the instance, and its published-collection branch reads `:is_published`
+  and `:collection_id`. Handing it a trimmed row makes it answer a narrower question and deny a
+  user whose access comes through that path."
+  [table-id]
+  (when-let [table (t2/select-one :model/Table :id table-id :active true)]
+    (when (mi/can-read? table)
+      (:db_id table))))
+
 (defn tables-by-id
   "A map of ID to Table for `table-ids`."
   [table-ids]
@@ -839,10 +857,13 @@
              :exploration_id nil
              {:order-by [[:%lower.name :asc]]}))
 
-(defn unarchived-documents
-  "The unarchived Documents with `document-ids`."
-  [document-ids]
-  (t2/select :model/Document :id [:in document-ids] :archived false))
+(defn documents-in-archived-state
+  "The Documents with `document-ids` whose archived flag matches `archived?`. The flag is the
+  caller's search state, not a constant: an archived search validates its hits against the
+  archived set, and hardcoding `false` here drops every archived hit while the caller's total
+  still counts it."
+  [document-ids archived?]
+  (t2/select :model/Document :id [:in document-ids] :archived (boolean archived?)))
 
 (defn transforms
   "The Transforms with `transform-ids`."

@@ -35,7 +35,13 @@
              [:post "/api/dataset/pivot"]
              [:post "/api/dataset/query_metadata"]
              [:post "/api/dataset/parameter/remapping"]}
-           (set (keys mcp.ui-surface/request-surface))))))
+           (set (keys mcp.ui-surface/request-surface))))
+    (is (= 1 (count mcp.ui-surface/parameterized-request-surface))
+        "a path-parameter route is still a route on the surface, and still a decision")
+    (is (mcp.ui-surface/on-surface? :get (str "/api/embed-mcp/queries/" (random-uuid))))
+    (is (not (mcp.ui-surface/on-surface? :get "/api/embed-mcp/queries/not-a-uuid"))
+        "the pattern pins the handle's shape, so a non-uuid path is off the surface entirely rather
+         than merely 404 — `queries-get-rejects-bad-input-test` asserts the 401 that follows")))
 
 (deftest scope-satisfied?-test
   (let [bootstrap #(mcp.ui-surface/scope-satisfied? :get "/api/embed-mcp/bootstrap" %)
@@ -53,8 +59,9 @@
     (testing "a v2 credential minted before the scope claim existed reaches only the free routes"
       (is (true? (bootstrap {})))
       (is (false? (dataset {}))))
-    (testing "v1's frozen surface mints claimless credentials by design and keeps its reach"
-      (is (true? (dataset {:legacy true}))))))
+    (testing "the `:legacy` exemption retired with v1 — the marker buys nothing now, so a claim carrying it
+              is still judged on its scopes"
+      (is (false? (dataset {:legacy true}))))))
 
 (defn- request-with-ui-credential
   [method expected-status url credential session-id]

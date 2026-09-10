@@ -18,20 +18,19 @@
    and that is the string an RFC 8707 `resource` indicator is matched against."
   "/api/metabase-mcp")
 
+(def v2-path
+  "Where the v2 tool surface serves during the migration. The other entries in [[endpoint-paths]] still
+   reach v1, so this is the one path whose OAuth metadata may advertise the v2-only scope set."
+  "/api/metabase-mcp/v2")
+
 (def endpoint-paths
   "Every path that serves MCP, including aliases kept for back-compat with existing client configs:
-   `/api/mcp` predates the canonical name, and `/api/metabase-mcp/v2` is where the v2 tool surface
-   lives during the migration.
-
-   They do NOT all serve the same surface yet: until the switchover, `/api/metabase-mcp/v2` reaches
-   v2 and the other two reach v1. This set is what the 401 challenge matches a request URI against,
-   so a client is pointed back at the alias it connected through rather than at the canonical path;
-   that holds either way. Route dispatch matches one segment at a time, so paths BELOW an entry
-   (e.g. `/api/metabase-mcp/v2/anything`) also reach the handler and fall back to `canonical-path`
-   in the challenge."
+   `/api/mcp` predates the canonical name, and `/api/metabase-mcp/v2` is where the current tool
+   surface shipped while it was behind a flag. All of them now serve the same surface, so a client
+   pointed at any one of them keeps working."
   #{canonical-path
     "/api/mcp"
-    "/api/metabase-mcp/v2"})
+    v2-path})
 
 (def v2-surface-scopes
   "Every OAuth scope the v2 MCP surface accepts, as an ordered vector — unlike [[endpoint-paths]] above, which

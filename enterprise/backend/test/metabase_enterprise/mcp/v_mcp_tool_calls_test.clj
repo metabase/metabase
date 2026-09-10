@@ -64,8 +64,9 @@
                 row))))))
 
 ;; Guard the hand-maintained error_code -> error_type coupling. These pairs must stay in sync with
-;; the CASE in the v_mcp_tool_calls view SQL and the error-code-* constants in metabase.mcp.tools; a
-;; drift on either side breaks this test rather than silently mislabeling errors.
+;; the CASE in the v_mcp_tool_calls view SQL and the error-code-* constants in
+;; metabase.mcp.v2.common; a drift on either side breaks this test rather than silently
+;; mislabeling errors.
 (def ^:private error-code->type
   {-32600 "Invalid request"
    -32601 "Method not found"

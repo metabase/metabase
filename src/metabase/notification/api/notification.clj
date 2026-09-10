@@ -246,6 +246,21 @@
   (cond-> (assoc body :id id)
     (and (:payload body) payload_id) (assoc-in [:payload :id] payload_id)))
 
+(mu/defn update-notification!
+  "Update notification `id` from `body` with the permission and handler-template checks and
+  post-update side effects, and return the updated hydrated notification. `body` is a whole
+  notification, not a patch: the update spec deletes the subscription and handler rows it doesn't
+  find there."
+  [id   :- ms/PositiveInt
+   body :- ::NotificationApiUpdateInput]
+  (let [existing-notification (get-notification id)]
+    (api/update-check existing-notification body)
+    (check-handler-templates! (:handlers body) (:handlers existing-notification))
+    (let [body (body-with-authoritative-ids body existing-notification)]
+      (models.notification/update-notification! existing-notification body)
+      (u/prog1 (get-notification id)
+        (publish-notification-update! <> existing-notification)))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -260,13 +275,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiUpdateInput]
-  (let [existing-notification (get-notification id)]
-    (api/update-check existing-notification body)
-    (check-handler-templates! (:handlers body) (:handlers existing-notification))
-    (let [body (body-with-authoritative-ids body existing-notification)]
-      (models.notification/update-notification! existing-notification body)
-      (u/prog1 (get-notification id)
-        (publish-notification-update! <> existing-notification)))))
+  (update-notification! id body))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

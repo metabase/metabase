@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
@@ -36,7 +37,8 @@
         (is (nil? (:id_token_signing_alg_values_supported response)))))))
 
 (deftest protected-resource-metadata-test
-  (testing "the canonical and legacy MCP paths each advertise themselves as the OAuth protected resource (RFC 9728)"
+  (testing "each MCP path advertises *itself* as the OAuth protected resource (RFC 9728), so a strict
+            client connecting via an alias sees a resource value matching the URL it hit"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (doseq [path ["/api/metabase-mcp" "/api/mcp" "/api/metabase-mcp/v2"]]
         (testing path
@@ -48,6 +50,23 @@
                      :scopes_supported         sequential?}
                     response))))))))
 
+(deftest protected-resource-metadata-advertises-its-own-scopes-test
+  (testing "every protected-resource endpoint, including the bare one, advertises the scope set belonging
+            to the `:resource` it names. A client reads `scopes_supported` here and requests exactly those;
+            advertising another path's set hands it a token that authorizes nothing on the resource it asked
+            about, with an empty `tools/list` and no in-product way to widen the grant afterwards. Asserted
+            against the `:resource` in the response rather than the URL requested, so the two cannot drift."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (doseq [url [".well-known/oauth-protected-resource"
+                   ".well-known/oauth-protected-resource/api/metabase-mcp"
+                   ".well-known/oauth-protected-resource/api/mcp"
+                   ".well-known/oauth-protected-resource/api/metabase-mcp/v2"]]
+        (testing url
+          (let [response      (mt/user-http-request :crowberto :get 200 url)
+                resource-path (str/replace (:resource response) "http://localhost:3000" "")]
+            (is (= (set (oauth-server/mcp-resource-scopes resource-path))
+                   (set (:scopes_supported response))))))))))
+
 (deftest protected-resource-metadata-bare-path-test
   (testing "GET /.well-known/oauth-protected-resource (no resource suffix) serves JSON advertising the canonical resource (BOT-1617)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -56,7 +75,12 @@
         (is (=? {:resource                 "http://localhost:3000/api/metabase-mcp"
                  :authorization_servers    ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
-                response))))))
+                response))
+        (testing "advertising the canonical (v1) resource, it must advertise the v1 scope set -- the bare
+                  path is the one clients probe, and the v2-only set here is a token that does nothing"
+          (is (= (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
+                 (set (:scopes_supported response))))
+          (is (contains? (set (:scopes_supported response)) "agent:question:create")))))))
 
 (deftest discovery-endpoint-rebuilds-on-site-url-change-test
   (testing "Discovery advertises endpoints for the *current* site-url, even after it changes (BOT-1617)"
@@ -1118,3 +1142,163 @@
               "Raw script tags must not appear in the consent page")
           (is (str/includes? body "&lt;script&gt;")
               "Script tags should be HTML-escaped"))))))
+
+;;; ----------------------------------- RFC 8707 resource narrowing -----------------------------------
+
+(defn- extract-hidden-field
+  "Extract an arbitrary hidden form field's value from the consent page HTML."
+  [field-name body]
+  (second (re-find (re-pattern (str "name=\"" field-name "\"[^>]*value=\"([^\"]*)\"")) body)))
+
+(deftest authorize-narrows-scope-to-mcp-resource-test
+  (testing "an RFC 8707 `resource` indicator naming the MCP surface narrows the grant to the
+            scopes that surface accepts, so the consent screen asks for what the token can actually
+            be used for rather than everything the client registered"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [wide         "agent:content:read agent:question:create agent:sql:execute"
+              ;; the v2 path: the aliases still reach v1, whose tools gate on the agent-API scopes
+              mcp-uri      (str "http://localhost:3000" (mcp/mcp-v2-path))
+              client-id    (:client_id (create-test-client!
+                                        {:scopes ["agent:content:read" "agent:question:create"
+                                                  "agent:sql:execute"]}))
+              consent-resp (mt/user-http-request-full-response
+                            :crowberto :get 200 "oauth/authorize"
+                            :client_id     client-id
+                            :redirect_uri  "https://example.com/callback"
+                            :response_type "code"
+                            :scope         wide
+                            :resource      mcp-uri
+                            :state         "test-state")
+              body         (:body consent-resp)
+              shown-scope  (extract-hidden-field "scope" body)]
+          (testing "the v2 scope survives and the agent-API-only scopes are gone"
+            (is (= "agent:content:read" shown-scope))
+            (is (not (str/includes? body "agent:question:create")))
+            (is (not (str/includes? body "agent:sql:execute"))))
+          (testing "approving the narrowed request still verifies — narrowing happens before the
+                    params are signed, so the consent form round-trips intact"
+            (let [response (form-post-decision!
+                            :crowberto
+                            {:approved      "true"
+                             :csrf_token    (extract-csrf-token-from-consent body)
+                             :params_sig    (extract-params-sig-from-consent body)
+                             :client_id     client-id
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"
+                             :scope         shown-scope
+                             :resource      mcp-uri
+                             :state         "test-state"}
+                            302
+                            :csrf-cookie (extract-csrf-cookie consent-resp))]
+              (is (str/includes? (get-in response [:headers "Location"]) "code="))))
+          (testing "a client cannot re-widen the scope on the way back: the signature covers the
+                    narrowed params, so posting the original wide scope is rejected as tampering"
+            (let [response (form-post-decision!
+                            :crowberto
+                            {:approved      "true"
+                             :csrf_token    (extract-csrf-token-from-consent body)
+                             :params_sig    (extract-params-sig-from-consent body)
+                             :client_id     client-id
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"
+                             :scope         wide
+                             :resource      mcp-uri
+                             :state         "test-state"}
+                            403
+                            :csrf-cookie (extract-csrf-cookie consent-resp))]
+              (is (= "params_tampered" (get-in response [:body :error]))))))))))
+
+(deftest authorize-legacy-mcp-client-can-request-v2-scopes-test
+  (testing (str "GHY-4343: a client that registered against a shipped v0.60-v0.63 release snapshotted only the "
+                "pre-v2 per-entity agent scopes, and `validate-scope` rejects any requested scope absent from that "
+                "snapshot. Because `/oauth/authorize` validates before narrowing, a user forced to re-authorize was "
+                "answered a 400 `invalid_request` JSON body rendered raw in their browser tab - the manual recovery "
+                "path was broken too. `WidenDynamicOAuthClientScopesForMcpV2` unions the six v2 scopes into every "
+                "dynamically registered client's snapshot so the request validates and reaches consent.")
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [legacy-scopes   ["agent:question:create" "agent:sql:construct" "agent:viz:mcp-ui:query"]
+              v2-scopes       ["agent:content:read" "agent:content:write" "agent:query:run"
+                               "agent:sql:run" "agent:delivery:write" "agent:resource:read"]
+              requested       (str/join " " v2-scopes)
+              client          (create-test-client! {:scopes            legacy-scopes
+                                                    :registration_type "dynamic"})
+              client-id       (:client_id client)
+              authorize!      (fn [expected-status]
+                                (mt/user-http-request-full-response
+                                 :crowberto :get expected-status "oauth/authorize"
+                                 :client_id     client-id
+                                 :redirect_uri  "https://example.com/callback"
+                                 :response_type "code"
+                                 :scope         requested
+                                 :state         "test-state"))]
+          (testing "before widening, the six v2 scopes are refused against the legacy snapshot"
+            (is (= "invalid_request" (:error (:body (authorize! 400))))))
+          ;; Apply what the migration applies. The change class itself is exercised against the changelog in
+          ;; `metabase.app-db.custom-migrations-test`; what this test owns is the authorize consequence.
+          (t2/update! :model/OAuthClient {:client_id client-id}
+                      {:scopes (into legacy-scopes v2-scopes)})
+          (testing "after widening, the same request reaches the consent page instead of a raw 400"
+            (let [response (authorize! 200)
+                  body     (:body response)]
+              (is (str/includes? (get-in response [:headers "Content-Type"]) "text/html")
+                  "the user sees a consent page, not a JSON error body rendered in their browser tab")
+              (is (str/includes? body "agent:content:read")
+                  "and the six v2 scopes are what they are consenting to"))))))))
+
+(deftest authorize-rejects-fully-narrowed-scope-test
+  (testing "when every requested scope is one the named resource does not accept, answer RFC 6749
+            `invalid_scope` rather than dropping the parameter. Dropping it renders a consent screen
+            listing no permissions and mints a zero-scope token: a handshake that looks successful and
+            yields an empty `tools/list`, with nothing telling the operator the resource rejected what
+            was asked for and no in-product way to widen the grant afterwards."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-id (:client_id (create-test-client!
+                                     {:scopes ["agent:question:create" "agent:sql:execute"]}))
+              response  (mt/user-http-request-full-response
+                         :crowberto :get 400 "oauth/authorize"
+                         :client_id     client-id
+                         ;; both are v1-only: the v2 resource accepts neither
+                         :scope         "agent:question:create agent:sql:execute"
+                         :redirect_uri  "https://example.com/callback"
+                         :response_type "code"
+                         :resource      (str "http://localhost:3000" (mcp/mcp-v2-path))
+                         :state         "test-state")]
+          (is (= "invalid_scope" (get-in response [:body :error]))))))))
+
+(deftest authorize-without-scope-still-renders-consent-test
+  (testing "a client that sends no `scope` at all is not the same case as one whose scopes were all
+            narrowed away -- narrowing answers nil for both, and only the first may drop the parameter.
+            This pins that the `invalid_scope` branch above did not swallow the no-scope request."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-id (:client_id (create-test-client! {:scopes ["agent:content:read"]}))]
+          (is (mt/user-http-request :crowberto :get 200 "oauth/authorize"
+                                    :client_id     client-id
+                                    :redirect_uri  "https://example.com/callback"
+                                    :response_type "code"
+                                    :resource      (str "http://localhost:3000" (mcp/mcp-v2-path))
+                                    :state         "test-state")))))))
+
+(deftest mb-full-client-can-still-authorize-test
+  (testing "removing `mb:full` from the advertised sets must not break a first-party client that
+            registered with it explicitly. That works only because oidc-provider validates a
+            requested scope against the client's own registered `:scopes`, never against the
+            provider's `:scopes-supported` -- which feeds the discovery document alone. Pinning the
+            dependency here: if that ever changes, un-advertising a scope silently starts rejecting
+            the clients that legitimately hold it."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-id (:client_id (create-test-client! {:scopes [oauth-server/full-access-scope]}))]
+          (testing "the scope is advertised nowhere"
+            (is (not (contains? (set (oauth-server/supported-scopes)) oauth-server/full-access-scope)))
+            (is (not (contains? (set (oauth-server/default-grant-scopes)) oauth-server/full-access-scope))))
+          (testing "yet the consent screen still renders for a client registered with it"
+            (is (mt/user-http-request :crowberto :get 200 "oauth/authorize"
+                                      :client_id     client-id
+                                      :redirect_uri  "https://example.com/callback"
+                                      :response_type "code"
+                                      :scope         oauth-server/full-access-scope
+                                      :state         "test-state"))))))))

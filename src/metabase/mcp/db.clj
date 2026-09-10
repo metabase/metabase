@@ -17,6 +17,117 @@
   {:pre [(integer? id)]}
   (t2/select-one model :id id))
 
+(defn select-by-ids
+  "The `model` rows whose primary keys are in `ids`. `ids` is expected non-empty — an empty `:in` is a SQL
+  error rather than an empty result, so callers guard it."
+  [model ids]
+  (t2/select model :id [:in ids]))
+
+(defn select-users-where
+  "The `:model/User` rows matching the HoneySQL `where` clause.
+
+  Takes an assembled clause rather than the values behind it: the clause encodes which users the caller is
+  allowed to resolve at all, which is a permission decision and belongs with the permission check."
+  [where]
+  (t2/select :model/User {:where where}))
+
+(defn table-by-id
+  "The Table with `table-id`, or nil. Unlike [[select-one-by-id]], a nil `table-id` is answered with nil
+  rather than refused — callers reach here with a column value, not with an id an agent supplied."
+  [table-id]
+  (t2/select-one :model/Table :id table-id))
+
+(defn field-types
+  "The `base_type` and `effective_type` of the Field with `field-id`, or nil."
+  [field-id]
+  (t2/select-one [:model/Field :base_type :effective_type] :id field-id))
+
+(defn nullable-fields-with-fingerprints
+  "The Fields among `field-ids` the warehouse declares nullable, carrying their `:fingerprint`.
+  `field-ids` is expected non-empty — an empty `:in` is a SQL error rather than an empty result,
+  so callers guard it."
+  [field-ids]
+  (t2/select [:model/Field :id :database_is_nullable :fingerprint]
+             :id [:in field-ids]
+             :database_is_nullable true))
+
+(defn active-user-exists?
+  "Whether an active User with `user-id` exists."
+  [user-id]
+  (t2/exists? :model/User :id user-id :is_active true))
+
+(defn dashboard-parameters
+  "The `parameters` of the Dashboard with `dashboard-id`, or nil."
+  [dashboard-id]
+  (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))
+
+(defn browsable-database
+  "The Database with `database-id` restricted by the HoneySQL `browsable-where` clause, or nil.
+
+  Takes an assembled clause rather than the values behind it, for the same reason
+  as [[select-users-where]]: which databases an agent may reach at all is a permission decision and
+  belongs with the permission check."
+  [database-id browsable-where]
+  (t2/select-one :model/Database :id database-id {:where browsable-where}))
+
+(defn browsable-databases
+  "The `columns` of the Databases matching the HoneySQL `browsable-where` clause, in name order. Naming the
+  columns keeps the `details`/`settings` blobs from being decrypted on every row."
+  [columns browsable-where]
+  (t2/select (into [:model/Database] columns)
+             {:where    browsable-where
+              :order-by [[:%lower.name :asc]]}))
+
+(defn browsable-database-ids
+  "The subset of `database-ids` matching the HoneySQL `browsable-where` clause, as a set. `database-ids` is
+  expected non-empty — an empty `:in` is a SQL error rather than an empty result, so callers guard it."
+  [database-ids browsable-where]
+  (t2/select-pks-set :model/Database {:where [:and [:in :id database-ids] browsable-where]}))
+
+(defn unarchived-models-in-database
+  "The `columns` of the unarchived Models of the Database with `database-id`, in name order."
+  [columns database-id]
+  (t2/select columns :type :model :database_id database-id :archived false {:order-by [[:%lower.name :asc]]}))
+
+(defn active-tables-by-ids
+  "The active Tables with `table-ids`. `table-ids` is expected non-empty — an empty `:in` is a SQL error
+  rather than an empty result, so callers guard it."
+  [table-ids]
+  (t2/select :model/Table :id [:in table-ids] :active true))
+
+(defn active-visible-fields-for-tables
+  "The id, name, table id, and position of the active, non-hidden Fields of the Tables with `table-ids`, in
+  table position then id order. `table-ids` is expected non-empty — an empty `:in` is a SQL error rather than
+  an empty result, so callers guard it."
+  [table-ids]
+  (t2/select [:model/Field :id :name :table_id :position]
+             :table_id [:in table-ids]
+             :active true
+             :visibility_type [:not-in ["hidden" "sensitive" "retired"]]
+             {:order-by [[:position :asc] [:id :asc]]}))
+
+(defn collections-for-read-check
+  "The Collections with `ids`, carrying the columns [[metabase.models.interface/can-read?]] consults.
+  `:namespace` and `:type` are selected for that check, not for display."
+  [ids]
+  (t2/select [:model/Collection :id :name :namespace :type] :id [:in ids]))
+
+(defn collection-id->name+location
+  "Map of collection id -> `[name location]` for the Collections with `ids`."
+  [ids]
+  (t2/select-fn->fn :id (juxt :name :location)
+                    [:model/Collection :id :name :location]
+                    :id [:in ids]))
+
+(defn snippets-by-archived-state
+  "The NativeQuerySnippets in the given archived state, ordered by lower-cased name. Selects only the
+  returned columns plus `:collection_id`, which the caller's read check consults — never `:content`,
+  which holds the SQL body."
+  [archived?]
+  (t2/select [:model/NativeQuerySnippet :id :name :description :collection_id]
+             :archived (boolean archived?)
+             {:order-by [[:%lower.name :asc]]}))
+
 (defn insert-feedback!
   "Insert the McpFeedback `row`."
   [row]
@@ -61,6 +172,11 @@
                            [:= :mqh.id handle-id]
                            [:= :cs.user_id user-id]]}))
 
+(defn delete-query-handles-created-before!
+  "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
+  [cutoff]
+  (t2/delete! :model/McpQueryHandle {:where [:< :created_at cutoff]}))
+
 (defn delete-session-for-user!
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
   [key-hashed user-id]
@@ -86,6 +202,21 @@
                                                                     :where  [:and
                                                                              [:= :key_hashed key-hashed]
                                                                              [:= :user_id user-id]]}]]]}))
+
+(defn hydrate-moderation-reviews
+  "`card` with `:moderation_reviews` hydrated, each review carrying its `:moderator_details`."
+  [card]
+  (t2/hydrate card [:moderation_reviews :moderator_details]))
+
+(defn notification-by-payload-type
+  "The Notification with `id` whose `payload_type` is `payload-type`, or nil."
+  [id payload-type]
+  (t2/select-one :model/Notification :id id :payload_type payload-type))
+
+(defn subscription-pulse-exists?
+  "Whether a Pulse with `pulse-id` exists and is a subscription — a nil `alert_condition` — rather than an alert."
+  [pulse-id]
+  (t2/exists? :model/Pulse :id pulse-id :alert_condition nil))
 
 (defn hydrate-notification
   "`notification` with its payload, subscriptions, and handler channels and recipients hydrated.
@@ -122,3 +253,12 @@
   (if (seq user-ids)
     (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids])
     {}))
+
+(defn existing-transform-tag-ids
+  "The subset of `tag-ids` that name a real TransformTag, as a set. `ids` is expected non-empty — an
+  empty `:in` is a SQL error rather than an empty result, so callers guard it.
+
+  A set rather than the select's own return: `t2/select-fn-set` answers nil when nothing matches,
+  which is exactly the all-unknown case the caller is checking for."
+  [tag-ids]
+  (into #{} (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids])))

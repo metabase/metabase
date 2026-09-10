@@ -71,7 +71,8 @@
   (let [user-id          (mt/user->id :crowberto)
         credential-id    (mcp.session/create! user-id)
         other-session-id (mcp.session/create! user-id)
-        credential       (mcp.session/issue-ui-credential credential-id user-id)]
+        ;; v1's claimless 2-arity retired with v1; the callback surface takes a scoped credential now.
+        credential       (mcp.session/issue-ui-credential credential-id user-id #{"agent:query:run"})]
     (testing "a credential can use the callback surface for its own MCP session"
       (is (= 200 (:status (post-drill-with-ui-credential 200 credential credential-id)))))
     (testing "a credential cannot be reused with another MCP session"
@@ -81,7 +82,7 @@
       (with-redefs [mcp.session/ui-credential-lifetime-seconds -1]
         (is (= 401 (:status (post-drill-with-ui-credential
                              401
-                             (mcp.session/issue-ui-credential credential-id user-id)
+                             (mcp.session/issue-ui-credential credential-id user-id #{"agent:query:run"})
                              credential-id))))))))
 
 (deftest drills-post-rejects-blank-body-test
@@ -250,3 +251,53 @@
               (get-bootstrap-with-ui-credential 200 credential credential-id)))
       (is (= 404 (:status (get-bootstrap-with-ui-credential 404 credential other-session-id))))
       (is (= 401 (:status (get-bootstrap-with-ui-credential 401 "not-a-credential" credential-id)))))))
+;;; --------------------------------------- GET /queries/:handle ---------------------------------------------
+
+(defn- get-query-by-handle
+  "GET /api/embed-mcp/queries/:handle with a UI credential, the way the iframe calls it."
+  [expected-status credential session-id handle]
+  (client/client-full-response :get expected-status (str "embed-mcp/queries/" handle)
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                            "mcp-session-id" session-id}}}))
+
+(deftest queries-get-resolves-handle-test
+  (testing "the iframe exchanges a handle for the encoded query and its prompt"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id    (mt/user->id :crowberto)
+            session-id (mcp.session/create! user-id)
+            credential (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})
+            handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==" "show me orders")]
+        (is (=? {:status 200
+                 :body   {:query "ZW5jb2RlZA==" :prompt "show me orders"}}
+                (get-query-by-handle 200 credential session-id handle))))))
+  (testing "a handle stored without a prompt resolves with a nil one"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id    (mt/user->id :crowberto)
+            session-id (mcp.session/create! user-id)
+            credential (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})
+            handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==")]
+        (is (=? {:status 200
+                 :body   {:query "ZW5jb2RlZA==" :prompt nil}}
+                (get-query-by-handle 200 credential session-id handle)))))))
+
+(deftest queries-get-is-user-scoped-test
+  (testing "a handle minted by another user is not resolvable, even with a valid credential"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [owner-id     (mt/user->id :crowberto)
+            owner-session (mcp.session/create! owner-id)
+            handle       (mcp.session/store-handle! owner-session owner-id "ZW5jb2RlZA==")
+            other-id     (mt/user->id :rasta)
+            other-session (mcp.session/create! other-id)
+            other-cred   (mcp.session/issue-ui-credential other-session other-id #{"agent:query:run"})]
+        (is (= 404 (:status (get-query-by-handle 404 other-cred other-session handle))))))))
+
+(deftest queries-get-rejects-bad-input-test
+  (let [user-id    (mt/user->id :crowberto)
+        session-id (mcp.session/create! user-id)
+        credential (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})]
+    (testing "an unknown handle is a 404, not a 500"
+      (is (= 404 (:status (get-query-by-handle 404 credential session-id (str (random-uuid)))))))
+    (testing "a non-UUID handle never reaches the route: the credential allowlist is UUID-pinned"
+      (is (= 401 (:status (get-query-by-handle 401 credential session-id "not-a-uuid")))))
+    (testing "an invalid credential is rejected"
+      (is (= 401 (:status (get-query-by-handle 401 "not-a-credential" session-id (str (random-uuid)))))))))

@@ -31,8 +31,8 @@
    :args                [:map {:closed true}]}
   [_arguments {:keys [session-id token-scopes]}]
   (if (and session-id api/*current-user-id*)
-    ;; The 3-arity, always: minting through the v1 2-arity would stamp the credential `:legacy` and exempt it
-    ;; from the native-SQL scope gate on /api/dataset — reopening the hole that gate closes.
+    ;; Always minted with the caller's scopes, which is what subjects the credential to the native-SQL gate
+    ;; on /api/dataset. (v1's claimless, gate-exempt 2-arity retired with v1 in this slice.)
     (assoc (common/success-content "MCP UI credential refreshed.")
            :_meta {common/mcp-apps-meta-key
                    {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id* token-scopes)
