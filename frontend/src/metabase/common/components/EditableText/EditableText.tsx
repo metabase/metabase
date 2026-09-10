@@ -1,6 +1,5 @@
 import type {
   ChangeEvent,
-  ElementType,
   FocusEvent,
   FocusEventHandler,
   HTMLAttributes,
@@ -30,7 +29,7 @@ export interface EditableTextProps extends BoxProps, EditableTextAttributes {
   isMultiline?: boolean;
   isDisabled?: boolean;
   isMarkdown?: boolean;
-  as?: ElementType;
+  as?: keyof JSX.IntrinsicElements;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
