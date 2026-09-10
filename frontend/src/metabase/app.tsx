@@ -46,7 +46,7 @@ import {
 } from "metabase/router";
 import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
-import { registerTransformQueryHooks } from "metabase/transforms/register";
+import { registerTransformQueryHooks } from "metabase/transforms";
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { captureClickModifierKeys } from "metabase/urls";

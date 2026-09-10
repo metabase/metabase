@@ -2,10 +2,10 @@ import { t } from "ttag";
 
 import { PaneHeaderInput } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { NAME_MAX_LENGTH } from "metabase/transforms/constants";
 import type { Transform } from "metabase-types/api";
 
 import { useUpdateTransformMutation } from "../../api/transform";
+import { NAME_MAX_LENGTH } from "../../constants";
 
 type TransformNameInputProps = {
   transform: Transform;

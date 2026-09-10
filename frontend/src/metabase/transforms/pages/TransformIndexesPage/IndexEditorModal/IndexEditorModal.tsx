@@ -7,10 +7,6 @@ import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { FormProvider } from "metabase/forms";
-import {
-  trackTransformIndexCreated,
-  trackTransformIndexUpdated,
-} from "metabase/transforms/analytics";
 import { type ComboboxItem, Modal, Text } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import type {
@@ -20,6 +16,10 @@ import type {
   Transform,
 } from "metabase-types/api";
 
+import {
+  trackTransformIndexCreated,
+  trackTransformIndexUpdated,
+} from "../../../analytics";
 import {
   useCreateTableIndexMutation,
   useUpdateTableIndexMutation,

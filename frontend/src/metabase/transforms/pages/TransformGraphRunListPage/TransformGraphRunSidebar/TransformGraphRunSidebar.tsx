@@ -10,9 +10,6 @@ import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
-import { POLLING_INTERVAL } from "metabase/transforms/constants";
-import { isActiveRunStatus } from "metabase/transforms/utils";
 import {
   ActionIcon,
   Badge,
@@ -40,6 +37,9 @@ import {
   useListDagRunTransformRunsQuery,
 } from "../../../api/transform";
 import { useListJobRunTransformRunsQuery } from "../../../api/transform-job";
+import { SidebarResizableBox } from "../../../components/SidebarResizableBox";
+import { POLLING_INTERVAL } from "../../../constants";
+import { isActiveRunStatus } from "../../../utils";
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
 import { RunName, isDeletedRun } from "../TransformGraphRunTable";
 

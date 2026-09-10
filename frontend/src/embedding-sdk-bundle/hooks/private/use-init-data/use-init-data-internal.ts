@@ -27,7 +27,7 @@ import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
-import { registerTransformQueryHooks } from "metabase/transforms/register";
+import { registerTransformQueryHooks } from "metabase/transforms";
 import { setBasename } from "metabase/utils/basename";
 import { registerVisualizations } from "metabase/visualizations/register";
 

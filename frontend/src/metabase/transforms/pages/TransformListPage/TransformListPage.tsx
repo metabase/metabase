@@ -19,10 +19,6 @@ import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
-import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
-import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
-import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Ellipsified } from "metabase/ui";
 import {
   Card,
@@ -43,6 +39,10 @@ import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 
 import { useListTransformsQuery } from "../../api/transform";
+import { LockedTransformsBanner } from "../../components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformsHeader } from "../../components/TransformsHeader";
+import { useTransformPermissions } from "../../hooks/use-transform-permissions";
+import { getShouldShowPythonTransformsUpsell } from "../../selectors";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";

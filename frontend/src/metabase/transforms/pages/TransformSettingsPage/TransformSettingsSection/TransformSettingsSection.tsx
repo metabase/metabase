@@ -11,12 +11,12 @@ import { TitleSection } from "metabase/common/data-studio/components/TitleSectio
 import { useMetadataToasts } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { UserInput } from "metabase/metadata/components";
-import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName, Transform, UserId } from "metabase-types/api";
 
 import { useUpdateTransformMutation } from "../../../api/transform";
+import { TransformOwnerAvatar } from "../../../components/TransformOwnerAvatar/TransformOwnerAvatar";
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 
 import { UpdateIncrementalSettings } from "./UpdateIncrementalSettings";

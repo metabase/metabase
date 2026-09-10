@@ -17,7 +17,7 @@ import {
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { transformApi } from "metabase/transforms/api/transform";
+import { transformApi } from "metabase/transforms";
 import {
   ActionIcon,
   Box,

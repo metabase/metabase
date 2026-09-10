@@ -10,9 +10,6 @@ import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
-import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
-import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -32,6 +29,9 @@ import type { TransformJob } from "metabase-types/api";
 import { useListTransformJobsQuery } from "../../api/transform-job";
 import { JobListMoreMenu } from "../../components/JobListMoreMenu";
 import { JobMoreMenu } from "../../components/JobMoreMenu";
+import { LockedTransformsBanner } from "../../components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformBadge } from "../../components/TransformBadge/TransformBadge";
+import { TransformsHeader } from "../../components/TransformsHeader";
 
 export const JobListPage = () => {
   const navigate = useNavigate();

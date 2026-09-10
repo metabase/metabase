@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { trackTransformInspectDrillLensClicked } from "metabase/transforms/analytics";
+import { trackTransformInspectDrillLensClicked } from "metabase/transforms";
 import { Flex } from "metabase/ui";
 import type { InspectorDrillLensTrigger } from "metabase-types/api";
 

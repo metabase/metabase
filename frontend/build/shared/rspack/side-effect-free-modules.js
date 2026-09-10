@@ -9,6 +9,7 @@ const SIDE_EFFECT_FREE_PATHS = [
   "frontend/src/metabase/querying/expressions",
   "frontend/src/metabase/ui",
   "frontend/src/metabase/query_builder",
+  "frontend/src/metabase/transforms",
   // The chart compute layer: static-viz imports a few helpers from its barrel,
   // so without this the GraalJS bundle would pull in every echarts model too.
   "frontend/src/metabase/viz-core",
@@ -24,6 +25,8 @@ const SIDE_EFFECT_PATHS = [
   "frontend/src/metabase/ui/components/overlays/Popover/register-popover-dropdown.ts",
   // Registers its endpoints on the shared Api at import, so a bundle that only reaches them by name still has to evaluate it.
   "frontend/src/metabase/query_builder/api/model-index.ts",
+  // The transforms barrel exposes hooks, but their endpoints must still register at import.
+  "frontend/src/metabase/transforms/api/",
 ].map((file) => path.join(REPO_ROOT, file));
 
 // Only script files are ever marked side-effect free.

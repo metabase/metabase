@@ -15,8 +15,10 @@ import {
   type RouteComponent,
   redirect,
 } from "metabase/router";
-import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
-import { canAccessTransforms } from "metabase/transforms/selectors";
+import {
+  canAccessTransforms,
+  getDataStudioTransformRoutes,
+} from "metabase/transforms";
 import * as Urls from "metabase/urls";
 
 import { getDataStudioMetadataRoutes } from "./data-model/routes";

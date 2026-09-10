@@ -2,8 +2,10 @@ import { useCallback } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { Location } from "metabase/router";
-import { trackTransformInspectDrillLensClosed } from "metabase/transforms/analytics";
-import { useGetInspectorDiscoveryQuery } from "metabase/transforms/api/transform";
+import {
+  trackTransformInspectDrillLensClosed,
+  useGetInspectorDiscoveryQuery,
+} from "metabase/transforms";
 import { Center } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 

@@ -1,15 +1,6 @@
 import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
-import { TimezoneIndicator } from "metabase/transforms/components/TimezoneIndicator";
-import {
-  formatRunMethod,
-  formatStatus,
-  getRunDurationMs,
-  getTransformRunName,
-  isErrorStatus,
-  parseTimestampWithTimezone,
-} from "metabase/transforms/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
@@ -29,6 +20,15 @@ import {
   type TransformTagId,
 } from "metabase-types/api";
 
+import { TimezoneIndicator } from "../../../components/TimezoneIndicator";
+import {
+  formatRunMethod,
+  formatStatus,
+  getRunDurationMs,
+  getTransformRunName,
+  isErrorStatus,
+  parseTimestampWithTimezone,
+} from "../../../utils";
 import type { TransformRunSortOptions } from "../types";
 
 import { TagList } from "./TagList";

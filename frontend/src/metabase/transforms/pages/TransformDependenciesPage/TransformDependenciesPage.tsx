@@ -3,13 +3,13 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Outlet, useParams } from "metabase/router";
-import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Card, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { useGetTransformQuery } from "../../api/transform";
 import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "../../components/TransformHeader";
+import { useTransformPermissions } from "../../hooks/use-transform-permissions";
 
 export type TransformDependenciesPageParams = {
   transformId: string;

@@ -9,19 +9,19 @@ import { TitleSection } from "metabase/common/data-studio/components/TitleSectio
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useParams } from "metabase/router";
-import { trackTransformIndexDeleted } from "metabase/transforms/analytics";
-import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { TableIndexEntry, Transform } from "metabase-types/api";
 
+import { trackTransformIndexDeleted } from "../../analytics";
 import {
   useDeleteTableIndexMutation,
   useListTableIndexesQuery,
 } from "../../api/index-manager";
 import { useGetTransformQuery } from "../../api/transform";
 import { TransformHeader } from "../../components/TransformHeader";
+import { useTransformPermissions } from "../../hooks/use-transform-permissions";
 
 import { IndexEditorModal } from "./IndexEditorModal/IndexEditorModal";
 import { IndexPageActions } from "./IndexPageActions";

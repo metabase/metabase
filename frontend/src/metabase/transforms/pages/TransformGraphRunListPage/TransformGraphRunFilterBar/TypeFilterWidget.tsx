@@ -2,8 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 
-import { FILTER_WIDGET_MIN_WIDTH } from "metabase/transforms/constants";
-import { FilterFieldSet } from "metabase/transforms/pages/RunListPage/RunFilterBar/FilterFieldSet";
 import {
   Box,
   Button,
@@ -17,6 +15,9 @@ import {
   TRANSFORM_GRAPH_RUN_TYPES,
   type TransformGraphRunType,
 } from "metabase-types/api";
+
+import { FILTER_WIDGET_MIN_WIDTH } from "../../../constants";
+import { FilterFieldSet } from "../../RunListPage/RunFilterBar/FilterFieldSet";
 
 export function formatGraphRunType(type: TransformGraphRunType): string {
   switch (type) {

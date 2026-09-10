@@ -8,9 +8,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useLocation, useNavigate, useParams } from "metabase/router";
-import { POLLING_INTERVAL } from "metabase/transforms/constants";
-import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
-import { formatRunMethod, formatStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Select, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import {
@@ -29,6 +26,9 @@ import {
 import { JobHeader } from "../../components/JobHeader";
 import { JobMoreMenu } from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";
+import { POLLING_INTERVAL } from "../../constants";
+import { useJobHeaderState } from "../../hooks/use-job-header-state";
+import { formatRunMethod, formatStatus } from "../../utils";
 
 import S from "./JobRunListPage.module.css";
 import { JobRunSidebar } from "./JobRunSidebar";

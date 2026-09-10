@@ -49,9 +49,10 @@ type UpdateTagValues = {
   name: string;
 };
 
-const UPDATE_TAG_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-});
+const UPDATE_TAG_SCHEMA = /* #__PURE__ */ (() =>
+  Yup.object({
+    name: Yup.string().required(Errors.required),
+  }))();
 
 function UpdateTagForm({ tag, onUpdate, onClose }: UpdateTagFormProps) {
   const [updateTag] = useUpdateTransformTagMutation();

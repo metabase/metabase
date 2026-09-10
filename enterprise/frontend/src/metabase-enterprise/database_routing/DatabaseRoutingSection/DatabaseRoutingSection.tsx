@@ -17,7 +17,7 @@ import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import { useListTransformsQuery } from "metabase/transforms/api/transform";
+import { useListTransformsQuery } from "metabase/transforms";
 import {
   Alert,
   Box,

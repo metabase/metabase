@@ -16,9 +16,11 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
-import { TagsMultiFormSelect } from "metabase/transforms/components/TagsMultiFormSelect";
-import { TargetNameInput } from "metabase/transforms/components/TargetNameInput";
+import {
+  SchemaFormSelect,
+  TagsMultiFormSelect,
+  TargetNameInput,
+} from "metabase/transforms";
 import {
   Box,
   Button,

@@ -18,7 +18,7 @@ import {
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
-import { transformApi } from "metabase/transforms/api/transform";
+import { transformApi } from "metabase/transforms";
 import type {
   Collection,
   CollectionNamespace,

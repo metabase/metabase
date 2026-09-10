@@ -5,11 +5,6 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
-import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
-import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
-import { POLLING_INTERVAL } from "metabase/transforms/constants";
-import { isActiveRunStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformRun, TransformRunId } from "metabase-types/api";
@@ -19,6 +14,11 @@ import {
   useListTransformsQuery,
 } from "../../api/transform";
 import { useListTransformTagsQuery } from "../../api/transform-tag";
+import { DetailedViewSwitch } from "../../components/DetailedViewSwitch";
+import { LockedTransformsBanner } from "../../components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformsHeader } from "../../components/TransformsHeader";
+import { POLLING_INTERVAL } from "../../constants";
+import { isActiveRunStatus } from "../../utils";
 
 import { RunFilterBar } from "./RunFilterBar";
 import S from "./RunListPage.module.css";

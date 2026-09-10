@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
 import { useNavigate } from "metabase/router";
-import { trackTransformRunsViewToggled } from "metabase/transforms/analytics";
 import { Switch } from "metabase/ui";
 import * as Urls from "metabase/urls";
+
+import { trackTransformRunsViewToggled } from "../../analytics";
 
 import S from "./DetailedViewSwitch.module.css";
 
