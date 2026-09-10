@@ -12,6 +12,7 @@
    [metabase.auth-identity.provider :as auth.provider]
    [metabase.session.api :as api.session]
    [metabase.session.core :as session]
+   [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -65,6 +66,34 @@
                                                                           :token_exchange false
                                                                           :ip_address "127.0.0.1"}})]
                     (is (:success? login-result) "Should be able to login with new password")))))))))))
+
+(deftest reset-password-with-support-access-grant-works-when-password-login-disabled-test
+  (testing "POST /api/session/reset_password redeems a support access grant on an SSO-only instance"
+    (ldap.test/with-ldap-server!
+      (mt/with-premium-features #{:support-access-grants :disable-password-login}
+        (mt/with-temp [:model/User {creator-id :id} {}]
+          (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+            (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support@example.com")
+                                        sag.settings/support-access-grant-first-name (constantly "Support")
+                                        sag.settings/support-access-grant-last-name (constantly "User")]
+              (let [token (:token (grants/create-grant! creator-id 60 "TICKET-SSO-ONLY" "Test notes"))]
+                (mt/with-temporary-setting-values [enable-password-login false]
+                  (is (false? (session/enable-password-login))
+                      "sanity check: password login really is disabled")
+                  (is (true? (:success (mt/client :post 200 "session/reset_password"
+                                                  {:token token :password "NewSecurePassword123!"})))
+                      "the support grant is redeemed even though password login is off")
+                  (let [support-user-id   (t2/select-one-pk :model/User :email "support@example.com")
+                        grant-identity-id (t2/select-one-pk :model/AuthIdentity
+                                                            :user_id support-user-id
+                                                            :provider "support-access-grant")
+                        sessions          (t2/query {:select [:auth_identity_id]
+                                                     :from   [:core_session]
+                                                     :where  [:= :user_id support-user-id]})]
+                    (is (= 1 (count sessions))
+                        "the redeemed grant left exactly one session")
+                    (is (= grant-identity-id (:auth_identity_id (first sessions)))
+                        "the support session is attributed to the support-access-grant identity")))))))))))
 
 (deftest reset-password-fallback-to-regular-token-test
   (testing "POST /api/session/reset_password falls back to regular password reset when support grant token is invalid"
