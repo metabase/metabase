@@ -333,7 +333,7 @@
 ;;;; Module boundary debt ratchets
 
 (deftest ^:parallel module-boundary-config-values-have-valid-types-test
-  (testing "Module boundary keys use the values the linter understands, so the ratchet counts mean what they say"
+  (testing "Module boundary keys have the shapes the ratchet counts expect"
     (doseq [[module config] (dev.deps-graph/kondo-config)]
       (testing (format "\n%s" module)
         (is (or (nil? (:api config))

@@ -933,15 +933,6 @@
 
 ;;;; Module boundary debt
 
-;;; `.clj-kondo/config/modules/ratchets.edn` holds the escape-hatch counts, and
-;;; `metabase.core.modules-test` fails when one of them goes up. Everything the ratchets need comes from
-;;; the config file alone, so that check is cheap and does not depend on the dependency scan.
-;;;
-;;; [[module-boundary-stats]] is the companion picture -- how big the mutual-dependency clusters actually
-;;; are. It is deliberately not committed to a baseline file: the numbers move with any change anywhere in
-;;; the repo, so a checked-in copy would conflict on every branch without telling a reviewer anything a
-;;; REPL call cannot.
-
 (def ^:private module-boundary-ratchets-path
   ".clj-kondo/config/modules/ratchets.edn")
 
@@ -949,10 +940,11 @@
   (into (set (keys graph)) (mapcat val) graph))
 
 (defn strongly-connected-components
-  "Tarjan's algorithm over an adjacency map of `node -> coll of successor nodes`.
-  Returns a vector of sets, one per SCC, singletons included.
+  "The strongly connected components of `graph`, a map of node to successor nodes, as a vector of sets.
+  A node outside every cycle comes back as a singleton set.
   Recursive; fine for graphs a few thousand nodes deep."
   [graph]
+  ;; Tarjan's algorithm.
   (let [index    (volatile! {})
         lowlink  (volatile! {})
         on-stack (volatile! #{})
@@ -988,8 +980,8 @@
     @sccs))
 
 (defn cyclic-components
-  "Nontrivial SCCs of `graph`, largest first. Ties break on the alphabetically first member, so two runs
-  over the same graph report the clusters in the same order."
+  "The strongly connected components of `graph` with more than one node, largest first.
+  Ties sort by their alphabetically first member."
   [graph]
   (->> (strongly-connected-components graph)
        (filter #(> (count %) 1))
@@ -997,12 +989,7 @@
        vec))
 
 (defn- cyclic-component-sizes
-  "Size of every mutual-dependency cluster in `graph`, largest first, counted twice: in nodes, and in the
-  namespaces those nodes hold according to `node->namespace-count`.
-
-  The namespace weighting is the honest measure. Splitting a cyclic module in the config raises the module
-  count without moving a single namespace out of the cycle, so module counts alone can be made to look like
-  progress by re-partitioning."
+  "Size of each [[cyclic-components]] cluster, in nodes and in namespaces per `node->namespace-count`."
   [graph node->namespace-count]
   (mapv (fn [component]
           {:modules    (count component)
@@ -1010,35 +997,31 @@
         (cyclic-components graph)))
 
 (defn module-boundary-debt
-  "The module config's escape hatches, as one-way ratchets: each count may only go down. Raising one is a
-  deliberate act -- edit `ratchets.edn` by hand and justify it in the commit.
+  "Count the module config's escape hatches.
 
-  `:api-any` and `:uses-any` count the modules that declined to name a public API and a dependency list
-  respectively, so the linter cannot hold them to either. `:friend-edges` counts the `:friends` grants,
-  each one letting a named module reach past another module's `:api` into its internals.
-
-  A count that never reaches zero still earns its ratchet. The wiring modules whose whole job is to see
-  everything may keep their wildcards forever; the ratchet is here to stop a further one arriving without
-  an argument."
+  - `:api-any`      modules with `:api :any`, which expose every namespace
+  - `:uses-any`     modules with `:uses :any`, which may require any module
+  - `:friend-edges` `:friends` grants, each letting one module reach past another's `:api`"
   ([]
    (module-boundary-debt (kondo-config)))
   ([config]
+   ;; Count from the config alone: the test stays cheap, and a source change elsewhere never moves a ratchet.
    (let [values (vals config)]
      {:api-any      (count (filter #(= :any (:api %)) values))
       :friend-edges (transduce (map (comp count :friends)) + 0 values)
       :uses-any     (count (filter #(= :any (:uses %)) values))})))
 
 (defn module-boundary-stats
-  "How tangled the module graph is right now, for reading at the REPL rather than committing to a baseline.
+  "Measure how tangled the module graph is, for reading at the REPL.
+  No baseline is committed: these move with any change in the repo, so one would conflict on every branch.
 
-  `:api-any-namespaces` is the surface the `:api-any` ratchet hides: every namespace an `:api :any` module
-  owns is effectively public, so the escape hatch is worth seeing namespace-weighted as well as
-  module-weighted.
+  - `:api-any-namespaces`  namespaces owned by `:api :any` modules, all of them effectively public
+  - `:module-count`        modules in the config
+  - `:scc-module-sizes`    modules in each mutual-dependency cluster, largest first
+  - `:scc-namespace-sizes` namespaces in each of those clusters
 
-  `:scc-module-sizes` and `:scc-namespace-sizes` size each mutual-dependency cluster, largest first -- see
-  [[cyclic-component-sizes]] for why both weightings are reported. Keeping every cluster rather than just
-  the biggest is what makes a cut visible: freeing a small cluster drops an entry from the list and leaves
-  the head of it alone."
+  Splitting a module inside a cluster grows its module size without taking any namespace out of the cycle.
+  Read progress off the namespace sizes."
   ([]
    (module-boundary-stats (dependencies) (kondo-config)))
   ([deps config]
@@ -1051,12 +1034,12 @@
       :scc-namespace-sizes (mapv :namespaces sizes)})))
 
 (defn module-boundary-ratchets
-  "Committed exact ratchets for [[module-boundary-debt]]."
+  "Read the committed ratchet values for [[module-boundary-debt]]."
   []
   (edn/read-string (slurp module-boundary-ratchets-path)))
 
 (defn lowered-module-boundary-ratchets
-  "Return `actual` when it only lowers `ratchets`; throw rather than blessing increased debt."
+  "Return `actual` when no count in it is above its ratchet. Throw when one is, or when the keys differ."
   [ratchets actual]
   (when-not (= (set (keys ratchets)) (set (keys actual)))
     (throw (ex-info "Module-boundary ratchet metrics do not match"
@@ -1074,9 +1057,8 @@
     actual))
 
 (defn update-module-boundary-ratchets!
-  "Lower the committed ratchets to current values, refusing increases. Entry point for
-
-    clojure -X:dev dev.deps-graph/update-module-boundary-ratchets!"
+  "Lower the committed ratchets to the current counts, throwing if any count went up.
+  Run with `clojure -X:dev dev.deps-graph/update-module-boundary-ratchets!`."
   [_]
   (let [ratchets (module-boundary-ratchets)
         updated  (lowered-module-boundary-ratchets ratchets (module-boundary-debt))]
