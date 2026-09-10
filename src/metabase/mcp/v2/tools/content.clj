@@ -76,6 +76,10 @@
         mp            (some-> (:database_id card) lib-be/application-database-metadata-provider)
         query         (card-query mp dataset-query)]
     (assoc card
+           ;; The bare `collection_id` alone does not say where an item lives, so a caller that
+           ;; wanted to state that had to spend a second call resolving the collection — search
+           ;; already returns the same path on its rows.
+           :collection_path (v2.resolve/collection-path (:collection_id card))
            :query_summary (some-> query (as-> q (try (lib/describe-query q) (catch Exception _ nil))))
            :template_tags (when native? (raw-template-tags dataset-query))
            ;; The materialized parameter list — for native cards it is derived from the raw

@@ -4,11 +4,13 @@
    Landed with its first consumers: the entity-id machinery with `bookmark_content`, collection
    resolution with `collection_write`."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.mcp.db :as mcp.db]
-   [metabase.mcp.v2.common :as common]))
+   [metabase.mcp.v2.common :as common]
+   [metabase.models.interface :as mi]))
 
 (set! *warn-on-reflection* true)
 
@@ -136,3 +138,37 @@
         (common/throw-teaching-error
          (str "The current user has no personal collection. Pass an explicit collection_id "
               "(or \"root\" for the root collection) instead.")))))
+
+;;; --------------------------------------------- Collection paths -------------------------------------------------
+
+(defn- location->ids
+  [location]
+  (when location
+    (mapv parse-long (re-seq #"\d+" location))))
+
+(defn- readable-id->name
+  "Map of collection id -> name for the given ids, omitting collections the current user cannot
+   read. `:namespace` and `:type` are selected because [[mi/can-read?]] consults them."
+  [ids]
+  (when (seq ids)
+    (into {}
+          (comp (filter mi/can-read?)
+                (map (juxt :id :name)))
+          (mcp.db/collections-for-read-check ids))))
+
+(defn collection-path
+  "The display path of the collection with `collection-id` — ancestor names joined with `/`, ending
+   in the collection's own name — or nil for a root item (`collection-id` nil) or a collection the
+   caller cannot read.
+
+   Ancestors the caller cannot read are omitted rather than failing the path, matching the
+   breadcrumb semantics of [[metabase.collections.models.collection/effective-ancestors]]: for
+   A > B > C where B is unreadable, the path reads \"A/C\".
+
+   Two reads per call, so it suits a single item or a small batch; `search` walks whole result
+   pages and batches the same lookups itself rather than calling this per row."
+  [collection-id]
+  (when collection-id
+    (when-let [[cname location] (get (mcp.db/collection-id->name+location #{collection-id}) collection-id)]
+      (let [ancestors (readable-id->name (set (location->ids location)))]
+        (str/join "/" (concat (keep ancestors (location->ids location)) [cname]))))))

@@ -153,8 +153,8 @@
 ;; rather than one tool silently overwriting another's at load time. `query_summary`/`template_tags`
 ;; are enrichments get_content computes; browse rows lack them and `compact` drops them.
 (def ^:private question-concise-keys
-  [:id :name :type :description :display :collection_id :database_id :table_id :source_card_id
-   :archived :query_summary :template_tags :parameters])
+  [:id :name :type :description :display :collection_id :collection_path :database_id :table_id
+   :source_card_id :archived :query_summary :template_tags :parameters])
 
 (def question-detailed-keys
   "Keys of the `:question` detailed projection. All are Card columns except
@@ -166,7 +166,7 @@
 (def question-enrichment-keys
   "Projection keys `get_content` computes at read time — not Card columns. Column-select paths
    (`list_models`, browse rows) can't fetch them, so they drop these before selecting."
-  #{:query_summary :template_tags})
+  #{:query_summary :template_tags :collection_path})
 
 (register-key-projection!
  :question question-concise-keys
