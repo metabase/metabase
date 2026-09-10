@@ -808,6 +808,7 @@
 
 (defn- check-timeline-visibility-permissions!
   [card previous-card]
+  ;; No bound user means an internal write (serdes import, migrations, tasks) rather than a request.
   (when api/*current-user-id*
     (let [visibility-keys         [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids
                                    :timeline_events.enabled]
