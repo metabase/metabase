@@ -14,7 +14,7 @@ import {
   activateSuggestedTransform,
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
-import { useMetadataProviderFactory } from "metabase/metadata-store";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import {
@@ -81,7 +81,6 @@ export const AgentSuggestionMessage = ({
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const getMetadataProvider = useMetadataProviderFactory();
   const { suggestionActions } = useContext(MetabotContext);
   const { sendErrorToast } = useMetadataToasts();
   const [isApplying, setIsApplying] = useState(false);
@@ -141,10 +140,8 @@ export const AgentSuggestionMessage = ({
     };
   }, []);
 
-  const oldSource = originalTransform
-    ? getSourceCode(originalTransform, getMetadataProvider)
-    : "";
-  const newSource = getSourceCode(suggestedTransform, getMetadataProvider);
+  const oldSource = useSourceCode(originalTransform);
+  const newSource = useSourceCode(suggestedTransform);
 
   const handleApply = async () => {
     dispatch(activateSuggestedTransform(suggestedTransform));
@@ -277,13 +274,21 @@ export const AgentSuggestionMessage = ({
   );
 };
 
-function getSourceCode(
-  transform: Pick<MetabotTransformInfo, "source">,
-  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
+function getSourceDatabaseId(
+  transform: Pick<MetabotTransformInfo, "source"> | undefined,
+): DatabaseId | null {
+  return transform?.source.type === "query"
+    ? transform.source.query.database
+    : null;
+}
+
+function useSourceCode(
+  transform: Pick<MetabotTransformInfo, "source"> | undefined,
 ): string {
+  const metadataProvider = useMetadataProvider(getSourceDatabaseId(transform));
+
   return match(transform)
     .with({ source: { type: "query" } }, (t) => {
-      const metadataProvider = getMetadataProvider(t.source.query.database);
       const query = Lib.fromJsQuery(metadataProvider, t.source.query);
       if (Lib.queryDisplayInfo(query).isNative) {
         return Lib.rawNativeQuery(query);

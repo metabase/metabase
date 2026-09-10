@@ -15,11 +15,13 @@ import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
 import * as Urls from "metabase/urls";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 
-export const getRouterPath = (state: State, props: RouterProps) => {
+// `props` is optional because most callers read these through `useSelector`,
+// which passes only the state. The router's own location is the fallback.
+export const getRouterPath = (state: State, props?: RouterProps) => {
   return props?.location?.pathname ?? window.location.pathname;
 };
 
-export const getRouterHash = (state: State, props: RouterProps) => {
+export const getRouterHash = (state: State, props?: RouterProps) => {
   return props?.location?.hash ?? window.location.hash;
 };
 

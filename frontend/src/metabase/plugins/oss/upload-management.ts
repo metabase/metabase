@@ -1,8 +1,9 @@
 import type { ComponentType } from "react";
 
-import { StorageSetupProvider } from "metabase/common/components/upsells/StoragePurchaseModal/storage-setup-context";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
+
+import { definePluginSlot } from "../slot";
 
 type GdriveConnectionModalProps = {
   isModalOpen: boolean;
@@ -25,14 +26,8 @@ const getDefaultPluginUploadManagement = () => ({
   GdriveAddDataPanel:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
-  StorageSetupProvider,
 });
 
-export const PLUGIN_UPLOAD_MANAGEMENT = getDefaultPluginUploadManagement();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_UPLOAD_MANAGEMENT, getDefaultPluginUploadManagement());
-}
+export const PLUGIN_UPLOAD_MANAGEMENT = definePluginSlot(
+  getDefaultPluginUploadManagement,
+);

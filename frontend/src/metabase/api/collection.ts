@@ -1,11 +1,13 @@
 import type {
   Collection,
   CollectionItemModel,
+  CollectionItemsMetadata,
   CollectionPermissionsGraph,
   CreateCollectionRequest,
   DeleteCollectionRequest,
   GetCollectionDashboardQuestionCandidatesRequest,
   GetCollectionDashboardQuestionCandidatesResult,
+  GetCollectionItemsMetadataRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListCollectionsRequest,
@@ -79,6 +81,21 @@ export const collectionApi = Api.injectEndpoints({
           response?.data ?? [],
           getCollectionItemTagModels(models),
         ),
+        { type: "collection", id: `${id}-items` },
+      ],
+    }),
+    getCollectionItemsMetadata: builder.query<
+      CollectionItemsMetadata,
+      GetCollectionItemsMetadataRequest
+    >({
+      query: ({ id, ...params }) => ({
+        method: "GET",
+        url: `/api/collection/${id}/items/metadata`,
+        params,
+      }),
+      // The metadata describes items of every model, so any item change may invalidate it.
+      providesTags: (_response, _error, { id }) => [
+        ...provideCollectionItemListTags([]),
         { type: "collection", id: `${id}-items` },
       ],
     }),
@@ -211,6 +228,7 @@ export const {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
+  useGetCollectionItemsMetadataQuery,
   useGetCollectionQuery,
   useGetCollectionPermissionsGraphQuery,
   useUpdateCollectionPermissionsGraphMutation,

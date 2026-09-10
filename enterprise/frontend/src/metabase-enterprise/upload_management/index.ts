@@ -1,3 +1,4 @@
+import { PLUGIN_STORAGE_SETUP } from "metabase/common/components/upsells/StoragePurchaseModal";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { StorageSetupProvider } from "metabase-enterprise/storage/StorageSetupProvider";
@@ -26,7 +27,7 @@ export function initializePlugin() {
     PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel = GdriveAddDataPanel;
     // The real storage-setup provider owns the cloud-add-ons purchase
     // endpoints, so it only activates on hosted instances.
-    PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider = StorageSetupProvider;
+    PLUGIN_STORAGE_SETUP.StorageSetupProvider = StorageSetupProvider;
   }
 
   if (hasPremiumFeature("hosting") && hasPremiumFeature("attached_dwh")) {

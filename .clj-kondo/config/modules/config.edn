@@ -1497,6 +1497,7 @@
            metabase.metrics.core}
    :uses #{api
            app-db
+           collections
            events
            lib
            lib-be
@@ -1504,7 +1505,6 @@
            models
            parameters
            permissions
-           queries
            query-processor
            request
            server
