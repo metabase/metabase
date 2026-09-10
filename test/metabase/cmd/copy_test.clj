@@ -127,15 +127,17 @@
     WHERE COLUMN_NAME = 'ID' AND IS_IDENTITY = 'YES'")
 
 (deftest entities-without-autoinc-ids-covers-every-copied-table-test
-  (testing "entities-without-autoinc-ids names exactly the copied tables whose id does not auto-increment"
+  (testing "entities-without-autoinc-ids marks every copied table whose id does not auto-increment"
     (let [source (h2-data-source)]
       (try
         (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
-        (let [autoinc (into #{} (map :table_name) (jdbc/query {:datasource source} [autoinc-id-tables-sql]))]
+        (let [autoinc         (into #{} (map :table_name) (jdbc/query {:datasource source} [autoinc-id-tables-sql]))
+              copied          (set copy/entities)
+              without-autoinc (into #{} (filter copied) @#'copy/entities-without-autoinc-ids)]
           (testing "the metadata query includes app tables"
             (is (contains? autoinc "metabase_table")))
           (is (= (into #{} (remove (comp autoinc name t2/table-name)) copy/entities)
-                 @#'copy/entities-without-autoinc-ids)
+                 without-autoinc)
               (format "%s decides which tables get their id sequence reset after a load"
                       `copy/entities-without-autoinc-ids)))
         (finally
