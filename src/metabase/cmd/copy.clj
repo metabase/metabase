@@ -142,7 +142,19 @@
     :model/MetabotPrompt
     :model/OsiAiContext
     ;; 61+, by table name: migrations create and seed it on every edition, but its model is EE-only
-    :metabot_permissions]
+    :metabot_permissions
+    ;; Not in dependency order, and cannot be: `transform.target_table_id` and `metabase_table.transform_id`
+    ;; point at each other. Order does not matter -- `copy!` defers or disables FK checks for the whole load.
+    :model/Transform
+    :model/TransformTag
+    :model/TransformTransformTag
+    :model/TransformJob
+    :model/TransformJobTransformTag
+    ;; Serialization never exports run history; a whole-instance move keeps it.
+    ;; A run still in flight at dump time arrives marked running, and the transform timeout job reaps it.
+    :model/TransformJobRun
+    :model/TransformRun
+    :model/TransformRunCancelation]
    (when config/ee-available?
      [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
@@ -392,7 +404,9 @@
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue
-    :model/OsiAiContext})
+    :model/OsiAiContext
+    ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
+    :model/TransformRunCancelation})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}
