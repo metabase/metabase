@@ -1,6 +1,6 @@
 (ns metabase.session.db
-  "Application database queries for the session module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for the session module, so that no other namespace in the module runs a query itself
+  (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.db :as auth-identity.db]

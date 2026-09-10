@@ -52,6 +52,7 @@
                               :scim
                               :semantic-search
                               :serialization
+                              :session-management
                               :session-timeout-config
                               :snippet-collections
                               :sso-google
@@ -105,6 +106,7 @@
             :scim                           true
             :semantic_search                true
             :serialization                  true
+            :session-management             true
             :session_timeout_config         true
             :snippet_collections            true
             :sso_google                     true
