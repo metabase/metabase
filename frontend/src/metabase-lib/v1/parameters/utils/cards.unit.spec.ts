@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockField,
@@ -8,7 +9,6 @@ import {
 } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
-import Question from "metabase-lib/v1/Question";
 
 import { getCardUiParameters } from "./cards";
 
@@ -216,7 +216,7 @@ describe("parameters/utils/cards", () => {
 
       it.each([
         ["a saved card", 5],
-        ["an unsaved card", null],
+        ["an unsaved card", undefined],
       ])("matches on %s", (_name, id) => {
         const card = createMockCard({
           id,
