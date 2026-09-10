@@ -1052,8 +1052,6 @@ Limitations are noted for each aggregation and function above, and here they are
 
 **Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**BigQuery**: `Median`.
-
 **Databricks**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
 **Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`, `datetime`, `float`, `splitPart`. Function `regexExtract` and some [type casting functions](#type-casting-functions) are only available for the Druid-JDBC driver.

@@ -93,4 +93,4 @@ If you were self-hosting via a third-party, be sure to clean up and cancel any s
 
 ## Need help?
 
-If you run into any trouble, just [send us an email](https://www.metabase.com/help-premium).
+If you run into any trouble, just [send us an email](https://www.metabase.com/help).
