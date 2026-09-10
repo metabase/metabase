@@ -88,7 +88,7 @@ export function ModelCacheManagementSection({ model }: Props) {
             canManageDB &&
             (isCreating ? (
               <Button
-                variant="subtle"
+                variant="transparent"
                 size="compact-md"
                 c="text-primary"
                 onClick={() => onRefresh(model.id())}
@@ -97,7 +97,7 @@ export function ModelCacheManagementSection({ model }: Props) {
               </Button>
             ) : (
               <Button
-                variant="subtle"
+                variant="transparent"
                 size="compact-md"
                 c="text-primary"
                 aria-label={t`Refresh now`}
