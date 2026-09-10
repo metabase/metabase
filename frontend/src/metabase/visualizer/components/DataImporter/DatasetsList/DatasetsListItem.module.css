@@ -1,57 +1,5 @@
-.DatasetsListItem {
-  cursor: pointer;
-  border-radius: 4px;
-  gap: var(--mantine-spacing-xxs);
-  height: 46px;
-}
-
-.InfoIcon {
-  display: none;
-}
-
 .WarningIcon {
   position: absolute;
   top: 13px;
   left: 11px;
-}
-
-.RemoveButton {
-  display: none;
-}
-
-.DatasetsListItem:hover {
-  color: var(--mb-color-core-brand);
-
-  .InfoIcon {
-    display: unset;
-  }
-
-  .RemoveButton {
-    display: unset;
-  }
-
-  .TableIcon {
-    display: none;
-  }
-
-  .AddButton[data-variant="inverse"] {
-    --button-color: var(--mb-color-core-brand);
-  }
-}
-
-.DatasetsListItemSelected,
-.DatasetsListItemSelected:hover {
-  color: var(--mb-color-text-primary-inverse);
-  background-color: var(--mb-color-core-brand);
-}
-
-.DatasetsListItemActions {
-  display: flex;
-  align-items: center;
-  gap: var(--mantine-spacing-xxs);
-  padding-left: var(--mantine-spacing-xxs);
-}
-
-.AddButton[data-variant="inverse"] {
-  --button-color: var(--mb-color-text-disabled);
 }
