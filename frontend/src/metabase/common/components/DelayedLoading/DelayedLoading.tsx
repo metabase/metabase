@@ -5,7 +5,7 @@ import _ from "underscore";
 import { Flex, Loader, Skeleton, Stack, Text } from "metabase/ui";
 
 export const LoadingSpinner = ({ text }: { text?: string }) => (
-  <Flex align="center" justify="center" h="100%" gap="md">
+  <Flex align="center" justify="center" h="100%" gap="lg">
     <Loader size="lg" />
     {!!text && <Text color="text-secondary">{text}</Text>}
   </Flex>
@@ -64,11 +64,11 @@ export const DelayedSkeleton = ({ delay = 300 }: { delay?: number }) => {
   }
 
   return (
-    <Stack gap="md" data-testid="loading-indicator">
+    <Stack gap="lg" data-testid="loading-indicator">
       {widths.map((width, index) => (
         <Flex key={index} align="center" gap="sm">
-          <Skeleton height="1rem" width="1rem" radius="sm" />
-          <Skeleton height="0.75rem" width={width} radius="sm" />
+          <Skeleton height="1rem" width="1rem" radius="xs" />
+          <Skeleton height="0.75rem" width={width} radius="xs" />
         </Flex>
       ))}
     </Stack>

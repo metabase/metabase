@@ -53,6 +53,19 @@
                       "to the trash, so the parent_id move never happens. Move first, then archive; or "
                       "archive now and pass `parent_id` on a later `archived: false` restore call."))))))
 
+(defn- check-move-out-of-trash!
+  "Reject a `parent_id` move of a trashed `collection` that doesn't say what to do about the trash.
+   Archiving leaves `:location` untouched, so the move would succeed against the collection's
+   pre-trash location and report the new parent while the collection stayed in the trash."
+  [collection args]
+  (when (and (:archived collection)
+             (contains? args :parent_id)
+             (not (contains? args :archived)))
+    (common/throw-teaching-error
+     (str "This collection is in the trash, and `parent_id` on its own would move it without taking it "
+          "out — nothing would appear under the new parent. Pass `archived: false` alongside `parent_id` "
+          "to restore it into the new parent."))))
+
 (defn- resolve-existing
   "Resolve an update's `id` (numeric or entity_id) to the collection behind its read check.
    \"Doesn't exist\" and \"exists but not readable\" collapse into the same not-found error, so
@@ -81,6 +94,7 @@
   [id {:keys [description parent_id archived authority_level], coll-name :name, :as args}]
   (check-method-args! :update args)
   (let [collection (resolve-existing id)]
+    (check-move-out-of-trash! collection args)
     (write-result
      (collections/update-collection!
       (:id collection)
@@ -119,9 +133,10 @@
                                          "restores them. Archiving is the only removal path — there is no hard "
                                          "delete. Omit to leave the collection's trashed state alone.")}]]]
    [:namespace {:optional true}
-    [:maybe [:string {:min 1 :description (str "Create only: puts the collection in a separate hierarchy instead of "
-                                               "the normal one. The only namespace in general use is \"snippets\" "
-                                               "(SQL snippet folders). Omit for a normal collection.")}]]]
+    [:maybe [:enum {:description (str "Create only: puts the collection in a separate hierarchy instead of the "
+                                      "normal one. \"snippets\" holds SQL snippet folders. Omit for a normal "
+                                      "collection.")}
+             "snippets"]]]
    [:authority_level {:optional true}
     [:maybe [:enum {:description (str "Marks the collection Official. Requires an admin on an instance with the "
                                       "Official Collections feature. To make a collection unofficial again, name "
@@ -140,7 +155,9 @@
   level; omitting it on create means your personal collection (the root collection for a namespaced one), and omitting
   it on update leaves the collection where it is.
   You need write access to the parent. archived: true moves the collection and everything in it to the trash, false
-  restores it — there is no hard delete, and omitting archived leaves the trashed state alone. namespace is create-only
+  restores it — there is no hard delete, and omitting archived leaves the trashed state alone. To move something out of
+  the trash, pass archived: false together with parent_id; parent_id on its own would leave it trashed. namespace is
+  create-only
   (\"snippets\" for SQL snippet folders); collections cannot move between namespaces. authority_level \"official\"
   marks the collection Official and needs an admin on an instance with that feature. description and authority_level
   can be set, rewritten, and cleared — to erase one, name it in clear (clear: [\"description\"]); sending null does
@@ -158,7 +175,8 @@
         payload  (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                                     (case op
                                       :create (create! a)
-                                      :update (update! a b)))]
+                                      :update (update! a b))
+                                    nil)]
     ;; text-only, matching the stack convention (see common/success-content): the write echo has no
     ;; concrete programmatic consumer, so it doesn't ride structuredContent.
     (common/success-content payload)))

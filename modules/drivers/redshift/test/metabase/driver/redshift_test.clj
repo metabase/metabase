@@ -322,7 +322,9 @@
         (mt/with-persistence-enabled! [persist-models!]
           (let [details (assoc (:details (mt/db))
                                :schema-filters-type "inclusion"
-                               :schema-filters-patterns "metabase_cache*,20*,pg_*")] ; 20* matches test session schemas
+                               ;; temp_* matches test session schemas, which [[unique-prefix]] names
+                               ;; `temp_<utc-date>_<hour>_<site-uuid>_schema`
+                               :schema-filters-patterns "metabase_cache*,temp_*,pg_*")]
             (mt/with-temp [:model/Card _      {:name          "model"
                                                :type          :model
                                                :dataset_query (mt/mbql-query users)
@@ -332,7 +334,10 @@
                 (persist-models!)
                 (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift db)))]
                   (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
-                    (is (some #(re-matches #"20(.*)" %) synced-schemas)))
+                    ;; the schema this run just loaded `avian-singles` into, rather than anything shaped like a
+                    ;; session schema: it ties the assertion to the name [[unique-prefix]] actually produces, so
+                    ;; renaming those schemas fails here instead of silently emptying the result
+                    (is (contains? synced-schemas (redshift.tx/unique-session-schema))))
                   (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                                                                    "select distinct table_schema from information_schema.tables;"))]
                     (testing "metabase_cache_ tables are excluded from results"
@@ -808,4 +813,26 @@
     (let [[sql & params] (#'redshift/get-tables-sql nil)]
       (is (empty? params))
       (is (not (str/includes? sql "nspname in")))
-      (is (not (str/includes? sql "schemaname in"))))))
+      (is (not (str/includes? sql "schemaname in")))))
+  (testing "per-relation privilege calls are select-list expressions, never predicates"
+    ;; As predicates the planner hoists them over the schema filter and they cost ~10s per sync. See the
+    ;; comment in `get-tables-sql`.
+    (let [[sql]           (#'redshift/get-tables-sql nil)
+          predicate-lines (filter #(re-find #"^\s*(where|and)\b" %) (str/split-lines sql))]
+      (is (str/includes? sql "as selectable"))
+      (is (not-any? #(re-find #"has_(table|any_column)_privilege" %) predicate-lines)))))
+
+(deftest describe-database-tables-drops-unselectable-test
+  (testing "the query no longer filters on privilege, so the caller must, and only a boolean true passes"
+    ;; The other half of the guard above: moving the privilege calls into the select list means an unreadable
+    ;; relation now reaches Clojure, and this is the one place that drops it.
+    (mt/with-temp [:model/Database db {:engine :redshift, :details {}}]
+      (with-redefs [sql-jdbc.execute/reducible-query
+                    (fn [_database _sql]
+                      (for [[nm selectable] [["readable" true]
+                                             ["unreadable" false]
+                                             ["missing" nil]
+                                             ["stringly" "false"]]]
+                        {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
+        (is (= [{:name "readable", :schema "s", :description nil}]
+               (into [] (#'redshift/describe-database-tables db))))))))

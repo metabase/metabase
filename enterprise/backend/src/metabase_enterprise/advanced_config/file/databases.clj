@@ -3,14 +3,14 @@
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [medley.core :as m]
+   [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.quick-task :as quick-task]
-   [toucan2.core :as t2]))
+   [metabase.util.quick-task :as quick-task]))
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
   string?)
@@ -86,7 +86,7 @@
                     {:status-code 400
                      :name        (:name database)
                      :engine      (:engine database)})))
-  (if (t2/exists? :model/Database :is_sample true)
+  (if (advanced-config.db/sample-database-exists?)
     (log/info "Sample Database already present; ignoring is_sample config entry")
     (do
       (log/info (u/format-color :green "Recreating Sample Database from is_sample config entry"))
@@ -104,9 +104,9 @@
       (when (not= magic-request (:delete database))
         (throw (ex-info (format "To delete database %s set `delete` to %s" (pr-str (:name database)) (pr-str magic-request))
                         {:database-name (:name database)})))
-      (when-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
+      (when-let [existing-database-id (advanced-config.db/database-id-by-engine-and-name (:engine database) (:name database))]
         (log/info (u/format-color :blue "Deleting Database %s with ID %s" (:engine database) existing-database-id))
-        (t2/delete! :model/Database existing-database-id)))
+        (advanced-config.db/delete-database! existing-database-id)))
 
     (:is_sample database)
     (init-sample-database! database)
@@ -118,7 +118,7 @@
       (when-not (:is_stub database)
         (driver.u/with-database-network-policy database
           (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)))
-      (if-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
+      (if-let [existing-database-id (advanced-config.db/database-id-by-engine-and-name (:engine database) (:name database))]
         (if (:is_stub database)
           ;; A stub entry is just a placeholder to satisfy serdes references. If a real database
           ;; with this name+engine already exists, leave it alone — overwriting it with `:details {}`
@@ -128,10 +128,10 @@
           (let [database (cond-> database
                            (:is_attached_dwh database) strip-attached-dwh-update-ks)]
             (log/info (u/format-color :blue "Updating Database %s with ID %s" (:engine database) existing-database-id))
-            (t2/update! :model/Database existing-database-id (normalize-settings database))))
+            (advanced-config.db/update-database! existing-database-id (normalize-settings database))))
         (do
           (log/info (u/format-color :green "Creating new %s Database" (:engine database)))
-          (let [db (first (t2/insert-returning-instances! :model/Database (normalize-settings database)))]
+          (let [db (advanced-config.db/insert-database! (normalize-settings database))]
             (cond
               (:is_stub database)
               (log/info "Created stub database; skipping sync.")

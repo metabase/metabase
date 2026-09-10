@@ -39,11 +39,18 @@
 (defn- call-tool!
   "Drive `tool` through the real dispatch seam as `user` with bearer-style `scopes` (nil = internal
    caller, which bypasses the scope gate). `session-id` is fresh per call unless the caller threads
-   one through, so query handles are scoped like a real client's."
+   one through, so query handles are scoped like a real client's.
+
+   `call-tool` answers `{:result …}` once a handler ran, or `{:error …}` when the registry rejects
+   the call before dispatch. Both are presented here in the `{:isError true}` MCP shape a handler
+   error takes, so the helpers below read a refusal as a value without knowing which layer refused."
   ([user scopes tool args] (call-tool! user scopes tool args (str (random-uuid))))
   ([user scopes tool args session-id]
    (mt/with-current-user (mt/user->id user)
-     (registry/call-tool scopes session-id tool args))))
+     (let [{:keys [result error]} (registry/call-tool scopes session-id tool args)]
+       (if error
+         {:isError true :content [{:type "text" :text (:message error)}]}
+         result)))))
 
 (defn- write!
   "Call `transform_write` as an admin holding the write and read-back scopes."
@@ -710,7 +717,14 @@
               (is (re-find #"Pick a different `target.name`" error))))
           (testing "but a target that isn't moving is left alone, so a transform that has already built
                     its own output table stays editable"
-            (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults table-name)]
+            ;; The source reads a different table than the target writes: a transform reading and
+            ;; writing the same table is a self-cycle, refused before the target check it is here
+            ;; to exercise ever runs.
+            (mt/with-temp [:model/Transform {id :id}
+                           (assoc (temp-transform-defaults table-name)
+                                  :source {:type  :query
+                                           :query {:database (mt/id) :type "query"
+                                                   :query {:source-table (mt/id :checkins)}}})]
               (let [result (tool-result (write! {:method      "update" :id id
                                                  :description "touched"
                                                  :target      {:name table-name}}))]

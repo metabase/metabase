@@ -15,6 +15,7 @@
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
    [metabase.lib-be.core :as lib-be]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
@@ -25,8 +26,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.transforms.core :as transforms]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -208,9 +208,7 @@
    noticed only when a schedule doesn't fire."
   [tag-ids]
   (when (seq tag-ids)
-    ;; `into`, not the select's own return: it hands back nil rather than an empty set when no id
-    ;; matches, which is exactly the all-unknown case this exists to catch.
-    (let [known   (into #{} (t2/select-fn-set :id :model/TransformTag :id [:in (distinct tag-ids)]))
+    (let [known   (mcp.db/existing-transform-tag-ids (distinct tag-ids))
           unknown (sort (remove known (distinct tag-ids)))]
       (when (seq unknown)
         (common/throw-teaching-error
@@ -430,5 +428,6 @@
         payload  (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                                     (case op
                                       :create (create! a session-id token-scopes)
-                                      :update (update! a b session-id token-scopes)))]
+                                      :update (update! a b session-id token-scopes))
+                                    nil)]
     (common/success-content payload payload)))

@@ -73,46 +73,6 @@
   (cond-> result
     (map? (:_meta result)) (update :_meta dissoc mcp-apps-meta-key)))
 
-(defn truncation-line
-  "The steering sentence appended to a truncated list response: names the narrowing `param` when
-   one narrows this list, and always the next offset. Returns nil when the page isn't truncated
-   (or `total` is unknown). `:returned` is the actual page size — the caller's ground truth, e.g.
-   `(count data)` — not derived arithmetically, since a post-fetch drop (a stale index hit, an
-   unreadable row) can leave a page shorter than `limit`/`total`/`offset` alone would predict.
-   `:total-floor?` marks `total` as a lower bound rather than an exact count — e.g. a search total
-   capped at the ranking limit — so the sentence reads \"at least N\"."
-  ;; A list with nothing to narrow by still has to say more exists — without a line the caller
-  ;; reads a truncated page as the whole set.
-  [{:keys [param offset limit total total-floor? returned]}]
-  (let [offset (or offset 0)]
-    (when (and total limit (< (+ offset limit) total))
-      (let [total-str (str (when total-floor? "at least ") total)
-            next      (+ offset limit)]
-        (if param
-          (format "Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."
-                  returned total-str (name param) next)
-          (format "Returned %d of %s — continue with `offset: %d`."
-                  returned total-str next))))))
-
-(defn list-envelope
-  "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included
-   when known (offset pagination over the app db usually can count)."
-  ([data] (list-envelope data nil))
-  ([data total]
-   (cond-> {:data data :returned (count data)}
-     (some? total) (assoc :total total))))
-
-(defn list-content
-  "Build the MCP success content for a list response: the envelope (compact JSON) in the text
-   block, with a steering line appended. `data` is already the page; `opts` carries
-   `:offset`/`:limit` and an optional `:param` naming what narrows this list. Text-only —
-   list data never rides `structuredContent` by reflex."
-  [data total opts]
-  (let [envelope (list-envelope data total)
-        line     (truncation-line (assoc opts :total total :returned (count data)))]
-    (success-content (cond-> (json/encode envelope)
-                       line (str "\n" line)))))
-
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
 
 (defn throw-teaching-error
@@ -215,33 +175,7 @@
     :else
     (str errors)))
 
-;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
-
-(defn frontend-url
-  "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
-   when site-url is unset so a tool never emits an absolute URL with an empty host. Always build
-   a tool's `:url` this way — `channel.urls`' own `*-url` fns interpolate site-url directly and
-   render `nil` as the literal string \"null\", which site-url is whenever it is unconfigured or
-   fails validation."
-  [path]
-  (let [base (channel.urls/site-url)]
-    (if (str/blank? base)
-      path
-      (str base path))))
-
-;;; ------------------------------------------------ Response format -----------------------------------------------
-
-(defn response-format
-  "Read `:response_format` from tool arguments: `:concise` (default) or `:detailed`; anything
-   else is a teaching error."
-  [args]
-  (case (get args :response_format)
-    (nil "concise") :concise
-    "detailed"      :detailed
-    (throw-teaching-error (format "Invalid response_format %s — use \"concise\" or \"detailed\"."
-                                  (pr-str (get args :response_format))))))
-
-;;; ------------------------------------------------ fields resolver -----------------------------------------------
+;;; ------------------------------------------------ Response shaping ----------------------------------------------
 
 (def ^:private ^LevenshteinDistance levenshtein
   (LevenshteinDistance/getDefaultInstance))
@@ -251,12 +185,6 @@
   (->> catalog
        (sort-by #(.apply levenshtein path ^String %))
        (take 3)))
-
-(defn- valid-path?
-  "A requested path is valid when it is a catalog entry or a segment-aligned prefix of one
-   (selecting a whole subtree)."
-  [path catalog]
-  (boolean (some #(or (= % path) (str/starts-with? % (str path "."))) catalog)))
 
 (defn- add-path
   "Merge one path (a vector of segments) into the selection tree. `::all` marks a
@@ -288,6 +216,12 @@
                              tree)
     :else              node))
 
+(defn- valid-path?
+  "A requested path is valid when it is a catalog entry or a segment-aligned prefix of one
+   (selecting a whole subtree)."
+  [path catalog]
+  (boolean (some #(or (= % path) (str/starts-with? % (str path "."))) catalog)))
+
 (defn select-fields
   "Narrow `response-map` (the permission-filtered built response for one item of `type`,
    never a raw model row) to the requested `fields` dot-paths. Paths are validated against
@@ -310,11 +244,107 @@
                                        (str/join ", " (nearest-paths path catalog))))))
      (select-tree response-map (paths->tree fields)))))
 
+(defn response-format
+  "Read `:response_format` from tool arguments: `:concise` (default) or `:detailed`; anything
+   else is a teaching error."
+  [args]
+  (case (get args :response_format)
+    (nil "concise") :concise
+    "detailed"      :detailed
+    (throw-teaching-error (format "Invalid response_format %s — use \"concise\" or \"detailed\"."
+                                  (pr-str (get args :response_format))))))
+
+;;; ------------------------------------------------ List envelopes ------------------------------------------------
+
+(defn truncation-line
+  "The steering sentence appended to a truncated list response: names the narrowing `param` when
+   one narrows this list, and always the next offset. Returns nil when the page isn't truncated
+   (or `total` is unknown). `:returned` is the actual page size — the caller's ground truth, e.g.
+   `(count data)` — not derived arithmetically, since a post-fetch drop (a stale index hit, an
+   unreadable row) can leave a page shorter than `limit`/`total`/`offset` alone would predict.
+   `:total-floor?` marks `total` as a lower bound rather than an exact count — e.g. a search total
+   capped at the ranking limit — so the sentence reads \"at least N\"."
+  ;; A list with nothing to narrow by still has to say more exists — without a line the caller
+  ;; reads a truncated page as the whole set.
+  [{:keys [param offset limit total total-floor? returned]}]
+  (let [offset (or offset 0)]
+    (when (and total limit (< (+ offset limit) total))
+      (let [total-str (str (when total-floor? "at least ") total)
+            next      (+ offset limit)]
+        (if param
+          (format "Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."
+                  returned total-str (name param) next)
+          (format "Returned %d of %s — continue with `offset: %d`."
+                  returned total-str next))))))
+
+(defn- empty-page-line
+  "The steering sentence for a page that returned nothing while `total` says matches exist.
+   [[truncation-line]] only fires on arithmetic truncation, so an offset at or past the end — or a
+   page whose every row was dropped after the count — otherwise carries no line at all, and an
+   empty `data` reads as \"nothing matches\" rather than \"nothing *here*\". Nil when `total` is
+   unknown or genuinely zero: that envelope already says it."
+  [{:keys [offset total total-floor?]}]
+  (when (and total (pos? total))
+    (let [total-str (str (when total-floor? "at least ") total)]
+      (if (pos? (or offset 0))
+        (format "No results at offset %d — %s available; page back with a smaller `offset`."
+                offset total-str)
+        ;; offset 0 with a positive total: the matches were counted, then dropped downstream
+        ;; (a stale index hit, a row gone unreadable). Paging cannot help, so don't suggest it.
+        (format "Returned 0 of %s — the matches found are no longer readable or have been removed."
+                total-str)))))
+
+(defn list-envelope
+  "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included
+   when known (offset pagination over the app db usually can count)."
+  ([data] (list-envelope data nil))
+  ([data total]
+   (cond-> {:data data :returned (count data)}
+     (some? total) (assoc :total total))))
+
+(defn list-content
+  "Build the MCP success content for a list response: the envelope (compact JSON) in the text
+   block, with a steering line appended. `data` is already the page; `opts` carries
+   `:offset`/`:limit`, an optional `:param` naming what narrows this list, and an optional
+   `:empty-hint` — the domain reason a genuinely empty result set (`total` 0) is empty, never an
+   override of a computed line. Text-only — list data never rides `structuredContent` by reflex."
+  [data total {:keys [empty-hint offset] :as opts}]
+  (let [envelope (list-envelope data total)
+        opts     (assoc opts :total total :returned (count data))
+        ;; The two empty-page sentences answer different questions, so `:empty-hint` is gated on a
+        ;; zero total rather than merely losing a race with [[empty-page-line]]: telling someone who
+        ;; paged past the end "nothing is visible to you" would be factually false. The offset is
+        ;; part of that gate, not just the total: [[empty-page-line]] declines at `total` 0 for any
+        ;; offset, so without it a caller who paged past the end of an empty list still reads the
+        ;; hint as the reason.
+        line     (if (empty? data)
+                   (or (empty-page-line opts)
+                       (when (and (= 0 total) (not (pos? (or offset 0)))) empty-hint))
+                   (truncation-line opts))]
+    (success-content (cond-> (json/encode envelope)
+                       line (str "\n" line)))))
+
+;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
+
+(defn frontend-url
+  "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
+   when site-url is unset so a tool never emits an absolute URL with an empty host. Always build
+   a tool's `:url` this way — `channel.urls`' own `*-url` fns interpolate site-url directly and
+   render `nil` as the literal string \"null\", which site-url is whenever it is unconfigured or
+   fails validation."
+  [path]
+  (let [base (channel.urls/site-url)]
+    (if (str/blank? base)
+      path
+      (str base path))))
+
 ;;; ------------------------------------------------ Shared schemas ------------------------------------------------
 
 (def card-display-values
-  "Visualization types a card (or an MCP Apps visualization) can render as."
-  ["table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
+  "Visualization types a card (or an MCP Apps visualization) can render as. `list` is the model list
+   view — one of the two displays the model editor offers, so a tool that omits it can neither build
+   a list-view model nor leave one alone when updating it."
+  ["table" "list" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
    "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
 
 (def card-display-enum
