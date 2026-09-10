@@ -46,25 +46,32 @@
   ([tool-name session-id arguments options]
    (registry/call-tool viz-scopes session-id tool-name arguments options)))
 
+(defn- dispatch-error?
+  "Whether a [[call!]] outcome is an error, at either layer: a registry rejection before
+   dispatch, or a handler that set `:isError`."
+  [{:keys [result error]}]
+  (boolean (or error (:isError result))))
+
 (defn- response-text
-  [result]
-  (-> result :content first :text))
+  "The outcome's text block, or a registry-level rejection's message."
+  [{:keys [result error]}]
+  (if error (:message error) (-> result :content first :text)))
 
 (defn- payload
   "The `structuredContent` of a successful response. Throws if the tool errored, so a
    tool-level error can never masquerade as an empty payload."
-  [result]
-  (when (:isError result)
-    (throw (ex-info "expected success, got tool error" {:result result})))
-  (:structuredContent result))
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info "expected success, got tool error" {:outcome outcome})))
+  (-> outcome :result :structuredContent))
 
 (defn- error-text
   "The message of a tool-level error. Throws if the call succeeded, so a passing call can
    never satisfy an error assertion."
-  [result]
-  (when-not (:isError result)
-    (throw (ex-info "expected tool error, got success" {:result result})))
-  (response-text result))
+  [outcome]
+  (when-not (dispatch-error? outcome)
+    (throw (ex-info "expected tool error, got success" {:outcome outcome})))
+  (response-text outcome))
 
 (defn- orders-query
   "A portable MBQL 5 query over the sample Orders table."
@@ -172,9 +179,9 @@
     (let [sid (str (random-uuid))
           mp  (lib-be/application-database-metadata-provider (mt/id))]
       (testing "GHY-4157: inline `query` is MBQL 5 only, matching execute_query — SQL arrives by handle"
-        (is (:isError (call! "visualize_query" sid
-                             {:query (lib/prepare-for-serialization
-                                      (lib/native-query mp "SELECT 1 AS n"))})))))))
+        (is (dispatch-error? (call! "visualize_query" sid
+                                    {:query (lib/prepare-for-serialization
+                                             (lib/native-query mp "SELECT 1 AS n"))})))))))
 
 (deftest visualize-query-unknown-handle-test
   (mt/with-current-user (mt/user->id :rasta)
@@ -191,7 +198,7 @@
                    (mint-mbql-handle! sid (mt/user->id :crowberto)))]
       (testing "GHY-4157: another user's handle is not resolvable — the handle is not a bearer credential"
         (mt/with-current-user (mt/user->id :rasta)
-          (is (:isError (call! "visualize_query" sid {:query_handle handle}))))))))
+          (is (dispatch-error? (call! "visualize_query" sid {:query_handle handle}))))))))
 
 ;;; -------------------------------------------- render_drill_through ----------------------------------------------
 
