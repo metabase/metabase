@@ -1,6 +1,6 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding
   (:require
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -49,15 +49,12 @@
                   :analysis_version *current-analysis-finding-version*
                   :result result
                   :stale false}
-          existing-id (t2/select-one-fn :id [:model/AnalysisFinding :id]
-                                        :analyzed_entity_type type
-                                        :analyzed_entity_id instance-id)]
+          existing-id (dependencies.db/finding-id type instance-id)]
       (if existing-id
-        (t2/update! :model/AnalysisFinding existing-id update)
-        (t2/insert! :model/AnalysisFinding
-                    (assoc update
-                           :analyzed_entity_type type
-                           :analyzed_entity_id instance-id)))
+        (dependencies.db/update-finding! existing-id update)
+        (dependencies.db/insert-finding! (assoc update
+                                                :analyzed_entity_type type
+                                                :analyzed_entity_id instance-id)))
       (deps.analysis-finding-error/replace-errors-for-entity!
        type
        instance-id
@@ -72,44 +69,22 @@
   Entities without existing findings are ignored - they'll be picked up by the normal job flow."
   [entity-type entity-ids]
   (doseq [batch (partition-all mark-stale-batch-size entity-ids)]
-    (t2/update! :model/AnalysisFinding
-                :analyzed_entity_type entity-type
-                :analyzed_entity_id [:in batch]
-                {:stale true})))
+    (dependencies.db/mark-findings-stale! entity-type batch)))
 
 (defn has-stale-entities?
   "Check if there are any stale analysis records."
   []
-  (t2/exists? :model/AnalysisFinding :stale true))
+  (dependencies.db/stale-finding-exists?))
 
 (defn stale-entity-count
   "Number of analysis findings currently marked stale, across all entity types. Used by the entity-check drain loop to
   detect whether it is still making progress."
   []
-  (t2/count :model/AnalysisFinding :stale true))
+  (dependencies.db/stale-finding-count))
 
 (defn instances-for-analysis
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` with missing, outdated,
   or stale AnalysisFindings.
   Prioritizes stale entities (stale=true) over outdated version entities."
   [entity-type batch-size]
-  (let [model (deps.dependency-types/dependency-type->model entity-type)
-        table-name (t2/table-name model)
-        id-field (keyword (name table-name) "id")
-        table-wildcard (keyword (name table-name) "*")]
-    (t2/select model
-               {:select [table-wildcard]
-                :from table-name
-                :left-join [:analysis_finding [:and
-                                               [:= :analysis_finding.analyzed_entity_id id-field]
-                                               [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-                :where [:or
-                        [:= :analysis_finding.stale true] ; stale analysis
-                        [:<                               ; missing or outdated analysis
-                         [:coalesce :analysis_finding.analysis_version 0]
-                         *current-analysis-finding-version*]]
-                ;; stale first, then oldest-analyzed first so a sub-backlog batch round-robins through
-                ;; the stale set instead of starving a DB-arbitrary subset.
-                :order-by [[[:case [:= :analysis_finding.stale true] [:inline 0] :else [:inline 1]]]
-                           [:analysis_finding.analyzed_at :asc]]
-                :limit batch-size})))
+  (dependencies.db/instances-for-analysis entity-type batch-size *current-analysis-finding-version*))

@@ -14,6 +14,7 @@
    [metabase.events.core :as events]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
@@ -87,7 +88,7 @@
   [collection-id]
   (if (nil? collection-id)
     (:name (collection/root-collection-with-ui-details nil))
-    (t2/select-one-fn :name :model/Collection :id collection-id)))
+    (metabot.db/collection-name collection-id)))
 
 (defn- save-to-collection!
   [{:keys [name description dataset_query display destination]}]
@@ -128,7 +129,7 @@
                 :delay-event)]
       {:card             card
        :destination      {:type "dashboard" :id dashboard-id}
-       :destination-name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
+       :destination-name (metabot.db/dashboard-name dashboard-id)
        :link             (str "metabase://dashboard/" dashboard-id)})))
 
 (defn- save-to-document!
@@ -215,9 +216,7 @@
                           "dashboard"  (save-to-dashboard! args)
                           "document"   (save-to-document! args))]
               (when-let [conversation-id (shared/current-conversation-id)]
-                (t2/update! (t2/table-name :model/Card) (:id (:card saved))
-                            {:metabot_conversation_id conversation-id
-                             :metabot_chart_id        chart_id}))
+                (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart_id))
               saved))
           _ (events/publish-event! :event/card-create
                                    {:object card :user-id api/*current-user-id*})

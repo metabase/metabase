@@ -28,15 +28,15 @@ export function ToolCallDetailsSidebar({
   return (
     <Stack
       className={S.sidebar}
-      p="lg"
-      gap="lg"
+      p="xl"
+      gap="xl"
       bg="background_page-primary"
       data-testid="tool-call-details-sidebar"
       role="region"
       aria-labelledby={headingId}
     >
-      <Stack gap="xs">
-        <Flex align="center" justify="space-between" gap="md" wrap="nowrap">
+      <Stack gap="xxs">
+        <Flex align="center" justify="space-between" gap="lg" wrap="nowrap">
           <Text id={headingId} fw="bold">{t`Tool Call`}</Text>
           <ActionIcon
             ref={closeButtonRef}

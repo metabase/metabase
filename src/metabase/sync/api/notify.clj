@@ -7,12 +7,12 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,10 +38,10 @@
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
-    (api/let-404 [database (t2/select-one :model/Database :id id)]
+    (api/let-404 [database (sync.db/database id)]
       (let [table (cond
-                    table_id   (api/check-404 (t2/select-one :model/Table :db_id id, :id (int table_id)))
-                    table_name (api/check-404 (t2/select-one :model/Table :db_id id, :name table_name)))]
+                    table_id   (api/check-404 (sync.db/table-in-database id (int table_id)))
+                    table_name (api/check-404 (sync.db/table-by-name id table_name)))]
         (cond-> (future (if table
                           (table-sync-fn table)
                           (db-sync-fn database)))
@@ -88,11 +88,11 @@
                                                      [:table_name   {:optional true} [:maybe ms/NonBlankString]]
                                                      [:schema_name  {:optional true} [:maybe string?]]
                                                      [:synchronous? {:default false} [:maybe ms/BooleanValue]]]]
-  (api/let-404 [database (t2/select-one :model/Database :is_attached_dwh true)]
+  (api/let-404 [database (sync.db/attached-dwh-database)]
     (if (str/blank? table_name)
       (cond-> (future (sync-metadata/sync-db-metadata! database))
         synchronous? deref)
-      (if-let [table (t2/select-one :model/Table :db_id (:id database), :name table_name :schema schema_name)]
+      (if-let [table (sync.db/table-by-schema-and-name (:id database) schema_name table_name)]
         (cond-> (future (sync-metadata/sync-table-metadata! table))
           synchronous? deref)
         ;; find and sync is always synchronous. And we want it to be so since the "can't find this table" error is
@@ -113,8 +113,8 @@
    {:keys [schema_name table_name]} :- [:map
                                         [:schema_name ms/NonBlankString]
                                         [:table_name  ms/NonBlankString]]]
-  (api/let-404 [database (t2/select-one :model/Database :id id)]
-    (if-not (t2/select-one :model/Table :db_id id :name table_name :schema schema_name)
+  (api/let-404 [database (sync.db/database id)]
+    (if-not (sync.db/table-by-schema-and-name id schema_name table_name)
       (find-and-sync-new-table database table_name schema_name)
       (throw (without-stacktrace
               (ex-info (trs "Table ''{0}.{1}'' already exists"

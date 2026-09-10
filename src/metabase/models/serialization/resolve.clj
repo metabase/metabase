@@ -54,15 +54,14 @@
   "Whether bare numeric table/field/card ids are accepted alongside portable references inside
   a query body being resolved.
 
-  False — the default and today's only live value: this PR lands the flag ahead of its readers,
-  so current behavior is unchanged. The agent-lib dialect rework (a later PR in this stack)
-  adds the schema predicate that consults it, and the v2 MCP query pipeline is the first binder
-  (it binds true for the duration of a resolve). False stays the safe direction: a numeric id
-  is rejected with a teaching error rather than resolved against whatever row happens to carry
-  that id.
+  False is the default, and the safe direction: a numeric id is rejected with a teaching error
+  rather than resolved against whatever row happens to carry that id. True means the caller has
+  established that its surface may author bare ids, and accepts that every id it passes is an
+  untrusted integer — so the readers gated on this flag re-derive, explicitly, the guarantees a
+  portable reference gets for free from resolving a name (in this database, visible, readable).
 
-  It is ambient rather than a parameter because its eventual reader is a registered Malli
-  schema predicate, which has no call site to thread a value through."
+  It is ambient rather than a parameter because one of its readers is a registered Malli schema
+  predicate, which has no call site to thread a value through."
   false)
 
 ;;; ============================================================
@@ -81,6 +80,28 @@
   [s]
   (and (string? s)
        (entity-id? s)))
+
+(defn- numeric-source-id?
+  "True for a bare numeric content id, and only on a surface that accepts them (see
+  [[*numeric-ids-allowed?*]]). Off that surface a number in a source slot is not a reference at
+  all, so it must not match — that is what keeps the portable-only surface's behavior unchanged."
+  [x]
+  (and (pos-int? x) *numeric-ids-allowed?*))
+
+(defn- content-ref?
+  "True for any reference to Metabase content the numeric dialect covers — a card, metric,
+  segment, or measure — that this surface may author: a portable entity_id, or, on the
+  numeric-id surface, a bare id. Snippets are deliberately not included; see the `snippet-id`
+  branch below.
+
+  Every `import-mbql` branch that resolves content goes through this one predicate rather than
+  matching `portable-id?` and gaining a numeric twin. The numeric form needs no translation, but
+  it must still reach `import-fk`, because that is what consults the content store — and on
+  agent paths the store is `read-checked`, so the lookup *is* the permission check. A branch
+  that matched only the portable form would silently let a numeric id past it unchecked."
+  [x]
+  (or (portable-id? x)
+      (numeric-source-id? x)))
 
 (defn serialized-query-source-table
   "Given a serialized query (with portable references), returns the portable reference of the table it is based
@@ -121,31 +142,31 @@
                            (import-fk-keyed resolver fully-qualified-name :model/Database :name)))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:card-id (entity-id :guard portable-id?)}
+    {:card-id (entity-id :guard content-ref?)}
     (-> &match
         (assoc :card-id (import-fk resolver entity-id 'Card))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    [#{:metric "metric"} opts (entity-id :guard portable-id?)]
+    [#{:metric "metric"} opts (entity-id :guard content-ref?)]
     [:metric (mbql-fully-qualified-names->ids* resolver opts)
      (import-fk resolver entity-id 'Card)]
 
-    [#{:segment "segment"} opts (entity-id :guard portable-id?)]
+    [#{:segment "segment"} opts (entity-id :guard content-ref?)]
     [:segment (mbql-fully-qualified-names->ids* resolver opts)
      (import-fk resolver entity-id 'Segment)]
 
-    [#{:measure "measure"} opts (entity-id :guard portable-id?)]
+    [#{:measure "measure"} opts (entity-id :guard content-ref?)]
     [:measure (mbql-fully-qualified-names->ids* resolver opts)
      (import-fk resolver entity-id 'Measure)]
 
     ;; support legacy MBQL 4 refs for things like the serialized Audit v2 queries
-    [#{:metric "metric"} (entity-id :guard portable-id?)]
+    [#{:metric "metric"} (entity-id :guard content-ref?)]
     [:metric (import-fk resolver entity-id 'Card)]
 
-    [#{:segment "segment"} (entity-id :guard portable-id?)]
+    [#{:segment "segment"} (entity-id :guard content-ref?)]
     [:segment (import-fk resolver entity-id 'Segment)]
 
-    [#{:measure "measure"} (entity-id :guard portable-id?)]
+    [#{:measure "measure"} (entity-id :guard content-ref?)]
     [:measure (import-fk resolver entity-id 'Measure)]
 
     {:source-table (_ :guard vector?)}
@@ -164,11 +185,15 @@
         (assoc :source-table (str "card__" (import-fk resolver id 'Card)))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:source-card (id :guard portable-id?)}
+    {:source-card (id :guard content-ref?)}
     (-> &match
         (assoc :source-card (import-fk resolver id 'Card))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
+    ;; Portable only, deliberately. The numeric dialect does not cover snippets: no resolver
+    ;; implements `NativeQuerySnippet`, so a numeric one would fall through `import-fk`'s model
+    ;; tests to `not-implemented!` and surface as a bare 501 with no `:agent-error?` — never
+    ;; reaching the read-checked store. Widening this needs a store-backed snippet branch first.
     {:snippet-id (id :guard portable-id?)}
     (-> &match
         (assoc :snippet-id (import-fk resolver id 'NativeQuerySnippet))

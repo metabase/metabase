@@ -29,7 +29,7 @@ const ModalHeader = ({
   pathOptions,
 }: ModalHeaderProps): JSX.Element => {
   return (
-    <Box p="xl" pb={0}>
+    <Box p="xxl" pb={0}>
       <Flex align="center">
         <HeaderLink onClick={onGoBack}>
           {onGoBack && <HeaderBackIcon name="chevronleft" />}
@@ -50,7 +50,7 @@ const ModalHeader = ({
         )}
       </Flex>
       {pathOptions?.showPath && (
-        <Group gap="xs" align="center">
+        <Group gap="xxs" align="center">
           {c("Refers to: 'Events' in a collection").t`in`}
           <Icon name="folder" c="text-disabled" />
           {pathOptions.collectionName}

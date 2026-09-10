@@ -24,14 +24,46 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *last-lookup-refused?*
+  "Set to `true` by [[read-checked]] when a lookup was refused on permissions rather than simply
+  missing.
+
+  The two are deliberately indistinguishable to the *agent* — same status, same error key, so a
+  guessable id cannot be used to probe for hidden content. Some internal callers still need to
+  tell them apart: `llm-shape/export-query-for-llm` renders nothing at all for a refusal but
+  falls back to pretty-printed EDN for a genuine export failure, and without this it would print
+  the raw query for a card the caller may not read. Bind it per lookup and read it after; it says
+  nothing about *which* row was refused, so it cannot itself become an oracle."
+  (atom false))
+
 (defn- maybe-read-check
   "Apply `api/read-check` when `*current-user-id*` is bound; otherwise return the row
   unchanged. Returning `nil` propagates through (no row → nothing to check; the
-  per-model resolver functions translate `nil` into a clean `:unknown-…` agent error)."
-  [row]
+  per-model resolver functions translate `nil` into a clean `:unknown-…` agent error).
+
+  `collapse-denial?` decides what a denial looks like, and the two surfaces want opposite
+  things:
+
+  - **By numeric id** (`collapse-denial?` true): return `nil`, so \"exists but you may not read
+    it\" and \"does not exist\" reach the caller as the same `:unknown-…` error. Numeric ids are
+    sequential and trivially guessable, so a distinguishable denial is an existence oracle.
+  - **By entity_id** (`collapse-denial?` false): let the 403 through. A 21-character NanoID is
+    not guessable, so there is nothing to enumerate, and callers rely on the accurate status —
+    `POST /api/agent/v2/construct-query` returns 403 for a metric whose card the caller cannot
+    read, and `llm-shape/export-query-for-llm` suppresses its EDN fallback on one.
+
+  Either way the refusal is recorded in [[*last-lookup-refused?*]] for callers that need to know
+  a denial happened without depending on the status."
+  [collapse-denial? row]
   (cond
     (nil? row)              nil
-    api/*current-user-id*   (api/read-check row)
+    api/*current-user-id*   (try
+                              (api/read-check row)
+                              (catch clojure.lang.ExceptionInfo e
+                                (if (= 403 (:status-code (ex-data e)))
+                                  (do (reset! *last-lookup-refused?* true)
+                                      (when-not collapse-denial? (throw e)))
+                                  (throw e))))
     :else                   row))
 
 (defn read-checked
@@ -39,12 +71,13 @@
   bound. Symmetric across all six `ContentStore` methods."
   [store]
   (reify resolve.mp/ContentStore
-    (card-by-entity-id    [_ eid] (maybe-read-check (resolve.mp/card-by-entity-id    store eid)))
-    (measure-by-entity-id [_ eid] (maybe-read-check (resolve.mp/measure-by-entity-id store eid)))
-    (segment-by-entity-id [_ eid] (maybe-read-check (resolve.mp/segment-by-entity-id store eid)))
-    (card-by-id           [_ id]  (maybe-read-check (resolve.mp/card-by-id           store id)))
-    (measure-by-id        [_ id]  (maybe-read-check (resolve.mp/measure-by-id        store id)))
-    (segment-by-id        [_ id]  (maybe-read-check (resolve.mp/segment-by-id        store id)))))
+    ;; entity_id lookups keep the 403; numeric-id lookups collapse it. See [[maybe-read-check]].
+    (card-by-entity-id    [_ eid] (maybe-read-check false (resolve.mp/card-by-entity-id    store eid)))
+    (measure-by-entity-id [_ eid] (maybe-read-check false (resolve.mp/measure-by-entity-id store eid)))
+    (segment-by-entity-id [_ eid] (maybe-read-check false (resolve.mp/segment-by-entity-id store eid)))
+    (card-by-id           [_ id]  (maybe-read-check true  (resolve.mp/card-by-id           store id)))
+    (measure-by-id        [_ id]  (maybe-read-check true  (resolve.mp/measure-by-id        store id)))
+    (segment-by-id        [_ id]  (maybe-read-check true  (resolve.mp/segment-by-id        store id)))))
 
 (def default-store
   "The standard agent / tool-path content store: `unchecked-app-db-content-store` wrapped with

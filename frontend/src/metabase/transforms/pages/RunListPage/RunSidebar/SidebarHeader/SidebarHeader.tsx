@@ -50,7 +50,7 @@ export function SidebarHeader({ run, onClose }: SidebarHeaderProps) {
       >
         {label}
       </Anchor>
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xxs" wrap="nowrap">
         {transform != null && (
           <Tooltip
             label={t`View this transform`}
