@@ -29,6 +29,15 @@ const NEXT_QUERY_RESULT: McpUiToolResultNotification["params"] = {
   structuredContent: { query: "next-encoded-query" },
 };
 
+/**
+ * What the v2 tools actually emit. `visualize_query` and `render_drill_through`
+ * return only a handle, so a bundle that reads `query` alone renders nothing.
+ */
+const HANDLE_RESULT: McpUiToolResultNotification["params"] = {
+  content: [],
+  structuredContent: { query_handle: "0f2a1c33-4b5e-4a6f-8c7d-9e0a1b2c3d4e" },
+};
+
 const createAuthResult = (
   credential = "refreshed-credential",
   sessionId = "mcp-session-id",
@@ -64,6 +73,12 @@ const setup = (overrides: Partial<TestMcpApp> = {}) => {
   return { app, ...renderHook(() => useMcpApp()) };
 };
 
+const mockFetchQueryByHandle = jest.fn();
+
+jest.mock("../api", () => ({
+  fetchQueryByHandle: (...args: unknown[]) => mockFetchQueryByHandle(...args),
+}));
+
 jest.mock("@modelcontextprotocol/ext-apps/react", () => ({
   applyDocumentTheme: jest.fn(),
   applyHostFonts: jest.fn(),
@@ -77,6 +92,7 @@ describe("useMcpApp", () => {
     jest.restoreAllMocks();
 
     mockUseApp.mockReset();
+    mockFetchQueryByHandle.mockReset();
   });
 
   it("gets auth from the server tool instead of the visualization result", async () => {
@@ -382,5 +398,82 @@ describe("useMcpApp", () => {
     });
     expect(result.current.uiCredential).toBe("");
     expect(result.current.mcpSessionId).toBe("");
+  });
+
+  // The v2 tools emit `{query_handle}` and nothing else. Before these tests the
+  // suite covered only v1's inline `{query}` shape, so it stayed green while
+  // every v2 tool result left the iframe on a permanent loading spinner.
+  describe("v2 query_handle payloads", () => {
+    it("resolves a handle into a query once the credential exists", async () => {
+      mockFetchQueryByHandle.mockResolvedValue({
+        query: "resolved-encoded-query",
+        prompt: "show me orders",
+      });
+
+      const { app, result } = setup({
+        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
+        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+      });
+
+      act(() => {
+        app.ontoolresult(HANDLE_RESULT);
+      });
+
+      await waitFor(() => {
+        expect(result.current.query).toBe("resolved-encoded-query");
+      });
+
+      expect(result.current.prompt).toBe("show me orders");
+      expect(result.current.queryError).toBeNull();
+
+      // Resolved with the credential from this refresh, not from React state,
+      // which has not committed at the time the callback fires.
+      expect(mockFetchQueryByHandle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryHandle: "0f2a1c33-4b5e-4a6f-8c7d-9e0a1b2c3d4e",
+          uiCredential: "refreshed-credential",
+          mcpSessionId: "mcp-session-id",
+        }),
+      );
+    });
+
+    it("surfaces an error instead of spinning forever when a handle will not resolve", async () => {
+      mockFetchQueryByHandle.mockRejectedValue(
+        Object.assign(new Error("gone"), { status: 404 }),
+      );
+      jest.spyOn(console, "error").mockImplementation(() => {});
+
+      const { app, result } = setup({
+        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
+        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+      });
+
+      act(() => {
+        app.ontoolresult(HANDLE_RESULT);
+      });
+
+      await waitFor(() => {
+        expect(result.current.queryError).toMatch(/expired/i);
+      });
+
+      expect(result.current.query).toBeNull();
+    });
+
+    it("still renders v1's inline query without calling the resolve endpoint", async () => {
+      const { app, result } = setup({
+        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
+        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+      });
+
+      act(() => {
+        app.ontoolresult(QUERY_RESULT);
+      });
+
+      await waitFor(() => {
+        expect(result.current.query).toBe("encoded-query");
+      });
+
+      expect(mockFetchQueryByHandle).not.toHaveBeenCalled();
+    });
   });
 });
