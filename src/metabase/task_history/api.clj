@@ -22,7 +22,7 @@
 (api.macros/defendpoint :get "/"
   "Fetch a list of recent tasks stored as Task History"
   [_
-   params :- [:maybe [:merge task-history/FilterParams task-history/SortParams]]]
+   params :- [:maybe task-history/FilterAndSortParams]]
   (perms/check-has-application-permission :monitoring)
   {:total  (task-history/total params)
    :limit  (request/limit)
@@ -35,7 +35,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `TaskHistory` entry with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-404 (api/read-check :model/TaskHistory id)))
 
@@ -69,7 +69,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mr/def ::RunFilterParams
-  [:map
+  [:map {:closed true}
    [:run-type    {:optional true} (into [:enum] (map name task-run/run-types))]
    [:entity-type {:optional true} (into [:enum] (map name task-run/entity-types))]
    [:entity-id   {:optional true} ms/PositiveInt]
@@ -81,7 +81,7 @@
   #{:started_at :ended_at :run_type :status :entity_name :task_count})
 
 (mr/def ::RunSortParams
-  [:map
+  [:map {:closed true}
    [:sort-column    {:default :started_at} (into [:enum] run-sort-columns)]
    [:sort-direction {:default :desc}       [:enum :asc :desc]]])
 
@@ -204,7 +204,7 @@
 
 (api.macros/defendpoint :get "/runs/:id" :- ::TaskRunWithTasks
   "Get a single task run with all its child tasks."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
   (let [run   (api/check-404 (task-history.db/task-run id))
         tasks (task-history.db/tasks-for-run id)]
@@ -217,7 +217,7 @@
 (api.macros/defendpoint :get "/runs/entities" :- [:sequential ::RunEntity]
   "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker."
   [_
-   params :- [:map
+   params :- [:map {:closed true}
               [:run-type   (into [:enum] (map name task-run/run-types))]
               [:started-at ms/NonBlankString]]]
   (perms/check-has-application-permission :monitoring)

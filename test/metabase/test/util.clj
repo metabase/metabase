@@ -152,7 +152,7 @@
    (fn [_] (default-timestamped
             {:target_type "document"
              :creator_id  (rasta-id)
-             :content     {:text (u.random/random-name)}}))
+             :content     {:type "text", :text (u.random/random-name)}}))
 
    :model/Dashboard
    (fn [_] (default-timestamped

@@ -52,9 +52,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `Field` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {include-editable-data-model? :include_editable_data_model} :- [:map
+   {include-editable-data-model? :include_editable_data_model} :- [:map {:closed true}
                                                                    [:include_editable_data_model {:default false} ms/BooleanValue]]]
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
 
@@ -63,7 +63,7 @@
   "Get unique Table IDs for a list of Field IDs."
   [_route-params
    _query-params
-   {:keys [field_ids]} :- [:map
+   {:keys [field_ids]} :- [:map {:closed true}
                            [:field_ids [:sequential ms/PositiveInt]]]]
   (api/check-400 (<= (count field_ids) max-field-ids-for-table-id-lookup)
                  (format "field_ids may contain at most %d IDs." max-field-ids-for-table-id-lookup))
@@ -140,13 +140,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update `Field` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {display-name      :display_name
     coercion-strategy :coercion_strategy
     json-unfolding    :json_unfolding
-    :as body} :- [:map
+    :as body} :- [:map {:closed true}
                   [:caveats            {:optional true} [:maybe ms/NonBlankString]]
                   [:description        {:optional true} [:maybe ms/NonBlankString]]
                   [:display_name       {:optional true} [:maybe ms/NonBlankString]]
@@ -157,7 +157,7 @@
                   [:visibility_type    {:optional true} [:maybe FieldVisibilityType]]
                   [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
                   [:has_field_values   {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]
-                  [:settings           {:optional true} [:maybe ms/Map]]
+                  [:settings           {:optional true} [:maybe ms/VisualizationSettings]]
                   [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
                   [:json_unfolding     {:optional true} [:maybe :boolean]]]]
   (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
@@ -209,14 +209,15 @@
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (-> (warehouse-schema-rest.db/field id)
-                 (t2/hydrate :dimensions :has_field_values)
-                 (field/hydrate-target-with-write-perms))
-      (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
-      (when (not= effective-type (:effective_type field))
-        (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
-        ;; Run with admin perms to match behavior during normal sync.
-        (quick-task/submit-task! (fn [] (request/as-admin (sync/refingerprint-field! <>))))))))
+    (let [updated (warehouse-schema-rest.db/field id)]
+      (u/prog1 (-> updated
+                   (t2/hydrate :dimensions :has_field_values)
+                   (field/hydrate-target-with-write-perms))
+        (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
+        (when (not= effective-type (:effective_type field))
+          (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
+          ;; Run with admin perms to match behavior during normal sync.
+          (quick-task/submit-task! (fn [] (request/as-admin (sync/refingerprint-field! updated)))))))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 
@@ -226,7 +227,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [field (api/read-check :model/Field id)]
     [[:count     (metadata-from-qp/field-count field)]
@@ -240,11 +241,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/dimension"
   "Sets the dimension for the given field at ID"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {dimension-type :type, dimension-name :name, human-readable-field-id :human_readable_field_id}
-   :- [:map
+   :- [:map {:closed true}
        [:type                    [:enum "internal" "external"]]
        [:name                    ms/NonBlankString]
        [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
@@ -275,7 +276,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/dimension"
   "Remove the dimension associated to field at ID"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
   (warehouse-schema-rest.db/delete-dimensions-for-field! id)
@@ -289,7 +290,7 @@
   "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or
   remapped Field), and (if defined by a User) a map of human-readable remapped values. If `has_field_values` is not
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [field (api/query-check (warehouse-schema-rest.db/field id))]
     (parameters.field/field->values field)))
@@ -312,11 +313,11 @@
 (api.macros/defendpoint :post "/:id/values"
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {value-pairs :values} :- [:map
-                             [:values [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]]]]
+   {value-pairs :values} :- [:map {:closed true}
+                             [:values ms/FieldValuesList]]]
   (let [field (api/write-check :model/Field id)]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
@@ -340,7 +341,7 @@
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
   (let [field  (api/write-check (warehouse-schema-rest.db/field id))
@@ -365,7 +366,7 @@
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (field-values/clear-field-values-for-field! (api/write-check (warehouse-schema-rest.db/field id)))
   {:status :success})
@@ -379,10 +380,10 @@
 (api.macros/defendpoint :get "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   [[metabase.parameters.field/search-values]] for a more detailed explanation."
-  [{:keys [id search-id]} :- [:map
+  [{:keys [id search-id]} :- [:map {:closed true}
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]
-   {:keys [value]} :- [:map
+   {:keys [value]} :- [:map {:closed true}
                        [:value {:optional true} ms/NonBlankString]]]
   (when-not value
     (api/check-400 (request/limit) "Limit required if value is omitted"))
@@ -398,10 +399,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
-  [{:keys [id remapped-id]} :- [:map
+  [{:keys [id remapped-id]} :- [:map {:closed true}
                                 [:id          ms/PositiveInt]
                                 [:remapped-id ms/PositiveInt]]
-   {:keys [value]} :- [:map
+   {:keys [value]} :- [:map {:closed true}
                        [:value ms/NonBlankString]]]
   (let [field          (api/read-check :model/Field id)
         remapped-field (api/read-check :model/Field remapped-id)
@@ -414,6 +415,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (warehouse-schema-rest.db/field id) api/read-check xrays/related))
