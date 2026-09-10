@@ -3,6 +3,7 @@
    [environ.core :as env]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
+   [metabase.util.date-2.common :as u.date.common]
    [metabase.util.i18n :refer [deferred-tru trs]]))
 
 (defsetting enable-nested-queries
@@ -56,3 +57,7 @@
                    (assert (#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} (keyword new-value))
                            (trs "Invalid day of week: {0}" (pr-str new-value))))
                  (setting/set-value-of-type! :keyword :start-of-week new-value)))
+
+;; the date/time utilities in `util` need the first day of the week but sit below the settings framework
+;; in the module graph, so this setting hands itself to them at load time.
+(u.date.common/set-start-of-week-provider! (fn [] (start-of-week)))

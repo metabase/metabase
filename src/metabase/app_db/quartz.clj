@@ -1,10 +1,23 @@
 (ns metabase.app-db.quartz
-  "Quartz's `ConnectionProvider` for the application DB."
+  "Quartz JDBC plumbing over the application DB: a `ConnectionProvider` backed by our connection pool,
+  a `ClassLoadHelper` that uses our classloader, and the JDBC backend system properties."
   (:require
    [metabase.app-db.connection :as mdb.connection]
-   [metabase.task.bootstrap :as task.bootstrap]))
+   [metabase.classloader.core :as classloader]
+   [metabase.task.secure-delegate :as secure-delegate]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+;; Optional interceptor for wrapping JDBC connections before Quartz uses them.
+;; Set by tracing.quartz to add SQL-level tracing. nil means no interception.
+(defonce ^:private connection-interceptor (atom nil))
+
+(defn set-connection-interceptor!
+  "Set an optional function to wrap JDBC connections before Quartz uses them.
+   Called by tracing.quartz to add SQL-level tracing. Pass nil to remove."
+  [f]
+  (reset! connection-interceptor f))
 
 ;; Custom `ConnectionProvider` implementation that uses a dedicated connection pool for the application DB to provide
 ;; connections.
@@ -22,8 +35,58 @@
     ;;
     ;; the pool is separate from the main application DB pool so that a Quartz operation triggered by a thread inside
     ;; a `with-transaction` block can't deadlock when application code has saturated the main pool.
-    (task.bootstrap/intercept-connection (.getConnection (mdb.connection/quartz-data-source))))
+    (let [conn (.getConnection (mdb.connection/quartz-data-source))]
+      (if-let [interceptor @connection-interceptor]
+        (interceptor conn)
+        conn)))
   (shutdown [_]))
 
 (when-not *compile-files*
   (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
+
+(defn- load-class ^Class [^String class-name]
+  (Class/forName class-name true (classloader/the-classloader)))
+
+(defrecord ^:private ClassLoadHelper []
+  org.quartz.spi.ClassLoadHelper
+  (initialize [_])
+  (getClassLoader [_]
+    (classloader/the-classloader))
+  (loadClass [_ class-name]
+    (load-class class-name))
+  (loadClass [_ class-name _]
+    (load-class class-name)))
+
+(when-not *compile-files*
+  (System/setProperty "org.quartz.scheduler.classLoadHelper.class" (.getName ClassLoadHelper)))
+
+(defonce ^:private jdbc-property-setters
+  ;; Extra fns (of db-type) run by set-jdbc-backend-properties! right before the scheduler initializes.
+  ;; Lets a higher-level module (e.g. `mq`, which installs its node-affinity Quartz DriverDelegate)
+  ;; hook in without `task` depending on it — `task` cannot depend on the modules that depend on it.
+  (atom []))
+
+(defn register-jdbc-property-setter!
+  "Register `f` (a fn of the app-db `db-type`) to run when Quartz's JDBC backend properties are set,
+  just before the scheduler initializes. Used by the `mq` module to install its node-affinity
+  `DriverDelegate` — registering here inverts the dependency so `task` never references `mq`."
+  [f]
+  (swap! jdbc-property-setters conj f))
+
+(defn set-jdbc-backend-properties!
+  "Set the appropriate system properties needed so Quartz can connect to the JDBC backend. (Since we don't know our DB
+  connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
+  `quartz.properties` file.)
+
+  Installs Metabase's per-DB `DriverDelegate` (see [[metabase.task.secure-delegate]]): a
+  `StdJDBCDelegate`/`PostgreSQLDelegate` subclass that reads BLOB columns through a class allow-list, so
+  Quartz reconstructs only the plain-data classes Metabase's job data is made of. Then runs any setters
+  registered via [[register-jdbc-property-setter!]]. A registered setter that throws is logged and
+  skipped so the scheduler still gets a working delegate."
+  [db-type]
+  (secure-delegate/install! db-type)
+  (doseq [setter @jdbc-property-setters]
+    (try
+      (setter db-type)
+      (catch Throwable t
+        (log/warnf "A registered Quartz JDBC property setter failed; continuing: %s" (ex-message t))))))
