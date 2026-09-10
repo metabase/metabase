@@ -22,6 +22,7 @@
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.browse :as tools.browse]
+   [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -44,9 +45,9 @@
    followed by a newline and the line."
   [user args]
   (mt/with-test-user user
-    (let [result (registry/call-tool nil nil "browse_collection" args)
-          text   (-> result :content first :text)]
-      (if (:isError result)
+    (let [{:keys [result error]} (registry/call-tool nil nil "browse_collection" args)
+          text                   (if error (:message error) (-> result :content first :text))]
+      (if (or error (:isError result))
         {:error text}
         (let [[body line] (str/split text #"\n" 2)]
           {:json (json/decode+kw body) :line line})))))
@@ -182,7 +183,6 @@
             children by their direct parent id would drop it from the tree entirely."
     (mt/with-temp [:model/Collection top    {:name "browse-vis-top"}
                    :model/Collection hidden {:name "browse-vis-hidden" :location (collection/children-location top)}
-                   ;; created for its side effect only -- the assertions below look it up by name
                    :model/Collection _deep  {:name "browse-vis-deep" :location (collection/children-location hidden)}]
       (perms/revoke-collection-permissions! (perms-group/all-users) hidden)
       (let [names (surfaced-names (browse-as :rasta {:id (:id top) :mode "tree" :depth 3}))]
@@ -394,9 +394,9 @@
                                                    (collection/user->personal-collection
                                                     (mt/user->id :crowberto)))}]
       (mt/with-test-user :rasta
-        (let [result (registry/call-tool nil nil "browse_collection" {:id (:id c)})
-              text   (-> result :content first :text)]
-          (is (:isError result))
+        (let [{:keys [result error]} (registry/call-tool nil nil "browse_collection" {:id (:id c)})
+              text                   (if error (:message error) (-> result :content first :text))]
+          (is (or error (:isError result)))
           (is (str/includes? text "may not exist")))))))
 
 ;;; ================================================ browse_data ===================================================
@@ -513,31 +513,27 @@
 (deftest ^:parallel assemble-tables-within-budget-test
   (testing "GHY-4138: when every table fits, all are returned whole in request order"
     (let [payloads [(table-payload 1 2 10) (table-payload 2 2 10) (table-payload 3 2 10)]]
-      (is (= {:tables payloads :omitted []}
+      (is (= {:tables payloads}
              (#'tools.browse/assemble-tables payloads nil))))))
 
 (deftest ^:parallel assemble-tables-omits-whole-tables-past-budget-test
-  (testing "GHY-4138: tables past the byte budget are named under :omitted, never silently cut"
+  (testing "GHY-4138: tables past the byte budget are dropped whole, and the tables kept are a
+            prefix of the request — the caller names the dropped ones from its own source rows"
     ;; ~62KB each: the first fits the 100KB budget, the second would blow it.
     (let [payloads (mapv #(table-payload % 60 1000) [1 2 3])
-          {:keys [tables omitted]} (#'tools.browse/assemble-tables payloads nil)]
+          {:keys [tables]} (#'tools.browse/assemble-tables payloads nil)]
       (is (= [1] (map :id tables)))
       (testing "the table that made the cut is whole, not truncated"
         (is (= 60 (count (:fields (first tables)))))
         (is (not (contains? (first tables) :total_fields))
-            "a whole table carries no slice bookkeeping"))
-      (testing "omitted tables are identified by name and steered to a separate call"
-        (is (= [{:id 2 :name "table_2" :reason "response budget — request in a separate call"}
-                {:id 3 :name "table_3" :reason "response budget — request in a separate call"}]
-               omitted))))))
+            "a whole table carries no slice bookkeeping")))))
 
 (deftest ^:parallel assemble-tables-oversized-first-table-slices-test
   (testing "GHY-4138: one table larger than the whole budget degrades to a field slice, not an error"
     (let [payloads [(table-payload 1 200 1000)]
-          {:keys [tables omitted message]} (#'tools.browse/assemble-tables payloads nil)
+          {:keys [tables message]} (#'tools.browse/assemble-tables payloads nil)
           table    (first tables)]
       (is (= 1 (count tables)))
-      (is (= [] omitted))
       (is (= 200 (:total_fields table)))
       (is (= 0 (:offset table)))
       (testing "the slice is cut to fit and steers to the next offset"
@@ -555,8 +551,8 @@
 
 (deftest ^:parallel assemble-tables-empty-test
   (testing "GHY-4138: no readable tables yields an empty result rather than entering the slice path"
-    (is (= {:tables [] :omitted []} (#'tools.browse/assemble-tables [] nil)))
-    (is (= {:tables [] :omitted []} (#'tools.browse/assemble-tables [] 0)))))
+    (is (= {:tables []} (#'tools.browse/assemble-tables [] nil)))
+    (is (= {:tables []} (#'tools.browse/assemble-tables [] 0)))))
 
 (deftest ^:parallel slice-table-payload-always-advances-test
   (testing "GHY-4138: a single field larger than the whole budget is still returned alone, so paging
@@ -586,6 +582,44 @@
       (is (= ["field_2"] (map :name (:fields payload))))
       (is (= 3 (:total_fields payload)))
       (is (nil? message)))))
+
+(deftest get-fields-omitted-entries-name-tables-under-field-projection-test
+  (testing "GHY-4138: a budget-omitted table is named even when the `fields` projection drops `id`
+            and `name` from the payload — without a name the advice to request it separately is
+            unactionable"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {t1 :id}    {:db_id db-id :schema "public" :name "browse_budget_a"}
+                   :model/Table    {t2 :id}    {:db_id db-id :schema "public" :name "browse_budget_b"}]
+      ;; ~84KB per table once projected down to `fields.name`: the first fits the budget whole, the
+      ;; second is dropped.
+      (t2/insert! :model/Field
+                  (for [table-id [t1 t2]
+                        i        (range 400)]
+                    {:table_id      table-id
+                     :name          (str "col_" i "_" (apply str (repeat 190 \x)))
+                     :base_type     :type/Text
+                     :database_type "TEXT"
+                     :position      i}))
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-test-user :rasta
+          (let [text     (-> (tools.browse/browse-data
+                              {:action "get_fields" :table_ids [t1 t2] :fields ["fields.name"]}
+                              {})
+                             :content first :text)
+                envelope (json/decode+kw (first (str/split-lines text)))]
+            (is (= 1 (count (:tables envelope)))
+                "the byte budget dropped the second table")
+            (is (= [{:id     t2
+                     :name   "browse_budget_b"
+                     :reason "response budget — request in a separate call"}]
+                   (:omitted envelope)))
+            (testing "and the identifiers survive serialization rather than rendering as JSON null"
+              (is (not (str/includes? text "\"id\":null")))
+              (is (not (str/includes? text "\"name\":null")))))
+          (testing "the concise projection, which keeps id and name in the payload, names them too"
+            (let [[envelope] (call! {:action "get_fields" :table_ids [t1 t2]})]
+              (is (= [t2] (map :id (:omitted envelope))))
+              (is (= ["browse_budget_b"] (map :name (:omitted envelope)))))))))))
 
 ;;; ------------------------------------------ Browsable-database filter -------------------------------------------
 
@@ -902,7 +936,7 @@
       (mt/with-full-data-perms-for-all-users!
         (mt/with-test-user :rasta
           (let [absent-id  Integer/MAX_VALUE
-                [envelope] (call! {:action "get_fields" :table_ids [t-id absent-id]})]
+                [envelope] (call! {:action "get_fields" :database_id Integer/MAX_VALUE :table_ids [t-id absent-id]})]
             (is (= [t-id] (map :id (:tables envelope)))
                 "the readable table still comes back whole")
             (is (= ["id"] (map :name (:fields (first (:tables envelope))))))
@@ -922,3 +956,204 @@
                      (tools.browse/browse-data {:action "list_schemas" :database_id id} {}))
             db-id
             Integer/MAX_VALUE))))))
+
+;;; ------------------------------ get_fields values require query permission ---------------------------------------
+
+(defn- get-fields-as
+  "Call `browse_data` as `user` and return the parsed JSON envelope (first line of the text block)."
+  [user args]
+  (mt/with-test-user user
+    (let [text (-> (tools.browse/browse-data args {}) :content first :text)]
+      (json/decode+kw (first (str/split-lines text))))))
+
+(defn- values-for
+  "The `:values` attached to the field with `field-id` in `envelope`, or nil if it carries none."
+  [envelope field-id]
+  (->> (:tables envelope) (mapcat :fields) (filter #(= field-id (:id %))) first :values))
+
+(defn- field-in
+  "The projected field map with `field-id` in `envelope`, or nil."
+  [envelope field-id]
+  (->> (:tables envelope) (mapcat :fields) (filter #(= field-id (:id %))) first))
+
+(deftest get-fields-values-require-query-permission-test
+  (testing "get_fields must not serve a column's values to a metadata-only caller"
+    (mt/with-temp [:model/Database    {db-id :id} {}
+                   :model/Table       {t-id :id}  {:db_id db-id :schema "public"
+                                                   :name "orders" :active true}
+                   :model/Field       {f-id :id}  {:table_id t-id :name "status"
+                                                   :base_type :type/Text
+                                                   :effective_type :type/Text
+                                                   :has_field_values :list :active true}
+                   :model/FieldValues _           {:field_id f-id :type :full
+                                                   :values ["shipped" "pending" "cancelled"]}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-table-permission! (perms-group/all-users) t-id
+                                          :perms/manage-table-metadata :yes)
+        (testing "precondition — the fixture built the actor, not some other user"
+          (mt/with-test-user :rasta
+            (let [table (t2/select-one :model/Table :id t-id)]
+              (is (mi/can-read? table) "metadata permission alone satisfies can-read?")
+              (is (not (mi/can-query? table)) "...and does not satisfy can-query?"))))
+        (testing "the REST endpoint that serves these values refuses this caller"
+          (mt/user-http-request :rasta :get 403 (format "field/%d/values" f-id)))
+        (testing "so get_fields must refuse them too"
+          (let [envelope (get-fields-as :rasta {:action "get_fields" :table_ids [t-id]
+                                                :response_format "detailed"})]
+            (is (nil? (values-for envelope f-id))
+                "column values reached a caller who cannot query the table")))
+        (testing "only :values is withheld — the field's other detailed metadata still comes through"
+          (let [envelope (get-fields-as :rasta {:action "get_fields" :table_ids [t-id]
+                                                :response_format "detailed"})
+                field    (field-in envelope f-id)]
+            (is (= [t-id] (map :id (:tables envelope)))
+                "the table itself is still readable and still listed")
+            (is (= #{:base_type :effective_type :database_type :has_field_values}
+                   (set (keys (select-keys field [:base_type :effective_type
+                                                  :database_type :has_field_values]))))
+                "the detailed field keys other than :values survive")))
+        (testing "a fields projection cannot route around the gate"
+          (let [envelope (get-fields-as :rasta {:action "get_fields" :table_ids [t-id]
+                                                :fields ["fields.name" "fields.values"]})]
+            (is (= ["status"] (mapcat #(map :name (:fields %)) (:tables envelope)))
+                "the projection still names the column")
+            (is (empty? (keep :values (mapcat :fields (:tables envelope))))
+                "column values reached a metadata-only caller through a fields projection")))
+        (testing "control — the probe can produce a positive, so the assertion above is not vacuous"
+          (data-perms/set-database-permission! (perms-group/all-users) db-id
+                                               :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) t-id
+                                            :perms/create-queries :query-builder)
+          (mt/user-http-request :rasta :get 200 (format "field/%d/values" f-id))
+          (let [envelope (get-fields-as :rasta {:action "get_fields" :table_ids [t-id]
+                                                :response_format "detailed"})]
+            (is (some? (values-for envelope f-id))
+                "with query permission the same call does return values")))))))
+
+(deftest get-fields-values-gate-is-per-table-test
+  (testing "a batch mixing a queryable table with a metadata-only one gates each table on its own"
+    (mt/with-temp [:model/Database    {db-id :id}    {}
+                   :model/Table       {open-id :id}  {:db_id db-id :schema "public"
+                                                      :name "orders" :active true}
+                   :model/Field       {open-f :id}   {:table_id open-id :name "status"
+                                                      :base_type :type/Text
+                                                      :has_field_values :list :active true}
+                   :model/FieldValues _              {:field_id open-f :type :full
+                                                      :values ["shipped" "pending"]}
+                   :model/Table       {meta-id :id}  {:db_id db-id :schema "public"
+                                                      :name "salaries" :active true}
+                   :model/Field       {meta-f :id}   {:table_id meta-id :name "band"
+                                                      :base_type :type/Text
+                                                      :has_field_values :list :active true}
+                   :model/FieldValues _              {:field_id meta-f :type :full
+                                                      :values ["junior" "senior"]}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) db-id
+                                             :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) open-id
+                                          :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! (perms-group/all-users) meta-id
+                                          :perms/manage-table-metadata :yes)
+        (let [envelope (get-fields-as :rasta {:action "get_fields" :table_ids [open-id meta-id]
+                                              :response_format "detailed"})]
+          (is (= #{open-id meta-id} (set (map :id (:tables envelope))))
+              "both tables are readable, so both are listed")
+          (is (some? (values-for envelope open-f))
+              "the queryable table keeps its values")
+          (is (nil? (values-for envelope meta-f))
+              "column values reached a caller who cannot query that table"))))))
+
+;;; ------------------------------------------ browse_data dispatch ------------------------------------------------
+;;; Everything above calls the handler directly. These go through [[registry/call-tool]] — the real
+;;; dispatch — so the scope gate, the `{:closed true}` args schema, and top-level nil-stripping are
+;;; all in play, and the assertions are on the response the model actually receives.
+
+(defn- dispatch-data
+  "Call `browse_data` through the registry as `:crowberto` carrying `token-scopes` (nil bypasses the
+   scope gate — this is an internal caller). Returns the whole dispatch outcome: `{:result <mcp
+   content>}` for anything that reached the handler, `{:error {:code .. :message ..}}` for a
+   registry-level rejection (unknown tool, scope denial, args-schema failure)."
+  [token-scopes args]
+  (mt/with-test-user :crowberto
+    (registry/call-tool token-scopes nil "browse_data" args)))
+
+(defn- dispatch-error?
+  "Whether a [[dispatch-data]] outcome is an error, at either layer."
+  [{:keys [result error]}]
+  (boolean (or error (:isError result))))
+
+(defn- dispatch-text
+  "[[dispatch-data]]'s text block, or a registry-level rejection's message."
+  [token-scopes args]
+  (let [{:keys [result error]} (dispatch-data token-scopes args)]
+    (if error (:message error) (-> result :content first :text))))
+
+(def ^:private content-read #{metabot.scope/agent-content-read})
+
+(deftest ^:parallel browse-data-scope-gating-test
+  (testing "GHY-4138: a token without the content-read scope is refused before dispatch"
+    (are [scopes] (= "Insufficient scope to call tool: browse_data"
+                     (dispatch-text scopes {:action "list_databases"}))
+      #{metabot.scope/agent-query-run}
+      #{metabot.scope/agent-content-write}
+      #{}))
+  (testing "GHY-4138: the content-read scope, its wildcard, and an internal caller all reach the handler"
+    (are [scopes] (and (not (dispatch-error? (dispatch-data scopes {:action "list_databases"})))
+                       (str/starts-with? (dispatch-text scopes {:action "list_databases"}) "{\"data\":"))
+      content-read
+      #{"agent:*"}
+      nil)))
+
+(deftest ^:parallel browse-data-tools-list-visibility-test
+  (testing "GHY-4138: tools/list visibility follows the same scope the call-time gate checks"
+    (is (some #(= "browse_data" (:name %)) (registry/list-tools content-read)))
+    (is (not (some #(= "browse_data" (:name %))
+                   (registry/list-tools #{metabot.scope/agent-query-run}))))))
+
+(deftest ^:parallel browse-data-closed-schema-test
+  (testing "GHY-4138: malformed arguments come back as a teaching message from the closed args schema, never as an internal error"
+    (are [args expected] (let [outcome (dispatch-data content-read args)
+                               text    (dispatch-text content-read args)]
+                           (and (dispatch-error? outcome)
+                                (str/starts-with? text "Invalid arguments: ")
+                                (str/includes? text expected)))
+      {:action "list_databases" :databse_id 1}                "databse_id: disallowed key"
+      {:action "get_fields"     :table_ids "7"}               "table_ids: invalid type"
+      {:action "list_tables" :database_id (mt/id) :limit 9999} "should be at most 500"
+      {:action "list_tables" :database_id (mt/id) :limit 0}    "should be at least 1"
+      {:action "list_fields"}                                  "action: should be either")))
+
+(deftest ^:parallel browse-data-strips-top-level-nils-test
+  (testing (str "GHY-4138: a strict MCP client sends every declared property, nulling the ones it "
+                "does not populate — that call must be indistinguishable from the minimal one")
+    (let [table-id (mt/id :venues)]
+      (is (= (dispatch-data content-read {:action "get_fields" :table_ids [table-id]})
+             (dispatch-data content-read {:action          "get_fields"
+                                          :table_ids       [table-id]
+                                          :database_id     nil
+                                          :schema          nil
+                                          :search          nil
+                                          :limit           nil
+                                          :offset          nil
+                                          :response_format nil
+                                          :fields          nil
+                                          :include_hidden  nil}))))))
+
+(deftest ^:parallel browse-data-nil-stripping-feeds-per-action-validation-test
+  (testing "GHY-4138: stripping runs before `validate-args-for-action!`, which is contains?-based, so a nulled key reads as absent"
+    (is (not (dispatch-error? (dispatch-data content-read {:action "list_databases" :database_id nil})))))
+  (testing "GHY-4138: the same key carrying a real value is still rejected as inapplicable"
+    (is (= "`database_id` does not apply to action list_databases — remove it."
+           (dispatch-text content-read {:action "list_databases" :database_id 1}))))
+  (testing "GHY-4138: and a required key sent as null reads as missing, not as present-and-empty"
+    (is (= "`table_ids` is required for action get_fields."
+           (dispatch-text content-read {:action "get_fields" :table_ids nil})))))
+
+(deftest ^:parallel browse-data-nested-nils-are-not-stripped-test
+  (testing "GHY-4138: stripping is top-level only, so a null nested inside a value has to be caught by the schema rather than reaching the handler"
+    (are [args expected] (let [text (dispatch-text content-read args)]
+                           (and (str/starts-with? text "Invalid arguments: ")
+                                (str/includes? text expected)))
+      {:action "get_fields" :table_ids [nil]}   "table_ids: [0] should be an integer"
+      {:action "get_fields" :table_ids [8 nil]} "[1] should be an integer"
+      {:action "get_fields" :fields [nil]}      "fields: [0] should be a string")))
