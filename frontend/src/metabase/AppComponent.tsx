@@ -85,6 +85,7 @@ export function App() {
 
   const onError = (error: unknown) => dispatch(setErrorPage(error));
   const { pathname } = location;
+  const isInternalPage = pathname.startsWith("/_internal/");
 
   usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
@@ -123,7 +124,11 @@ export function App() {
               <NewModals />
               <Metabot
                 hide={
-                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
+                  isAdminApp ||
+                  isDataStudioApp ||
+                  isMonitorApp ||
+                  isDataApp ||
+                  isInternalPage
                 }
               />
             </AppContentContainer>

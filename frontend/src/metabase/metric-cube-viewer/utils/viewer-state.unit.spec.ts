@@ -250,6 +250,16 @@ describe("applyCoarseSettings", () => {
 });
 
 describe("setCardDisplay", () => {
+  it("records an override in coarse mode even when the display already matches", () => {
+    const state = initialState();
+    const cardId = state.cards[0].id;
+    const next = setCardDisplay(state, cardId, state.cards[0].display);
+    expect(next).not.toBe(state);
+    expect(next.displayOverrides[cardId]).toBe(state.cards[0].display);
+    expect(next.cards).toBe(state.cards);
+    expect(setCardDisplay(next, cardId, state.cards[0].display)).toBe(next);
+  });
+
   const cardId = singleCardId(ACCOUNTS, PLAN);
 
   it("records an override and updates the card in coarse mode without changing the mode", () => {
@@ -269,11 +279,12 @@ describe("setCardDisplay", () => {
     expect(findCard(state, cardId).display).toBe("line");
   });
 
-  it("returns the same object for unknown cards or unchanged displays", () => {
+  it("returns the same object for unknown cards or already-overridden displays", () => {
     const state = initialState();
 
     expect(setCardDisplay(state, "missing", "line")).toBe(state);
-    expect(setCardDisplay(state, cardId, "bar")).toBe(state);
+    const overridden = setCardDisplay(state, cardId, "bar");
+    expect(setCardDisplay(overridden, cardId, "bar")).toBe(overridden);
   });
 });
 

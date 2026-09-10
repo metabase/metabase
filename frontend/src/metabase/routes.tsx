@@ -136,6 +136,11 @@ const vizAbPage = () =>
     ({ VizAbPage }) => ({ Component: VizAbPage }),
   );
 
+const overviewAbPage = () =>
+  import(/* webpackChunkName: "overview-ab" */ "metabase/overview-ab").then(
+    ({ OverviewAbPage }) => ({ Component: OverviewAbPage }),
+  );
+
 const tableDetailPage = () =>
   import(
     /* webpackChunkName: "table-detail" */ "metabase/detail-view/pages/TableDetailPage"
@@ -336,6 +341,15 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "_internal/viz-ab",
                 element: <IsAdmin />,
                 children: [{ index: true, lazy: vizAbPage }],
+              },
+
+              {
+                path: "_internal/overview",
+                element: <IsAdmin />,
+                children: [
+                  { index: true, lazy: overviewAbPage },
+                  { path: ":entityType/:id", lazy: overviewAbPage },
+                ],
               },
 
               {

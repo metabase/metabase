@@ -22,11 +22,18 @@ import {
 } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
+import {
+  AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE,
+  type VizInput,
+  isAllowedDisplay,
+  useResolvedDisplay,
+} from "metabase/visualizations/lib/viz-heuristics";
 import type { MetricDefinition } from "metabase-lib/metric";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   CardDisplayType,
   Dataset,
+  DatasetColumn,
   MetricDimension,
   SingleSeries,
 } from "metabase-types/api";
@@ -39,13 +46,17 @@ import type { OverviewDimension } from "./utils";
 type MetricDimensionGridProps = {
   metricId: MetricId;
   dimensions: MetricDimension[];
+  /** Render every dimension at once instead of the paged default. */
+  showAllDimensions?: boolean;
 };
 
 const DEFAULT_SKELETON_COUNT = 3;
+const EMPTY_COLUMNS: DatasetColumn[] = [];
 
 export function MetricDimensionGrid({
   metricId,
   dimensions,
+  showAllDimensions = false,
 }: MetricDimensionGridProps) {
   const {
     cards,
@@ -55,7 +66,9 @@ export function MetricDimensionGrid({
     canAutoLoad,
     hasMore,
     showMore,
-  } = useMetricDimensionCards(metricId, dimensions);
+  } = useMetricDimensionCards(metricId, dimensions, {
+    showAll: showAllDimensions,
+  });
   const { ref: autoLoadRef, entry } = useIntersection({ threshold: 0.1 });
   const [hasScrollIntent, setHasScrollIntent] = useState(false);
 
@@ -139,6 +152,7 @@ interface MetricDimensionCardProps {
   metricId: MetricId;
   definition: MetricDefinition;
   dimension: OverviewDimension;
+  /** The overview's own pick; the hint for a viz heuristic. */
   displayType: DefaultDimensionDisplayType;
 }
 
@@ -146,10 +160,34 @@ function MetricDimensionCard({
   metricId,
   definition,
   dimension,
-  displayType,
+  displayType: hintDisplayType,
 }: MetricDimensionCardProps) {
   const navigate = useNavigate();
   const { data } = useMetricDimensionQuery(definition, dimension.dimensionId);
+  const title = t`By ${dimension.label}`;
+
+  const allowedDisplayTypes =
+    AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE[dimension.dimensionType];
+  const vizInput = useMemo<VizInput>(
+    () => ({
+      cols: data?.data.cols ?? EMPTY_COLUMNS,
+      rows: data?.data.rows,
+      query: null,
+      dimensionType: dimension.dimensionType,
+      hint: { display: hintDisplayType },
+      allowed: allowedDisplayTypes,
+      context: "metric-grid",
+    }),
+    [data, dimension.dimensionType, hintDisplayType, allowedDisplayTypes],
+  );
+  const { display } = useResolvedDisplay(
+    dimension.dimensionId,
+    vizInput,
+    title,
+  );
+  const displayType = isAllowedDisplay(display, allowedDisplayTypes)
+    ? display
+    : hintDisplayType;
 
   const rawSeries = useMemo(
     () => (data ? buildSingleSeries(data, displayType) : null),
@@ -172,7 +210,7 @@ function MetricDimensionCard({
     <Paper withBorder shadow="none" className={S.card} onClick={handleClick}>
       <Stack h="100%">
         <Text fw="bold" size="md" truncate="end" px="lg" pt="sm">
-          {t`By ${dimension.label}`}
+          {title}
         </Text>
         <div className={S.chartArea}>
           {rawSeries ? (

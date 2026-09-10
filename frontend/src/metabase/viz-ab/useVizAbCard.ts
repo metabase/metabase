@@ -120,9 +120,9 @@ export function useVizAbCard(
 
   const randomRequest = useMemo(
     () => ({
-      database_id: filters.databaseId,
-      query_type: filters.queryType,
-      exclude_judged: filters.excludeJudged,
+      "database-id": filters.databaseId,
+      "query-type": filters.queryType,
+      "exclude-judged": filters.excludeJudged,
       nonce,
     }),
     [filters.databaseId, filters.queryType, filters.excludeJudged, nonce],

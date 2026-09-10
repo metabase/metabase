@@ -1,3 +1,7 @@
+import {
+  AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE,
+  DEFAULT_DISPLAY_BY_DIMENSION_TYPE,
+} from "metabase/visualizations/lib/viz-heuristics";
 import * as LibMetric from "metabase-lib/metric";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -542,4 +546,35 @@ describe("DISPLAY_TYPE_REGISTRY", () => {
       expect(result["scalar.sublabel"]).toBe("Category: Gadgets");
     });
   });
+});
+
+describe("viz-heuristics parity", () => {
+  const types = [
+    "time",
+    "geo",
+    "category",
+    "boolean",
+    "numeric",
+    "scalar",
+  ] as const;
+
+  it.each(types)(
+    "%s: DEFAULT_DISPLAY_BY_DIMENSION_TYPE matches defaultDisplayType",
+    (type) => {
+      expect(DEFAULT_DISPLAY_BY_DIMENSION_TYPE[type]).toBe(
+        getDimensionBreakoutConfig(type).defaultDisplayType,
+      );
+    },
+  );
+
+  it.each(types)(
+    "%s: AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE matches availableDisplayTypes",
+    (type) => {
+      expect(AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE[type]).toEqual(
+        getDimensionBreakoutConfig(type).availableDisplayTypes.map(
+          (option) => option.type,
+        ),
+      );
+    },
+  );
 });

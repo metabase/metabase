@@ -12,6 +12,7 @@ const SHOW_MORE_BATCH_SIZE = 4;
 export function useMetricDimensionCards(
   metricId: MetricId,
   dimensions: MetricDimension[],
+  { showAll = false }: { showAll?: boolean } = {},
 ) {
   const { definition, isLoading } = useMetricDefinition(metricId);
 
@@ -19,7 +20,7 @@ export function useMetricDimensionCards(
     () => (definition ? getOverviewDimensions(definition, dimensions) : []),
     [definition, dimensions],
   );
-  const visibility = useVisibleDimensions(allDimensions, metricId);
+  const visibility = useVisibleDimensions(allDimensions, metricId, showAll);
 
   return {
     ...visibility,
@@ -31,6 +32,7 @@ export function useMetricDimensionCards(
 export function useVisibleDimensions(
   dimensions: OverviewDimension[],
   metricId: MetricId,
+  showAll = false,
 ) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
 
@@ -39,8 +41,8 @@ export function useVisibleDimensions(
   }, [metricId]);
 
   const visibleCards = useMemo(
-    () => dimensions.slice(0, visibleCount),
-    [dimensions, visibleCount],
+    () => (showAll ? dimensions : dimensions.slice(0, visibleCount)),
+    [dimensions, visibleCount, showAll],
   );
 
   const hasMore = visibleCards.length < dimensions.length;

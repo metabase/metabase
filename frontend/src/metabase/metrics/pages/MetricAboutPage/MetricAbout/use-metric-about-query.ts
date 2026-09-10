@@ -15,11 +15,17 @@ import {
   useMetricDefinition,
   useMetricDimensionQuery,
 } from "metabase/metrics/common/hooks";
+import {
+  AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE,
+  type VizInput,
+  useResolvedDisplay,
+} from "metabase/visualizations/lib/viz-heuristics";
 import * as LibMetric from "metabase-lib/metric";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Card, DatasetColumn } from "metabase-types/api";
 
 const COLUMN_DISPLAY_NAME_SEPARATOR = ": ";
+const EMPTY_COLUMNS: DatasetColumn[] = [];
 
 function getDimensionSelectLabel(
   dimensionLabel: string | undefined,
@@ -131,6 +137,28 @@ export function useMetricAboutQuery(
     (useDimension && isLoadingDimension) ||
     (useScalar && (isLoadingDefinition || isLoadingScalar));
 
+  const vizDimensionType = activeDimensionType ?? "scalar";
+  const hintDisplay = activeDimensionType
+    ? DEFAULT_DISPLAY_TYPE_BY_DIMENSION[activeDimensionType]
+    : "scalar";
+  const vizInput = useMemo<VizInput>(
+    () => ({
+      cols: data?.data.cols ?? EMPTY_COLUMNS,
+      rows: data?.data.rows,
+      query: null,
+      dimensionType: vizDimensionType,
+      hint: { display: hintDisplay },
+      allowed: AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE[vizDimensionType],
+      context: "metric-grid",
+    }),
+    [data, vizDimensionType, hintDisplay],
+  );
+  const { display } = useResolvedDisplay(
+    `metric-about-${card.id}`,
+    vizInput,
+    card.name,
+  );
+
   const visualizationCard = useMemo(() => {
     if (!activeDimensionType) {
       return {
@@ -142,12 +170,12 @@ export function useMetricAboutQuery(
 
     return {
       ...card,
-      display: DEFAULT_DISPLAY_TYPE_BY_DIMENSION[activeDimensionType],
+      display,
       visualization_settings: {
         "graph.x_axis.labels_enabled": false,
       },
     };
-  }, [card, activeDimensionType]);
+  }, [card, activeDimensionType, display]);
 
   // Time series → show value + change over time. Keyed off result columns, not the
   // Lib metric definition, so metrics defined on models (name-based breakout refs) work too.

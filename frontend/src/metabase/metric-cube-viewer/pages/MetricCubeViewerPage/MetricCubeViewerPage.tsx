@@ -6,6 +6,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLocation, useParams } from "metabase/router";
 import { Box, Center, Stack } from "metabase/ui";
+import type { TableId } from "metabase-types/api";
 
 import {
   trackMetricCubeViewerCardRemoved,
@@ -29,7 +30,7 @@ import { getCardGenerator } from "../../generators";
 import { useCubeCatalog } from "../../hooks/use-cube-catalog";
 import { useCubeViewerState } from "../../hooks/use-cube-viewer-state";
 import { useResetViewerConfirmation } from "../../hooks/use-reset-viewer-confirmation";
-import type { CubeCard } from "../../types";
+import type { CardGeneratorId, CubeCard } from "../../types";
 
 const GENERATOR_SEARCH_PARAM = "generator";
 
@@ -43,14 +44,36 @@ export function MetricCubeViewerPage() {
   const requestedGeneratorId = new URLSearchParams(location.search).get(
     GENERATOR_SEARCH_PARAM,
   );
-  const generator = useMemo(
-    () => getCardGenerator(requestedGeneratorId),
-    [requestedGeneratorId],
+
+  return (
+    <MetricCubeViewer tableId={tableId} generatorId={requestedGeneratorId} />
   );
+}
+
+type MetricCubeViewerProps = {
+  tableId: TableId;
+  /** Unknown or missing ids fall back to the default generator. */
+  generatorId?: CardGeneratorId | null;
+  /** "none" drops the header and filter bar, for embedding in another page. */
+  chrome?: "full" | "none";
+  /** Card grid columns; defaults to the responsive two-column grid. */
+  columns?: 1 | 2;
+};
+
+/** The cube viewer for one table, independent of where its ids come from. */
+export function MetricCubeViewer({
+  tableId,
+  generatorId,
+  chrome = "full",
+  columns = 2,
+}: MetricCubeViewerProps) {
+  const generator = useMemo(() => getCardGenerator(generatorId), [generatorId]);
 
   const { catalog, definitions, isLoading, error } = useCubeCatalog(tableId);
   const { data: table } = useGetTableQueryMetadataQuery(
-    Number.isNaN(tableId) ? skipToken : { id: tableId },
+    typeof tableId === "number" && Number.isNaN(tableId)
+      ? skipToken
+      : { id: tableId },
   );
   const { state, actions } = useCubeViewerState({ catalog, generator });
 
@@ -97,12 +120,22 @@ export function MetricCubeViewerPage() {
     <MetricCubeViewerProvider value={contextValue}>
       <MetricCubeViewerPageBody
         title={table?.display_name ?? table?.name ?? ""}
+        chrome={chrome}
+        columns={columns}
       />
     </MetricCubeViewerProvider>
   );
 }
 
-function MetricCubeViewerPageBody({ title }: { title: string }) {
+function MetricCubeViewerPageBody({
+  title,
+  chrome,
+  columns,
+}: {
+  title: string;
+  chrome: "full" | "none";
+  columns: 1 | 2;
+}) {
   const { state, actions, generator } = useMetricCubeViewerContext();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editor, setEditor] = useState<EditorState>({ isOpen: false });
@@ -130,21 +163,32 @@ function MetricCubeViewerPageBody({ title }: { title: string }) {
   );
 
   return (
-    <Stack px="3rem" py="xl" gap="xl" data-testid="metric-cube-viewer">
-      <CubeViewerHeader
-        title={title}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onReset={confirmReset}
-      />
-      <FilterBar />
+    <Stack
+      px={chrome === "none" ? "md" : "3rem"}
+      py={chrome === "none" ? "md" : "xl"}
+      gap="xl"
+      data-testid="metric-cube-viewer"
+    >
+      {chrome === "full" && (
+        <>
+          <CubeViewerHeader
+            title={title}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onReset={confirmReset}
+          />
+          <FilterBar />
+        </>
+      )}
       <OverviewRow
         cards={overviewCards}
+        columns={columns}
         renderCardActions={
           state.mode === "fine" ? renderCardActions : undefined
         }
       />
       <CardGrid
         cards={gridCards}
+        columns={columns}
         renderCardActions={renderCardActions}
         onAddCard={() => setEditor({ isOpen: true })}
       />

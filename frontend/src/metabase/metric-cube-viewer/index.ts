@@ -1,1 +1,4 @@
-export { MetricCubeViewerPage } from "./pages/MetricCubeViewerPage";
+export {
+  MetricCubeViewer,
+  MetricCubeViewerPage,
+} from "./pages/MetricCubeViewerPage";

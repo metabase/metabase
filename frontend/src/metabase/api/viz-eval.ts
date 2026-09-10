@@ -1,4 +1,5 @@
 import type { NativeStructure } from "metabase/visualizations/lib/default-viz/types";
+import type { VizReport } from "metabase/visualizations/lib/viz-heuristics";
 import type { CardId, DatabaseId } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -6,9 +7,9 @@ import { Api } from "./api";
 export type VizEvalQueryType = "native" | "query";
 
 export type RandomVizEvalCardRequest = {
-  database_id?: DatabaseId;
-  query_type?: VizEvalQueryType;
-  exclude_judged?: boolean;
+  "database-id"?: DatabaseId;
+  "query-type"?: VizEvalQueryType;
+  "exclude-judged"?: boolean;
   nonce?: number;
 };
 
@@ -52,6 +53,39 @@ export type VizJudgement = {
   created_at: string;
 };
 
+export type OverviewEntityType = "metric" | "table" | "transform";
+
+export type OverviewJudgementAxis = "generation" | "visualization";
+
+export type OverviewJudgementVerdict =
+  | "old"
+  | "new"
+  | "both-fine"
+  | "both-suck";
+
+export type OverviewJudgement = {
+  id?: number;
+  entity_type: OverviewEntityType;
+  entity_id: number;
+  entity_name: string | null;
+  axis: OverviewJudgementAxis;
+  verdict: OverviewJudgementVerdict;
+  gen: string;
+  baseline_gen: string;
+  viz: string;
+  baseline_viz: string;
+  tiles: VizReport[];
+  baseline_tiles?: VizReport[];
+  note: string | null;
+  user_id: number | null;
+  created_at: string;
+};
+
+export type ListOverviewJudgementsRequest = {
+  "entity-type"?: OverviewEntityType;
+  "entity-id"?: number;
+};
+
 export const vizEvalApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     getRandomVizEvalCard: builder.query<
@@ -84,6 +118,28 @@ export const vizEvalApi = Api.injectEndpoints({
       }),
       invalidatesTags: [{ type: "viz-judgement", id: "LIST" }],
     }),
+    listOverviewJudgements: builder.query<
+      OverviewJudgement[],
+      ListOverviewJudgementsRequest | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/viz-eval/overview-judgements",
+        params: params ?? undefined,
+      }),
+      providesTags: [{ type: "overview-judgement", id: "LIST" }],
+    }),
+    createOverviewJudgement: builder.mutation<
+      OverviewJudgement,
+      OverviewJudgement
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/viz-eval/overview-judgements",
+        body,
+      }),
+      invalidatesTags: [{ type: "overview-judgement", id: "LIST" }],
+    }),
   }),
 });
 
@@ -92,4 +148,6 @@ export const {
   useGetNativeStructureQuery,
   useListVizJudgementsQuery,
   useCreateVizJudgementMutation,
+  useListOverviewJudgementsQuery,
+  useCreateOverviewJudgementMutation,
 } = vizEvalApi;

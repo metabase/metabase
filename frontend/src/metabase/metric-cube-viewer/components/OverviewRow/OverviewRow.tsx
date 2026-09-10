@@ -8,16 +8,23 @@ import { CubeCard } from "../CubeCard";
 export interface OverviewRowProps {
   cards: CubeCardModel[];
   renderCardActions?: (card: CubeCardModel) => ReactNode;
+  columns?: 1 | 2;
 }
 
-export function OverviewRow({ cards, renderCardActions }: OverviewRowProps) {
+export function OverviewRow({
+  cards,
+  renderCardActions,
+  columns = 2,
+}: OverviewRowProps) {
   if (cards.length === 0) {
     return null;
   }
 
   return (
     <SimpleGrid
-      cols={{ base: 1, sm: 2, md: 3, lg: 4 }}
+      cols={
+        columns === 1 ? { base: 1, sm: 2 } : { base: 1, sm: 2, md: 3, lg: 4 }
+      }
       spacing="lg"
       data-testid="cube-overview-row"
     >

@@ -70,6 +70,20 @@ describe("NavBar / AppBar visibility", () => {
     );
   });
 
+  it("hides the navbar and app bar on internal harness pages", () => {
+    const state = stateWithUser();
+
+    expect(
+      getIsNavBarEnabled(state, createRouterProps("/_internal/overview")),
+    ).toBe(false);
+    expect(
+      getIsAppBarVisible(state, createRouterProps("/_internal/overview")),
+    ).toBe(false);
+    expect(
+      getIsNavBarEnabled(state, createRouterProps("/_internal/viz-ab")),
+    ).toBe(false);
+  });
+
   it("keeps the navbar and app bar on a regular page", () => {
     const state = stateWithUser();
 

@@ -24,26 +24,34 @@
 
 ;;; -------------------------------------------------- judgements ---------------------------------------------------
 
-(defn- create-table-query []
-  (let [columns (case (mdb/db-type)
-                  :postgres [[:id :serial [:primary-key]]
-                             [:card_id :integer]
-                             [:content :text [:not nil]]]
-                  :mysql    [[:id :bigint [:primary-key] [:auto-increment]]
-                             [:card_id :integer]
-                             [:content :text [:not nil]]]
-                  :h2       [[:id :identity [:primary-key]]
-                             [:card_id :integer]
-                             [:content :text [:not nil]]])]
-    (-> (sql.helpers/create-table :viz_eval_judgement :if-not-exists)
-        (sql.helpers/with-columns columns))))
+(defn- id-column []
+  (case (mdb/db-type)
+    :postgres [:id :serial [:primary-key]]
+    :mysql    [:id :bigint [:primary-key] [:auto-increment]]
+    :h2       [:id :identity [:primary-key]]))
 
-(def ^:private judgement-table
+(defn- lazy-table
+  "A memoized thunk that creates `table-name` with an auto-increment `id` plus `columns` (HoneySQL column specs) the
+  first time it is called, and returns the table keyword."
+  [table-name columns]
   (mdb/memoize-for-application-db
    (fn []
-     (log/info "Creating viz_eval_judgement table if it does not exist")
-     (t2/query (create-table-query))
-     :viz_eval_judgement)))
+     (log/infof "Creating %s table if it does not exist" (name table-name))
+     (t2/query (-> (sql.helpers/create-table table-name :if-not-exists)
+                   (sql.helpers/with-columns (into [(id-column)] columns))))
+     table-name)))
+
+(def ^:private judgement-table
+  (lazy-table :viz_eval_judgement
+              [[:card_id :integer]
+               [:content :text [:not nil]]]))
+
+(def ^:private overview-judgement-table
+  (lazy-table :overview_eval_judgement
+              [[:entity_type :text]
+               [:entity_id :integer]
+               [:axis :text]
+               [:content :text [:not nil]]]))
 
 (defn- row->judgement [row]
   (assoc (json/decode+kw (:content row)) :id (:id row)))
@@ -67,11 +75,57 @@
                                      :content (json/encode body)})]
     (assoc body :id id)))
 
+;;; --------------------------------------------- overview judgements -----------------------------------------------
+
+(api.macros/defendpoint :get "/overview-judgements" :- [:sequential :map]
+  "All stored overview (`/_internal/overview`) judgements, oldest first, optionally restricted to one entity."
+  [_route-params
+   {:keys [entity-type entity-id]}
+   :- [:map
+       [:entity-type {:optional true} [:maybe [:enum "metric" "table" "transform"]]]
+       [:entity-id   {:optional true} [:maybe ms/PositiveInt]]]]
+  (api/check-superuser)
+  (let [clauses (cond-> []
+                  entity-type (conj [:= :entity_type entity-type])
+                  entity-id   (conj [:= :entity_id entity-id]))]
+    (mapv row->judgement (t2/query (cond-> {:select   [:id :content]
+                                            :from     [(overview-judgement-table)]
+                                            :order-by [[:id :asc]]}
+                                     (seq clauses) (assoc :where (into [:and] clauses)))))))
+
+(api.macros/defendpoint :post "/overview-judgements" :- :map
+  "Store an overview judgement. The body is kept as-is (JSON); `entity_type`, `entity_id` and `axis` are also
+  promoted to columns so judgements can be filtered without decoding."
+  [_route-params
+   _query-params
+   body :- [:map-of :keyword :any]]
+  (api/check-superuser)
+  (let [id (t2/insert-returning-pk! (overview-judgement-table)
+                                    {:entity_type (:entity_type body)
+                                     :entity_id   (:entity_id body)
+                                     :axis        (:axis body)
+                                     :content     (json/encode body)})]
+    (assoc body :id id)))
+
 (defn- judged-card-ids []
   (into #{}
         (keep :card_id)
         (t2/query {:select [:card_id]
                    :from   [(judgement-table)]})))
+
+(api.macros/defendpoint :delete "/judgements/:id" :- :map
+  "Delete one card-level judgement."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (pos? (t2/delete! (judgement-table) :id id)))
+  {:id id})
+
+(api.macros/defendpoint :delete "/overview-judgements/:id" :- :map
+  "Delete one overview judgement."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (pos? (t2/delete! (overview-judgement-table) :id id)))
+  {:id id})
 
 ;;; ------------------------------------------------- random card ---------------------------------------------------
 
@@ -95,15 +149,15 @@
                                                 [:id        ms/PositiveInt]
                                                 [:remaining ms/IntGreaterThanOrEqualToZero]]
   "A random unarchived question Card to judge, optionally restricted to a database and/or query type, skipping Cards
-  that already have a judgement unless `exclude_judged` is false. `remaining` is the number of eligible Cards."
+  that already have a judgement unless `exclude-judged` is false. `remaining` is the number of eligible Cards."
   [_route-params
-   {:keys [database_id query_type exclude_judged]}
+   {:keys [database-id query-type exclude-judged]}
    :- [:map
-       [:database_id    {:optional true} [:maybe ms/PositiveInt]]
-       [:query_type     {:optional true} [:maybe [:enum "native" "query"]]]
-       [:exclude_judged {:default true} [:maybe ms/BooleanValue]]]]
+       [:database-id    {:optional true} [:maybe ms/PositiveInt]]
+       [:query-type     {:optional true} [:maybe [:enum "native" "query"]]]
+       [:exclude-judged {:default true} [:maybe ms/BooleanValue]]]]
   (api/check-superuser)
-  (let [where     (eligible-cards-where database_id query_type (when exclude_judged (judged-card-ids)))
+  (let [where     (eligible-cards-where database-id query-type (when exclude-judged (judged-card-ids)))
         remaining (t2/count :model/Card {:where where})
         card      (api/check-404 (t2/select-one [:model/Card :id]
                                                 {:where    where

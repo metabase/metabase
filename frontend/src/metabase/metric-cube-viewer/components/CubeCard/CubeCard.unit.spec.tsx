@@ -117,6 +117,7 @@ const LOADED_SERIES: UseCubeCardSeriesResult = {
       },
     ),
   ],
+  display: "line",
   queriesAreLoading: false,
   queriesError: null,
 };
@@ -125,10 +126,12 @@ function setup({
   card,
   filters = NO_FILTERS,
   seriesResult = LOADED_SERIES,
+  displayOverrides = {},
 }: {
   card: CubeCardModel;
   filters?: CubeFilters;
   seriesResult?: UseCubeCardSeriesResult;
+  displayOverrides?: CubeViewerState["displayOverrides"];
 }) {
   jest.mocked(useCubeCardSeries).mockReturnValue(seriesResult);
 
@@ -146,7 +149,7 @@ function setup({
     mode: "coarse",
     settings: GENERATOR.getDefaultSettings(CATALOG),
     cards: [card],
-    displayOverrides: {},
+    displayOverrides,
     filters,
   };
   renderWithProviders(
@@ -181,6 +184,42 @@ describe("CubeCard", () => {
     expect(screen.getByLabelText("area")).toBeInTheDocument();
     expect(screen.getByLabelText("bar")).toBeInTheDocument();
     expect(screen.queryByLabelText("scatter")).not.toBeInTheDocument();
+  });
+
+  it("passes the tile and override state to the series hook", () => {
+    setup({ card: TIME_CARD });
+
+    expect(useCubeCardSeries).toHaveBeenCalledWith(expect.anything(), "line", {
+      id: TIME_CARD.id,
+      title: "Total Revenue by Created At",
+      isDisplayOverridden: false,
+    });
+  });
+
+  it("marks a card the user re-styled as overridden", () => {
+    setup({ card: TIME_CARD, displayOverrides: { [TIME_CARD.id]: "line" } });
+
+    expect(useCubeCardSeries).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "line",
+      expect.objectContaining({ isDisplayOverridden: true }),
+    );
+  });
+
+  it("shows the display the series were built with in the picker", () => {
+    setup({
+      card: TIME_CARD,
+      seriesResult: { ...LOADED_SERIES, display: "bar" },
+    });
+
+    expect(screen.getByLabelText("bar")).toHaveAttribute(
+      "data-variant",
+      "filled",
+    );
+    expect(screen.getByLabelText("line")).toHaveAttribute(
+      "data-variant",
+      "subtle",
+    );
   });
 
   it("changes the display through setCardDisplay without editing the card", async () => {
@@ -236,6 +275,7 @@ describe("CubeCard", () => {
       card: TIME_CARD,
       seriesResult: {
         series: [],
+        display: "line",
         queriesAreLoading: false,
         queriesError: "Non-numeric metrics are not supported",
       },
@@ -267,7 +307,12 @@ describe("CubeCard", () => {
   it("does not render the chart while the queries are loading", () => {
     setup({
       card: TIME_CARD,
-      seriesResult: { series: [], queriesAreLoading: true, queriesError: null },
+      seriesResult: {
+        series: [],
+        display: "line",
+        queriesAreLoading: true,
+        queriesError: null,
+      },
     });
 
     expect(screen.queryByTestId("visualization")).not.toBeInTheDocument();

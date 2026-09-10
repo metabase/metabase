@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { MetricsViewerDisplayType } from "metabase/common/metrics-viewer";
 import { ChartTypePicker } from "metabase/metrics-viewer/components/MetricControls/LeftControls/ChartTypePicker";
 import { getDimensionBreakoutConfig } from "metabase/metrics-viewer/utils/dimension-breakout-config";
 import {
@@ -23,7 +24,10 @@ import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset"
 
 import { trackMetricCubeViewerDisplayChanged } from "../../analytics";
 import { useMetricCubeViewerContext } from "../../context";
-import { useCubeCardSeries } from "../../hooks/use-cube-card-series";
+import {
+  type UseCubeCardSeriesResult,
+  useCubeCardSeries,
+} from "../../hooks/use-cube-card-series";
 import type { CubeCard as CubeCardModel } from "../../types";
 import { getCardTitle } from "../../utils/card-titles";
 import {
@@ -63,10 +67,8 @@ export function CubeCard({ card, variant = "chart", actions }: CubeCardProps) {
   );
 
   const title = getCardTitle(card, catalog);
-  const chartTypes = getDimensionBreakoutConfig(
-    model?.dimensionBreakout.type ?? "scalar",
-  ).availableDisplayTypes;
-  const showChartTypePicker = chartTypes.length > 1;
+  const isDisplayOverridden =
+    card.kind === "custom" || state.displayOverrides[card.id] != null;
 
   const unappliedFilterMeasureNames = (model?.unappliedFilterMeasureIds ?? [])
     .flatMap((measureId) => {
@@ -75,6 +77,59 @@ export function CubeCard({ card, variant = "chart", actions }: CubeCardProps) {
     })
     .join(", ");
 
+  const handleDisplayChange = (display: MetricsViewerDisplayType) => {
+    viewerActions.setCardDisplay(card.id, display);
+    trackMetricCubeViewerDisplayChanged(display);
+  };
+
+  if (!model) {
+    return (
+      <CubeCardFrame
+        variant={variant}
+        title={title}
+        unappliedFilterMeasureNames={unappliedFilterMeasureNames}
+        actions={actions}
+      >
+        <Center h="100%">
+          <LoadingAndErrorWrapper
+            error={t`This card refers to a measure that isn't available.`}
+          />
+        </Center>
+      </CubeCardFrame>
+    );
+  }
+
+  return (
+    <LoadedCubeCard
+      card={card}
+      model={model}
+      variant={variant}
+      title={title}
+      unappliedFilterMeasureNames={unappliedFilterMeasureNames}
+      actions={actions}
+      isDisplayOverridden={isDisplayOverridden}
+      onDisplayChange={handleDisplayChange}
+    />
+  );
+}
+
+interface CubeCardFrameProps {
+  variant: CubeCardVariant;
+  title: string;
+  unappliedFilterMeasureNames: string;
+  picker?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+}
+
+function CubeCardFrame({
+  variant,
+  title,
+  unappliedFilterMeasureNames,
+  picker,
+  actions,
+  children,
+}: CubeCardFrameProps) {
   return (
     <Paper
       withBorder
@@ -108,45 +163,75 @@ export function CubeCard({ card, variant = "chart", actions }: CubeCardProps) {
             )}
           </Group>
           <Group gap="xs" wrap="nowrap" flex="0 0 auto">
-            {showChartTypePicker && (
-              <ChartTypePicker
-                chartTypes={chartTypes}
-                value={card.display}
-                onChange={(display) => {
-                  viewerActions.setCardDisplay(card.id, display);
-                  trackMetricCubeViewerDisplayChanged(display);
-                }}
-              />
-            )}
+            {picker}
             {actions}
           </Group>
         </Group>
-        <Box className={S.chartArea}>
-          {model ? (
-            <CubeCardChart card={card} model={model} />
-          ) : (
-            <Center h="100%">
-              <LoadingAndErrorWrapper
-                error={t`This card refers to a measure that isn't available.`}
-              />
-            </Center>
-          )}
-        </Box>
+        <Box className={S.chartArea}>{children}</Box>
       </Stack>
     </Paper>
+  );
+}
+
+interface LoadedCubeCardProps {
+  card: CubeCardModel;
+  model: CardViewerModel;
+  variant: CubeCardVariant;
+  title: string;
+  unappliedFilterMeasureNames: string;
+  actions?: ReactNode;
+  isDisplayOverridden: boolean;
+  onDisplayChange: (display: MetricsViewerDisplayType) => void;
+}
+
+function LoadedCubeCard({
+  card,
+  model,
+  variant,
+  title,
+  unappliedFilterMeasureNames,
+  actions,
+  isDisplayOverridden,
+  onDisplayChange,
+}: LoadedCubeCardProps) {
+  const seriesResult = useCubeCardSeries(model, card.display, {
+    id: card.id,
+    title,
+    isDisplayOverridden,
+  });
+  const chartTypes = getDimensionBreakoutConfig(
+    model.dimensionBreakout.type,
+  ).availableDisplayTypes;
+  const picker =
+    chartTypes.length > 1 ? (
+      <ChartTypePicker
+        chartTypes={chartTypes}
+        value={seriesResult.display}
+        onChange={onDisplayChange}
+      />
+    ) : null;
+
+  return (
+    <CubeCardFrame
+      variant={variant}
+      title={title}
+      unappliedFilterMeasureNames={unappliedFilterMeasureNames}
+      picker={picker}
+      actions={actions}
+    >
+      <CubeCardChart card={card} model={model} seriesResult={seriesResult} />
+    </CubeCardFrame>
   );
 }
 
 interface CubeCardChartProps {
   card: CubeCardModel;
   model: CardViewerModel;
+  seriesResult: UseCubeCardSeriesResult;
 }
 
-function CubeCardChart({ card, model }: CubeCardChartProps) {
-  const { series, queriesAreLoading, queriesError } = useCubeCardSeries(
-    model,
-    card.display,
-  );
+function CubeCardChart({ card, model, seriesResult }: CubeCardChartProps) {
+  const { series, display, queriesAreLoading, queriesError } = seriesResult;
 
   if (queriesError) {
     return (
@@ -157,7 +242,7 @@ function CubeCardChart({ card, model }: CubeCardChartProps) {
   }
 
   if (queriesAreLoading || series.length === 0) {
-    return <ChartSkeleton display={card.display} className={S.visualization} />;
+    return <ChartSkeleton display={display} className={S.visualization} />;
   }
 
   const hasNoResults = series.every((singleSeries) =>

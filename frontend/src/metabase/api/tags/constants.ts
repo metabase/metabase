@@ -76,6 +76,7 @@ export const TAG_TYPES = [
   "unique-tasks",
   "user-key-value",
   "viz-judgement",
+  "overview-judgement",
   "tenant",
   "metabot",
   "metabot-conversations",

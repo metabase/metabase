@@ -1,1 +1,1 @@
-export { MetricCubeViewerPage } from "./MetricCubeViewerPage";
+export { MetricCubeViewer, MetricCubeViewerPage } from "./MetricCubeViewerPage";

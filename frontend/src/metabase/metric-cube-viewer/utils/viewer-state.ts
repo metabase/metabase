@@ -52,18 +52,34 @@ export function setCardDisplay(
   display: MetricsViewerDisplayType,
 ): CubeViewerState {
   const card = state.cards.find((card) => card.id === cardId);
-  if (!card || card.display === display) {
+  if (!card) {
     return state;
   }
-  const cards = state.cards.map((card) =>
-    card.id === cardId ? { ...card, display } : card,
-  );
+  const isSameDisplay = card.display === display;
   if (state.mode === "fine") {
-    return { ...state, cards };
+    if (isSameDisplay) {
+      return state;
+    }
+    return {
+      ...state,
+      cards: state.cards.map((card) =>
+        card.id === cardId ? { ...card, display } : card,
+      ),
+    };
+  }
+  // In coarse mode a display may be rendered by a viz heuristic rather than
+  // the card itself, so an explicit pick is recorded as an override even when
+  // it matches the generated display.
+  if (isSameDisplay && state.displayOverrides[cardId] === display) {
+    return state;
   }
   return {
     ...state,
-    cards,
+    cards: isSameDisplay
+      ? state.cards
+      : state.cards.map((card) =>
+          card.id === cardId ? { ...card, display } : card,
+        ),
     displayOverrides: { ...state.displayOverrides, [cardId]: display },
   };
 }

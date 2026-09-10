@@ -74,6 +74,8 @@ const PATHS_WITHOUT_NAVBAR = [
   /^\/auth/,
   /^\/data-studio/,
   /^\/monitor/,
+  // Internal admin-only harnesses (`/_internal/*`) run chrome-less.
+  /^\/_internal\//,
   // Data apps run full-page with their own custom chrome (a hover-down panel),
   // so neither the left navbar nor the top app bar should be shown.
   new RegExp(`^${Urls.DATA_APP_ROOT_URL}/`),

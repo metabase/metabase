@@ -345,6 +345,7 @@ const elements = [
   createElement({ type: "feature", name: "metric-cube-viewer" }),
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
+  createElement({ type: "feature", name: "overview-ab" }),
   createElement({ type: "feature", name: "public" }),
   createElement({ type: "feature", name: "viz-ab" }),
   createElement({
@@ -489,7 +490,16 @@ const baseRules = [
     // pipeline by design (see its spec); it is a sibling of that feature.
     from: ["feature/metric-cube-viewer"],
     allow: ["feature/metrics-viewer", "feature/metrics"],
-    message: "The metric cube viewer may reuse the metrics viewer and metrics modules",
+    message:
+      "The metric cube viewer may reuse the metrics viewer and metrics modules",
+  },
+  {
+    // The overview A/B harness composes the shipped overview surfaces side by
+    // side and reuses the viz-ab judgement widgets.
+    from: ["feature/overview-ab"],
+    allow: ["feature/metric-cube-viewer", "feature/metrics", "feature/viz-ab"],
+    message:
+      "The overview A/B harness may reuse the cube viewer, metrics and viz-ab modules",
   },
   {
     from: ["app/*"],
