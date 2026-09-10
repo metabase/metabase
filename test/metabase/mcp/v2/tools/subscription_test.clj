@@ -747,12 +747,13 @@
             ;; `tool-error` throws on an unexpected success, which would abort the whole doseq and
             ;; report only the first regressed schedule type. Read the response directly so each
             ;; case is asserted independently.
-            (let [response (call-tool! :crowberto nil
-                                       (wire {:method       "create"
-                                              :dashboard_id dash-id
-                                              :schedule     schedule}))
-                  err      (-> response :content first :text)]
-              (is (:isError response) "the surplus field must be refused, not silently dropped")
+            (let [{:keys [result error]} (call-tool! :crowberto nil
+                                                     (wire {:method       "create"
+                                                            :dashboard_id dash-id
+                                                            :schedule     schedule}))
+                  err      (if error (:message error) (-> result :content first :text))]
+              (is (or error (:isError result))
+                  "the surplus field must be refused, not silently dropped")
               (is (re-find (re-pattern ignored) err))
               (is (re-find #"would be ignored" err)))))
         (testing "an explicit null is an omission, not a request, so it is not refused"
