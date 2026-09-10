@@ -61,21 +61,55 @@ const CONTENT_KINDS: { kind: ContentKind; label: string }[] = [
   { kind: "icon", label: "Icon only" },
 ];
 
-const RIGHT_SECTIONS: { id: string; label: string; rightSection: ReactNode }[] =
-  [
-    { id: "icon", label: "Icon", rightSection: <Icon name={TAB_ICON} /> },
-    {
-      id: "kbd",
-      label: "Kbd",
-      rightSection: (
-        <Group gap="xxxs" wrap="nowrap">
-          <Kbd>⌘</Kbd>
-          <Kbd>C</Kbd>
-        </Group>
-      ),
-    },
-    { id: "badge", label: "Badge", rightSection: <Badge>1</Badge> },
-  ];
+const SELECTED_TAB = "two";
+
+// On a brand-filled selected pill the Badge and Kbd switch to the design's
+// "Inverse" look: a translucent dark disc with inverse text.
+const INVERSE_PROPS = {
+  bg: "background_surface-secondary-hover",
+  c: "text-primary-inverse",
+} as const;
+
+function TabBadge({ inverse }: { inverse: boolean }) {
+  const badgeProps = inverse ? INVERSE_PROPS : {};
+
+  return (
+    <Badge variant="light" color="neutral" {...badgeProps}>
+      1
+    </Badge>
+  );
+}
+
+function TabKbd({ inverse }: { inverse: boolean }) {
+  const kbdProps = inverse ? INVERSE_PROPS : {};
+
+  return (
+    <Group gap="xxxs" wrap="nowrap">
+      <Kbd {...kbdProps}>⌘</Kbd>
+      <Kbd {...kbdProps}>C</Kbd>
+    </Group>
+  );
+}
+
+type RightSectionRenderer = (args: { isSelectedPill: boolean }) => ReactNode;
+
+const RIGHT_SECTIONS: {
+  id: string;
+  label: string;
+  render: RightSectionRenderer;
+}[] = [
+  { id: "icon", label: "Icon", render: () => <Icon name={TAB_ICON} /> },
+  {
+    id: "kbd",
+    label: "Kbd",
+    render: ({ isSelectedPill }) => <TabKbd inverse={isSelectedPill} />,
+  },
+  {
+    id: "badge",
+    label: "Badge",
+    render: ({ isSelectedPill }) => <TabBadge inverse={isSelectedPill} />,
+  },
+];
 
 type ExampleTab = {
   value: string;
@@ -197,9 +231,23 @@ function VariantRow({
 function getListOfTabs(tab: Omit<ExampleTab, "value">): ExampleTab[] {
   return [
     { ...tab, value: "one" },
-    { ...tab, value: "two" },
+    { ...tab, value: SELECTED_TAB },
     { ...tab, value: "three", disabled: true },
   ];
+}
+
+function getTabsWithRightSection(
+  column: TabsColumn,
+  render: RightSectionRenderer,
+): ExampleTab[] {
+  const isPills = column.tabsProps.variant === "pills";
+
+  return getListOfTabs({ content: "text" }).map((tab) => ({
+    ...tab,
+    rightSection: render({
+      isSelectedPill: isPills && tab.value === SELECTED_TAB,
+    }),
+  }));
 }
 
 function ClosableTabs({
@@ -216,7 +264,7 @@ function ClosableTabs({
       index === 0 ? { ...tab, stateRow: "hover" } : tab,
     ),
   );
-  const [selected, setSelected] = useState<string | null>("two");
+  const [selected, setSelected] = useState<string | null>(SELECTED_TAB);
 
   const handleClose = (value: string) => {
     const remaining = tabs.filter((tab) => tab.value !== value);
@@ -261,7 +309,7 @@ function OverviewTemplate() {
               render={(column) => (
                 <ExampleTabs
                   column={column}
-                  selected="two"
+                  selected={SELECTED_TAB}
                   tabs={getListOfTabs({ content: kind })}
                 />
               )}
@@ -272,15 +320,15 @@ function OverviewTemplate() {
 
       <StorySection title="Right section">
         <VariantGrid>
-          {RIGHT_SECTIONS.map(({ id, label, rightSection }) => (
+          {RIGHT_SECTIONS.map(({ id, label, render }) => (
             <VariantRow
               key={id}
               label={label}
               render={(column) => (
                 <ExampleTabs
                   column={column}
-                  selected="two"
-                  tabs={getListOfTabs({ content: "text", rightSection })}
+                  selected={SELECTED_TAB}
+                  tabs={getTabsWithRightSection(column, render)}
                 />
               )}
             />
@@ -311,7 +359,7 @@ function OverviewTemplate() {
               <ExampleTabs
                 column={column}
                 orientation="vertical"
-                selected="two"
+                selected={SELECTED_TAB}
                 tabs={getListOfTabs({ content: "icon-text" })}
               />
             )}

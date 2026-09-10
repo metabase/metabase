@@ -1,4 +1,3 @@
-/* Beats the design-system tab height regardless of stylesheet order. */
 .list .tab {
   height: 2.5rem;
   border-radius: var(--mantine-radius-sm);

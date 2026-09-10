@@ -111,8 +111,6 @@
   margin-inline-start: 0;
 }
 
-/* Revealed on hover / press / focus, but keeps its space so the tab doesn't
- * jump. A disabled tab never shows it. */
 .tabClose {
   display: inline-flex;
   align-items: center;
