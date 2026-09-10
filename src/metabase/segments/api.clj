@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -39,7 +40,7 @@
   "Create a new `Segment`. The Segment's table is derived from its `definition`."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body} :- [:map
+   {:keys [name description definition], :as body} :- [:map {:closed true}
                                                        [:name        ms/NonBlankString]
                                                        [:definition  ::segments.schema/definition]
                                                        [:description {:optional true} [:maybe :string]]]]
@@ -47,17 +48,12 @@
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
-                   (first (t2/insert-returning-instances! :model/Segment
-                                                          :table_id    table-id
-                                                          :creator_id  api/*current-user-id*
-                                                          :name        name
-                                                          :description description
-                                                          :definition  definition)))]
+                   (segments.db/insert-segment! table-id api/*current-user-id* name description definition))]
       (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
       (t2/hydrate segment :creator))))
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
-  (-> (api/read-check (t2/select-one :model/Segment :id id))
+  (-> (api/read-check (segments.db/segment id))
       (t2/hydrate :creator)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -66,7 +62,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch `Segment` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (hydrated-segment id))
 
@@ -77,12 +73,10 @@
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
   []
-  (let [segments  (t2/select :model/Segment
-                             :archived false
-                             {:order-by [[:%lower.name :asc]]})
+  (let [segments  (segments.db/unarchived-segments)
         table-ids (into #{} (keep :table_id) segments)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+                                                 (segments.db/table-database-ids table-ids))
                                     :table-ids table-ids})
     (-> (filterv mi/can-read? segments)
         (t2/hydrate :creator :definition_description))))
@@ -106,7 +100,7 @@
         (when (not= new-table-id (:table_id existing))
           (api/create-check :model/Segment {:table_id new-table-id}))))
     (when changes
-      (t2/update! :model/Segment id changes))
+      (segments.db/update-segment! id changes))
     (u/prog1 (hydrated-segment id)
       (events/publish-event! :event/segment-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
@@ -117,10 +111,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Segment` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
             [:definition              {:optional true} [:maybe ::segments.schema/definition]]
             [:revision_message        ms/NonBlankString]
@@ -141,9 +135,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [revision_message]} :- [:map
+   {:keys [revision_message]} :- [:map {:closed true}
                                   [:revision_message ms/NonBlankString]]]
   (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
@@ -155,6 +149,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Segment :id id) api/read-check xrays/related))
+  (-> (segments.db/segment id) api/read-check xrays/related))

@@ -378,7 +378,6 @@ For those features, check out [Modular embedding with SSO](./modular-embedding.m
 
 ## Further reading
 
-- [Reference apps repo](https://github.com/metabase/embedding-reference-apps).
-- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
+- [Reference apps repo](https://github.com/metabase/static-embedding-reference-apps).
+- [Embedding introduction](./introduction.md).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).

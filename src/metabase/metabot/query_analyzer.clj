@@ -8,10 +8,10 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 ;; NOTE: be careful when adding square braces, as the rules for nesting them are different.
 (def ^:private quotes "\"`")
@@ -36,44 +36,12 @@
 (defn- normalized-key [value]
   (u/lower-case-en (strip-quotes value)))
 
-(defn- field-query
-  "Exact match for quoted fields, case-insensitive match for non-quoted fields"
-  [field value]
-  (if-let [f (quote->stripper (first value))]
-    [:= field (f value)]
-    ;; Technically speaking, this is not correct for all databases.
-    ;;
-    ;; For example, Oracle treats non-quoted identifiers as uppercase, but still expects a case-sensitive match.
-    ;; Similarly, Postgres treats all non-quoted identifiers as lowercase, and again expects an exact match.
-    ;; H2 on the other hand will choose whether to cast it to uppercase or lowercase based on a system variable... T_T
-    ;;
-    ;; MySQL, by contrast, is truly case-insensitive, and as the lowest common denominator it's what we cater for.
-    ;; In general, it's a huge anti-pattern to have any identifiers that differ only by case, so this extra leniency is
-    ;; unlikely to ever cause issues in practice.
-    ;;
-    ;; If we want 100% correctness, we can use the Macaw :case-insensitive option here to do the right thing.
-    [:= [:lower field] (u/lower-case-en value)]))
-
-(defn- table-query
-  [{:keys [schema table]}]
-  (if-not schema
-    (field-query :t.name table)
-    [:and
-     (field-query :t.name table)
-     (field-query :t.schema schema)]))
-
 (defn table-reference
   "Used by tests"
   ([db-id table]
    (table-reference db-id nil table))
   ([db-id schema table]
-   (t2/select-one :model/QueryTable
-                  {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-                   :from   [[(t2/table-name :model/Table) :t]]
-                   :where  [:and
-                            [:= :t.db_id db-id]
-                            (table-query {:schema (some-> schema name)
-                                          :table (name table)})]})))
+   (metabot.db/query-table-reference db-id (some-> schema name) (name table))))
 
 (defn- strip-redundant-table-refs
   "Strip out duplicate references, and unqualified references that are shadowed by found or qualified ones."
@@ -103,12 +71,7 @@
   (consolidate-tables
    tables
    (when (seq tables)
-     (t2/select :model/QueryTable
-                {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-                 :from   [[(t2/table-name :model/Table) :t]]
-                 :where  [:and
-                          [:= :t.db_id db-id]
-                          (into [:or] (map table-query tables))]}))))
+     (metabot.db/query-table-references db-id tables))))
 
 (defn- tables-via-sql-tools
   "Returns a set of table identifiers that (may) be referenced in the given card's query.

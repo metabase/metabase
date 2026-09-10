@@ -9,8 +9,6 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
-> Join us for AI Analytics Week: three live sessions on trusting AI answers, rolling out AI safely, and building on top of AI. [Details and registration →](https://metaba.se/ai-analytics-week)
-
 ## Connect a client to your Metabase MCP server's URL
 
 Your Metabase's MCP server is served from the `/api/metabase-mcp` endpoint.
@@ -165,7 +163,7 @@ Use the event filter to narrow the list to a single event type.
 
 MCP server requests are handled by whatever AI client you're using (like a desktop AI app or editor plugin). The MCP server just provides tools (like searching for an entity or running the query) for your AI.
 
-For example, if you ask your AI client to use your Metabase's MCP server "what's our q3 revenue," your client will interact with the MCP server to figure out which tools it needs to field your request. Your AI can decide that it needs to use the tool **construct_query** and **execute_query**, and what those queries might be. Then your client will call those tools for Metabase to run.
+For example, if you ask your AI client to use your Metabase's MCP server "what's our q3 revenue," your client will interact with the MCP server to figure out which tools it needs to field your request. Your AI can decide that it needs to use the tools **construct_query** and **execute_query**, and what those queries might be. Then your client will call those tools for Metabase to run.
 
 You don't need to have an [AI provider](settings.md#choose-ai-provider) configured in Metabase to use your Metabase's MCP server. If you _do_ have an AI provider configured in Metabase to power Metabot, that provider will _not_ be used for MCP server requests. MCP calls by your local client have no effect on token usage for your Metabase's AI connection.
 
@@ -187,11 +185,11 @@ See [Available tools](#available-tools) for the list of functionality supported 
 
 You can use the MCP server to help you create Metabase content as serialized YAML files that you can import into your Metabase. Point your agent at the MCP server to give it access to your Metabase's database metadata (table names, fields, and sample values) so it can write questions and dashboards that point at real columns.
 
-See [Agent-driven development](./file-based-development.md).
+See [Agent-driven development](./agent-driven-development.md).
 
 ## Connecting to a local MCP server
 
-Some clients don't allow support connecting to MCP servers running on localhost. For example, Claude Desktop doesn't permit local connections, but Claude Code does.
+Some clients don't support connecting to MCP servers running on localhost. For example, Claude Desktop doesn't permit local connections, but Claude Code does.
 
 For containerized setups, like when testing locally, you may need to set the `MB_SITE_URL` environment variable to the URL you point to in order to authenticate your client. For example, if you're playing around with a Metabase on localhost, you should set:
 
@@ -206,6 +204,6 @@ If the site URL doesn't match an address your MCP client can reach, like if you'
 ## Further reading
 
 - [Agent API](./agent-api.md)
-- [File-based development](./file-based-development.md)
+- [Agent-driven development](./agent-driven-development.md)
 - [Metabase API docs](../api.html)
 - [Model Context Protocol specification](https://modelcontextprotocol.io/)

@@ -33,7 +33,7 @@
 
 (api.macros/defendpoint :get "/preview-card/:id"
   "Get HTML rendering of a Card with `id`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card   (api/read-check :model/Card id)
         result (pulse-card-query-results card)]
@@ -51,7 +51,7 @@
 
   This endpoint relies on a custom middleware defined in `metabase.channel.render.core/style-tag-nonce-middleware` to
   allow the style tag to render properly, given our Content Security Policy setup."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Dashboard id)
   {:status  200
@@ -68,7 +68,7 @@
 
 (api.macros/defendpoint :get "/preview-card-info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card      (api/read-check :model/Card id)
         result    (pulse-card-query-results card)
@@ -90,9 +90,9 @@
 
 (api.macros/defendpoint :get "/preview-card-png/:id"
   "Get PNG rendering of a Card with `id`. Optionally specify `width` as a query parameter."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [width]} :- [:map
+   {:keys [width]} :- [:map {:closed true}
                        [:width {:optional true} [:maybe ms/PositiveInt]]]]
   (let [card   (api/read-check :model/Card id)
         result (pulse-card-query-results card)

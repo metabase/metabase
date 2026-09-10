@@ -2,10 +2,9 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { useDispatch, useSelector } from "metabase/redux";
-import Question from "metabase-lib/v1/Question";
+import { useDispatch } from "metabase/redux";
 import type { CardId } from "metabase-types/api";
 
 import type { QuestionLoaderChildrenProps } from "./QuestionLoader";
@@ -39,7 +38,7 @@ export function SavedQuestionLoader({
   questionId,
   children,
 }: SavedQuestionLoaderProps) {
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const dispatch = useDispatch();
 
   const {
@@ -60,8 +59,8 @@ export function SavedQuestionLoader({
     if (!card || isFetching) {
       return null;
     }
-    return new Question(card, metadata);
-  }, [card, isFetching, metadata]);
+    return buildQuestion(card);
+  }, [card, isFetching, buildQuestion]);
 
   const loading = isCardLoading || isFetching;
   const error = cardError;

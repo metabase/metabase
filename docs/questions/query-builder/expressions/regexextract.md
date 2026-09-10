@@ -6,7 +6,7 @@ title: RegexExtract
 
 > ⚠️ `regexExtract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexExtract` is only available for the Druid-JDBC driver.
 
-`regexExtract` uses [regular expressions (regex)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) to get a specific part of your text.
+`regexExtract` uses [regular expressions (regex)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions) to get a specific part of your text.
 
 `regexExtract` is ideal for text that has little to no structure, like URLs or freeform survey responses. If you're working with strings in predictable formats like SKU numbers, IDs, or other types of codes, check out the simpler [substring](../expressions/substring.md) expression instead.
 
@@ -25,11 +25,11 @@ Use `regexExtract` to create custom columns with shorter, more readable labels f
 
 Let's say that you have web data with a lot of different URLs, and you want to map each URL to a shorter, more readable campaign name.
 
-| URL                                                   | Campaign Name |
-| ----------------------------------------------------- | ------------- |
-| https://www.metabase.com/docs/?utm_campaign=alice     | alice         |
-| https://www.metabase.com/learn/?utm_campaign=neo      | neo           |
-| https://www.metabase.com/glossary/?utm_campaign=candy | candy         |
+| URL                                                  | Campaign Name |
+| ---------------------------------------------------- | ------------- |
+| https://www.metabase.com/docs?utm_campaign=alice     | alice         |
+| https://www.metabase.com/learn?utm_campaign=neo      | neo           |
+| https://www.metabase.com/glossary?utm_campaign=candy | candy         |
 
 You can create a custom column **Campaign Name** with the expression:
 
@@ -37,7 +37,7 @@ You can create a custom column **Campaign Name** with the expression:
 regexExtract([URL], "^[^?#]+\?utm_campaign=(.*)")
 ```
 
-Here, the regex pattern [`^[^?#]+\?` matches all valid URL strings](https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s13.html). You can replace `utm_campaign=` with whatever query parameter you like. At the end of the regex pattern, the [capturing group](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Backreferences) `(.*)` gets all of the characters that appear after the query parameter `utm_campaign=`.
+Here, the regex pattern [`^[^?#]+\?` matches all valid URL strings](https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s13.html). You can replace `utm_campaign=` with whatever query parameter you like. At the end of the regex pattern, the [capturing group](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions/Groups_and_backreferences) `(.*)` gets all of the characters that appear after the query parameter `utm_campaign=`.
 
 Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../../../dashboards/filters.md), [charts](../../visualizations/visualizing-results.md), and [embedding parameters](../../../embedding/parameters.md).
 

@@ -20,7 +20,7 @@ export function crudGroupMappingsWidget(authenticationMethod) {
   cy.findByTestId("admin-content-table").within(() => {
     cy.icon("close").click({ force: true });
   });
-  cy.findByText(/remove all group members/i).click();
+  cy.findByText(/remove all members/i).click();
   cy.button("Remove mapping and members").click();
 
   cy.wait(["@clearGroup", "@clearGroup"]);

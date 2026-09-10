@@ -217,7 +217,12 @@ export {
   getLegendTitles,
   HEAT_MAP_ZERO_COLOR,
 } from "./lib/choropleth";
+export { withColorName } from "./lib/color-name";
 export { getColorScale } from "./lib/color-scales";
+export {
+  getCustomVizSettingKeyPrefix,
+  isCustomVizSettingKey,
+} from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
   ChartSettingsError,
@@ -354,6 +359,7 @@ export {
   validateStacking,
 } from "./lib/settings/validation";
 export {
+  adoptLegacyCustomVizSettings,
   getComputedSettingsForSeries,
   getPersistableDefaultSettingsForSeries,
   getStoredSettingsForSeries,
@@ -426,7 +432,7 @@ export {
   getPieSortRowsDimensionSetting,
   getValueFromDimensionKey,
 } from "./shared/settings/pie";
-export { SERIES_SETTING_KEY } from "./shared/settings/series";
+export { getSeriesColors, SERIES_SETTING_KEY } from "./shared/settings/series";
 export { getTreemapRows } from "./shared/settings/treemap";
 export type {
   GroupedDataset,
@@ -498,6 +504,7 @@ export type {
   ChartSettingTableColumnsProps,
   ChartSettingWidgetProps,
   ComparisonMenuOption,
+  CustomVizSettingWidgetProps,
   DimensionsWidgetProps,
   EditWidgetData,
   SmartScalarComparisonWidgetProps,

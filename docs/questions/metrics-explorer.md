@@ -5,7 +5,7 @@ summary: Explore metrics and measures across dimensions and compare them side by
 
 # Metrics explorer
 
-The metrics explorer is a space for ad-hoc analysis of [metrics](../data-modeling/metrics.md) and [measures](../data-studio/measures.md)
+The metrics explorer is a space for ad-hoc analysis of [metrics](../data-modeling/semantic-layer/metrics.md) and [measures](../data-modeling/semantic-layer/measures.md)
 
 ![Metrics explorer](../questions/images/metrics-explorer.png)
 
@@ -32,7 +32,7 @@ To open a **metric** in the Metrics Explorer:
 
 1. Navigate to the metric's home page.
 
-   To get to the metric's home page, you can click on a metric from its collection, from the [metrics browser](../data-modeling/metrics.md#see-all-metrics), or from search.
+   To get to the metric's home page, you can click on a metric from its collection, from the [metrics browser](../data-modeling/semantic-layer/metrics.md#see-all-metrics), or from search.
 
 2. To view the metric in the explorer, click **Explore** in the top right corner.
 
@@ -46,7 +46,7 @@ To open a **measure** in the metrics explorer:
 
 When you open a measure or metric in the Metrics explorer, Metabase plots it along the most appropriate dimension. To change how the metric is broken out, click the current breakout dimension in the bottom controls to open the **Break out** sidebar. 
 
-The sidebar lists the metric's or measure's [dimensions](../data-modeling/metrics.md#metric-dimensions), excluding primary key and foreign key dimensions. The heading reads **Dimensions** when you select a single metric or measure, or **Shared dimensions** when you [compare](#compare-metrics-and-measures) multiple metrics or measures. 
+The sidebar lists the metric's or measure's [dimensions](../data-modeling/semantic-layer/metrics.md#metric-dimensions), excluding primary key and foreign key dimensions. The heading reads **Dimensions** when you select a single metric or measure, or **Shared dimensions** when you [compare](#compare-metrics-and-measures) multiple metrics or measures. 
 
 To see the total result without any dimensions, select **No breakout**.
 
@@ -123,7 +123,7 @@ You'll see the filter added below the metric or measure's card in the search bar
 
 You can use the four basic math operations (`+`,`-`,`*`,`/`) on metrics/measures in the metrics explorer. For example, you can explore how revenue per user, `Revenue / Active users`, changes with time.
 
-The metrics explorer is especially useful when metrics and measures are associated with different data sources, likeif you have a  "Revenue" metric on the `Subscriptions` table and an "Active users" metric on the `Events` table. If you were to compare these metrics in the query builder, you'd have to wrangle their tables with joins, but the metrics explorer lets you compare these metrics by just typing out a formula.
+The metrics explorer is especially useful when metrics and measures are associated with different data sources, like if you have a  "Revenue" metric on the `Subscriptions` table and an "Active users" metric on the `Events` table. If you were to compare these metrics in the query builder, you'd have to wrangle their tables with joins, but the metrics explorer lets you compare these metrics by just typing out a formula.
 
 ![Math with metrics](./images/math-with-metrics.png)
 

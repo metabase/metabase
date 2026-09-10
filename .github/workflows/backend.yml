@@ -19,7 +19,7 @@ on:
         type: boolean
         default: false
       run-project-ratchet-checks:
-        description: Run the ratchet check on its own, when the backend checks (which include it) do not run.
+        description: Run the ratchet check for a diff that touches nothing but the ratchets file.
         type: boolean
         default: false
 
@@ -81,10 +81,11 @@ jobs:
         - name: Run migration checks
           if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
           run: ./bin/mage project-tests migrations
-        # The backend checks already run this suite, so it only runs when they do not.
+        # Babashka, not a JVM test run, so it is cheap enough to run alongside the backend checks.
+        # It still needs the JDK prepare-backend installs, to resolve clj-kondo on a cold cache.
         - name: Run ratchet checks
-          if: ${{ inputs.run-project-ratchet-checks && !inputs.force-run && !inputs.run-project-backend-checks }}
-          run: ./bin/mage project-tests ratchets
+          if: ${{ inputs.force-run || inputs.run-project-backend-checks || inputs.run-project-ratchet-checks }}
+          run: ./bin/mage kondo-ratchets
 
   project-tests:
     name: Project tests

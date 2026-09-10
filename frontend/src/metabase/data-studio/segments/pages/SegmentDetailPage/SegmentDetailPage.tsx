@@ -8,7 +8,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { getMetadata } from "metabase/metadata-store";
+import { getShallowTables } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { Button, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -32,8 +32,8 @@ export function SegmentDetailPage({
   breadcrumbs,
   onRemove,
 }: SegmentDetailPageProps) {
-  const metadata = useSelector(getMetadata);
-  const table = metadata.tables[segment.table_id];
+  const tables = useSelector(getShallowTables);
+  const table = tables[segment.table_id];
   const canWriteSegments = useSelector((state) =>
     getUserCanWriteSegments(state, !!table?.is_published),
   );
@@ -43,7 +43,7 @@ export function SegmentDetailPage({
   const [definition, setDefinition] = useState(segment.definition);
   const [savedSegment, setSavedSegment] = useState(segment);
 
-  const { query, filters } = useSegmentQuery(definition, metadata);
+  const { query, filters } = useSegmentQuery(definition);
 
   const isDirty = useMemo(
     () =>

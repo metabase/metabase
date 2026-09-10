@@ -235,7 +235,6 @@ function ToggleSettingsSection({
             checked={checked}
             disabled={disabled}
             onChange={(event) => onChange(event.target.checked)}
-            size="sm"
             w="auto"
           />
         </Flex>

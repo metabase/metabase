@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [mage.project-tests :as project-tests]))
+   [mage.project-tests :as project-tests]
+   [mage.shell :as shell]))
 
 ;; Referenced by core_test.clj to ensure namespace is loaded
 (def keep-me :loaded)
@@ -42,7 +43,11 @@
     (testing "both suites run, in order"
       (is (= [["clojure" "-M:test"]
               ["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"
-               "[dev.modules-config-test metabase.core.modules-test metabase.core.kondo-ratchet-test metabase.core.kondo-ratchet-check-test]"]]
+               (str '[dev.modules-config-test
+                      metabase.core.modules-test
+                      metabase.core.kondo-ratchet-test
+                      metabase.core.kondo-ratchet-check-test
+                      metabase.core.namespace-uniqueness-test])]]
              calls)))
     (testing "the failed suite is reported"
       (is (= ["migrations"] failed))
@@ -76,11 +81,18 @@
     (is (= [] failed))
     (is (not (str/includes? out "Failed:")))))
 
+(deftest default-suites-include-ratchet-check-test
+  (let [calls (atom [])]
+    (with-redefs [shell/sh* (fake-sh calls [])]
+      (project-tests/run!))
+    (is (= 3 (count @calls)))
+    (is (= ["./bin/mage" "kondo-ratchets"] (last @calls)))))
+
 (deftest targeted-suites-test
-  (testing "modules and ratchets run only their own namespaces"
+  (testing "modules runs only its own namespaces"
     (is (= [["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"
              "[dev.modules-config-test metabase.core.modules-test]"]]
-           (:calls (run-suites! [] ["modules"]))))
-    (is (= [["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"
-             "[metabase.core.kondo-ratchet-test metabase.core.kondo-ratchet-check-test]"]]
+           (:calls (run-suites! [] ["modules"])))))
+  (testing "ratchets checks the repository's policy file"
+    (is (= [["./bin/mage" "kondo-ratchets"]]
            (:calls (run-suites! [] ["ratchets"]))))))

@@ -9,8 +9,8 @@ import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { CollectionType } from "metabase-types/api";
 import {

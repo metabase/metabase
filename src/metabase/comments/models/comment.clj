@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
+   [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
+   [metabase.comments.schema :as comments.schema]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
@@ -21,7 +23,9 @@
 ;; future migration.
 
 (t2/deftransforms :model/Comment
-  {:content mi/transform-json
+  {:content {:in  (comp mi/json-in comments.schema/normalize-content)
+             :out (comp (mi/catch-normalization-exceptions comments.schema/normalize-content)
+                        mi/json-out-with-keywordization)}
    :context mi/transform-json})
 
 (methodical/defmethod t2/batched-hydrate [:model/Comment :creator]
@@ -29,8 +33,8 @@
   [_model k comments]
   (mi/instances-with-hydrated-data
    comments k
-   #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
-                      :id (keep :creator_id comments))
+   #(when-let [creator-ids (seq (keep :creator_id comments))]
+      (comments.db/users-by-id creator-ids))
    :creator_id
    {:default {}}))
 
@@ -123,8 +127,8 @@
   [content]
   (into []
         (comp (filter #(and (= "smartLink" (:type %))
-                            (= "user" (-> % :attrs :model))))
-              (keep #(let [entity-id (-> % :attrs :entityId)]
+                            (= "user" (get-in % [:attrs "model"]))))
+              (keep #(let [entity-id (get-in % [:attrs "entityId"])]
                        (when (pos-int? entity-id)
                          entity-id))))
         (tree-seq :content :content content)))

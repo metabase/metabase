@@ -13,7 +13,6 @@
    [clojure.set :as set]
    [malli.error :as me]
    [medley.core :as m]
-   [metabase.app-db.core :as app-db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -22,6 +21,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -113,18 +113,19 @@
 (def param-field-columns
   "The only Field columns appropriate for returning in public/embedded API endpoints, which make heavy use of the
   functions in this namespace. Used to narrow the Fields selected here, and by the public/embed endpoints to strip
-  every other column from the Fields (and their hydrated `:target`/`:name_field`) in `:param_fields`."
-  [:id :table_id :display_name :base_type :name :semantic_type :has_field_values :fk_target_field_id])
+  every other column from the Fields (and their hydrated `:target`/`:name_field`) in `:param_fields`.
+
+  A parameter widget reads all of these. `:effective_type` decides which widget a coerced Field gets, and
+  `:settings` formats the values it shows."
+  [:id :table_id :display_name :base_type :effective_type :name :semantic_type :has_field_values
+   :fk_target_field_id :settings])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (m/index-by :table_id (-> (t2/select (into [:model/Field] param-field-columns)
-                                         :table_id      [:in table-ids]
-                                         :semantic_type (app-db/isa :type/Name)
-                                         :active        true)
+    (m/index-by :table_id (-> (parameters.db/active-name-fields-for-tables param-field-columns table-ids)
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)
@@ -186,6 +187,20 @@
   [card-or-dashboard]
   (m/update-existing card-or-dashboard :param_fields update-vals #(mapv remove-param-field-non-public-columns %)))
 
+(defn- hydrate-param-field-targets
+  "Attach each FK Field's `:target`, with the `:name_field` that labels the target's
+  values. The usual `:target` hydration reads the target Field through permissions,
+  which an anonymous public or embedded request does not have, so it is selected
+  directly here. Without the target a public parameter widget cannot label an FK's
+  values."
+  [fields]
+  (let [target-ids (into #{} (keep :fk_target_field_id) fields)
+        id->target (when (seq target-ids)
+                     (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns target-ids)
+                                         (t2/hydrate :has_field_values :name_field))))]
+    (for [field fields]
+      (assoc field :target (some-> (:fk_target_field_id field) id->target)))))
+
 (mu/defn- param-field-ids->fields
   "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card
   or Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
@@ -193,10 +208,9 @@
   [param-id->field-ids :- [:maybe [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]]
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
-                          (m/index-by :id (-> (t2/select (into [:model/Field] param-field-columns) :id [:in field-ids])
-                                              (t2/hydrate :has_field_values :name_field
-                                                          [:target :has_field_values :name_field]
-                                                          [:dimensions [:human_readable_field :has_field_values]])
+                          (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns field-ids)
+                                              (t2/hydrate :has_field_values :name_field [:dimensions [:human_readable_field :has_field_values]])
+                                              hydrate-param-field-targets
                                               remove-dimensions-nonpublic-columns)))]
     (->> param-id->field-ids
          (m/map-vals #(into [] (keep field-id->field) %)))))
@@ -211,7 +225,7 @@
   columns)."
   [:map
    [:dashcard              :map]
-   [:param-mapping         ::parameters.schema/parameter-mapping]
+   [:param-mapping         ::parameters.schema/parameter-mapping-with-dashcard]
    [:param-target-field-id [:maybe ::lib.schema.id/field]]])
 
 (mu/defn- card->filterable-columns-query :- [:maybe ::lib.schema/query]
@@ -351,7 +365,7 @@
   "Build the `param-dashcard-info` for a parameter `mapping` on `dashcard`, resolving `:param-target-field-id` when the
   target is already field-id-based."
   [dashcard :- :map
-   mapping  :- ::parameters.schema/parameter-mapping]
+   mapping  :- ::parameters.schema/parameter-mapping-with-dashcard]
   (let [card (find-card-for-mapping dashcard mapping)]
     {:dashcard              dashcard
      :param-mapping         mapping
@@ -410,7 +424,7 @@
 
 (mu/defn dashboard-param->field-ids :- [:set ::lib.schema.id/field]
   "Return field ids mapped to the parameter. `dashcard` and `card` must be present for each mapping."
-  [{:keys [mappings]} :- ::parameters.schema/parameter]
+  [{:keys [mappings]} :- ::parameters.schema/resolved-parameter]
   (let [param-dashcard-infos (mapv (fn [mapping]
                                      (mapping->param-dashcard-info (:dashcard mapping) mapping))
                                    mappings)]

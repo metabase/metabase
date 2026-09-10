@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 #
 # Resolve a conflicted .clj-kondo/ratchets.edn and stage the result.
-# This script only reads the index stages; `./bin/mage merge-kondo-ratchets` merges the policies.
+# This script only reads the index stages; `./bin/mage -kondo-ratchets-merge` merges the policies.
 
 set -euo pipefail
 
+# Find mage through this script's path: the cd below can land in a different repository.
 bin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 cd -- "$(git rev-parse --show-toplevel)"
 
@@ -39,7 +40,7 @@ else
   printf '{}\n' > "$tmp_dir/base"
 fi
 
-"$bin_dir/mage" merge-kondo-ratchets \
+"$bin_dir/mage" -kondo-ratchets-merge \
   "$tmp_dir/base" \
   "$tmp_dir/ours" \
   "$tmp_dir/theirs" \

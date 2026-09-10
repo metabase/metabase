@@ -8,8 +8,8 @@ import {
   setupSlackManifestEndpoint,
   setupSlackSettingsEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { SlackSetup } from "./SlackSetup";

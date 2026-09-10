@@ -2,8 +2,12 @@ import { useMemo, useRef } from "react";
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useLearnUrl, useTempStorage } from "metabase/common/hooks";
-import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
+import {
+  useDocsUrl,
+  useHelpLink,
+  useLearnUrl,
+  useTempStorage,
+} from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import type { ChecklistItemValue } from "metabase/redux/store";
 import { getIsPaidPlan } from "metabase/selectors/settings";
