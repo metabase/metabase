@@ -67,17 +67,23 @@ const DataAppUsers = ({
   );
 
   const handleAddUsers = async (userIds: number[]) => {
-    try {
-      await Promise.all(
-        userIds.map((userId) =>
-          createMembership({ group_id: group.id, user_id: userId }).unwrap(),
-        ),
-      );
+    const results = await Promise.allSettled(
+      userIds.map((userId) =>
+        createMembership({ group_id: group.id, user_id: userId }).unwrap(),
+      ),
+    );
 
-      setIsAdding(false);
-    } catch {
+    const failedUserIds = userIds.filter(
+      (_, index) => results[index].status === "rejected",
+    );
+
+    if (failedUserIds.length > 0) {
       sendToast({ message: t`Failed to add users`, icon: "warning" });
+    } else {
+      setIsAdding(false);
     }
+
+    return failedUserIds;
   };
 
   const handleRemoveUser = async (member: Member) => {

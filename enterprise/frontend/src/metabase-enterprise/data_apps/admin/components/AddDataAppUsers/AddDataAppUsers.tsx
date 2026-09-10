@@ -30,7 +30,7 @@ const MAX_SELECTED_USERS = 100;
 type Props = {
   hasCurrentUsers: boolean;
   members: Member[];
-  onAddUsers: (userIds: number[]) => void;
+  onAddUsers: (userIds: number[]) => Promise<number[]>;
   onCancel: () => void;
 };
 
@@ -41,6 +41,7 @@ export const AddDataAppUsers = ({
   onCancel,
 }: Props) => {
   const [text, setText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(true);
 
   const [selectedUsers, setSelectedUsers] = useState<Map<number, User>>(
@@ -125,6 +126,30 @@ export const AddDataAppUsers = ({
     setSelectedUsers(nextUsers);
   };
 
+  const handleSubmit = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setIsPickerOpen(false);
+
+    try {
+      const failedUserIds = await onAddUsers(Array.from(selectedUsers.keys()));
+
+      // keep users who could not be added in the selection, so admins can try that again
+      setSelectedUsers((users) => {
+        const failedUsers = Array.from(users).filter(([id]) =>
+          failedUserIds.includes(id),
+        );
+
+        return new Map(failedUsers);
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <Popover
       opened={isPickerOpen && !isLoading && !error && suggestedUsers.length > 0}
@@ -140,6 +165,7 @@ export const AddDataAppUsers = ({
           <AddUsersRow
             value={text}
             isValid={selectedUsers.size > 0}
+            isSubmitting={isSubmitting}
             hasCurrentUsers={hasCurrentUsers}
             placeholder={t`Pick someone from the list, or paste a list of email addresses separated by commas`}
             ariaLabel={t`Search for a user to add`}
@@ -148,7 +174,7 @@ export const AddDataAppUsers = ({
               setIsPickerOpen(true);
             }}
             onPaste={handlePaste}
-            onDone={() => onAddUsers(Array.from(selectedUsers.keys()))}
+            onDone={handleSubmit}
             onCancel={onCancel}
           >
             {Array.from(selectedUsers.values()).map((user, index) => (
@@ -156,7 +182,7 @@ export const AddDataAppUsers = ({
                 key={user.id}
                 size="md"
                 ms={index > 0 ? "sm" : ""}
-                withRemoveButton
+                withRemoveButton={!isSubmitting}
                 onRemove={() => removeUser(user)}
               >
                 {user.common_name}
@@ -192,6 +218,7 @@ export const AddDataAppUsers = ({
 interface AddUsersRowProps {
   value: string;
   isValid: boolean;
+  isSubmitting: boolean;
   hasCurrentUsers: boolean;
   placeholder: string;
   ariaLabel: string;
@@ -205,6 +232,7 @@ interface AddUsersRowProps {
 const AddUsersRow = ({
   value,
   isValid,
+  isSubmitting,
   hasCurrentUsers,
   placeholder,
   ariaLabel,
@@ -226,6 +254,7 @@ const AddUsersRow = ({
     {children}
 
     <Input
+      disabled={isSubmitting}
       type="text"
       variant="unstyled"
       flex="1 0 auto"
@@ -239,13 +268,20 @@ const AddUsersRow = ({
       onChange={onChange}
     />
 
-    <Button variant="subtle" bg="transparent" onClick={onCancel} mr="sm">
+    <Button
+      variant="subtle"
+      bg="transparent"
+      onClick={onCancel}
+      mr="sm"
+      disabled={isSubmitting}
+    >
       {t`Cancel`}
     </Button>
 
     <Button
       variant={isValid ? "filled" : "outline"}
-      disabled={!isValid}
+      disabled={!isValid || isSubmitting}
+      loading={isSubmitting}
       onClick={onDone}
     >
       {t`Add`}

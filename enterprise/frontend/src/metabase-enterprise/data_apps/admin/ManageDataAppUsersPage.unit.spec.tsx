@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
 import type { Group, Member } from "metabase-types/api";
@@ -195,6 +195,9 @@ describe("ManageDataAppUsersPage", () => {
       await screen.findByRole("button", { name: "Add users" }),
     );
 
+    // Pasting can match email addresses only after the user list has loaded.
+    await screen.findByText("Pending User");
+
     const searchInput = screen.getByRole("textbox", {
       name: "Search for a user to add",
     });
@@ -236,6 +239,112 @@ describe("ManageDataAppUsersPage", () => {
     ).toBeGreaterThan(0);
 
     expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
+  });
+
+  it("prevents re-submission while users are still being added", async () => {
+    setup();
+
+    let finishAdding!: () => void;
+
+    const pendingAddition = new Promise<void>((resolve) => {
+      finishAdding = resolve;
+    });
+
+    fetchMock.post("path:/api/permissions/membership", async () => {
+      await pendingAddition;
+
+      return 204;
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add users" }),
+    );
+
+    await userEvent.click(await screen.findByText("Pending User"));
+
+    const addButton = screen.getByRole("button", { name: "Add" });
+    await userEvent.click(addButton);
+
+    try {
+      expect(addButton).toBeDisabled();
+
+      await userEvent.click(addButton);
+
+      expect(
+        fetchMock.callHistory.calls("path:/api/permissions/membership"),
+      ).toHaveLength(1);
+    } finally {
+      finishAdding();
+    }
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Add" }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("retries only the users that failed to be added", async () => {
+    setup();
+
+    let finishSuccessfulAddition!: () => void;
+
+    const pendingAddition = new Promise<void>((resolve) => {
+      finishSuccessfulAddition = resolve;
+    });
+
+    const submittedUserIds: number[] = [];
+
+    fetchMock.post("path:/api/permissions/membership", async ({ options }) => {
+      const { user_id } = JSON.parse(String(options.body));
+      submittedUserIds.push(user_id);
+
+      if (user_id === 2) {
+        await pendingAddition;
+
+        return 204;
+      }
+
+      // The other user's first attempt fails, but their retry succeeds.
+      return submittedUserIds.filter((id) => id === user_id).length === 1
+        ? 500
+        : 204;
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add users" }),
+    );
+
+    await screen.findByText("Pending User");
+
+    await userEvent.click(
+      screen.getByRole("textbox", { name: "Search for a user to add" }),
+    );
+
+    await userEvent.paste("pending@example.com, another.user@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    try {
+      await waitFor(() => expect(submittedUserIds).toEqual([2, 5]));
+
+      expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    } finally {
+      finishSuccessfulAddition();
+    }
+
+    expect(await screen.findByText("Failed to add users")).toBeInTheDocument();
+    expect(screen.queryByText("Pending User")).not.toBeInTheDocument();
+    expect(screen.getByText("Another User")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Add" }),
+      ).not.toBeInTheDocument(),
+    );
+
+    expect(submittedUserIds).toEqual([2, 5, 5]);
   });
 
   it("returns to the previous page after removing its last member", async () => {

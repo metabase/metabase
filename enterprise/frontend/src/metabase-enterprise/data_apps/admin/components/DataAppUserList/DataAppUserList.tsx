@@ -34,7 +34,7 @@ type Props = {
   appName: string;
   isAdding: boolean;
   members: Member[];
-  onAddUsers: (userIds: number[]) => void;
+  onAddUsers: (userIds: number[]) => Promise<number[]>;
   onCancelAdd: () => void;
   onRemoveUser: (member: Member) => Promise<boolean>;
 };
