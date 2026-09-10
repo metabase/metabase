@@ -180,6 +180,10 @@
                                               :collection_id source-coll
                                               :dataset_query (venues-query)}]
       (mt/with-non-admin-groups-no-collection-perms dest-coll
+        ;; Read but not curate: without the read grant, `resolve-collection-id` collapses an
+        ;; unreadable destination to not-found before `api/create-check` ever runs, so the
+        ;; assertion would pass on the wrong refusal and stop covering the create-check.
+        (perms/grant-collection-read-permissions! (perms/all-users-group) dest-coll)
         (is (re-find #"(?i)permission"
                      (tool-error (call-tool! :rasta {:type          "question"
                                                      :id            card-id
@@ -488,7 +492,10 @@
       (mt/with-non-admin-groups-no-collection-perms dest-coll
         ;; A bare `:isError` cannot tell a permission refusal from a Malli failure, a not-found on
         ;; the destination id, or an internal error sanitized to "Internal error" -- assert the
-        ;; refusal actually mentions permissions, the way every other error test here does.
+        ;; refusal actually mentions permissions, the way every other error test here does. That
+        ;; needs the destination readable but not curatable: an unreadable one collapses to
+        ;; not-found in `resolve-collection-id` before the create-check runs.
+        (perms/grant-collection-read-permissions! (perms/all-users-group) dest-coll)
         (is (re-find #"(?i)permission"
                      (tool-error (call-tool! :rasta {:type          "question"
                                                      :id            card-id
