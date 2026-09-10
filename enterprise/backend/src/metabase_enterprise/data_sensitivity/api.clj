@@ -27,7 +27,7 @@
 (api.macros/defendpoint :post "/table/:id" :- ::core/table-result
   "Classify every active field of the table with the LLM and diff the proposal against the current
   `data_sensitivity` labels. Nothing is written; the response is the proposal."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [table (api/check-404 (db/table id))]
     (api/write-check :model/Database (:db_id table))
@@ -37,10 +37,10 @@
 (api.macros/defendpoint :post "/database/:id" :- ::core/database-result
   "Classify every active table of the database, or only those in `schema` when given, with the LLM and diff the
   proposals against the current `data_sensitivity` labels. Synchronous; nothing is written."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [schema]} :- [:maybe [:map
+   {:keys [schema]} :- [:maybe [:map {:closed true}
                                 [:schema {:optional true} [:maybe ms/NonBlankString]]]]]
   (let [database (api/write-check :model/Database id)]
     (check-available!)
