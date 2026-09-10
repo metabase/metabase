@@ -10,7 +10,7 @@ import {
 } from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
+import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import {
   compactifyValue,
   getColor,
@@ -21,7 +21,11 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import {
+  type ComputedVisualizationSettings,
+  getGoalSegmentBounds,
+  resolveGoalSegments,
+} from "metabase/viz-core";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import { SCALAR_CHART_DEFINITION } from "./definition";
@@ -56,11 +60,13 @@ function ScalarComponent(
   const { cols, rows } = data;
 
   const isMultiSeries = rawSeries.length > 1;
-  const goalSegments = useResolvedGoalSegments(
+  const scalarSegments = isMultiSeries
+    ? undefined
+    : settings["scalar.segments"];
+  const goalData = useResolvedGoalData(
     card.dataset_query,
     data,
-    isMultiSeries ? undefined : settings["scalar.segments"],
-    { allowOpenEnded: true },
+    getGoalSegmentBounds(scalarSegments),
   );
 
   const label = settings["scalar.label"];
@@ -86,7 +92,7 @@ function ScalarComponent(
     );
   }
 
-  if (goalSegments.status !== "resolved") {
+  if (goalData.status !== "resolved") {
     return (
       <ScalarCardShell
         actionButtons={actionButtons}
@@ -95,7 +101,7 @@ function ScalarComponent(
         tier={tier}
         title={title}
       >
-        <GoalResolutionState kind="segments" status={goalSegments.status} />
+        <GoalResolutionState kind="segments" status={goalData.status} />
         {titleElement}
       </ScalarCardShell>
     );
@@ -115,8 +121,11 @@ function ScalarComponent(
     jsx: true,
   };
 
-  const color = getColor(value, goalSegments.segments);
-  const tooltipContent = getTooltipContent(goalSegments.segments);
+  const segments = resolveGoalSegments(goalData.data, scalarSegments, {
+    allowOpenEnded: true,
+  });
+  const color = getColor(value, segments);
+  const tooltipContent = getTooltipContent(segments);
 
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
