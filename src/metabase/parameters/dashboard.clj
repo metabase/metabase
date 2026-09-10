@@ -19,7 +19,7 @@
   1000)
 
 (mu/defn- param->fields
-  [param :- ::parameters.schema/parameter & {:keys [op-override]}]
+  [param :- ::parameters.schema/resolved-parameter & {:keys [op-override]}]
   (let [op      (or op-override (params/param-type->op (:type param)))
         options (or (:options param) (params/param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]
@@ -78,7 +78,7 @@
   ([dashboard param-key constraint-param-key->value]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
-  ([dashboard                   :- ms/Map
+  ([dashboard                   :- :map
     param-key                   :- ms/NonBlankString
     constraint-param-key->value :- [:map-of string? any?]
     query                       :- [:maybe ms/NonBlankString]]

@@ -28,7 +28,7 @@ You can set the default language (also called the "instance language") across yo
 
 People can override these settings in their personal [account settings](../people-and-groups/account-settings.md).
 
-To set the instance-wider language:
+To set the instance-wide language:
 
 1. Go to **Admin > Settings > Localization**.
 2. Under **Instance language**, pick the language for your instance.

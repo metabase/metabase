@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-08-26 19:37+0000\n"
+"POT-Creation-Date: 2026-09-01 05:46+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Swedish\n"
 "Language: sv_SE\n"
-"PO-Revision-Date: 2026-09-01 05:39\n"
+"PO-Revision-Date: 2026-09-08 05:41\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -248,12 +248,14 @@ msgstr "Redigera anslutning"
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.tsx
 #: frontend/src/metabase/comments/components/Comments/Comments.tsx
 #: frontend/src/metabase/common/components/ErrorPages/ErrorDiagnosticModal.tsx
+#: frontend/src/metabase/common/components/SidebarHeader/SidebarHeader.tsx
 #: frontend/src/metabase/common/components/Sidesheet/Sidesheet.tsx
 #: frontend/src/metabase/common/components/Toaster/Toaster.tsx
 #: frontend/src/metabase/common/components/upsells/components/UpgradeModal/UpgradeModalError.tsx
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/PulsesListSidebar.tsx
 #: frontend/src/metabase/detail-view/components/DetailViewSidesheet/Sidesheet/Sidesheet.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ExplorationComments.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/TimelineEventsSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobTriggersSidebar.tsx
@@ -433,6 +435,7 @@ msgstr "Avbryt"
 #: frontend/src/metabase/data-studio/segments/pages/SegmentDetailPage/SegmentDetailPage.tsx
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/ProviderConnectionForm.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/CustomMappingModal/CustomMappingModal.tsx
@@ -1780,11 +1783,11 @@ msgstr "Redigera standardpolicy (nuvarande: {0})"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Reset all to default?"
-msgstr ""
+msgstr "Återställ allt till standard?"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "This will reset all database caching policies to their default values."
-msgstr ""
+msgstr "Detta återställer alla databascachepolicyer till deras standardvärden."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Reset all to default"
@@ -1792,7 +1795,7 @@ msgstr "Återställ alla till standard"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Could not reset the caching policies."
-msgstr ""
+msgstr "Det gick inte att återställa cachepolicyerna."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 #: frontend/src/metabase/admin/performance/components/StrategyEditorForDatabases.tsx
@@ -1807,11 +1810,11 @@ msgstr "Inställningar för datacachning"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Speed up queries by caching results with a global policy or database-specific policies."
-msgstr ""
+msgstr "Snabba upp frågor genom att cacha resultat med en global policy eller databasspecifika policyer."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Search by name or policy…"
-msgstr ""
+msgstr "Sök efter namn eller policy…"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 msgid "Untitled database"
@@ -1876,11 +1879,11 @@ msgstr "Cache"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicySidePanel/PolicySidePanel.tsx
 msgid "Previous item"
-msgstr ""
+msgstr "Föregående objekt"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicySidePanel/PolicySidePanel.tsx
 msgid "Next item"
-msgstr ""
+msgstr "Nästa objekt"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicyTable/PolicyTable.tsx
 #: enterprise/frontend/src/metabase-enterprise/clean_up/CleanupCollectionModal/CleanupCollectionTable.tsx
@@ -1946,7 +1949,7 @@ msgstr "Policy"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PolicyTable/PolicyTable.tsx
 msgid "Caching policies"
-msgstr ""
+msgstr "Cachepolicyer"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx
 msgid "Refresh cache automatically"
@@ -1978,7 +1981,7 @@ msgstr "När nya resultat ska hämtas"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
 msgid "Caching policy"
-msgstr ""
+msgstr "Cachepolicy"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/IllustrationWidget/IllustrationWidget.tsx
@@ -2001,11 +2004,11 @@ msgstr "Typ"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: frontend/src/embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/LinkOptions.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/constants.ts
 #: frontend/src/metabase/monitor/tools/utils.ts
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: metabase/revisions/models/revision/diff.clj
 msgid "Dashboard"
 msgstr "Instrumentpanel"
@@ -2017,11 +2020,11 @@ msgstr "Instrumentpanel"
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/context/SdkQuestionProvider.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/DetailsSection.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationsTable/NotificationsTable.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
 msgid "Question"
 msgstr "Fråga"
@@ -2033,11 +2036,11 @@ msgstr "Cachning för instrumentpaneler och frågor"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "These dashboards and questions have custom caching policies that override default or database-level policies."
-msgstr ""
+msgstr "Dessa instrumentpaneler och frågor har anpassade cachepolicyer som åsidosätter standard- eller databasnivåpolicyer."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "Search by name or collection…"
-msgstr ""
+msgstr "Sök efter namn eller samling…"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "No dashboards or questions have their own caching policies yet."
@@ -2045,7 +2048,7 @@ msgstr "Inga instrumentpaneler eller frågor har egna cachepolicyer ännu."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 msgid "Untitled dashboard"
-msgstr ""
+msgstr "Instrumentpanel utan titel"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/utils.tsx
@@ -2866,14 +2869,14 @@ msgstr "Data kunde inte hämtas korrekt: {0}"
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
 #: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
 #: metabase/collections/models/collection.clj
 msgid "Data"
 msgstr "Data"
@@ -2886,7 +2889,6 @@ msgstr "Data"
 #: frontend/src/metabase/browse/metrics/BrowseMetrics.tsx
 #: frontend/src/metabase/common/components/Pickers/MiniPicker/components/MiniPickerItemList.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-#: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 #: frontend/src/metabase/home/components/Onboarding/items/DataStudioItem.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
@@ -3311,7 +3313,7 @@ msgstr "Fält"
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.tsx
 #: frontend/src/metabase/reference/segments/SegmentList/SegmentList.tsx
 #: frontend/src/metabase/reference/segments/SegmentSidebar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Segments"
 msgstr "Segment"
 
@@ -3699,10 +3701,9 @@ msgstr "Välj scheman att replikera"
 
 #: enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
 #: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/driver/redshift.clj metabase/driver/util.clj
 msgid "All"
 msgstr "Alla"
@@ -4179,6 +4180,7 @@ msgstr "Filter"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/displayGroups.ts
 #: enterprise/frontend/src/metabase-enterprise/replacement/pages/MigrateModelsPage/PageHeader/PageHeader.tsx
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/pages/PythonLibraryEditorPage/PythonLibraryEditorHeader.tsx
+#: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/utils.ts
 #: frontend/src/metabase/common/components/TransformCollectionName.tsx
 #: frontend/src/metabase/data-studio/app/pages/TransformsSectionLayout/TransformsSectionLayout.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
@@ -4187,7 +4189,6 @@ msgstr "Filter"
 #: frontend/src/metabase/transforms/components/TransformsHeader/TransformsHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunSidebar.tsx
 #: frontend/src/metabase/transforms/pages/TransformGraphRunListPage/TransformGraphRunSidebar/TransformGraphRunSidebar.tsx
-#: frontend/src/metabase/transforms/utils.ts
 #: metabase/collections/models/collection/root.clj
 msgid "Transforms"
 msgstr "Transformeringar"
@@ -4522,14 +4523,16 @@ msgid "Transform"
 msgstr "Transformering"
 
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: metabase/revisions/models/revision/diff.clj
 msgid "Document"
 msgstr "Dokument"
 
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/explorations/constants.ts
+#: metabase/explorations/composite.clj
 #: metabase/revisions/models/revision/diff.clj
 msgid "Segment"
 msgstr "Segment"
@@ -5368,14 +5371,13 @@ msgstr "CLI-analys"
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/ConversationsByDayChart.tsx
 #: frontend/src/metabase/common/utils/fields.ts
 #: frontend/src/metabase/embedding/mcp/McpFeedbackArea.tsx
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 #: frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/echarts/pie/constants.ts
-#: frontend/src/metabase/visualizations/echarts/tooltip/utils.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/pie/constants.ts
+#: frontend/src/metabase/viz-core/echarts/tooltip/utils.ts
 msgid "Other"
 msgstr "Övrigt"
 
@@ -5629,7 +5631,7 @@ msgid "Submitted by {0}"
 msgstr "Skickat av {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "SQL query"
 msgstr "SQL-fråga"
@@ -5771,7 +5773,7 @@ msgstr "Senaste 30 dagarna"
 #: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateShortcutPicker/constants.ts
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Previous month"
 msgstr "Föregående månad"
@@ -6076,8 +6078,8 @@ msgstr "Inga konversationer hittades"
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationsPage/ConversationsTable.tsx
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
 #: frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
 msgid "Title"
 msgstr "Titel"
 
@@ -6098,7 +6100,6 @@ msgstr "Profil"
 #: frontend/src/metabase/actions/constants.ts
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePickerBody/SingleDatePickerBody.tsx
 #: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
@@ -6223,7 +6224,7 @@ msgstr "Info"
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
 msgid "Description"
 msgstr "Beskrivning"
 
@@ -7629,6 +7630,9 @@ msgstr "För att det här alternativet ska fungera behöver dina användare ha v
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "Summary"
 msgstr "Sammanfattning"
@@ -8895,9 +8899,7 @@ msgstr "och"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] ""
-msgstr[1] ""
+msgstr "tabell"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9038,10 +9040,10 @@ msgstr "Stäng flik"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/settings.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 #: metabase/driver/common.clj metabase/driver/redshift.clj
 msgid "Columns"
 msgstr "Kolumner"
@@ -10105,10 +10107,10 @@ msgstr "Återställ"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ChartColorSettings/ChartColorSettings.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/MetabotLayoutSetting.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Auto"
 msgstr "Auto"
 
@@ -10636,7 +10638,7 @@ msgstr "Den rullande summan av en kolumn över en uppdelning."
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithSource.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/utils.ts
-#: frontend/src/metabase/visualizations/lib/errors.ts
+#: frontend/src/metabase/viz-core/lib/errors.ts
 msgid "column"
 msgstr "kolumn"
 
@@ -10668,16 +10670,16 @@ msgstr "Värdet att hämta från en annan rad."
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/static-viz/components/TreemapChart/legend.ts
 #: frontend/src/metabase/visualizations/components/ChartTooltip/TooltipRow/TooltipRow.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/waterfall/model/axis.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/waterfall/model/dataset.ts
-#: frontend/src/metabase/visualizations/echarts/graph/sankey/option/tooltip.tsx
-#: frontend/src/metabase/visualizations/echarts/graph/treemap/model/tooltip.ts
-#: frontend/src/metabase/visualizations/echarts/pie/constants.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/CartesianChart/events.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/TreemapBreadcrumb.tsx
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/waterfall/model/axis.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/waterfall/model/dataset.ts
+#: frontend/src/metabase/viz-core/echarts/graph/sankey/option/tooltip.tsx
+#: frontend/src/metabase/viz-core/echarts/graph/treemap/model/tooltip.ts
+#: frontend/src/metabase/viz-core/echarts/pie/constants.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Total"
 msgstr "Totalt"
 
@@ -11632,7 +11634,6 @@ msgstr "Kolumnen eller värdet att kontrollera."
 
 #: frontend/src/metabase-lib/query/clauses/clauses.ts
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
 #: frontend/src/metabase/querying/drills/utils/pivot-drill.tsx
@@ -12803,7 +12804,7 @@ msgid "An audit log of MCP and Agent API client registrations and the authorizat
 msgstr "En revisionslogg över MCP- och Agent API-klientregistreringar och de auktoriseringsbeslut som användare har godkänt eller nekat."
 
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
 msgid "All events"
 msgstr "Alla händelser"
 
@@ -14001,7 +14002,7 @@ msgstr "Sparad"
 
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 msgid "Cache invalidation policy"
-msgstr ""
+msgstr "Policy för cacheinvalidering"
 
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 msgid "This determines how long cached results will be stored."
@@ -14194,6 +14195,7 @@ msgstr "Gruppen kan visa, spara, redigera, fästa och arkivera objekt i samlinge
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsHelp/CollectionPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/constants/collections-permissions.ts
 #: frontend/src/metabase/archive/hooks/use-restore.ts
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 #: frontend/src/metabase/explorations/pages/ExplorationPage.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionListItem.tsx
@@ -15218,7 +15220,7 @@ msgstr "Du bör förmodligen ändra den här inställningen till {0}."
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
 #: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "None"
 msgstr "Ingen"
 
@@ -15966,17 +15968,17 @@ msgid "Dates and times"
 msgstr "Datum och tider"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Date style"
 msgstr "Datumstil"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Abbreviate days and months"
 msgstr "Förkorta dagar och månader"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Time style"
 msgstr "Tidsstil"
 
@@ -15985,23 +15987,23 @@ msgid "Numbers"
 msgstr "Siffror"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Separator style"
 msgstr "Avgränsarstil"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Currency"
 msgstr "Valuta"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Unit of currency"
 msgstr "Valutaenhet"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Currency label style"
 msgstr "Stil för valutamärkning"
 
@@ -17241,9 +17243,10 @@ msgid "Edit permissions"
 msgstr "Redigera behörigheter"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionTimeline.tsx
+#: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/CardEmbedMenuDropdown.tsx
 #: frontend/src/metabase/query_builder/components/view/QuestionTimelineWidget/QuestionTimelineWidget.tsx
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
 #: frontend/src/metabase/timelines/collections/components/TimelineListModal/TimelineListModal.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
 msgid "Events"
 msgstr "Händelser"
 
@@ -18243,7 +18246,7 @@ msgstr "Hämtar distinkta värden..."
 
 #: frontend/src/metabase/common/components/MetadataInfo/QueryColumnFingerprintInfo/NumberFingerprint.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Average"
 msgstr "Genomsnitt"
@@ -18255,9 +18258,9 @@ msgstr "Genomsnitt"
 #: frontend/src/metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberFilterPicker.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Min"
 msgstr "Min"
@@ -18269,9 +18272,9 @@ msgstr "Min"
 #: frontend/src/metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberFilterPicker.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Max"
 msgstr "Max"
@@ -18333,13 +18336,6 @@ msgstr "Förhandsgranska ändringarna"
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsModal.tsx
 msgid "The questions were successfully moved into their dashboards"
 msgstr "Frågorna flyttades till sina instrumentpaneler"
-
-#: frontend/src/metabase/common/components/NewItemMenu/NewItemMenuView.tsx
-#: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
-#: metabase/lib/stage.cljc metabase/xrays/automagic_dashboards/core.clj
-#: resources/automagic_dashboards/table/example.yaml
-msgid "Native query"
-msgstr "Native-fråga"
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 #, javascript-format
@@ -18881,7 +18877,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "Minut"
 msgstr[1] "{0} minuter"
 
@@ -19144,6 +19140,14 @@ msgstr "Få en 14-dagars kostnadsfri provperiod av detta och andra Pro-funktione
 msgid "You have unsaved changes."
 msgstr "Du har osparade ändringar."
 
+#: frontend/src/metabase/common/hooks/use-metadata-toasts.ts
+msgid "Couldn't undo"
+msgstr "Kunde inte ångra"
+
+#: frontend/src/metabase/common/hooks/use-metadata-toasts.ts
+msgid "Change undone"
+msgstr "Ändring ångrad"
+
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/dashboard/actions/trash.ts
 #: frontend/src/metabase/timelines/common/hooks/use-set-timeline.ts
@@ -19363,7 +19367,6 @@ msgid "Income"
 msgstr "Intäkt"
 
 #: frontend/src/metabase/common/utils/fields.ts
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
 msgid "Numeric"
 msgstr "Numeriskt"
 
@@ -19798,10 +19801,6 @@ msgstr "Det finns inga åtgärder för denna modell"
 #: frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/lib/settings/nested.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
@@ -19811,6 +19810,10 @@ msgstr "Det finns inga åtgärder för denna modell"
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/nested.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Display"
 msgstr "Visning"
 
@@ -19829,10 +19832,10 @@ msgstr "Knapp"
 #: frontend/src/metabase/dashboard/components/ActionViz/ActionViz.tsx
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSegmentsEditor/ChartSettingSegmentsEditor.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/AnotherColumnForm.tsx
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/StaticNumberForm.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Label"
 msgstr "Etikett"
 
@@ -21003,9 +21006,9 @@ msgstr "Uppdateras om"
 
 #: frontend/src/metabase/dashboard/components/RefreshWidget/options.ts
 #: frontend/src/metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Off"
 msgstr "Av"
 
@@ -21274,10 +21277,10 @@ msgid "Horizontal Alignment"
 msgstr "Horisontell justering"
 
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Left"
 msgstr "Vänster"
 
@@ -21286,10 +21289,10 @@ msgid "Center"
 msgstr "Centrera"
 
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "Right"
 msgstr "Höger"
 
@@ -21384,6 +21387,7 @@ msgid "View your database connections"
 msgstr "Visa dina databasanslutningar"
 
 #: frontend/src/metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs.tsx
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
 #: frontend/src/metabase/reference/segments/SegmentSidebar.tsx
 msgid "Revision history"
 msgstr "Revisionshistorik"
@@ -22120,8 +22124,8 @@ msgstr "Tyvärr, vi kunde inte hitta den här datakällan. Prova att ladda upp d
 #: frontend/src/metabase/databases/components/DatabaseFormError/DatabaseFormError.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Hide"
 msgstr "Dölj"
 
@@ -22526,23 +22530,6 @@ msgid "Remove public link"
 msgstr "Ta bort offentlig länk"
 
 #: frontend/src/metabase/documents/components/DocumentPage.tsx
-#, javascript-format
-msgid "Untitled document - {0}"
-msgstr "Dokument utan titel – {0}"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Document created"
-msgstr "Dokument skapat"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Document saved"
-msgstr "Dokument sparat"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
-msgid "Error saving document"
-msgstr "Fel när dokumentet skulle sparas"
-
-#: frontend/src/metabase/documents/components/DocumentPage.tsx
 msgid "Where should we save this document?"
 msgstr "Var ska vi spara det här dokumentet?"
 
@@ -22573,6 +22560,14 @@ msgstr "Kunde inte läsa in fråga"
 #: frontend/src/metabase/documents/components/EmbedQuestionSettingsSidebar.tsx
 msgid "Visualize as"
 msgstr "Visualisera som"
+
+#: frontend/src/metabase/documents/components/EmbedTimelineSidebar.tsx
+msgid "Loading timeline events..."
+msgstr "Läser in tidslinjehändelser..."
+
+#: frontend/src/metabase/documents/components/EmbedTimelineSidebar.tsx
+msgid "Failed to load timeline events"
+msgstr "Misslyckades med att läsa in tidslinjehändelser"
 
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/CardEmbedMenuDropdown.tsx
 msgid "Add supporting text"
@@ -22645,6 +22640,23 @@ msgstr "Ny fråga"
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/modals/NativeQueryModal.tsx
 msgid "Edit SQL Query"
 msgstr "Redigera SQL-fråga"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+#, javascript-format
+msgid "Untitled document - {0}"
+msgstr "Dokument utan titel – {0}"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Document created"
+msgstr "Dokument skapat"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Document saved"
+msgstr "Dokument sparat"
+
+#: frontend/src/metabase/documents/hooks/use-document-editor.ts
+msgid "Error saving document"
+msgstr "Fel när dokumentet skulle sparas"
 
 #: frontend/src/metabase/embedding/components/ArchiveButton.tsx
 msgctxt "button that opens an actions dropdown e.g. Move this item to trash"
@@ -23685,7 +23697,9 @@ msgid "Embed an entire dashboard with multiple charts and filters"
 msgstr "Bädda in en hel instrumentpanel med flera diagram och filter"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/constants.ts
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/utils.ts
 #: frontend/src/metabase/rich_text_editing/tiptap/extensions/Command/utils.ts
+#: metabase/explorations/models/exploration_query_result.clj
 msgid "Chart"
 msgstr "Diagram"
 
@@ -23880,8 +23894,8 @@ msgstr "Gruppåtgärder"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Show"
 msgstr "Visa"
 
@@ -23989,6 +24003,10 @@ msgstr "Diskussioner"
 msgid "No discussions yet."
 msgstr "Inga diskussioner än."
 
+#: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
+msgid "Document your research findings here. You can add interesting charts to this summary by clicking \"Add to Summary\" from the chart's page..."
+msgstr "Dokumentera dina forskningsresultat här. Du kan lägga till intressanta diagram i den här sammanfattningen genom att klicka på \"Add to Summary\" på diagrammets sida..."
+
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 msgid "Failed to update star"
 msgstr "Kunde inte uppdatera stjärna"
@@ -24001,6 +24019,16 @@ msgstr "Kunde inte uppdatera synlighet"
 #, javascript-format
 msgid "\"{0}\" hidden"
 msgstr "\"{0}\" dold"
+
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+msgid "Failed to add to Summary"
+msgstr "Misslyckades med att lägga till i sammanfattningen"
+
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#, javascript-format
+msgctxt "{0} is the document name"
+msgid "Added to {0}"
+msgstr "Lades till i {0}"
 
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts
@@ -24032,6 +24060,10 @@ msgstr "Ta bort stjärna"
 msgid "Add comment"
 msgstr "Lägg till kommentar"
 
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+msgid "Add to Summary"
+msgstr "Lägg till i sammanfattningen"
+
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/ExplorationGroupVisualization.tsx
 msgid "No charts in this group."
 msgstr "Inga diagram i den här gruppen."
@@ -24058,7 +24090,7 @@ msgid "Hide comments"
 msgstr "Dölj kommentarer"
 
 #: frontend/src/metabase/explorations/components/ExplorationVisualization/TimelineEventCard.tsx
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
 msgid "Timeline event card"
 msgstr "Tidslinjehändelsekort"
 
@@ -24071,10 +24103,6 @@ msgid "{0} event"
 msgid_plural "{0} events"
 msgstr[0] "{0} händelse"
 msgstr[1] "{0} händelser"
-
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/utils.ts
-msgid "(All)"
-msgstr "(Alla)"
 
 #: frontend/src/metabase/explorations/components/NewExplorationChat/NewExplorationChat.tsx
 msgid "Failed to add research groups"
@@ -24124,20 +24152,6 @@ msgstr "Ta bort område"
 msgid "Modify which dimensions to see this metric by"
 msgstr "Ändra vilka Dimensioner du vill se det här Mått efter"
 
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-#: metabase/lib_metric/display_info.cljc
-msgid "Dimension"
-msgstr "Dimension"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-msgid "Modify which metrics to look at for this dimension"
-msgstr "Ändra vilka mått du vill titta på för den här Dimensionen"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-msgid "No related metrics."
-msgstr "Inga relaterade mått."
-
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 msgid "Failed to start research"
 msgstr "Kunde inte starta research"
@@ -24147,15 +24161,8 @@ msgid "Research plan"
 msgstr "Researchplan"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
-msgid "+ Data"
-msgstr "+ Data"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
-#: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
-#: frontend/src/metabase/metrics/components/MetricHeader/MetricTabs/MetricTabs.tsx
-#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/VerticalWell/PieVerticalWell.tsx
-msgid "Dimensions"
-msgstr "Dimensioner"
+msgid "+ Metrics"
+msgstr "+ Mått"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/NewExplorationData.tsx
 msgid "Add events"
@@ -24190,14 +24197,6 @@ msgstr "Vad vill du göra research på?"
 msgid "Research mode helps automate running and inspecting combinations of metrics, dimensions, and timelines so you can use your brain for analysis, not busy work."
 msgstr "Research mode hjälper till att automatisera körning och granskning av kombinationer av mått, Dimensioner och tidslinjer så att du kan använda hjärnan till analys, inte till rutinjobb."
 
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
-msgid "Add dimensions of interest to your research plan"
-msgstr "Lägg till Dimensioner av intresse i din researchplan"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddDimensionsModal.tsx
-msgid "Search for a dimension"
-msgstr "Sök efter en dimension"
-
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
 msgid "Add metrics to your research plan"
 msgstr "Lägg till mått i din researchplan"
@@ -24213,10 +24212,6 @@ msgstr "Lägg till händelser i din researchplan"
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddTimelinesModal.tsx
 msgid "Search for a timeline"
 msgstr "Sök efter en tidslinje"
-
-#: frontend/src/metabase/explorations/components/NewExplorationData/utils.ts
-msgid "Geo"
-msgstr "Geo"
 
 #: frontend/src/metabase/explorations/components/NewExplorationEntry/NewExplorationEntry.tsx
 msgid "Manual setup"
@@ -24248,6 +24243,11 @@ msgstr "Alla projekt"
 #, javascript-format
 msgid "New research - {0}"
 msgstr "Ny research – {0}"
+
+#: frontend/src/metabase/explorations/constants.ts
+#: metabase/explorations/composite.clj
+msgid "(All)"
+msgstr "(Alla)"
 
 #: frontend/src/metabase/explorations/hooks/useCopyLink.ts
 msgid "Couldn't copy link"
@@ -24736,6 +24736,13 @@ msgstr "+ Nytt"
 #: frontend/src/metabase/metabot/components/NewMenuItemAIExploration.tsx
 msgid "AI exploration"
 msgstr "AI-utforskning"
+
+#: frontend/src/metabase/home/components/Onboarding/items/QueryItem.tsx
+#: frontend/src/metabase/nav/components/NewItemMenu/NewItemMenuView.tsx
+#: metabase/lib/stage.cljc metabase/xrays/automagic_dashboards/core.clj
+#: resources/automagic_dashboards/table/example.yaml
+msgid "Native query"
+msgstr "Native-fråga"
 
 #: frontend/src/metabase/home/components/Onboarding/use-checklist-items.ts
 msgid "Set things up"
@@ -26046,14 +26053,6 @@ msgstr "Välj om JSON ska vikas ut"
 msgid "Pick someone, or type an email"
 msgstr "Välj någon eller skriv en e-postadress"
 
-#: frontend/src/metabase/metadata/hooks/useMetadataToasts.ts
-msgid "Couldn't undo"
-msgstr "Kunde inte ångra"
-
-#: frontend/src/metabase/metadata/hooks/useMetadataToasts.ts
-msgid "Change undone"
-msgstr "Ändring ångrad"
-
 #: frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/components/Search.tsx
 msgid "No results."
 msgstr "Inga resultat."
@@ -26075,6 +26074,12 @@ msgstr "Intervallindela inte"
 #: frontend/src/metabase/metrics-viewer/components/FilterPopover/FilterPopoverContent.tsx
 msgid "No dimensions found"
 msgstr "Inga dimensioner hittades"
+
+#: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
+#: frontend/src/metabase/metrics/components/MetricHeader/MetricTabs/MetricTabs.tsx
+#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/VerticalWell/PieVerticalWell.tsx
+msgid "Dimensions"
+msgstr "Dimensioner"
 
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 msgid "No shared dimensions found"
@@ -26156,9 +26161,9 @@ msgid "X-axis controls"
 msgstr "Kontroller för X-axeln"
 
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/CenterControls/CenterControls.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "X-axis"
 msgstr "X-axel"
 
@@ -26351,7 +26356,6 @@ msgid "true"
 msgstr "sant"
 
 #: frontend/src/metabase/metrics/components/MetricDimensionGrid/MetricDimensionGrid.tsx
-#: metabase/explorations/blocks.clj
 #, javascript-format
 msgid "By {0}"
 msgstr "Av {0}"
@@ -27007,7 +27011,7 @@ msgstr "Inga objekt tillgängliga"
 #: frontend/src/metabase/monitor/tools/components/TaskRunStartedAtPicker/TaskRunDatePicker.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/DateShortcutPicker/constants.ts
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunListPage.tsx
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Previous week"
 msgstr "Föregående vecka"
@@ -28200,7 +28204,7 @@ msgid "We don’t have any cached values for the connected fields. Try one of th
 msgstr "Vi har inga cachelagrade värden för de anslutna fälten. Prova något av de andra alternativen, eller ändra den här widgeten till en sökruta."
 
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Values"
 msgstr "Värden"
 
@@ -28479,8 +28483,8 @@ msgstr "Endast detaljvyer"
 #: frontend/src/metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/LinkEditor.tsx
 #: frontend/src/metabase/rich_text_editing/tiptap/extensions/Command/utils.ts
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
 #: frontend/src/metabase/visualizations/visualizations/Scalar/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
 msgid "Formatting"
 msgstr "Formatering"
 
@@ -28590,67 +28594,6 @@ msgstr "Det här är en utvecklingsversion av visualiseringen"
 #: frontend/src/metabase/query_builder/components/chart-type-selector/ChartTypeOption/ChartTypeOption.tsx
 msgid "Dev"
 msgstr "Utveckl"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-msgid "Event menu"
-msgstr "Händelsemeny"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/common/components/EditEventModal/EditEventModal.tsx
-msgid "Edit event"
-msgstr "Redigera händelse"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-msgid "Move event"
-msgstr "Flytta händelse"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
-#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
-msgid "Archive event"
-msgstr "Arkivera händelse"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineCard/TimelineCard.tsx
-msgid "Timeline card header"
-msgstr "Rubrik för tidslinjekort"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Collection event illustration"
-msgstr "Illustration av samlingshändelse"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Add context to your time series charts"
-msgstr "Lägg till sammanhang till dina tidsseriediagram"
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#, javascript-format
-msgid "Add events to {0} to show important milestones, launches, or anything else, right alongside your data."
-msgstr "Lägg till händelser i {0} för att visa viktiga milstolpar, lanseringar eller vad som helst annat, direkt bredvid dina data."
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#, javascript-format
-msgid "Events in {0} let you see important milestones, launches, or anything else, right alongside your data."
-msgstr "Händelser i {0} låter dig se viktiga milstolpar, lanseringar eller vad som helst annat, direkt bredvid dina data."
-
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelineEmptyState/TimelineEmptyState.tsx
-#: frontend/src/metabase/query_builder/components/timelines/components/TimelinePanel/TimelinePanel.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
-#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
-msgid "Create event"
-msgstr "Skapa händelse"
-
-#: frontend/src/metabase/query_builder/components/timelines/containers/EditEventModal/EditEventModal.tsx
-msgid "Updated event"
-msgstr "Händelse uppdaterad"
-
-#: frontend/src/metabase/query_builder/components/timelines/containers/NewEventModal/NewEventModal.tsx
-msgid "Created event"
-msgstr "Skapade händelse"
 
 #: frontend/src/metabase/query_builder/components/view/ExecutionTime/ExecutionTime.tsx
 msgid "How long this query took"
@@ -28968,7 +28911,7 @@ msgid "Most"
 msgstr "De flesta"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Some"
 msgstr "Några"
 
@@ -29108,21 +29051,6 @@ msgstr "Gruppera efter"
 msgid "Summarize by"
 msgstr "Sammanfatta efter"
 
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events between {0} and {1}"
-msgstr "Händelser mellan {0} och {1}"
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events in {0}"
-msgstr "Händelser i {0}"
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/TimelineSidebar/TimelineSidebar.tsx
-#, javascript-format
-msgid "Events on {0}"
-msgstr "Händelser den {0}"
-
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
 msgid "All Set! Your question is ready."
 msgstr "Klart! Din fråga är redo."
@@ -29172,8 +29100,8 @@ msgstr "Aktuell"
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/constants.ts
 #: frontend/src/metabase/querying/drills/utils/quick-filter-drill.tsx
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
 msgid "On"
 msgstr "På"
 
@@ -30022,7 +29950,7 @@ msgid "Avg"
 msgstr "Snitt"
 
 #: frontend/src/metabase/querying/drills/utils/summarize-column-drill.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 #: resources/automagic_dashboards/field/Country.yaml
 #: resources/automagic_dashboards/field/DateTime.yaml
@@ -31408,6 +31336,28 @@ msgid "Export in progress. Are you sure you want to leave?"
 msgstr "Export pågår. Är du säker på att du vill lämna?"
 
 #: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Event menu"
+msgstr "Händelsemeny"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/common/components/EditEventModal/EditEventModal.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Edit event"
+msgstr "Redigera händelse"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Move event"
+msgstr "Flytta händelse"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
+#: frontend/src/metabase/timelines/questions/components/EventCard/EventCard.tsx
+msgid "Archive event"
+msgstr "Arkivera händelse"
+
+#: frontend/src/metabase/timelines/collections/components/EventCard/EventCard.tsx
 msgid "Unarchive event"
 msgstr "Avarkivera händelse"
 
@@ -31453,6 +31403,13 @@ msgid "Search for an event"
 msgstr "Sök efter en händelse"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelinePanel/TimelinePanel.tsx
+msgid "Create event"
+msgstr "Skapa händelse"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.tsx
 #: frontend/src/metabase/timelines/collections/components/TimelineListModal/TimelineListModal.tsx
 msgid "New timeline"
 msgstr "Ny tidslinje"
@@ -31477,6 +31434,16 @@ msgstr "Visa arkiverade tidslinjer"
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
 msgid "Launch of v2.0"
 msgstr "Lansering av v2.0"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+msgid "Collection event illustration"
+msgstr "Illustration av samlingshändelse"
+
+#: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+msgid "Add context to your time series charts"
+msgstr "Lägg till sammanhang till dina tidsseriediagram"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx
 #, javascript-format
@@ -31558,6 +31525,43 @@ msgstr "Standardikon"
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 msgid "Archive timeline and all events"
 msgstr "Arkivera tidslinjen och alla händelser"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineCard/TimelineCard.tsx
+msgid "Timeline card header"
+msgstr "Rubrik för tidslinjekort"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#, javascript-format
+msgid "Add events to {0} to show important milestones, launches, or anything else, right alongside your data."
+msgstr "Lägg till händelser i {0} för att visa viktiga milstolpar, lanseringar eller vad som helst annat, direkt bredvid dina data."
+
+#: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx
+#, javascript-format
+msgid "Events in {0} let you see important milestones, launches, or anything else, right alongside your data."
+msgstr "Händelser i {0} låter dig se viktiga milstolpar, lanseringar eller vad som helst annat, direkt bredvid dina data."
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events between {0} and {1}"
+msgstr "Händelser mellan {0} och {1}"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events in {0}"
+msgstr "Händelser i {0}"
+
+#: frontend/src/metabase/timelines/questions/components/TimelineSidebar/TimelineSidebar.tsx
+#, javascript-format
+msgid "Events on {0}"
+msgstr "Händelser den {0}"
+
+#: frontend/src/metabase/timelines/questions/containers/EditEventModal/EditEventModal.tsx
+msgid "Updated event"
+msgstr "Händelse uppdaterad"
+
+#: frontend/src/metabase/timelines/questions/containers/NewEventModal/NewEventModal.tsx
+msgid "Created event"
+msgstr "Skapade händelse"
 
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 msgid "Failed to create collection"
@@ -33227,8 +33231,8 @@ msgid "{0} this question to drill-through."
 msgstr "{0} den här frågan för att fördjupa."
 
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Axes"
 msgstr "Axlar"
 
@@ -33577,14 +33581,14 @@ msgid "Aggregation method for Other group"
 msgstr "Aggregeringsmetod för Other-gruppen"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 #: metabase/lib/schema/aggregation.cljc
 msgid "Median"
 msgstr "Median"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingMaxCategories.tsx
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/other-series.ts
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/other-series.ts
 msgid "Standard deviation"
 msgstr "Standardavvikelse"
 
@@ -33606,7 +33610,7 @@ msgid "Add a range"
 msgstr "Lägg till ett intervall"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingSeriesOrder.tsx
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Add another series"
 msgstr "Lägg till en annan serie"
 
@@ -33800,95 +33804,10 @@ msgstr "är true"
 msgid "is false"
 msgstr "är false"
 
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Upper whisker"
-msgstr "Övre spröt"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Q3 (75th percentile)"
-msgstr "Q3 (75:e percentilen)"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Mean"
-msgstr "Medelvärde"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Q1 (25th percentile)"
-msgstr "Q1 (25:e percentilen)"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "Lower whisker"
-msgstr "Nedre spröt"
-
-#: frontend/src/metabase/visualizations/echarts/boxplot/events.ts
-msgid "outlier"
-msgstr "extremvärde"
-
-#: frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
-msgid "There is no data to display. Check the query to ensure there are non-null x-axis values."
-msgstr "Det finns inga data att visa. Kontrollera frågan för att säkerställa att det finns icke-null-värden på x-axeln."
-
-#: frontend/src/metabase/visualizations/echarts/graph/sankey/model/index.ts
-msgid "Columns selection is invalid"
-msgstr "Val av kolumner är ogiltigt"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-#, javascript-format
-msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
-msgstr "Aj då! Datan från din fråga passar inte det valda visningsalternativet. Den här visualiseringen kräver minst {0} {1} data."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-#, javascript-format
-msgid "No dice. We have {0} data {1} to show and that's not enough for this visualization."
-msgstr "Tyvärr. Vi har {0} data{1} att visa och det räcker inte för den här visualiseringen."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "point"
-msgid_plural "points"
-msgstr[0] "punkt"
-msgstr[1] "punkter"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Bummer. We can't actually do a pin map for this data because we require both a latitude and longitude column."
-msgstr "Synd. Vi kan inte göra en nålkarta för den här datan eftersom vi behöver både en latitud- och en longitudkolumn."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Please configure this chart in the chart settings"
-msgstr "Konfigurera det här diagrammet i diagraminställningarna"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Edit Settings"
-msgstr "Redigera inställningar"
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "There was a problem displaying this chart."
-msgstr "Det uppstod ett problem med att visa det här diagrammet."
-
-#: frontend/src/metabase/visualizations/lib/errors.ts
-msgid "Sorry, you don't have permission to see this card."
-msgstr "Tyvärr, du har inte behörighet att se det här kortet."
-
 #: frontend/src/metabase/visualizations/lib/exports-branding-utils.tsx
 #: metabase/channel/render/pdf.clj
 msgid "Made with"
 msgstr "Skapad med"
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization is null"
-msgstr "Visualiseringen är null"
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization must define an 'identifier' static variable: "
-msgstr "Visualiseringen måste definiera en statisk variabel \"identifier\": "
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-msgid "Visualization with that identifier is already registered: "
-msgstr "Visualisering med den identifieraren är redan registrerad: "
-
-#: frontend/src/metabase/visualizations/lib/registry.ts
-#, javascript-format
-msgid "No visualization for {0}"
-msgstr "Ingen visualisering för {0}"
 
 #: frontend/src/metabase/visualizations/lib/save-dashboard-pdf.ts
 msgid "Export tab as PDF"
@@ -33897,458 +33816,6 @@ msgstr "Exportera flik som PDF"
 #: frontend/src/metabase/visualizations/lib/save-dashboard-pdf.ts
 msgid "Export as PDF"
 msgstr "Exportera som PDF"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM"
-msgstr "HH:MM"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM:SS"
-msgstr "HH:MM:SS"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "HH:MM:SS.MS"
-msgstr "HH:MM:SS.MS"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Date separators"
-msgstr "Datumavgränsare"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Show the time"
-msgstr "Visa tiden"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-#: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
-#: metabase/driver/redshift.clj
-msgid "Style"
-msgstr "Stil"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Normal"
-msgstr "Normal"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Percent"
-msgstr "Procent"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Scientific"
-msgstr "Vetenskaplig"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Where to display the unit of currency"
-msgstr "Var valutaenheten ska visas"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "In the column heading"
-msgstr "I kolumnrubriken"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "In every table cell"
-msgstr "I varje tabellcell"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-msgid "Number of decimal places"
-msgstr "Antal decimaler"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Multiply by a number"
-msgstr "Multiplicera med ett tal"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Add a prefix"
-msgstr "Lägg till ett prefix"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "Add a suffix"
-msgstr "Lägg till ett suffix"
-
-#: frontend/src/metabase/visualizations/lib/settings/column.ts
-msgid "dollars"
-msgstr "dollar"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal line"
-msgstr "Mållinje"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal value"
-msgstr "Målvärde"
-
-#: frontend/src/metabase/visualizations/lib/settings/goal.ts
-msgid "Goal label"
-msgstr "Mål-etikett"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Add series breakout"
-msgstr "Lägg till serieutbrott"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Y-axis"
-msgstr "Y-axel"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/ScatterFloatingWell/ScatterFloatingWell.tsx
-msgid "Bubble size"
-msgstr "Bubbelstorlek"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stacking"
-msgstr "Stapling"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Don't stack"
-msgstr "Stapla inte"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stack"
-msgstr "Stapla"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Stack - 100%"
-msgstr "Stapla - 100%"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack series"
-msgstr "Stapla serier"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Additional tooltip columns"
-msgstr "Ytterligare tooltip-kolumner"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Enter column names"
-msgstr "Ange kolumnnamn"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Trend line"
-msgstr "Trendlinje"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Show values on data points"
-msgstr "Visa värden på datapunkter"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Values to show"
-msgstr "Värden att visa"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack values to show"
-msgstr "Staplingsvärden att visa"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-msgid "Both"
-msgstr "Både och"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Stack value format"
-msgstr "Format för staplade värden"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Percentages"
-msgstr "Procent"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Auto formatting"
-msgstr "Automatisk formatering"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Compact"
-msgstr "Kompakt"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
-msgid "Full"
-msgstr "Full"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Scale"
-msgstr "Skala"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Linear"
-msgstr "Linjär"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Power"
-msgstr "Potens"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Log"
-msgstr "Logg"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show lines and tick marks"
-msgstr "Visa linjer och skalstreck"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Rotate 45°"
-msgstr "Rotera 45°"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Rotate 90°"
-msgstr "Rotera 90°"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Unpin from zero"
-msgstr "Fäst inte vid noll"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Auto y-axis range"
-msgstr "Automatiskt Y-axelintervall"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Split y-axis when necessary"
-msgstr "Dela y-axeln vid behov"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Show label"
-msgstr "Visa etikett"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Number of tick marks"
-msgstr "Antal skalstreck"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Hide overlapping labels"
-msgstr "Dölj överlappande etiketter"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Whiskers extend to"
-msgstr "Spröt sträcker sig till"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "1.5 × interquartile range"
-msgstr "1,5 × interkvartilavstånd"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Min/Max"
-msgstr "Min/Max"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show points"
-msgstr "Visa punkter"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Outliers only"
-msgstr "Endast extremvärden"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "All points"
-msgstr "Alla punkter"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Show mean"
-msgstr "Visa medelvärde"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Values to display"
-msgstr "Värden att visa"
-
-#: frontend/src/metabase/visualizations/lib/settings/graph.ts
-msgid "Median only"
-msgstr "Endast median"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Display type"
-msgstr "Visningstyp"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line shape"
-msgstr "Linjform"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line style"
-msgstr "Linjstil"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Line size"
-msgstr "Linjstorlek"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show dots on lines"
-msgstr "Visa punkter på linjer"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Replace missing values with"
-msgstr "Ersätt saknade värden med"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Zero"
-msgstr "Noll"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Nothing"
-msgstr "Inget"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Linear Interpolated"
-msgstr "Linjärt interpolerad"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Y-axis position"
-msgstr "Y-axelposition"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show trend line for this series"
-msgstr "Visa trendlinje för den här serien"
-
-#: frontend/src/metabase/visualizations/lib/settings/series.ts
-msgid "Show values for this series"
-msgstr "Visa värden för den här serien"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "Which fields do you want to use for the X and Y axes?"
-msgstr "Vilka fält vill du använda för X- och Y-axlarna?"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-#: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
-msgid "Choose fields"
-msgstr "Välj fält"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "No breakouts are enabled"
-msgstr "Inga genombrott är aktiverade"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-msgid "It is not possible to use the Log scale for a stacked percentage chart"
-msgstr "Det är inte möjligt att använda logaritmisk skala för ett staplat procentdiagram"
-
-#: frontend/src/metabase/visualizations/lib/settings/validation.ts
-#, javascript-format
-msgid "This chart type doesn't support more than {0} series of data."
-msgstr "Den här diagramtypen stöder inte fler än {0} dataserier."
-
-#: frontend/src/metabase/visualizations/lib/settings/visualization.ts
-msgid "Hide this card if there are no results"
-msgstr "Dölj det här kortet om det inte finns några resultat"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#, javascript-format
-msgid "compared to {0}"
-msgstr "jämfört med {0}"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-msgid "compared to previous value"
-msgstr "jämfört med föregående värde"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous minute"
-msgstr "Föregående minut"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous hour"
-msgstr "Föregående timme"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-msgid "Previous day"
-msgstr "Föregående dag"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous quarter"
-msgstr "Föregående kvartal"
-
-#: frontend/src/metabase/visualizations/lib/trend-helpers.ts
-#: metabase/lib/temporal_bucket.cljc
-msgid "Previous year"
-msgstr "Föregående år"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Data includes missing dimension values."
-msgstr "Data innehåller saknade dimensionsvärden."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "We encountered an invalid date: \"{0}\""
-msgstr "Vi stötte på ett ogiltigt datum: \"{0}\""
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the {1}-axis, the values will be summed."
-msgstr "\"{0}\" är ett icke-aggregerat fält: om det har mer än ett värde vid en punkt på {1}-axeln, kommer värdena att summeras."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "\"{0}\" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed."
-msgstr "\"{0}\" är ett icke-aggregerat fält: om det har fler än en rad med samma värde kommer deras måttvärden att summeras."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "{0} are unaggregated fields: if there is more than one row with the same values, their measure values will be summed."
-msgstr "{0} är oaggregerade fält: om det finns fler än en rad med samma värden kommer deras Måttvärden att summeras."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "The query for this chart was run in {0} rather than {1} due to database or driver constraints."
-msgstr "Frågan för det här diagrammet kördes i {0} i stället för {1} på grund av begränsningar i databasen eller drivrutinen."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-#, javascript-format
-msgid "This chart contains queries run in multiple timezones: {0}"
-msgstr "Det här diagrammet innehåller frågor som körts i flera tidszoner: {0}"
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Negative values in measure column have been omitted from pie chart."
-msgstr "Negativa värden i måttkolumnen har utelämnats från cirkeldiagrammet."
-
-#: frontend/src/metabase/visualizations/lib/warnings.ts
-msgid "Negative values in measure column have been omitted from treemap chart."
-msgstr "Negativa värden i måttkolumnen har utelämnats från trädkartsdiagrammet."
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
-msgid "Ordinal"
-msgstr "Ordinal"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-msgid "Timeseries"
-msgstr "Tidsserie"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-msgid "Histogram"
-msgstr "Histogram"
-
-#: frontend/src/metabase/visualizations/shared/settings/cartesian-chart.ts
-#: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
-msgid "Goal"
-msgstr "Mål"
-
-#: frontend/src/metabase/visualizations/shared/utils/data.ts
-#, javascript-format
-msgid "All values ({0})"
-msgstr "Alla värden ({0})"
-
-#: frontend/src/metabase/visualizations/shared/utils/data.ts
-#, javascript-format
-msgid "Other ({0})"
-msgstr "Annan ({0})"
 
 #: frontend/src/metabase/visualizations/visualizations/AreaChart/definition.ts
 msgid "Area"
@@ -34397,6 +33864,11 @@ msgstr "Tratt"
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 msgid "Which fields do you want to use?"
 msgstr "Vilka fält vill du använda?"
+
+#: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "Choose fields"
+msgstr "Välj fält"
 
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 msgid "Column with steps"
@@ -34608,6 +34080,19 @@ msgid "Which columns do you want to use?"
 msgstr "Vilka kolumner vill du använda?"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: metabase/lib_metric/display_info.cljc
+msgid "Dimension"
+msgstr "Dimension"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/visualizations/visualizations/TreemapChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+#: metabase/driver/redshift.clj
+msgid "Style"
+msgstr "Stil"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "Show legend"
 msgstr "Visa legend"
 
@@ -34631,6 +34116,16 @@ msgstr "I teckenförklaringen"
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "On the chart"
 msgstr "På diagrammet"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Both"
+msgstr "Både och"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Number of decimal places"
+msgstr "Antal decimaler"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
 msgid "Minimum slice percentage"
@@ -34702,6 +34197,11 @@ msgstr "Progress"
 msgid "Progress visualization requires at least one numeric column."
 msgstr "Progress-visualisering kräver minst en numerisk kolumn."
 
+#: frontend/src/metabase/visualizations/visualizations/Progress/definition.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Goal"
+msgstr "Mål"
+
 #: frontend/src/metabase/visualizations/visualizations/Progress/utils.ts
 #: frontend/src/metabase/visualizations/visualizations/Progress/utils.unit.spec.ts
 msgid "No data available"
@@ -34735,6 +34235,60 @@ msgstr "Rad"
 msgid "row chart"
 msgstr "raddiagram"
 
+#: frontend/src/metabase/visualizations/visualizations/RowChart/definition.ts
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Y-axis"
+msgstr "Y-axel"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stacking"
+msgstr "Stapling"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Don't stack"
+msgstr "Stapla inte"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack"
+msgstr "Stapla"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack - 100%"
+msgstr "Stapla - 100%"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Scale"
+msgstr "Skala"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Ordinal"
+msgstr "Ordinal"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Linear"
+msgstr "Linjär"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Power"
+msgstr "Potens"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Log"
+msgstr "Logg"
+
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 msgid "Show lines and marks"
 msgstr "Visa linjer och markeringar"
@@ -34744,8 +34298,30 @@ msgid "Auto x-axis range"
 msgstr "Automatiskt x-axelomfång"
 
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show label"
+msgstr "Visa etikett"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show values on data points"
+msgstr "Visa värden på datapunkter"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
 msgid "Value labels formatting"
 msgstr "Formatering av värdeetiketter"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Compact"
+msgstr "Kompakt"
+
+#: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Full"
+msgstr "Full"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Justify"
@@ -34754,6 +34330,11 @@ msgstr "Justera"
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Show edge labels"
 msgstr "Visa kantetiketter"
+
+#: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Auto formatting"
+msgstr "Automatisk formatering"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/definition.ts
 msgid "Edge color"
@@ -34887,7 +34468,7 @@ msgstr "Gruppera bara efter ett tidsfält för att se hur detta har förändrats
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Add a metric to see how it's changed over time"
-msgstr ""
+msgstr "Lägg till ett mått för att se hur det har förändrats över tid"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/utils.ts
 msgid "Value from another column…"
@@ -35093,6 +34674,11 @@ msgstr "Visualiseringen kommer att visas här"
 msgid "View as table"
 msgstr "Visa som tabell"
 
+#: frontend/src/metabase/visualizer/components/VisualizationCanvas/wells/ScatterFloatingWell/ScatterFloatingWell.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Bubble size"
+msgstr "Bubbelstorlek"
+
 #: frontend/src/metabase/visualizer/components/VisualizerModal/VisualizerModal.tsx
 msgid "Are you sure you want to leave?"
 msgstr "Är du säker på att du vill lämna?"
@@ -35100,6 +34686,429 @@ msgstr "Är du säker på att du vill lämna?"
 #: frontend/src/metabase/visualizer/components/VisualizerModal/VisualizerModal.tsx
 msgid "Any unsaved changes will be lost."
 msgstr "Alla osparade ändringar kommer att gå förlorade."
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Upper whisker"
+msgstr "Övre spröt"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Q3 (75th percentile)"
+msgstr "Q3 (75:e percentilen)"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Mean"
+msgstr "Medelvärde"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Q1 (25th percentile)"
+msgstr "Q1 (25:e percentilen)"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "Lower whisker"
+msgstr "Nedre spröt"
+
+#: frontend/src/metabase/viz-core/echarts/boxplot/events.ts
+msgid "outlier"
+msgstr "extremvärde"
+
+#: frontend/src/metabase/viz-core/echarts/cartesian/model/dataset.ts
+msgid "There is no data to display. Check the query to ensure there are non-null x-axis values."
+msgstr "Det finns inga data att visa. Kontrollera frågan för att säkerställa att det finns icke-null-värden på x-axeln."
+
+#: frontend/src/metabase/viz-core/echarts/graph/sankey/model/index.ts
+msgid "Columns selection is invalid"
+msgstr "Val av kolumner är ogiltigt"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+#, javascript-format
+msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
+msgstr "Aj då! Datan från din fråga passar inte det valda visningsalternativet. Den här visualiseringen kräver minst {0} {1} data."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+#, javascript-format
+msgid "No dice. We have {0} data {1} to show and that's not enough for this visualization."
+msgstr "Tyvärr. Vi har {0} data{1} att visa och det räcker inte för den här visualiseringen."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "point"
+msgid_plural "points"
+msgstr[0] "punkt"
+msgstr[1] "punkter"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Bummer. We can't actually do a pin map for this data because we require both a latitude and longitude column."
+msgstr "Synd. Vi kan inte göra en nålkarta för den här datan eftersom vi behöver både en latitud- och en longitudkolumn."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Please configure this chart in the chart settings"
+msgstr "Konfigurera det här diagrammet i diagraminställningarna"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Edit Settings"
+msgstr "Redigera inställningar"
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "There was a problem displaying this chart."
+msgstr "Det uppstod ett problem med att visa det här diagrammet."
+
+#: frontend/src/metabase/viz-core/lib/errors.ts
+msgid "Sorry, you don't have permission to see this card."
+msgstr "Tyvärr, du har inte behörighet att se det här kortet."
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization is null"
+msgstr "Visualiseringen är null"
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization must define an 'identifier' static variable: "
+msgstr "Visualiseringen måste definiera en statisk variabel \"identifier\": "
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+msgid "Visualization with that identifier is already registered: "
+msgstr "Visualisering med den identifieraren är redan registrerad: "
+
+#: frontend/src/metabase/viz-core/lib/registry.ts
+#, javascript-format
+msgid "No visualization for {0}"
+msgstr "Ingen visualisering för {0}"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM"
+msgstr "HH:MM"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM:SS"
+msgstr "HH:MM:SS"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "HH:MM:SS.MS"
+msgstr "HH:MM:SS.MS"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Date separators"
+msgstr "Datumavgränsare"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Show the time"
+msgstr "Visa tiden"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Normal"
+msgstr "Normal"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Percent"
+msgstr "Procent"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Scientific"
+msgstr "Vetenskaplig"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Where to display the unit of currency"
+msgstr "Var valutaenheten ska visas"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "In the column heading"
+msgstr "I kolumnrubriken"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "In every table cell"
+msgstr "I varje tabellcell"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Multiply by a number"
+msgstr "Multiplicera med ett tal"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Add a prefix"
+msgstr "Lägg till ett prefix"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "Add a suffix"
+msgstr "Lägg till ett suffix"
+
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+msgid "dollars"
+msgstr "dollar"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal line"
+msgstr "Mållinje"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal value"
+msgstr "Målvärde"
+
+#: frontend/src/metabase/viz-core/lib/settings/goal.ts
+msgid "Goal label"
+msgstr "Mål-etikett"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Add series breakout"
+msgstr "Lägg till serieutbrott"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack series"
+msgstr "Stapla serier"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Additional tooltip columns"
+msgstr "Ytterligare tooltip-kolumner"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Enter column names"
+msgstr "Ange kolumnnamn"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Trend line"
+msgstr "Trendlinje"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Values to show"
+msgstr "Värden att visa"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack values to show"
+msgstr "Staplingsvärden att visa"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Stack value format"
+msgstr "Format för staplade värden"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Percentages"
+msgstr "Procent"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show lines and tick marks"
+msgstr "Visa linjer och skalstreck"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Rotate 45°"
+msgstr "Rotera 45°"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Rotate 90°"
+msgstr "Rotera 90°"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Unpin from zero"
+msgstr "Fäst inte vid noll"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Auto y-axis range"
+msgstr "Automatiskt Y-axelintervall"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Split y-axis when necessary"
+msgstr "Dela y-axeln vid behov"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Number of tick marks"
+msgstr "Antal skalstreck"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Hide overlapping labels"
+msgstr "Dölj överlappande etiketter"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Whiskers extend to"
+msgstr "Spröt sträcker sig till"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "1.5 × interquartile range"
+msgstr "1,5 × interkvartilavstånd"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Min/Max"
+msgstr "Min/Max"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show points"
+msgstr "Visa punkter"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Outliers only"
+msgstr "Endast extremvärden"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "All points"
+msgstr "Alla punkter"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Show mean"
+msgstr "Visa medelvärde"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Values to display"
+msgstr "Värden att visa"
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Median only"
+msgstr "Endast median"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Display type"
+msgstr "Visningstyp"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line shape"
+msgstr "Linjform"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line style"
+msgstr "Linjstil"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Line size"
+msgstr "Linjstorlek"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show dots on lines"
+msgstr "Visa punkter på linjer"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Replace missing values with"
+msgstr "Ersätt saknade värden med"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Zero"
+msgstr "Noll"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Nothing"
+msgstr "Inget"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Linear Interpolated"
+msgstr "Linjärt interpolerad"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Y-axis position"
+msgstr "Y-axelposition"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show trend line for this series"
+msgstr "Visa trendlinje för den här serien"
+
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Show values for this series"
+msgstr "Visa värden för den här serien"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "Which fields do you want to use for the X and Y axes?"
+msgstr "Vilka fält vill du använda för X- och Y-axlarna?"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "No breakouts are enabled"
+msgstr "Inga genombrott är aktiverade"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+msgid "It is not possible to use the Log scale for a stacked percentage chart"
+msgstr "Det är inte möjligt att använda logaritmisk skala för ett staplat procentdiagram"
+
+#: frontend/src/metabase/viz-core/lib/settings/validation.ts
+#, javascript-format
+msgid "This chart type doesn't support more than {0} series of data."
+msgstr "Den här diagramtypen stöder inte fler än {0} dataserier."
+
+#: frontend/src/metabase/viz-core/lib/settings/visualization.ts
+msgid "Hide this card if there are no results"
+msgstr "Dölj det här kortet om det inte finns några resultat"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#, javascript-format
+msgid "compared to {0}"
+msgstr "jämfört med {0}"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+msgid "compared to previous value"
+msgstr "jämfört med föregående värde"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous minute"
+msgstr "Föregående minut"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous hour"
+msgstr "Föregående timme"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+msgid "Previous day"
+msgstr "Föregående dag"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous quarter"
+msgstr "Föregående kvartal"
+
+#: frontend/src/metabase/viz-core/lib/trend-helpers.ts
+#: metabase/lib/temporal_bucket.cljc
+msgid "Previous year"
+msgstr "Föregående år"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Data includes missing dimension values."
+msgstr "Data innehåller saknade dimensionsvärden."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "We encountered an invalid date: \"{0}\""
+msgstr "Vi stötte på ett ogiltigt datum: \"{0}\""
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "\"{0}\" is an unaggregated field: if it has more than one value at a point on the {1}-axis, the values will be summed."
+msgstr "\"{0}\" är ett icke-aggregerat fält: om det har mer än ett värde vid en punkt på {1}-axeln, kommer värdena att summeras."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "\"{0}\" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed."
+msgstr "\"{0}\" är ett icke-aggregerat fält: om det har fler än en rad med samma värde kommer deras måttvärden att summeras."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "{0} are unaggregated fields: if there is more than one row with the same values, their measure values will be summed."
+msgstr "{0} är oaggregerade fält: om det finns fler än en rad med samma värden kommer deras Måttvärden att summeras."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "The query for this chart was run in {0} rather than {1} due to database or driver constraints."
+msgstr "Frågan för det här diagrammet kördes i {0} i stället för {1} på grund av begränsningar i databasen eller drivrutinen."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+#, javascript-format
+msgid "This chart contains queries run in multiple timezones: {0}"
+msgstr "Det här diagrammet innehåller frågor som körts i flera tidszoner: {0}"
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Negative values in measure column have been omitted from pie chart."
+msgstr "Negativa värden i måttkolumnen har utelämnats från cirkeldiagrammet."
+
+#: frontend/src/metabase/viz-core/lib/warnings.ts
+msgid "Negative values in measure column have been omitted from treemap chart."
+msgstr "Negativa värden i måttkolumnen har utelämnats från trädkartsdiagrammet."
+
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Timeseries"
+msgstr "Tidsserie"
+
+#: frontend/src/metabase/viz-core/shared/settings/cartesian-chart.ts
+msgid "Histogram"
+msgstr "Histogram"
+
+#: frontend/src/metabase/viz-core/shared/utils/data.ts
+#, javascript-format
+msgid "All values ({0})"
+msgstr "Alla värden ({0})"
+
+#: frontend/src/metabase/viz-core/shared/utils/data.ts
+#, javascript-format
+msgid "Other ({0})"
+msgstr "Annan ({0})"
 
 #: metabase/actions/actions.clj
 msgid "Unknown Action {0}. Valid Actions are: {1}"
@@ -35745,7 +35754,7 @@ msgstr "Du måste konfigurera en site-url för att Slack-integrationen ska funge
 
 #: metabase/channel/api/slack.clj
 msgid "Bug reporting is not enabled."
-msgstr ""
+msgstr "Felrapportering är inte aktiverad."
 
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
@@ -36204,6 +36213,10 @@ msgstr "Ingen användare hittades med e-postadressen ''{0}''. "
 #: metabase/cmd/reset_password.clj
 msgid "Please check the spelling and try again."
 msgstr "Kontrollera stavningen och försök igen."
+
+#: metabase/cmd/reset_password.clj
+msgid "Cannot reset the password for the deactivated user ''{0}''. Please reactivate the account and try again."
+msgstr "Kan inte återställa lösenordet för den inaktiverade användaren ''{0}''. Återaktivera kontot och försök igen."
 
 #: metabase/cmd/reset_password.clj
 msgid "Resetting password for {0}..."
@@ -36854,6 +36867,26 @@ msgstr "Du har inte behörighet att ta bort data från den här databasen."
 msgid "Killed MySQL process id {0} due to timeout."
 msgstr "Dödade MySQL-process-id {0} på grund av timeout."
 
+#: metabase/driver/oracle.clj
+msgid "host"
+msgstr "värd"
+
+#: metabase/driver/oracle.clj
+msgid "port"
+msgstr "port"
+
+#: metabase/driver/oracle.clj
+msgid "Oracle system ID (SID)"
+msgstr "Oracle-system-ID (SID)"
+
+#: metabase/driver/oracle.clj
+msgid "Oracle service name"
+msgstr "Oracle-tjänstnamn"
+
+#: metabase/driver/oracle.clj
+msgid "Invalid {0}: it must be a plain value, not a URL or an Oracle connect descriptor."
+msgstr "Ogiltig {0}: det måste vara ett enkelt värde, inte en URL eller en Oracle-anslutningsbeskrivare."
+
 #: metabase/driver/postgres.clj
 msgid "SSL Mode"
 msgstr "SSL-läge"
@@ -37112,7 +37145,7 @@ msgstr "Fel vid uppdatering av rad(er)."
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled."
-msgstr ""
+msgstr "Kan inte öppna en anslutning för en analytics-dev-databas om inte analytics dev mode är aktiverat."
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Not a valid Database/Database ID/JDBC spec"
@@ -37120,7 +37153,7 @@ msgstr "Inte ett giltigt Database/Database ID/JDBC-spec"
 
 #: metabase/driver/sql_jdbc/connection.clj
 msgid "Cannot connect to an analytics-dev database unless analytics dev mode is enabled."
-msgstr ""
+msgstr "Kan inte ansluta till en analytics-dev-databas om inte analytics dev mode är aktiverat."
 
 #: metabase/driver/sql_jdbc/execute.clj
 msgid "Too many queries are running. Please try again in a moment."
@@ -37471,6 +37504,18 @@ msgstr "{0} efter {1} {2}"
 #: metabase/xrays/automagic_dashboards/names.clj
 msgid "{0} by {1}"
 msgstr "{0} per {1}"
+
+#: metabase/explorations/composite.clj
+msgid "Series"
+msgstr "Serie"
+
+#: metabase/explorations/models/exploration_query_result.clj
+msgid "Cannot combine these results: a source result has no recorded data-access context."
+msgstr "Kan inte kombinera dessa resultat: ett källresultat har ingen registrerad dataåtkomstkontext."
+
+#: metabase/explorations/models/exploration_query_result.clj
+msgid "Cannot combine these results: they were computed under different data-access contexts."
+msgstr "Kan inte kombinera dessa resultat: de beräknades under olika dataåtkomstkontexter."
 
 #: metabase/explorations/query_plan/variants.clj
 #: metabase_enterprise/transforms_inspector/lens/column_comparison.clj
@@ -39811,6 +39856,10 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "Ogiltig Google-modell {0} — förväntade ett publisher-kvalificerat ID som \"google/gemini-3.5-flash\""
 
 #: metabase/metabot/self/google.clj
+msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
+msgstr "Google-modellen {0} stöds inte. Endast google/*- och anthropic/*-modeller stöds."
+
+#: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
 msgstr "Ogiltig Google-modell {0} — ett publisher- och modell-ID får bara innehålla bokstäver, siffror och tecknen \".\", \"_\", \"-\" och \"@\""
 
@@ -40167,6 +40216,10 @@ msgid "Invalid Azure model {0}. Expected format: <connection>/<family>/<deployme
 msgstr "Ogiltig Azure-modell {0}. Förväntat format: <connection>/<family>/<deployment-name> där <family> är en av: {1}"
 
 #: metabase/metabot/settings.clj
+msgid "Invalid Google model {0}. Expected format: <connection>/<publisher>/<model> where <publisher> is one of: {1}"
+msgstr "Ogiltig Google-modell {0}. Förväntat format: <connection>/<publisher>/<model> där <publisher> är en av: {1}"
+
+#: metabase/metabot/settings.clj
 msgid "Unsupported model {0} for Metabase managed AI. Supported models: {1}"
 msgstr "Modell {0} stöds inte för Metabase-hanterad AI. Modeller som stöds: {1}"
 
@@ -40284,12 +40337,20 @@ msgid "A `document_id` is required when saving to a document."
 msgstr "Ett `document_id` krävs när du sparar till ett dokument."
 
 #: metabase/metabot/tools/sql/common.clj
+msgid "You do not have permission to write SQL queries against this database. Native query permissions are required."
+msgstr "Du har inte behörighet att skriva SQL-frågor mot den här databasen. Behörighet för Native-frågor krävs."
+
+#: metabase/metabot/tools/sql/common.clj
 msgid "Unsupported query format"
 msgstr "Formatet på frågan stöds inte"
 
 #: metabase/metabot/tools/sql/create.clj
 msgid "Database {0} not found"
 msgstr "Databas {0} hittades inte"
+
+#: metabase/metabot/tools/sql/create.clj
+msgid "You do not have access to this database."
+msgstr "Du har inte åtkomst till den här databasen."
 
 #: metabase/metabot/tools/sql/edit.clj
 msgid "Each edit must include old_string and new_string"
@@ -40691,6 +40752,10 @@ msgstr "En grupp med det namnet finns redan."
 msgid "You cannot edit or delete the ''{0}'' permissions group!"
 msgstr "Du kan inte redigera eller ta bort behörighetsgruppen ''{0}''!"
 
+#: metabase/permissions/models/permissions_group.clj
+msgid "Tenant groups are not editable while the Tenants feature is disabled."
+msgstr "Tenant-grupper kan inte redigeras när Tenants-funktionen är inaktiverad."
+
 #: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "Du kan inte ta bort den sista medlemmen i gruppen ''Admin''!"
@@ -40744,6 +40809,10 @@ msgstr "Behörighetsfunktionen {0} är bara aktiverad om du har en premiumtoken 
 #: metabase/permissions_rest/api.clj metabase_enterprise/sandbox/api/routes.clj
 msgid "Sandboxes"
 msgstr "Sandlådor"
+
+#: metabase/permissions_rest/api.clj
+msgid "Tenant groups cannot be created while the Tenants feature is disabled."
+msgstr "Tenant-grupper kan inte skapas när Tenants-funktionen är inaktiverad."
 
 #: metabase/permissions_rest/api.clj
 msgid "Admin cannot be a group manager."
@@ -41053,6 +41122,10 @@ msgstr "ogiltig parameterized_object_type"
 #: metabase/queries/models/query_execution.clj
 msgid "Invalid query execution context: {0}"
 msgstr "Ogiltig kontext för frågekörning: {0}"
+
+#: metabase/queries/models/stored_result_use.clj
+msgid "This card has no cached results."
+msgstr "Det här kortet har inga cachade resultat."
 
 #: metabase/queries_rest/api/card.clj
 msgid "value must be a sequence of positive integers"
@@ -42074,6 +42147,10 @@ msgstr "Serverport, vanligtvis 389 eller 636 om SSL används."
 #: metabase/sso/settings.clj
 msgid "Use SSL, TLS or plain text."
 msgstr "Använd SSL, TLS eller klartext."
+
+#: metabase/sso/settings.clj
+msgid "Path to a JKS trust store of CA certificates used to validate the LDAP server''s TLS certificate. Leave blank to use the JVM default trust store."
+msgstr "Sökväg till ett JKS-trust store med CA-certifikat som används för att validera LDAP-serverns TLS-certifikat. Lämna tomt för att använda JVM:s standard trust store."
 
 #: metabase/sso/settings.clj
 msgid "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."
@@ -43401,7 +43478,7 @@ msgstr "Transformeringar Python"
 
 #: metabase_enterprise/audit_app/analytics_dev.clj
 msgid "Analytics dev mode is not enabled."
-msgstr ""
+msgstr "Analytics dev mode är inte aktiverat."
 
 #: metabase_enterprise/audit_app/interface.clj
 msgid "Unable to run internal query function: cannot resolve {0}"
@@ -44301,6 +44378,10 @@ msgstr "Ska vi synka användarattribut när någon loggar in via LDAP?"
 #: metabase_enterprise/sso/settings.clj
 msgid "Comma-separated list of user attributes to skip syncing for LDAP users."
 msgstr "Kommaseparerad lista över användarattribut att hoppa över synk för LDAP-användare."
+
+#: metabase_enterprise/sso/settings.clj
+msgid "Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none."
+msgstr "Kommaseparerad lista över användarattribut att synka för LDAP-användare. Endast dessa attribut synkas; lämna tomt för att inte synka några."
 
 #: metabase_enterprise/sso/settings.clj
 msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively."

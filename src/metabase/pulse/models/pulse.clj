@@ -24,6 +24,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
@@ -200,7 +201,7 @@
   "Schema for the map we use to internally represent the base elements of a Card used for Notifications. id is not
   required since the card may be a placeholder."
   (mu/with-api-error-message
-   [:map
+   [:map {:closed true}
     [:include_csv                        ms/BooleanValue]
     [:include_xls                        ms/BooleanValue]
     [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
@@ -229,7 +230,8 @@
      [:display            [:maybe ms/KeywordOrString]]
      [:collection_id      [:maybe ms/PositiveInt]]
      [:dashboard_id       [:maybe ms/PositiveInt]]
-     [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
+     [:parameter_mappings [:maybe ::parameters.schema/parameter-mappings]]
+     [:pulse_id           {:optional true} [:maybe ms/PositiveInt]]]]
    (deferred-tru "value must be a map with the following keys `({0})`"
                  (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
                                  "dashboard_id" "parameter_mappings"]))))
@@ -357,11 +359,10 @@
         notification->pulse)))
 
 (defn- tenant-scoped-caller?
-  "True when the current user's recipient visibility is narrowed to their own tenant. Superusers and
-  users with no tenant see recipients unfiltered, as before tenants existed."
+  "True when the current user's recipient visibility is narrowed to their own tenant: every non-superuser
+  sees only recipients with the same `:tenant_id` as themselves (nil for internal users)."
   []
-  (and (not api/*is-superuser?*)
-       (some? (:tenant_id @api/*current-user*))))
+  (not api/*is-superuser?*))
 
 (defn- recipient-ids->tenant-ids
   "Map of user id -> `:tenant_id` for the Metabase-user recipients in `recipient-ids`. Recipient maps
@@ -417,9 +418,8 @@
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved.
 
-  If the current user belongs to a tenant (and is not a superuser), also filters the recipient
-  lists down to users in the same tenant. A user with no tenant sees recipients unfiltered, as
-  before tenants existed."
+  If the current user is not a superuser, also filters the recipient lists down to users in the same
+  tenant: tenant users see only their own tenant, internal users see only other internal users."
   [pulses]
   (cond->> pulses
     (perms/sandboxed-or-impersonated-user?)

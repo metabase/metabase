@@ -141,6 +141,8 @@
     :model/MetabotUsedTable
     :model/MetabotPrompt
     :model/OsiAiContext
+    ;; 61+, by table name: migrations create and seed it on every edition, but its model is EE-only
+    :metabot_permissions
     ;; 62+
     :model/Exploration
     :model/ExplorationThread
@@ -150,10 +152,22 @@
     :model/ExplorationQuery
     :model/ExplorationBookmark
     ;; 63+
-    :model/McpFeedback]
+    :model/McpFeedback
+    ;; Not in dependency order, and cannot be: `transform.target_table_id` and `metabase_table.transform_id`
+    ;; point at each other. Order does not matter -- `copy!` defers or disables FK checks for the whole load.
+    :model/Transform
+    :model/TransformTag
+    :model/TransformTransformTag
+    :model/TransformJob
+    :model/TransformJobTransformTag
+    ;; Serialization never exports run history; a whole-instance move keeps it.
+    ;; A run still in flight at dump time arrives marked running, and the transform timeout job reaps it.
+    :model/TransformJobRun
+    :model/TransformRun
+    :model/TransformRunCancelation
+    :model/TransformDagRun]
    (when config/ee-available?
-     [:model/MetabotPermissions
-      :model/MetabotGroupLimit
+     [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
       :model/Sandbox
       :model/Tenant
@@ -198,6 +212,9 @@
   [model]
   (case model
     :model/Field {:order-by [[:id :asc]]}
+    ;; dumps made by an OSS build before this table was copied still hold the rows the target's own migrations seeded,
+    ;; which can point at group ids the source never had
+    :metabot_permissions {:where [:in :group_id {:select [:id] :from [:permissions_group]}]}
     nil))
 
 (defn- sql-for-selecting-instances-from-source-db [model]
@@ -395,7 +412,9 @@
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue
-    :model/OsiAiContext})
+    :model/OsiAiContext
+    ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
+    :model/TransformRunCancelation})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}
@@ -446,6 +465,24 @@
                                         table-name table-name)]]
         (jdbc/execute! target-db-conn sql)))))
 
+(def ^:private metabot-permissions-seed-sql
+  "The seed of changeset v61.98kjjhf. Dumps made by an OSS build before this table was copied hold the dumping build's
+  seed rows under its own group ids, so the source's magic groups can arrive with none."
+  "INSERT INTO metabot_permissions (group_id, perm_type, perm_value)
+   SELECT pg.id, d.perm_type, d.perm_value
+   FROM permissions_group pg
+   CROSS JOIN (
+     SELECT 'permission/metabot' AS perm_type, 'yes' AS perm_value
+     UNION ALL SELECT 'permission/metabot-sql-generation', 'yes'
+     UNION ALL SELECT 'permission/metabot-nlq', 'yes'
+     UNION ALL SELECT 'permission/metabot-other-tools', 'yes'
+   ) AS d
+   WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+     AND NOT EXISTS (
+       SELECT 1 FROM metabot_permissions mp
+       WHERE mp.group_id = pg.id AND mp.perm_type = d.perm_type
+     )")
+
 (mu/defn copy!
   "Copy data from a source application database into an empty destination application database."
   [source-db-type     :- [:enum :h2 :postgres :mysql]
@@ -486,4 +523,6 @@
       (with-disabled-db-constraints target-db-type target-conn-spec
         (copy-data! source-data-source target-db-type target-conn-spec))))
   ;; finally, update sequence values (if needed)
-  (update-sequence-values! target-db-type target-data-source))
+  (update-sequence-values! target-db-type target-data-source)
+  (step (trs "Seeding metabot permissions for magic groups without any...")
+    (jdbc/execute! {:datasource target-data-source} [metabot-permissions-seed-sql])))

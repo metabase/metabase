@@ -1,6 +1,5 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
-   [metabase.app-db.core :as app-db]
    [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
    [metabase.models.interface :as mi]
@@ -49,18 +48,12 @@
   ensures there are one fewer than that so you can add afterwards."
   [item-id   :- :int
    item-type :- :string]
-  (let [ids (into #{} (comp (map :id)
+  (let [;; cannot put the offset in this query as mysql doesn't play nice. It requires a limit as well which we do
+        ;; not want to give. The offset is only 10 though so its not a huge savings and we run this on every entry so
+        ;; the max number is 10, delete the extra, and insert a new one to arrive at 10 again, our invariant.
+        ids (into #{} (comp (map :id)
                             (drop (dec max-moderation-reviews)))
-                  (app-db/query {:select   [:id]
-                                 :from     [:moderation_review]
-                                 :where    [:and
-                                            [:= :moderated_item_id item-id]
-                                            [:= :moderated_item_type item-type]]
-                                 ;; cannot put the offset in this query as mysql doesn't play nice. It requires a limit
-                                 ;; as well which we do not want to give. The offset is only 10 though so its not a huge
-                                 ;; savings and we run this on every entry so the max number is 10, delete the extra,
-                                 ;; and insert a new one to arrive at 10 again, our invariant.
-                                 :order-by [[:id :desc]]}))]
+                  (content-verification.db/moderation-review-ids-for-item item-id item-type))]
     (when (seq ids)
       (content-verification.db/delete-moderation-reviews! ids))))
 
