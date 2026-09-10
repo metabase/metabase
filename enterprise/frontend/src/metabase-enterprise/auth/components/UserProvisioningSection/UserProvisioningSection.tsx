@@ -1,3 +1,5 @@
+import { useDebouncedCallback } from "@mantine/hooks";
+import cx from "classnames";
 import { useEffect, useId, useState } from "react";
 import { t } from "ttag";
 
@@ -12,6 +14,11 @@ import { useAdminSetting } from "metabase/settings";
 import { Box, Flex, Switch, Text, Title } from "metabase/ui";
 
 import S from "./UserProvisioningSection.module.css";
+
+// a burst of clicks ends in a single write for the last value
+export const PROVISIONING_WRITE_DEBOUNCE_MS = 300;
+
+type PendingWrite = { value: boolean; at: number };
 
 export type UserProvisioningSettingKey =
   | "jwt-user-provisioning-enabled?"
@@ -45,10 +52,7 @@ export function UserProvisioningSection({
     startedTimeStamp,
   } = useAdminSetting(settingKey);
   // the last written value, shown until a refetch that started after the write lands
-  const [pendingWrite, setPendingWrite] = useState<{
-    value: boolean;
-    at: number;
-  } | null>(null);
+  const [pendingWrite, setPendingWrite] = useState<PendingWrite | null>(null);
   const envName = settingDetails?.is_env_setting
     ? settingDetails.env_name
     : undefined;
@@ -69,13 +73,24 @@ export function UserProvisioningSection({
     }
   }, [pendingWrite, isFetching, startedTimeStamp]);
 
-  const handleChange = async (enabled: boolean) => {
-    const write = { value: enabled, at: Date.now() };
-    setPendingWrite(write);
-    const { error } = await updateSetting({ key: settingKey, value: enabled });
-    if (error) {
-      setPendingWrite((current) => (current === write ? null : current));
-    }
+  // leaving the page flushes a write that is still waiting on the debounce
+  const saveProvisioningSetting = useDebouncedCallback(
+    async (pending: PendingWrite) => {
+      const { error } = await updateSetting({
+        key: settingKey,
+        value: pending.value,
+      });
+      if (error) {
+        setPendingWrite((current) => (current === pending ? null : current));
+      }
+    },
+    { delay: PROVISIONING_WRITE_DEBOUNCE_MS, flushOnUnmount: true },
+  );
+
+  const handleChange = (enabled: boolean) => {
+    const pending = { value: enabled, at: Date.now() };
+    setPendingWrite(pending);
+    saveProvisioningSetting(pending);
   };
 
   // the card sits inside the page form, so Enter must not reach its submit button
@@ -94,8 +109,7 @@ export function UserProvisioningSection({
             <Text
               component="label"
               htmlFor={inputId}
-              className={S.titleLabel}
-              data-disabled={isDisabled || undefined}
+              className={cx(S.titleLabel, isDisabled && S.disabled)}
               inherit
             >
               {t`User provisioning`}

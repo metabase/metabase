@@ -3,6 +3,6 @@
   cursor: pointer;
 }
 
-.titleLabel[data-disabled] {
+.titleLabel.disabled {
   cursor: default;
 }

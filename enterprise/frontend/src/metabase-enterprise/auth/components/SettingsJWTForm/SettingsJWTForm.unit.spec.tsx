@@ -15,6 +15,7 @@ import {
   within,
 } from "__support__/ui";
 import { settingsApi } from "metabase/settings";
+import { PROVISIONING_WRITE_DEBOUNCE_MS } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type { SettingDefinition } from "metabase-types/api";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
@@ -202,7 +203,7 @@ const setup = async ({
     delay: cascadeDelayMs,
   });
 
-  const { store } = renderWithProviders(<SettingsJWTForm />, {
+  const { store, unmount } = renderWithProviders(<SettingsJWTForm />, {
     withUndos: true,
     storeInitialState: createMockState({
       settings: createMockSettingsState(sessionSettings),
@@ -210,7 +211,7 @@ const setup = async ({
   });
 
   await screen.findByText("Server settings");
-  return { store, settingsStore };
+  return { store, settingsStore, unmount };
 };
 
 const expandUserAttributeSection = async () => {
@@ -422,6 +423,10 @@ describe("SettingsJWTForm", () => {
   });
 
   describe("user provisioning", () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it("sits right below the server settings", async () => {
       await setup();
 
@@ -454,14 +459,14 @@ describe("SettingsJWTForm", () => {
         screen.getByText("User provisioning", { selector: "label" }),
       );
 
-      await waitFor(() => expect(toggle).not.toBeChecked());
+      expect(toggle).not.toBeChecked();
+      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].url).toMatch(
         /\/api\/setting\/jwt-user-provisioning-enabled%3F$/,
       );
       expect(puts[0].body).toEqual({ value: false });
-      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Save changes" }),
       ).toBeDisabled();
@@ -486,8 +491,10 @@ describe("SettingsJWTForm", () => {
     });
 
     it("keeps Enter on the switch from submitting the page form", async () => {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await setup({ jwtEnabled: true, configured: true });
-      await userEvent.type(
+      await user.type(
         screen.getByRole("textbox", { name: /JWT Identity Provider URI/ }),
         "-edited",
       );
@@ -496,13 +503,49 @@ describe("SettingsJWTForm", () => {
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
 
       toggle.focus();
-      await userEvent.keyboard("{Enter}");
+      await user.keyboard("{Enter}");
 
       // give a submission time to reach the network before ruling it out
-      await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+      await act(() => jest.advanceTimersByTimeAsync(1000));
       expect(await findRequests("PUT")).toHaveLength(0);
       expect(toggle).toBeChecked();
       expect(submitButton).toBeEnabled();
+    });
+
+    it("sends one write for a burst of clicks", async () => {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await setup({ jwtEnabled: true, configured: true });
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+
+      await user.click(toggle);
+      await user.click(toggle);
+      await user.click(toggle);
+
+      expect(toggle).not.toBeChecked();
+      await act(() =>
+        jest.advanceTimersByTimeAsync(PROVISIONING_WRITE_DEBOUNCE_MS),
+      );
+      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      expect(puts[0].body).toEqual({ value: false });
+    });
+
+    it("writes a pending toggle when the page is left before the debounce fires", async () => {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const { unmount } = await setup({ jwtEnabled: true, configured: true });
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+
+      await user.click(toggle);
+      unmount();
+
+      await waitFor(async () => {
+        expect(await findRequests("PUT")).toHaveLength(1);
+      });
+      const puts = await findRequests("PUT");
+      expect(puts[0].body).toEqual({ value: false });
     });
 
     it("keeps the switch focused and enabled while the write is in flight", async () => {
@@ -524,6 +567,8 @@ describe("SettingsJWTForm", () => {
     });
 
     it("keeps the written value while an older properties refetch lands", async () => {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       const { store, settingsStore } = await setup({
         jwtEnabled: true,
         configured: true,
@@ -532,12 +577,12 @@ describe("SettingsJWTForm", () => {
       const loadRequests = fetchMock.callHistory.calls(
         "get-session-properties",
       ).length;
-      // a refetch that started before the click answers late with the old value
+      // a refetch that started before the click answers after the write has gone out
       const staleSnapshot = { ...settingsStore };
       fetchMock.removeRoute("get-session-properties");
       fetchMock.get("path:/api/session/properties", staleSnapshot, {
         name: "stale-session-properties",
-        delay: 200,
+        delay: PROVISIONING_WRITE_DEBOUNCE_MS + 100,
         repeat: 1,
       });
       fetchMock.get(
@@ -554,13 +599,18 @@ describe("SettingsJWTForm", () => {
         ).toHaveLength(1),
       );
       // a click in the same millisecond would look like it came after the refetch
-      await act(() => new Promise((resolve) => setTimeout(resolve, 5)));
+      act(() => {
+        jest.advanceTimersByTime(5);
+      });
 
-      await userEvent.click(toggle);
+      await user.click(toggle);
 
+      expect(toggle).not.toBeChecked();
+      // the write goes out, then the stale answer lands while the write's own refetch is still pending
+      await act(() =>
+        jest.advanceTimersByTimeAsync(PROVISIONING_WRITE_DEBOUNCE_MS + 100),
+      );
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
-      // by now the stale answer has landed, but the refetch after the write has not
-      await act(() => new Promise((resolve) => setTimeout(resolve, 260)));
       expect(toggle).not.toBeChecked();
       // the refetch after the write is the only one left to land
       await waitFor(() =>
@@ -568,7 +618,7 @@ describe("SettingsJWTForm", () => {
           fetchMock.callHistory.calls("get-session-properties"),
         ).toHaveLength(loadRequests + 1),
       );
-      await act(() => new Promise((resolve) => setTimeout(resolve, 260)));
+      await act(() => jest.advanceTimersByTimeAsync(200));
       expect(toggle).not.toBeChecked();
     });
 

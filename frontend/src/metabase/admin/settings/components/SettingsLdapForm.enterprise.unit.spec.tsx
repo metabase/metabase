@@ -116,13 +116,13 @@ describe("SettingsLdapForm (EE)", () => {
       await userEvent.click(toggle);
 
       await waitFor(() => expect(toggle).not.toBeChecked());
+      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].url).toMatch(
         /\/api\/setting\/ldap-user-provisioning-enabled%3F$/,
       );
       expect(puts[0].body).toEqual({ value: false });
-      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Save changes" }),
       ).toBeDisabled();
