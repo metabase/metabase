@@ -1,18 +1,24 @@
-import { helper } from "echarts/core";
+import { Model, helper } from "echarts/core";
 import type { YAXisOption } from "echarts/types/dist/shared";
 
 import type { Extent } from "../../../types";
 
+type ValueAxisOption = Extract<YAXisOption, { type?: "value" }>;
+
+/** Lets ECharts include zero after applying boundary gaps, as native axes do. */
+class ValueAxisScaleModel extends Model<ValueAxisOption> {
+  needIncludeZero() {
+    return !this.option.scale;
+  }
+}
+
 /** Uses the final axis options so explicit ticks share ECharts' rendered scale. */
 export function getResponsiveYAxisTicks(
   extent: Extent,
-  axis: Extract<YAXisOption, { type?: "value" }>,
+  axis: ValueAxisOption,
   height: number,
 ) {
-  const domain: Extent = axis.scale
-    ? extent
-    : [Math.min(0, extent[0]), Math.max(0, extent[1])];
-  const scale = helper.createScale(domain, axis);
+  const scale = helper.createScale(extent, new ValueAxisScaleModel(axis));
   const [min, max] = scale.getExtent();
   const segments = height < 300 ? 2 : 4;
   const gridlines = Array.from({ length: segments + 1 }, (_, index) =>

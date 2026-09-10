@@ -19,6 +19,11 @@ const scenarios: {
   { name: "dense range", extent: [10000, 120000], axis: {} },
   { name: "mixed signs", extent: [-70, 30], axis: {} },
   { name: "negative range", extent: [-200, -100], axis: { scale: true } },
+  {
+    name: "negative bar label padding (UXW-5182)",
+    extent: [-99, -90],
+    axis: { boundaryGap: [0.05, 0] },
+  },
   { name: "constant positive series", extent: [7, 7], axis: {} },
   { name: "constant negative series", extent: [-3, -3], axis: {} },
   { name: "constant unpinned series", extent: [7, 7], axis: { scale: true } },

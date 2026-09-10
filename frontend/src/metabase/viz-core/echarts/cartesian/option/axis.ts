@@ -258,6 +258,21 @@ export const buildNumericDimensionAxis = (
     !isPadded &&
     (chartLayout.axisEnabledSetting === true ||
       chartLayout.axisEnabledSetting === "compact");
+  const axisWidth = getXAxisWidth(chartLayout);
+  const labelPadding = getXAxisLabelPadding(axisWidth);
+  const ticksFit =
+    !alignEndpoints ||
+    (ticksMaxInterval !== undefined &&
+      (axisWidth * ticksMaxInterval) / (max - min) >=
+        labelPadding +
+          1.5 *
+            Math.max(
+              ...extent.map((value) =>
+                chartLayout.ticksDimensions.getXTickWidth(
+                  getPaddedAxisLabel(formatter(fromEChartsAxisValue(value))),
+                ),
+              ),
+            ));
 
   return {
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
@@ -270,7 +285,7 @@ export const buildNumericDimensionAxis = (
         ? {
             alignMinLabel: "left" as const,
             alignMaxLabel: "right" as const,
-            padding: [0, getXAxisLabelPadding(getXAxisWidth(chartLayout))],
+            padding: [0, labelPadding],
           }
         : {}),
       formatter: (rawValue: number) => {
@@ -287,7 +302,7 @@ export const buildNumericDimensionAxis = (
         }
       : {}),
     minInterval: interval,
-    maxInterval: alignEndpoints ? undefined : ticksMaxInterval,
+    maxInterval: alignEndpoints && !ticksFit ? undefined : ticksMaxInterval,
   };
 };
 

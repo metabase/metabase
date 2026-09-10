@@ -2,13 +2,21 @@ import { LineChart, ScatterChart } from "echarts/charts";
 import { GridComponent } from "echarts/components";
 import * as echarts from "echarts/core";
 import { SVGRenderer } from "echarts/renderers";
+import { platformApi } from "zrender/lib/core/platform.js";
 
-import { createMockChartLayout } from "__support__/echarts";
+import {
+  createMockCartesianChartModel,
+  createMockChartLayout,
+  measureTextEChartsAdapter,
+  measureTextWidth,
+} from "__support__/echarts";
 import { dayjs } from "metabase/dayjs";
 import { createMockVisualizationSettings } from "metabase-types/api/mocks";
 
 import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import type { RenderingContext } from "../../../types";
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
+import { getChartLayout } from "../layout";
 import type { NumericXAxisModel, TimeSeriesXAxisModel } from "../model/types";
 
 import {
@@ -136,20 +144,27 @@ describe("getCategoricalAxisLabelPadding", () => {
       formatter,
     );
     expect(typeof interval).toBe("function");
+    const selectedIndices: number[] = [];
     if (typeof interval === "function") {
       for (let index = 0; index < 10_000; index++) {
-        interval(index, String(index));
+        if (interval(index, String(index))) {
+          selectedIndices.push(index);
+        }
       }
     }
     const calls = getXTickWidth.mock.calls.length;
     expect(calls).toBeGreaterThan(0);
     expect(calls).toBeLessThan(50);
+    const repeatedIndices: number[] = [];
     if (typeof interval === "function") {
       for (let index = 0; index < 10_000; index++) {
-        interval(index, String(index));
+        if (interval(index, String(index))) {
+          repeatedIndices.push(index);
+        }
       }
     }
     expect(getXTickWidth).toHaveBeenCalledTimes(calls);
+    expect(repeatedIndices).toEqual(selectedIndices);
   });
   it("preserves centered labels when category bands provide enough space", () => {
     const layout = createMockChartLayout({
@@ -194,6 +209,106 @@ describe("getCategoricalAxisLabelPadding", () => {
 });
 
 describe("rendered X-axis labels", () => {
+  it.each([
+    {
+      name: "long endpoint",
+      width: 950,
+      labels: [
+        "A much longer endpoint",
+        ...Array.from({ length: 18 }, (_, index) => String(index + 1)),
+        "Last",
+      ],
+      hiddenIndices: [1, 2, 3],
+    },
+    {
+      name: "rejected long interior label",
+      width: 900,
+      labels: [
+        "First",
+        "1",
+        "A".repeat(113),
+        ...Array.from({ length: 16 }, (_, index) => String(index + 3)),
+        "Last",
+      ],
+      hiddenIndices: [2],
+    },
+  ])(
+    "preserves compact labels around a $name (UXW-5182)",
+    ({ width, labels, hiddenIndices }) => {
+      const context: RenderingContext = {
+        ...renderingContext,
+        fontFamily: "UXW-5182 category labels",
+        measureText: (text) => measureTextWidth(text, 13),
+      };
+      const settings = createMockVisualizationSettings({
+        "graph.x_axis.axis_enabled": "compact",
+        "graph.x_axis.scale": "ordinal",
+      });
+      const chartModel = createMockCartesianChartModel({
+        transformedDataset: labels.map((label) => ({
+          [X_AXIS_DATA_KEY]: label,
+        })),
+        xAxisModel: {
+          axisType: "category",
+          isHistogram: false,
+          formatter: String,
+          valuesCount: labels.length,
+        },
+      });
+      const layout = getChartLayout(
+        chartModel,
+        settings,
+        false,
+        width,
+        200,
+        context,
+      );
+      const axis = buildCategoricalDimensionAxis(
+        { formatter: String, column: undefined, datasetLength: labels.length },
+        settings,
+        layout,
+        context,
+      );
+      const previousMeasureText = platformApi.measureText;
+      echarts.setPlatformAPI({ measureText: measureTextEChartsAdapter });
+      const chart = echarts.init(null, undefined, {
+        renderer: "svg",
+        ssr: true,
+        width,
+        height: 200,
+      });
+
+      try {
+        chart.setOption({
+          animation: false,
+          grid: { ...layout.padding, outerBoundsMode: "none" },
+          xAxis: { ...axis, data: labels },
+          yAxis: { show: false },
+          series: [{ type: "line", data: labels.map(() => 1) }],
+        });
+        const svg = new DOMParser().parseFromString(
+          chart.renderToSVGString(),
+          "image/svg+xml",
+        );
+        expect(
+          Array.from(svg.querySelectorAll("text"), (node) =>
+            node.textContent?.trim(),
+          ),
+        ).toEqual(labels.filter((_, index) => !hiddenIndices.includes(index)));
+        const axisWidth = width - layout.padding.left - layout.padding.right;
+        expectLabelClearance(
+          chart,
+          getXAxisLabelPadding(axisWidth),
+          axisWidth,
+          layout.padding.left,
+        );
+      } finally {
+        chart.dispose();
+        echarts.setPlatformAPI({ measureText: previousMeasureText });
+      }
+    },
+  );
+
   it.each([
     { width: 300, labels: ["Doohickey", "Gadget", "Gizmo", "Widget"] },
     {
@@ -318,14 +433,20 @@ describe("rendered X-axis labels", () => {
     },
   );
 
-  it.each([200, 300, 900])(
-    "keeps binned scatter labels inside a %ipx axis without moving data points",
-    (width) => {
+  it.each([
+    { width: 200, max: 100 },
+    { width: 300, max: 100 },
+    { width: 900, max: 100 },
+    { width: 900, max: 9 },
+    { width: 900, max: 11 },
+  ])(
+    "keeps binned scatter labels inside a $width px axis with maximum $max without moving data points (UXW-5182)",
+    ({ width, max }) => {
       const model: NumericXAxisModel = {
         axisType: "value",
-        extent: [0, 100],
+        extent: [0, max],
         interval: 1,
-        intervalsCount: 100,
+        intervalsCount: max,
         ticksMaxInterval: 1,
         isPadded: false,
         toEChartsAxisValue: (value) =>
@@ -336,7 +457,13 @@ describe("rendered X-axis labels", () => {
       const axis = buildNumericDimensionAxis(
         model,
         createMockVisualizationSettings({ "graph.x_axis.axis_enabled": true }),
-        createMockChartLayout({ outerWidth: width }),
+        createMockChartLayout({
+          outerWidth: width,
+          ticksDimensions: {
+            getXTickWidth: (text) =>
+              echarts.format.getTextRect(text, "13px Lato").width,
+          },
+        }),
         renderingContext,
       );
       const chart = echarts.init(null, undefined, {
@@ -363,17 +490,34 @@ describe("rendered X-axis labels", () => {
               type: "scatter",
               data: [
                 [0, 1],
-                [100, 2],
+                [max, 2],
               ],
             },
           ],
         });
 
         expect(chart.convertToPixel({ xAxisIndex: 0 }, 0)).toBeCloseTo(0);
-        expect(chart.convertToPixel({ xAxisIndex: 0 }, 50)).toBeCloseTo(
+        expect(chart.convertToPixel({ xAxisIndex: 0 }, max / 2)).toBeCloseTo(
           width / 2,
         );
-        expect(chart.convertToPixel({ xAxisIndex: 0 }, 100)).toBeCloseTo(width);
+        expect(chart.convertToPixel({ xAxisIndex: 0 }, max)).toBeCloseTo(width);
+        const endpointMatcher: jest.AsymmetricMatcher = expect.arrayContaining([
+          "0",
+          String(max),
+        ]);
+        const svg = new DOMParser().parseFromString(
+          chart.renderToSVGString(),
+          "image/svg+xml",
+        );
+        expect(
+          Array.from(svg.querySelectorAll("text"), (node) =>
+            node.textContent?.trim(),
+          ),
+        ).toEqual(
+          max < 100
+            ? Array.from({ length: max + 1 }, (_, index) => String(index))
+            : endpointMatcher,
+        );
         expectLabelClearance(chart, getXAxisLabelPadding(width), width);
       } finally {
         chart.dispose();
@@ -449,6 +593,7 @@ function expectLabelClearance(
   chart: echarts.EChartsType,
   padding: number,
   width: number,
+  axisLeft = 0,
 ) {
   chart.renderToSVGString();
   const labels = chart
@@ -467,7 +612,9 @@ function expectLabelClearance(
     if (label.transform) {
       bounds.applyTransform(label.transform);
     }
-    expect(bounds.x).toBeGreaterThanOrEqual(padding);
-    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width - padding);
+    expect(bounds.x - axisLeft).toBeGreaterThanOrEqual(padding - 0.001);
+    expect(bounds.x + bounds.width - axisLeft).toBeLessThanOrEqual(
+      width - padding + 0.001,
+    );
   }
 }

@@ -4,6 +4,7 @@ import { HORIZONTAL_TICKS_GAP } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
 
 const MAX_LABEL_PADDING_RATIO = 0.25;
+const MAX_REJECTED_LABEL_SAMPLES = 50;
 
 export function getXAxisWidth(chartLayout: ChartLayout): number {
   return (
@@ -80,38 +81,63 @@ export function getCategoricalAxisLabelPadding(
     return {};
   }
 
-  const interval = Math.max(
-    1,
-    Math.ceil(
-      ((Math.max(firstXTickWidth, lastXTickWidth) + HORIZONTAL_TICKS_GAP) *
-        datasetLength) /
-        axisWidth,
-    ),
-  );
   const labelWidths = new Map<string, number>();
+  const getLabelWidth = (value: string) => {
+    const label = formatter(value);
+    let width = labelWidths.get(label);
+    if (width === undefined) {
+      width = chartLayout.ticksDimensions.getXTickWidth(label);
+      labelWidths.set(label, width);
+    }
+    return width;
+  };
+  const labelSpacesWidth = chartLayout.ticksDimensions.getXTickWidth("  ");
+  const lastLabelWidth = lastXTickWidth + labelSpacesWidth;
+  const lastLabelLeft = alignMaxLabel
+    ? axisWidth - padding - lastLabelWidth
+    : axisWidth - endpointPosition - lastLabelWidth / 2;
+  const rejectedLabelInterval = Math.max(
+    1,
+    Math.ceil(datasetLength / MAX_REJECTED_LABEL_SAMPLES),
+  );
+  let previousLabelRight = 0;
+  let nextLabelPosition = 0;
 
   return {
     alignMinLabel: alignMinLabel ? "left" : undefined,
     alignMaxLabel: alignMaxLabel ? "right" : undefined,
     padding: [0, padding - endpointPosition],
     interval: (index, value) => {
-      if (index === 0 || index === datasetLength - 1) {
+      if (index === 0) {
+        // ECharts visits categories in order for each estimation/render pass.
+        const labelWidth = getLabelWidth(value);
+        previousLabelRight = alignMinLabel
+          ? padding + labelWidth
+          : endpointPosition + labelWidth / 2;
+        nextLabelPosition = previousLabelRight;
         return true;
       }
-      if (index % interval !== 0) {
-        return false;
+      if (index === datasetLength - 1) {
+        return true;
       }
       const position = ((index + 0.5) * axisWidth) / datasetLength;
-      const label = formatter(value);
-      let labelWidth = labelWidths.get(label);
-      if (labelWidth === undefined) {
-        labelWidth = chartLayout.ticksDimensions.getXTickWidth(label);
-        labelWidths.set(label, labelWidth);
+      if (position < nextLabelPosition) {
+        return false;
       }
-      return (
-        position - labelWidth / 2 >= padding &&
-        position + labelWidth / 2 <= axisWidth - padding
-      );
+      const labelWidth = getLabelWidth(value);
+      const labelRight = position + labelWidth / 2;
+      if (
+        position - labelWidth / 2 < previousLabelRight ||
+        labelRight > lastLabelLeft
+      ) {
+        nextLabelPosition =
+          ((index + rejectedLabelInterval + 0.5) * axisWidth) / datasetLength;
+        return false;
+      }
+      nextLabelPosition =
+        position + Math.max(labelWidth / 2, HORIZONTAL_TICKS_GAP);
+      previousLabelRight = labelRight;
+      return true;
     },
   };
 }
