@@ -191,7 +191,7 @@
     ;; which types of parameters are allowed to be passed in for this template tag.
     [:map
      [:type [:ref ::raw-value.type]]
-     [:widget-type {:optional true} [:ref ::widget-type]]]]
+     [:widget-type {:optional true} [:maybe [:ref ::widget-type]]]]]
    [:ref ::disallow-dimension]])
 
 (mr/def ::template-tag

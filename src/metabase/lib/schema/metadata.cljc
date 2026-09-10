@@ -362,7 +362,16 @@
    [:metabase.query-processor.util.add-alias-info/source-alias  {:optional true} [:maybe :string]]
    [:metabase.query-processor.util.add-alias-info/desired-alias {:optional true} [:maybe :string]]
    [:metabase.query-processor.middleware.add-remaps/original-field-dimension-id {:optional true} [:maybe ::lib.schema.id/dimension]]
-   [:metabase.query-processor.middleware.add-remaps/new-field-dimension-id      {:optional true} [:maybe ::lib.schema.id/dimension]]])
+   [:metabase.query-processor.middleware.add-remaps/new-field-dimension-id      {:optional true} [:maybe ::lib.schema.id/dimension]]
+   [:metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field {:optional true} :boolean]])
+
+(mr/def ::column.lib-options
+  "What [[metabase.lib.options/with-options]] puts under `:lib/options` when it is handed a column rather than a
+  clause: the expression name [[metabase.lib.fe-util/expression-parts]] pins on an expression column, and a `:lib/uuid`
+  if something asked for one."
+  [:map {:closed true}
+   [:lib/uuid            {:optional true} ::lib.schema.common/uuid]
+   [:lib/expression-name {:optional true} ::lib.schema.common/non-blank-string]])
 
 (mr/def ::column.binning-info
   "The legacy description of how a column was binned, as [[metabase.lib.metadata.result-metadata]] spells it out for
@@ -602,9 +611,10 @@
     [:remapped-from       {:optional true} [:maybe :string]]
     [:remapped-to         {:optional true} [:maybe :string]]
     [:remapped-from-index {:optional true} [:maybe :int]]
+    [:remapping           {:optional true} [:maybe [:map-of [:ref ::lib.schema.literal/literal] [:ref ::lib.schema.literal/literal]]]]
     [:dimension-interestingness {:optional true} [:maybe number?]]
     [:options             {:optional true} [:maybe [:ref ::column.options]]]
-    [:lib/options                 {:optional true} [:maybe [:ref ::lib.schema.common/options]]]
+    [:lib/options                 {:optional true} [:maybe [:ref ::column.lib-options]]]
     [:lib/original-fk-field-id    {:optional true} [:maybe ::lib.schema.id/field]]
     [:lib/original-fk-field-name  {:optional true} [:maybe :string]]
     [:lib/original-fk-join-alias  {:optional true} [:maybe ::lib.schema.join/alias]]

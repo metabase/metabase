@@ -618,7 +618,7 @@
                                                                                             :name         "snippet",
                                                                                             :snippet-id   s1-id,
                                                                                             :snippet-name "snip",
-                                                                                            :type         :number}}})}]
+                                                                                            :type         :snippet}}})}]
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
           (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s1-id))]

@@ -4,21 +4,59 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [malli.util :as mut]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(def ^:private ExploreFilterScalar
+  [:maybe [:or :string number? :boolean]])
+
+(mr/def ::card-embed.explore-filter
+  "One explore-further filter `metabase.explorations` snapshots onto a static card embed: the filter as the client
+  sent it, plus the name of the dimension it is on. Its `:field_ref` is the legacy `field_ref` of the chart column
+  that was clicked, or an MBQL 5 reference without a `:lib/uuid`."
+  [:map {:closed true}
+   [:operator       :string]
+   [:field_ref      [:multi {:dispatch (fn [x] (if (and (sequential? x) (map? (second x))) :mbql5 :legacy))}
+                     [:legacy [:ref ::lib.schema.parameter/target.legacy-field-ref]]
+                     [:mbql5  [:tuple
+                               [:or :string :keyword]
+                               (let [options (mr/resolve-schema ::lib.schema.common/options)]
+                                 (-> (m/find-first #(= :map (mc/type %)) (mc/children options))
+                                     mut/optional-keys
+                                     (mut/update-properties dissoc :decode/normalize :decode/api :encode/for-hashing)))
+                               [:or :int :string]]]]]
+   [:value          {:optional true} ExploreFilterScalar]
+   [:values         {:optional true} [:tuple ExploreFilterScalar ExploreFilterScalar]]
+   [:display_value  :string]
+   [:dimension_name {:optional true} [:maybe :string]]])
+
+(mr/def ::card-embed.host-data
+  "What `metabase.explorations` writes under `:host_data` of a static card embed so the frontend can render the
+  embed's filter pills and hover highlights without a live lookup."
+  [:map {:closed true}
+   [:query_ids       {:optional true} [:maybe [:sequential :int]]]
+   [:explore_filters {:optional true} [:maybe [:sequential [:ref ::card-embed.explore-filter]]]]])
+
 (mr/def ::node.attrs
-  "The `attrs` of a ProseMirror node: the ones this code reads by name, and, string-keyed, whatever else the editor
-  put there -- every node type has its own attributes and the editor owns that set."
+  "The `attrs` of a ProseMirror node: the ones this code reads by name, the ones `metabase.explorations` writes onto a
+  static card embed, and, string-keyed, whatever else the editor put there -- every node type has its own attributes
+  and the editor owns that set."
   [:map
    [::mc/default ms/OpaqueJSONObject]
    [:id               {:optional true} [:maybe [:or :int :string]]]
-   [:_id              {:optional true} [:maybe :string]]
+   [:_id              {:optional true} [:maybe [:or :string :uuid]]]
    [:model            {:optional true} [:maybe :string]]
    [:entityId         {:optional true} [:maybe [:or :int :string]]]
    [:label            {:optional true} [:maybe :string]]
-   [:stored_result_id {:optional true} [:maybe :int]]])
+   [:stored_result_id {:optional true} [:maybe :int]]
+   [:chart_href       {:optional true} [:maybe :string]]
+   [:child_target_id  {:optional true} [:maybe :string]]
+   [:host_data        {:optional true} [:maybe [:ref ::card-embed.host-data]]]])
 
 (mr/def ::ast
   "Schema for a prose-mirror document AST as it arrives at the API or is read back from the application database: a

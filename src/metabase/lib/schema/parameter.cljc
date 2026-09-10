@@ -27,6 +27,7 @@
        ([flatland.ordered.map :as ordered-map]))
    [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -384,6 +385,29 @@
    [:case-sensitive  {:optional true} :boolean]
    [:include-current {:optional true} :boolean]])
 
+(mr/def ::values-query-type
+  "How a filter widget asks for its values."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :none :list :search])
+
+(mr/def ::values-source-type
+  "Where a filter widget's values come from, when not from the field it is connected to."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :static-list :card])
+
+(mr/def ::values-source-config.value
+  "One value of a static-list source: a bare value, a one-tuple of it, or a `[value label]` pair."
+  [:or
+   [:ref ::parameter.value.scalar]
+   [:tuple [:ref ::parameter.value.scalar]]
+   [:tuple [:ref ::parameter.value.scalar] :string]])
+
+(mr/def ::values-source-config
+  "The configuration of a filter widget's value source. Its keys are the frontend's snake_case names."
+  [:map {:closed true}
+   [:values      {:optional true} [:maybe [:sequential [:ref ::values-source-config.value]]]]
+   [:card_id     {:optional true} [:maybe ::lib.schema.id/card]]
+   [:value_field {:optional true} [:maybe [:or [:ref ::target.legacy-field-ref] [:ref ::target.legacy-expression-ref]]]]
+   [:label_field {:optional true} [:maybe [:or [:ref ::target.legacy-field-ref] [:ref ::target.legacy-expression-ref]]]]])
+
 (mr/def ::parameter
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
   part of the `:parameters` list in a query.
@@ -414,7 +438,18 @@
     [:default  {:optional true} [:ref ::parameter.value]]
     [:required {:optional true} [:maybe :boolean]]
     [:options  {:optional true} [:maybe [:ref ::parameter.options]]]
-    [:temporal-units {:optional true} [:maybe [:sequential [:ref ::lib.schema.temporal-bucketing/unit]]]]]
+    [:temporal-units {:optional true} [:maybe [:sequential [:ref ::lib.schema.temporal-bucketing/unit]]]]
+    ;; The rest of a stored filter declaration. Dashboards, subscriptions and actions hand whole declarations to the
+    ;; query processor as its `:parameters`; the keys are the frontend's camelCase and snake_case names as
+    ;; [[normalize-parameter]] leaves them.
+    [:display-name         {:optional true} [:maybe :string]]
+    [:sectionid            {:optional true} [:maybe :string]]
+    [:filteringparameters  {:optional true} [:maybe [:sequential [:ref ::id]]]]
+    [:ismultiselect        {:optional true} [:maybe :boolean]]
+    [:position             {:optional true} [:maybe :int]]
+    [:values-query-type    {:optional true} [:maybe [:ref ::values-query-type]]]
+    [:values-source-type   {:optional true} [:maybe [:ref ::values-source-type]]]
+    [:values-source-config {:optional true} [:maybe [:ref ::values-source-config]]]]
    ::lib.schema.common/kebab-cased-map
    (lib.schema.common/disallowed-keys
     {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])

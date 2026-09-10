@@ -23,6 +23,7 @@
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.metrics.core :as metrics]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
@@ -320,15 +321,17 @@
   [:maybe [:or :string number? :boolean]])
 
 (def ^:private ExploreFieldRef
-  "The MBQL 5 reference an explore filter points at, kept exactly as the client sent it: it is persisted and echoed
-  back, so it is neither normalized nor given a `:lib/uuid` here."
-  [:tuple
-   [:or :string :keyword]
-   (let [options (mr/resolve-schema ::lib.schema.common/options)]
-     (-> (m/find-first #(= :map (mc/type %)) (mc/children options))
-         mut/optional-keys
-         (mut/update-properties dissoc :decode/normalize :decode/api :encode/for-hashing)))
-   [:or :int :string]])
+  "The reference an explore filter points at: the legacy `field_ref` of the chart column the client clicked, or an
+  MBQL 5 reference. It is persisted and echoed back, so it is not given a `:lib/uuid` here."
+  [:multi {:dispatch (fn [x] (if (and (sequential? x) (map? (second x))) :mbql5 :legacy))}
+   [:legacy [:ref ::lib.schema.parameter/target.legacy-field-ref]]
+   [:mbql5  [:tuple
+             [:or :string :keyword]
+             (let [options (mr/resolve-schema ::lib.schema.common/options)]
+               (-> (m/find-first #(= :map (mc/type %)) (mc/children options))
+                   mut/optional-keys
+                   (mut/update-properties dissoc :decode/normalize :decode/api :encode/for-hashing)))
+             [:or :int :string]]]])
 
 (def ^:private ExploreFilterSpec
   "One segment filter stamped onto a block metric selection's `:explore_filters` vector.

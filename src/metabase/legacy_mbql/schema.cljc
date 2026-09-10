@@ -1902,6 +1902,8 @@
      [:options            {:optional true} [:maybe [:ref ::lib.schema.metadata/column.options]]]
      [:remapped_from      {:optional true} [:maybe :string]]
      [:remapped_to        {:optional true} [:maybe :string]]
+     [:remapped_from_index {:optional true} [:maybe :int]]
+     [:remapping          {:optional true} [:maybe [:map-of [:ref ::lib.schema.literal/literal] [:ref ::lib.schema.literal/literal]]]]
      [:selected?          {:optional true} :boolean]
      ;; name is allowed to be empty in some databases like SQL Server.
      [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]

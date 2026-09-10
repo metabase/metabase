@@ -42,9 +42,7 @@
   ;; TODO: This should be tighter
   [:map
    {:closed true :decode/normalize normalize-values-source-config}
-   [:values      {:optional true} [:* [:or
-                                       [:ref ::lib.schema.parameter/parameter.value.scalar]
-                                       [:tuple [:ref ::lib.schema.parameter/parameter.value.scalar] :string]]]]
+   [:values      {:optional true} [:* [:schema [:ref ::lib.schema.parameter/values-source-config.value]]]]
    [:card_id     {:optional true} ::lib.schema.id/card]
    [:value_field {:optional true} [:ref ::legacy-ref]]
    [:label_field {:optional true} [:ref ::legacy-ref]]])
@@ -63,9 +61,7 @@
                       [:values_source_type :string]
                       [:values_source_config
                        [:map {:closed true}
-                        [:values {:optional true} [:* [:or
-                                                       [:ref ::lib.schema.parameter/parameter.value.scalar]
-                                                       [:tuple [:ref ::lib.schema.parameter/parameter.value.scalar] :string]]]]]]]]]))
+                        [:values {:optional true} [:* [:schema [:ref ::lib.schema.parameter/values-source-config.value]]]]]]]]]))
 
 (mr/def ::values-source-type
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :static-list :card])
