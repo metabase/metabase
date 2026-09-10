@@ -125,6 +125,12 @@
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
+(def ^:private transform-field-boolean
+  "Boolean column transform; a boolean computed in SQL (e.g. `COALESCE` over `json_unfolding`) comes back as a number
+  from MySQL."
+  {:in  identity
+   :out (fn [v] (if (number? v) (pos? v) v))})
+
 (t2/deftransforms :model/Field
   {:base_type         transform-field-base-type
    :effective_type    transform-field-effective-type
@@ -135,7 +141,8 @@
    :data_sensitivity  mi/transform-keyword
    :fingerprint       transform-json-fingerprints
    :settings          mi/transform-json
-   :nfc_path          mi/transform-json})
+   :nfc_path          mi/transform-json
+   :json_unfolding    transform-field-boolean})
 
 (doto :model/Field
   (derive :metabase/model)

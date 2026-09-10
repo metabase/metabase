@@ -76,9 +76,9 @@
   (warehouse-schema/field-with-user-settings field-id))
 
 (mu/defn fields
-  "The Fields with `field-ids`."
+  "The Fields with `field-ids` as users see them."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (warehouse-schema/fields-with-user-settings {:field-ids field-ids}))
 
 (mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`, with user overrides applied."
@@ -150,17 +150,22 @@
    insert-fn :- fn?]
   (mdb/select-or-insert! :model/FieldValues {:field_id field-id, :type :advanced, :hash_key hash-key} insert-fn))
 
+(defn- field-columns-select
+  "Honey SQL `:select` of the Field `columns`, aliased `f` with user settings aliased `u`, the user-settable ones as
+  users see them."
+  [columns]
+  (mapv (fn [column]
+          (if (contains? warehouse-schema/user-settable-field-columns column)
+            [(warehouse-schema/field-user-settings-column column :f :u) column]
+            (u/qualified-key :f column)))
+        columns))
+
 (mu/defn active-name-fields-for-tables
-  "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`, with user overrides applied to
-  any user-settable column among `columns`."
+  "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`, as users see them."
   [columns   :- [:sequential :keyword]
    table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Field
-             {:select    (mapv (fn [column]
-                                 (if (contains? warehouse-schema/user-settable-field-columns column)
-                                   [(warehouse-schema/field-user-settings-column column :f :u) column]
-                                   (u/qualified-key :f column)))
-                               columns)
+             {:select    (field-columns-select columns)
               :from      [[(t2/table-name :model/Field) :f]]
               :left-join (warehouse-schema/field-user-settings-join :f :u)
               :where     [:and
@@ -169,10 +174,14 @@
                           :f.active]}))
 
 (mu/defn fields-with-columns
-  "The `columns` of the Fields with `field-ids`."
+  "The `columns` of the Fields with `field-ids`, as users see them."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field] columns) :id [:in field-ids]))
+  (t2/select :model/Field
+             {:select    (field-columns-select columns)
+              :from      [[(t2/table-name :model/Field) :f]]
+              :left-join (warehouse-schema/field-user-settings-join :f :u)
+              :where     [:in :f.id field-ids]}))
 
 (mu/defn fk-relationships-for-database
   "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)
