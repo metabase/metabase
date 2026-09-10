@@ -174,11 +174,12 @@ describe(suiteTitle, () => {
     cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
     H.openEmbedJsModal();
-    H.embedModalEnableEmbedding();
 
     cy.get("#iframe-embed-container")
       .findByTestId("preview-loading-indicator", { timeout: 20_000 })
       .should("be.visible");
+
+    H.embedModalEnableEmbedding();
 
     cy.get("[data-iframe-loaded]", { timeout: 20_000 }).should(
       "have.length",
