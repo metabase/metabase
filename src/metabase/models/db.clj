@@ -298,6 +298,11 @@
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
 
+(mu/defn timeline-ids-of-events
+  "The distinct Timeline ids of the TimelineEvents with `event-ids`."
+  [event-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
+
 (mu/defn entity-by-own-pk
   "The `model` row identified by `id`, using whatever column is that model's own primary key."
   [model :- [:or :keyword symbol?]

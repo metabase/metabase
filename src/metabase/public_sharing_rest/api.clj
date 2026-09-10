@@ -298,13 +298,9 @@
   [timeline-ids]
   (when (seq timeline-ids)
     ;; A public dashboard authorizes its saved event selection without granting collection access.
-    (let [active-ids (t2/select-pks-set :model/Timeline :id [:in timeline-ids] :archived false)]
+    (let [active-ids (public-sharing-rest.db/active-timeline-ids timeline-ids)]
       (when (seq active-ids)
-        (t2/select [:model/TimelineEvent :id :timeline_id :name :description :icon :timestamp :timezone
-                    :time_matters :archived :created_at]
-                   :timeline_id [:in active-ids]
-                   :archived false
-                   {:order-by [[:timestamp :asc] [:id :asc]]})))))
+        (public-sharing-rest.db/active-timeline-events active-ids)))))
 
 (defn- add-public-dashboard-timeline-events
   [dashcards]
