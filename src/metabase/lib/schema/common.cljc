@@ -126,6 +126,13 @@
    {:error/message "positive number"}
    (every-pred number? pos?)])
 
+(mr/def ::visualization-settings
+  "Chart-rendering settings authored by the frontend. The backend stores and echoes them and reads no fixed key set, so
+  the keys are whatever the visualization the user picked needs. This is the `.cljc` equivalent
+  of [[metabase.util.malli.schema/VisualizationSettings]], which we cannot use here because that namespace is `.clj`
+  only."
+  [:map {:closed false, ::mr/deliberately-open true, :description "visualization settings", :decode/normalize normalize-map-no-kebab-case}])
+
 (mr/def ::uuid
   [:string
    {:decode/normalize (fn [x]
@@ -302,13 +309,26 @@
       (first fn-schemas)
       (into [:and] fn-schemas))))
 
+(mr/def ::add-alias-info.source-table
+  "Value of the `:metabase.query-processor.util.add-alias-info/source-table` option
+  that [[metabase.query-processor.util.add-alias-info]] adds to a `:field` ref: the ID of the Table the field comes
+  from, the (escaped) alias of the join or source query it comes from, or one of the two sentinel keywords that
+  namespace uses for 'the source query' and 'nowhere in particular'."
+  [:or
+   :string
+   [:ref :metabase.lib.schema.id/table]
+   [:enum
+    :metabase.query-processor.util.add-alias-info/source
+    :metabase.query-processor.util.add-alias-info/none]])
+
 (mr/def ::options
   [:and
    {:default {}}
    [:map
     {:decode/normalize   #'normalize-options-map
      :decode/api         #'remove-internal-keys
-     :encode/for-hashing #'encode-map-for-hashing}
+     :encode/for-hashing #'encode-map-for-hashing
+     :closed             true}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
     [:base-type      {:optional true} [:maybe ::base-type]]
@@ -329,7 +349,26 @@
     ;; `:time-interval`
     [:include-current     {:optional true} :boolean]
     ;; the name an aggregation is referenced by
-    [:lib/source-name     {:optional true} ::non-blank-string]]
+    [:lib/source-name     {:optional true} ::non-blank-string]
+    [:default             {:optional true} [:ref :metabase.lib.schema.expression/expression]]
+    [:join-alias          {:optional true} [:ref :metabase.lib.schema.join/alias]]
+    [:qp/ignore-coercion {:optional true} :boolean]
+    [:qp/allow-coercion-for-columns-without-integer-qp.add.source-table {:optional true} :boolean]
+    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} [:ref ::coercion-strategy]]
+    [:metabase.query-processor.util.add-alias-info/source-table  {:optional true} [:ref ::add-alias-info.source-table]]
+    [:metabase.query-processor.util.add-alias-info/source-alias  {:optional true} [:maybe :string]]
+    [:metabase.query-processor.util.add-alias-info/desired-alias {:optional true} [:maybe :string]]
+    [:metabase.query-processor.util.add-alias-info/nfc-path      {:optional true} [:sequential :string]]
+    [:metabase.query-processor.util.add-alias-info/resolved      {:optional true} [:ref :metabase.lib.schema.metadata/column]]
+    [:metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field {:optional true} :boolean]
+    [:metabase.query-processor.middleware.add-remaps/new-field-dimension-id      {:optional true} [:ref :metabase.lib.schema.id/dimension]]
+    [:metabase.query-processor.middleware.add-remaps/original-field-dimension-id {:optional true} [:ref :metabase.lib.schema.id/dimension]]
+    [:metabase.driver.sql.query-processor/forced-alias {:optional true} :boolean]
+    [:metabase.driver.sql.query-processor/add-cast     {:optional true} :keyword]
+    [:metabase.driver.sql.query-processor/wrap-in-case {:optional true} :boolean]
+    [:metabase.driver.sql.parameters.substitution/compiling-field-filter? {:optional true} :boolean]
+    [:metabase.driver.sqlserver/optimized-bucketing? {:optional true} :boolean]
+    [:metabase.driver.mongo.query-processor/join-local {:optional true} [:ref :metabase.lib.schema.join/alias]]]
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
 

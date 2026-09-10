@@ -22,9 +22,9 @@
   "Schema for the Snowplow `tp2` request envelope, mirroring the collector's own `payload_data` JSON schema: the iglu
   URI of that schema plus one entry per event, keyed by tracker field name (`e`, `p`, `tv`, `ue_px`, ...). The tracker
   stringifies every field value, so the values are always strings."
-  [:map
+  [:map {:closed true}
    [:schema ms/NonBlankString]
-   [:data [:sequential {:max 100} [:map-of :keyword :string]]]])
+   [:data [:sequential {:max 100} (ms/string-keyed-map :string)]]])
 
 ;; No response schema: the body is an opaque relay of the collector's own response. The tracker drives its retry
 ;; outbox off the HTTP status, so we forward status + body verbatim; a fabricated schema would be misleading.
