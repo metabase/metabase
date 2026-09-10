@@ -1186,3 +1186,41 @@
                             403
                             :csrf-cookie (extract-csrf-cookie consent-resp))]
               (is (= "params_tampered" (get-in response [:body :error]))))))))))
+
+(deftest authorize-legacy-mcp-client-can-request-v2-scopes-test
+  (testing (str "GHY-4343: a client that registered against a shipped v0.60-v0.63 release snapshotted only the "
+                "pre-v2 per-entity agent scopes, and `validate-scope` rejects any requested scope absent from that "
+                "snapshot. Because `/oauth/authorize` validates before narrowing, a user forced to re-authorize was "
+                "answered a 400 `invalid_request` JSON body rendered raw in their browser tab - the manual recovery "
+                "path was broken too. `WidenDynamicOAuthClientScopesForMcpV2` unions the six v2 scopes into every "
+                "dynamically registered client's snapshot so the request validates and reaches consent.")
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [legacy-scopes   ["agent:question:create" "agent:sql:construct" "agent:viz:mcp-ui:query"]
+              v2-scopes       ["agent:content:read" "agent:content:write" "agent:query:run"
+                               "agent:sql:run" "agent:delivery:write" "agent:resource:read"]
+              requested       (str/join " " v2-scopes)
+              client          (create-test-client! {:scopes            legacy-scopes
+                                                    :registration_type "dynamic"})
+              client-id       (:client_id client)
+              authorize!      (fn [expected-status]
+                                (mt/user-http-request-full-response
+                                 :crowberto :get expected-status "oauth/authorize"
+                                 :client_id     client-id
+                                 :redirect_uri  "https://example.com/callback"
+                                 :response_type "code"
+                                 :scope         requested
+                                 :state         "test-state"))]
+          (testing "before widening, the six v2 scopes are refused against the legacy snapshot"
+            (is (= "invalid_request" (:error (:body (authorize! 400))))))
+          ;; Apply what the migration applies. The change class itself is exercised against the changelog in
+          ;; `metabase.app-db.custom-migrations-test`; what this test owns is the authorize consequence.
+          (t2/update! :model/OAuthClient {:client_id client-id}
+                      {:scopes (into legacy-scopes v2-scopes)})
+          (testing "after widening, the same request reaches the consent page instead of a raw 400"
+            (let [response (authorize! 200)
+                  body     (:body response)]
+              (is (str/includes? (get-in response [:headers "Content-Type"]) "text/html")
+                  "the user sees a consent page, not a JSON error body rendered in their browser tab")
+              (is (str/includes? body "agent:content:read")
+                  "and the six v2 scopes are what they are consenting to"))))))))

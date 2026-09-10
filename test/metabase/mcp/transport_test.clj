@@ -481,16 +481,19 @@
   "Insert an OAuth access token row for `user-id` and return the raw (unhashed) token to present. `:token` is stored
   hashed, so the row is written the way a real issued token would be — including `client-id` naming a live
   `oauth_client` row ([[oauth-server.tu/with-oauth-client]]): the resolver fails closed on a token whose issuing
-  client is gone. Call inside `with-model-cleanup`."
-  [user-id client-id]
-  (let [token (str (random-uuid))]
-    (t2/insert! :model/OAuthAccessToken
-                {:token     (oidc.util/hash-token token)
-                 :user_id   user-id
-                 :client_id client-id
-                 :scope     ["agent:content:read"]
-                 :expiry    (+ (System/currentTimeMillis) 3600000)})
-    token))
+  client is gone. Call inside `with-model-cleanup`. `scope` defaults to a single v2 read scope; pass it
+  explicitly to mint a token with a different scope shape."
+  ([user-id client-id]
+   (issue-bearer! user-id client-id ["agent:content:read"]))
+  ([user-id client-id scope]
+   (let [token (str (random-uuid))]
+     (t2/insert! :model/OAuthAccessToken
+                 {:token     (oidc.util/hash-token token)
+                  :user_id   user-id
+                  :client_id client-id
+                  :scope     scope
+                  :expiry    (+ (System/currentTimeMillis) 3600000)})
+     token)))
 
 (deftest deactivated-user-bearer-token-is-refused-test
   (testing (str "GHY-4337 / round-1 4a: a bearer token that names a DEACTIVATED user must not authenticate. The "
@@ -797,3 +800,52 @@
                         {:jsonrpc "2.0" :id 3 :error {:code -32603 :message "Internal error"}}
                         nil]]
         (is (= response (redact response)))))))
+
+(deftest legacy-scoped-bearer-token-never-yields-an-empty-tool-list-test
+  (testing (str "GHY-4343: `/api/metabase-mcp` now serves the v2 tool surface, but every MCP client connected to a "
+                "shipped v0.60-v0.63 release holds a token carrying the pre-v2 per-entity agent scopes. No legacy "
+                "scope satisfies any v2 tool scope and `registry/list-tools` filters silently, so the pre-fix "
+                "failure mode was a successful handshake followed by HTTP 200 with an empty tools list - no error, "
+                "nothing logged, and no self-heal (the refresh grant copies scope forward and can only narrow). "
+                "`RevokeLegacyMcpOAuthTokens` stamps such tokens revoked so the client is refused outright and "
+                "re-authenticates. Whichever way it resolves, it must never be a 200 carrying zero tools.")
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [;; Exactly the review's token: one per-entity scope the v2 surface never gates on, plus
+                ;; `agent:resource:read`, which gates a resource rather than any tool.
+                token   (issue-bearer! (mt/user->id :rasta) client-id
+                                       ["agent:question:create" "agent:resource:read"])
+                headers (fn [& {:as extra}]
+                          {:request-options {:headers (merge {"authorization" (str "Bearer " token)} extra)}})
+                ;; The tool list is only reachable through a session, so the handshake runs first. Its status is
+                ;; not asserted: the point is what `tools/list` can be answered, and revoking the token moves the
+                ;; refusal to this call rather than removing it.
+                _       (testing "before the migration this token reproduces the silent failure exactly"
+                          (let [sid (get-in (client/client-full-response
+                                             :post 200 "metabase-mcp" (headers)
+                                             (jsonrpc-request "initialize" {:capabilities {}}))
+                                            [:headers "Mcp-Session-Id"])
+                                r   (client/client-full-response :post 200 "metabase-mcp"
+                                                                 (headers "mcp-session-id" sid)
+                                                                 (jsonrpc-request "tools/list" {} 2))]
+                            (is (and (= 200 (:status r)) (empty? (get-in r [:body :result :tools])))
+                                (str "characterizing the bug: a legacy-scoped token handshakes, then gets 200 with "
+                                     "zero tools - no error and nothing logged. This is what the migration ends."))))
+                ;; Then put the token in the state `RevokeLegacyMcpOAuthTokens` leaves it in. The migration
+                ;; class itself is exercised in `metabase.app-db.custom-migrations-test`, against the changelog;
+                ;; what this test owns is the consequence at the transport, which is the revoked stamp.
+                _       (t2/update! :model/OAuthAccessToken
+                                    {:token (oidc.util/hash-token token)} {:revoked_at :%now})
+                init    (client/client-full-response :post 401 "metabase-mcp" (headers)
+                                                     (jsonrpc-request "initialize" {:capabilities {}}))]
+            (testing "after the migration the token is refused at the handshake, so no empty tool list is reachable"
+              (is (= 401 (:status init)))
+              (is (nil? (get-in init [:headers "Mcp-Session-Id"]))
+                  "a revoked token must not be handed a working MCP session")
+              (let [challenge (get-in init [:headers "WWW-Authenticate"] "")]
+                (is (str/includes? challenge "invalid_token"))
+                (is (str/includes? challenge "resource_metadata=")
+                    "the challenge carries RFC 9728 discovery, so the client knows where to re-authenticate")
+                (is (str/includes? challenge "agent:content:read")
+                    "and names the v2 scopes to ask for, which the widened client snapshot now validates")))))))))
