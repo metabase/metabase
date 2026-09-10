@@ -22,6 +22,8 @@ type EntityListProps<T> = {
   title: string;
   emptyState: EntityListEmptyState;
   newButtonProps?: NewButtonProps;
+  /** Rendered in the header, before the "new" button. */
+  headerActions?: ReactNode;
   renderItem: (item: T) => ReactNode;
 };
 
@@ -30,23 +32,27 @@ export function EntityList<T>({
   title,
   emptyState,
   newButtonProps,
+  headerActions,
   renderItem,
 }: EntityListProps<T>) {
   return (
     <Stack gap="lg">
       <Group justify="space-between" wrap="nowrap">
         <Title order={4}>{title}</Title>
-        {!!newButtonProps && (
-          <Button
-            component={ForwardRefLink}
-            onAuxClick={newButtonProps.trackClickEvent}
-            onClickCapture={newButtonProps.trackClickEvent}
-            to={newButtonProps.url}
-            variant="filled"
-          >
-            {newButtonProps.label}
-          </Button>
-        )}
+        <Group gap="sm" wrap="nowrap">
+          {headerActions}
+          {!!newButtonProps && (
+            <Button
+              component={ForwardRefLink}
+              onAuxClick={newButtonProps.trackClickEvent}
+              onClickCapture={newButtonProps.trackClickEvent}
+              to={newButtonProps.url}
+              variant="filled"
+            >
+              {newButtonProps.label}
+            </Button>
+          )}
+        </Group>
       </Group>
 
       {items.length === 0 ? (

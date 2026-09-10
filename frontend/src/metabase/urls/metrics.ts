@@ -1,4 +1,4 @@
-import type { CardId, CollectionId } from "metabase-types/api";
+import type { CardId, CollectionId, ConcreteTableId } from "metabase-types/api";
 
 import { card as urlForCard } from "./cards";
 import type { CardOrSearchResult } from "./models";
@@ -18,6 +18,18 @@ export function exploreMetric(metricId: number): string {
 
 export function exploreMeasure(measureId: number): string {
   return `${METRICS_VIEWER_ROOT}?measureId=${measureId}`;
+}
+
+export function metricCubeViewer(
+  tableId: ConcreteTableId,
+  generatorId?: string,
+): string {
+  const searchParams = new URLSearchParams();
+  if (generatorId) {
+    searchParams.set("generator", generatorId);
+  }
+  const queryString = searchParams.toString();
+  return `${METRICS_VIEWER_ROOT}/table/${tableId}${queryString ? `?${queryString}` : ""}`;
 }
 
 export function metricAbout(cardId: CardId): string {

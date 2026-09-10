@@ -41,6 +41,27 @@ describe("MeasureList", () => {
     );
   });
 
+  describe("'explore measures' link", () => {
+    it("links to the metric cube viewer when the table has measures", () => {
+      setup({
+        isEnterprise: true,
+        measures: [createMockMeasure({ id: 1, name: "Total Revenue" })],
+      });
+
+      expect(
+        screen.getByRole("link", { name: /Explore measures/i }),
+      ).toHaveAttribute("href", "/explore/table/1");
+    });
+
+    it("is hidden when the table has no measures", () => {
+      setup({ isEnterprise: true, measures: [] });
+
+      expect(
+        screen.queryByRole("link", { name: /Explore measures/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("'new measure' link", () => {
     it("is rendered when user is an admin", () => {
       setup({ isEnterprise: true, measures: [], isAdmin: true });

@@ -1,8 +1,9 @@
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import type {
   MetricBreakoutValuesResponse,
   RowValues,
 } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
+import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import {
   createMockMetricDimension,
   createMockMetricDimensionGroup,
@@ -30,6 +31,7 @@ import {
 import {
   type SplitByBreakoutParams,
   buildDimensionItemsFromDefinitions,
+  buildSeries,
   computeSourceBreakoutColors,
   getSelectedMetricsInfo,
   shouldShowStackSeries,
@@ -430,6 +432,128 @@ describe("computeSourceBreakoutColors", () => {
     );
 
     expect(typeof result[0]).toBe("string");
+  });
+});
+
+describe("entityNames override", () => {
+  function setupSameMeasureTwice() {
+    const definition = setupMeasureDefinition(
+      measureMetadata,
+      TOTAL_MEASURE.id,
+    );
+    const sourceId: MetricSourceId = `measure:${TOTAL_MEASURE.id}`;
+    const formulaEntities: MetricsViewerFormulaEntity[] = [
+      { id: sourceId, type: "metric", definition },
+      { id: sourceId, type: "metric", definition },
+    ];
+    const definitions = { [sourceId]: { id: sourceId, definition } };
+    return { formulaEntities, definitions };
+  }
+
+  describe("computeSourceBreakoutColors", () => {
+    it("derives color keys from the provided names instead of the definitions", () => {
+      const { formulaEntities, definitions } = setupSameMeasureTwice();
+      const entityNames = new Map([
+        [0, "All"],
+        [1, "Enterprise"],
+      ]);
+
+      const result = computeSourceBreakoutColors(
+        formulaEntities,
+        definitions,
+        undefined,
+        entityNames,
+      );
+
+      const expected = getColorsForValues(["All", "Enterprise"]);
+      expect(result[0]).toBe(expected["All"]);
+      expect(result[1]).toBe(expected["Enterprise"]);
+    });
+
+    it("skips entities that have no provided name", () => {
+      const { formulaEntities, definitions } = setupSameMeasureTwice();
+
+      const result = computeSourceBreakoutColors(
+        formulaEntities,
+        definitions,
+        undefined,
+        new Map([[1, "Enterprise"]]),
+      );
+
+      expect(result[0]).toBeUndefined();
+      expect(typeof result[1]).toBe("string");
+    });
+
+    it("keeps deriving unique names when the override is omitted", () => {
+      const { formulaEntities, definitions } = setupSameMeasureTwice();
+
+      const result = computeSourceBreakoutColors(formulaEntities, definitions);
+
+      const expected = getColorsForValues([
+        TOTAL_MEASURE.name,
+        `${TOTAL_MEASURE.name} (2)`,
+      ]);
+      expect(result[0]).toBe(expected[TOTAL_MEASURE.name]);
+      expect(result[1]).toBe(expected[`${TOTAL_MEASURE.name} (2)`]);
+    });
+  });
+
+  describe("buildSeries", () => {
+    const dataset = createMockDataset({
+      data: { cols: [metricCol], rows: [[42]] },
+    });
+
+    it("uses the provided names as card names", () => {
+      const { formulaEntities, definitions } = setupSameMeasureTwice();
+      const entityNames = new Map([
+        [0, "All"],
+        [1, "Enterprise"],
+      ]);
+      const sourceBreakoutColors = computeSourceBreakoutColors(
+        formulaEntities,
+        definitions,
+        undefined,
+        entityNames,
+      );
+
+      const { series } = buildSeries({
+        formulaEntities,
+        definitions,
+        resultsByEntityIndex: new Map([
+          [0, dataset],
+          [1, dataset],
+        ]),
+        display: "scalar",
+        sourceBreakoutColors,
+        entityNames,
+      });
+
+      expect(series.map((s) => s.card.name)).toEqual(["All", "Enterprise"]);
+    });
+
+    it("falls back to the definition names when the override is omitted", () => {
+      const { formulaEntities, definitions } = setupSameMeasureTwice();
+      const sourceBreakoutColors = computeSourceBreakoutColors(
+        formulaEntities,
+        definitions,
+      );
+
+      const { series } = buildSeries({
+        formulaEntities,
+        definitions,
+        resultsByEntityIndex: new Map([
+          [0, dataset],
+          [1, dataset],
+        ]),
+        display: "scalar",
+        sourceBreakoutColors,
+      });
+
+      expect(series.map((s) => s.card.name)).toEqual([
+        TOTAL_MEASURE.name,
+        `${TOTAL_MEASURE.name} (2)`,
+      ]);
+    });
   });
 });
 
