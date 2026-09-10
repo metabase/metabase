@@ -418,9 +418,7 @@ Available but not adopted:
 
 ## Regenerating `.oxlintrc.json`
 
-It was originally generated from the old `eslint.config.mjs` with `@oxlint/migrate`
-and has since been hand-maintained. There is no longer an ESLint config to
-regenerate from, so edit `.oxlintrc.json` directly.
+There is no ESLint config to regenerate from, so edit `.oxlintrc.json` directly.
 
 ## The boundaries pass
 
