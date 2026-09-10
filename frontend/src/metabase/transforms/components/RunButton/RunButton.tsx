@@ -102,7 +102,7 @@ export const RunButton = forwardRef(function RunButton(
               aria-label={t`More run options`}
               data-testid="run-options-button"
             >
-              <Icon name="chevrondown" aria-hidden />
+              <Icon name="chevrondown" aria-hidden display="block" />
             </Button>
           </Menu.Target>
           <Menu.Dropdown>{menuItems}</Menu.Dropdown>

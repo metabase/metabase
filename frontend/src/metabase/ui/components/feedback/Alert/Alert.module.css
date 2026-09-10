@@ -17,6 +17,7 @@
 
 .icon {
   grid-area: icon;
+  display: flex;
   width: auto;
   height: var(--alert-control-size);
   margin: 0;
