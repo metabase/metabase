@@ -19,6 +19,7 @@
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -214,14 +215,9 @@
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  ;; this endpoint mixes a request-supplied URL with the stored token, so the same coupling applies even though it
-  ;; persists nothing
-  (setting/assert-audience-writes-authorized! body)
-  (let [current-token   (settings/remote-sync-token)
-        obfuscated?     (and remote-sync-token
-                             (= remote-sync-token (setting/obfuscate-value current-token)))
+  (let [obfuscated?     (setting/obfuscated-value? remote-sync-token)
         effective-token (if (or obfuscated? (not (contains? body :remote-sync-token)))
-                          current-token
+                          (settings/remote-sync-token)
                           remote-sync-token)
         effective-url   (or remote-sync-url (settings/remote-sync-url))]
     (api/check-400 (not (str/blank? effective-url)) "Remote sync is not configured.")
@@ -235,6 +231,7 @@
           source.git/branches)
       {:status :success}
       (catch Exception e
+        (u.secret/rethrow-if-audience-mismatch! e)
         (throw (ex-info (impl/source-error-message e)
                         {:status-code 400} e))))))
 

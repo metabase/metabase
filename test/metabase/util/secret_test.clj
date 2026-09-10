@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.util.json :as json]
    [metabase.util.secret :as u.secret]))
 
 ;;; ------------------------------------------------ audience shapes -------------------------------------------------
@@ -219,3 +220,64 @@
 (deftest secret?-test
   (is (true? (u.secret/secret? (u.secret/secret "s"))))
   (is (false? (u.secret/secret? "s"))))
+
+(deftest maybe-expose-test
+  (testing "a plain value passes through untouched"
+    (is (= "typed-just-now" (u.secret/maybe-expose "typed-just-now" {:host "anywhere"})))
+    (is (nil? (u.secret/maybe-expose nil {:host "anywhere"}))))
+  (testing "a Secret is opened only to its bound audience"
+    (let [s (u.secret/secret "hunter2" {:audience-schema [:map [:host {:optional true} :string]]
+                                        :audience        {:host "db.example.com"}})]
+      (is (= "hunter2" (u.secret/maybe-expose s {:host "db.example.com"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
+                            (u.secret/maybe-expose s {:host "evil.example.com"}))))))
+
+(deftest json-encoding-a-secret-throws-test
+  (testing "a Secret that reaches a JSON response is a leak in the making; encoding it fails loudly instead of rendering
+           the redaction string"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Refusing to JSON-encode a Secret"
+                          (json/encode (u.secret/secret "hunter2"))))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Refusing to JSON-encode a Secret"
+                          (json/encode {:password (u.secret/secret "hunter2")})))))
+
+(deftest url-schema-test
+  (testing "::url ignores surrounding whitespace, which is never part of a URL"
+    (is (= {:url "https://embed.example.com"}
+           (u.secret/canonical-audience [:map [:url ::u.secret/url]] {:url "  https://embed.example.com  "}))))
+  (testing "but is otherwise exact: a differently-cased host is a different audience, failing closed"
+    (is (not (u.secret/same-audience? [:map [:url ::u.secret/url]]
+                                      {:url "https://embed.example.com"}
+                                      {:url "https://EMBED.example.com"})))))
+
+;;; ------------------------------------------- surviving a catch-all ------------------------------------------------
+
+(defn- refusal
+  "The exception `expose` throws for an audience the secret is not bound to."
+  []
+  (try
+    (u.secret/expose (u.secret/secret "hunter2" {:audience-schema [:map [:host {:optional true} :string]]
+                                                 :audience        {:host "db.example.com"}})
+                     {:host "evil.example.com"})
+    (catch clojure.lang.ExceptionInfo e e)))
+
+(deftest audience-mismatch?-test
+  (testing "a refusal is recognized directly, and through a wrapper that translated it"
+    (is (true? (u.secret/audience-mismatch? (refusal))))
+    (is (true? (u.secret/audience-mismatch? (ex-info "Could not reach the server" {:status-code 400} (refusal))))))
+  (testing "even when the wrapper carries an :error-code of its own, which a merged view of the chain would hide"
+    (is (true? (u.secret/audience-mismatch?
+                (ex-info "Could not reach the server" {:error-code :connection-failed} (refusal))))))
+  (testing "and an unrelated exception is not one"
+    (is (false? (u.secret/audience-mismatch? (ex-info "Wrong host or port" {:status-code 400}))))
+    (is (false? (u.secret/audience-mismatch? (java.io.IOException. "boom"))))))
+
+(deftest rethrow-if-audience-mismatch!-test
+  (testing "the refusal itself is rethrown, not the wrapper: it carries the message and status the client should see"
+    (let [wrapped (ex-info "Could not reach the server" {:status-code 500} (refusal))
+          thrown  (try
+                    (u.secret/rethrow-if-audience-mismatch! wrapped)
+                    (catch clojure.lang.ExceptionInfo e e))]
+      (is (= "This secret is not bound to the requested audience." (ex-message thrown)))
+      (is (= 400 (:status-code (ex-data thrown))))))
+  (testing "an unrelated exception passes through, so the caller's own handling continues"
+    (is (nil? (u.secret/rethrow-if-audience-mismatch! (ex-info "Wrong host or port" {}))))))

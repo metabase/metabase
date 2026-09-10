@@ -6,7 +6,8 @@
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.settings.core :as setting]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.secret :as u.secret]))
 
 (deftest check-and-update-remote-settings
   (let [full-token "full_token_value"
@@ -18,8 +19,11 @@
          :remote-sync-branch  "test-branch"
          :remote-sync-token   nil}]
     (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [{:keys [remote-sync-token]}]
-                                                               ;; git should always be checked with a nil or full token
-                                                               (is (or (nil? remote-sync-token) (#{full-token other-token} remote-sync-token)))
+                                                               ;; git is checked with nil, the stored Secret (sealed until git-source opens it), or a full
+                                                               ;; token -- never the mask
+                                                               (is (or (nil? remote-sync-token)
+                                                                       (u.secret/secret? remote-sync-token)
+                                                                       (#{full-token other-token} remote-sync-token)))
                                                                true)]
       (mt/with-temporary-setting-values [:remote-sync-token nil
                                          :remote-sync-url nil
@@ -31,19 +35,19 @@
           (is (= :read-only (settings/remote-sync-type)))
           (is (= "test-branch" (settings/remote-sync-branch)))
           (is (true? (settings/remote-sync-enabled)))
-          (is (= nil (settings/remote-sync-token))))
+          (is (= nil (mt/plaintext (settings/remote-sync-token)))))
         (testing "Updating with a full token saves it"
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token full-token))
-          (is (= full-token (settings/remote-sync-token))))
+          (is (= full-token (mt/plaintext (settings/remote-sync-token)))))
         (testing "Updating with an obfuscated token does not update it"
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token obfuscated-token))
-          (is (= full-token (settings/remote-sync-token))))
+          (is (= full-token (mt/plaintext (settings/remote-sync-token)))))
         (testing "Updating with a different full token saves it"
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token other-token))
-          (is (= other-token (settings/remote-sync-token))))
+          (is (= other-token (mt/plaintext (settings/remote-sync-token)))))
         (testing "Updating with nil token clears it out"
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token nil))
-          (is (= nil (settings/remote-sync-token))))))))
+          (is (= nil (mt/plaintext (settings/remote-sync-token)))))))))
 
 (deftest check-and-update-remote-settings-partial-updates
   (testing "Partial updates for non-git settings do not trigger git validation"
@@ -163,12 +167,12 @@
             :remote-sync-branch "api-branch"
             :remote-sync-type   :read-only})
           (is (= "file://env/url.git" (settings/remote-sync-url)))
-          (is (= "env-token" (settings/remote-sync-token)))
+          (is (= "env-token" (mt/plaintext (settings/remote-sync-token))))
           (is (= "env-branch" (settings/remote-sync-branch))))
         (testing "Clearing URL (blank) does not wipe env-backed URL/token/branch"
           (settings/check-and-update-remote-settings! {:remote-sync-url ""})
           (is (= "file://env/url.git" (settings/remote-sync-url)))
-          (is (= "env-token" (settings/remote-sync-token)))
+          (is (= "env-token" (mt/plaintext (settings/remote-sync-token))))
           (is (= "env-branch" (settings/remote-sync-branch)))))))
   (testing "Non-env-sourced settings are still updated normally"
     (with-redefs [settings/check-git-settings! (constantly true)]
@@ -182,7 +186,7 @@
           :remote-sync-branch "api-branch"
           :remote-sync-type   :read-only})
         (is (= "file://api/url.git" (settings/remote-sync-url)))
-        (is (= "api-token" (settings/remote-sync-token)))
+        (is (= "api-token" (mt/plaintext (settings/remote-sync-token))))
         (is (= "api-branch" (settings/remote-sync-branch)))))))
 
 (deftest root-collection-is-not-remote-synced-test

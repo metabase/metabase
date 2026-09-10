@@ -1,7 +1,8 @@
 (ns metabase-enterprise.transforms-python.s3
   (:require
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.secret :as u.secret])
   (:import
    (clojure.lang IDeref)
    (java.io Closeable File InputStream)
@@ -65,8 +66,11 @@
 
 (defn- maybe-with-credentials*
   [credentials-provider]
-  (let [access-key (transforms-python.settings/python-storage-s-3-access-key)
-        secret-key (transforms-python.settings/python-storage-s-3-secret-key)]
+  (let [audience   {:python-storage-s-3-endpoint (transforms-python.settings/python-storage-s-3-endpoint)
+                    :python-storage-s-3-region   (transforms-python.settings/python-storage-s-3-region)
+                    :python-storage-s-3-bucket   (transforms-python.settings/python-storage-s-3-bucket)}
+        access-key (u.secret/maybe-expose (transforms-python.settings/python-storage-s-3-access-key) audience)
+        secret-key (u.secret/maybe-expose (transforms-python.settings/python-storage-s-3-secret-key) audience)]
     (if (or access-key secret-key)
       (if-not (and access-key secret-key)
         (do (log/warnf "Ignoring %s because %s is not defined"

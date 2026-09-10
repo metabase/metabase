@@ -883,7 +883,7 @@
 (def default-audience-schema
   "The connection-detail fields that decide *where* a warehouse credential is sent and *how* the channel is protected,
   and so must not change while a stored credential is reused. Driver-agnostic defaults; a driver whose connection
-  identity is spelled differently should override [[audience-schema]].
+  identity is defined differently should override [[audience-schema]].
 
   Free-text `additional-options` is in here compared as an opaque string rather than parsed: it can carry
   `sslmode=disable` or `useSSL=false`, and there is no JDBC property allow-list, so comparing the whole thing exactly
@@ -929,10 +929,7 @@
 (defn sensitive-fields
   "Returns all sensitive fields that should be redacted in API responses for a given database. Calls get-sensitive-fields
   using the given database's driver, if that driver is valid and registered. Refer to get-sensitive-fields docstring
-  for full details.
-
-  Connection properties are flattened first, so a `:password` or `:secret` property nested inside a `:group` (the
-  shape every driver's SSL block uses) is redacted just like a top-level one."
+  for full details."
   [driver]
   (if-some [conn-prop-fn (get-method driver/connection-properties driver)]
     (let [all-fields      (vals (collect-all-props-by-name (conn-prop-fn driver)))

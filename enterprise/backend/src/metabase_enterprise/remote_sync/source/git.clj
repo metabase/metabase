@@ -8,7 +8,8 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.secret :as u.secret])
   (:import
    (java.io File)
    (java.net URI)
@@ -647,7 +648,10 @@
   and a set of managed top-level directory names. Files in managed directories
   are fully replaced during writes — any existing file not in the write set is removed.
 
+  The token is a String, or a [[metabase.util.secret/secret]]
+
   Returns a GitSource record implementing the Source protocol."
   [url branch token managed-dirs]
-  (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
-               url branch token managed-dirs))
+  (let [token (u.secret/maybe-expose token {:remote-sync-url url})]
+    (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
+                 url branch token managed-dirs)))

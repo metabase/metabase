@@ -136,3 +136,9 @@
       (if (= (:status actual) :ERROR)
         (is (re-matches #"An error occurred while attempting to connect to server \[::1].*" (:message actual)))
         (is (= {:status :SUCCESS} actual))))))
+
+(deftest settings->ldap-options-open-the-stored-password-to-its-own-directory-test
+  (testing "the login path hands the LDAP client a plain String: the stored Secret is opened against the very host,
+           port and channel the connection is about to bind to"
+    (ldap.test/with-ldap-server!
+      (is (= "password" (:password (#'ldap/settings->ldap-options)))))))

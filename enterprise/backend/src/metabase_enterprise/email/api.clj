@@ -49,7 +49,7 @@
              (not (#{:tls :ssl :starttls} (keyword (:email-smtp-security-override settings)))))
     (throw (ex-info (tru "Invalid email-smtp-security-override value")
                     {:status-code 400})))
-  (u/prog1 (email/check-and-update-settings settings mb-to-smtp-override-settings (channel.settings/email-smtp-password-override))
+  (u/prog1 (email/check-and-update-settings settings mb-to-smtp-override-settings)
     (when (nil? (:errors (:body <>))) (channel.settings/smtp-override-enabled! true))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

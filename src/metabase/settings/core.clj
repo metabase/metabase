@@ -104,7 +104,6 @@
   log-deprecated-env-var-usage!
   get-value-of-type
   has-advanced-setting-access?
-  assert-audience-writes-authorized!
   obfuscate-value
   obfuscated-value?
   read-setting
@@ -118,6 +117,9 @@
   string->boolean
   unreadable-user-settings-key
   user-facing-value
+  value-after-write
+  values-after-write
+  write-visible?
   user-readable-values-map
   uuid-nonce-base
   validate-settings-formatting!

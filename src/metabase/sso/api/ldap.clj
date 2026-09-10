@@ -8,17 +8,23 @@
    [metabase.sso.ldap :as ldap]
    [metabase.sso.schema :as sso.schema]
    [metabase.sso.settings :as sso.settings]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (defn- update-password-if-needed
-  "Do not update password if `new-password` is an obfuscated value of the current password."
+  "The bind password to test with.
+
+  The client only ever has the mask the API handed out, and echoes it back when the password was not changed. In that
+  case the stored password is handed through sealed: a bound Secret that [[ldap/test-ldap-connection]] opens against
+  the directory it is about to bind to, so pointing the connection somewhere new, or weakening the channel to it,
+  while reusing the stored password is refused inside that sink. A password the client typed passes straight through,
+  and an omitted one clears the stored value rather than reusing it."
   [new-password]
-  (let [current-password (sso.settings/ldap-password)]
-    (if (= (setting/obfuscate-value current-password) new-password)
-      current-password
-      new-password)))
+  (if (setting/obfuscated-value? new-password)
+    (sso.settings/ldap-password)
+    new-password))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -50,9 +56,6 @@
                 [:ldap-group-membership-filter {:optional true} [:maybe :string]]
                 [:ldap-group-mappings          {:optional true} [:maybe ::sso.schema/group-mappings]]]]
   (api/check-superuser)
-  ;; ahead of the connection test, not just the write: the test binds to whatever host was supplied, so a moved
-  ;; audience would deliver the stored bind password there before anything is persisted
-  (setting/assert-audience-writes-authorized! settings)
   (let [ldap-settings (-> settings
                           (update :ldap-password update-password-if-needed)
                           (dissoc :ldap-enabled))
@@ -61,8 +64,9 @@
     (if (= :SUCCESS (:status results))
       (t2/with-transaction [_conn]
         ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap
-        ;; settings
-        (setting/set-many! ldap-settings)
+        ;; settings. A reused password is already stored, and there is no plaintext up here to write it with anyway.
+        (setting/set-many! (cond-> ldap-settings
+                             (u.secret/secret? (:ldap-password ldap-settings)) (dissoc :ldap-password)))
         (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message
       {:status 500

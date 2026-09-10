@@ -212,9 +212,15 @@
    [:tag :symbol]
    ;; is this sensitive (never show in plaintext), like a password? (default: false)
    [:sensitive? :boolean]
-   ;; for a secret, the settings that make up the audience it is sent to, as {setting-name malli-schema}. See
-   ;; [[assert-audience-writes-authorized!]]. nil for settings that are not credentials.
-   [:audience [:maybe [:map-of :keyword :any]]]
+   ;; for a credential, the settings that make up the audience it is sent to, as {setting-name schema-name}, where
+   ;; the schema says how that field is compared. `{}` when no setting names its destination -- because it is never
+   ;; sent anywhere, because the endpoint is fixed, or because it has several peers no single setting selects -- and
+   ;; nil for a setting that is not a credential at all. See [[metabase.util.secret/canonical-audience]].
+   ;;
+   ;; A schema is named, never inlined: each one relaxes the comparison, and a relaxation has to be reviewed for the
+   ;; property that it can never make two genuinely different destinations compare equal. Keeping them to registered
+   ;; names holds that review in one place rather than letting a `defsetting` introduce a normalization of its own.
+   [:audience [:maybe [:map-of :keyword :keyword]]]
    ;; where this setting should be visible (default: :admin)
    [:visibility Visibility]
    ;; should this setting be encrypted. Available options are `:no` or `:when-encryption-key-set` (the setting will be
@@ -766,10 +772,41 @@
   [e]
   (if config/is-prod? (log/warn (ex-message e)) (throw e)))
 
+(defn- audience->schema
+  "The Malli map schema [[metabase.util.secret/canonical-audience]] compares an `audience` declaration under: every
+  declared setting, optional, with the comparison schema it declared."
+  [audience]
+  (into [:map] (map (fn [[k schema]] [k {:optional true} schema])) audience))
+
+(declare proposed-audience)
+
+(defn- bind-secret
+  "Wrap `value` as a [[metabase.util.secret/secret]] bound to the audience `setting` declares, as that audience is
+  stored right now. Only a credential whose audience names fields is wrapped: a `{}` audience has nothing to bind to,
+  because no setting decides where that credential goes."
+  [{:keys [sensitive? audience], setting-name :name} value]
+  (if (and sensitive?
+           (seq audience)
+           (some? value)
+           (not (u.secret/secret? value)))
+    (u.secret/secret value {:audience-schema (audience->schema audience)
+                            :audience        (proposed-audience setting-name {})})
+    value))
+
+(defn- unwrap-secret
+  "The plaintext of `v` when it is a Secret, otherwise `v`. For the settings layer's own bookkeeping -- comparing to a
+  default, building a mask -- never for handing the value out."
+  [v]
+  (cond-> v
+    (u.secret/secret? v) (u.secret/derive-with identity)))
+
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
   if any.
+
+  A `:sensitive?` Setting with a non-empty `:audience` comes back as a [[metabase.util.secret/secret]] bound to the
+  destination its audience settings currently describe; see [[bind-secret]].
 
   Note: If the setting has an initializer, and this is the first time accessing, a value will be generated and saved
   unless *disable-init* has been bound to a truthy value."
@@ -790,14 +827,16 @@
         (and (:enabled-for-db? setting-def) (not *database*))
         (log/warnf "Skipping enabled-for-db? check for %s as we don't have the underlying toucan2 db instance."
                    (:name setting-def))))
-    (if (or (and feature (not (has-feature? feature)))
-            (and enabled? (not (enabled?)))
-            (and *database* (disabled-for-db-reasons? setting-def *database*)))
-      (:default setting-def)
-      (if (= config/*disable-setting-cache* disable-cache?) ;; Optimization: only bind dynvar if necessary.
-        (getter)
-        (binding [config/*disable-setting-cache* disable-cache?]
-          (getter))))))
+    (bind-secret
+     setting-def
+     (if (or (and feature (not (has-feature? feature)))
+             (and enabled? (not (enabled?)))
+             (and *database* (disabled-for-db-reasons? setting-def *database*)))
+       (:default setting-def)
+       (if (= config/*disable-setting-cache* disable-cache?) ;; Optimization: only bind dynvar if necessary.
+         (getter)
+         (binding [config/*disable-setting-cache* disable-cache?]
+           (getter)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      set!                                                      |
@@ -836,9 +875,12 @@
   "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
   value is what's expected (e.g. the correct password).
 
-    (obfuscate-value \"sensitivePASSWORD123\") ;; -> \"**********23\""
+    (obfuscate-value \"sensitivePASSWORD123\") ;; -> \"**********23\"
+
+  Accepts a bound Secret as well as a String, so the mask shown for a bound credential is the same as before."
   [s]
-  (str "**********" (str/join (take-last 2 (str s)))))
+  (let [s (unwrap-secret s)]
+    (str "**********" (str/join (take-last 2 (str s))))))
 
 (defmulti set-value-of-type!
   "Set the value of a `setting-type` `setting-definition-or-name`. A `nil` value deletes the current value of the
@@ -1071,12 +1113,59 @@
   not re-check each key in isolation and refuse a batch that is in fact supplying the secret alongside the move."
   false)
 
-(defn- audience-fields
-  "Current values of `setting`'s audience settings, with anything in `proposed` layered over them."
-  [audience proposed]
-  (into {}
-        (map (fn [k] [k (if (contains? proposed k) (core/get proposed k) (get k))]))
-        (keys audience)))
+(defn write-visible?
+  "Whether a site-wide write to `setting-name` will be visible to whoever reads it next.
+
+  False when an env var supplies the value: [[get-raw-value]] prefers it over the application database, so the write
+  lands a row nothing will ever read. Whether a setting reads from its env var at all is the setting's own decision,
+  asked here through [[get-raw-value-source]] rather than reimplemented, so `:can-read-from-env? false` needs no
+  handling of its own.
+
+  Scoped to site-wide writes. User- and database-local values also outrank the application database on read, but
+  [[set!]] routes a write to those settings into the matching store rather than the site-wide one, so they are a
+  separate question and this does not attempt to answer it."
+  [setting-name]
+  (not= :env (get-raw-value-source setting-name)))
+
+(defn values-after-write
+  "For each of `setting-names`, the value a site-wide write of `proposed` leaves in effect: the proposed value where
+  the write is [[write-visible?]], and the value already in effect where it is not. `proposed` maps setting names to
+  new values, as a request body does, and its keys may be strings or keywords.
+
+  Code acting on the state a write leaves behind cannot take a proposed value at face value, because a write to an
+  env-supplied setting changes nothing that will be read.
+
+  What this does **not** do is normalize. The proposed value comes back exactly as given, while the value already in
+  effect comes back through the setting's `:type` parsing and any custom `:getter`. A setting whose `:setter` or
+  `:getter` canonicalizes -- trimming a URL, defaulting a nil -- will therefore hold something slightly different from
+  what is reported here. Simulating that is not available: each [[set-value-of-type!]] method serializes and writes in
+  one step, and a custom `:setter` is arbitrary code that may validate, rewrite, or call out over the network, so
+  running one to learn its result is not something a predicate may do. A caller comparing this against a value read
+  back through [[get]] has to account for that normalization itself."
+  [setting-names proposed]
+  (let [proposed (update-keys proposed keyword)]
+    (into {}
+          (map (fn [setting-name]
+                 (let [k (keyword setting-name)]
+                   [k (if (and (contains? proposed k) (write-visible? k))
+                        (core/get proposed k)
+                        (get k))])))
+          setting-names)))
+
+(defn value-after-write
+  "[[values-after-write]] for a single `setting-name`."
+  [setting-name proposed]
+  (core/get (values-after-write [setting-name] proposed) (keyword setting-name)))
+
+(defn- proposed-audience
+  "The audience the secret setting `secret-setting-name` is bound to, as a map of audience setting name to value,
+  given a `proposed` write. With an empty `proposed` this is the audience a freshly read Secret is bound to; with a
+  write's values it is the audience that write leaves behind, which is what the write guard compares against.
+
+  Deliberately not public: a sink opens a Secret against the destination it holds in its own hands, never against an
+  audience assembled up here from a request."
+  [secret-setting-name proposed]
+  (values-after-write (keys (:audience (resolve-setting secret-setting-name))) proposed))
 
 (defn- fresh-secret-supplied?
   "Whether `proposed` supplies a genuinely new value for `secret-key` -- or clears it, which leaves nothing to leak.
@@ -1088,7 +1177,7 @@
              (and (string? v) (str/blank? v))
              (not (obfuscated-value? v))))))
 
-(defn assert-audience-writes-authorized!
+(defn- assert-audience-writes-authorized!
   "Refuse a write that moves a secret's audience while leaving the stored secret in place.
 
   Metabase hands the client a mask rather than a credential, and substitutes the stored value back on save. Because
@@ -1105,9 +1194,11 @@
   user and are the deployment's own configuration, which is trusted -- the same provenance split the network policies
   use.
 
-  Call this explicitly, ahead of any connection test, from an endpoint that verifies credentials before persisting
-  them: the exfiltration happens at the test, not at the write, so relying on the [[set-many!]] hook alone would let
-  the credential reach the new audience first."
+  This runs from [[set!]] and [[set-many!]] only. An endpoint that verifies a credential before persisting it needs no
+  call of its own: the stored credential it would reuse is a bound Secret (see [[bind-secret]]), and opening that to
+  the destination the request describes -- [[proposed-audience]] with [[metabase.util.secret/expose]] -- is what
+  refuses a moved audience at the connection test, before anything reaches the network. What this hook adds is the
+  case where nothing is tested at all: a bare write that moves the audience out from under a stored secret."
   [proposed]
   (when (some? api/*current-user-id*)
     (let [proposed (into {} (map (fn [[k v]] [(keyword k) v])) proposed)]
@@ -1115,11 +1206,14 @@
               :when (and audience
                          ;; nothing being written touches this audience
                          (seq (select-keys proposed (keys audience)))
-                         ;; nothing stored to exfiltrate
-                         (some? (get setting-name)))]
-        (let [schema   (into [:map] (map (fn [[k schema]] [k {:optional true} schema])) audience)
-              stored   (u.secret/canonical-audience schema (audience-fields audience {}))
-              want     (u.secret/canonical-audience schema (audience-fields audience proposed))
+                         ;; nothing stored to exfiltrate. A value that only comes from the setting's `:default` is
+                         ;; not a stored credential: a default is public knowledge, and guarding it would make every
+                         ;; first-time setup re-enter it
+                         (contains? #{:database :env :user-local :database-local}
+                                    (get-raw-value-source setting-name)))]
+        (let [schema   (audience->schema audience)
+              stored   (u.secret/canonical-audience schema (proposed-audience setting-name {}))
+              want     (u.secret/canonical-audience schema (proposed-audience setting-name proposed))
               changed  (remove #(= (core/get stored %) (core/get want %))
                                (distinct (concat (keys stored) (keys want))))
               ;; clearing where a credential points is not moving it: there is nowhere left to send it, and setting a
@@ -1146,6 +1240,11 @@
   This method will throw an exception if trying to update a read-only setting, unless `:bypass-read-only?` is set."
   [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
   (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)
+        ;; a Secret would otherwise be stringified to its redaction text and persisted over the real credential
+        _                            (when (u.secret/secret? new-value)
+                                       (throw (ex-info (tru "Refusing to write a Secret to setting {0}: expose it to an audience first."
+                                                            (name (:name setting)))
+                                                       {:setting (:name setting)})))
         _                            (when-not *audience-checked?*
                                        (assert-audience-writes-authorized! {(:name setting) new-value}))
         new-value                    (cond-> new-value
@@ -1604,7 +1703,7 @@
         unparsed-value                                                (get-value-of-type :string k)
         parsed-value                                                  (getter k)
         ;; `default` and `env-var-value` are probably still in serialized form so compare
-        value-is-default?                                             (= parsed-value default)
+        value-is-default?                                             (= (unwrap-secret parsed-value) default)
         value-is-from-env-var?                                        (some-> (env-var-value setting) (= unparsed-value))]
     (cond
       (not (current-user-can-access-setting? setting))

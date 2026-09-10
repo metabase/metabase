@@ -21,6 +21,8 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -2061,7 +2063,7 @@
              clojure.lang.ExceptionInfo #"must be provided again"
              (setting/set! :test-audience-host "evil.example.com"))))
       (testing "and the stored secret is untouched"
-        (is (= "hunter2" (test-audience-password)))
+        (is (= "hunter2" (mt/plaintext (test-audience-password))))
         (is (= "db.example.com" (test-audience-host)))))))
 
 (deftest audience-change-with-fresh-secret-is-allowed-test
@@ -2073,7 +2075,7 @@
         (setting/set-many! {:test-audience-host     "new.example.com"
                             :test-audience-password "brand-new"})
         (is (= "new.example.com" (test-audience-host)))
-        (is (= "brand-new" (test-audience-password)))))))
+        (is (= "brand-new" (mt/plaintext (test-audience-password))))))))
 
 (deftest audience-change-clearing-the-secret-is-allowed-test
   (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
@@ -2104,10 +2106,10 @@
     (binding [api/*current-user-id* (mt/user->id :crowberto)]
       (testing "a write that leaves the audience alone goes through, including a differently-spelled equal value"
         (setting/set-many! {:test-audience-host "DB.Example.com" :test-audience-port "5432"})
-        (is (= "hunter2" (test-audience-password))))
+        (is (= "hunter2" (mt/plaintext (test-audience-password)))))
       (testing "and so does a bulk write that only touches unrelated settings"
         (setting/set-many! {:test-audience-port 5432})
-        (is (= "hunter2" (test-audience-password)))))))
+        (is (= "hunter2" (mt/plaintext (test-audience-password))))))))
 
 (deftest audience-guard-does-not-apply-with-no-stored-secret-test
   (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
@@ -2126,3 +2128,223 @@
       (binding [api/*current-user-id* nil]
         (setting/set-many! {:test-audience-host "provisioned.example.com"})
         (is (= "provisioned.example.com" (test-audience-host)))))))
+
+;;; ---------------------------------------------- bound-secret getters ---------------------------------------------
+
+(defsetting test-audience-unbound-secret
+  "A credential that is never sent anywhere, so it has nothing to be bound to."
+  :encryption :when-encryption-key-set
+  :visibility :internal
+  :sensitive? true
+  :audience   {})
+
+(defsetting test-audience-custom-getter-password
+  "Like test-audience-password, but with a custom getter, which must not be a way to opt out of binding."
+  :encryption :when-encryption-key-set
+  :visibility :internal
+  :sensitive? true
+  :audience   {:test-audience-host :metabase.util.secret/hostname}
+  :getter     (fn [] (setting/get-value-of-type :string :test-audience-custom-getter-password)))
+
+(defsetting test-audience-defaulted-host
+  "Host for the defaulted secret below. Its own setting, so that the default -- which with-temporary-setting-values
+  persists on restore -- never couples to the host the other audience tests move."
+  :encryption :no
+  :visibility :internal)
+
+(defsetting test-audience-defaulted-password
+  "A bound secret with a default, for the user-facing-value default comparison and the default-only guard case."
+  :encryption :when-encryption-key-set
+  :sensitive? true
+  :default    "changeit"
+  :audience   {:test-audience-defaulted-host :metabase.util.secret/hostname})
+
+(defsetting test-audience-audited-password
+  "A bound secret whose changes are audited via the getter."
+  :encryption :when-encryption-key-set
+  :visibility :internal
+  :sensitive? true
+  :audit      :getter
+  :audience   {:test-audience-host :metabase.util.secret/hostname})
+
+(deftest bound-secret-getter-test
+  (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
+                                     test-audience-port     5432
+                                     test-audience-password "hunter2"]
+    (let [s (test-audience-password)]
+      (testing "the getter hands back a Secret bound to the audience settings as currently stored"
+        (is (u.secret/secret? s))
+        (is (u.secret/secret? (setting/get :test-audience-password)))
+        (is (u.secret/secret? (setting/read-setting :test-audience-password)))
+        (is (= {:test-audience-host "db.example.com" :test-audience-port 5432}
+               (u.secret/bound-audience s))))
+      (testing "exposing it to the stored destination yields the plaintext, however that destination is spelled"
+        (is (= "hunter2" (u.secret/expose s {:test-audience-host "DB.Example.com" :test-audience-port "5432"}))))
+      (testing "exposing it to a different destination is a client error"
+        (let [e (is (thrown-with-msg? ExceptionInfo #"not bound to the requested audience"
+                                      (u.secret/expose s {:test-audience-host "evil.example.com"
+                                                          :test-audience-port 5432})))]
+          (is (= 400 (:status-code (ex-data e))))
+          (is (= :secret-audience-mismatch (:error-code (ex-data e))))))
+      (testing "nothing stored means nothing to wrap"
+        (mt/with-temporary-setting-values [test-audience-password nil]
+          (is (nil? (test-audience-password))))))))
+
+(deftest bound-secret-from-env-var-test
+  (mt/with-temporary-setting-values [test-audience-host "db.example.com"
+                                     test-audience-port 5432]
+    (mt/with-temp-env-var-value! [mb-test-audience-password "env-secret"]
+      (let [s (test-audience-password)]
+        (is (u.secret/secret? s))
+        (is (= "env-secret" (u.secret/expose s {:test-audience-host "db.example.com" :test-audience-port 5432})))))))
+
+(deftest unbound-secret-stays-a-string-test
+  (mt/with-temporary-setting-values [test-audience-unbound-secret "signing-key"]
+    (is (= "signing-key" (test-audience-unbound-secret)))))
+
+(deftest custom-getter-is-bound-too-test
+  (mt/with-temporary-setting-values [test-audience-host                  "db.example.com"
+                                     test-audience-custom-getter-password "hunter2"]
+    (let [s (test-audience-custom-getter-password)]
+      (is (u.secret/secret? s))
+      (is (= "hunter2" (u.secret/expose s {:test-audience-host "db.example.com"}))))))
+
+(deftest bound-secret-user-facing-value-test
+  (mt/with-temporary-setting-values [test-audience-defaulted-host "db.example.com"]
+    (testing "an unset secret reads as its default, which is not shown"
+      (mt/with-temporary-setting-values [test-audience-defaulted-password nil]
+        (is (nil? (setting/user-facing-value :test-audience-defaulted-password)))))
+    (testing "a stored secret is shown obfuscated exactly as before"
+      (mt/with-temporary-setting-values [test-audience-defaulted-password "hunter2"]
+        (is (= "**********r2" (setting/user-facing-value :test-audience-defaulted-password)))))))
+
+(deftest obfuscate-value-unwraps-a-secret-test
+  (is (= "**********r2" (setting/obfuscate-value (u.secret/secret "hunter2")))))
+
+(deftest bound-secret-audit-log-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temporary-setting-values [test-audience-host             "db.example.com"
+                                       test-audience-audited-password "previous"]
+      (test-audience-audited-password! "hunter2")
+      (is (= {:key            "test-audience-audited-password"
+              :previous-value "**********us"
+              :new-value      "**********r2"}
+             (:details (t2/select-one [:model/AuditLog :details] :topic :setting-update {:order-by [[:id :desc]]})))))))
+
+(deftest writing-a-secret-is-refused-test
+  (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
+                                     test-audience-password "hunter2"]
+    (is (thrown-with-msg? ExceptionInfo #"Refusing to write a Secret"
+                          (setting/set! :test-audience-password (test-audience-password))))
+    (is (= "hunter2" (mt/plaintext (test-audience-password))))))
+
+(deftest with-temporary-setting-values-round-trips-a-bound-secret-test
+  (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
+                                     test-audience-password "outer"]
+    (mt/with-temporary-setting-values [test-audience-password "inner"]
+      (is (= "inner" (mt/plaintext (test-audience-password)))))
+    (is (= "outer" (mt/plaintext (test-audience-password))))))
+
+(deftest audience-guard-ignores-a-default-only-secret-test
+  (mt/with-temporary-setting-values [test-audience-defaulted-host     "db.example.com"
+                                     test-audience-defaulted-password nil]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (testing "a secret that only has its default is not a stored credential, so moving its audience is not a leak"
+        (setting/set-many! {:test-audience-defaulted-host "new.example.com"})
+        (is (= "new.example.com" (test-audience-defaulted-host))))
+      (testing "once something is actually stored, the guard applies"
+        (mt/with-temporary-setting-values [test-audience-defaulted-password "hunter2"]
+          (is (thrown-with-msg? ExceptionInfo #"must be provided again"
+                                (setting/set-many! {:test-audience-defaulted-host "evil.example.com"}))))))))
+
+;;; --------------------------------------------- value-after-write --------------------------------------------------
+
+(deftest value-after-write-test
+  (mt/with-temporary-setting-values [test-audience-host "db.example.com"]
+    (testing "a key the write can change takes the proposed value"
+      (is (= "new.example.com"
+             (setting/value-after-write :test-audience-host {:test-audience-host "new.example.com"}))))
+    (testing "a key the write does not mention keeps the current value"
+      (is (= "db.example.com" (setting/value-after-write :test-audience-host {}))))
+    (testing "including when the proposed value is nil, which clears it"
+      (is (nil? (setting/value-after-write :test-audience-host {:test-audience-host nil}))))
+    (testing "string keys are accepted, as request bodies supply them"
+      (is (= "new.example.com"
+             (setting/value-after-write :test-audience-host {"test-audience-host" "new.example.com"}))))))
+
+(deftest value-after-write-ignores-a-proposal-an-env-var-outranks-test
+  (testing "an env var beats the app DB on read, so writing the setting changes nothing: the current value is what
+           the key will have afterwards, whatever the request asked for"
+    (mt/with-temp-env-var-value! [mb-test-audience-host "env.example.com"]
+      (is (= "env.example.com"
+             (setting/value-after-write :test-audience-host {:test-audience-host "new.example.com"}))))))
+
+(deftest values-after-write-test
+  (mt/with-temporary-setting-values [test-audience-host "db.example.com"
+                                     test-audience-port 5432]
+    (is (= {:test-audience-host "new.example.com" :test-audience-port 5432}
+           (setting/values-after-write [:test-audience-host :test-audience-port]
+                                       {:test-audience-host "new.example.com"})))))
+
+(deftest audience-guard-ignores-a-move-an-env-var-outranks-test
+  (testing "a write that cannot change where the secret is sent is not a move: the env var keeps winning, so the
+           credential stays bound where it was and the write is the silent no-op it always was"
+    (mt/with-temporary-setting-values [test-audience-port     5432
+                                       test-audience-password "hunter2"]
+      (mt/with-temp-env-var-value! [mb-test-audience-host "env.example.com"]
+        (binding [api/*current-user-id* (mt/user->id :crowberto)]
+          (setting/set-many! {:test-audience-host "evil.example.com"})
+          (is (= "env.example.com" (test-audience-host)))
+          (is (= "hunter2" (mt/plaintext (test-audience-password)))))))))
+
+(defsetting test-audience-no-env-host
+  "Host for the audience tests, but one an env var is not allowed to supply."
+  :encryption         :no
+  :visibility         :internal
+  :can-read-from-env? false)
+
+(deftest values-after-write-follows-each-settings-own-precedence-test
+  (testing "nothing here special-cases env vars: it asks which source the setting itself reads from, so a setting that
+           does not allow env is unaffected by one being present"
+    (mt/with-temporary-setting-values [test-audience-host        "db.example.com"
+                                       test-audience-no-env-host "db.example.com"]
+      (mt/with-temp-env-var-value! [mb-test-audience-host        "env.example.com"
+                                    mb-test-audience-no-env-host "env.example.com"]
+        (testing "a setting that reads from env keeps that value: a write would land a row nothing reads"
+          (is (= "env.example.com"
+                 (setting/value-after-write :test-audience-host {:test-audience-host "new.example.com"}))))
+        (testing "a setting that does not takes the proposed value: the write is what readers will see"
+          (is (= "new.example.com"
+                 (setting/value-after-write :test-audience-no-env-host
+                                            {:test-audience-no-env-host "new.example.com"}))))))))
+
+(deftest write-visible?-test
+  (testing "a write readers will see"
+    (mt/with-temporary-setting-values [test-audience-host "db.example.com"]
+      (is (true? (setting/write-visible? :test-audience-host)))))
+  (testing "and one they will not, because the env var keeps winning"
+    (mt/with-temp-env-var-value! [mb-test-audience-host "env.example.com"]
+      (is (false? (setting/write-visible? :test-audience-host)))
+      (testing "unless the setting does not read from its env var at all"
+        (mt/with-temp-env-var-value! [mb-test-audience-no-env-host "env.example.com"]
+          (is (true? (setting/write-visible? :test-audience-no-env-host))))))))
+
+(deftest audience-schemas-are-named-not-inlined-test
+  (let [definition {:name :test-setting :munged-name "test-setting" :namespace 'x :description "d"
+                    :type :string :default nil :tag 'String :sensitive? false :visibility :admin
+                    :encryption :no :export? false :cache? true :feature nil :database-local :never
+                    :user-local :never :deprecated nil :on-change nil :doc nil :audit :never
+                    :can-read-from-env? true :init nil :enabled? nil :setter nil :getter nil
+                    :deprecated-name nil :base nil}
+        audience?  (fn [audience]
+                     (mr/validate [:map [:audience [:maybe [:map-of :keyword :keyword]]]]
+                                  (assoc definition :audience audience)))]
+    (testing "a named schema, registered or built-in, is how an audience field declares its comparison"
+      (is (true? (audience? {:test-audience-host :metabase.util.secret/hostname})))
+      (is (true? (audience? {:test-audience-port :int})))
+      (testing "and a credential that is sent nowhere declares no fields at all"
+        (is (true? (audience? {})))
+        (is (true? (audience? nil)))))
+    (testing "an inlined schema is refused: a relaxation has to be reviewed where the named ones live, not smuggled
+             into a defsetting"
+      (is (false? (audience? {:test-audience-host [:string {:decode/audience :normalize}]}))))))

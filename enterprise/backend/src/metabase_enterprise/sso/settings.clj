@@ -105,8 +105,6 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :encryption :when-encryption-key-set
   :default    "changeit"
   :sensitive? true
-  ;; unlocks a local keystore file and never leaves the process, so no destination setting can redirect it. Who may
-  ;; change `saml-keystore-path` is governed by that setting's own access level, not by this coupling.
   :audience   {}
   :feature    :sso-saml
   :audit      :getter)
@@ -382,8 +380,6 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :export?     false
   :audit       :no-value
   :sensitive?  true
-  ;; each provider carries its own issuer-uri and client-secret; the coupling between them is enforced per provider
-  ;; in [[metabase-enterprise.sso.api.oidc]], not at the level of this whole list
   :audience    {})
 
 (defn get-oidc-provider

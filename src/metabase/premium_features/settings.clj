@@ -55,7 +55,12 @@
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
   :audit :never
   :sensitive? true
-  :audience {:store-api-url :string}
+  ;; This token is presented to several peers -- the store, the Cloud AI proxy, the embedding service and the
+  ;; security-center advisories host -- so no single setting names its destination. The advisories host is a
+  ;; constant, the embedding service receives it only when its URL comes from the environment, and `store-api-url`
+  ;; is becoming non-writable. `llm-proxy-base-url` remains redirectable by a superuser; see BOUND_SECRETS_PLAN.md,
+  ;; where the fix is the env-supplied-URL rule the embedding path already uses rather than an audience entry.
+  :audience {}
   :setter (fn [new-value]
             ((requiring-resolve 'metabase.premium-features.token-check/-set-premium-embedding-token!) new-value)))
 

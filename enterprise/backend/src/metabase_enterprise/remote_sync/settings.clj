@@ -38,8 +38,7 @@
   :export? false
   :sensitive? true
   :encryption :when-encryption-key-set
-  ;; the git PAT must not follow the repository to a different URL. Compared as an opaque :string rather than
-  ;; decomposed: a git remote can be https, ssh or a path, and comparing the whole thing exactly fails closed.
+  ;; Using remote-sync-url as a simple string so it handles all the non-url style values it could be
   :audience {:remote-sync-url :string}
   :audit :getter
   :can-read-from-env? true)
@@ -197,6 +196,16 @@
   :encryption :no
   :doc false)
 
+(def ^:private connection-keys
+  "The settings that describe the repository connection. A write touching any of them has to re-check that the
+  repository is reachable."
+  #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch})
+
+(def ^:private writable-keys
+  "Every setting [[check-and-update-remote-settings!]] will write, which is [[connection-keys]] plus the ones that
+  only affect how syncing behaves once the connection works."
+  (into connection-keys [:remote-sync-auto-import :remote-sync-transforms]))
+
 (defn check-and-update-remote-settings!
   "Validates and updates git sync settings in the application database.
 
@@ -210,41 +219,37 @@
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
   (guards/ensure-no-active-task!)
-  ;; ahead of check-git-settings!, not just the write: that reaches the repository at whatever URL was supplied, so a
-  ;; moved audience would deliver the stored PAT there before anything is persisted. set-many! below runs the same
-  ;; check again on the persisted subset; that repeat is expected and cheap, not a reason to drop this one.
-  (setting/assert-audience-writes-authorized! settings)
-  (let [git-related-keys #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch}
-        updating-git-settings? (some git-related-keys (keys settings))
-        env-set-url    (= :env (setting/get-raw-value-source :remote-sync-url))
-        env-set-token  (= :env (setting/get-raw-value-source :remote-sync-token))
-        env-set-branch (= :env (setting/get-raw-value-source :remote-sync-branch))]
+  (let [updating-git-settings? (some connection-keys (keys settings))]
     (if (and (contains? settings :remote-sync-url)
              (str/blank? remote-sync-url))
       (t2/with-transaction [_conn]
-        (when-not env-set-url
-          (setting/set! :remote-sync-url nil))
-        (when-not env-set-token
-          (setting/set! :remote-sync-token nil))
-        (when-not env-set-branch
-          (setting/set! :remote-sync-branch nil)))
-      (let [current-token  (setting/get :remote-sync-token)
-            obfuscated?    (= remote-sync-token (setting/obfuscate-value current-token))
-            token-to-check (if env-set-token
-                             (setting/get :remote-sync-token)
-                             (if obfuscated? current-token remote-sync-token))]
+        (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-branch]
+                :when (setting/write-visible? k)]
+          (setting/set! k nil)))
+      (let [;; which repository gets checked, independent of the credential: the URL and branch this write leaves
+            ;; behind, not the ones the request names, which for an env-supplied value it cannot change
+            settings-after-write (merge settings
+                                        (setting/values-after-write [:remote-sync-url :remote-sync-branch] settings))
+            ;; the client only ever has the mask, and echoes it back when the token was not changed
+            obfuscated?          (setting/obfuscated-value? remote-sync-token)
+            ;; the stored PAT is a bound Secret, handed through sealed: git-source opens it against the repository it
+            ;; is about to contact, so a moved URL is refused there, before JGit is initialized.
+            ;;
+            ;; Not `value-after-write`, which would also substitute the stored token when the request omits it: a
+            ;; request that names no token is checked without one, which is how a repository that needs no credential
+            ;; is configured.
+            token-to-check       (if (or obfuscated? (not (setting/write-visible? :remote-sync-token)))
+                                   (setting/get :remote-sync-token)
+                                   remote-sync-token)]
         (when updating-git-settings?
-          (check-git-settings! (assoc settings :remote-sync-token token-to-check)))
-        ;; one batched write rather than a per-key loop: the audience coupling is checked across a whole write, so
-        ;; setting the URL and the token separately would look like moving the repository without re-supplying the PAT
+          (check-git-settings! (assoc settings-after-write :remote-sync-token token-to-check)))
         (setting/set-many!
          (into {}
-               (for [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch
-                        :remote-sync-auto-import :remote-sync-transforms]
-                     :when (and (not= :env (setting/get-raw-value-source k))
-                                (contains? settings k)
-                                (not (and (= k :remote-sync-token) obfuscated?)))]
-                 [k (k settings)])))))))
+               ;; a write nothing will read is not worth the row, the audit entry or the on-change handler
+               (remove (fn [[k _]] (not (setting/write-visible? k))))
+               (cond-> (select-keys settings writable-keys)
+                 ;; the client echoed the mask back, so the stored token stands and there is nothing to write
+                 obfuscated? (dissoc :remote-sync-token))))))))
 
 (defn library-is-remote-synced?
   "Returns true if the Library collection exists and is remote-synced.

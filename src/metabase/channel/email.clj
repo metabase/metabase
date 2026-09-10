@@ -14,6 +14,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
+   [metabase.util.secret :as u.secret]
    [postal.core :as postal]
    [postal.support :refer [make-props]]
    [throttle.core :as throttle])
@@ -104,19 +105,41 @@
                 :starttls.required true}
      {})))
 
+(defn- smtp-audience
+  "The destination an SMTP `details` map is about to send its password to, containing both the site-wide and the
+  Cloud override setting names to match whichever audience the secret holds."
+  [{:keys [host port security user]}]
+  {:email-smtp-host              host
+   :email-smtp-port              port
+   :email-smtp-security          security
+   :email-smtp-username          user
+   :email-smtp-host-override     host
+   :email-smtp-port-override     port
+   :email-smtp-security-override security
+   :email-smtp-username-override user})
+
+(defn- open-pass
+  "Open a stored password for sending with `details`"
+  [details]
+  (update details :pass u.secret/maybe-expose (smtp-audience details)))
+
 (defn- smtp-settings []
   (merge (if (and (channel.settings/smtp-override-enabled) (premium-features/is-hosted?))
            (-> {:host         (channel.settings/email-smtp-host-override)
                 :user         (channel.settings/email-smtp-username-override)
                 :pass         (channel.settings/email-smtp-password-override)
                 :port         (channel.settings/email-smtp-port-override)
+                :security     (channel.settings/email-smtp-security-override)
                 :from-address (channel.settings/email-from-address-override)}
+               open-pass
                (add-ssl-settings (channel.settings/email-smtp-security-override)))
            (-> {:host         (channel.settings/email-smtp-host)
                 :user         (channel.settings/email-smtp-username)
                 :pass         (channel.settings/email-smtp-password)
                 :port         (channel.settings/email-smtp-port)
+                :security     (channel.settings/email-smtp-security)
                 :from-address (channel.settings/email-from-address)}
+               open-pass
                (add-ssl-settings (channel.settings/email-smtp-security))))
          {:reply-to  (channel.settings/email-reply-to)
           :from-name (channel.settings/email-from-name)}))
@@ -221,7 +244,7 @@
    ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
    [:user        {:optional true} [:maybe :string]]
    [:security    {:optional true} [:maybe [:enum :tls :ssl :none :starttls]]]
-   [:pass        {:optional true} [:maybe :string]]
+   [:pass        {:optional true} [:maybe [:or :string ::u.secret/secret]]]
    [:sender      {:optional true} [:maybe :string]]
    [:sender-name {:optional true} [:maybe :string]]
    [:reply-to    {:optional true} [:maybe [:sequential ms/Email]]]])
@@ -284,12 +307,22 @@
      :security :tls}
 
   Attempts to connect with different `:security` options. If able to connect successfully, returns working
-  [[SMTPSettings]]. If unable to connect with any `:security` options, returns an [[SMTPStatus]] with the `::error`."
+  [[SMTPSettings]]. If unable to connect with any `:security` options, returns an [[SMTPStatus]] with the `::error`.
+
+  `:pass` may be a stored password or a Secret bound to the destination it was saved for."
   [details :- SMTPSettings]
-  (let [initial-attempt (test-smtp-settings details)]
-    (if-not (::error initial-attempt)
+  (let [stored?         (u.secret/secret? (:pass details))
+        opened          (open-pass details)
+        initial-attempt (test-smtp-settings opened)]
+    (cond
+      (not (::error initial-attempt))
       details
-      (if-let [working-security-type (guess-smtp-security details)]
+
+      stored?
+      initial-attempt
+
+      :else
+      (if-let [working-security-type (guess-smtp-security opened)]
         (assoc details :security working-security-type)
         initial-attempt))))
 
@@ -354,40 +387,36 @@
 
 (defn check-and-update-settings
   "Check the provided settings against the SMTP server and update the Metabase settings if the connection is successful."
-  [settings mb-to-smtp-map current-smtp-password]
+  [settings mb-to-smtp-map]
   (perms/check-has-application-permission :setting)
-  ;; ahead of the connection test, not just the write: the test connects to whatever host was supplied, so a moved
-  ;; audience would deliver the stored password there before anything is persisted
-  (setting/assert-audience-writes-authorized! settings)
-  (let [smtp-settings (-> settings
-                          (select-keys (keys mb-to-smtp-map))
-                          (set/rename-keys mb-to-smtp-map))
-        ;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
-        ;; the obfuscated version
-        obfuscated? (and (:pass smtp-settings) current-smtp-password
-                         (= (:pass smtp-settings) (setting/obfuscate-value current-smtp-password)))
-        smtp-settings         (cond-> smtp-settings
-                                obfuscated?
-                                (assoc :pass current-smtp-password))
-        smtp-settings         (cond-> smtp-settings
-                                (string? (:port smtp-settings))     (update :port #(Long/parseLong ^String %))
-                                (string? (:security smtp-settings)) (update :security keyword)
-                                ;; if keys were not provided, clear them out
-                                (nil? (:port smtp-settings)) (assoc :port nil)
-                                (nil? (:security smtp-settings)) (assoc :security nil)
-                                (nil? (:host smtp-settings)) (assoc :host nil)
-                                (nil? (:user smtp-settings)) (assoc :user nil)
-                                (nil? (:pass smtp-settings)) (assoc :pass nil))
+  (let [password-setting (smtp->mb-setting :pass mb-to-smtp-map)
+        smtp-settings    (-> settings
+                             (select-keys (keys mb-to-smtp-map))
+                             (set/rename-keys mb-to-smtp-map))
+        ;; the frontend only ever has the mask, and echoes it back when the password was not changed
+        obfuscated?      (setting/obfuscated-value? (:pass smtp-settings))
+        smtp-settings    (cond-> smtp-settings
+                           obfuscated? (assoc :pass (setting/get password-setting)))
+        smtp-settings    (cond-> smtp-settings
+                           (string? (:port smtp-settings))     (update :port #(Long/parseLong ^String %))
+                           (string? (:security smtp-settings)) (update :security keyword)
+                           ;; if keys were not provided, clear them out
+                           (nil? (:port smtp-settings)) (assoc :port nil)
+                           (nil? (:security smtp-settings)) (assoc :security nil)
+                           (nil? (:host smtp-settings)) (assoc :host nil)
+                           (nil? (:user smtp-settings)) (assoc :user nil)
+                           (nil? (:pass smtp-settings)) (assoc :pass nil))
         response         (test-smtp-connection smtp-settings)]
     (if-not (::error response)
       ;; test was good, save our settings
       (let [[_ corrections] (data/diff smtp-settings response)
             new-settings    (set/rename-keys response (set/map-invert mb-to-smtp-map))]
-        (setting/set-many! new-settings)
+        ;; a reused password is already stored, and there is no plaintext up here to write it with anyway
+        (setting/set-many! (cond-> new-settings obfuscated? (dissoc password-setting)))
         (cond-> (assoc new-settings :with-corrections (-> corrections
                                                           (set/rename-keys (set/map-invert mb-to-smtp-map))
                                                           (humanize-email-corrections mb-to-smtp-map)))
-          obfuscated? (update (smtp->mb-setting :pass mb-to-smtp-map) setting/obfuscate-value)))
+          obfuscated? (update password-setting setting/obfuscate-value)))
       ;; test failed, return response message
       {:status 400
        :body   (humanize-error-messages mb-to-smtp-map response)})))

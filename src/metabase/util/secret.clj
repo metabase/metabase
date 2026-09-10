@@ -15,6 +15,7 @@
    [malli.transform :as mtx]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [potemkin :as p]
    [pretty.core :as pretty])
@@ -61,6 +62,12 @@
 (mr/def ::url-path
   "A URL path, where a trailing slash is insignificant."
   [:string {:decode/audience decode-url-path}])
+
+(mr/def ::url
+  "A whole URL compared exactly, except for surrounding whitespace, which is never part of it. Case is kept: paths are
+  case-sensitive, and folding the scheme and host alone would need parsing, so a differently-cased host reads as a
+  different audience, which fails closed."
+  [:string {:decode/audience trimmed}])
 
 (def ^:private audience-transformer
   ;; strip-extra-keys is what lets a caller hand in a whole details or settings map and have the schema select the
@@ -193,9 +200,11 @@
         (value-fn)
 
         :else
+        ;; the only way to reach a mismatch is a caller-supplied destination, so this is always a client error
         (throw (ex-info (tru "This secret is not bound to the requested audience.")
-                        {:error-code :secret-audience-mismatch
-                         :bound      audience
+                        {:status-code 400
+                         :error-code  :secret-audience-mismatch
+                         :bound       audience
                          :requested  (canonical-audience audience-schema requested)})))
 
       :else
@@ -225,6 +234,14 @@
   (pretty [this]
     (.toString this)))
 
+;; A Secret in a JSON response is a leak in the making: the value never belongs on the wire, and the catch-all
+;; encoder would otherwise render it as the redaction string, hiding the bug rather than surfacing it. Registered on
+;; the interface so every implementation is covered, and an interface impl wins over the `Object` catch-all.
+(json/add-encoder metabase.util.secret.ISecret
+                  (fn [_secret _generator]
+                    (throw (ex-info (trs "Refusing to JSON-encode a Secret: expose it to an audience, or mask it, first.")
+                                    {:error-code :secret-json-encode}))))
+
 (defn secret
   "Create a `Secret` that can't be read without calling [[expose]] with an audience.
 
@@ -253,6 +270,50 @@
   "Whether `x` is an instance of a `Secret`."
   [x]
   (instance? metabase.util.secret.ISecret x))
+
+(defn maybe-expose
+  "[[expose]] `v` to `audience` when it is a Secret; return it untouched otherwise.
+
+  The shape every sink wants: a credential the caller just typed is a plain String and goes wherever they said, while
+  a stored one is a bound Secret and opens only to the destination it is bound to.
+
+  Call this *outside* any `try` that would translate an exception into a message of its own. The refusal depends only
+  on data already in hand, never on the network, so every sink has a place for it ahead of the risky part. Where the
+  sink is itself called from inside such a `try`, that handler must call [[rethrow-if-audience-mismatch!]] first."
+  [v audience]
+  (cond-> v
+    (secret? v) (expose audience)))
+
+(defn- audience-mismatch
+  "The refusal in `e`'s cause chain, if any: the exception [[expose]] threw for an audience the secret is not bound to.
+
+  Walks the chain rather than merging it (as `u/all-ex-data` would), because a wrapping exception with an
+  `:error-code` of its own would otherwise hide the refusal underneath it. Returns the refusal itself, so a caller
+  rethrows the exception carrying the right message and status rather than the wrapper."
+  [e]
+  (some (fn [t]
+          (when (= :secret-audience-mismatch (:error-code (ex-data t)))
+            t))
+        (take-while some? (iterate ex-cause e))))
+
+(defn audience-mismatch?
+  "Whether `e` is, or was caused by, a refusal to present a secret to an audience it is not bound to."
+  [e]
+  (some? (audience-mismatch e)))
+
+(defn rethrow-if-audience-mismatch!
+  "Rethrow the refusal in `e` if there is one; return nil otherwise.
+
+  A refused audience is a client naming a destination the stored credential is not bound to. It carries its own
+  message and 400, and must not be reported as whatever failure the surrounding handler exists to describe. Call this
+  first in any `catch` that translates exceptions into a message of its own and could see a secret being opened
+  beneath it.
+
+  Prefer arranging the sink so this is unnecessary: open the secret ahead of the `try`, as [[maybe-expose]] says.
+  This is for the case where that is not possible because the sink itself is called from inside such a handler."
+  [e]
+  (when-let [refusal (audience-mismatch e)]
+    (throw refusal)))
 
 (defn masked?
   "Whether `v` looks like a value produced by [[mask]] -- i.e. the client echoed back a mask rather than supplying a

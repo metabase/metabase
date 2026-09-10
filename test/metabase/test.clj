@@ -254,6 +254,7 @@
   metric-value
   obj->json->obj
   ordered-subset?
+  plaintext
   postwalk-pred
   round-all-decimals
   scheduler-current-tasks

@@ -120,8 +120,7 @@
       (sanitize-response new-provider))))
 
 (def ^:private provider-audience-schema
-  "The fields of an OIDC provider that decide where its client secret is presented. Compared as an opaque `:string`
-  rather than decomposed as a URL, so any change to the issuer -- scheme included -- reads as a new audience."
+  "The fields of an OIDC provider that decide where its client secret is presented."
   [:map [:issuer-uri {:optional true} :string]])
 
 ;; PUT /api/ee/sso/oidc/:key
@@ -138,7 +137,7 @@
     (let [existing  (nth providers idx)
           ;; If client-secret is the mask or not provided, keep the existing one
           body      (if (or (not (:client-secret body))
-                            (= (:client-secret body) (setting/obfuscate-value (:client-secret body))))
+                            (setting/obfuscated-value? (:client-secret body)))
                       (dissoc body :client-secret)
                       body)
           updated   (merge existing body)]
