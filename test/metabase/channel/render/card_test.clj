@@ -657,17 +657,33 @@
         (channel.render/render-pulse-card-for-display nil card {:data data}))
       (is (= [{:min 0 :max "target" :color "#84BB4C"}] (:gauge.segments @captured))))))
 
+(def ^:private render-error-box "An error occurred while displaying this card.")
+
+(def ^:private stub-svg "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"></svg>")
+
+(defn- render-broken-goal-html
+  "Renders a bar card whose goal references a card that failed, with `graph.show_goal` set to `show-goal`."
+  [show-goal]
+  (let [card {:id                     1
+              :name                   "bar with broken goal"
+              :display                :bar
+              :visualization_settings {:graph.dimensions ["x"]
+                                       :graph.metrics    ["y"]
+                                       :graph.show_goal  show-goal
+                                       :graph.goal_value goal-ref}}
+        data {:cols                [{:name "x" :base_type :type/Text}
+                                    {:name "y" :base_type :type/Integer :source :aggregation}]
+              :rows                [["a" 1]]
+              :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}]
+    ;; render-pulse-card-for-display returns the content hiccup directly
+    (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data data}))))
+
 (deftest ^:parallel render-failed-dynamic-goal-test
   (testing "a failed referenced query fails that card's render into the standard error box"
-    (let [card     {:id                     1
-                    :name                   "bar with broken goal"
-                    :display                :bar
-                    :visualization_settings {:graph.goal_value goal-ref}}
-          data     {:cols             [{:name "x" :base_type :type/Text}
-                                       {:name "y" :base_type :type/Integer :source :aggregation}]
-                    :rows             [["a" 1]]
-                    :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}
-          rendered (channel.render/render-pulse-card-for-display nil card {:data data})]
-      ;; render-pulse-card-for-display returns the content hiccup directly
-      (is (str/includes? (hiccup/html rendered)
-                         "An error occurred while displaying this card.")))))
+    (is (str/includes? (render-broken-goal-html true) render-error-box))))
+
+(deftest ^:parallel render-hidden-failed-dynamic-goal-test
+  (testing "but not when the card doesn't show the goal line: nothing renders that value"
+    (binding [js.svg/*javascript-visualization* (fn [_cards-with-data _viz-settings]
+                                                  {:type :svg :content stub-svg})]
+      (is (not (str/includes? (render-broken-goal-html false) render-error-box))))))

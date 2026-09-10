@@ -1815,14 +1815,14 @@
         (is (= {(:id dc1) [s]}
                (#'serdes/transform->nested (-> spec :transform :series) {} [dc1])))
         (is (=? (assoc dc1 :series [s])
-                (u/rfirst (serdes/extract-query "DashboardCard" {:where [:= :id (:id dc1)]})))))
+                (u/rfirst (serdes/extract-query "DashboardCard" {:filter-column :id :filter-ids [(:id dc1)]})))))
       (let [spec (serdes/make-spec "Dashboard" nil)]
         (is (= {(:id d) [(assoc dc1 :series [s])]}
                (#'serdes/transform->nested (-> spec :transform :dashcards) {} [d])))
         (is (=? (assoc d
                        :dashcards [(assoc dc1 :series [s])]
                        :tabs nil)
-                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]}))))))))
+                (u/rfirst (serdes/extract-query "Dashboard" {:filter-column :id :filter-ids [(:id d)]}))))))))
 
 (deftest extract-nested-efficient-test
   (testing "extract-nested is efficient"
@@ -1846,7 +1846,7 @@
                          :tabs nil)}
                 (into #{} (map (fn [dashboard]
                                  (update dashboard :dashcards #(sort-by :id %))))
-                      (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+                      (serdes/extract-query "Dashboard" {:filter-column :id :filter-ids [(:id d1) (:id d2)]}))))
         ;; 1 per dashboard/dashcard/series/tabs
         (is (= 4 (qc)))))))
 
@@ -1860,8 +1860,9 @@
                                                          :card_id      (:id c1)})))]
         (t2/with-call-count [qc]
           (is (=? [(assoc d :dashcards dcs)]
-                  (into [] (serdes/extract-query "Dashboard" {:batch-limit 5
-                                                              :where [:= :id (:id d)]}))))
+                  (into [] (serdes/extract-query "Dashboard" {:batch-limit   5
+                                                              :filter-column :id
+                                                              :filter-ids    [(:id d)]}))))
           ;; query count breakdown:
           ;; - 1 for dashboard
           ;; - 1 for tabs, there are none

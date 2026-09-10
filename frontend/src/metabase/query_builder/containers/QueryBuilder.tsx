@@ -23,7 +23,6 @@ import {
   getUserIsAdmin,
 } from "metabase/current-user";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
-import { getMetadata } from "metabase/metadata-store";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
@@ -189,8 +188,6 @@ const mapStateToProps = (state: State) => {
 
     card: getCard(state),
     originalCard: getOriginalCard(state),
-
-    metadata: getMetadata(state),
 
     timelines: getFilteredTimelines(state),
     timelineEvents: getVisibleTimelineEvents(state),

@@ -216,10 +216,12 @@
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
     ;; Renderers read settings from the card, dashcard, or query result, so resolve entity references in all three.
     ;; Resolution errors are caught below and displayed in the standard error box.
-    (let [resolve-goals (fn [m k]
+    (let [;; toggles come off the merge, since either half can flip graph.show_goal
+          effective     (merge (:visualization_settings card) (:visualization_settings dashcard))
+          resolve-goals (fn [m k]
                           (cond-> m
                             (k m)
-                            (update k dynamic-goals/resolve-dynamic-goals (:referenced_entities data))))
+                            (update k dynamic-goals/resolve-dynamic-goals (:referenced_entities data) effective)))
           card          (resolve-goals card :visualization_settings)
           dashcard      (some-> dashcard (resolve-goals :visualization_settings))
           data          (some-> data (resolve-goals :viz-settings))

@@ -131,16 +131,46 @@
 
 (deftest ^:parallel resolve-dynamic-goals-test
   (testing "substitutes referenced values across all goal-bearing settings"
-    (is (= {:graph.goal_value 100
+    (is (= {:graph.show_goal  true
+            :graph.goal_value 100
             :progress.goal    3
             :gauge.segments   [{:min 0 :max 100 :color "#fff"}]
             :scalar.segments  [{:min 3 :max "self-col"}]}
            (dynamic-goals/resolve-dynamic-goals
-            {:graph.goal_value {:id 1 :type "card" :column "total"}
+            {:graph.show_goal  true
+             :graph.goal_value {:id 1 :type "card" :column "total"}
              :progress.goal    {:id 1 :type "card" :column "count"}
              :gauge.segments   [{:min 0 :max {:id 1 :type "card" :column "total"} :color "#fff"}]
              :scalar.segments  [{:min {:id 1 :type "card" :column "count"} :max "self-col"}]}
             referenced-entities))))
   (testing "no-op when settings hold no refs"
-    (let [viz {:graph.goal_value 5 :gauge.segments [{:min 0 :max 10}]}]
+    (let [viz {:graph.show_goal true :graph.goal_value 5 :gauge.segments [{:min 0 :max 10}]}]
       (is (= viz (dynamic-goals/resolve-dynamic-goals viz nil))))))
+
+(deftest ^:parallel resolve-dynamic-goals-hidden-goal-test
+  (let [ref  {:id 2 :type "card" :column "total"}          ; entity 2 failed
+        viz  {:graph.goal_value ref, :gauge.segments [{:min 0 :max {:id 1 :type "card" :column "total"}}]}]
+    (testing "a goal line the chart doesn't show is left alone, even when its reference failed"
+      (are [show-goal] (= (assoc viz :graph.show_goal show-goal :gauge.segments [{:min 0 :max 100}])
+                          (dynamic-goals/resolve-dynamic-goals
+                           (assoc viz :graph.show_goal show-goal) referenced-entities))
+        false
+        nil))
+    (testing "and still throws once the goal line is shown"
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (dynamic-goals/resolve-dynamic-goals
+                    (assoc viz :graph.show_goal true) referenced-entities))))
+    (testing "toggles can come from a separate effective-settings map"
+      (is (= (assoc viz :gauge.segments [{:min 0 :max 100}])
+             (dynamic-goals/resolve-dynamic-goals viz referenced-entities {:graph.show_goal false})))
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (dynamic-goals/resolve-dynamic-goals viz referenced-entities {:graph.show_goal true}))))))
+
+(deftest ^:parallel shown-goal-values-test
+  (let [ref {:id 1 :type "card" :column "total"}]
+    (testing "graph.goal_value only counts when graph.show_goal is on"
+      (is (= [ref] (dynamic-goals/shown-goal-values {:graph.show_goal true :graph.goal_value ref})))
+      (is (= [] (dynamic-goals/shown-goal-values {:graph.goal_value ref})))
+      (is (= [] (dynamic-goals/shown-goal-values {:graph.show_goal false :graph.goal_value ref}))))
+    (testing "untoggled settings are always in play"
+      (is (= [ref] (dynamic-goals/shown-goal-values {:gauge.segments [{:max ref}]}))))))
