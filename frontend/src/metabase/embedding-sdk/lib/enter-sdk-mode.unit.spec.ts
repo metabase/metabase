@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 import { ApiClient, PLUGIN_API } from "metabase/api/client";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import { resetPluginSlots } from "metabase/plugin-slots";
+import { resetPluginSlots } from "metabase/plugins/slot";
 
 import { enterSdkMode } from "./enter-sdk-mode";
 
