@@ -49,6 +49,7 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
+import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import { uuid } from "metabase/utils/uuid";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -150,6 +151,8 @@ export const setShowLoadingCompleteFavicon = createAction<boolean>(
 const loadingComplete = createThunkAction(
   SET_LOADING_DASHCARDS_COMPLETE,
   () => (dispatch, getState) => {
+    // Every card has its data, so the dashboard is as rendered as it gets.
+    markOnce(PERFORMANCE_MARKS.pageReady);
     dispatch(setShowLoadingCompleteFavicon(true));
 
     if (!document.hidden) {

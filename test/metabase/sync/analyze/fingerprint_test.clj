@@ -292,13 +292,13 @@
         ;; fingerprinters/fingerprinter is a multimethod, so we can't use with-dynamic-fn-redefs
         (with-redefs [qp/process-query             (fn [_query rff]
                                                      (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                      fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
+                      fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:global {:distinct-count 5, :nil% 0.0}}))]
           (is (= {:no-data-fingerprints   0
                   :failed-fingerprints    0
                   :updated-fingerprints   1
                   :fingerprints-attempted 1}
                  (#'sync.fingerprint/fingerprint-fields! (t2/select-one :model/Table :id (data/id :venues)) [field])))
-          (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
+          (is (= {:fingerprint         {:global {:distinct-count 5, :nil% 0.0}}
                   :fingerprint_version 3
                   :last_analyzed       nil}
                  (into {} (t2/select-one [:model/Field :fingerprint :fingerprint_version :last_analyzed] :id (u/the-id field))))))))))

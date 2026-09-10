@@ -6,16 +6,14 @@ import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmpty
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import {
-  type MetadataProviderFactory,
-  selectMetadataProviderFactory,
-} from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
 import * as Urls from "metabase/urls";
 import { visualizations } from "metabase/viz-core";
+import type * as Lib from "metabase-lib";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
@@ -26,7 +24,7 @@ import { getDescription, getQuestionUrl } from "../utils";
 const emptyStateData = (
   table: StubbedTable,
   segment: StubbedSegment,
-  getMetadataProvider: MetadataProviderFactory,
+  metadataProvider: Lib.MetadataProvider,
 ) => {
   return {
     message: t`Questions about this segment will appear here as they're added`,
@@ -35,7 +33,7 @@ const emptyStateData = (
     link: getQuestionUrl({
       tableId: segment.table_id!,
       segmentId: segment.id,
-      metadataProvider: getMetadataProvider(table.db_id ?? null),
+      metadataProvider: metadataProvider,
     }),
   };
 };
@@ -46,21 +44,24 @@ const mapStateToProps = (
 ) => ({
   segment: getSegment(state, props),
   table: getTableBySegment(state, props),
-  getMetadataProvider: selectMetadataProviderFactory(state),
+  metadataProvider: selectMetadataProvider(
+    state,
+    getTableBySegment(state, props)?.db_id ?? null,
+  ),
 });
 
 interface SegmentQuestionsInnerProps {
   style: React.CSSProperties;
   table: StubbedTable;
   segment: StubbedSegment;
-  getMetadataProvider: MetadataProviderFactory;
+  metadataProvider: Lib.MetadataProvider;
 }
 
 const SegmentQuestionsInner = ({
   style,
   table,
   segment,
-  getMetadataProvider,
+  metadataProvider,
 }: SegmentQuestionsInnerProps) => {
   const {
     data: cards = [],
@@ -98,7 +99,7 @@ const SegmentQuestionsInner = ({
             <div className={S.empty}>
               {table && segment && (
                 <AdminAwareEmptyState
-                  {...emptyStateData(table, segment, getMetadataProvider)}
+                  {...emptyStateData(table, segment, metadataProvider)}
                 />
               )}
             </div>

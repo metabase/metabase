@@ -135,7 +135,7 @@
   "List the data apps provided by the connected repository. Pass `available=true`
    to return only enabled apps without sync errors."
   [_route-params
-   {:keys [available]} :- [:map [:available {:optional true} [:maybe :boolean]]]]
+   {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
   (->> (data-apps.db/non-blob-data-apps available)
        (map api/read-check)
        (mapv data-app-response)))
@@ -145,9 +145,9 @@
 ;; The regex also excludes the literal `repo-status` sub-route above.
 (api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
   "Enable or disable a single data app. Disabled apps are not served."
-  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
-   {:keys [enabled]} :- [:map [:enabled :boolean]]]
+   {:keys [enabled]} :- [:map {:closed true} [:enabled :boolean]]]
   (api/check-superuser)
   (let [app (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))]
     (data-apps.db/update-data-app! (:id app) {:enabled enabled})
@@ -158,7 +158,7 @@
    apps left behind by a repository that is no longer connected: while a repo is
    connected, an app still in it is re-materialized by the next sync, and one no
    longer in it is pruned by that sync anyway."
-  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
   ;; `t2/delete!` returns the row count; a 0 means the slug wasn't there → 404.
   (api/check-404 (pos? (data-apps.db/delete-data-app-by-slug! slug)))
@@ -168,13 +168,13 @@
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
-  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (data-app-response (api/read-check (data-apps.db/enabled-non-blob-data-app-by-slug slug))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
    `If-None-Match` against the content-hash ETag with a 304."
-  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    _body
    request

@@ -17,6 +17,7 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
@@ -989,7 +990,7 @@
   [models :- [:sequential [:map
                            ;; query_type and dataset_query can be null in tests, so we make them nullable here.
                            ;; they should never be null in production
-                           [:dataset_query [:maybe ms/Map]]
+                           [:dataset_query [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
                            [:query_type    [:maybe [:or :string :keyword]]]
                            [:table_id      [:maybe ms/PositiveInt]]
                            ;; is_upload can be provided for an optional optimization

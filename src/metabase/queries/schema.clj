@@ -2,6 +2,7 @@
   (:require
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -58,27 +59,27 @@
 
 (mr/def ::card.dataset-query
   "The `:dataset_query` column of a Card, decoded."
-  :map)
+  ::lib-be.schema/maybe-legacy-or-empty-query)
 
 (mr/def ::card.visualization-settings
   "The `:visualization_settings` column of a Card, decoded."
-  :map)
+  ms/VisualizationSettings)
 
 (mr/def ::card.parameter
   "One entry of the `:parameters` column of a Card, decoded."
-  :map)
+  ::parameters.schema/parameter)
 
 (mr/def ::card.parameter-mapping
   "One entry of the `:parameter_mappings` column of a Card, decoded."
-  :map)
+  ::parameters.schema/parameter-mapping)
 
 (mr/def ::card.dimension
   "One entry of the `:dimensions` column of a Card, decoded."
-  :map)
+  ::lib-metric.schema/dimension)
 
 (mr/def ::card.dimension-mapping
   "One entry of the `:dimension_mappings` column of a Card, decoded."
-  :map)
+  ::lib-metric.schema/dimension-mapping)
 
 (mr/def ::card.update
   "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."

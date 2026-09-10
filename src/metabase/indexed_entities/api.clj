@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.indexed-entities.schema :as indexed-entities.schema]
    [metabase.indexed-entities.task.index-values :as task.index-values]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -42,10 +43,10 @@
   "Create ModelIndex."
   [_route-params
    _query-params
-   {:keys [model_id pk_ref value_ref] :as _model-index} :- [:map
+   {:keys [model_id pk_ref value_ref] :as _model-index} :- [:map {:closed true}
                                                             [:model_id  ms/PositiveInt]
-                                                            [:pk_ref    any?]
-                                                            [:value_ref any?]]]
+                                                            [:pk_ref    ::indexed-entities.schema/model-index.pk-ref]
+                                                            [:value_ref ::indexed-entities.schema/model-index.value-ref]]]
   (let [model    (api/write-check :model/Card model_id)
         metadata (:result_metadata model)]
     (when-not (seq metadata)
@@ -77,7 +78,7 @@
 (api.macros/defendpoint :get "/"
   "Retrieve list of ModelIndex."
   [_route-params
-   {:keys [model_id]} :- [:map
+   {:keys [model_id]} :- [:map {:closed true}
                           [:model_id ms/PositiveInt]]]
   (let [model (api/read-check :model/Card model_id)]
     (when-not (= (:type model) :model)
@@ -92,7 +93,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Retrieve ModelIndex."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [model-index (api/check-404 (indexed-entities.db/model-index id))
         model       (api/read-check :model/Card (:model_id model-index))]
@@ -108,7 +109,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete ModelIndex."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/let-404 [model-index (indexed-entities.db/model-index id)]
     (api/write-check :model/Card (:model_id model-index))
