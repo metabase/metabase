@@ -240,13 +240,13 @@ export {
   needsGraphGoalResolution,
   resolveGoalSegments,
   resolveGoalValue,
-  resolveOpenEndedGoalSegments,
   toReferencedEntity,
 } from "./lib/dynamic-goals";
 export type {
   GoalData,
   GoalRefError,
   GoalValueResult,
+  ResolveGoalSegmentsOptions,
   ResolvedGoalSegment,
   ResolvedOpenEndedGoalSegment,
 } from "./lib/dynamic-goals";

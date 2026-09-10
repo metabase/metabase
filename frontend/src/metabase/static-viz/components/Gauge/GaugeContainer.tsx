@@ -62,7 +62,7 @@ export default function GaugeContainer({
     throw new Error(getUnresolvedGoalMessage("segments"));
   }
 
-  const segments = resolveGoalSegments(data, goalSegments, getColor)
+  const segments = resolveGoalSegments(data, goalSegments, { getColor })
     .map(fixSwappedMinMax)
     .sort(gaugeSorter);
   const range = getSegmentsRange(segments) ?? DEFAULT_GAUGE_RANGE;

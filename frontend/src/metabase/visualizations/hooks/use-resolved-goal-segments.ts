@@ -1,11 +1,11 @@
 import {
+  type ResolveGoalSegmentsOptions,
   type ResolvedGoalSegment,
   type ResolvedOpenEndedGoalSegment,
   getGoalSegmentBounds,
   getUnansweredGoalEntities,
   hasUnresolvedGoalValues,
   resolveGoalSegments,
-  resolveOpenEndedGoalSegments,
 } from "metabase/viz-core";
 import type {
   DatasetData,
@@ -18,45 +18,26 @@ import {
   useAnsweredGoalData,
 } from "./use-answered-goal-data";
 
-type GoalSegmentsResolution<TSegment> = GoalResolution<{
-  segments: TSegment[];
-}>;
+type Options = Pick<ResolveGoalSegmentsOptions, "allowOpenEnded">;
 
 export function useResolvedGoalSegments(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-): GoalSegmentsResolution<ResolvedGoalSegment> {
-  return useResolvedGoalSegmentsWith(
-    datasetQuery,
-    data,
-    segments,
-    resolveGoalSegments,
-  );
-}
-
-export function useResolvedOpenEndedGoalSegments(
+  options: Options & { allowOpenEnded: true },
+): GoalResolution<{ segments: ResolvedOpenEndedGoalSegment[] }>;
+export function useResolvedGoalSegments(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-): GoalSegmentsResolution<ResolvedOpenEndedGoalSegment> {
-  return useResolvedGoalSegmentsWith(
-    datasetQuery,
-    data,
-    segments,
-    resolveOpenEndedGoalSegments,
-  );
-}
-
-function useResolvedGoalSegmentsWith<TSegment>(
+  options?: Options & { allowOpenEnded?: false },
+): GoalResolution<{ segments: ResolvedGoalSegment[] }>;
+export function useResolvedGoalSegments(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-  resolve: (
-    data: DatasetData,
-    segments: GoalSegment[] | undefined,
-  ) => TSegment[],
-): GoalSegmentsResolution<TSegment> {
+  options: Options = {},
+): GoalResolution<{ segments: ResolvedOpenEndedGoalSegment[] }> {
   const bounds = getGoalSegmentBounds(segments);
   const answered = useAnsweredGoalData(
     datasetQuery,
@@ -72,5 +53,8 @@ function useResolvedGoalSegmentsWith<TSegment>(
     return { status: "failed" };
   }
 
-  return { status: "resolved", segments: resolve(answered.data, segments) };
+  return {
+    status: "resolved",
+    segments: resolveGoalSegments(answered.data, segments, options),
+  };
 }

@@ -10,7 +10,7 @@ import {
 } from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { useResolvedOpenEndedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
+import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
 import {
   compactifyValue,
   getColor,
@@ -56,10 +56,11 @@ function ScalarComponent(
   const { cols, rows } = data;
 
   const isMultiSeries = rawSeries.length > 1;
-  const goalSegments = useResolvedOpenEndedGoalSegments(
+  const goalSegments = useResolvedGoalSegments(
     card.dataset_query,
     data,
     isMultiSeries ? undefined : settings["scalar.segments"],
+    { allowOpenEnded: true },
   );
 
   const label = settings["scalar.label"];

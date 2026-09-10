@@ -9,10 +9,7 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
-import {
-  useResolvedGoalSegments,
-  useResolvedOpenEndedGoalSegments,
-} from "./use-resolved-goal-segments";
+import { useResolvedGoalSegments } from "./use-resolved-goal-segments";
 
 const DATASET_QUERY = createMockStructuredDatasetQuery();
 
@@ -256,7 +253,7 @@ describe("useResolvedGoalSegments", () => {
   });
 });
 
-describe("useResolvedOpenEndedGoalSegments", () => {
+describe("useResolvedGoalSegments with allowOpenEnded", () => {
   const OPEN_ENDED_SEGMENTS: GoalSegment[] = [
     { min: null, max: 10, color: "red", label: "" },
     {
@@ -269,7 +266,10 @@ describe("useResolvedOpenEndedGoalSegments", () => {
 
   function setup(data: DatasetData, segments: GoalSegment[]) {
     return renderHookWithProviders(
-      () => useResolvedOpenEndedGoalSegments(DATASET_QUERY, data, segments),
+      () =>
+        useResolvedGoalSegments(DATASET_QUERY, data, segments, {
+          allowOpenEnded: true,
+        }),
       {},
     );
   }
