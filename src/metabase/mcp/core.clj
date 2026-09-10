@@ -16,12 +16,6 @@
   []
   mcp.paths/canonical-path)
 
-(defn mcp-v2-path
-  "The `/v2`-suffixed alias (see [[metabase.mcp.paths/v2-path]]). Every MCP path reaches the same surface;
-   this exists for client configs written while the surface was behind that path."
-  []
-  mcp.paths/v2-path)
-
 (defn mcp-endpoint-paths
   "Every path serving MCP, canonical plus back-compat aliases
    (see [[metabase.mcp.paths/endpoint-paths]])."

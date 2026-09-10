@@ -254,9 +254,7 @@
 ;;; through, no tool-level gate is ever consulted. The scenarios are ported from the deleted `metabase.mcp.api-test`,
 ;;; which covered them for the v1 surface.
 
-;; During the v1→v2 migration the v2 surface is mounted only at `/v2`; the canonical path still
-;; serves v1. The final switchover PR repoints this at "metabase-mcp".
-(def ^:private endpoint "metabase-mcp/v2")
+(def ^:private endpoint "metabase-mcp")
 
 (defn- mcp-request
   "POST `body` to the MCP endpoint as `username` (default `:crowberto`), returning the full response."

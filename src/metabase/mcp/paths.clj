@@ -18,20 +18,20 @@
    and that is the string an RFC 8707 `resource` indicator is matched against."
   "/api/metabase-mcp")
 
-(def v2-path
-  "The `/v2`-suffixed alias, kept so client configs written while the surface was behind that path keep
-   working. Every entry in [[endpoint-paths]] now reaches the same v2 surface and advertises the same
-   scopes; prefer [[canonical-path]] when telling anyone where the server lives."
-  "/api/metabase-mcp/v2")
-
 (def endpoint-paths
-  "Every path that serves MCP, including aliases kept for back-compat with existing client configs:
-   `/api/mcp` predates the canonical name, and `/api/metabase-mcp/v2` is where the current tool
-   surface shipped while it was behind a flag. All of them now serve the same surface, so a client
-   pointed at any one of them keeps working."
+  "Every path that serves MCP: the canonical one, plus `/api/mcp`, which predates it and is kept for
+   back-compat with existing client configs. Both serve the same surface.
+
+   Three things are derived from this set and must not drift from it: the route table mounts exactly
+   these paths, `metabase.oauth-server.api.metadata` publishes one RFC 9728 document per path, and
+   `metabase.oauth-server.core/narrow-scope-to-resources` recognises an RFC 8707 `resource` indicator
+   only if it names one. A path that still serves traffic but has dropped out of this set fails
+   OPEN — the indicator matches nothing, so the grant is never narrowed to the MCP surface.
+
+   `/api/metabase-mcp/v2` was here while v2 shipped behind a flag. It was retired at the switchover,
+   along with its route entry and its metadata document."
   #{canonical-path
-    "/api/mcp"
-    v2-path})
+    "/api/mcp"})
 
 (def v2-surface-scopes
   "Every OAuth scope the v2 MCP surface accepts, as an ordered vector — unlike [[endpoint-paths]] above, which

@@ -25,9 +25,7 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-;; During the v1→v2 migration the v2 surface is mounted only at `/v2`; the canonical path still
-;; serves v1. The final switchover PR repoints this at "metabase-mcp".
-(def ^:private endpoint "metabase-mcp/v2")
+(def ^:private endpoint "metabase-mcp")
 
 (defn- mcp-request
   ([body]
@@ -65,7 +63,7 @@
             a session header are not enough to prove that — the retired v1 handler produced both — so each
             alias is asked for its tool list and must name a v2-only tool. Reverting either route entry (or a
             merge-forward resolving the wrong way) fails here rather than passing silently."
-    (doseq [path ["metabase-mcp" "mcp" "metabase-mcp/v2"]]
+    (doseq [path ["metabase-mcp" "mcp"]]
       (testing path
         (let [init       (client/client-full-response (test.users/username->token :crowberto)
                                                       :post path
@@ -88,9 +86,8 @@
             actually connected through, not the canonical path — a client configured against /api/mcp must be
             pointed back at /api/mcp. Ported from v1's api-test, which carried this until v1 was deleted."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (doseq [[path expected] [["metabase-mcp"    "/api/metabase-mcp"]
-                               ["mcp"             "/api/mcp"]
-                               ["metabase-mcp/v2" "/api/metabase-mcp/v2"]]]
+      (doseq [[path expected] [["metabase-mcp" "/api/metabase-mcp"]
+                               ["mcp"          "/api/mcp"]]]
         (testing path
           (let [response (client/client-full-response :post 401 path
                                                       {:request-options {:headers {}}}
@@ -438,7 +435,7 @@
                                                   (jsonrpc-request "initialize"))]
         (is (= 401 (:status response)))
         (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
-                           "/.well-known/oauth-protected-resource/api/metabase-mcp/v2"))))
+                           "/.well-known/oauth-protected-resource/api/metabase-mcp"))))
     (testing "the challenge names every scope the surface accepts, which a client that reads it prefers
               over the resource metadata's `scopes_supported`. Asking for less would hide the write
               tools from `tools/list` with no in-product way for the user to ask for them."
@@ -454,7 +451,7 @@
                                                   (jsonrpc-request "initialize"))]
         (is (= (str "Bearer realm=\"mcp\", "
                     "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
-                    "/api/metabase-mcp/v2\", "
+                    "/api/metabase-mcp\", "
                     "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run agent:delivery:write agent:resource:read\"")
                (get-in response [:headers "WWW-Authenticate"])))))))
 

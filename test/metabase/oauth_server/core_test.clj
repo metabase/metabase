@@ -27,7 +27,7 @@
             can request it without having registered for it explicitly."
     (is (not (contains? (set (oauth-server/supported-scopes)) "mb:full")))
     (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))) "mb:full")))
-    (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-v2-path))) "mb:full")))
+    (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))) "mb:full")))
     (is (not (contains? (set (oauth-server/default-grant-scopes)) "mb:full")))))
 
 (deftest default-grant-covers-everything-advertised-test
@@ -53,7 +53,7 @@
             nothing else. Asking for less does not degrade gracefully: `list-tools` filters by token
             scopes, so an unasked-for write scope removes those tools from `tools/list` entirely, with
             no in-product way for the user to request them afterwards."
-    (is (= (set (oauth-server/mcp-resource-scopes (mcp/mcp-v2-path)))
+    (is (= (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
            (set @#'v2.api/default-ask-scopes))
         "the ask and the accepted set are the same — a scope in one but not the other is a bug in whichever moved")
     (testing "every asked scope is inside the ceiling, or the ask itself would be rejected"
@@ -157,10 +157,10 @@
 
 (deftest narrow-scope-to-resource-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (let [mcp-uri "http://localhost:3000/api/metabase-mcp/v2"
-          v1-uri  "http://localhost:3000/api/metabase-mcp"
+    (let [mcp-uri "http://localhost:3000/api/metabase-mcp"
+          v1-uri  "http://localhost:3000/api/mcp"
           scopes #(set (some-> % (str/split #"\s+")))]
-      (testing "the canonical path narrows to the v2 surface too — every MCP path reaches it now, so a
+      (testing "an alias narrows to the same surface — every MCP path reaches it now, so a
                 per-entity scope no tool gates on is dropped rather than carried into the grant"
         (let [narrowed (scopes (oauth-server/narrow-scope-to-resource
                                 [v1-uri]
@@ -169,14 +169,14 @@
           (is (not (contains? narrowed "agent:sql:execute")))
           (is (contains? narrowed "agent:content:read"))
           (is (contains? narrowed "agent:query:run"))))
-      (testing "an indicator naming the v2 resource drops scopes that surface does not accept"
+      (testing "an indicator naming the MCP resource drops scopes that surface does not accept"
         (let [narrowed (scopes (oauth-server/narrow-scope-to-resource
                                 [mcp-uri]
                                 "agent:content:read agent:question:create agent:sql:execute agent:query:run"))]
           (is (= #{"agent:content:read" "agent:query:run"} narrowed))))
       (testing "every scope the surface advertises survives narrowing — otherwise the resource doc would
                 advertise a scope its own consent flow strips"
-        (let [advertised (oauth-server/mcp-resource-scopes "/api/metabase-mcp/v2")]
+        (let [advertised (oauth-server/mcp-resource-scopes "/api/metabase-mcp")]
           (is (= (set advertised)
                  (scopes (oauth-server/narrow-scope-to-resource
                           [mcp-uri] (str/join " " advertised)))))))
@@ -194,7 +194,7 @@
                 what its OWN surface accepts: the v2 path to the v2 set, the aliases (still v1 until the
                 switchover) to v1's, which is why `mb:full` goes everywhere but `agent:question:create`
                 survives only where a v1 tool can still use it."
-        (doseq [path ["/api/metabase-mcp" "/api/mcp" "/api/metabase-mcp/v2"]]
+        (doseq [path ["/api/metabase-mcp" "/api/mcp"]]
           (testing path
             (let [narrowed (oauth-server/narrow-scope-to-resource
                             [(str "http://localhost:3000" path)]
@@ -231,28 +231,28 @@
     (let [wide     "agent:content:read agent:question:create"
           narrowed "agent:content:read"]
       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-        (doseq [indicator ["http://localhost:3000/api/metabase-mcp/v2"
-                           "http://localhost:3000/api/metabase-mcp/v2/"
-                           "HTTP://LOCALHOST:3000/api/metabase-mcp/v2"
-                           "http://LocalHost:3000/api/metabase-mcp/v2/"]]
+        (doseq [indicator ["http://localhost:3000/api/metabase-mcp"
+                           "http://localhost:3000/api/metabase-mcp/"
+                           "HTTP://LOCALHOST:3000/api/metabase-mcp"
+                           "http://LocalHost:3000/api/metabase-mcp/"]]
           (testing (str "matches " (pr-str indicator))
             (is (= narrowed (oauth-server/narrow-scope-to-resource [indicator] wide))))))
       (testing "the default port is elidable in both directions"
         (mt/with-temporary-setting-values [site-url "https://example.com"]
-          (doseq [indicator ["https://example.com/api/metabase-mcp/v2"
-                             "https://example.com:443/api/metabase-mcp/v2"]]
+          (doseq [indicator ["https://example.com/api/metabase-mcp"
+                             "https://example.com:443/api/metabase-mcp"]]
             (testing (str "matches " (pr-str indicator))
               (is (= narrowed (oauth-server/narrow-scope-to-resource [indicator] wide))))))
         (mt/with-temporary-setting-values [site-url "http://example.com"]
           (is (= narrowed (oauth-server/narrow-scope-to-resource
-                           ["http://example.com:80/api/metabase-mcp/v2"] wide)))))
+                           ["http://example.com:80/api/metabase-mcp"] wide)))))
       (testing "canonicalization does not make unrelated resources match"
         (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-          (doseq [indicator ["http://localhost:3000/api/metabase-mcp/v2/extra"
+          (doseq [indicator ["http://localhost:3000/api/metabase-mcp/extra"
                              "http://localhost:3000/API/METABASE-MCP/V2"
-                             "http://localhost:3001/api/metabase-mcp/v2"
-                             "https://localhost:3000/api/metabase-mcp/v2"
-                             "http://evil.example.com/api/metabase-mcp/v2"
+                             "http://localhost:3001/api/metabase-mcp"
+                             "https://localhost:3000/api/metabase-mcp"
+                             "http://evil.example.com/api/metabase-mcp"
                              "not-a-uri"]]
             (testing (str "leaves scope alone for " (pr-str indicator))
               (is (= wide (oauth-server/narrow-scope-to-resource [indicator] wide))))))))))
@@ -265,24 +265,23 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (let [canonical "http://localhost:3000/api/metabase-mcp"
             alias1    "http://localhost:3000/api/mcp"
-            v2        "http://localhost:3000/api/metabase-mcp/v2"
             wide      "mb:full agent:content:read agent:question:create agent:sql:execute"
             scopes    #(set (some-> % (str/split #"\s+")))]
         (testing "one indicator each: every path narrows to the v2 surface"
-          (doseq [indicator [canonical alias1 v2]]
+          (doseq [indicator [canonical alias1]]
             (testing indicator
               (let [narrowed (scopes (oauth-server/narrow-scope-to-resource [indicator] wide))]
                 (is (contains? narrowed "agent:content:read"))
                 (is (not (contains? narrowed "agent:question:create")))
                 (is (not (contains? narrowed "agent:sql:execute")))))))
         (testing "naming several paths together is the same union, in either order"
-          (doseq [indicators [[canonical v2] [v2 canonical] [alias1 v2] [v2 alias1]]]
+          (doseq [indicators [[canonical alias1] [alias1 canonical]]]
             (testing (pr-str indicators)
               (let [narrowed (scopes (oauth-server/narrow-scope-to-resource indicators wide))]
                 (is (contains? narrowed "agent:content:read"))
                 (is (not (contains? narrowed "agent:question:create")))))))
         (testing "the union never re-admits a scope no named surface accepts"
-          (doseq [indicators [[canonical] [v2] [canonical v2] [v2 canonical] [alias1 v2]]]
+          (doseq [indicators [[canonical] [alias1] [canonical alias1] [alias1 canonical]]]
             (testing (pr-str indicators)
               (is (not (contains? (scopes (oauth-server/narrow-scope-to-resource indicators wide))
                                   "mb:full"))))))))))
@@ -293,11 +292,11 @@
             narrowing entirely and hand back the wide scope. Narrowing must not depend on the caller having
             vectorized."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (let [v2   "http://localhost:3000/api/metabase-mcp/v2"
+      (let [uri  "http://localhost:3000/api/metabase-mcp"
             wide "mb:full agent:content:read agent:question:create"]
-        (is (= (oauth-server/narrow-scope-to-resource [v2] wide)
-               (oauth-server/narrow-scope-to-resource v2 wide)))
-        (is (= "agent:content:read" (oauth-server/narrow-scope-to-resource v2 wide)))))))
+        (is (= (oauth-server/narrow-scope-to-resource [uri] wide)
+               (oauth-server/narrow-scope-to-resource uri wide)))
+        (is (= "agent:content:read" (oauth-server/narrow-scope-to-resource uri wide)))))))
 
 (deftest narrow-scope-to-resource-underscore-host-test
   (testing "`java.net.URI/getHost` is nil for a host it considers non-conformant -- notably one containing an
@@ -306,7 +305,7 @@
             return nil on such an instance, so no indicator ever matched and narrowing was disabled
             instance-wide, silently."
     (mt/with-temporary-setting-values [site-url "http://metabase_internal:3000"]
-      (let [v2   "http://metabase_internal:3000/api/metabase-mcp/v2"
+      (let [v2   "http://metabase_internal:3000/api/metabase-mcp"
             wide "mb:full agent:content:read agent:question:create"]
         (is (= "agent:content:read" (oauth-server/narrow-scope-to-resource [v2] wide))
             "narrowing still applies when the Site URL host contains an underscore")))
@@ -316,7 +315,7 @@
               narrowed "agent:content:read"]
           (testing "userinfo is still stripped rather than compared"
             (is (= narrowed (oauth-server/narrow-scope-to-resource
-                             ["http://user:pass@localhost:3000/api/metabase-mcp/v2"] wide))))
+                             ["http://user:pass@localhost:3000/api/metabase-mcp"] wide))))
           (testing "host case is still folded and the default port still elided"
             (is (= narrowed (oauth-server/narrow-scope-to-resource
-                             ["HTTP://LocalHost:3000/api/metabase-mcp/v2"] wide)))))))))
+                             ["HTTP://LocalHost:3000/api/metabase-mcp"] wide)))))))))

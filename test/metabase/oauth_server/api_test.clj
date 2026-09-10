@@ -40,7 +40,7 @@
   (testing "each MCP path advertises *itself* as the OAuth protected resource (RFC 9728), so a strict
             client connecting via an alias sees a resource value matching the URL it hit"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (doseq [path ["/api/metabase-mcp" "/api/mcp" "/api/metabase-mcp/v2"]]
+      (doseq [path ["/api/metabase-mcp" "/api/mcp"]]
         (testing path
           (let [response (mt/user-http-request :crowberto :get 200
                                                (str ".well-known/oauth-protected-resource" path))]
@@ -59,8 +59,7 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (doseq [url [".well-known/oauth-protected-resource"
                    ".well-known/oauth-protected-resource/api/metabase-mcp"
-                   ".well-known/oauth-protected-resource/api/mcp"
-                   ".well-known/oauth-protected-resource/api/metabase-mcp/v2"]]
+                   ".well-known/oauth-protected-resource/api/mcp"]]
         (testing url
           (let [response      (mt/user-http-request :crowberto :get 200 url)
                 resource-path (str/replace (:resource response) "http://localhost:3000" "")]
@@ -1160,7 +1159,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [wide         "agent:content:read agent:question:create agent:sql:execute"
               ;; the v2 path: the aliases still reach v1, whose tools gate on the agent-API scopes
-              mcp-uri      (str "http://localhost:3000" (mcp/mcp-v2-path))
+              mcp-uri      (str "http://localhost:3000" (mcp/mcp-canonical-path))
               client-id    (:client_id (create-test-client!
                                         {:scopes ["agent:content:read" "agent:question:create"
                                                   "agent:sql:execute"]}))
@@ -1266,7 +1265,7 @@
                          :scope         "agent:question:create agent:sql:execute"
                          :redirect_uri  "https://example.com/callback"
                          :response_type "code"
-                         :resource      (str "http://localhost:3000" (mcp/mcp-v2-path))
+                         :resource      (str "http://localhost:3000" (mcp/mcp-canonical-path))
                          :state         "test-state")]
           (is (= "invalid_scope" (get-in response [:body :error]))))))))
 
@@ -1281,7 +1280,7 @@
                                     :client_id     client-id
                                     :redirect_uri  "https://example.com/callback"
                                     :response_type "code"
-                                    :resource      (str "http://localhost:3000" (mcp/mcp-v2-path))
+                                    :resource      (str "http://localhost:3000" (mcp/mcp-canonical-path))
                                     :state         "test-state")))))))
 
 (deftest mb-full-client-can-still-authorize-test
