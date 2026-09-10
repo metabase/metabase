@@ -178,6 +178,15 @@
                                   metabot.settings/llm-metabot-configured? (constantly true)]
         (is (nil? (core/unavailable-reason)))))))
 
+(defn- failing-llm
+  "A canned LLM that throws `ex` for any table whose name is in `failing-names`."
+  [failing-names ex]
+  (fn [& [_model messages :as args]]
+    (let [content (:content (last messages))]
+      (if (some #(str/includes? content (str "name: " % "\n")) failing-names)
+        (throw ex)
+        (apply (canned-llm (constantly {})) args)))))
+
 (defn- active-tables [schema]
   (t2/select :model/Table {:where    (cond-> [:and [:= :db_id (mt/id)] [:= :active true]]
                                        schema (conj [:= :schema schema]))
@@ -210,17 +219,69 @@
                                  #(core/classify-database! (mt/db) :include-values? false :schema "no_such_schema"))]
         (is (= [] (:tables result)))
         (is (= 0 (:requests result)))))
-    (testing "a table whose classification throws becomes an error entry and the run completes"
+    (testing "a table whose classification throws for a reason other tables need not share becomes an error entry and the run completes"
       (let [failing (t2/select-one-fn :name :model/Table :id (mt/id :reviews))
-            result  (do-with-llm! (fn [& [_model messages :as args]]
-                                    (if (str/includes? (:content (last messages)) (str "name: " failing "\n"))
-                                      (throw (ex-info "boom" {:error-code "ai_usage_limit_reached"}))
-                                      (apply (canned-llm (constantly {})) args)))
+            result  (do-with-llm! (failing-llm #{failing} (ex-info "boom" {:error-code "structured-output-invalid"}))
                                   #(core/classify-database! (mt/db) :include-values? false))]
         (is (= 1 (:failed result)))
         (is (=? {:table_id   (mt/id :reviews)
                  :table_name failing
                  :error      "boom"
-                 :error_code "ai_usage_limit_reached"}
+                 :error_code "structured-output-invalid"}
                 (some #(when (:error %) %) (:tables result))))
         (is (= (dec (count tables)) (:requests result)))))))
+
+(def ^:private provider-rejection
+  (ex-info "Your credit balance is too low" {:api-error true :status 400 :provider "anthropic"
+                                             :error-code :provider-api-error}))
+
+(deftest fatal-error-test
+  (testing "provider rejections retries never cover, a missing provider, and the usage limit are fatal"
+    (is (core/fatal-error? provider-rejection))
+    (is (core/fatal-error? (ex-info "x" {:api-error true :status 401})))
+    (is (core/fatal-error? (ex-info "x" {:api-error true :status-code 400 :error-code :llm-not-configured})))
+    (is (core/fatal-error? (ex-info "x" {:api-error true :error-code :api-key-missing})))
+    (is (core/fatal-error? (ex-info "x" {:type :metabot/usage-limit-reached}))))
+  (testing "rate limits, server errors, timeouts, and non-provider failures are not"
+    (is (not (core/fatal-error? (ex-info "x" {:api-error true :status 429}))))
+    (is (not (core/fatal-error? (ex-info "x" {:api-error true :status 500}))))
+    (is (not (core/fatal-error? (ex-info "x" {:api-error true :error-code :provider-request-failed}))))
+    (is (not (core/fatal-error? (ex-info "x" {:status 400}))))
+    (is (not (core/fatal-error? (RuntimeException. "x"))))))
+
+(deftest classify-database-fatal-error-test
+  (let [tables        (active-tables nil)
+        names         (mapv :name tables)
+        [ok failing]  names
+        skipped-names (drop 2 names)]
+    (testing "a fatal failure stops the run after its batch; earlier successes are kept and later tables are skipped"
+      (let [result   (do-with-llm! (failing-llm #{failing} provider-rejection)
+                                   #(core/classify-database! (mt/db) :include-values? false :parallelism 2))
+            by-name  (into {} (map (juxt :table_name identity)) (:tables result))]
+        (is (= names (map :table_name (:tables result))) "every table is reported, in order")
+        (is (nil? (:error (get by-name ok))))
+        (is (=? {:error "Your credit balance is too low" :error_code "provider-api-error"} (get by-name failing)))
+        (doseq [skipped skipped-names]
+          (is (=? {:error      (str "Skipped after table " failing " failed: Your credit balance is too low")
+                   :error_code "skipped"}
+                  (get by-name skipped))))
+        (is (= (dec (count tables)) (:failed result)))
+        (is (= 1 (:requests result)))
+        (is (= (count (t2/select :model/Field {:where [:and [:= :active true]
+                                                       [:not= :visibility_type "retired"]
+                                                       [:= :table_id (:id (first tables))]]}))
+               (get-in result [:counts :fields])))))
+    (testing "a non-fatal failure in the same position does not stop the run"
+      (let [result (do-with-llm! (failing-llm #{failing} (ex-info "later" {:api-error true :status 429}))
+                                 #(core/classify-database! (mt/db) :include-values? false :parallelism 2))]
+        (is (= 1 (:failed result)))
+        (is (= (dec (count tables)) (:requests result)))))
+    (testing "when no table succeeded the fatal exception is rethrown"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"credit balance is too low"
+                            (do-with-llm! (failing-llm (set names) provider-rejection)
+                                          #(core/classify-database! (mt/db) :include-values? false :parallelism 2)))))
+    (testing "when no table succeeded but none failed fatally the errors are returned"
+      (let [result (do-with-llm! (failing-llm (set names) (ex-info "later" {:api-error true :status 429}))
+                                 #(core/classify-database! (mt/db) :include-values? false :parallelism 2))]
+        (is (= (count tables) (:failed result)))
+        (is (every? #(= "later" (:error %)) (:tables result)))))))

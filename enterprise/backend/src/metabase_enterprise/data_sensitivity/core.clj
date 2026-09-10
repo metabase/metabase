@@ -14,6 +14,7 @@
    [metabase.metabot.core :as metabot]
    [metabase.request.core :as request]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -204,22 +205,56 @@
   (let [{:keys [error-code type]} (ex-data e)]
     (some-> (or error-code type) u/qualified-name)))
 
+(def ^:private fatal-statuses
+  "Provider statuses that retries never cover and that every later table would hit the same way."
+  #{400 401 402 403})
+
+(defn fatal-error?
+  "Whether an exception from one table's classification would fail every other table the same way: a provider
+  rejection with a non-retryable status, a missing provider connection or key, or the usage limit."
+  [e]
+  (let [{:keys [api-error status status-code error-code type]} (ex-data e)]
+    (boolean (or (and api-error (contains? fatal-statuses (or status status-code)))
+                 (contains? #{:llm-not-configured :api-key-missing} error-code)
+                 (= :metabot/usage-limit-reached type)))))
+
 (defn- table-error [table e]
-  (log/warnf e "Data-sensitivity classification failed for table %d" (:id table))
+  (let [{:keys [api-error provider status]} (ex-data e)]
+    (if api-error
+      (log/warnf "Data-sensitivity classification failed for table %d: %s provider=%s status=%s"
+                 (:id table) (ex-message e) provider status)
+      (log/warnf e "Data-sensitivity classification failed for table %d" (:id table))))
   {:table_id   (:id table)
    :table_name (:name table)
    :schema     (:schema table)
    :error      (or (ex-message e) (str (class e)))
    :error_code (error-code e)})
 
+(defn- skipped-entry [table {failed-name :table_name failed-error :error}]
+  {:table_id   (:id table)
+   :table_name (:name table)
+   :schema     (:schema table)
+   :error      (str (tru "Skipped after table {0} failed: {1}" failed-name failed-error))
+   :error_code "skipped"})
+
 (defn- run-batches
-  "Apply `f` to every table, `parallelism` at a time, returning one result per table in order. `future` conveys the
+  "Apply `f` to every table, `parallelism` at a time, returning one `{:entry ...}` per table in order. `f` returns
+  `{:entry result}` or `{:entry error-entry :fatal? bool :exception e}`; once a batch holds a fatal failure no
+  further batch is launched and the remaining tables get a skipped entry naming that failure. `future` conveys the
   caller's dynamic bindings (current user, request) into each task."
   [tables parallelism f]
-  (into []
-        (mapcat (fn [batch]
-                  (mapv deref (mapv (fn [table] (future (f table))) batch))))
-        (partition-all parallelism tables)))
+  (loop [batches (partition-all parallelism tables)
+         results []]
+    (if-let [batch (first batches)]
+      (let [results (into results (mapv deref (mapv (fn [table] (future (f table))) batch)))]
+        (if-let [fatal (some #(when (:fatal? %) %) results)]
+          (let [remaining (apply concat (rest batches))]
+            (when (seq remaining)
+              (log/warnf "Skipping %d remaining tables after table %d failed: %s"
+                         (count remaining) (get-in fatal [:entry :table_id]) (get-in fatal [:entry :error])))
+            (into results (map (fn [table] {:entry (skipped-entry table (:entry fatal))})) remaining))
+          (recur (rest batches) results)))
+      results)))
 
 (def default-parallelism
   "Tables classified concurrently by [[classify-database!]]."
@@ -227,20 +262,28 @@
 
 (mu/defn classify-database! :- ::database-result
   "Run [[classify-table!]] over every active table of `database`, restricted to `:schema` when given. A table whose
-  classification throws becomes an error entry and the run continues. Synchronous; intended for the REPL and small
+  classification throws becomes an error entry and the run continues, unless the failure is one every later table
+  would repeat ([[fatal-error?]]): then no further batch starts, the remaining tables are reported as skipped, and
+  when no table succeeded at all the fatal exception is rethrown. Synchronous; intended for the REPL and small
   databases until an async job exists."
   [database :- (ms/InstanceOf :model/Database)
    & {:keys [schema parallelism] :as opts} :- [:maybe ::database-options]]
   (let [table-opts (dissoc opts :schema :parallelism)
         tables     (db/active-tables (:id database) schema)
-        results    (run-batches tables
+        outcomes   (run-batches tables
                                 (or parallelism default-parallelism)
                                 (fn [table]
                                   (try
-                                    (classify-table! table table-opts)
+                                    {:entry (classify-table! table table-opts)}
                                     (catch Throwable e
-                                      (table-error table e)))))
+                                      {:entry     (table-error table e)
+                                       :fatal?    (fatal-error? e)
+                                       :exception e}))))
+        results    (mapv :entry outcomes)
         succeeded  (remove :error results)]
+    (when (and (seq results) (empty? succeeded))
+      (when-let [fatal (some #(when (:fatal? %) %) outcomes)]
+        (throw (:exception fatal))))
     {:database_id (:id database)
      :schema      schema
      :tables      results

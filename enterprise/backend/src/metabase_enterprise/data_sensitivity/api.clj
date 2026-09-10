@@ -20,9 +20,33 @@
     :usage-limit       (tru "The AI usage limit has been reached.")
     :permission-denied (tru "You do not have permission to use Metabot.")))
 
+(defn- unavailable-ex [reason]
+  (ex-info (unavailable-message reason) {:status-code 400 :reason reason :error-code reason}))
+
 (defn- check-available! []
   (when-let [reason (core/unavailable-reason)]
-    (throw (ex-info (unavailable-message reason) {:status-code 400 :reason reason}))))
+    (throw (unavailable-ex reason))))
+
+(defn- classify
+  "Run `thunk` and translate a failure the classifier could not work around. A provider rejection becomes a 502
+  carrying the vendor's message so the caller sees why instead of a stack trace; a usage limit reached mid-run
+  becomes the same 400 the pre-flight reports."
+  [thunk]
+  (try
+    (thunk)
+    (catch clojure.lang.ExceptionInfo e
+      (let [{:keys [api-error type]} (ex-data e)]
+        (cond
+          (= :metabot/usage-limit-reached type)
+          (throw (unavailable-ex :usage-limit))
+
+          api-error
+          (throw (ex-info (ex-message e)
+                          {:status-code 502 :reason "provider-error" :error-code :provider-error}
+                          e))
+
+          :else
+          (throw e))))))
 
 (api.macros/defendpoint :post "/table/:id" :- ::core/table-result
   "Classify every active field of the table with the LLM and diff the proposal against the current
@@ -32,7 +56,7 @@
   (let [table (api/check-404 (db/table id))]
     (api/write-check :model/Database (:db_id table))
     (check-available!)
-    (core/classify-table! table)))
+    (classify #(core/classify-table! table))))
 
 (api.macros/defendpoint :post "/database/:id" :- ::core/database-result
   "Classify every active table of the database, or only those in `schema` when given, with the LLM and diff the
@@ -44,7 +68,7 @@
                                 [:schema {:optional true} [:maybe ms/NonBlankString]]]]]
   (let [database (api/write-check :model/Database id)]
     (check-available!)
-    (core/classify-database! database :schema schema)))
+    (classify #(core/classify-database! database :schema schema))))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the data-sensitivity API."

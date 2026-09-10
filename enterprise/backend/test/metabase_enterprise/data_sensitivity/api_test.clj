@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-sensitivity.api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.core-test :as core-test]
    [metabase.metabot.settings :as metabot.settings]
@@ -45,11 +46,56 @@
   (mt/with-premium-features #{:data-sensitivity}
     (testing "a disabled Metabot is a 400 with the reason, before any classification runs"
       (mt/with-dynamic-fn-redefs [metabot.settings/metabot-enabled? (constantly false)]
-        (is (=? {:message "Metabot is disabled. Enable Metabot to classify data sensitivity."
-                 :reason  "metabot-disabled"}
-                (mt/user-http-request :crowberto :post 400 (table-url (mt/id :people)))))
+        (let [body (mt/user-http-request :crowberto :post 400 (table-url (mt/id :people)))]
+          (is (=? {:message "Metabot is disabled. Enable Metabot to classify data sensitivity."
+                   :reason  "metabot-disabled"}
+                  body))
+          (is (not (contains? body :trace)) "the body is the authored message, not a stack trace"))
         (is (=? {:reason "metabot-disabled"}
                 (mt/user-http-request :crowberto :post 400 (database-url (mt/id)))))))))
+
+(defn- throwing-llm
+  "A stand-in LLM that throws `ex` for every table whose name is in `failing-names`, or for every table when nil."
+  [failing-names ex]
+  (fn [& [_model messages :as args]]
+    (let [content (:content (last messages))]
+      (if (or (nil? failing-names)
+              (some #(str/includes? content (str "name: " % "\n")) failing-names))
+        (throw ex)
+        (apply (core-test/canned-llm (constantly {})) args)))))
+
+(def ^:private provider-rejection
+  (ex-info "Your credit balance is too low" {:api-error true :status 400 :provider "anthropic"
+                                             :error-code :provider-api-error
+                                             :body "{\"error\": {\"message\": \"secret detail\"}}"}))
+
+(deftest provider-error-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (testing "a provider rejection is a 502 carrying the vendor message and nothing else from the response"
+      (doseq [url [(table-url (mt/id :people)) (database-url (mt/id))]]
+        (let [body (core-test/do-with-llm! (throwing-llm nil provider-rejection)
+                                           #(mt/user-http-request :crowberto :post 502 url))]
+          (is (= {:message    "Your credit balance is too low"
+                  :reason     "provider-error"
+                  :error-code "provider-error"}
+                 body)))))
+    (testing "a partial database run stays a 200 with error entries"
+      (let [tables   (t2/select :model/Table :db_id (mt/id) :active true {:order-by [[:schema :asc] [:name :asc]]})
+            failing  (:name (last tables))
+            response (core-test/do-with-llm! (throwing-llm #{failing} provider-rejection)
+                                             #(mt/user-http-request :crowberto :post 200 (database-url (mt/id))))]
+        (is (= 1 (:failed response)))
+        (is (=? {:table_name failing :error "Your credit balance is too low" :error_code "provider-api-error"}
+                (last (:tables response))))))
+    (testing "a usage limit reached mid-run is the same 400 the pre-flight reports"
+      (let [limit (ex-info "limit" {:type :metabot/usage-limit-reached :error-code "ai_usage_limit_reached"})]
+        (is (=? {:message "The AI usage limit has been reached." :reason "usage-limit"}
+                (core-test/do-with-llm! (throwing-llm nil limit)
+                                        #(mt/user-http-request :crowberto :post 400 (table-url (mt/id :people))))))))
+    (testing "any other failure is still an unexpected error"
+      (is (=? {:message "kaboom"}
+              (core-test/do-with-llm! (throwing-llm nil (ex-info "kaboom" {}))
+                                      #(mt/user-http-request :crowberto :post 500 (table-url (mt/id :people)))))))))
 
 (deftest classify-table-test
   (testing "the table endpoint returns the diff without :metabot-v3 and writes nothing"
