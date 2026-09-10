@@ -218,11 +218,8 @@
 
 (defmulti apply-cte-hoist?
   "True iff a UNION ALL pivot compiled for `driver` should hoist the shared pre-pivot subquery into a
-  `WITH` binding referenced from every branch. Off by default; drivers opt in when their planner both
-  benefits from CTE deduplication (older Presto fans identical subqueries into per-branch tasks and
-  exhausts the coordinator heap on large joins) *and* correctly binds prepared-statement parameters
-  in a CTE referenced from multiple UNION branches (H2 mis-binds these and returns zero-count rows,
-  so it stays opted out)."
+  `WITH` binding that every branch references by alias, rather than inlining it once per branch. Off
+  by default."
   {:added "0.64.0", :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

@@ -48,12 +48,8 @@ title: Driver interface changelog
   mapping the breakout `:base-type` to a driver-specific SQL type name.
 
 - `metabase.driver.sql.pivot/apply-cte-hoist?` `[driver]` -- whether a `UNION ALL` pivot compiled for `driver`
-  should hoist the shared pre-pivot subquery (produced by nesting a last stage that carries `:pivot` plus joins
-  into two stages) into a `WITH` binding that every branch references by alias. Defaults to `false`. Opt in when
-  the driver's planner both benefits from CTE deduplication (older Presto fans identical subqueries in `FROM`
-  into per-branch tasks and exhausts the coordinator heap on large joins) *and* correctly binds prepared-statement
-  parameters in a CTE referenced from multiple `UNION` branches (H2 mis-binds these and returns zero-count rows,
-  so it stays opted out). `:presto-jdbc` is the only driver opted in by default.
+  should hoist the shared pre-pivot subquery into a `WITH` binding that every branch references by alias, rather
+  than inlining it once per branch. Defaults to `false`.
 
 - `:native-pivot-tables` is now enabled for `:hive-like` drivers.
   Hive-family dialects synthesise the pivot-grouping bitmask from single-arg `GROUPING(x)` calls.
