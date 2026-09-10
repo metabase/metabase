@@ -99,8 +99,13 @@
       ;;
       ;; Deliberately NOT stripped here: a cursor's stored query carries the marker this namespace
       ;; minted, and [[metabase.mcp.v2.query/next-page-query]] needs it to supersede the previous
-      ;; page's predicate rather than stack a dead one beside it. Caller-supplied queries are
-      ;; stripped where they enter instead — the `:query` branch above and the `/drills` callback.
+      ;; page's predicate rather than stack a dead one beside it. The `:query` branch above is the
+      ;; one place a caller-supplied query is stripped.
+      ;;
+      ;; `POST /api/embed-mcp/drills` stores its caller-supplied query verbatim and does NOT strip,
+      ;; so a caller holding a UI credential can still land a marked filter in a drill handle and
+      ;; have it silently dropped from later pages. Accepted: reaching that needs the scoped UI
+      ;; credential, and the damage is confined to the caller's own narrowed-question reporting.
       {:query stored :prompt (or prompt stored-prompt)})))
 
 ;;; ------------------------------------------------- Execution ----------------------------------------------------
