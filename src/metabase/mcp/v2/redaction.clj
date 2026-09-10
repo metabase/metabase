@@ -13,23 +13,46 @@
    checks) and so must be called as the requesting user; the projections they feed are pure."
   (:require
    [metabase.api.common :as api]
+   [metabase.mcp.db :as mcp.db]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
-   [metabase.pulse.core :as pulse]
-   [toucan2.core :as t2]))
+   [metabase.pulse.core :as pulse]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- dashboard ----------------------------------------------------
 
+(def ^:private card-describing-viz-keys
+  "`:visualization_settings` keys that describe the card rather than the grid slot: its author-written
+   title, the warehouse columns it displays and their labels, and click targets naming other entities.
+   Layout keys (sizing, container styling) describe the dashboard itself and survive redaction."
+  [:card.title :card.description :column_settings :series_settings :click_behavior])
+
 (defn- redact-dashcard
   [dashcard]
   (cond-> dashcard
     ;; The projection reads an absent `:card` the same way it reads an unhydrated one — as an id
-    ;; with no name — so removing it is the whole redaction.
+    ;; with no name — so removing it is the whole redaction *for the projection*. The `layout`
+    ;; include reads this same dashcard directly, though, and `:visualization_settings` /
+    ;; `:parameter_mappings` are stored snapshots that describe the card: the title, the warehouse
+    ;; column names it renders, and the field ids its filters are wired to. Leaving them behind
+    ;; hands a caller who was just denied the card exactly what the denial withheld, so they go
+    ;; with it.
     (not (some-> (:card dashcard) mi/can-read?))
-    (dissoc :card)
+    ;; `:parameter_mappings` is emptied rather than removed: it is a required key on a DashboardCard,
+    ;; and `dashboard->resolved-params` — which the parameters summary runs over the same row — fails
+    ;; its schema when the key is absent.
+    (-> (dissoc :card)
+        (assoc :parameter_mappings []))
+
+    ;; Guarded on there being something to strip rather than on the key's presence: a dashcard read
+    ;; from the app db is a Toucan instance, where `update` on an absent key still writes it back as
+    ;; nil and the projection then reports a key the dashcard never had.
+    (and (not (some-> (:card dashcard) mi/can-read?))
+         (seq (:visualization_settings dashcard)))
+    (assoc :visualization_settings
+           (not-empty (apply dissoc (:visualization_settings dashcard) card-describing-viz-keys)))
 
     (seq (:series dashcard))
     (update :series (partial mapv #(cond-> % (not (mi/can-read? %)) (select-keys [:id]))))))
@@ -43,25 +66,13 @@
 
 ;;; ------------------------------------------------ notification --------------------------------------------------
 
-(defn- hydrate-notification
-  "The [[models.notification/hydrate-notification]] hydration, without its output schema —
-   which rejects `payload_type: notification/dashboard` rows, readable here by design."
-  [notification]
-  (t2/hydrate notification
-              :payload
-              :subscriptions
-              [:handlers :channel [:recipients :recipients-detail]]))
-
 (defn- lookup-recipient-tenant-ids
   "Map of user id to tenant id for the `recipients` whose `:user` hydration came back nil, in one
    query. The `:recipients-detail` hydration deliberately attaches `:user` nil for a deactivated
    user, whose tenant must then be looked up — otherwise a deactivated recipient reads as
    tenantless and slips past (or is wrongly dropped by) the tenant filter."
   [recipients]
-  (let [ids (into #{} (comp (remove :user) (keep :user_id)) recipients)]
-    (if (seq ids)
-      (t2/select-pk->fn :tenant_id :model/User :id [:in ids])
-      {})))
+  (mcp.db/user-id->tenant-id (into #{} (comp (remove :user) (keep :user_id)) recipients)))
 
 (defn- recipient-tenant-id
   "The tenant of a user recipient: read off the hydrated `:user` when present, else off
@@ -124,7 +135,7 @@
   "`notification`, hydrated and recipient-redacted for the current user — the shape
    [[metabase.mcp.v2.projections/notification-row]] takes."
   [notification]
-  (redact-notification (hydrate-notification notification)))
+  (redact-notification (mcp.db/hydrate-notification notification)))
 
 ;;; --------------------------------------------------- pulse ------------------------------------------------------
 

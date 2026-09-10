@@ -18,6 +18,7 @@
    [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -31,8 +32,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.table :as schema.table]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.table :as schema.table]))
 
 (set! *warn-on-reflection* true)
 
@@ -116,9 +116,9 @@
   [database-id]
   (v2.resolve/resolve-and-read-with :model/Database database-id
                                     (fn [id]
-                                      (api/read-check (t2/select-one :model/Database
-                                                                     :id id
-                                                                     {:where (schema.table/browsable-databases-honeysql-filter)})))))
+                                      (api/read-check (mcp.db/browsable-database
+                                                       id
+                                                       (schema.table/browsable-databases-honeysql-filter))))))
 
 ;;; ------------------------------------------------ List plumbing -------------------------------------------------
 
@@ -152,11 +152,9 @@
 
 (defn- list-databases
   [args]
-  ;; Naming the columns keeps `t2/select` from decrypting the `details`/`settings` blobs on every row. Nothing
-  ;; projected reads them, and `mi/can-read?` needs only `:id`.
-  (let [rows (t2/select (into [:model/Database] database-detailed-keys)
-                        {:where    (schema.table/browsable-databases-honeysql-filter)
-                         :order-by [[:%lower.name :asc]]})
+  ;; Nothing projected reads the `details`/`settings` blobs, and `mi/can-read?` needs only `:id`.
+  (let [rows (mcp.db/browsable-databases database-detailed-keys
+                                         (schema.table/browsable-databases-honeysql-filter))
         ;; `mi/can-read?` below is one permission check per database; load them in one query first.
         _    (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) rows)})
         dbs  (filterv mi/can-read? rows)]
@@ -232,11 +230,7 @@
 (defn- list-models
   [{:keys [database_id] :as args}]
   (check-database! database_id)
-  (let [models (->> (t2/select question-select-columns
-                               :type :model
-                               :database_id database_id
-                               :archived false
-                               {:order-by [[:%lower.name :asc]]})
+  (let [models (->> (mcp.db/unarchived-models-in-database question-select-columns database_id)
                     (filterv mi/can-read?))]
     (paged-list-content args models {} #(project-rows :question args %))))
 
@@ -294,7 +288,7 @@
                                metadata-rows)
         related-ids      (into #{} (mapcat val) targets-by-table)
         related          (when (seq related-ids)
-                           (->> (t2/select :model/Table :id [:in related-ids] :active true)
+                           (->> (mcp.db/active-tables-by-ids related-ids)
                                 (filter mi/can-read?)
                                 (m/index-by :id)))
         expand-ids       (into #{}
@@ -304,12 +298,7 @@
                                               (take max-related-tables-with-fields))))
                                targets-by-table)
         columns          (when (seq expand-ids)
-                           (-> (group-by :table_id
-                                         (t2/select [:model/Field :id :name :table_id :position]
-                                                    :table_id [:in expand-ids]
-                                                    :active true
-                                                    :visibility_type [:not-in ["hidden" "sensitive" "retired"]]
-                                                    {:order-by [[:position :asc] [:id :asc]]}))
+                           (-> (group-by :table_id (mcp.db/active-visible-fields-for-tables expand-ids))
                                schema.table/batch-filter-sandboxed-fields))]
     (update-vals targets-by-table
                  (fn [target-ids]
@@ -481,10 +470,9 @@
           ;; filter [[list-databases]] uses, so a change to the metadata fetch can't reopen a leak.
           browsable-db-ids (let [db-ids (into #{} (map :db_id) fetched)]
                              (when (seq db-ids)
-                               (t2/select-pks-set :model/Database
-                                                  {:where [:and
-                                                           [:in :id db-ids]
-                                                           (schema.table/browsable-databases-honeysql-filter)]})))
+                               (mcp.db/browsable-database-ids
+                                db-ids
+                                (schema.table/browsable-databases-honeysql-filter))))
           browsable? (fn [row] (contains? browsable-db-ids (:db_id row)))
           rows      (filterv browsable? fetched)
           missing   (into (vec missing) (comp (remove browsable?) (map :id)) fetched)

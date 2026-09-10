@@ -53,7 +53,7 @@ export const TransformsHeader = memo(function TransformsHeader({
       }
       tabs={showTabs ? <PillTabNavigation tabs={tabs} /> : undefined}
       py={0}
-      mb="md"
+      mb="lg"
       showMetabotButton={showMetabotButton}
     />
   );

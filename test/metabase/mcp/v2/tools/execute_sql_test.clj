@@ -268,6 +268,54 @@
                    (:parameters stored)))
             (is (= "number" (-> stored :stages first :template-tags first :type)))))))))
 
+;;; ---------------------------------------------- MBQL-expressible hint -------------------------------------------
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest execute-sql-mbql-hint-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid  (str (random-uuid))
+            sql  "SELECT PRODUCT_ID, count(*) FROM ORDERS GROUP BY PRODUCT_ID"
+            hint @#'tools.query/mbql-hint]
+        (testing "an MBQL-expressible aggregate carries the hint on both the execute and validate_only paths"
+          (is (= hint (:hint (payload (call! sid {:database_id (mt/id) :sql sql})))))
+          (is (= hint (:hint (payload (call! sid {:database_id (mt/id) :sql sql :validate_only true}))))))
+        (testing "other SQL carries no hint key at all"
+          (is (not (contains? (payload (call! sid {:database_id (mt/id) :sql "SELECT ID FROM ORDERS ORDER BY ID LIMIT 5"}))
+                              :hint))))))))
+
+(deftest ^:parallel mbql-expressible-sql?-test
+  (let [expressible? #'tools.query/mbql-expressible-sql?]
+    (testing "plain aggregates, with joins/having/order/limit and trailing semicolon, are expressible"
+      (is (true? (expressible? "SELECT status, count(*) FROM orders GROUP BY status")))
+      (is (true? (expressible? (str "select o.status, count(*) from orders o join products p on p.id = o.product_id "
+                                    "where o.total > 10 group by o.status having count(*) > 5 order by 2 desc limit 10;")))))
+    (testing "keywords inside string literals and comments do not disqualify"
+      (is (true? (expressible? "SELECT status, count(*) FROM orders WHERE note = 'with over (' GROUP BY status")))
+      (is (true? (expressible? "-- with\nSELECT status, count(*) FROM orders /* over ( */ GROUP BY status"))))
+    (testing "no GROUP BY, CTEs, window functions, set ops, subselects, template tags, and multiple statements are not"
+      (is (false? (expressible? "SELECT id FROM orders ORDER BY id")))
+      (is (false? (expressible? "WITH t AS (SELECT status FROM orders) SELECT status, count(*) FROM t GROUP BY status")))
+      (is (false? (expressible? "SELECT status, count(*) OVER () FROM orders GROUP BY status")))
+      (is (false? (expressible? "SELECT status, count(*) FROM orders GROUP BY status UNION SELECT 'x', 0")))
+      (is (false? (expressible? "SELECT status, count(*) FROM (SELECT * FROM orders) o GROUP BY status")))
+      (is (false? (expressible? "SELECT status, count(*) FROM orders WHERE {{status}} GROUP BY status")))
+      (is (false? (expressible? "SELECT status, count(*) FROM orders GROUP BY status; DROP TABLE x"))))
+    (testing "GHY-4363: a long literal or an unbalanced quote must not blow the stack"
+      ;; the literal-blanking regex used to be `'(?:[^']|'')*'`, an alternation under a quantifier,
+      ;; which java.util.regex compiles to one stack frame per character consumed. A single
+      ;; unterminated quote — an ordinary agent typo — made it backtrack across the whole query and
+      ;; throw StackOverflowError, which is an Error and so escapes the tool's Exception handler.
+      ;; the point of each of these is that it RETURNS rather than throwing; the particular
+      ;; verdict is incidental
+      (is (true? (expressible? (str "select x from t where note = '" (apply str (repeat 8000 \x))
+                                    "' group by x"))))
+      (is (false? (expressible? (str "select * from t where a = 'abc and b = "
+                                     (apply str (repeat 8000 \y))))))
+      (is (true? (expressible? (str "SELECT status, count(*) FROM orders WHERE note = '"
+                                    (apply str (repeat 8000 \z))
+                                    "' GROUP BY status")))))))
+
 ;;; ---------------------------------------------------- Gates -----------------------------------------------------
 
 ;; not ^:parallel: mt/with-temporary-setting-values on the shared kill-switch setting

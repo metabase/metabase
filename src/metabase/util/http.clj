@@ -176,15 +176,10 @@
             (throw (ex-info "Refusing to connect to a non-permitted network address"
                             {:ssrf true :policy policy :host host}))))))))
 
-(def ^DnsResolver ^:private ssrf-safe-dns-resolver
-  "The strict `:external-only` resolver (public addresses only) used by [[fetch-bytes]].
-  See [[network-policy-dns-resolver]]."
-  (network-policy-dns-resolver :external-only))
-
 (defn safe-url?
   "True if `url` is safe to fetch from untrusted input: HTTPS scheme, no userinfo, and a real DNS
   hostname (not an IP literal, not localhost/metadata/internal). Note this is a cheap pre-check;
-  the resolved-IP validation in [[ssrf-safe-dns-resolver]] is what closes the rebinding gap."
+  the resolved-IP validation in [[network-policy-dns-resolver]] is what closes the rebinding gap."
   [^String url]
   (try
     (let [parsed (URL. url)
@@ -197,6 +192,23 @@
            (not (contains? blocked-fetch-hosts host))
            (not (some #(str/ends-with? host %) blocked-fetch-host-suffixes))))
     (catch Throwable _ false)))
+
+(defn- fetchable-url?
+  "Whether [[fetch-bytes]] may request `url` under `policy`.
+
+  Under the default `:external-only` this is [[safe-url?]] -- the strict pre-check for a URL that came from
+  untrusted input. A looser policy is a deliberate admin decision that Metabase may reach that network (an
+  on-prem tile server, say), so plain `http` and IP-literal hosts are accepted there; which addresses are
+  actually reachable is still decided by the policy's [[network-policy-dns-resolver]] at connect time."
+  [^String url policy]
+  (if (= policy :external-only)
+    (safe-url? url)
+    (try
+      (let [parsed (URL. url)]
+        (and (contains? #{"http" "https"} (lower-case-en (str (.getProtocol parsed))))
+             (str/blank? (str (.getUserInfo parsed)))
+             (not (str/blank? (str (.getHost parsed))))))
+      (catch Throwable _ false))))
 
 (defn- read-bounded
   "Read up to `max` bytes from `in`; returns the byte[] or nil if the stream exceeds `max`."
@@ -226,21 +238,27 @@
    :allowed-content-types  set of lower-cased content-types to accept; nil/empty accepts any
    :max-bytes              download cap in bytes (default 20 MB)
    :timeout-ms             socket + connection timeout (default 8000)
-   :user-agent             `User-Agent` header (default a descriptive Metabase UA)"
+   :user-agent             `User-Agent` header (default a descriptive Metabase UA)
+   :network-policy         which networks may be reached, per [[address-allowed-for-network-policy?]]
+                           (default `:external-only`). Anything looser also relaxes the URL pre-check to
+                           allow `http` and IP-literal hosts, since those are the shape an internal host
+                           an admin has deliberately allowed usually takes."
   ([url] (fetch-bytes url nil))
-  ([url {:keys [allowed-content-types max-bytes timeout-ms user-agent]
-         :or   {max-bytes  fetch-default-max-bytes
-                timeout-ms fetch-default-timeout-ms
-                user-agent fetch-default-user-agent}}]
-   (when (safe-url? url)
+  ([url {:keys [allowed-content-types max-bytes network-policy timeout-ms user-agent]
+         :or   {max-bytes      fetch-default-max-bytes
+                network-policy :external-only
+                timeout-ms     fetch-default-timeout-ms
+                user-agent     fetch-default-user-agent}}]
+   (when (fetchable-url? url network-policy)
      (try
-       (let [resp              (http/get url {:as                 :stream
-                                              :redirect-strategy  :none
-                                              :socket-timeout     timeout-ms
-                                              :connection-timeout timeout-ms
-                                              :throw-exceptions   false
-                                              :headers            {"User-Agent" user-agent}
-                                              :dns-resolver       ssrf-safe-dns-resolver})
+       (let [resp              (http/get url (m/assoc-some
+                                              {:as                 :stream
+                                               :redirect-strategy  :none
+                                               :socket-timeout     timeout-ms
+                                               :connection-timeout timeout-ms
+                                               :throw-exceptions   false
+                                               :headers            {"User-Agent" user-agent}}
+                                              :dns-resolver (network-policy-dns-resolver network-policy)))
              ctype             (response-content-type resp)
              ^InputStream body (:body resp)]
          (try

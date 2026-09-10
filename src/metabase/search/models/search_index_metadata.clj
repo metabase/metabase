@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.models.interface :as mi]
+   [metabase.search.db :as search.db]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -26,11 +27,7 @@
   "The current 'pending' and 'active' indexes for the given coordinates, where they exist."
   [engine version]
   (let [pending-cut-off (t/minus (t/offset-date-time) pending-table-cut-off)]
-    (->> (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
-                    :engine engine
-                    :version version
-                    :lang_code (i18n/site-locale-string)
-                    :status [:in [:active :pending]])
+    (->> (search.db/index-metadata engine version (i18n/site-locale-string))
          (filter (fn [{:keys [status created_at]}]
                    (or (not= status :pending)
                        (t/before? pending-cut-off created_at))))
@@ -40,23 +37,15 @@
   "Create a 'pending' entry, unless one already exists. Return whether it was created."
   [engine version index-name]
   ;; Clear out any expired records
-  (t2/delete! :model/SearchIndexMetadata
-              {:where [:and
-                       [:= :lang_code (i18n/site-locale-string)]
-                       [:= :status "pending"]
-                       [:< :created_at (t/minus (t/offset-date-time) pending-table-cut-off)]]})
+  (search.db/delete-expired-pending-index-metadata! (i18n/site-locale-string) (t/minus (t/offset-date-time) pending-table-cut-off))
   (boolean
-   (when-not (t2/exists? :model/SearchIndexMetadata
-                         :engine engine
-                         :version version
-                         :lang_code (i18n/site-locale-string)
-                         :status :pending)
+   (when-not (search.db/pending-index-metadata-exists? engine version (i18n/site-locale-string))
      (try
-       (t2/insert! :model/SearchIndexMetadata {:engine     engine
-                                               :version    version
-                                               :lang_code (i18n/site-locale-string)
-                                               :status     :pending
-                                               :index_name (name index-name)})
+       (search.db/insert-index-metadata! {:engine     engine
+                                          :version    version
+                                          :lang_code (i18n/site-locale-string)
+                                          :status     :pending
+                                          :index_name (name index-name)})
        (log/infof "Inserted new pending table %s" index-name)
        true
        (catch Exception _
@@ -66,34 +55,25 @@
 (defn delete-index!
   "Delete the given pending index, as long as its still pending."
   [engine version index-name]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :index_name (name index-name)))
+  (search.db/delete-index-metadata! engine version (i18n/site-locale-string) (name index-name)))
 
 (defn active-pending!
   "If there is 'pending' index, make it 'active'. Return the name of the active index, regardless."
   [engine version]
   (t2/with-transaction [_conn]
-    (when (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :pending)
-      (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :retired)
-      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :active} {:status :retired})
-      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :pending} {:status :active}))
-    (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :active)))
+    (when (search.db/pending-index-metadata-exists? engine version (i18n/site-locale-string))
+      (search.db/delete-retired-index-metadata! engine version (i18n/site-locale-string))
+      (search.db/retire-active-index-metadata! engine version (i18n/site-locale-string))
+      (search.db/activate-pending-index-metadata! engine version (i18n/site-locale-string)))
+    (search.db/active-index-name engine version (i18n/site-locale-string))))
 
 (defn delete-obsolete!
   "Remove metadata corresponding to obsolete Metabase versions.
   It is up to the relevant engine to delete the actual indexes themselves."
   [our-version]
   ;; If there are no recent versions, then there is nothing to delete.
-  (when-let [most-recent (seq (map :version (t2/query {:select   [:version]
-                                                       :from     [(t2/table-name :model/SearchIndexMetadata)]
-                                                       :group-by [:version]
-                                                       ;; use pk as a tie-breaker
-                                                       :order-by [[[:max :updated_at] :desc]
-                                                                  [[:max :id] :desc]]
-                                                       :limit    3})))]
-    (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
-                   :where       [:or
-                                 [:not-in :version most-recent]
-                                 ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
-                                 [:and
-                                  [:not-in :version (filter some? [our-version (first most-recent)])]
-                                  [:< :updated_at (t/minus (t/zoned-date-time) pending-table-cut-off)]]]})))
+  (when-let [most-recent (seq (map :version (search.db/recent-index-versions 3)))]
+    ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
+    (search.db/delete-obsolete-index-metadata! most-recent
+                                               (filter some? [our-version (first most-recent)])
+                                               (t/minus (t/zoned-date-time) pending-table-cut-off))))

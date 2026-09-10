@@ -13,6 +13,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.audit-app.audit :as audit-ee]
+   [metabase-enterprise.audit-app.db :as audit-app.db]
    [metabase-enterprise.audit-app.permissions :as audit-ee.permissions]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.app-db.core :as mdb]
@@ -23,8 +24,7 @@
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -52,7 +52,7 @@
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
   []
-  (t2/select-one :model/Database :name canonical-db-name :is_audit false))
+  (audit-app.db/non-audit-database-named canonical-db-name))
 
 (defn create-analytics-dev-database!
   "Creates a Database entry pointing to the app database for analytics development.
@@ -74,16 +74,16 @@
       (do
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
-      (let [db (t2/insert-returning-instance! :model/Database
-                                              {:name canonical-db-name
-                                               :description "Development database for analytics views and content"
-                                               :engine (name db-type)
-                                               :details {:is-audit-dev true}
-                                               :is_audit false ; Important: not an audit DB
-                                               :is_full_sync true
-                                               :is_on_demand false
-                                               :creator_id user-id
-                                               :auto_run_queries true})]
+      (let [db (audit-app.db/insert-returning-database!
+                {:name canonical-db-name
+                 :description "Development database for analytics views and content"
+                 :engine (name db-type)
+                 :details {:is-audit-dev true}
+                 :is_audit false ; Important: not an audit DB
+                 :is_full_sync true
+                 :is_on_demand false
+                 :creator_id user-id
+                 :auto_run_queries true})]
         (log/info "Created analytics dev database:" (:id db))
         (sync/sync-database! db {:scan :schema})
         db))))
@@ -92,7 +92,7 @@
   "Deletes the analytics dev database and all related metadata."
   [db-id]
   (log/info "Deleting analytics dev database:" db-id)
-  (t2/delete! :model/Database :id db-id)
+  (audit-app.db/delete-database! db-id)
   (log/info "Deleted analytics dev database"))
 
 ;;; ============================================================================
@@ -280,12 +280,12 @@
 (defn- first-admin-user
   "Get the first admin user (by ID)."
   []
-  (t2/select-one [:model/User :id :email] :is_superuser true {:order-by [[:id :asc]]}))
+  (audit-app.db/first-superuser))
 
 (defn find-analytics-collection
   "Get the analytics collection"
   []
-  (t2/select-one :model/Collection :entity_id audit/default-audit-collection-entity-id))
+  (audit-app.db/collection-by-entity-id audit/default-audit-collection-entity-id))
 
 (defn- analytics-content-loaded?
   "Check if analytics content has already been imported."
@@ -294,8 +294,8 @@
        (find-analytics-collection)))
 
 (defn- cleanup-real-analytics []
-  (t2/delete! :model/Database :is_audit true)
-  (t2/delete! :model/Collection :namespace "analytics"))
+  (audit-app.db/delete-audit-databases!)
+  (audit-app.db/delete-analytics-collections!))
 
 (defn- analytics-dev-mode-setup []
   (when (audit/analytics-dev-mode)

@@ -9,6 +9,7 @@
    [malli.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections-rest.db :as collections-rest.db]
    [metabase.collections.children :as collections.children]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
@@ -154,16 +155,10 @@
                                                {:dataset #{}
                                                 :metric  #{}
                                                 :card    #{}}
-                                               (t2/reducible-query {:select-distinct [:collection_id :type]
-                                                                    :from            [:report_card]
-                                                                    :where           [:= :archived false]}))
+                                               (collections-rest.db/unarchived-card-collection-types-reducible))
                                        ;; Tables in collections are an EE feature (library)
                                        (when (premium-features/has-feature? :library)
-                                         {:table (->> (t2/query {:select-distinct [:collection_id]
-                                                                 :from :metabase_table
-                                                                 :where [:and
-                                                                         [:= :is_published true]
-                                                                         [:= :archived_at nil]]})
+                                         {:table (->> (collections-rest.db/published-table-collection-ids)
                                                       (map :collection_id)
                                                       (into #{}))}))
             collections-with-details (map collections.children/prep-collection-for-export collections)]
@@ -214,11 +209,7 @@
   "Implementation for the `dashboard-question-candidates` endpoints."
   [collection-id]
   (api/check-403 api/*is-superuser?*)
-  (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:and
-                                                                            [:= :collection_id collection-id]
-                                                                            [:= :dashboard_id nil]]
-                                                                    :order-by [[:id :desc]]})
-                                            :in_dashboards)]
+  (let [all-cards-in-collection (t2/hydrate (collections-rest.db/top-level-cards-in-collection collection-id) :in_dashboards)]
     (filter
      (fn [card]
        (and
@@ -548,7 +539,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)
-  (let [collection (t2/select-one :model/Collection id)
+  (let [collection (collections-rest.db/collection id)
         old-children-location (collection/children-location collection)
         new-children-location (:location collection)]
     (api/check-400 (:archived collection)
@@ -560,12 +551,10 @@
                    "Personal collections cannot be deleted.")
     (t2/with-transaction [_tx]
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
-      (doseq [child (t2/select :model/Collection
-                               :location [:like (str old-children-location "%")]
-                               :archived_directly true)]
+      (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
         (collection/move-collection! child new-children-location))
       ;; Now we can safely delete this collection and anything left under it.
-      (t2/delete! :model/Collection :id id))))
+      (collections-rest.db/delete-collection! id))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API

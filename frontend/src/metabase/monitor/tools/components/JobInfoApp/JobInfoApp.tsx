@@ -32,7 +32,7 @@ export const JobInfoApp = () => {
         ) : (
           <>
             {data != null && data.scheduler.length > 0 && (
-              <Code block p="xl" style={{ flexShrink: 0 }}>
+              <Code block p="xxl" style={{ flexShrink: 0 }}>
                 {data.scheduler.join("\n")}
               </Code>
             )}

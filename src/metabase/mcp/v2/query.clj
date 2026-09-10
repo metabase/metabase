@@ -4,10 +4,12 @@
    and a keyset predicate past the last returned row — so paging is just another query on the
    existing handle store: no page-state column, no content-addressing, no schema change."
   (:require
+   [clojure.walk :as walk]
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.util.log :as log]))
 
@@ -84,24 +86,71 @@
               true)))
       false)))
 
-(defn- tiebreaker-specs
-  "Deterministic tiebreakers to append after the existing order-bys to make the order total:
-   the projected source-table PK alone when there is one (unique per result row — the fan-out
-   guard in [[next-page-query]] is what upgrades the PK's metadata-level uniqueness to a
-   row-level fact — and none at all if it is already ordered), else the full remaining
-   projected-column tuple.
+(defn- passthrough-stage?
+  "True when stage `stage-number` cannot change row identity: no joins (a join can fan the rows
+   out) and no `:fields` (a re-projection can drop the very columns that made the tuple unique).
+   Filters, expressions and limits all preserve row identity and are fine."
+  [query stage-number]
+  (and (empty? (lib/joins query stage-number))
+       (nil? (:fields (lib/query-stage query stage-number)))))
 
-   Empty means the query's own order is already total. That is the condition
-   [[next-page-query]] mints on and the condition [[with-total-order]] establishes."
-  [resolved-query ret-cols ordered-idxs]
-  (let [pk-idx (pk-index resolved-query ret-cols)]
+(defn- aggregation-derived-unique?
+  "True when the full projected tuple is unique per result row because an aggregating stage
+   produced those rows — they are distinct by breakout tuple, and an aggregated stage projects
+   every breakout — and every stage after it merely passes them through.
+
+   The look-back is load-bearing, not defensive: [[next-page-query]] carries an aggregated
+   query's keyset in an appended stage, so from page 2 on the LAST stage is that appended
+   pass-through, unaggregated and PK-less. A proof that only inspected the last stage would kill
+   the chain at page 2."
+  [query]
+  (loop [stage-number (dec (lib/stage-count query))]
     (cond
-      (and pk-idx (contains? ordered-idxs pk-idx)) []
-      pk-idx                                       [{:idx pk-idx :dir :asc}]
-      :else                                        (into []
-                                                         (comp (remove ordered-idxs)
-                                                               (map (fn [i] {:idx i :dir :asc})))
-                                                         (range (count ret-cols))))))
+      (neg? stage-number)                          false
+      (or (seq (lib/aggregations query stage-number))
+          (seq (lib/breakouts query stage-number))) true
+      (passthrough-stage? query stage-number)       (recur (dec stage-number))
+      :else                                         false)))
+
+(defn- unique-key-specs
+  "Specs for a key proven unique per result row, or nil when no such proof exists. Two proofs:
+   the projected source-table PK (the fan-out guard in [[next-page-query]] is what upgrades its
+   metadata-level uniqueness to a row-level fact), or a full projected tuple an aggregation made
+   distinct.
+
+   Nil is the honest answer for an unaggregated projection that drops the PK — a `fields`
+   selection of non-unique columns, say. Its full tuple repeats, so no order over it is total
+   and the strictly-past-the-boundary keyset would skip every row tied with the boundary. There
+   is no gap-free cursor to mint; the caller is steered to narrow instead."
+  [resolved-query query ret-cols]
+  (if-let [pk-idx (pk-index resolved-query ret-cols)]
+    [{:idx pk-idx :dir :asc}]
+    (when (aggregation-derived-unique? query)
+      (mapv (fn [i] {:idx i :dir :asc}) (range (count ret-cols))))))
+
+(defn- tiebreaker-specs
+  "The unique key's columns that aren't already ordered — the deterministic tiebreakers to append
+   after the existing order-bys to make the row order total.
+
+   Three distinguishable answers, and both callers depend on telling them apart. Nil: no unique
+   key can be proven, so no total order exists and no cursor is possible ([[with-total-order]]
+   leaves the query alone; [[next-page-query]] refuses). Empty: the query's own order is already
+   total — the condition [[next-page-query]] mints on and the condition [[with-total-order]]
+   establishes. Non-empty: the tiebreakers that would establish it."
+  [resolved-query query ret-cols ordered-idxs]
+  (when-let [key-specs (unique-key-specs resolved-query query ret-cols)]
+    (into [] (remove (comp ordered-idxs :idx)) key-specs)))
+
+(defn- serialize-preserving-parameters
+  "`query` serialized, with `:parameters` carried over from `serialized-query`.
+
+   [[lib/prepare-for-serialization]] strips `:parameters` as runtime-only, but for an MBQL query
+   they are a real filter: the QP's parameter middleware ANDs them onto the query. Any rewrite that
+   round-trips through serialization must put them back, or the rewritten query asks a wider
+   question than the caller did. `execute_sql` re-attaches them the same way for the same reason."
+  [serialized-query query]
+  (cond-> (lib/prepare-for-serialization query)
+    (seq (:parameters serialized-query)) (assoc :parameters (:parameters serialized-query))))
 
 (defn- keyset-filter-clause
   "Lexicographic strictly-past-the-boundary predicate over the key columns:
@@ -125,6 +174,80 @@
       (first terms)
       (apply lib/or terms))))
 
+(def ^:private keyset-marker
+  "Option key stamped on a filter clause this namespace minted, so the next page can supersede its
+   predecessor instead of stacking a dead predicate beside it.
+
+   Superseding is sound, not merely tidy: every row the new predicate admits lies strictly past a
+   boundary row that itself satisfied the old one, so the new predicate implies the old and
+   dropping it cannot widen the result. It is an optimization all the same — the marker rides in a
+   clause's options map, which no schema declares, so should Lib ever start stripping undeclared
+   option keys the predicates would simply accumulate again as they did before, with the same
+   results and a larger query."
+  ::keyset)
+
+(defn- minted-keyset?
+  [clause]
+  (and (vector? clause) (true? (get-in clause [1 keyset-marker]))))
+
+(defn- stage-without-minted-keysets
+  [stage]
+  (if-let [kept (not-empty (into [] (remove minted-keyset?) (:filters stage)))]
+    (assoc stage :filters kept)
+    (dissoc stage :filters)))
+
+(defn strip-caller-keyset-markers
+  "`serialized-query` with [[keyset-marker]] removed from every clause's options, everywhere in the
+   map.
+
+   The marker identifies a predicate *this namespace* minted, and two behaviours depend on that:
+   [[without-page-boundary]] drops marked filters from the query a handle stores, and
+   [[supersede-previous-keyset]] drops them from the query the next page runs. Neither is safe if a
+   caller can mint the mark itself — and it can, since a tool's `:query` is an open `[:map]` and a
+   namespaced option key rides through JSON decode and serialization untouched. A caller that
+   stamps its own filter gets that filter silently dropped from the saved handle and from every
+   later page, so the tool reports a narrow question while serving wide rows.
+
+   Run every caller-supplied query through this so only server-minted clauses can carry the mark."
+  [serialized-query]
+  (walk/postwalk (fn [x]
+                   (if (and (map? x) (contains? x keyset-marker))
+                     (dissoc x keyset-marker)
+                     x))
+                 serialized-query))
+
+(defn- supersede-previous-keyset
+  "`query`'s last stage with the keyset predicates this namespace minted removed, so the caller can
+   add the current page's in their place. Filters the caller wrote are untouched."
+  [query]
+  (lib/update-query-stage query -1 stage-without-minted-keysets))
+
+(defn without-page-boundary
+  "`serialized-query` with the keyset predicate this namespace minted stripped from its last stage,
+   or unchanged when it carries none.
+
+   A cursor page's stored query embeds the boundary it resumed from — that is how paging works —
+   but a boundary is a scroll position, not part of the question. A query handle is what a later
+   tool saves or visualizes, so mint it from this: saving page 3 of an orders listing should save
+   the orders question, never `orders WHERE id > 4171`. Paging is untouched, since the cursor
+   carries its own boundary.
+
+   Only predicates this namespace minted come off (see [[keyset-marker]]); a filter the caller
+   wrote is part of the question and stays. Works on the serialized map rather than a rehydrated
+   query, so cleaning a stored handle needs no metadata.
+
+   One mark of a cursor page it cannot undo: a query carrying its own `:limit` has that limit spent
+   down across pages, so a deep page's handle asks for the rows still owed rather than the count
+   the caller wrote. Recovering that would need state the handle store deliberately does not keep."
+  [serialized-query]
+  (let [stages (vec (:stages serialized-query))]
+    (if-let [stage (peek stages)]
+      (if (some minted-keyset? (:filters stage))
+        (assoc serialized-query :stages
+               (assoc stages (dec (count stages)) (stage-without-minted-keysets stage)))
+        serialized-query)
+      serialized-query)))
+
 (def ^:private exact-temporal-units
   "Truncation units at or coarser than a second. A value truncated this far renders without
    sub-second digits, so the emitted string parses back to exactly the value that was compared."
@@ -140,6 +263,45 @@
   (and (isa? (:effective-type col) :type/Temporal)
        (not (isa? (:effective-type col) :type/Date))
        (not (contains? exact-temporal-units (:unit (lib/temporal-bucket col))))))
+
+(defn- nullable-key-cols?
+  "True when any column in `cols` can hold NULL — the condition that makes a keyset cursor lose rows.
+
+   A keyset predicate is built purely from comparisons (`k > v`, `k = v`), and under SQL's
+   three-valued logic every one of those is NULL — never true — for a row whose key column is NULL.
+   Such a row fails the next-page predicate and is never served, even though it sorted after the
+   boundary in the order that actually ran. The `(every? some? values)` guard on the boundary row
+   does not catch this: it fires only when a page boundary happens to land inside the NULL run,
+   while the rows lost are the whole run.
+
+   Refusing is the honest answer rather than a fix. Where the NULL block sorts is driver-dependent
+   (the SQL QP emits no explicit `NULLS FIRST`/`LAST`), and MBQL cannot express a null-aware
+   comparison, so there is no predicate this namespace could build that is correct on every driver.
+   This joins the remap and lossy-value checks in [[next-page-query]]: an unusable key means no
+   cursor, not a cursor with gaps.
+
+   Two signals, both read from the app DB because lib column metadata carries neither. A column is
+   unsafe only when it is BOTH declared nullable AND has been observed to hold NULLs
+   (`fingerprint.global.nil%`). Declared nullability alone is far too blunt to gate on — in a
+   typical warehouse only primary keys are NOT NULL, so refusing on it would cost the cursor for
+   nearly every query that orders by anything else, trading a silent-rows bug for a broad loss of
+   paging. The fingerprint is what distinguishes a column that merely permits NULLs from one that
+   actually contains them.
+
+   The fingerprint is a sync-time sample, so `nil% = 0.0` is strong evidence rather than proof: a
+   column that gains its first NULL after the last sync stays cursorable until the next one. That
+   residual is bounded by sync frequency and is the price of keeping paging usable at all.
+
+   Columns that are not plain field refs (expression and aggregation outputs) have no `:id`, so
+   nothing is known about them and they are treated as safe on the same reasoning — refusing on
+   every aggregate would disable the aggregated cursor path wholesale."
+  [cols]
+  (let [field-ids (into #{} (keep :id) cols)]
+    (boolean
+     (when (seq field-ids)
+       (->> (mcp.db/nullable-fields field-ids)
+            (some (fn [field]
+                    (pos? (or (get-in (:fingerprint field) [:global :nil%]) 0)))))))))
 
 (defn- row-positions
   "Positions in the result row of the query's projected columns, in projection order. The remap
@@ -164,6 +326,12 @@
   "The serialized next-page query for `resolved-query` given the truncated page's `last-row`
    (and the run's `result-cols` metadata, used to locate the projected columns in the row), or
    nil when no gap-free cursor can be built.
+
+   The page's keyset filter supersedes the previous page's rather than joining it: each is
+   stamped with [[keyset-marker]], and a stamped predicate on the target stage is dropped before
+   the new one goes on. Left to accumulate they would grow the stored query, the emitted `WHERE`,
+   and the warehouse's planning cost linearly with page depth, all of them dead — see
+   [[keyset-marker]] for why dropping them cannot change the result.
 
    An unaggregated last stage takes the order and keyset filter in place — the filter applies
    before the stage's own limit, so an embedded limit still yields exactly the next page. An
@@ -195,18 +363,26 @@
                             (row-positions ret-cols result-cols last-row))]
             (when positions
               (when-let [specs (order-by-specs query ret-cols)]
-                (when (= [] (tiebreaker-specs resolved-query ret-cols (into #{} (map :idx) specs)))
-                  (let [values      (mapv #(nth last-row (nth positions (:idx %))) specs)
+                (when (= [] (tiebreaker-specs resolved-query query ret-cols (into #{} (map :idx) specs)))
+                  (let [;; read post-`js-int-to-string?`, so an integer past 2^53 arrives here as a
+                        ;; string and goes into the predicate as one. It compiles numerically all the
+                        ;; same: the QP's `wrap-value-literals` types the bare literal from the column
+                        ;; and `auto-parse-filter-values` parses it, both above the driver layer.
+                        ;; Pinned by `large-integer-boundary-paging-test`.
+                        values      (mapv #(nth last-row (nth positions (:idx %))) specs)
                         ;; a remapped column can't be a cursor key (the remap middleware rewrites an
                         ;; order-by on it to sort by the display value, so the executed order and the
                         ;; keyset predicate — which compares raw values — would disagree: a gap), and
                         ;; neither can a column whose boundary value doesn't round-trip exactly.
-                        unsafe-key? (some (fn [{:keys [idx]}]
-                                            (let [col (nth ret-cols idx)]
-                                              (or (:lib/external-remap col)
-                                                  (:lib/internal-remap col)
-                                                  (lossy-boundary-col? col))))
-                                          specs)]
+                        key-cols    (mapv #(nth ret-cols (:idx %)) specs)
+                        unsafe-key? (or (some (fn [col]
+                                                (or (:lib/external-remap col)
+                                                    (:lib/internal-remap col)
+                                                    (lossy-boundary-col? col)))
+                                              key-cols)
+                                        ;; a NULL in any key column makes every comparison term
+                                        ;; NULL, so the row is silently never served
+                                        (nullable-key-cols? key-cols))]
                     (when (and (seq specs) (not unsafe-key?) (every? some? values))
                       (let [base        (if aggregated? (lib/append-stage query) query)
                             target-cols (if aggregated? (vec (lib/returned-columns base)) ret-cols)
@@ -218,9 +394,11 @@
                                                   base
                                                   specs)
                                           base)]
-                        (-> with-order
-                            (lib/filter (keyset-filter-clause target-cols specs values))
-                            lib/prepare-for-serialization)))))))))))))
+                        (->> (-> with-order
+                                 supersede-previous-keyset
+                                 (lib/filter (-> (keyset-filter-clause target-cols specs values)
+                                                 (assoc-in [1 keyset-marker] true))))
+                             (serialize-preserving-parameters resolved-query))))))))))))))
 
 (defn with-total-order
   "`serialized-query` with the tiebreakers that make its row order total appended to the last
@@ -231,9 +409,10 @@
    correctness.
 
    Returns the query unchanged when its order is already total, when no tiebreakers can be
-   derived (an order-by outside the projection), when a join makes them unsound anyway (see
-   [[next-page-query]]), or on any failure to rehydrate or manipulate the query. Idempotent: a
-   second pass finds every tiebreaker already ordered."
+   derived (an order-by outside the projection, or a projection with no provable unique key —
+   see [[unique-key-specs]]), when a join makes them unsound anyway (see [[next-page-query]]), or
+   on any failure to rehydrate or manipulate the query. Idempotent: a second pass finds every
+   tiebreaker already ordered."
   [serialized-query]
   (or (when (and (map? serialized-query)
                  (pos-int? (:database serialized-query))
@@ -246,13 +425,13 @@
               (let [query    (lib/query mp serialized-query)
                     ret-cols (vec (lib/returned-columns query))]
                 (when-let [ordered (order-by-specs query ret-cols)]
-                  (when-let [tiebreakers (seq (tiebreaker-specs serialized-query ret-cols
+                  (when-let [tiebreakers (seq (tiebreaker-specs serialized-query query ret-cols
                                                                 (into #{} (map :idx) ordered)))]
-                    (-> (reduce (fn [q {:keys [idx dir]}]
-                                  (lib/order-by q (nth ret-cols idx) dir))
-                                query
-                                tiebreakers)
-                        lib/prepare-for-serialization))))))
+                    (->> (reduce (fn [q {:keys [idx dir]}]
+                                   (lib/order-by q (nth ret-cols idx) dir))
+                                 query
+                                 tiebreakers)
+                         (serialize-preserving-parameters serialized-query)))))))
           (catch Exception e
             (log/warn e "Failed to impose a total order on the query")
             nil)))
@@ -281,7 +460,9 @@
    sourced saved question, or a sourced question whose stored query can't be read (a fan-out
    defeats every tiebreaker — see [[next-page-query]]), an order-by outside the projection, a
    row that can't be aligned with the projection, a nil boundary value, a key column that is
-   remapped or whose values don't round-trip exactly (raw datetimes), an aggregated stage
+   remapped, nullable in the warehouse (see [[nullable-key-cols?]]), or whose values don't
+   round-trip exactly (raw datetimes), a projection with no provable unique key — an unaggregated stage whose `:fields` drops the source-table PK, whose
+   repeating tuple no order can break ties on (see [[unique-key-specs]]) — an aggregated stage
    carrying its own limit, or any failure to rehydrate or manipulate the query."
   ([mcp-session-id user-id resolved-query last-row]
    (next-page-cursor! mcp-session-id user-id resolved-query last-row nil))

@@ -5,13 +5,10 @@ import "embedding-sdk-bundle";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
-
-const METABASE_INSTANCE_URL =
-  // Unjustified type cast. FIXME
-  (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
+import { STORYBOOK_METABASE_INSTANCE_URL } from "embedding-sdk-shared/.storybook/constants";
 
 const DEFAULT_AUTH_CONFIG: MetabaseAuthConfig = {
-  metabaseInstanceUrl: METABASE_INSTANCE_URL,
+  metabaseInstanceUrl: STORYBOOK_METABASE_INSTANCE_URL,
 };
 
 export const CommonSdkStoryCorsWrapper = (Story: StoryFn) => (

@@ -116,10 +116,10 @@ export function AddMetricsModal({
       <Tabs.List>
         <Tabs.Tab
           value="library"
-          px="md"
+          px="lg"
           leftSection={<Icon name="repository" size={14} />}
         >{t`Library`}</Tabs.Tab>
-        <Tabs.Tab value="all" px="md">{t`All`}</Tabs.Tab>
+        <Tabs.Tab value="all" px="lg">{t`All`}</Tabs.Tab>
       </Tabs.List>
     </Tabs>
   ) : undefined;

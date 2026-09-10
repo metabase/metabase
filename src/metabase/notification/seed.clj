@@ -3,6 +3,7 @@
   No-op if none of the notifications are changed.
   If a notification is changed, it will be replaced with a new one."
   (:require
+   [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -189,9 +190,9 @@
 
 (defn- cleanup-notification!
   [internal-id existing-row]
-  (t2/delete! :model/Notification :internal_id internal-id)
+  (notification.db/delete-notification-by-internal-id! internal-id)
   (when-let [template-ids (->> existing-row :handlers (keep (comp :id :template)) seq)]
-    (t2/delete! :model/ChannelTemplate :id [:in template-ids])))
+    (notification.db/delete-channel-templates! template-ids)))
 
 (defn- create-notification!
   [notification]
@@ -199,9 +200,7 @@
                    (if-let [template (:template handler)]
                      (-> handler
                          (dissoc :template)
-                         (assoc :template_id (t2/insert-returning-pk!
-                                              :model/ChannelTemplate
-                                              template)))
+                         (assoc :template_id (notification.db/insert-channel-template! template)))
                      handler))]
     (models.notification/create-notification!
      (dissoc notification :handlers :subscriptions)
@@ -228,12 +227,11 @@
   "Hydrate an existing notification row for comparison. Don't use [[models.notification/hydrate-notification]]
    so we can migrate on schema changes."
   [notification]
-  (t2/hydrate notification :creator :payload :subscriptions
-              [:handlers :channel :template [:recipients :recipients-detail]]))
+  (t2/hydrate notification :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (defn- sync-notification!
   [{:keys [internal_id] :as row}]
-  (let [existing-notification (some-> (t2/select-one :model/Notification :internal_id internal_id)
+  (let [existing-notification (some-> (notification.db/notification-by-internal-id internal_id)
                                       hydrate-existing-notification)]
     (u/prog1 (action existing-notification row)
       (case <>

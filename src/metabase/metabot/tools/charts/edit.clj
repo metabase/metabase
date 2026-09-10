@@ -1,13 +1,12 @@
 (ns metabase.metabot.tools.charts.edit
   "Tool for editing chart visualization settings."
   (:require
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]))
 
 (def ^:private valid-chart-types
   "Valid chart types supported by Metabase."
-  #{:table :bar :line :pie :sunburst :treemap :area :combo :row :pivot
-    :scatter :waterfall :sankey :scalar :smartscalar :gauge
-    :progress :funnel :object :map})
+  (into #{} (map keyword) shared/chart-types))
 
 (defn- format-chart-link
   "Format a metabase:// link to the chart."

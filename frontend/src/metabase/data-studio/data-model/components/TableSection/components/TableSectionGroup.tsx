@@ -10,7 +10,7 @@ export function TableSectionGroup({
   children: React.ReactNode;
 }) {
   return (
-    <Stack gap="md" className={S.box}>
+    <Stack gap="lg" className={S.box}>
       {title && (
         <Title order={4} fz="sm" c="text-secondary">
           {title}

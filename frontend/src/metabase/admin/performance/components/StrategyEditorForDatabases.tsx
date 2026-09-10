@@ -73,7 +73,7 @@ const RootCachingStrategyEditor = () => {
         h="calc(100vh - 9rem)"
       >
         {confirmationModal}
-        <Flex gap="xl" className={S.scrollableLayout}>
+        <Flex gap="xxl" className={S.scrollableLayout}>
           <Box
             w="100%"
             maw="30rem"

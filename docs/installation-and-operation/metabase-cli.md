@@ -9,8 +9,6 @@ The Metabase CLI (`mb`) is a command-line client for Metabase. `mb` authenticate
 
 > Looking for the commands built into the Metabase JAR, like `migrate` or `load-from-h2`? Check out [Metabase JAR commands](./commands.md).
 
-> Join us for AI Analytics Week: three live sessions on trusting AI answers, rolling out AI safely, and building on top of AI. [Details and registration →](https://metaba.se/ai-analytics-week)
-
 ## Requirements
 
 - Node.js, to install the CLI from npm.

@@ -32,7 +32,7 @@ const DatabaseScheduleToggleField = ({
       label={title}
       description={description}
       onChange={handleChange}
-      mb="md"
+      mb="lg"
       labelPosition="left"
       styles={{
         body: {

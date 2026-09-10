@@ -10,8 +10,8 @@
   cursor: pointer;
   padding-left: var(--mantine-spacing-sm);
   padding-right: var(--mantine-spacing-sm);
-  left: var(--mantine-spacing-xl);
-  right: var(--mantine-spacing-xl);
+  left: var(--mantine-spacing-xxl);
+  right: var(--mantine-spacing-xxl);
 
   &:focus-visible,
   &.selected {
@@ -32,7 +32,7 @@
   }
 
   &.table {
-    padding-left: var(--mantine-spacing-md);
+    padding-left: var(--mantine-spacing-lg);
   }
 }
 

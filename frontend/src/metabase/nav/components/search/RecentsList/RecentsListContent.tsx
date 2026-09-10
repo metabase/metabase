@@ -48,7 +48,7 @@ export const RecentsListContent = ({
 
   if (results.length === 0) {
     return (
-      <Stack gap="md" px="sm" py="md">
+      <Stack gap="lg" px="sm" py="lg">
         <Title order={4} px="sm">{t`Recently viewed`}</Title>
         <EmptyStateContainer>
           <EmptyState message={t`Nothing here`} icon="folder" />
@@ -61,7 +61,7 @@ export const RecentsListContent = ({
     <Stack
       gap="sm"
       px="sm"
-      pt="md"
+      pt="lg"
       pb="sm"
       data-testid="recents-list-container"
     >
@@ -80,8 +80,8 @@ export const RecentsListContent = ({
               isSelected={cursorIndex === index}
             >
               <ItemIcon active={isActive} item={item} type={item.model} />
-              <ResultNameSection justify="center" gap="xs">
-                <Group gap="xs" align="center" wrap="nowrap">
+              <ResultNameSection justify="center" gap="xxs">
+                <Group gap="xxs" align="center" wrap="nowrap">
                   <ResultTitle
                     data-testid="recently-viewed-item-title"
                     truncate
@@ -100,7 +100,7 @@ export const RecentsListContent = ({
                 </SearchResultLink>
               </ResultNameSection>
               {isItemLoading(item) && (
-                <LoadingSection px="xs">
+                <LoadingSection px="xxs">
                   <Loader />
                 </LoadingSection>
               )}

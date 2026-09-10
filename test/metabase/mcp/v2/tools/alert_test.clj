@@ -386,6 +386,56 @@
                                                       (wire {:method "update" :id (:id notification)
                                                              :active false}))))))))))
 
+(deftest update-refuses-to-collapse-multi-schedule-test
+  (testing "an alert built through the REST API can carry several cron subscriptions;
+            `:subscriptions` is a `:multi-row?` nested spec, so writing one back would delete the
+            rest. Refuse, the way multi-channel delivery is refused"
+    (notification.tu/with-card-notification
+      [notification {:card          {}
+                     :notification  {:creator_id (mt/user->id :crowberto)}
+                     :subscriptions [{:type :notification-subscription/cron
+                                      :cron_schedule "0 0 9 * * ? *"}
+                                     {:type :notification-subscription/cron
+                                      :cron_schedule "0 0 17 * * ? *"}]}]
+      (let [id    (:id notification)
+            crons #(set (map :cron_schedule (t2/select :model/NotificationSubscription
+                                                       :notification_id id)))]
+        (is (= 2 (count (crons))))
+        (testing "changing the schedule is refused"
+          (is (str/includes? (tool-error (call-tool! :crowberto nil
+                                                     (wire {:method "update" :id id
+                                                            :schedule (daily-schedule 7)})))
+                             "more than one schedule")))
+        (testing "and both subscriptions survive the attempt"
+          (is (= #{"0 0 9 * * ? *" "0 0 17 * * ? *"} (crons))))
+        (testing "an edit that leaves the schedule alone still goes through"
+          (is (= id (:id (tool-result (call-tool! :crowberto nil
+                                                  (wire {:method "update" :id id :active false}))))))
+          (is (= 2 (count (crons)))))))))
+
+(deftest update-403s-that-are-not-about-access-keep-their-message-test
+  (testing "only the read/write rejection collapses to not-found — that one has to, or a recipient
+            who can read an alert but not edit it could tell it apart from one that doesn't exist.
+            Every other 403 is about the edit itself and must say so, or the agent is told an alert
+            it just read no longer exists (SEC-662 domain rejections landed here)"
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:email-allow-list}
+       (notification.tu/with-channel-fixtures [:channel/email]
+         (notification.tu/with-card-notification
+           [notification {:card         {}
+                          :notification {:creator_id (mt/user->id :crowberto)}
+                          :handlers     [{:channel_type :channel/email
+                                          :recipients   [{:type    :notification-recipient/user
+                                                          :user_id (mt/user->id :crowberto)}]}]}]
+           (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
+             (let [error (tool-error (call-tool! :crowberto nil
+                                                 (wire {:method "update" :id (:id notification)
+                                                        :recipients ["someone@notallowed.com"]})))]
+               (testing "the disallowed address is named"
+                 (is (str/includes? error "someone@notallowed.com")))
+               (testing "and it is not disguised as a missing alert"
+                 (is (not (str/includes? error "not found"))))))))))))
+
 (deftest update-refuses-to-replace-an-unmanaged-channel-test
   (testing "an alert delivering over a channel this tool doesn't manage — an http webhook paging
             an on-call rota, say — must survive an edit that names a channel the tool does manage.
@@ -492,8 +542,36 @@
             (is (empty? (update! {:recipients [(mt/user->id :crowberto)]}))))
           (testing "delivery pointed at an outside address notifies the caller"
             (is (true? (notice? (update! {:recipients ["someone@example.com"]})))))
+          (testing "delivery pointed at another user notifies the caller too — that recipient is a
+                    user id, whose address only [[delivery-targets]]'s hydration can see, so the
+                    raw-address case above does not cover it"
+            (is (true? (notice? (update! {:recipients [(mt/user->id :rasta)]})))))
           (testing "a non-delivery update sends the caller no notice"
             (is (false? (notice? (update! {:active false}))))))))))
+
+(deftest create-delivery-notifies-caller-test
+  (testing "create tells the caller where the new alert delivers. The notification API's own
+            \"you were added\" mail removes the current user, so without this the agent could stand
+            up an alert mailing a third party and the token's owner would never hear about it"
+    (mt/with-model-cleanup [:model/Notification]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (let [create! (fn [args]
+                          (captured-emails-during!
+                           #(tool-result (call-tool! :crowberto nil
+                                                     (wire (merge {:method "create" :card_id card-id
+                                                                   :schedule (daily-schedule 9)}
+                                                                  args))))))
+                notice? (fn [emails]
+                          (boolean (some #(and (= "Crowberto Corv added you to an alert" (:subject %))
+                                               (contains? (set (:bcc %)) "crowberto@metabase.com"))
+                                         emails)))]
+            (testing "an alert that only reaches the caller tells them nothing they don't know"
+              (is (false? (notice? (create! {})))))
+            (testing "an outside address notifies the caller"
+              (is (true? (notice? (create! {:recipients ["someone@example.com"]})))))
+            (testing "and so does another user"
+              (is (true? (notice? (create! {:recipients [(mt/user->id :rasta)]})))))))))))
 
 (deftest active-round-trip-test
   (testing "GHY-4155: alerts pause and resume through `active` — there is no archived flag for them"
@@ -665,6 +743,43 @@
                                                            :schedule {:schedule_type "hourly"
                                                                       :schedule_minute 0}}))))))
             (is (= ["0 0 * * * ? *"] (cron)))))))))
+
+(deftest clearing-send-once-gates-on-query-execute-test
+  (testing "send_once archives the alert after its first send, so clearing it turns a single
+            scheduled run into an unbounded series — the same commitment a new schedule makes, and
+            so the same execute scope. Setting it stays free: it can only reduce the sends"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [write-only #{metabot.scope/agent-delivery-write}
+              with-exec  #{metabot.scope/agent-delivery-write metabot.scope/agent-query-run}
+              id         (:id (tool-result (call-tool! :crowberto with-exec
+                                                       (wire {:method "create" :card_id card-id
+                                                              :schedule (daily-schedule 9)
+                                                              :condition {:send_once true}}))))
+              send-once  #(t2/select-one-fn :send_once :model/NotificationCard :card_id card-id)]
+          (is (true? (send-once)))
+          (testing "clearing it with only the write scope is refused, naming the missing scope"
+            (is (re-find #"agent:query:run"
+                         (tool-error (call-tool! :crowberto write-only
+                                                 (wire {:method "update" :id id
+                                                        :condition {:send_once false}})))))
+            (testing "and the limit is still in place"
+              (is (true? (send-once)))))
+          (testing "a strict client's nulls are an omission, not a request to clear"
+            (is (= id (:id (tool-result (call-tool! :crowberto write-only
+                                                    (wire {:method "update" :id id
+                                                           :condition {:type nil :send_once nil}}))))))
+            (is (true? (send-once))))
+          (testing "setting it again needs no execute scope — it only shortens the series"
+            (is (= id (:id (tool-result (call-tool! :crowberto write-only
+                                                    (wire {:method "update" :id id
+                                                           :condition {:send_once true}}))))))
+            (is (true? (send-once))))
+          (testing "with the execute scope the clear goes through"
+            (is (= id (:id (tool-result (call-tool! :crowberto with-exec
+                                                    (wire {:method "update" :id id
+                                                           :condition {:send_once false}}))))))
+            (is (false? (send-once)))))))))
 
 (deftest write-response-respects-read-scopes-test
   (testing "GHY-4217: a write scope must not double as a read scope — without the alert read scopes

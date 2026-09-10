@@ -45,9 +45,9 @@
    followed by a newline and the line."
   [user args]
   (mt/with-test-user user
-    (let [result (registry/call-tool nil nil "browse_collection" args)
-          text   (-> result :content first :text)]
-      (if (:isError result)
+    (let [{:keys [result error]} (registry/call-tool nil nil "browse_collection" args)
+          text                   (if error (:message error) (-> result :content first :text))]
+      (if (or error (:isError result))
         {:error text}
         (let [[body line] (str/split text #"\n" 2)]
           {:json (json/decode+kw body) :line line})))))
@@ -394,9 +394,9 @@
                                                    (collection/user->personal-collection
                                                     (mt/user->id :crowberto)))}]
       (mt/with-test-user :rasta
-        (let [result (registry/call-tool nil nil "browse_collection" {:id (:id c)})
-              text   (-> result :content first :text)]
-          (is (:isError result))
+        (let [{:keys [result error]} (registry/call-tool nil nil "browse_collection" {:id (:id c)})
+              text                   (if error (:message error) (-> result :content first :text))]
+          (is (or error (:isError result)))
           (is (str/includes? text "may not exist")))))))
 
 ;;; ================================================ browse_data ===================================================
@@ -1070,15 +1070,23 @@
 
 (defn- dispatch-data
   "Call `browse_data` through the registry as `:crowberto` carrying `token-scopes` (nil bypasses the
-   scope gate — this is an internal caller). Returns the whole MCP result map."
+   scope gate — this is an internal caller). Returns the whole dispatch outcome: `{:result <mcp
+   content>}` for anything that reached the handler, `{:error {:code .. :message ..}}` for a
+   registry-level rejection (unknown tool, scope denial, args-schema failure)."
   [token-scopes args]
   (mt/with-test-user :crowberto
     (registry/call-tool token-scopes nil "browse_data" args)))
 
+(defn- dispatch-error?
+  "Whether a [[dispatch-data]] outcome is an error, at either layer."
+  [{:keys [result error]}]
+  (boolean (or error (:isError result))))
+
 (defn- dispatch-text
-  "[[dispatch-data]]'s text block."
+  "[[dispatch-data]]'s text block, or a registry-level rejection's message."
   [token-scopes args]
-  (-> (dispatch-data token-scopes args) :content first :text))
+  (let [{:keys [result error]} (dispatch-data token-scopes args)]
+    (if error (:message error) (-> result :content first :text))))
 
 (def ^:private content-read #{metabot.scope/agent-content-read})
 
@@ -1090,9 +1098,8 @@
       #{metabot.scope/agent-content-write}
       #{}))
   (testing "GHY-4138: the content-read scope, its wildcard, and an internal caller all reach the handler"
-    (are [scopes] (let [result (dispatch-data scopes {:action "list_databases"})]
-                    (and (not (:isError result))
-                         (str/starts-with? (-> result :content first :text) "{\"data\":")))
+    (are [scopes] (and (not (dispatch-error? (dispatch-data scopes {:action "list_databases"})))
+                       (str/starts-with? (dispatch-text scopes {:action "list_databases"}) "{\"data\":"))
       content-read
       #{"agent:*"}
       nil)))
@@ -1105,9 +1112,9 @@
 
 (deftest ^:parallel browse-data-closed-schema-test
   (testing "GHY-4138: malformed arguments come back as a teaching message from the closed args schema, never as an internal error"
-    (are [args expected] (let [result (dispatch-data content-read args)
-                               text   (-> result :content first :text)]
-                           (and (true? (:isError result))
+    (are [args expected] (let [outcome (dispatch-data content-read args)
+                               text    (dispatch-text content-read args)]
+                           (and (dispatch-error? outcome)
                                 (str/starts-with? text "Invalid arguments: ")
                                 (str/includes? text expected)))
       {:action "list_databases" :databse_id 1}                "databse_id: disallowed key"
@@ -1134,7 +1141,7 @@
 
 (deftest ^:parallel browse-data-nil-stripping-feeds-per-action-validation-test
   (testing "GHY-4138: stripping runs before `validate-args-for-action!`, which is contains?-based, so a nulled key reads as absent"
-    (is (not (:isError (dispatch-data content-read {:action "list_databases" :database_id nil})))))
+    (is (not (dispatch-error? (dispatch-data content-read {:action "list_databases" :database_id nil})))))
   (testing "GHY-4138: the same key carrying a real value is still rejected as inapplicable"
     (is (= "`database_id` does not apply to action list_databases — remove it."
            (dispatch-text content-read {:action "list_databases" :database_id 1}))))

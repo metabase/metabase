@@ -167,7 +167,7 @@
   color: var(--mb-color-core-brand);
   font-weight: 700;
   padding: 0.125rem;
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
   outline: none;
 }
 

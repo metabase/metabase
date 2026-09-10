@@ -12,13 +12,11 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tools the assertions below drive.
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.mcp.v2.tools.definitions :as tools.definitions]
    [metabase.measures.api :as measures.api]
-   [metabase.metabot.scope :as metabot.scope]
    [metabase.permissions.core :as perms]
    [metabase.segments.api :as segments.api]
    [metabase.test :as mt]
@@ -36,10 +34,17 @@
 
 (defn- call-tool!
   "Drive `tool` through the real dispatch seam as `user` (test-user keyword or user id) with
-   bearer-style `scopes` (nil = internal caller, which bypasses the scope gate)."
+   bearer-style `scopes` (nil = internal caller, which bypasses the scope gate).
+
+   `call-tool` answers `{:result …}` once a handler ran, or `{:error …}` when the registry rejects
+   the call before dispatch. Both are presented here in the `{:isError true}` MCP shape a handler
+   error takes, so the helpers below read a refusal as a value without knowing which layer refused."
   [user scopes tool args]
   (mt/with-current-user (if (keyword? user) (mt/user->id user) user)
-    (registry/call-tool scopes nil tool args)))
+    (let [{:keys [result error]} (registry/call-tool scopes nil tool args)]
+      (if error
+        {:isError true :content [{:type "text" :text (:message error)}]}
+        result))))
 
 (defn- tool-result
   "Decoded success payload of a tool response; throws when the call errored, so a tool-level
@@ -86,6 +91,14 @@
    :stages   [{:lib/type     "mbql.stage/mbql"
                :source-table table-id
                :aggregation  [["count" {}]]}]})
+
+(defn- filter-definition
+  "A real MBQL 5 lib query on `table-kw` holding one filter on `field-kw`, in wire shape — the
+   segment counterpart to [[count-definition]]."
+  [table-kw field-kw]
+  (let [mp (mt/metadata-provider)]
+    (wire (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+              (lib/filter (lib/= (lib.metadata/field mp (mt/id table-kw field-kw)) 3))))))
 
 (def ^:private mbql4-fragment
   {:filter ["=" 1 1]})
@@ -177,6 +190,26 @@
                (tool-error (call-tool! :crowberto nil tool
                                        {:method "update" :id 13371337 :revision_message "x"
                                         :table_id (mt/id :venues)}))))))))
+
+(deftest ^:parallel blank-name-test
+  (testing "GHY-4153/GHY-4154: a whitespace-only `name` is refused. The REST endpoints these tools
+            delegate to take `ms/NonBlankString`, and a tool that inherits their checks must not be
+            laxer than they are — `[:string {:min 1}]` alone lets \" \" through."
+    (doseq [[tool definition] {"segment_write" mbql4-fragment
+                               "measure_write" (count-definition (mt/id :venues))}]
+      (testing tool
+        (testing "create"
+          (is (re-find #"`name` cannot be blank"
+                       (tool-error (call-tool! :crowberto nil tool
+                                               {:method     "create" :table_id (mt/id :venues)
+                                                :name       "   "
+                                                :definition definition})))))
+        (testing "update — refused before the id lookup, so it reads as an argument error"
+          (is (re-find #"`name` cannot be blank"
+                       (tool-error (call-tool! :crowberto nil tool
+                                               {:method           "update" :id 13371337
+                                                :name             "   "
+                                                :revision_message "x"})))))))))
 
 (deftest ^:parallel invalid-id-shape-test
   (testing "GHY-4137: an id that is neither numeric nor a 21-char entity_id teaches the two accepted shapes"
@@ -505,14 +538,11 @@
   (testing "GHY-4137: a scope a tool checks must be grantable — advertised through registered-scopes"
     (is (set/subset? #{"agent:content:write"}
                      (registry/registered-scopes))))
-  (testing "GHY-4153/GHY-4154: the metabot NLQ permission bucket covers both scopes via its wildcards, alongside metric"
-    (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
-      (is (mcp.scope/matches? scopes "agent:content:write"))
-      (is (mcp.scope/matches? scopes "agent:content:write"))))
-  (testing "GHY-4153/GHY-4154: and the sql-generation bucket does not"
-    (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
-      (is (not (mcp.scope/matches? scopes "agent:content:write")))
-      (is (not (mcp.scope/matches? scopes "agent:content:write"))))))
+  ;; GHY-4225: no assertion against the metabot permission buckets. In-app callers reach v2 through
+  ;; cookie sessions bound to the unrestricted sentinel, and OAuth tokens draw their scopes from the
+  ;; tool registry (`registered-scopes`), not from `user-metabot-perms->scopes` — so
+  ;; `agent:content:write` reaching these tools never depends on a metabot wildcard.
+  )
 
 (deftest ^:parallel tools-list-visibility-test
   (testing "GHY-4137: each tool is visible exactly to tokens carrying its scope"
@@ -520,6 +550,73 @@
                           "measure_write" "agent:content:write"}]
       (is (some #(= tool (:name %)) (registry/list-tools #{scope})))
       (is (not (some #(= tool (:name %)) (registry/list-tools #{"agent:content:read"})))))))
+
+;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
+(deftest readback-requires-read-scope-test
+  (testing "GHY-4153/GHY-4154: the write echo carries the row's name and definition, so a write-only
+            token would learn the content of anything it may touch — it degrades to an ack unless the
+            token could read the row back through get_content"
+    (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
+      (doseq [[tool model definition] [["segment_write" :model/Segment mbql4-fragment]
+                                       ["measure_write" :model/Measure (count-definition (mt/id :venues))]]
+              :let [row-name (str "definitions-test readback " tool)]]
+        (testing tool
+          (let [created (tool-result (call-tool! :crowberto #{"agent:content:write"} tool
+                                                 {:method     "create" :table_id (mt/id :venues)
+                                                  :name       row-name
+                                                  :definition definition}))]
+            (testing "create echoes an ack, not the row"
+              (is (= #{:id :note} (set (keys created))))
+              (is (re-find #"agent:content:read" (:note created))))
+            (testing "and the write still happened — the degradation is in the echo only"
+              (is (= row-name (t2/select-one-fn :name model :id (:id created)))))
+            (testing "update degrades the same way"
+              (let [updated (tool-result (call-tool! :crowberto #{"agent:content:write"} tool
+                                                     {:method           "update" :id (:id created)
+                                                      :description      "readback check"
+                                                      :revision_message "describe it"}))]
+                (is (= #{:id :note} (set (keys updated))))
+                (is (= "readback check" (t2/select-one-fn :description model :id (:id created))))))
+            (testing "the same calls with both scopes return the full row"
+              (is (=? {:id (:id created) :name row-name :table_id (mt/id :venues) :entity_id string?}
+                      (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} tool
+                                               {:method           "update" :id (:id created)
+                                                :description      "full echo"
+                                                :revision_message "describe it again"})))))))))))
+
+;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
+(deftest clear-description-test
+  (testing "GHY-4153/GHY-4154: `clear` is the only way to unset a property. A null cannot carry that
+            meaning — strict clients fill every unset property with null, so the registry strips nulls
+            at the boundary and `description: null` cannot be told apart from \"didn't touch it\"."
+    (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
+      (doseq [[tool model definition] [["segment_write" :model/Segment mbql4-fragment]
+                                       ["measure_write" :model/Measure (count-definition (mt/id :venues))]]]
+        (testing tool
+          (let [created (tool-result (call-tool! :crowberto nil tool
+                                                 {:method      "create" :table_id (mt/id :venues)
+                                                  :name        (str "definitions-test clear " tool)
+                                                  :description "set at creation"
+                                                  :definition  definition}))]
+            (is (= "set at creation" (:description created)))
+            (testing "clear nulls the column"
+              (let [updated (tool-result (call-tool! :crowberto nil tool
+                                                     {:method           "update" :id (:id created)
+                                                      :clear            ["description"]
+                                                      :revision_message "drop the description"}))]
+                (is (nil? (t2/select-one-fn :description model :id (:id created))))
+                ;; the concise projection drops nil-valued keys, so a cleared description is absent
+                ;; from the echo rather than echoed back as null
+                (is (not (contains? updated :description)))))
+            (testing "a property this tool doesn't declare clearable is refused at the schema
+                      boundary — `clear`'s enum admits only the clearable names, so `expand-clear`'s
+                      own \"can't be cleared\" message is unreachable for these two tools"
+              (let [msg (tool-error (call-tool! :crowberto nil tool
+                                                {:method           "update" :id (:id created)
+                                                 :clear            ["name"]
+                                                 :revision_message "x"}))]
+                (is (str/starts-with? msg "Invalid arguments"))
+                (is (str/includes? msg "description"))))))))))
 
 ;;; ----------------------------------------------- Permissions ----------------------------------------------------
 
@@ -556,6 +653,55 @@
             (is (= "You don't have permissions to do that."
                    (tool-error (call-tool! blind-analyst-id nil "segment_write"
                                            (assoc segment-args :name "definitions-test blind segment")))))))))))
+
+;; not ^:parallel: with-no-data-perms-for-all-users! rewrites global data perms, and rows are
+;; created through the tool under with-model-cleanup
+(deftest table-move-permission-test
+  (testing "GHY-4153/GHY-4154: `definition` carries the row to its own source table, so an update
+            retargeting a table the caller cannot author on is denied — the write check ran against
+            the old table, and only the domain create-check covers the new one"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/User {analyst-id :id} {:is_data_analyst true}]
+          (perms/add-user-to-group! analyst-id group-id)
+          ;; Block the database for this group first, then grant venues back. `with-no-data-perms-for-all-users!`
+          ;; only resets the All Users group, so a freshly created group's default on `checkins` is ambient
+          ;; state — and this test is only meaningful while the analyst cannot author there.
+          (perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+          (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
+          (testing "precondition: venues is authorable and checkins is not"
+            (is (true? (perms/user-has-permission-for-table?
+                        analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :venues))))
+            (is (false? (perms/user-has-permission-for-table?
+                         analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :checkins)))))
+          (let [segment (tool-result (call-tool! analyst-id nil "segment_write"
+                                                 {:method     "create" :table_id (mt/id :venues)
+                                                  :name       "definitions-test move segment"
+                                                  :definition mbql4-fragment}))
+                measure (tool-result (call-tool! analyst-id nil "measure_write"
+                                                 {:method     "create" :table_id (mt/id :venues)
+                                                  :name       "definitions-test move measure"
+                                                  :definition (count-definition (mt/id :venues))}))]
+            (testing "segment"
+              (is (= "You don't have permissions to do that."
+                     (tool-error (call-tool! analyst-id nil "segment_write"
+                                             {:method           "update" :id (:id segment)
+                                              :definition       (filter-definition :checkins :venue_id)
+                                              :revision_message "move to checkins"}))))
+              (testing "and the denial actually prevented the move"
+                (is (= (mt/id :venues)
+                       (t2/select-one-fn :table_id :model/Segment :id (:id segment))))))
+            (testing "measure"
+              (is (= "You don't have permissions to do that."
+                     (tool-error (call-tool! analyst-id nil "measure_write"
+                                             {:method           "update" :id (:id measure)
+                                              :definition       (count-definition (mt/id :checkins))
+                                              :revision_message "move to checkins"}))))
+              (testing "and the denial actually prevented the move"
+                (is (= (mt/id :venues)
+                       (t2/select-one-fn :table_id :model/Measure :id (:id measure))))))))))))
 
 ;; not ^:parallel: narrows the all-users group's view-data on the temp database
 (deftest existence-oracle-test
