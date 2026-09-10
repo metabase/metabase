@@ -149,6 +149,11 @@
   [user-id]
   (t2/exists? :model/User :id user-id :is_active true))
 
+(defn dashboard-parameters
+  "The `parameters` of the Dashboard with `dashboard-id`, or nil."
+  [dashboard-id]
+  (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))
+
 (defn subscription-pulse-exists?
   "Whether a Pulse with `pulse-id` exists and is a subscription — a nil `alert_condition` — rather than an alert."
   [pulse-id]
