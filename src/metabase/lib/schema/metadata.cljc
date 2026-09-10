@@ -355,7 +355,9 @@
   "What the query processor stashes under a column's `:options` while it runs: never sent by a client, and never
   handed back to one."
   [:map {:closed true, :decode/api lib.schema.common/remove-internal-keys, :encode/serialize lib.schema.common/remove-internal-keys}
-   [:qp/ignore-coercion {:optional true} :boolean]
+   [:qp/ignore-coercion                                {:optional true} :boolean]
+   [:qp/native-sandbox-column.force-coercion-strategy  {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
+   [:qp/native-sandbox-column.propagate-coercion?      {:optional true} [:maybe :boolean]]
    [:metabase.query-processor.middleware.add-remaps/original-field-dimension-id {:optional true} [:maybe ::lib.schema.id/dimension]]
    [:metabase.query-processor.middleware.add-remaps/new-field-dimension-id      {:optional true} [:maybe ::lib.schema.id/dimension]]])
 
