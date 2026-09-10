@@ -261,6 +261,52 @@ describe("ManageDataAppUsersPage", () => {
     expect(screen.queryByText("member26@example.com")).not.toBeInTheDocument();
   });
 
+  it("returns to the previous page when removing two members before the first removal finishes", async () => {
+    const members = createMockMembers(27);
+    const { group } = setup({ members });
+
+    let finishRemovals!: () => void;
+
+    const pendingRemovals = new Promise<void>((resolve) => {
+      finishRemovals = resolve;
+    });
+
+    for (const memberId of [125, 126]) {
+      fetchMock.delete(
+        `path:/api/permissions/membership/${memberId}`,
+        async () => {
+          await pendingRemovals;
+
+          group.members = group.members.filter(
+            (member) => member.membership_id !== memberId,
+          );
+
+          return 204;
+        },
+      );
+    }
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Next page" }),
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Member 26" }),
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Member 27" }),
+    );
+
+    // let both delete handlers remove their members
+    finishRemovals();
+
+    // should show the first page's member
+    expect(await screen.findByText("member1@example.com")).toBeInTheDocument();
+    expect(screen.queryByText("member26@example.com")).not.toBeInTheDocument();
+    expect(screen.queryByText("member27@example.com")).not.toBeInTheDocument();
+  });
+
   it("stays on the current page when removing a member fails", async () => {
     setup({ members: createMockMembers(26) });
 

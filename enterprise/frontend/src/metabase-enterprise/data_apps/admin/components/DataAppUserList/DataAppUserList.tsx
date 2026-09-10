@@ -1,6 +1,6 @@
 import { skipToken } from "@reduxjs/toolkit/query";
 import cx from "classnames";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -49,22 +49,13 @@ export const DataAppUserList = ({
 }: Props) => {
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 
-  const handleRemoveUser = async (member: Member) => {
-    const removed = await onRemoveUser(member);
+  const lastPage = Math.max(0, Math.ceil(members.length / PAGE_SIZE) - 1);
 
-    if (!removed) {
-      return;
-    }
-
-    const lastPage = Math.max(
-      0,
-      Math.ceil((members.length - 1) / PAGE_SIZE) - 1,
-    );
-
-    // make sure user does not stay in an empty page if the
-    // removed member is the last one in the page
+  // make sure user does not stay in an empty page if the
+  // removed member is the last one in the page
+  useEffect(() => {
     setPage((page) => Math.min(page, lastPage));
-  };
+  }, [lastPage, setPage]);
 
   const visibleMembers = useMemo(
     () => members.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
@@ -115,7 +106,7 @@ export const DataAppUserList = ({
                     key={member.membership_id}
                     member={member}
                     warning={warnings.byUserId.get(member.user_id)}
-                    onRemove={handleRemoveUser}
+                    onRemove={onRemoveUser}
                   />
                 ))}
               </AdminContentTable>
