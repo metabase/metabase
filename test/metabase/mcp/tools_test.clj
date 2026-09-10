@@ -39,6 +39,13 @@
             (is (empty? unknown)
                 (str label " has keys that don't match any tool name: " (vec unknown)))))))))
 
+(deftest ^:parallel search-output-schema-updated-at-test
+  (testing "search updated_at has disjoint date-time and null branches"
+    (let [search-tool (some #(when (= "search" (:name %)) %)
+                            (mcp.tools/list-tools #{::api.scope/unrestricted}))]
+      (is (= {:oneOf [{:type "string" :format "date-time"} {:type "null"}]}
+             (get-in search-tool [:outputSchema :properties :data :items :properties :updated_at]))))))
+
 (defn- data-node?
   "True if `x` is a value type our published JSON-Schema-shaped tool schemas
    are allowed to contain. Visited via `walk/postwalk`, which traverses every

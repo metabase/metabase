@@ -109,7 +109,7 @@
    [:collection {:optional true} [:maybe :map]]
    ;; Present on collection results — the parent location path (e.g. "/12/34/").
    [:location {:optional true} [:maybe :string]]
-   [:updated_at {:optional true} [:maybe :any]]
+   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe :any]]])
 
 (mr/def ::search-response
