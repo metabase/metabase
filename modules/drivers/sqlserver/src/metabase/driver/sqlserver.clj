@@ -1,6 +1,6 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:refer-clojure :exclude [mapv get-in not-empty])
+  (:refer-clojure :exclude [empty? mapv get-in not-empty])
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
@@ -36,7 +36,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [mapv get-in not-empty]]
+   [metabase.util.performance :as perf :refer [empty? mapv get-in not-empty]]
    [next.jdbc :as next.jdbc])
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
@@ -514,8 +514,13 @@
   [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr            (sql.qp/->honeysql driver arg)
         datetimeoffset? (or (sql.qp.u/field-with-tz? arg)
-                            (h2x/is-of-type? expr "datetimeoffset"))]
-    (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+                            (h2x/is-of-type? expr "datetimeoffset"))
+        _               (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+        ;; `AT TIME ZONE` rejects a `date` argument (error 8116), so cast dates to `datetime2` first (#27186).
+        expr            (if (or (instance? LocalDate expr)
+                                (h2x/is-of-type? expr "date"))
+                          (h2x/cast "datetime2" expr)
+                          expr)]
     (-> (if datetimeoffset?
           expr
           (h2x/at-time-zone expr (zone-id->windows-zone source-timezone)))
@@ -629,9 +634,13 @@
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :page]
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
-  (assoc honeysql-form :offset [:raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
-                                             (* items (dec page))
-                                             items)]))
+  (-> honeysql-form
+      ;; SQL Server rejects OFFSET/FETCH without an ORDER BY (#81988). Supply a placeholder when the
+      ;; caller didn't provide one; the row order is unspecified either way.
+      (cond-> (empty? (:order-by honeysql-form))
+        (assoc :order-by [[{:select [nil]}]]))
+      (assoc :offset (sql.qp/inline-num (* items (dec page)))
+             :fetch  (sql.qp/inline-num items))))
 
 (defn- optimized-temporal-buckets
   "If `field-clause` is being truncated temporally to `:year`, `:month`, or `:day`, return a optimized set of
@@ -1041,6 +1050,13 @@
       (catch Throwable e
         (.close stmt)
         (throw e)))))
+
+(defmethod sql-jdbc.execute/cancelation-poisons-connection? :sqlserver
+  [_driver]
+  ;; `.cancel` sends an out-of-band TDS attention packet. Its acknowledgement is not drained before the Connection is
+  ;; checked back into the pool, and it surfaces later as `The result set is closed.` while an unrelated query is
+  ;; reading rows on the recycled Connection.
+  true)
 
 (defmethod sql.qp/inline-value [:sqlserver LocalDate]
   [_ ^LocalDate t]

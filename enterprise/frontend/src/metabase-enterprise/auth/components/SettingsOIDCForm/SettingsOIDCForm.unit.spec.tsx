@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 
 import {
   findRequests,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { CustomOidcConfig } from "metabase-enterprise/api";
@@ -48,7 +48,8 @@ function setupEndpoints({
 } = {}) {
   const settings = createMockSettings();
   setupSettingsEndpoints([]);
-  setupPropertiesEndpoints(settings);
+  // the provisioning switch reads its value back after saving, so the properties mock has to remember writes
+  setupStatefulSettingsEndpoints(settings);
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
   fetchMock.get("path:/api/ee/sso/oidc", providers, {
@@ -71,26 +72,68 @@ async function getOidcPutCalls() {
 const setup = async (options?: { providers?: CustomOidcConfig[] }) => {
   setupEndpoints(options);
 
-  renderWithProviders(<SettingsOIDCForm />);
+  renderWithProviders(<SettingsOIDCForm />, { withUndos: true });
 
   await screen.findByText("OpenID Connect");
 };
+
+describe("SettingsOIDCForm - collapsible sections", () => {
+  it("starts both optional sections collapsed for a new provider", async () => {
+    await setup({ providers: [] });
+
+    expect(
+      screen.getByRole("button", { name: "Optional settings" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByRole("button", { name: "Attribute mapping" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("starts both optional sections collapsed when the provider only has default values", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    expect(
+      screen.getByRole("button", { name: "Optional settings" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByRole("button", { name: "Attribute mapping" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("starts both optional sections collapsed even when the provider has custom values", async () => {
+    await setup({
+      providers: [
+        {
+          ...EXISTING_PROVIDER,
+          scopes: ["openid", "email"],
+          "attribute-map": {
+            ...EXISTING_PROVIDER["attribute-map"],
+            email: "mail",
+          },
+        },
+      ],
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Optional settings" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByRole("button", { name: "Attribute mapping" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+});
 
 describe("SettingsOIDCForm - Group Sync", () => {
   it("does not show group sync section for new providers", async () => {
     await setup({ providers: [] });
 
-    expect(
-      screen.queryByText("Synchronize group membership with your SSO"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Group mapping")).not.toBeInTheDocument();
   });
 
   it("shows the group sync UI for existing providers", async () => {
     await setup({ providers: [EXISTING_PROVIDER] });
 
-    expect(
-      screen.getByText("Synchronize group membership with your SSO"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Group mapping")).toBeInTheDocument();
     expect(screen.getByTestId("group-sync-switch")).toBeInTheDocument();
     expect(screen.getByLabelText("Group attribute name")).toBeInTheDocument();
     expect(
@@ -245,5 +288,48 @@ describe("SettingsOIDCForm - Group Sync", () => {
       "group-attribute": "roles",
       "group-mappings": { admins: [2], devs: [3] },
     });
+  });
+});
+
+describe("SettingsOIDCForm - user provisioning", () => {
+  it("sits right below the server settings", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    const cardTitles = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((heading) => heading.textContent);
+    expect(cardTitles).toEqual([
+      "Server settings",
+      "User provisioning",
+      "Group mapping",
+      "Optional settings",
+      "Attribute mapping",
+    ]);
+  });
+
+  it("stays editable before a provider is saved", async () => {
+    await setup({ providers: [] });
+
+    const toggle = screen.getByRole("switch", { name: "User provisioning" });
+    await waitFor(() => expect(toggle).toBeEnabled());
+  });
+
+  it("saves right away without touching the page form", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+    const toggle = screen.getByRole("switch", { name: "User provisioning" });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    expect(toggle).toBeChecked();
+
+    await userEvent.click(toggle);
+
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].url).toMatch(
+      /\/api\/setting\/oidc-user-provisioning-enabled%3F$/,
+    );
+    expect(puts[0].body).toEqual({ value: false });
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
 });

@@ -248,7 +248,7 @@ When Customer 1 logs in, they'll see a different filtered version of the Account
 - [Modular embedding with SDK reference app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample)
 - [Full app embedding demo](https://embedding-demo.metabase.com/)
 - [Full app embedding reference app](https://github.com/metabase/sso-examples/tree/master/app-embed-example)
-- [Guest embedding reference app](https://github.com/metabase/embedding-reference-apps)
+- [Guest embedding reference app](https://github.com/metabase/static-embedding-reference-apps)
 
 ## Further reading
 

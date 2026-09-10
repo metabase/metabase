@@ -438,6 +438,22 @@
                                 (dev.kondo-ratchet/render merged)))
             (println (str "merged ratchets into " output-path))))}
 
+  -kondo-ratchets-pr-body
+  {:doc "Render the body for an automated ratchet-shrink PR."
+   :arg-schema [:tuple
+                [:string {:name "before" :description "Ratchets file before shrinking"}]
+                [:string {:name "after" :description "Ratchets file after shrinking"}]
+                [:string {:name "workflow-url" :description "URL of the workflow run"}]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task!
+          (let [[before-path after-path workflow-url] (:arguments parsed)
+                read-ratchets (fn [path]
+                                (binding [dev.kondo-ratchet/*ratchets-file* path]
+                                  (dev.kondo-ratchet/read-ratchets)))]
+            (print (dev.kondo-ratchet/shrink-pr-body (read-ratchets before-path)
+                                                     (read-ratchets after-path)
+                                                     workflow-url))))}
+
   -driver-decisions
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."
    :examples [["./bin/mage -driver-decisions --git-ref=master --force-run=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]

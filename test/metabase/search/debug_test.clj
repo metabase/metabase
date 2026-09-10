@@ -10,7 +10,10 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each (fn [thunk]
                       (binding [search.ingestion/*force-sync* true]

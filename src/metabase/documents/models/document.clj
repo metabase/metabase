@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -26,7 +27,9 @@
   :model/Document)
 
 (t2/deftransforms :model/Document
-  {:document    mi/transform-json
+  {:document    {:in  (comp mi/json-in prose-mirror/normalize-document)
+                 :out (comp (mi/catch-normalization-exceptions prose-mirror/normalize-document)
+                            mi/json-out-with-keywordization)}
    :public_uuid (mi/transform-encrypted-text "document.public_uuid")})
 
 (doto :model/Document
@@ -111,15 +114,15 @@
   ([instance]
    (and (mi/current-user-has-full-permissions? :read instance)
         (content-visible? instance)))
-  ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-read? (documents.db/document pk))))
 
 (defmethod mi/can-write? :model/Document
   ([instance]
    (and (mi/current-user-has-full-permissions? :write instance)
         (content-visible? instance)))
-  ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-write? (documents.db/document pk))))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -141,7 +144,7 @@
   (when old-collection-id
     (api/write-check :model/Collection old-collection-id))
   (when new-collection-id
-    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))
+    (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
     (api/write-check :model/Collection new-collection-id)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :creator]
@@ -149,9 +152,10 @@
   [_model k documents]
   (mi/instances-with-hydrated-data
    documents k
-   #(-> (t2/select [:model/User :id :email :first_name :last_name] :id (keep :creator_id documents))
-        (map (juxt :id identity))
-        (into {}))
+   #(when-let [creator-ids (seq (keep :creator_id documents))]
+      (-> (documents.db/user-columns creator-ids)
+          (map (juxt :id identity))
+          (into {})))
    :creator_id {:default {}}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :cards]
@@ -161,9 +165,7 @@
   (let [document-ids (keep :id documents)
         ;; Fetch all cards for all documents in one batched query
         all-cards (when (seq document-ids)
-                    (t2/select :model/Card
-                               :document_id [:in document-ids]
-                               :archived false))
+                    (documents.db/unarchived-cards-for-documents document-ids))
         ;; Group cards by document_id, then convert each group to a map keyed by card ID
         cards-by-doc-id (group-by :document_id all-cards)
         cards-maps-by-doc-id (update-vals cards-by-doc-id
@@ -179,9 +181,7 @@
   (let [update-map {:collection_id collection-id
                     :archived (boolean archived)
                     :archived_directly (boolean archived-directly)}]
-    (t2/update! :model/Card
-                :document_id document-id
-                update-map)))
+    (documents.db/update-cards-for-document! document-id update-map)))
 
 (t2/define-after-update :model/Document
   [{:keys [id collection_id archived archived_directly] :as instance}]
@@ -212,13 +212,15 @@
 (defn- document->search-text
   "Extract the plain searchable text from a document's prose-mirror body for the search index.
 
-  Receives the raw `:document` value as it comes off the ingestion query (a JSON string).
-  Returns nil if it can't be parsed, so a malformed/oversized body never blocks the rest of the
-  document (e.g. its name) from being indexed."
+  Receives the raw `:document` value as it comes off the ingestion query (a JSON string). Blindly
+  keywordizing that JSON would leave every node's `:attrs` keyword-keyed too, so it is normalized --
+  stringifying attrs -- before `ast->text` reads them. Returns nil if it can't be parsed, so a
+  malformed/oversized body never blocks the rest of the document (e.g. its name) from being indexed."
   [document]
   (when document
     (try
       (-> (cond-> document (string? document) json/decode+kw)
+          prose-mirror/normalize-document
           prose-mirror/ast->text
           not-empty)
       (catch Throwable _ nil))))
@@ -259,11 +261,14 @@
 
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 
-(def ^:private ast-model->db-model
-  {"card"      :model/Card
-   "dataset"   :model/Card
-   "table"     :model/Table
-   "dashboard" :model/Dashboard})
+(defn- ast-model->entity
+  "The database row identified by the smart-link/card-embed `model` (\"card\", \"dataset\", \"table\", or
+  \"dashboard\") and `id`, or nil."
+  [model id]
+  (case model
+    ("card" "dataset") (documents.db/card id)
+    "table"            (documents.db/table id)
+    "dashboard"        (documents.db/dashboard id)))
 
 (def ^:private model->serdes-model
   {"card"      "Card"
@@ -278,28 +283,28 @@
   verbatim would, on import, either dangle or silently resolve to an unrelated instance's
   snapshot. Dropping it degrades a static (snapshot-backed) embed to a live embed of the Card,
   which is portable and renders the same query."
-  [:stored_result_id])
+  ["stored_result_id"])
 
 (defn- id->entity-id
-  [{{:keys [model] :or {model "card"}} :attrs type :type :as node}]
-  (let [id-key (if (= prose-mirror/smart-link-type type) :entityId :id)
+  [{{:strs [model] :or {model "card"}} :attrs type :type :as node}]
+  (let [id-key (if (= prose-mirror/smart-link-type type) "entityId" "id")
         id (prose-mirror/node-entity-id node)
         node (cond-> node
                (= prose-mirror/card-embed-type type)
                (update :attrs #(apply dissoc % non-portable-card-embed-attrs)))]
-    (if-let [db-model (and id (t2/select-one (ast-model->db-model model) :id id))]
+    (if-let [db-model (and id (ast-model->entity model id))]
       (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
       (u/prog1 node
         (log/warnf "entity_id not found for %s at id: %s" model id)))))
 
 (defn- entity-id->id
   [{:keys [attrs type] :as node}]
-  (let [id-key (if (= prose-mirror/smart-link-type type) :entityId :id)
-        id (:id (serdes/load-find-local (id-key attrs)))]
+  (let [id-key (if (= prose-mirror/smart-link-type type) "entityId" "id")
+        id (:id (serdes/load-find-local (get attrs id-key)))]
     (if id
       (assoc-in node [:attrs id-key] id)
       (u/prog1 node
-        (log/warn "Model not found at path" (id-key attrs))))))
+        (log/warn "Model not found at path" (get attrs id-key))))))
 
 (defn- serdes-rewritable-node?
   "The AST nodes whose ids serdes rewrites between database ids and entity ids.
@@ -322,11 +327,16 @@
      document)))
 
 (defn- import-document-content
-  "Transform live cardEmbed / smartLink nodes to use database IDs instead of entity IDs"
+  "Transform live cardEmbed / smartLink nodes to use database IDs instead of entity IDs.
+
+  Ingested YAML keywordizes every key, attrs included, so the document is normalized first --
+  stringifying attrs keys -- before [[entity-id->id]] reads them; it and the app-DB `:in` transform
+  that runs after this must only ever see string-keyed attrs."
   [document serdes-key _]
   (serdes-key
    (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast document serdes-rewritable-node? entity-id->id)
+     (prose-mirror/update-ast (update document :document prose-mirror/normalize-document)
+                              serdes-rewritable-node? entity-id->id)
      document)))
 
 (defmethod serdes/make-spec "Document"
@@ -343,16 +353,11 @@
               :archived_directly false}})
 
 (defmethod serdes/extract-query "Document"
-  [model-name opts]
-  ;; An exploration document is not first-class content: it is reachable only through its owning
-  ;; exploration, its body embeds values computed under its creator's data-access lens, and
-  ;; `:exploration_id` is in this spec's `:skip` list — so an exported document would import as an
-  ;; ordinary, ungated document detached from any exploration.
-  ((get-method serdes/extract-query :default)
-   model-name
-   (update opts :where (fn [where]
-                         (let [clause [:= :exploration_id nil]]
-                           (if where [:and where clause] clause))))))
+  [model-name {:keys [collection-set filter-column filter-ids] :as opts}]
+  (documents.db/documents-for-serdes-reducible collection-set
+                                               filter-column
+                                               filter-ids
+                                               (serdes/extract-order-columns model-name opts)))
 
 (defn- document-deps
   [{:keys [content_type] :as document}]
@@ -363,11 +368,11 @@
     (set (prose-mirror/collect-ast document (fn document-deps [{:keys [type attrs]}]
                                               (cond
                                                 (and (= prose-mirror/smart-link-type type)
-                                                     (contains? model->serdes-model (:model attrs)))
-                                                (:entityId attrs)
+                                                     (contains? model->serdes-model (get attrs "model")))
+                                                (get attrs "entityId")
 
                                                 (= prose-mirror/card-embed-type type)
-                                                (:id attrs)
+                                                (get attrs "id")
 
                                                 :else
                                                 nil))))))
@@ -389,7 +394,7 @@
       (concat
        (for [embedded-card-id (prose-mirror/card-ids document)]
          [{:model "Card" :id embedded-card-id}])
-       (for [{{model :model} :attrs :as node}
+       (for [{{model "model"} :attrs :as node}
              (prose-mirror/collect-ast document
                                        #(when (= prose-mirror/smart-link-type (:type %)) %))
              :let  [link-id (prose-mirror/node-entity-id node)]
@@ -398,15 +403,15 @@
 
 (defmethod serdes/descendants "Document"
   [_model-name id _opts]
-  (when-let [document (t2/select-one :model/Document :id id)]
+  (when-let [document (documents.db/document id)]
     (when (= prose-mirror/prose-mirror-content-type (:content_type document))
       (merge
        (into {}
              (for [embedded-card-id (prose-mirror/card-ids document)]
                {["Card" embedded-card-id] {"Document" id}}))
        (into {}
-             (for [{{model :model} :attrs :as node} (prose-mirror/collect-ast document
-                                                                              #(when (= prose-mirror/smart-link-type (:type %)) %))
+             (for [{{model "model"} :attrs :as node} (prose-mirror/collect-ast document
+                                                                               #(when (= prose-mirror/smart-link-type (:type %)) %))
                    :let  [link-id (prose-mirror/node-entity-id node)]
                    :when (and link-id (contains? model->serdes-model model))]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))

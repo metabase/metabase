@@ -21,7 +21,7 @@ export function DataAppsManagePage() {
   // if (!hasDataApps) {
   //   return (
   //     <SettingsPageWrapper title={t`Data apps`}>
-  //       <UpsellDataApps location="settings-data-apps" />
+  //       <UpsellDataApps source="settings-data-apps" />
   //     </SettingsPageWrapper>
   //   );
   // }

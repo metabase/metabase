@@ -5,6 +5,11 @@ import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 
 import { getPublicStore } from "__support__/entities-store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "__support__/state";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
@@ -14,11 +19,6 @@ import {
 } from "metabase/dashboard/context/mock-context";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import MetabaseSettings from "metabase/utils/settings";
 import { Map } from "metabase/visualizations/visualizations/Map";
 import { registerVisualization } from "metabase/viz-core";

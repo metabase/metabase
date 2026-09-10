@@ -7,11 +7,11 @@ redirect_from:
 
 # Writable connection
 
-> Writable connection requires the [Advanced transforms add-on](../data-studio/transforms/addons.md)
+> Writable connection requires the [Advanced transforms add-on](../data-modeling/transforms/addons.md)
 
 _Admin > Databases > Writable connection_
 
-Writable connection is an optional connection that Metabase will use for functionality that involves writing into the database (for example, transforms or CSV uploads). This allows you to keep your main Metabase connection read-only, and only to switch to connection with write permissions for the operations that require write access.
+Writable connection is an optional connection that Metabase will use for functionality that involves writing into the database (for example, transforms or CSV uploads). This allows you to keep your main Metabase connection read-only, and only to switch to a connection with write permissions for the operations that require write access.
 
 ![Writable connection in database settings](./images/writeable-connection.png)
 
@@ -47,11 +47,11 @@ Once writable connection is removed, Metabase will revert to using the main conn
 
 When configured, writable connection will be used for:
 
-- [Transforms](../data-studio/transforms/transforms-overview.md)
+- [Transforms](../data-modeling/transforms/transforms-overview.md)
 - [CSV uploads](../databases/uploads.md)
 - [Editable tables](../data-modeling/editable-tables.md)
-- [Actions](../actions/introduction.md)
-- [Model persistence](../data-modeling/model-persistence.md)
+- [Actions](../data-modeling/models/actions/introduction.md)
+- [Model persistence](../data-modeling/models/model-persistence.md)
 
 Your writable connection will need to have the privileges required for these operations. See [Users, roles, and privileges](./users-roles-privileges.md).
 

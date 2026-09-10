@@ -1,11 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
-import { createMockEntitiesState } from "__support__/store";
-import type { State } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import type { State } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,

@@ -14,6 +14,8 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -86,9 +88,9 @@
   "Insert or update by slug. Never writes `:enabled`, so the admin toggle (and the
    DB default of true for new rows) is preserved across syncs."
   [slug row]
-  (if (t2/exists? :model/DataApp :name slug)
-    (t2/update! :model/DataApp :name slug row)
-    (t2/insert! :model/DataApp (assoc row :name slug))))
+  (if (data-apps.db/data-app-exists? slug)
+    (data-apps.db/update-data-app-by-slug! slug row)
+    (data-apps.db/insert-data-app! (assoc row :name slug))))
 
 (defn- app-metadata-changed?
   "Whether the metadata a sync stores whether or not the bundle loaded differs from
@@ -120,7 +122,7 @@
   [existing slug message]
   (boolean
    (when (and existing (not= (:sync_error existing) message))
-     (t2/update! :model/DataApp :name slug {:sync_error message})
+     (data-apps.db/update-data-app-by-slug! slug {:sync_error message})
      true)))
 
 (defn- sync-app!
@@ -148,7 +150,6 @@
         (upsert-by-name! slug (assoc fields
                                      :bundle          bytes
                                      :last_synced_sha sha
-                                     :last_synced_at  :%now
                                      :sync_error      nil))
         (app-content-changed? existing fields)))
     (catch Throwable e
@@ -193,8 +194,7 @@
         present-slugs (into #{} (map :slug) results)
         ;; pre-sync rows, so we can tell a real change from a sha/timestamp bump
         existing      (into {} (map (juxt :name identity))
-                            (t2/select [:model/DataApp :name :display_name :description :allowed_hosts
-                                        :bundle_path :bundle_hash :sync_error]))
+                            (data-apps.db/data-apps-sync-info))
         {:keys [changed removed]}
         (t2/with-transaction [_conn]
           (let [changed (reduce (fn [n {:keys [slug config-error] :as cfg}]
@@ -211,8 +211,8 @@
                 ;; `enabled` is deliberately not consulted — see the README's
                 ;; source-of-truth table. (`[:not-in #{}]` is invalid SQL, so delete-all.)
                 removed (if (seq present-slugs)
-                          (t2/delete! :model/DataApp :name [:not-in present-slugs])
-                          (t2/delete! :model/DataApp))]
+                          (data-apps.db/delete-data-apps-not-named! present-slugs)
+                          (data-apps.db/delete-all-data-apps!))]
             {:changed changed, :removed removed}))]
     (log/infof "[data-app] synced sha=%s apps=%d changed=%d removed=%d errors=%d"
                sha (count good) changed removed (count errors))
@@ -224,14 +224,19 @@
    Never throws, so it can't break the surrounding remote-sync import: a thrown
    failure is logged and swallowed, and a malformed `data_app.yaml` is logged and
    its app simply doesn't appear. Returns the [[import-from-snapshot!]] result, or
-   nil if the sync threw."
+   nil if the sync threw.
+
+   A no-op returning nil when the `:data-apps-preview` feature is absent: without
+   it an instance behaves exactly as if data apps did not exist — no rows,
+   collections, or permission groups are materialized, and nothing is pruned."
   [snapshot]
-  (try
-    (let [{:keys [config-errors] :as result} (import-from-snapshot! snapshot)]
-      (when (seq config-errors)
-        (log/warnf "[data-app] %d data_app.yaml config(s) skipped: %s"
-                   (count config-errors) (str/join "; " config-errors)))
-      result)
-    (catch Throwable e
-      (log/warnf "[data-app] sync from remote-sync snapshot failed: %s" (ex-message e))
-      nil)))
+  (when (premium-features/enable-data-apps?)
+    (try
+      (let [{:keys [config-errors] :as result} (import-from-snapshot! snapshot)]
+        (when (seq config-errors)
+          (log/warnf "[data-app] %d data_app.yaml config(s) skipped: %s"
+                     (count config-errors) (str/join "; " config-errors)))
+        result)
+      (catch Throwable e
+        (log/warnf "[data-app] sync from remote-sync snapshot failed: %s" (ex-message e))
+        nil))))

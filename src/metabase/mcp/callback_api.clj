@@ -8,12 +8,12 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.config :as metabot.config]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- mcp-session-id-from-headers
   [request]
@@ -43,13 +43,13 @@
 
 (defn- persist-mcp-feedback!
   [{:keys [feedback conversation_data]}]
-  (t2/insert! :model/McpFeedback
-              {:user_id           api/*current-user-id*
-               :positive          (:positive feedback)
-               :issue_type        (:issue_type feedback)
-               :freeform_feedback (:freeform_feedback feedback)
-               :prompt            (:prompt conversation_data)
-               :query             (:query conversation_data)}))
+  (mcp.db/insert-feedback!
+   {:user_id           api/*current-user-id*
+    :positive          (:positive feedback)
+    :issue_type        (:issue_type feedback)
+    :freeform_feedback (:freeform_feedback feedback)
+    :prompt            (:prompt conversation_data)
+    :query             (:query conversation_data)}))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/drills"
@@ -58,7 +58,7 @@
    `render_drill_through` tool can fetch it."
   [_route-params
    _query-params
-   {:keys [encodedQuery]} :- [:map [:encodedQuery ms/NonBlankString]]
+   {:keys [encodedQuery]} :- [:map {:closed true} [:encodedQuery ms/NonBlankString]]
    request]
   (let [session-id (mcp-session-id-from-headers request)]
     (check-session-header! session-id api/*current-user-id* request)
@@ -70,12 +70,12 @@
   "Persist MCP Apps visualization feedback."
   [_route-params
    _query-params
-   body :- [:map
-            [:feedback [:map
+   body :- [:map {:closed true}
+            [:feedback [:map {:closed true}
                         [:positive          :boolean]
                         [:issue_type        {:optional true} [:maybe [:string {:max 64}]]]
                         [:freeform_feedback {:optional true} OptionalFeedbackText]]]
-            [:conversation_data [:map
+            [:conversation_data [:map {:closed true}
                                  [:source [:= "mcp"]]
                                  [:prompt {:optional true} OptionalFeedbackText]
                                  [:query  {:optional true} OptionalFeedbackText]]]]

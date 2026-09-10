@@ -5,17 +5,17 @@ import { t } from "ttag";
 
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Link } from "metabase/common/components/Link";
-import { getMetadata } from "metabase/metadata-store";
+import { getShallowTables } from "metabase/metadata-store";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
+import { useSelector, useStore } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import {
+  SegmentEditor,
   getSegmentQuery,
   getSegmentQueryDefinition,
-} from "metabase/querying/segments/utils";
-import { useSelector } from "metabase/redux";
+} from "metabase/segments";
 import { Alert, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatasetQuery, Segment, TableId } from "metabase-types/api";
 
 import FormInput from "../FormInput";
@@ -43,7 +43,10 @@ export const SegmentForm = ({
   onSubmit,
 }: SegmentFormProps): JSX.Element => {
   const isNew = segment == null;
-  const metadata = useSelector(getMetadata);
+  // `validate` runs outside render, on values this render has not seen, so it
+  // reads the store at call time rather than closing over a selected value.
+  const store = useStore();
+  const tables = useSelector(getShallowTables);
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -51,11 +54,16 @@ export const SegmentForm = ({
     useFormik({
       initialValues: segment ?? {},
       isInitialValid: false,
-      validate: (values) => getFormErrors(values, metadata),
+      validate: (values) => getFormErrors(values, store.getState()),
       onSubmit,
     });
-  const tableId = isNew ? getFieldProps("table_id")?.value : segment?.table_id;
-  const table = tableId ? metadata.tables[tableId] : undefined;
+  const definitionProps = getFieldProps("definition");
+  const tableIdProps = getFieldProps("table_id");
+  const editorQuery = useSelector((state) =>
+    getSegmentQuery(state, definitionProps.value, tableIdProps.value),
+  );
+  const tableId = isNew ? tableIdProps.value : segment?.table_id;
+  const table = tableId ? tables[tableId] : undefined;
   const isReadOnly = isRemoteSyncReadOnly && !!table?.is_published;
 
   useEffect(() => {
@@ -85,9 +93,9 @@ export const SegmentForm = ({
         >
           <SegmentEditor
             {...getSegmentEditorProps(
-              getFieldProps("definition"),
-              getFieldProps("table_id"),
-              metadata,
+              definitionProps,
+              tableIdProps,
+              editorQuery,
             )}
             isNew={isNew}
             readOnly={isReadOnly}
@@ -176,7 +184,7 @@ const SegmentFormActions = ({
   );
 };
 
-const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
+const getFormErrors = (values: Partial<Segment>, state: State) => {
   const errors: Record<string, string> = {};
 
   if (!values.name) {
@@ -191,7 +199,7 @@ const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
     errors.revision_message = t`Revision message is required`;
   }
 
-  const query = getSegmentQuery(values.definition, values.table_id, metadata);
+  const query = getSegmentQuery(state, values.definition, values.table_id);
   const filters = query ? Lib.filters(query, -1) : [];
   if (filters.length === 0) {
     errors.definition = t`At least one filter is required`;
@@ -203,10 +211,10 @@ const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
 function getSegmentEditorProps(
   definitionProps: FieldInputProps<DatasetQuery | undefined>,
   tableIdProps: FieldInputProps<TableId | undefined>,
-  metadata: Metadata,
+  query: Lib.Query | undefined,
 ) {
   return {
-    query: getSegmentQuery(definitionProps.value, tableIdProps.value, metadata),
+    query,
     onChange: (query: Lib.Query) => {
       definitionProps.onChange({
         target: {

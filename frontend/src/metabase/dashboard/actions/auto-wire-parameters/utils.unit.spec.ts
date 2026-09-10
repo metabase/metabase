@@ -1,4 +1,4 @@
-import { createMockStoreDashboard } from "metabase/redux/store/mocks";
+import { createMockStoreDashboard } from "__support__/state";
 import type { QuestionDashboardCard } from "metabase-types/api";
 import { createMockParameterMapping } from "metabase-types/api/mocks";
 

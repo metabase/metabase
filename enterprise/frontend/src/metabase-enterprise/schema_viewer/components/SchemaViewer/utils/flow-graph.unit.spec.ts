@@ -173,8 +173,27 @@ describe("toFlowGraph — per-table edge roles", () => {
   });
 });
 
-describe("toFlowGraph — memoization", () => {
-  it("returns the same reference when called twice with deep-equal responses", () => {
+describe("toFlowGraph — caching", () => {
+  // The cache is keyed on the response object. useGraphSync takes the graph as
+  // an effect dependency, so returning the identical graph for a response the
+  // viewer already holds is what stops the layout re-running and the viewport
+  // resetting. RTK Query keeps one reference per cache entry, so that holds
+  // across renders and remounts of the viewer.
+  it("returns the same reference for the same response object", () => {
+    const response: ErdResponse = {
+      nodes: [
+        createMockErdNode({
+          table_id: 1,
+          fields: [createMockErdField({ id: 10 })],
+        }),
+      ],
+      edges: [createMockErdEdge({ source_field_id: 10, target_field_id: 20 })],
+    };
+
+    expect(toFlowGraph(response)).toBe(toFlowGraph(response));
+  });
+
+  it("returns a separate reference for a deep-equal but separate response", () => {
     const responseA: ErdResponse = {
       nodes: [
         createMockErdNode({
@@ -186,9 +205,7 @@ describe("toFlowGraph — memoization", () => {
     };
     const responseB: ErdResponse = JSON.parse(JSON.stringify(responseA));
 
-    const a = toFlowGraph(responseA);
-    const b = toFlowGraph(responseB);
-    expect(a).toBe(b);
+    expect(toFlowGraph(responseA)).not.toBe(toFlowGraph(responseB));
   });
 
   it("returns a different reference when an edge's relationship changes", () => {

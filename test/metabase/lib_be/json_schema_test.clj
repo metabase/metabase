@@ -7,11 +7,14 @@
    [metabase.lib-be.json-schema :as js]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.server.middleware.json]
    [metabase.util.json :as json-util])
   (:import
    (com.github.erosb.jsonsKema FormatValidationPolicy JsonParser SchemaLoader Validator ValidatorConfig)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.server.middleware.json/keep-me)
 
 (defn- check-node [node]
   (when (map? node)

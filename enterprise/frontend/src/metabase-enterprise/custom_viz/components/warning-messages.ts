@@ -25,5 +25,10 @@ export function getCustomVizPluginWarningMessage(
         // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only custom-viz settings page
         t`Requires Metabase ${metabase_version}, but this instance is on ${current_version}.`,
     )
+    .with(
+      { type: "invalid-identifier" },
+      ({ identifier }) =>
+        t`The identifier "${identifier}" contains ":", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without ":".`,
+    )
     .exhaustive();
 }

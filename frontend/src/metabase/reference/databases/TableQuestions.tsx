@@ -6,14 +6,14 @@ import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmpty
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { dayjs } from "metabase/dayjs";
-import { getMetadata } from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
 import * as Urls from "metabase/urls";
 import { visualizations } from "metabase/viz-core";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
@@ -22,15 +22,17 @@ import { getTable, getTableQuestions } from "../selectors";
 import type { ReferenceLoadingProps, StubbedTable } from "../types";
 import { getQuestionUrl } from "../utils";
 
-const emptyStateData = (table: StubbedTable, metadata: Metadata) => {
+const emptyStateData = (
+  table: StubbedTable,
+  metadataProvider: Lib.MetadataProvider,
+) => {
   return {
     message: t`Questions about this table will appear here as they're added`,
     icon: "folder" as const,
     action: t`Ask a question`,
     link: getQuestionUrl({
-      dbId: table.db_id!,
       tableId: table.id,
-      metadata,
+      metadataProvider: metadataProvider,
     }),
   };
 };
@@ -41,12 +43,15 @@ const mapStateToProps = (
 ) => ({
   table: getTable(state, props),
   entities: getTableQuestions(state, props),
-  metadata: getMetadata(state),
+  metadataProvider: selectMetadataProvider(
+    state,
+    getTable(state, props)?.db_id ?? null,
+  ),
 });
 
 interface TableQuestionsProps {
   table: StubbedTable;
-  metadata: Metadata;
+  metadataProvider: Lib.MetadataProvider;
   entities: Card[];
   loading?: boolean;
   loadingError?: unknown;
@@ -54,7 +59,8 @@ interface TableQuestionsProps {
 
 class TableQuestions extends Component<TableQuestionsProps> {
   render() {
-    const { entities, loadingError, loading, table, metadata } = this.props;
+    const { entities, loadingError, loading, table, metadataProvider } =
+      this.props;
 
     return (
       <div>
@@ -90,7 +96,9 @@ class TableQuestions extends Component<TableQuestionsProps> {
               </div>
             ) : (
               <div className={S.empty}>
-                <AdminAwareEmptyState {...emptyStateData(table, metadata)} />
+                <AdminAwareEmptyState
+                  {...emptyStateData(table, metadataProvider)}
+                />
               </div>
             )
           }

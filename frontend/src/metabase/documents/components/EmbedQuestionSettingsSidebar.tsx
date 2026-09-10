@@ -8,6 +8,7 @@ import {
   ActionIcon,
   Box,
   Button,
+  Ellipsified,
   Group,
   Icon,
   Loader,
@@ -23,8 +24,8 @@ import type {
 
 import {
   closeSidebar,
+  replaceVizSettings,
   updateVisualizationType,
-  updateVizSettings,
 } from "../documents.slice";
 import { useCardData } from "../hooks/use-card-data";
 import { useDraftCardOperations } from "../hooks/use-draft-card-operations";
@@ -75,18 +76,9 @@ export const EmbedQuestionSettingsSidebar = ({
   const handleSettingsChange = (settings: VisualizationSettings) => {
     if (selectedEmbedIndex !== null) {
       if (!draftCard) {
-        const baseCard = card;
-        const newSettings = {
-          ...baseCard?.visualization_settings,
-          ...settings,
-        };
-        const actualCardId = ensureDraftCard(
-          { visualization_settings: newSettings },
-          true,
-        );
-        dispatch(updateVizSettings({ cardId: actualCardId, settings }));
+        ensureDraftCard({ visualization_settings: settings }, true);
       } else {
-        dispatch(updateVizSettings({ cardId, settings }));
+        dispatch(replaceVizSettings({ cardId, settings }));
       }
     }
   };
@@ -130,9 +122,14 @@ export const EmbedQuestionSettingsSidebar = ({
   return (
     <Box className={S.container}>
       <Box className={S.header}>
-        <Group w="100%" justify="space-between" align="flex-start">
-          <Group align="center" p="lg">
-            <Text size="md" fw="bold">{t`Visualize as`}</Text>
+        <Group
+          w="100%"
+          wrap="nowrap"
+          justify="space-between"
+          align="flex-start"
+        >
+          <Group wrap="nowrap" miw={0} flex={1} align="center" p="lg">
+            <Text size="md" fw="bold" flex="none">{t`Visualize as`}</Text>
             <Menu position="bottom-start">
               <Menu.Target>
                 <Button
@@ -148,8 +145,9 @@ export const EmbedQuestionSettingsSidebar = ({
                     ) : null
                   }
                   justify="space-between"
+                  miw={0}
                 >
-                  {selectedElem?.label}
+                  <Ellipsified>{selectedElem?.label}</Ellipsified>
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>

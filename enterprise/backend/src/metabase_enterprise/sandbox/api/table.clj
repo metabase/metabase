@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.sandbox.api.column-filter :as col-filter]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
@@ -9,8 +10,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.table :as schema.table]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.table :as schema.table]))
 
 (mu/defn only-sandboxed-perms? :- :boolean
   "Returns true if the user has sandboxed permissions for the given table. If a sandbox policy exists, it overrides
@@ -29,7 +29,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   :feature :sandboxes
   [id opts]
-  (let [table (api/check-404 (t2/select-one :model/Table :id id))
+  (let [table (api/check-404 (sandbox.db/table id))
         thunk (fn [] (schema.table/fetch-query-metadata* table opts))]
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
@@ -76,10 +76,10 @@
   excluded from what is show in the query builder. When the user has full permissions (or no permissions) this route
   doesn't add/change anything from the OSS version. See the docs on the OSS version of the endpoint for more
   information."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
-   :- [:map
+   :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]

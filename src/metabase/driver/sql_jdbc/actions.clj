@@ -9,6 +9,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.db :as driver.db]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -19,8 +20,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [some mapv select-keys empty? not-empty get-in]]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [methodical.core :as methodical])
   (:import
    (java.sql Connection SQLException)))
 
@@ -185,6 +185,7 @@
   [[connection-binding database-id] & body]
   `(do-with-jdbc-transaction ~database-id (fn [~(vary-meta connection-binding assoc :tag 'Connection)] ~@body)))
 
+;; Name a concrete action, not a group like `:table.row/common`: `driver/hierarchy` has no action groups.
 (defmulti prepare-query*
   "Multimethod for preparing a honeysql query `hsql-query` for a given action type `action`.
   `action` is a keyword like `:model.row/create` or `:table.row/create`; `hsql-query` is a generic
@@ -276,7 +277,7 @@
     (let [field-names (driver-api/cached-value
                        [::correct-columns-name table-id]
                        (fn []
-                         (t2/select-fn-vec :name [:model/Field :name] :table_id table-id)
+                         (driver.db/table-field-names table-id)
                          ;; can't use lib here because fields from lib only return active fields and visible fields
                          ;; :/
                          #_(let [database (driver-api/cached-database-via-table-id table-id)]

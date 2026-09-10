@@ -1,12 +1,12 @@
 (ns metabase.actions-rest.api
   "`/api/action/` endpoints."
   (:require
+   [metabase.actions-rest.db :as actions-rest.db]
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -33,24 +33,17 @@
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
   [_route-params
-   {:keys [model-id]} :- [:map
+   {:keys [model-id]} :- [:map {:closed true}
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
   (letfn [(actions-for [models]
             (if (seq models)
-              (t2/hydrate (actions/select-actions models
-                                                  :model_id [:in (map :id models)]
-                                                  :archived false)
-                          :creator)
+              (t2/hydrate (actions/select-actions-for-models models (map :id models)) :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
                    [(api/read-check :model/Card model-id)]
-                   (t2/select :model/Card {:where
-                                           [:and
-                                            [:= :type "model"]
-                                            [:= :archived false]
-                                            ;; action permission keyed off of model permission
-                                            (collection/visible-collection-filter-clause)]}))]
+                   ;; action permission keyed off of model permission
+                   (actions-rest.db/unarchived-models-visible-to-user))]
       (actions-for models))))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
@@ -58,11 +51,11 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
+  (actions-rest.db/public-actions))
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
-  [{:keys [action-id]} :- [:map
+  [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)
       (t2/hydrate :creator)
@@ -74,14 +67,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:action-id"
   "Delete an Action."
-  [{:keys [action-id]} :- [:map
+  [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
   (let [action (api/write-check :model/Action action-id)]
     (analytics/track-event! :snowplow/action
                             {:event     :action-deleted
                              :type      (:type action)
                              :action_id action-id}))
-  (t2/delete! :model/Action :id action-id)
+  (actions-rest.db/delete-action! action-id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
@@ -108,7 +101,7 @@
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (t2/select-one :model/Database :id db-id))))
+       (actions-rest.db/database db-id))))
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
@@ -127,7 +120,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an Action."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]
    _query-params
    action :- ::actions.schema/action.for-update]
@@ -166,7 +159,7 @@
   "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -174,9 +167,7 @@
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (random-uuid))
-                 (t2/update! :model/Action id
-                             {:public_uuid <>
-                              :made_public_by_id api/*current-user-id*})))}))
+                 (actions-rest.db/set-action-public-uuid! id <> api/*current-user-id*)))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -187,7 +178,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]]
   ;; check the /application/setting permission, not superuser because removing a public link is possible from
   ;; /admin/settings
@@ -195,17 +186,17 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
-  (t2/update! :model/Action id {:public_uuid nil, :made_public_by_id nil})
+  (actions-rest.db/set-action-public-uuid! id nil nil)
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/:action-id/execute/values" :- [:map-of :string :any]
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  [{:keys [action-id]} :- [:map
+  [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]
    _query-params
-   {:keys [parameters]} :- [:map
+   {:keys [parameters]} :- [:map {:closed true}
                             [:parameters ::actions.schema/prefetch-parameter-values]]]
   (actions/check-actions-enabled! action-id)
   (-> (actions/select-action :id action-id :archived false)
@@ -244,10 +235,10 @@
   "Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
-   {:keys [parameters], :as _body} :- [:maybe [:map
+   {:keys [parameters], :as _body} :- [:maybe [:map {:closed true}
                                                [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
