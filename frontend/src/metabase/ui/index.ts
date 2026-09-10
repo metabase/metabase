@@ -26,3 +26,6 @@ export type {
   ColorCssVariableOrString,
 } from "./component-theme";
 export { DEFAULT_METABASE_COMPONENT_THEME } from "./component-theme";
+
+export { deriveFullMetabaseTheme, isDark, isLight } from "./colors";
+export type { ColorName } from "./colors/types";

@@ -3,7 +3,6 @@ import { applyColorOperation } from "./dynamic-css-vars";
 describe("applyColorOperation", () => {
   it("applies lighten operation", () => {
     const result = applyColorOperation("#ff0000", {
-      source: "brand",
       lighten: 0.2,
     });
 
@@ -12,7 +11,6 @@ describe("applyColorOperation", () => {
 
   it("applies darken operation", () => {
     const result = applyColorOperation("#ff0000", {
-      source: "brand",
       darken: 0.2,
     });
 
@@ -21,7 +19,6 @@ describe("applyColorOperation", () => {
 
   it("applies alpha operation", () => {
     const result = applyColorOperation("#ff0000", {
-      source: "brand",
       alpha: 0.5,
     });
 
@@ -29,12 +26,11 @@ describe("applyColorOperation", () => {
   });
 
   it("does nothing if no operation exists", () => {
-    expect(applyColorOperation("#00ff00", { source: "brand" })).toBe("#00ff00");
+    expect(applyColorOperation("#00ff00", {})).toBe("#00ff00");
   });
 
   it("should handle all operations together", () => {
     const result = applyColorOperation("#333333", {
-      source: "brand",
       lighten: 0.3,
       darken: 0.1,
       alpha: 0.7,
