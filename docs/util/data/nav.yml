@@ -141,7 +141,7 @@ categories:
           - name: "Agent API"
             url: "ai/agent-api"
           - name: "Agent-driven development"
-            url: "ai/file-based-development"
+            url: "ai/agent-driven-development"
           - name: "Customization"
             url: "ai/customization"
           - name: "System prompts"
