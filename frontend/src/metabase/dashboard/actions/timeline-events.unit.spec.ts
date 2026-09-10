@@ -1,13 +1,13 @@
 import { getMainStore } from "__support__/entities-store";
-import { getDashCardById } from "metabase/dashboard/selectors";
-import { getDashCardVisibleTimelineEventIds } from "metabase/dashboard/timeline-events/selectors";
 import {
   createMockApiState,
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
   seedApiQueryCache,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { getDashCardById } from "metabase/dashboard/selectors";
+import { getDashCardVisibleTimelineEventIds } from "metabase/dashboard/timeline-events/selectors";
 import {
   hideTimelineEvents,
   showCreatedTimelineEvent,
