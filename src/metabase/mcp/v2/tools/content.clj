@@ -69,6 +69,26 @@
       (when-let [tags (some (comp not-empty :template-tags) (:stages dataset-query))]
         (into {} (map (juxt :name identity)) tags))))
 
+(defn- source-cards-readable?
+  "Whether the current user can read every Card `query` reads, at any depth.
+
+   [[metabase.lib.core/describe-query]] resolves source cards through
+   [[metabase.lib-be.core/application-database-metadata-provider]], which applies no per-user read
+   check, and renders their display names into the summary. Without this gate a caller who can read
+   a wrapper card but not its source learns the source's name from the wrapper — the one read
+   surface that leaked it, while the direct read, the run path, and search all deny it (GHY-4510).
+
+   Fails closed: a source card that no longer exists, or a query this can't walk, counts as
+   unreadable rather than rendering a summary from metadata we cannot account for."
+  [query]
+  (try
+    (let [ids (lib/all-source-card-ids-recursive query)]
+      (or (empty? ids)
+          (let [cards (mcp.db/select-by-ids :model/Card ids)]
+            (and (= (count cards) (count ids))
+                 (every? mi/can-read? cards)))))
+    (catch Exception _ false)))
+
 (defn- card-content-row
   [card]
   (let [dataset-query (:dataset_query card)
@@ -80,7 +100,8 @@
            ;; wanted to state that had to spend a second call resolving the collection — search
            ;; already returns the same path on its rows.
            :collection_path (v2.resolve/collection-path (:collection_id card))
-           :query_summary (some-> query (as-> q (try (lib/describe-query q) (catch Exception _ nil))))
+           :query_summary (when (and query (source-cards-readable? query))
+                            (try (lib/describe-query query) (catch Exception _ nil)))
            :template_tags (when native? (raw-template-tags dataset-query))
            ;; The materialized parameter list — for native cards it is derived from the raw
            ;; template tags above (same data, two views), for MBQL cards it is the stored array.

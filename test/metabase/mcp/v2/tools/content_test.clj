@@ -215,6 +215,35 @@
             (testing "and so is an unreadable series entry"
               (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))
 
+(deftest query-summary-does-not-name-an-unreadable-source-card-test
+  (testing "GHY-4510: a readable wrapper's query_summary must not name a source card the caller cannot read"
+    (mt/with-temp [:model/Collection {locked-id :id} {:name "Project Falcon (confidential)"}
+                   :model/Card {secret-id :id} {:collection_id locked-id
+                                                :name          "SECRET-SourceCard-NORTHWIND"
+                                                :dataset_query (venues-query)}
+                   :model/Card {wrapper-id :id} {:collection_id nil
+                                                 :name          "wrapper"
+                                                 :dataset_query (let [mp (mt/metadata-provider)]
+                                                                  (lib/query mp (lib.metadata/card mp secret-id)))}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (testing "the source card itself is denied outright"
+          (mt/with-test-user :rasta
+            (is (str/includes? (:error (content-one {:items [{:type "question" :id secret-id}]}))
+                               "not found"))))
+        (testing "an admin, who can read the source, still gets a summary"
+          (mt/with-test-user :crowberto
+            (let [row (content-one {:items [{:type "question" :id wrapper-id}]})]
+              (is (nil? (:error row)))
+              (is (some? (:query_summary row))))))
+        (mt/with-test-user :rasta
+          (let [row (content-one {:items [{:type "question" :id wrapper-id}]})]
+            (is (nil? (:error row))
+                "the wrapper is readable — only its source is not")
+            (testing "the restricted card's name is nowhere in the response"
+              (is (not (str/includes? (json/encode row) "SECRET-SourceCard-NORTHWIND"))))
+            (testing "the summary is withheld rather than rendered from unreadable metadata"
+              (is (nil? (:query_summary row))))))))))
+
 (deftest get-content-alert-test
   (testing "GHY-4140: alert reads carry condition, schedule, and handlers"
     (notification.tu/with-card-notification
