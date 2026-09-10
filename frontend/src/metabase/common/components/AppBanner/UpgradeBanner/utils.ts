@@ -8,9 +8,14 @@ export function getAlertUpgradeVersion(
 ): AlertUpgradeVersion | undefined {
   return versionInfo.alert_upgrade_versions
     ?.filter(isAlertUpgradeVersion)
-    .find(
-      (v) =>
-        compareVersions(v.min, versionTag) <= 0 &&
-        compareVersions(v.fixed, versionTag) > 0,
-    );
+    .find((v) => {
+      const minResult = compareVersions(v.min, versionTag);
+      const fixedResult = compareVersions(v.fixed, versionTag);
+      return (
+        minResult != null &&
+        fixedResult != null &&
+        minResult <= 0 &&
+        fixedResult > 0
+      );
+    });
 }

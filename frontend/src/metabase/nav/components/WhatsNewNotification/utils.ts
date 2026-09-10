@@ -47,6 +47,6 @@ export const getLatestEligibleReleaseNotes = ({
   });
 
   return eligibleVersions
-    .sort((a, b) => compareVersions(b.version, a.version))
+    .sort((a, b) => compareVersions(b.version, a.version) ?? 0)
     .find(({ announcement_url }) => announcement_url);
 };
