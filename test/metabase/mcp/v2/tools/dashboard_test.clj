@@ -26,17 +26,20 @@
     (registry/call-tool scopes nil tool args)))
 
 (defn- tool-result
-  [response]
-  (when (:isError response)
-    (throw (ex-info (str "tool call failed: " (-> response :content first :text))
-                    {:response response})))
-  (-> response :content first :text json/decode+kw))
+  [{:keys [result error]}]
+  (when error
+    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+  (when (:isError result)
+    (throw (ex-info (str "tool call failed: " (-> result :content first :text))
+                    {:result result})))
+  (-> result :content first :text json/decode+kw))
 
 (defn- tool-error
-  [response]
-  (when-not (:isError response)
-    (throw (ex-info "expected a tool error, got success" {:response response})))
-  (-> response :content first :text))
+  [{:keys [result error]}]
+  (cond
+    error             (:message error)
+    (:isError result) (-> result :content first :text)
+    :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
 
 (defn- wire
   [x]
@@ -236,6 +239,20 @@
             (is (= :list (:values_query_type stored)))
             (testing "and a slug derived from the name, so the parameter is URL-addressable"
               (is (= "category" (:slug stored))))))))))
+
+(deftest add-parameter-requires-a-name-test
+  (testing "GHY-4147: add_parameter without a name is refused up front. A nameless parameter gets no
+            slug, which half-breaks embedding, public links and URL parameter sync, and
+            `dashboard->resolved-params` requires a non-blank name — so the failure would otherwise
+            land on read-back, after the write had already committed."
+    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+      (let [err (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                        (wire {:method "update" :id (:id dash)
+                                               :ops [{:op "add_parameter" :parameter_id "p1"
+                                                      :type "string/="}]})))]
+        (is (re-find #"(?i)name" err))
+        (testing "and the dashboard is left alone"
+          (is (empty? (t2/select-one-fn :parameters :model/Dashboard :id (:id dash)))))))))
 
 (deftest update-parameter-clear-test
   (testing "GHY-4191: `update_parameter` can remove a property it once set. Null can't say it —
