@@ -87,4 +87,59 @@ describe("AnalyticsExportStatus", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Export failed")).toBeInTheDocument();
   });
+
+  it("keeps an in-flight export across navigation and allows another after dismissal", async () => {
+    let resolveExport = (_response: unknown) => {};
+    fetchMock.post(
+      EXPORT_URL,
+      () =>
+        new Promise<unknown>((resolve) => {
+          resolveExport = resolve;
+        }),
+    );
+
+    const content = (
+      <>
+        <CollectionExportAnalytics />
+        <AnalyticsExportStatus />
+      </>
+    );
+    const { rerender } = renderWithProviders(content);
+    await userEvent.click(screen.getByLabelText("Export analytics"));
+    expect(
+      await screen.findByText("Exporting analytics content…"),
+    ).toBeInTheDocument();
+
+    rerender(<></>);
+    rerender(content);
+
+    expect(screen.getByLabelText("Export analytics")).toBeDisabled();
+    expect(
+      screen.getByText("Exporting analytics content…"),
+    ).toBeInTheDocument();
+    expect(fetchMock.callHistory.calls(EXPORT_URL)).toHaveLength(1);
+
+    resolveExport({ status: 200, body: "tarball" });
+    expect(
+      await screen.findByText("Analytics content exported"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByLabelText("Dismiss"));
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Analytics content exported"),
+      ).not.toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByLabelText("Export analytics"));
+    expect(
+      await screen.findByText("Exporting analytics content…"),
+    ).toBeInTheDocument();
+    expect(fetchMock.callHistory.calls(EXPORT_URL)).toHaveLength(2);
+
+    resolveExport({ status: 200, body: "second tarball" });
+    expect(
+      await screen.findByText("Analytics content exported"),
+    ).toBeInTheDocument();
+  });
 });
