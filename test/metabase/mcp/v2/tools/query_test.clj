@@ -927,9 +927,14 @@
 
 ;;; ------------------------------------------- QP input whitelist -------------------------------------------------
 
-;;; GHY-4313: the tool's `:query` is an open map, so these drive the tool with extra keys in it and
-;;; assert on what reaches the query processor — the QP itself is stubbed, so nothing but the
-;;; boundary's own filtering can account for a key's absence.
+;;; GHY-4313: the QP only ever sees the keys MCP forwards
+;;; ([[metabase.mcp.v2.tools.query/query-passthrough-keys]]). A fresh `query` is additionally
+;;; rejected outright by the closed `:metabase.lib.schema/query`, but the handle path skips that
+;;; schema — `resolve-query-handle!` checks only that stages are non-empty and the last one has a
+;;; positive limit, and `POST /drills` stores a caller-supplied query verbatim. So an unknown key
+;;; genuinely reaches the execution boundary there, and these drive the tool through a stored
+;;; handle and assert on what reaches the query processor. The QP itself is stubbed, so nothing but
+;;; the boundary's own filtering can account for a key's absence.
 
 (def ^:private fake-qp-result
   "The minimum a stubbed `process-query` has to return for the tool to finish a page."
@@ -995,8 +1000,20 @@
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest unknown-caller-key-never-reaches-the-qp-test
   (testing "GHY-4313: a top-level key MCP does not pass through is dropped before the QP sees the query"
-    (let [captured (capture-qp-query! {:query (assoc (numeric-orders-query {:limit 1}) :evil "x")})]
-      (is (not (contains? captured :evil))))))
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid      (str (random-uuid))
+            handle   (stored-handle! sid (pk-ordered-orders-query {:evil "x"}))
+            captured (capture-qp-query! {:query_handle handle})]
+        (is (not (contains? captured :evil)))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest unknown-caller-key-rejected-on-the-fresh-path-test
+  (testing "GHY-4313: an unknown top-level key on a fresh `query` is rejected outright, not silently accepted"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (str/includes? (error-text (call! (str (random-uuid))
+                                              {:query (assoc (numeric-orders-query {:limit 1}) :evil "x")}))
+                           ":evil"))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest query-shape-still-reaches-the-qp-test

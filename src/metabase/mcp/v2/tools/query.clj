@@ -108,9 +108,12 @@
 (def ^:private query-passthrough-keys
   "The only keys of an incoming query that MCP forwards to the QP. Everything else — `:middleware`,
    `:info`, `:constraints`, and any unknown key — is MCP's to set, because the query map is
-   caller-controlled: the tool's `:query` is an open `[:map]`, and an agent that could name its own
-   `:info` would forge `query_execution` attribution. The QP strips some of these itself; that is
-   defense in depth, not this boundary's contract."
+   caller-controlled and an agent that could name its own `:info` would forge `query_execution`
+   attribution. A fresh `:query` is also rejected upstream by the closed
+   `:metabase.lib.schema/query`, but that covers only the fresh path: a handle's stored query is
+   checked shallowly and the `/drills` callback stores one verbatim, so an unknown key does reach
+   here. This whitelist, not the schema, is what the guarantee rests on. The QP strips some of
+   these itself; that is defense in depth, not this boundary's contract."
   [:lib/type :database :stages :parameters])
 
 (defn- execute!
