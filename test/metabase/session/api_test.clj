@@ -592,6 +592,7 @@
 
 (defsetting test-session-api-i18n-setting
   "Public setting whose value nests a deferred-tru, so the locale header has something to translate."
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (fn [] {:display-name (deferred-tru "Connection String")})

@@ -75,6 +75,7 @@
 
 (setting/defsetting test-nested-i18n-setting
   "Public setting whose value nests a deferred-tru, the way driver connection properties do."
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (fn [] {:display-name (deferred-tru "Host")})
