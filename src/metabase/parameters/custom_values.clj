@@ -196,7 +196,7 @@
   `default-case-thunk` is a 0-arity function that returns values list when:
   - :values_source_type = card but the card is archived or the card no longer contains the value-field.
   - :values_source_type = nil."
-  [parameter          :- ::parameters.schema/parameter
+  [parameter          :- ::parameters.schema/resolved-parameter
    query-string       :- [:maybe ms/NonBlankString]
    default-case-thunk :- [:=> [:cat :any] ms/FieldValuesResult]]
   (case (:values_source_type parameter)
@@ -266,7 +266,7 @@
   the function `default-case-thunk`.
 
   `default-case-thunk` is a 0-arity function that returns values list when :values_source_type = nil."
-  [param              :- ::parameters.schema/parameter
+  [param              :- ::parameters.schema/resolved-parameter
    value
    default-case-thunk :- [:=> [:cat] :any]]
   (case (:values_source_type param)

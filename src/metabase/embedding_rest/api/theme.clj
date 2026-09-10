@@ -19,7 +19,7 @@
    [:id        ms/PositiveInt]
    [:entity_id ms/NonBlankString]
    [:name      ms/NonBlankString]
-   [:settings ms/Map]
+   [:settings ms/OpaqueJSONObject]
    [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
    [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]])
 
@@ -32,7 +32,7 @@
 
 (api.macros/defendpoint :get "/:id" :- ::EmbeddingTheme
   "Fetch a single embedding theme by ID."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
   (embedding-rest.db/embedding-theme id))
 
@@ -40,19 +40,19 @@
   "Create a new embedding theme."
   [_route-params
    _query-params
-   {:keys [name settings]} :- [:map
+   {:keys [name settings]} :- [:map {:closed true}
                                [:name     ms/NonBlankString]
-                               [:settings ms/Map]]]
+                               [:settings ms/OpaqueJSONObject]]]
   (embedding-rest.db/insert-embedding-theme! {:name name
                                               :settings settings}))
 
 (api.macros/defendpoint :put "/:id" :- ::EmbeddingTheme
   "Update an embedding theme."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [name settings]} :- [:map
+   {:keys [name settings]} :- [:map {:closed true}
                                [:name {:optional true} [:maybe ms/NonBlankString]]
-                               [:settings {:optional true} [:maybe ms/Map]]]]
+                               [:settings {:optional true} [:maybe ms/OpaqueJSONObject]]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
   (embedding-rest.db/update-embedding-theme! id
                                              (cond-> {}
@@ -62,14 +62,14 @@
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete an embedding theme."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
   (embedding-rest.db/delete-embedding-theme! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/copy" :- ::EmbeddingTheme
   "Copy an embedding theme."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
   (let [source-theme (embedding-rest.db/embedding-theme id)]
     (embedding-rest.db/insert-embedding-theme! {:name (tru "Copy of {0}" (:name source-theme))
@@ -83,10 +83,10 @@
   are no-ops even if the admin has since deleted the seeded themes, so deletions are preserved."
   [_route-params
    _query-params
-   {:keys [themes]} :- [:map
-                        [:themes [:sequential [:map
+   {:keys [themes]} :- [:map {:closed true}
+                        [:themes [:sequential [:map {:closed true}
                                                [:name     ms/NonBlankString]
-                                               [:settings ms/Map]]]]]]
+                                               [:settings ms/OpaqueJSONObject]]]]]]
   (locking seed-defaults-lock
     (t2/with-transaction [_conn]
       (when-not (embedding.settings/default-embedding-themes-seeded)

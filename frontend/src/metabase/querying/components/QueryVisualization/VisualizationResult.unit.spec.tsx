@@ -1,12 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadata } from "__support__/metadata";
+import { createMockState } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   within,
 } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
@@ -38,9 +40,12 @@ beforeAll(() => {
   return loadVisualizationComponents(["table"]);
 });
 
-const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
+const state = createMockState({
+  entities: createMockEntitiesState({
+    databases: [createSampleDatabase()],
+  }),
 });
+const metadata = getMetadata(state);
 
 const setup = (props: Partial<QueryVisualizationProps> = {}) => {
   const question = new Question(
@@ -75,6 +80,7 @@ const setup = (props: Partial<QueryVisualizationProps> = {}) => {
       navigateToNewCardInsideQB={jest.fn()}
       {...props}
     />,
+    { storeInitialState: state },
   );
 };
 

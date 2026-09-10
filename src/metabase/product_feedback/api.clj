@@ -35,7 +35,7 @@
   "Endpoint to provide feedback from the product"
   [_route-params
    _query-params
-   {:keys [comments source email]} :- [:map
+   {:keys [comments source email]} :- [:map {:closed true}
                                        [:comments {:optional true} [:maybe ms/NonBlankString]]
                                        [:source   ms/NonBlankString]
                                        [:email    {:optional true} [:maybe ms/NonBlankString]]]]

@@ -8,9 +8,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import {
-  type MetadataProviderFactory,
   getShallowFields as getFields,
-  selectMetadataProviderFactory,
+  selectMetadataProvider,
 } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import Detail from "metabase/reference/components/Detail";
@@ -21,6 +20,7 @@ import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateSegment } from "metabase/reference/update-actions";
+import type * as Lib from "metabase-lib";
 import type { User } from "metabase-types/api";
 
 import S from "../components/Detail.module.css";
@@ -47,7 +47,7 @@ interface SegmentDetailFormFields extends BaseDetailFormFields {
 const interestingQuestions = (
   table: StubbedTable,
   segment: StubbedSegment,
-  getMetadataProvider: MetadataProviderFactory,
+  metadataProvider: Lib.MetadataProvider,
 ) => {
   return [
     {
@@ -57,7 +57,7 @@ const interestingQuestions = (
         tableId: table.id,
         segmentId: segment.id,
         getCount: true,
-        metadataProvider: getMetadataProvider(table.db_id ?? null),
+        metadataProvider: metadataProvider,
       }),
     },
     {
@@ -66,7 +66,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         tableId: table.id,
         segmentId: segment.id,
-        metadataProvider: getMetadataProvider(table.db_id ?? null),
+        metadataProvider: metadataProvider,
       }),
     },
   ];
@@ -83,7 +83,10 @@ const mapStateToProps = (
     entity,
     table: getTable(state, props),
     metadataFields: fields,
-    getMetadataProvider: selectMetadataProviderFactory(state),
+    metadataProvider: selectMetadataProvider(
+      state,
+      getTable(state, props)?.db_id ?? null,
+    ),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -114,7 +117,7 @@ interface SegmentDetailProps {
   isFormulaExpanded?: boolean;
   loading?: boolean;
   loadingError?: unknown;
-  getMetadataProvider: MetadataProviderFactory;
+  metadataProvider: Lib.MetadataProvider;
 
   onSubmit: (fields: SegmentDetailFormFields, props: any) => Promise<void>;
 }
@@ -124,7 +127,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
     style,
     entity,
     table,
-    getMetadataProvider,
+    metadataProvider,
     loadingError,
     loading,
     user,
@@ -185,7 +188,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
           headerLink={getQuestionUrl({
             tableId: entity.table_id!,
             segmentId: entity.id,
-            metadataProvider: getMetadataProvider(table.db_id ?? null),
+            metadataProvider: metadataProvider,
           })}
           name={t`Details`}
           user={user}
@@ -276,7 +279,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                       questions={interestingQuestions(
                         table,
                         entity,
-                        getMetadataProvider,
+                        metadataProvider,
                       )}
                     />
                   </li>
