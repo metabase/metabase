@@ -304,8 +304,9 @@ describe("scenarios > admin > people", () => {
       });
 
       H.modal().within(() => {
-        cy.findByText(`${normalUserName}'s password has been reset`);
-        cy.findByText(/^temporary password$/i);
+        cy.findByText(`${normalUserName}'s password has been reset`).should(
+          "be.visible",
+        );
         cy.findByLabelText(/^temporary password$/i).should(
           "have.attr",
           "type",

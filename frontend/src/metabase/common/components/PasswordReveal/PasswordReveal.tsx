@@ -21,7 +21,7 @@ export const PasswordReveal = ({ password }: PasswordRevealProps) => {
   return (
     <Input.Wrapper
       label={t`Temporary password`}
-      labelProps={{ htmlFor: inputId }}
+      labelProps={{ htmlFor: inputId, mb: "xs" }}
     >
       <Flex gap="lg" align="center" wrap="nowrap">
         <PasswordInput
