@@ -5,9 +5,9 @@ import {
   isQuestionInput,
   isTableInput,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import { cardApi } from "metabase/api";
+import { cardApi, selectCard, selectTableQueryMetadata } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { getMetadataUnfiltered } from "metabase/metadata-store";
+import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
 import type {
@@ -17,7 +17,6 @@ import type {
   TestQuerySpec,
   TestStageWithSourceSpec,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import { loadReferencedMetricMetadata } from "./metric-metadata";
 import { validateQueryInput } from "./validation";
@@ -38,24 +37,20 @@ export const resolveDatasetQuery: ResolveDatasetQuery =
 
     await loadSourceMetadata(store, input);
 
-    return resolveQueryFromLoadedMetadata(
-      input,
-      getMetadataUnfiltered(store.getState()),
-    );
+    return resolveQueryFromLoadedMetadata(input, store.getState());
   };
 
-function resolveQueryFromLoadedMetadata(
-  input: QueryInput,
-  metadata: Lib.Metadata,
-) {
+type SdkState = ReturnType<SdkStore["getState"]>;
+
+function resolveQueryFromLoadedMetadata(input: QueryInput, state: SdkState) {
   if (!isQueryInput(input)) {
     throw new Error(
       'Query object creation requires a source reference like `{ type: "table", id }` or `{ type: "card", id }`.',
     );
   }
 
-  const databaseId = getSourceDatabaseId(input, metadata);
-  const provider = Lib.metadataProvider(databaseId, metadata);
+  const databaseId = getSourceDatabaseId(input, state);
+  const provider = selectMetadataProviderUnfiltered(state, databaseId);
 
   return Lib.toJsQuery(
     Lib.createTestQuery(provider, {
@@ -135,51 +130,37 @@ async function loadCardMetadata(store: SdkStore, id: number) {
   ]);
 }
 
-function getSourceDatabaseId(input: QueryInput, metadata: Lib.Metadata) {
+function getSourceDatabaseId(input: QueryInput, state: SdkState) {
   if (isTableInput(input)) {
-    return getTableDatabaseId(input.source.id, metadata);
+    return getTableDatabaseId(input.source.id, state);
   }
 
   if (isQuestionInput(input)) {
-    return getCardDatabaseId(input.source.id, metadata);
+    return getCardDatabaseId(input.source.id, state);
   }
 
   throw new Error("Unable to find database for query source.");
 }
 
-function getTableDatabaseId(tableId: number, metadata: Lib.Metadata) {
-  const table = metadata.tables?.[tableId];
+// Both sources were awaited by `loadSourceMetadata`, so they are in the RTK
+// cache by now.
+function getTableDatabaseId(tableId: number, state: SdkState) {
+  const { data: table } = selectTableQueryMetadata({ id: tableId })(state);
 
-  if (isObject(table) && typeof table.db_id === "number") {
+  if (typeof table?.db_id === "number") {
     return table.db_id;
   }
 
   throw new Error(`Unable to find database for table ${tableId}.`);
 }
 
-function getCardDatabaseId(cardId: number, metadata: Lib.Metadata) {
-  const card = metadata.questions?.[cardId];
-  const datasetQuery = getCardDatasetQuery(card);
+function getCardDatabaseId(cardId: number, state: SdkState) {
+  const { data: card } = selectCard({ id: cardId })(state);
+  const databaseId = card?.dataset_query?.database;
 
-  if (isObject(datasetQuery) && typeof datasetQuery.database === "number") {
-    return datasetQuery.database;
+  if (typeof databaseId === "number") {
+    return databaseId;
   }
 
   throw new Error(`Unable to find database for saved question ${cardId}.`);
-}
-
-function getCardDatasetQuery(card: unknown) {
-  if (!isObject(card)) {
-    return null;
-  }
-
-  if (isObject(card.dataset_query)) {
-    return card.dataset_query;
-  }
-
-  if (typeof card.datasetQuery === "function") {
-    return card.datasetQuery();
-  }
-
-  return null;
 }

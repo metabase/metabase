@@ -78,7 +78,7 @@ To edit a metric:
 
 1. Navigate to the metric you want to edit.
 
-   You can visit metric in its collection, find it in the [metrics browser](#see-all-metrics), or search for it.
+   You can visit the metric in its collection, find it in the [metrics browser](#see-all-metrics), or search for it.
 
 2. To edit the metric's definition, switch to the **Definition tab**.
 

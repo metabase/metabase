@@ -102,7 +102,7 @@ You can set up questions to run periodically and notify you if the results are i
 
 ## Viewing events on your chart
 
-If your results are a time series, you can display events on along the x-axis. See [events and timelines](../exploration-and-organization/events-and-timelines.md).
+If your results are a time series, you can display events along the x-axis. See [events and timelines](../exploration-and-organization/events-and-timelines.md).
 
 ## Deleting a question
 

@@ -16,6 +16,5 @@ export const ChartSettingEnumToggle = <T extends string>({
     }
     id={id}
     role="switch"
-    size="sm"
   />
 );

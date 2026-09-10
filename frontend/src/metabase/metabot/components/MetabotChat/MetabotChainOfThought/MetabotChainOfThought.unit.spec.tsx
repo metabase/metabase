@@ -3,9 +3,9 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
@@ -17,6 +17,7 @@ const chain = (
   role: "agent",
   type: "chain_of_thought",
   steps: [],
+  finished: false,
   ...overrides,
 });
 
@@ -31,7 +32,7 @@ const setup = (
     createMockDashboard({ id: 123, name: "Orders" }),
   );
   return renderWithProviders(
-    <MetabotChainOfThought message={message} isStreaming={isStreaming} />,
+    <MetabotChainOfThought part={{ ...message, finished: !isStreaming }} />,
     { storeInitialState: createMockState({ settings }) },
   );
 };
