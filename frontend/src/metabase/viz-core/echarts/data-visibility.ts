@@ -18,50 +18,12 @@ export const isDataVisibilityResult = (
 
 type ActionHandler = Parameters<typeof registerAction>[1];
 type ExtensionApi = Parameters<NonNullable<ActionHandler>>[2];
-type CoordinateSystem = ReturnType<
-  ExtensionApi["getCoordinateSystems"]
->[number];
-type CoordinateAxis = ReturnType<
-  NonNullable<CoordinateSystem["getAxes"]>
->[number];
 type SeriesView = ReturnType<ExtensionApi["getViewOfSeriesModel"]>;
 
 type PlotArea = { x: number; y: number; width: number; height: number };
 
 // A clipped mark can touch the plot edge with nothing actually visible.
-const EDGE_TOLERANCE = 0.5;
-
-// ECharts declares this on Axis2D but doesn't export it from "echarts/core".
-type CartesianAxis = { toGlobalCoord(coord: number): number };
-
-const isCartesianAxis = (
-  axis: CoordinateAxis,
-): axis is CoordinateAxis & CartesianAxis => "toGlobalCoord" in axis;
-
-const getPlotArea = (coordinateSystem: CoordinateSystem): PlotArea | null => {
-  const axes = coordinateSystem.getAxes?.();
-  const xAxis = axes?.find((axis) => axis.dim === "x");
-  const yAxis = axes?.find((axis) => axis.dim === "y");
-
-  if (!xAxis || !yAxis || !isCartesianAxis(xAxis) || !isCartesianAxis(yAxis)) {
-    return null;
-  }
-
-  // Axis extents are coordinate-system-local; element bounds are global.
-  const xExtent = xAxis.getExtent();
-  const yExtent = yAxis.getExtent();
-  const left = xAxis.toGlobalCoord(xExtent[0]);
-  const right = xAxis.toGlobalCoord(xExtent[1]);
-  const top = yAxis.toGlobalCoord(yExtent[0]);
-  const bottom = yAxis.toGlobalCoord(yExtent[1]);
-
-  return {
-    x: Math.min(left, right) + EDGE_TOLERANCE,
-    y: Math.min(top, bottom) + EDGE_TOLERANCE,
-    width: Math.abs(right - left) - EDGE_TOLERANCE * 2,
-    height: Math.abs(bottom - top) - EDGE_TOLERANCE * 2,
-  };
-};
+const EDGE_TOLERANCE = -0.5;
 
 const hasMarkInsidePlotArea = (view: SeriesView, plotArea: PlotArea) => {
   let found = false;
@@ -100,18 +62,17 @@ export const DataVisibilityExtension = {
         update: "none",
       },
       (_payload, ecModel, api): DataVisibilityResult => {
-        const [coordinateSystem] = api.getCoordinateSystems();
-        const plotArea = coordinateSystem
-          ? getPlotArea(coordinateSystem)
-          : null;
-
-        if (!plotArea) {
-          return { anythingRendered: true };
-        }
-
         let anythingRendered = false;
 
         ecModel.eachSeries((seriesModel) => {
+          const plotArea =
+            seriesModel.coordinateSystem?.getArea?.(EDGE_TOLERANCE);
+
+          if (!plotArea) {
+            anythingRendered = true;
+            return;
+          }
+
           const view = api.getViewOfSeriesModel(seriesModel);
           anythingRendered =
             anythingRendered || hasMarkInsidePlotArea(view, plotArea);
