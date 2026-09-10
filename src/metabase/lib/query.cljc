@@ -253,16 +253,19 @@
   (let [card-id (u/the-id card-metadata)
         metric-first-stage (-> (query metadata-providerable (:dataset-query card-metadata))
                                (lib.util/query-stage 0))
-        base-query (query-with-stages metadata-providerable
-                                      [(select-keys metric-first-stage [:lib/type :source-card :source-table])])
-        base-query (reduce
-                    #(lib.util/add-summary-clause %1 0 :breakout %2)
-                    base-query
-                    (:breakout metric-first-stage))]
-    (-> base-query
+        native-query? (= (:lib/type metric-first-stage) :mbql.stage/native)]
+    (if native-query?
+      (query-with-stages metadata-providerable [metric-first-stage])
+      (let [base-query (query-with-stages metadata-providerable
+                                          [(select-keys metric-first-stage [:lib/type :source-card :source-table])])
+            base-query (reduce
+                        #(lib.util/add-summary-clause %1 0 :breakout %2)
+                        base-query
+                        (:breakout metric-first-stage))]
         (lib.util/add-summary-clause
+         base-query
          0 :aggregation
-         (lib.options/ensure-uuid [:metric {} card-id])))))
+         (lib.options/ensure-uuid [:metric {} card-id]))))))
 
 (defmethod query-method :metadata/card
   [metadata-providerable card-metadata]
