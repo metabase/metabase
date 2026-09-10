@@ -186,9 +186,12 @@
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
     {:source-card (id :guard content-ref?)}
-    (-> &match
-        (assoc :source-card (import-fk resolver id 'Card))
-        (->> (mbql-fully-qualified-names->ids* resolver)))
+    ;; Recur on the rest of the map, not on `&match`: `import-fk` of a numeric id returns a
+    ;; numeric id, which still satisfies `content-ref?`, so recurring on the whole match would
+    ;; re-enter this branch on its own output forever. The `:source-table` branch escapes only
+    ;; because it rewrites the value to "card__N" and no longer matches.
+    (assoc (mbql-fully-qualified-names->ids* resolver (dissoc &match :source-card))
+           :source-card (import-fk resolver id 'Card))
 
     ;; Portable only, deliberately. The numeric dialect does not cover snippets: no resolver
     ;; implements `NativeQuerySnippet`, so a numeric one would fall through `import-fk`'s model
