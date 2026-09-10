@@ -780,19 +780,28 @@
            parameters
            permissions
            public-sharing
+           pulse
            queries
+           query-permissions
            query-processor
            request
            revisions
            util
            xrays}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/DashboardTab
                     :model/Field
-                    :model/Query}}
+                    :model/ParameterCard
+                    :model/Pulse
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient
+                    :model/Query
+                    :model/User}}
 
   data-studio
   {:team "Gadget"
