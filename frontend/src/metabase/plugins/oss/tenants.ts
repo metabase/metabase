@@ -6,7 +6,6 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { definePluginSlot } from "metabase/plugin-slots";
 import type {
   Collection,
   CollectionId,
@@ -22,6 +21,7 @@ import {
   PluginPlaceholder,
   pluginPlaceholderRoute,
 } from "../components/PluginPlaceholder";
+import { definePluginSlot } from "../slot";
 import type { PluginRoute } from "../types";
 
 export type CreatedTenantData = {

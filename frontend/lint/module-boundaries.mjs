@@ -44,7 +44,6 @@ const elements = [
     name: "types",
     pattern: "frontend/src/metabase-types/*/**",
   }),
-  createElement({ type: "lib", name: "plugin-slots", enforcePublicApi: true }),
   createElement({ type: "lib", name: "utils" }),
 
   // mlv1 (basic) and mlv2 (lib) must stay in this order: mlv1's pattern is a
