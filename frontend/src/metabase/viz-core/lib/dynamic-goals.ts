@@ -38,20 +38,17 @@ export type GoalData = Pick<
   "cols" | "rows" | "referenced_entities"
 >;
 
-export type ResolvedGoalSegment = {
+// A bound left empty stays null; at most one bound is null.
+export type ResolvedOpenEndedGoalSegment = {
   color: string;
   label?: string;
-  min: number;
-  max: number;
-};
-
-// A bound left empty stays null; at most one bound is null.
-export type ResolvedOpenEndedGoalSegment = Omit<
-  ResolvedGoalSegment,
-  "min" | "max"
-> & {
   min: number | null;
   max: number | null;
+};
+
+export type ResolvedGoalSegment = ResolvedOpenEndedGoalSegment & {
+  min: number;
+  max: number;
 };
 
 export type GoalRefErrorReason =
@@ -277,7 +274,6 @@ export function getGoalValues(
   });
 }
 
-// A bound left empty stays null; at most one bound is null.
 export function resolveOpenEndedGoalSegments(
   data: GoalData,
   segments: GoalSegment[] | undefined,
