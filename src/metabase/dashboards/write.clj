@@ -123,7 +123,14 @@
 (mu/defn- check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
-  [parameter-mappings :- [:sequential ::parameters.schema/parameter-mapping]]
+  ;; `:dashcard-id`/`:card-id` are stamped on by the callers below before the check runs, and #82196 closed
+  ;; `::parameter-mapping`, so they have to be declared or every mapping write is refused. Kept identical to
+  ;; the REST copy in `metabase.dashboards-rest.api`, which this function is a fork of.
+  [parameter-mappings :- [:sequential [:merge
+                                       ::parameters.schema/parameter-mapping
+                                       [:map {:closed true}
+                                        [:dashcard-id {:optional true} [:maybe ms/PositiveInt]]
+                                        [:card-id     {:optional true} [:maybe ms/PositiveInt]]]]]]
   (when (seq parameter-mappings)
     (let [card-ids       (into #{} (keep :card-id) parameter-mappings)
           card-id->query (when (seq card-ids)
