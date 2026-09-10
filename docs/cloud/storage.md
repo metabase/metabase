@@ -30,7 +30,7 @@ Under the hood, Metabase Cloud Storage uses [ClickHouse](https://www.metabase.co
 
 ### Writing SQL queries on data stored in Metabase Cloud Storage
 
-For the SQL dialect supported by ClickHouse, check out [ClickHouse's SQL reference](https://clickhouse.com/docs/reference/home).
+For the SQL dialect supported by ClickHouse, check out [ClickHouse's SQL reference](https://clickhouse.com/docs/reference/syntax).
 
 ## How to get Metabase Cloud Storage
 

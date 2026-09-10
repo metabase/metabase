@@ -26,7 +26,7 @@ Check out the [Full app embedding quick start](./full-app-embedding-quick-start-
 
 ## Prerequisites for full app embedding
 
-1. Make sure you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://store.metabase.com/checkout).
+1. Make sure you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://www.metabase.com/pricing).
 2. Organize people into Metabase [groups](../people-and-groups/start.md).
 3. Set up [permissions](../permissions/introduction.md) for each group.
 4. Set up [SSO](../people-and-groups/start.md#authentication) to automatically apply permissions and show people the right data upon sign-in. In general, **we recommend using [SSO with JWT](../people-and-groups/authenticating-with-jwt.md)**.
