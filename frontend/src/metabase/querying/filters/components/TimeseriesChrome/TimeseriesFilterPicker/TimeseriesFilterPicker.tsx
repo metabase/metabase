@@ -1,8 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { SimpleDateFilterPicker } from "metabase/querying/filters/components/FilterPicker/DateFilterPicker";
-import { Button, Icon, Popover } from "metabase/ui";
+import { Box, Button, Icon, Popover } from "metabase/ui";
+import {
+  PopoverSideFallbackProvider,
+  usePopoverSideFallbackMiddlewares,
+} from "metabase/ui/components/utils/PopoverSideFallback";
+import S from "metabase/ui/components/utils/PopoverSideFallback/PopoverSideFallback.module.css";
 import * as Lib from "metabase-lib";
 
 export interface TimeseriesFilterPickerProps {
@@ -13,7 +18,15 @@ export interface TimeseriesFilterPickerProps {
   onChange: (newFilter: Lib.ExpressionClause | undefined) => void;
 }
 
-export function TimeseriesFilterPicker({
+export function TimeseriesFilterPicker(props: TimeseriesFilterPickerProps) {
+  return (
+    <PopoverSideFallbackProvider>
+      <TimeseriesFilterPickerInner {...props} />
+    </PopoverSideFallbackProvider>
+  );
+}
+
+function TimeseriesFilterPickerInner({
   query,
   stageIndex,
   column,
@@ -21,6 +34,8 @@ export function TimeseriesFilterPicker({
   onChange,
 }: TimeseriesFilterPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const middlewares = usePopoverSideFallbackMiddlewares(dropdownRef);
 
   const filterName = useMemo(() => {
     return filter
@@ -38,7 +53,12 @@ export function TimeseriesFilterPicker({
   };
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover
+      opened={isOpened}
+      onChange={setIsOpened}
+      middlewares={middlewares}
+      classNames={{ dropdown: S.dropdown }}
+    >
       <Popover.Target>
         <Button
           rightSection={<Icon name="chevrondown" />}
@@ -48,14 +68,19 @@ export function TimeseriesFilterPicker({
           {filterName}
         </Button>
       </Popover.Target>
-      <Popover.Dropdown>
-        <SimpleDateFilterPicker
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
-          filter={filter}
-          onChange={handleFilterChange}
-        />
+      <Popover.Dropdown
+        ref={dropdownRef}
+        data-testid="timeseries-filter-popover"
+      >
+        <Box className={S.dropdownContent}>
+          <SimpleDateFilterPicker
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            filter={filter}
+            onChange={handleFilterChange}
+          />
+        </Box>
       </Popover.Dropdown>
     </Popover>
   );

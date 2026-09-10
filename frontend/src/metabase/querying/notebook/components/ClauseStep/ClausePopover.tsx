@@ -1,7 +1,11 @@
 import { useDndContext } from "@dnd-kit/core";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 import { Box, Popover } from "metabase/ui";
+import {
+  PopoverSideFallbackProvider,
+  usePopoverSideFallbackMiddlewares,
+} from "metabase/ui/components/utils/PopoverSideFallback";
 import { PreventPopoverExitProvider } from "metabase/ui/components/utils/PreventPopoverExit";
 
 import S from "./ClausePopover.module.css";
@@ -15,7 +19,15 @@ interface ClausePopoverProps {
 
 const noop = () => {};
 
-export function ClausePopover({
+export function ClausePopover(props: ClausePopoverProps) {
+  return (
+    <PopoverSideFallbackProvider>
+      <ClausePopoverInner {...props} />
+    </PopoverSideFallbackProvider>
+  );
+}
+
+function ClausePopoverInner({
   isInitiallyOpen = false,
   disabled = false,
   renderItem,
@@ -23,6 +35,8 @@ export function ClausePopover({
 }: ClausePopoverProps) {
   const [isOpen, setIsOpen] = useState(isInitiallyOpen);
   const { active } = useDndContext();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const middlewares = usePopoverSideFallbackMiddlewares(dropdownRef);
 
   const handleOpen = useCallback(() => {
     setIsOpen(true);
@@ -55,11 +69,12 @@ export function ClausePopover({
         onChange={handleChange}
         classNames={{ dropdown: S.dropdown }}
         disabled={!hasPopover}
+        middlewares={middlewares}
       >
         <Popover.Target>
           {renderItem(disabled ? noop : handleOpen, hasPopover)}
         </Popover.Target>
-        <Popover.Dropdown data-testid="clause-popover">
+        <Popover.Dropdown ref={dropdownRef} data-testid="clause-popover">
           <Box className={S.dropdownContent} data-testid="popover-content">
             {content}
           </Box>
