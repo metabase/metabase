@@ -202,7 +202,7 @@
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]
-  "Rewrite the card FK (`[:attrs :id]`) of every cardEmbed node found in `card-id-map`.
+  "Rewrite the card FK (`[:attrs \"id\"]`) of every cardEmbed node found in `card-id-map`.
   Touches nothing else on the node — in particular a node's `:_id` never changes here."
   [document :- [:map
                 [:document :any]
@@ -212,9 +212,9 @@
     (map? document)
     (prose-mirror/update-ast (fn match-card-to-update [{:keys [type attrs]}]
                                (and (= type prose-mirror/card-embed-type)
-                                    (contains? card-id-map (:id attrs))))
+                                    (contains? card-id-map (get attrs "id"))))
                              (fn update-card-id [embed]
-                               (update-in embed [:attrs :id] card-id-map)))))
+                               (update-in embed [:attrs "id"] card-id-map)))))
 
 (mu/defn- create-cards-for-document! :- [:map-of ms/NegativeInt ms/PositiveInt]
   "Creates cards for a document from the cards map.
@@ -257,8 +257,8 @@
   - map of old-card-id -> cloned-card-id"
   [{:keys [id collection_id] :as document}]
   (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
-                                                                (pos-int? (-> % :attrs :id)))
-                                                       (-> % :attrs :id)))
+                                                                (pos-int? (get (:attrs %) "id")))
+                                                       (get (:attrs %) "id")))
         to-clone (when (seq card-ids)
                    (documents.db/cards-not-in-document card-ids id))]
     (with-content-gate-cache
@@ -302,10 +302,10 @@
           {:document document :content_type content-type}
           (fn [{:keys [type attrs]}]
             (when (and (= prose-mirror/card-embed-type type)
-                       (contains? draft-card-id-map (:id attrs))
-                       (:stored_result_id attrs))
-              [(get draft-card-id-map (:id attrs))
-               (:stored_result_id attrs)])))
+                       (contains? draft-card-id-map (get attrs "id"))
+                       (get attrs "stored_result_id"))
+              [(get draft-card-id-map (get attrs "id"))
+               (get attrs "stored_result_id")])))
          distinct
          vec)))
 

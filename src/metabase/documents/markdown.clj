@@ -377,11 +377,11 @@
   "The `target`/`rel` defaults the editor's Link extension applies to every link mark. Its
   `class` attribute is a build-time CSS-module name and is deliberately left off — it can only
   be filled in by the client."
-  {:target "_blank" :rel "noopener noreferrer nofollow"})
+  {"target" "_blank" "rel" "noopener noreferrer nofollow"})
 
 (defn- link-mark
   [href]
-  (mark "link" (assoc link-mark-defaults :href href)))
+  (mark "link" (assoc link-mark-defaults "href" href)))
 
 (defn- with-content
   "Attach `content` to `node`, omitting the key when there is nothing to attach — ProseMirror's
@@ -518,7 +518,7 @@
         id (if (string? id) (parse-scalar id) id)]
     (when (and (pos-int? id) (contains? prose-mirror/smart-link-model->db-model model))
       {:type  "smartLink"
-       :attrs {:entityId id :model model :label nil :href "/"}})))
+       :attrs {"entityId" id "model" model "label" nil "href" "/"}})))
 
 (defn- split-entity-tokens
   [{:keys [text marks] :as node}]
@@ -578,7 +578,7 @@
 (defn- code-block-node
   [node language]
   (with-content {:type  "codeBlock"
-                 :attrs {:language language :_id (mint-id)}}
+                 :attrs {"language" language "_id" (mint-id)}}
     (let [text (code-block-text node)]
       (when-not (= text "") [{:type "text" :text text}]))))
 
@@ -587,27 +587,27 @@
   (condp instance? node
     Paragraph         (let [children (fm-children node)]
                         [(with-content {:type  "paragraph"
-                                        :attrs {:_id (mint-id)}}
+                                        :attrs {"_id" (mint-id)}}
                            (convert-inlines children (table-paragraph? children)))])
     ;; A heading is one line however it was written, so its lines join with a space even when a
     ;; setext underline let it hold more than one.
     Heading           [(with-content {:type  "heading"
-                                      :attrs {:level (.getLevel ^Heading node) :_id (mint-id)}}
+                                      :attrs {"level" (.getLevel ^Heading node) "_id" (mint-id)}}
                          (convert-inlines (fm-children node) false))]
     BulletList        (container-block {:type  "bulletList"
-                                        :attrs {:_id (mint-id)}}
+                                        :attrs {"_id" (mint-id)}}
                                        (mapcat convert-list-item (fm-children node)))
     OrderedList       (container-block {:type  "orderedList"
-                                        :attrs {:start (.getStartNumber ^OrderedList node) :type nil :_id (mint-id)}}
+                                        :attrs {"start" (.getStartNumber ^OrderedList node) "type" nil "_id" (mint-id)}}
                                        (mapcat convert-list-item (fm-children node)))
     BlockQuote        (container-block {:type  "blockquote"
-                                        :attrs {:_id (mint-id)}}
+                                        :attrs {"_id" (mint-id)}}
                                        (convert-blocks (fm-children node)))
     FencedCodeBlock   [(code-block-node node (not-empty (first (str/split (str (.getInfo ^FencedCodeBlock node)) #"\s+"))))]
     IndentedCodeBlock [(code-block-node node nil)]
     ThematicBreak     [{:type "horizontalRule"}]
     HtmlBlock         [{:type    "paragraph"
-                        :attrs   {:_id (mint-id)}
+                        :attrs   {"_id" (mint-id)}
                         :content [{:type "text" :text (str/trimr (str (.getChars ^Node node)))}]}]
     ;; A comment renders nowhere, so it carries no node — a container left with only comments in it
     ;; is dropped by [[container-block]] rather than emitted with nothing inside.
@@ -615,7 +615,7 @@
     ;; A definition still in the tree is one [[unlink-consumed-references!]] found no link for, so
     ;; its URL reaches the document only as the prose it was written as.
     Reference         [{:type    "paragraph"
-                        :attrs   {:_id (mint-id)}
+                        :attrs   {"_id" (mint-id)}
                         :content [{:type "text" :text (str/trimr (str (.getChars ^Node node)))}]}]
     ;; Anything unrecognized flattens to its converted children.
     (convert-blocks (fm-children node))))
@@ -709,7 +709,7 @@
       "supporting"
       (do (check-known-attrs! name attrs #{})
           (validate-container-content! "supportingText" child-nodes)
-          {:type "supportingText" :attrs {:_id (mint-id)} :content child-nodes})
+          {:type "supportingText" :attrs {"_id" (mint-id)} :content child-nodes})
 
       "flex"
       (do (check-known-attrs! name attrs #{:columns})
@@ -718,7 +718,7 @@
             (when (and (some? columns) (not (and (vector? columns) (every? number? columns))))
               (throw (teaching-error "::: flex columns must be a numeric array, e.g. {columns=[60,40]}.")))
             {:type    "flexContainer"
-             :attrs   {:columnWidths columns}
+             :attrs   {"columnWidths" columns}
              :content child-nodes}))
 
       "resize"
@@ -729,8 +729,8 @@
               (when-not (number? v)
                 (throw (teaching-error (format "::: resize %s must be a number." (clojure.core/name k)))))))
           {:type    "resizeNode"
-           :attrs   {:height    (get attrs :height resize-node-default-height)
-                     :minHeight (get attrs :minHeight resize-node-default-min-height)}
+           :attrs   {"height"    (get attrs :height resize-node-default-height)
+                     "minHeight" (get attrs :minHeight resize-node-default-min-height)}
            :content child-nodes}))))
 
 (defn- segment->nodes
@@ -738,9 +738,9 @@
   (case kind
     :markdown  (markdown-chunk->nodes (:text segment))
     :card      [{:type  "cardEmbed"
-                 :attrs {:id   (get-in segment [:attrs :id])
-                         :name (get-in segment [:attrs :name])
-                         :_id  (mint-id)}}]
+                 :attrs {"id"   (get-in segment [:attrs :id])
+                         "name" (get-in segment [:attrs :name])
+                         "_id"  (mint-id)}}]
     :container [(container-node segment)]))
 
 (defn- parse-content
@@ -764,8 +764,8 @@
   (mapv (fn [{:keys [type] :as node}]
           (if (#{"cardEmbed" "flexContainer"} type)
             {:type    "resizeNode"
-             :attrs   {:height    resize-node-default-height
-                       :minHeight resize-node-default-min-height}
+             :attrs   {"height"    resize-node-default-height
+                       "minHeight" resize-node-default-min-height}
              :content [node]}
             node))
         content))
@@ -779,7 +779,7 @@
   [content]
   (cond-> content
     (not= "paragraph" (:type (peek content)))
-    (conj {:type "paragraph" :attrs {:_id (mint-id)}})))
+    (conj {:type "paragraph" :attrs {"_id" (mint-id)}})))
 
 (defn parse
   "Metabase-flavored Markdown string -> ProseMirror AST map, i.e. the value that goes in a
@@ -934,7 +934,7 @@
   because membership is checked first: no key of [[prose-mirror/smart-link-model->db-model]]
   contains a quote,
   a newline, or a token delimiter."
-  ^String [{:keys [entityId model]}]
+  ^String [{:strs [entityId model]}]
   (when (contains? prose-mirror/smart-link-model->db-model model)
     (format "{%% entity id=\"%d\" model=\"%s\" %%}" (attr-pos-long "smartLink" :entityId entityId) model)))
 
@@ -952,7 +952,7 @@
         (str/replace #"\R" " "))))
 
 (defn- card-token
-  ^String [{:keys [id name]}]
+  ^String [{:strs [id name]}]
   (let [id    (attr-pos-long "cardEmbed" :id id)
         named (when (and (string? name) (not (str/blank? name)))
                 (escape-card-name name))]
@@ -979,7 +979,7 @@
                               italic? (as-> t (str "*" t "*"))
                               bold?   (as-> t (str "**" t "**")))]
                       (str lead s trail)))]
-    (if-let [{:keys [href]} (mark-attrs marks "link")]
+    (if-let [{:strs [href]} (mark-attrs marks "link")]
       (str "[" body "](" (link-destination href) ")")
       body)))
 
@@ -995,8 +995,8 @@
      ;; document body down over one node, and parse already treats an unknown model as text.
      "smartLink"       (or (entity-token attrs)
                            (do (log/warnf "no entity token for smartLink model %s; serializing its label as text"
-                                          (pr-str (:model attrs)))
-                               (escape-inline (str (:label attrs)))))
+                                          (pr-str (get attrs "model")))
+                               (escape-inline (str (get attrs "label")))))
      "metabot-mention" ""
      (throw (ex-info (format "Cannot serialize unknown inline node type %s to Markdown." (pr-str type))
                      {:status-code 400 :node-type type})))))
@@ -1066,13 +1066,13 @@
     (apply str (repeat (max 3 (inc longest)) "~"))))
 
 (defn- resize-fence
-  ^String [{:keys [height minHeight]}]
+  ^String [{:strs [height minHeight]}]
   (format "::: resize {height=%s minHeight=%s}"
           (format-number (attr-num "resizeNode" :height (or height resize-node-default-height)))
           (format-number (attr-num "resizeNode" :minHeight (or minHeight resize-node-default-min-height)))))
 
 (defn- flex-fence
-  ^String [{:keys [columnWidths]}]
+  ^String [{:strs [columnWidths]}]
   (if (seq columnWidths)
     (format "::: flex {columns=[%s]}"
             (str/join "," (map #(format-number (attr-num "flexContainer" :columnWidths %)) columnWidths)))
@@ -1086,7 +1086,7 @@
     "paragraph"      (escape-block-starts (inlines->markdown content))
     ;; A heading is a single ATX line: hard breaks render as spaces, and a trailing hash run
     ;; is escaped so re-parsing doesn't strip it as a closing sequence.
-    "heading"        (str (apply str (repeat (max 1 (long (attr-num "heading" :level (or (:level attrs) 1)))) "#"))
+    "heading"        (str (apply str (repeat (max 1 (long (attr-num "heading" :level (or (get attrs "level") 1)))) "#"))
                           " "
                           ;; Newlines collapse before the trailing-hash escape: an ATX heading is
                           ;; one line, so a literal newline in a text node would otherwise let the
@@ -1101,7 +1101,7 @@
     ;; one up), so such a language re-serializes behind a tilde fence; a newline can't ride any
     ;; fence line, so it collapses to a space, as a card name's does.
     "codeBlock"      (let [text     (apply str (map :text content))
-                           language (str/replace (str (or (:language attrs) "")) #"\R" " ")
+                           language (str/replace (str (or (get attrs "language") "")) #"\R" " ")
                            fence    (if (str/includes? language "`")
                                       (tilde-fence-for text)
                                       (code-fence-for text))]
@@ -1112,7 +1112,7 @@
     "bulletList"     (->> content
                           (map #(prefix-list-item "- " (render-blocks (:content %))))
                           (str/join "\n"))
-    "orderedList"    (let [start (long (attr-num "orderedList" :start (or (:start attrs) 1)))]
+    "orderedList"    (let [start (long (attr-num "orderedList" :start (or (get attrs "start") 1)))]
                        (->> content
                             (map-indexed (fn [i item]
                                            (prefix-list-item (str (+ start i) ". ")
@@ -1125,7 +1125,7 @@
 (defn- record-span!
   [{:keys [spans record?]} node start end]
   (when (and record? spans)
-    (when-let [id (get-in node [:attrs :_id])]
+    (when-let [id (get-in node [:attrs "_id"])]
       (vswap! spans conj {:node-id id :start start :end end}))))
 
 (defn- emit-block!
@@ -1284,9 +1284,9 @@
 
 (defn- carry-id
   [new-node old-node]
-  (let [id (get-in old-node [:attrs :_id])]
+  (let [id (get-in old-node [:attrs "_id"])]
     (cond-> new-node
-      (and id (contains? (:attrs new-node) :_id)) (assoc-in [:attrs :_id] id))))
+      (and id (contains? (:attrs new-node) "_id")) (assoc-in [:attrs "_id"] id))))
 
 (defn- carry-attrs
   "Carry the old node's attrs onto its re-parsed counterpart, with freshly parsed values winning.

@@ -109,7 +109,7 @@
   (into {}
         (mapcat (fn [[model model-links]]
                   (let [db-model (prose-mirror/smart-link-model->db-model model)
-                        ids      (distinct (map #(get-in % [:attrs :entityId]) model-links))
+                        ids      (distinct (map #(get-in % [:attrs "entityId"]) model-links))
                         rows     (when db-model
                                    (try
                                      (filterv #(smart-link-readable? model %)
@@ -121,7 +121,7 @@
                                        nil)))]
                     (for [row rows]
                       [[model (:id row)] row]))))
-        (group-by #(get-in % [:attrs :model]) links)))
+        (group-by #(get-in % [:attrs "model"]) links)))
 
 (defn- stored-smart-link-attrs
   "`{[model entityId] attrs}` for every already-labelled smartLink in `ast`."
@@ -129,7 +129,7 @@
   (into {}
         (keep (fn [node]
                 (when (and (map? node) (= "smartLink" (:type node)))
-                  (let [{:keys [entityId model label] :as attrs} (:attrs node)]
+                  (let [{:strs [entityId model label] :as attrs} (:attrs node)]
                     (when label
                       [[model entityId] attrs])))))
         (tree-seq :content :content ast)))
@@ -159,14 +159,14 @@
         (walk/postwalk
          (fn [node]
            (if (and (map? node) (= "smartLink" (:type node)))
-             (let [{:keys [entityId model]} (:attrs node)
+             (let [{:strs [entityId model]} (:attrs node)
                    k                        [model entityId]]
                (if-let [row (get rows k)]
                  (update node :attrs assoc
-                         :label (smart-link-label row)
-                         :href (smart-link-href model row))
+                         "label" (smart-link-label row)
+                         "href" (smart-link-href model row))
                  (if-let [prior (get stored k)]
-                   (update node :attrs assoc :label (:label prior) :href (:href prior))
+                   (update node :attrs assoc "label" (get prior "label") "href" (get prior "href"))
                    (do
                      (when (prose-mirror/smart-link-model->db-model model)
                        (log/warnf "smart link target not found or not readable for %s at id: %s" model entityId))
@@ -177,14 +177,14 @@
 (defn- ast-id-set
   [ast]
   (set (prose-mirror/collect-ast {:document ast :content_type prose-mirror/prose-mirror-content-type}
-                                 (comp :_id :attrs))))
+                                 (comp #(get % "_id") :attrs))))
 
 (defn- ast-id->type
   [ast]
   (into {} (prose-mirror/collect-ast
             {:document ast :content_type prose-mirror/prose-mirror-content-type}
             (fn [{:keys [type attrs]}]
-              (when-let [id (:_id attrs)]
+              (when-let [id (get attrs "_id")]
                 [id type])))))
 
 (defn- changed-blocks
@@ -193,7 +193,7 @@
     (->> (prose-mirror/collect-ast
           {:document before :content_type prose-mirror/prose-mirror-content-type}
           (fn [{:keys [type attrs]}]
-            (when-let [id (:_id attrs)]
+            (when-let [id (get attrs "_id")]
               [id type])))
          (keep (fn [[id old-type]]
                  (let [new-type (get after-types id)]

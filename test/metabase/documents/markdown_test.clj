@@ -9,11 +9,11 @@
 
 (defn- strip-ids
   [ast]
-  (walk/postwalk #(if (map? %) (dissoc % :_id) %) ast))
+  (walk/postwalk #(if (map? %) (dissoc % "_id") %) ast))
 
 (defn- para
   [text]
-  {:type "paragraph" :attrs {:_id (str (random-uuid))} :content [{:type "text" :text text}]})
+  {:type "paragraph" :attrs {"_id" (str (random-uuid))} :content [{:type "text" :text text}]})
 
 (defn- collect-type
   "Every node of `type` anywhere in `ast`."
@@ -36,8 +36,8 @@
   (testing "serialize∘parse is a fixed point over a document exercising every node type"
     (let [ast {:type "doc"
                :content
-               [{:type "heading" :attrs {:level 2 :_id "h1"} :content [{:type "text" :text "Q3 summary"}]}
-                {:type "paragraph" :attrs {:_id "p1"}
+               [{:type "heading" :attrs {"level" 2 "_id" "h1"} :content [{:type "text" :text "Q3 summary"}]}
+                {:type "paragraph" :attrs {"_id" "p1"}
                  :content [{:type "text" :text "Revenue was "}
                            {:type "text" :text "up 12%" :marks [{:type "bold"}]}
                            {:type "text" :text " on "}
@@ -46,30 +46,30 @@
                            {:type "text" :text "inline code" :marks [{:type "code"}]}
                            {:type "text" :text " and a "}
                            {:type "text" :text "link"
-                            :marks [{:type "link" :attrs {:href   "https://example.com"
-                                                          :target "_blank"
-                                                          :rel    "noopener noreferrer nofollow"}}]}
+                            :marks [{:type "link" :attrs {"href"   "https://example.com"
+                                                          "target" "_blank"
+                                                          "rel"    "noopener noreferrer nofollow"}}]}
                            {:type "text" :text "."}]}
-                {:type "resizeNode" :attrs {:height 442 :minHeight 280}
-                 :content [{:type "cardEmbed" :attrs {:id 118 :name "Revenue by region" :_id "c1"}}]}
-                {:type "resizeNode" :attrs {:height 300 :minHeight 200}
-                 :content [{:type "cardEmbed" :attrs {:id 119 :name nil :_id "c2"}}]}
-                {:type "bulletList" :attrs {:_id "l1"}
+                {:type "resizeNode" :attrs {"height" 442 "minHeight" 280}
+                 :content [{:type "cardEmbed" :attrs {"id" 118 "name" "Revenue by region" "_id" "c1"}}]}
+                {:type "resizeNode" :attrs {"height" 300 "minHeight" 200}
+                 :content [{:type "cardEmbed" :attrs {"id" 119 "name" nil "_id" "c2"}}]}
+                {:type "bulletList" :attrs {"_id" "l1"}
                  :content [{:type "listItem" :content [(para "first")]}
                            {:type "listItem" :content [(para "second")]}]}
-                {:type "orderedList" :attrs {:start 1 :type nil :_id "l2"}
+                {:type "orderedList" :attrs {"start" 1 "type" nil "_id" "l2"}
                  :content [{:type "listItem" :content [(para "one")]}]}
-                {:type "blockquote" :attrs {:_id "q1"} :content [(para "quoted")]}
-                {:type "codeBlock" :attrs {:language "sql" :_id "cb1"}
+                {:type "blockquote" :attrs {"_id" "q1"} :content [(para "quoted")]}
+                {:type "codeBlock" :attrs {"language" "sql" "_id" "cb1"}
                  :content [{:type "text" :text "SELECT *\nFROM orders"}]}
                 {:type "horizontalRule"}
                 {:type "metabot" :attrs {} :content [{:type "text" :text "scratch"}]}
-                {:type "resizeNode" :attrs {:height 442 :minHeight 280}
-                 :content [{:type "flexContainer" :attrs {:columnWidths [60 40]}
-                            :content [{:type "supportingText" :attrs {:_id "st1"}
+                {:type "resizeNode" :attrs {"height" 442 "minHeight" 280}
+                 :content [{:type "flexContainer" :attrs {"columnWidths" [60 40]}
+                            :content [{:type "supportingText" :attrs {"_id" "st1"}
                                        :content [(para "Supporting prose.")]}
-                                      {:type "cardEmbed" :attrs {:id 120 :name "Trend" :_id "c3"}}]}]}
-                {:type "paragraph" :attrs {:_id "pz"}}]}
+                                      {:type "cardEmbed" :attrs {"id" 120 "name" "Trend" "_id" "c3"}}]}]}
+                {:type "paragraph" :attrs {"_id" "pz"}}]}
           {m1 :markdown} (md/serialize ast)
           reparsed       (md/parse m1)
           expected       (strip-ids (update ast :content (fn [c] (vec (remove #(= "metabot" (:type %)) c)))))]
@@ -93,12 +93,12 @@
   (testing "a childless node omits :content, the way ProseMirror's own toJSON does"
     (is (= [{:type "paragraph" :attrs {}}]
            (strip-ids (:content (md/parse "")))))
-    (is (= [{:type "codeBlock" :attrs {:language nil}} {:type "paragraph" :attrs {}}]
+    (is (= [{:type "codeBlock" :attrs {"language" nil}} {:type "paragraph" :attrs {}}]
            (strip-ids (:content (md/parse "```\n```"))))))
   (testing "every attribute the editor's schema declares is present, so no default is filled in on load"
-    (is (= {:start 1 :type nil}
-           (-> (md/parse "1. one") :content first :attrs (dissoc :_id))))
-    (is (= {:href "https://example.com" :target "_blank" :rel "noopener noreferrer nofollow"}
+    (is (= {"start" 1 "type" nil}
+           (-> (md/parse "1. one") :content first :attrs (dissoc "_id"))))
+    (is (= {"href" "https://example.com" "target" "_blank" "rel" "noopener noreferrer nofollow"}
            (-> (md/parse "[x](https://example.com)") :content first :content first :marks first :attrs)))))
 
 (deftest ^:parallel body-ends-in-a-paragraph-test
@@ -132,8 +132,8 @@
 (deftest ^:parallel loose-embeds-get-a-resize-wrapper-test
   (testing "a bare card token becomes a resize-wrapped embed — the wrapper is the only thing carrying a height"
     (is (= [{:type    "resizeNode"
-             :attrs   {:height 442 :minHeight 280}
-             :content [{:type "cardEmbed" :attrs {:id 118 :name "Revenue"}}]}
+             :attrs   {"height" 442 "minHeight" 280}
+             :content [{:type "cardEmbed" :attrs {"id" 118 "name" "Revenue"}}]}
             {:type "paragraph" :attrs {}}]
            (strip-ids (:content (md/parse "{% card id=118 name=\"Revenue\" %}"))))))
   (testing "a bare flex container gets one too"
@@ -141,8 +141,8 @@
            (mapv :type (:content (md/parse "::: flex {columns=[60,40]}\n{% card id=1 %}\n{% card id=2 %}\n:::"))))))
   (testing "an explicit ::: resize fence keeps its own dimensions and is not double-wrapped"
     (is (= [{:type    "resizeNode"
-             :attrs   {:height 600 :minHeight 300}
-             :content [{:type "cardEmbed" :attrs {:id 118 :name nil}}]}
+             :attrs   {"height" 600 "minHeight" 300}
+             :content [{:type "cardEmbed" :attrs {"id" 118 "name" nil}}]}
             {:type "paragraph" :attrs {}}]
            (strip-ids (:content (md/parse "::: resize {height=600 minHeight=300}\n{% card id=118 %}\n:::"))))))
   (testing "an edit that introduces a card token wraps it, leaving untouched blocks alone"
@@ -151,17 +151,17 @@
           start    (str/index-of (:markdown ser) "Outro.")
           spliced  (md/splice ast ser start (+ start (count "Outro.")) "{% card id=118 %}")]
       (is (= ["paragraph" "resizeNode" "paragraph"] (mapv :type (:content spliced))))
-      (is (= (get-in ast [:content 0 :attrs :_id])
-             (get-in spliced [:content 0 :attrs :_id]))))))
+      (is (= (get-in ast [:content 0 :attrs "_id"])
+             (get-in spliced [:content 0 :attrs "_id"]))))))
 
 ;;; ------------------------------------------------ Token scanning ------------------------------------------------
 
 (deftest ^:parallel code-block-token-opacity-test
   (testing "card tokens and container fences inside a fenced code block are content, not structure"
     (let [ast {:type "doc"
-               :content [{:type "codeBlock" :attrs {:language nil :_id "cb"}
+               :content [{:type "codeBlock" :attrs {"language" nil "_id" "cb"}
                           :content [{:type "text" :text "{% card id=118 %}\n::: flex\ntext"}]}
-                         {:type "paragraph" :attrs {:_id "pz"}}]}
+                         {:type "paragraph" :attrs {"_id" "pz"}}]}
           {m :markdown} (md/serialize ast)
           reparsed      (md/parse m)]
       (is (= (strip-ids ast) (strip-ids reparsed)))
@@ -175,25 +175,25 @@
            serializes behind a tilde fence, so re-parsing cannot promote the fenced content to
            structure"
     (let [ast {:type "doc"
-               :content [{:type "codeBlock" :attrs {:language "foo`bar" :_id "cb"}
+               :content [{:type "codeBlock" :attrs {"language" "foo`bar" "_id" "cb"}
                           :content [{:type "text" :text "{% card id=666 %}"}]}
-                         {:type "paragraph" :attrs {:_id "pz"}}]}
+                         {:type "paragraph" :attrs {"_id" "pz"}}]}
           {m :markdown} (md/serialize ast)
           reparsed      (md/parse m)]
       (is (= (strip-ids ast) (strip-ids reparsed)))
       (is (not-any? #(= "cardEmbed" (:type %)) (tree-seq :content :content reparsed)))))
   (testing "the tilde fence still clears a tilde run inside the code text"
     (let [ast {:type "doc"
-               :content [{:type "codeBlock" :attrs {:language "a`b" :_id "cb"}
+               :content [{:type "codeBlock" :attrs {"language" "a`b" "_id" "cb"}
                           :content [{:type "text" :text "~~~~\n{% card id=666 %}"}]}
-                         {:type "paragraph" :attrs {:_id "pz"}}]}
+                         {:type "paragraph" :attrs {"_id" "pz"}}]}
           reparsed (md/parse (:markdown (md/serialize ast)))]
       (is (= (strip-ids ast) (strip-ids reparsed)))))
   (testing "a newline in :language collapses to a space rather than splitting the fence line"
     (let [ast {:type "doc"
-               :content [{:type "codeBlock" :attrs {:language "sql\n{% card id=666 %}" :_id "cb"}
+               :content [{:type "codeBlock" :attrs {"language" "sql\n{% card id=666 %}" "_id" "cb"}
                           :content [{:type "text" :text "SELECT 1"}]}
-                         {:type "paragraph" :attrs {:_id "pz"}}]}
+                         {:type "paragraph" :attrs {"_id" "pz"}}]}
           reparsed (md/parse (:markdown (md/serialize ast)))]
       (is (= ["codeBlock" "paragraph"] (mapv :type (:content reparsed))))
       (is (not-any? #(= "cardEmbed" (:type %)) (tree-seq :content :content reparsed))))))
@@ -324,7 +324,7 @@
 
 (deftest ^:parallel emphasis-boundary-whitespace-test
   (testing "boundary whitespace moves outside the delimiters so the mark survives re-parse"
-    (let [ast {:type "doc" :content [{:type "paragraph" :attrs {:_id "p"}
+    (let [ast {:type "doc" :content [{:type "paragraph" :attrs {"_id" "p"}
                                       :content [{:type "text" :text "see "}
                                                 {:type "text" :text " word " :marks [{:type "bold"}]}
                                                 {:type "text" :text "end"}]}]}
@@ -333,13 +333,13 @@
       (is (= [["see  " nil] ["word" [{:type "bold"}]] [" end" nil]]
              (mapv text+marks (get-in (md/parse m) [:content 0 :content]))))))
   (testing "a leading-space italic can't turn the paragraph into a list"
-    (let [ast {:type "doc" :content [{:type "paragraph" :attrs {:_id "p"}
+    (let [ast {:type "doc" :content [{:type "paragraph" :attrs {"_id" "p"}
                                       :content [{:type "text" :text " hi" :marks [{:type "italic"}]}
                                                 {:type "text" :text " after"}]}]}
           {m :markdown} (md/serialize ast)]
       (is (= ["paragraph"] (mapv :type (:content (md/parse m)))))))
   (testing "whole-whitespace marked text drops its delimiters"
-    (let [ast {:type "doc" :content [{:type "paragraph" :attrs {:_id "p"}
+    (let [ast {:type "doc" :content [{:type "paragraph" :attrs {"_id" "p"}
                                       :content [{:type "text" :text "a"}
                                                 {:type "text" :text "   " :marks [{:type "bold"}]}
                                                 {:type "text" :text "b"}]}]}]
@@ -347,13 +347,13 @@
 
 (deftest ^:parallel code-span-delimiter-test
   (testing "content with backtick runs gets a longer delimiter and round-trips"
-    (let [ast {:type "doc" :content [{:type "paragraph" :attrs {:_id "p"}
+    (let [ast {:type "doc" :content [{:type "paragraph" :attrs {"_id" "p"}
                                       :content [{:type "text" :text "a``b" :marks [{:type "code"}]}]}]}
           {m :markdown} (md/serialize ast)]
       (is (= [["a``b" [{:type "code"}]]]
              (mapv text+marks (get-in (md/parse m) [:content 0 :content]))))))
   (testing "content with symmetric edge spaces is padded and round-trips"
-    (let [ast {:type "doc" :content [{:type "paragraph" :attrs {:_id "p"}
+    (let [ast {:type "doc" :content [{:type "paragraph" :attrs {"_id" "p"}
                                       :content [{:type "text" :text " x " :marks [{:type "code"}]}]}]}
           {m :markdown} (md/serialize ast)]
       (is (= [[" x " [{:type "code"}]]]
@@ -364,12 +364,12 @@
     (doseq [[href expected] [["/a b(c)" "/a%20b(c)"]
                              ["https://x.com/q?a=(1)" "https://x.com/q?a=(1)"]
                              ["/plain" "/plain"]]]
-      (let [ast {:type "doc" :content [{:type "paragraph" :attrs {:_id "p"}
+      (let [ast {:type "doc" :content [{:type "paragraph" :attrs {"_id" "p"}
                                         :content [{:type "text" :text "go"
-                                                   :marks [{:type "link" :attrs {:href href}}]}]}]}
+                                                   :marks [{:type "link" :attrs {"href" href}}]}]}]}
             {m :markdown} (md/serialize ast)
             reparsed      (md/parse m)]
-        (is (= expected (get-in reparsed [:content 0 :content 0 :marks 0 :attrs :href]))
+        (is (= expected (get-in reparsed [:content 0 :content 0 :marks 0 :attrs "href"]))
             (str "href " (pr-str href)))
         (is (= m (reserialize reparsed)))))))
 
@@ -382,11 +382,11 @@
 
 (deftest ^:parallel card-name-escaping-test
   (testing "backslashes, quotes, and newlines in a card name survive the token round trip"
-    (let [ast {:type "doc" :content [{:type "cardEmbed" :attrs {:id 5 :name "back\\slash\" q\nnewline" :_id "c"}}]}
+    (let [ast {:type "doc" :content [{:type "cardEmbed" :attrs {"id" 5 "name" "back\\slash\" q\nnewline" "_id" "c"}}]}
           {m :markdown} (md/serialize ast)
           reparsed      (md/parse m)]
       (is (= ["cardEmbed"] (mapv :type (get-in reparsed [:content 0 :content]))))
-      (is (= "back\\slash\" q newline" (get-in reparsed [:content 0 :content 0 :attrs :name]))))))
+      (is (= "back\\slash\" q newline" (get-in reparsed [:content 0 :content 0 :attrs "name"]))))))
 
 (def ^:private token-lookalike-strings
   "Strings that, emitted verbatim, would be re-read as structure rather than as the prose they
@@ -404,12 +404,12 @@
   `ensure-trailing-paragraph` is a no-op and the round trip is a true fixed point."
   [s]
   (let [t   {:type "text" :text s}
-        pgh {:type "paragraph" :attrs {:_id "inner"} :content [t]}]
-    {"paragraph"  {:type "paragraph" :attrs {:_id "b"} :content [t]}
-     "heading"    {:type "heading" :attrs {:level 2 :_id "b"} :content [t]}
-     "listItem"   {:type "bulletList" :attrs {:_id "b"} :content [{:type "listItem" :content [pgh]}]}
-     "blockquote" {:type "blockquote" :attrs {:_id "b"} :content [pgh]}
-     "codeBlock"  {:type "codeBlock" :attrs {:language nil :_id "b"} :content [t]}}))
+        pgh {:type "paragraph" :attrs {"_id" "inner"} :content [t]}]
+    {"paragraph"  {:type "paragraph" :attrs {"_id" "b"} :content [t]}
+     "heading"    {:type "heading" :attrs {"level" 2 "_id" "b"} :content [t]}
+     "listItem"   {:type "bulletList" :attrs {"_id" "b"} :content [{:type "listItem" :content [pgh]}]}
+     "blockquote" {:type "blockquote" :attrs {"_id" "b"} :content [pgh]}
+     "codeBlock"  {:type "codeBlock" :attrs {"language" nil "_id" "b"} :content [t]}}))
 
 (deftest ^:parallel serializing-prose-never-manufactures-structure-test
   (testing "text that merely looks like Metabase-flavored markup stays text — serializing a
@@ -419,7 +419,7 @@
            structure into the body an agent reads and writes back."
     (doseq [[label hostile] token-lookalike-strings
             [block-name node] (text-bearing-blocks hostile)]
-      (let [ast      {:type "doc" :content [node {:type "paragraph" :attrs {:_id "z"}}]}
+      (let [ast      {:type "doc" :content [node {:type "paragraph" :attrs {"_id" "z"}}]}
             markdown (:markdown (md/serialize ast))
             types    (mapv :type (:content (md/parse markdown)))]
         (is (empty? (filter #{"cardEmbed" "resizeNode" "flexContainer" "supportingText"} types))
@@ -444,7 +444,7 @@
   [block-name text]
   (let [node (get (text-bearing-blocks text) block-name)]
     (mapv :type (:content (md/parse (reserialize {:type    "doc"
-                                                  :content [node {:type "paragraph" :attrs {:_id "z"}}]}))))))
+                                                  :content [node {:type "paragraph" :attrs {"_id" "z"}}]}))))))
 
 (deftest ^:parallel exotic-line-terminators-cannot-manufacture-structure-test
   (testing "a line terminator other than \\n inside a text node serializes without failing and
@@ -461,13 +461,13 @@
 (defn- code-block-in
   "A document holding one code block whose text is `text`, nested in `container`."
   [container text]
-  (let [code {:type "codeBlock" :attrs {:language nil :_id "code"} :content [{:type "text" :text text}]}]
+  (let [code {:type "codeBlock" :attrs {"language" nil "_id" "code"} :content [{:type "text" :text text}]}]
     {:type    "doc"
      :content [(case container
-                 "blockquote" {:type "blockquote" :attrs {:_id "b"} :content [code]}
-                 "bulletList" {:type    "bulletList" :attrs {:_id "b"}
+                 "blockquote" {:type "blockquote" :attrs {"_id" "b"} :content [code]}
+                 "bulletList" {:type    "bulletList" :attrs {"_id" "b"}
                                :content [{:type "listItem" :content [code]}]})
-               {:type "paragraph" :attrs {:_id "z"}}]}))
+               {:type "paragraph" :attrs {"_id" "z"}}]}))
 
 (defn- code-block-texts
   "The text of every codeBlock in `ast`, however deeply nested."
@@ -501,7 +501,7 @@
     (doseq [[label separator] non-ending-separators
             prefix            ["before" "1. before" "# before" "- before" "> before"]]
       (let [text (str prefix separator "after")
-            ast  {:type "doc" :content [(para text) {:type "paragraph" :attrs {:_id "z"}}]}]
+            ast  {:type "doc" :content [(para text) {:type "paragraph" :attrs {"_id" "z"}}]}]
         (is (= text (get-in (md/parse (reserialize ast)) [:content 0 :content 0 :text]))
             (format "%s after %s did not survive the round trip" label (pr-str prefix)))))))
 
@@ -536,8 +536,8 @@
            paragraph is a document the editor cannot load"
     (doseq [[label text] html-line-start-strings]
       (let [ast      {:type    "doc"
-                      :content [{:type "blockquote" :attrs {:_id "q"} :content [(para text)]}
-                                {:type "paragraph" :attrs {:_id "z"}}]}
+                      :content [{:type "blockquote" :attrs {"_id" "q"} :content [(para text)]}
+                                {:type "paragraph" :attrs {"_id" "z"}}]}
             quoted   (get-in (md/parse (reserialize ast)) [:content 0])]
         (is (= "blockquote" (:type quoted))
             (format "%s in a blockquote changed the block type" label))
@@ -695,7 +695,7 @@
   [ast]
   (->> (tree-seq :content :content ast)
        (mapcat :marks)
-       (keep #(when (= "link" (:type %)) (get-in % [:attrs :href])))
+       (keep #(when (= "link" (:type %)) (get-in % [:attrs "href"])))
        vec))
 
 (deftest ^:parallel reference-link-keeps-its-url-test
@@ -746,10 +746,10 @@
 (deftest ^:parallel unrepresentable-smart-link-model-degrades-to-text-test
   (testing "a smartLink whose model has no token — a link type the frontend added, or a corrupted
            attr — serializes as its label rather than failing the whole document body"
-    (let [link (fn [model] {:type "doc" :content [{:type "paragraph" :attrs {:_id "p"}
+    (let [link (fn [model] {:type "doc" :content [{:type "paragraph" :attrs {"_id" "p"}
                                                    :content [{:type "smartLink"
-                                                              :attrs {:entityId 1 :model model
-                                                                      :label "Revenue Measure" :href "/"}}]}]})]
+                                                              :attrs {"entityId" 1 "model" model
+                                                                      "label" "Revenue Measure" "href" "/"}}]}]})]
       (testing "a known model still emits its token"
         (is (= "{% entity id=\"1\" model=\"dashboard\" %}" (reserialize (link "dashboard")))))
       (testing "an unknown model degrades to the label, and does not throw"
@@ -766,19 +766,19 @@
            delimiter can't be escaped past the block scanner, and previously the whole document
            became unrewritable with a misleading container-content error"
     (doseq [nm ["Q3 %} report" "a {% b"]]
-      (let [ast      {:type "doc" :content [{:type "resizeNode" :attrs {:height 442 :minHeight 280}
-                                             :content [{:type "cardEmbed" :attrs {:id 7 :name nm :_id "c"}}]}
-                                            {:type "paragraph" :attrs {:_id "z"}}]}
+      (let [ast      {:type "doc" :content [{:type "resizeNode" :attrs {"height" 442 "minHeight" 280}
+                                             :content [{:type "cardEmbed" :attrs {"id" 7 "name" nm "_id" "c"}}]}
+                                            {:type "paragraph" :attrs {"_id" "z"}}]}
             markdown (:markdown (md/serialize ast))
             reparsed (md/parse markdown)]
         (is (= "{% card id=7 %}" (str/trim (second (str/split-lines markdown)))) nm)
         (is (= ["cardEmbed"] (mapv :type (get-in reparsed [:content 0 :content]))) nm)
-        (is (= 7 (get-in reparsed [:content 0 :content 0 :attrs :id])) nm)
+        (is (= 7 (get-in reparsed [:content 0 :content 0 :attrs "id"])) nm)
         (is (= markdown (reserialize reparsed)) nm)))))
 
 (deftest ^:parallel heading-single-line-test
   (testing "hardBreak renders as a space inside a heading"
-    (let [ast {:type "doc" :content [{:type "heading" :attrs {:level 2 :_id "h"}
+    (let [ast {:type "doc" :content [{:type "heading" :attrs {"level" 2 "_id" "h"}
                                       :content [{:type "text" :text "one"}
                                                 {:type "hardBreak"}
                                                 {:type "text" :text "two"}]}]}
@@ -787,16 +787,16 @@
       (is (= ["heading" "paragraph"] (mapv :type (:content reparsed))))
       (is (= "one two" (get-in reparsed [:content 0 :content 0 :text])))))
   (testing "a trailing hash run is not stripped as an ATX closing sequence"
-    (let [ast {:type "doc" :content [{:type "heading" :attrs {:level 1 :_id "h"}
+    (let [ast {:type "doc" :content [{:type "heading" :attrs {"level" 1 "_id" "h"}
                                       :content [{:type "text" :text "foo #"}]}]}
           {m :markdown} (md/serialize ast)]
       (is (= "foo #" (get-in (md/parse m) [:content 0 :content 0 :text]))))))
 
 (deftest ^:parallel adjacent-same-type-lists-test
   (let [li  (fn [t] {:type "listItem" :content [(para t)]})
-        ast {:type "doc" :content [{:type "bulletList" :attrs {:_id "l1"} :content [(li "a") (li "b")]}
-                                   {:type "bulletList" :attrs {:_id "l2"} :content [(li "c")]}
-                                   {:type "paragraph" :attrs {:_id "pz"}}]}
+        ast {:type "doc" :content [{:type "bulletList" :attrs {"_id" "l1"} :content [(li "a") (li "b")]}
+                                   {:type "bulletList" :attrs {"_id" "l2"} :content [(li "c")]}
+                                   {:type "paragraph" :attrs {"_id" "pz"}}]}
         {m :markdown} (md/serialize ast)
         reparsed      (md/parse m)]
     (is (= ["bulletList" "bulletList" "paragraph"] (mapv :type (:content reparsed))))
@@ -805,19 +805,19 @@
 (deftest ^:parallel serialize-coerces-or-rejects-attr-types-test
   (testing "numeric-looking string attrs coerce"
     (is (= "{% card id=118 %}"
-           (:markdown (md/serialize {:type "doc" :content [{:type "cardEmbed" :attrs {:id "118" :_id "c"}}]}))))
+           (:markdown (md/serialize {:type "doc" :content [{:type "cardEmbed" :attrs {"id" "118" "_id" "c"}}]}))))
     (is (str/includes?
          (:markdown (md/serialize {:type "doc"
-                                   :content [{:type "resizeNode" :attrs {:height "442" :minHeight 280}
-                                              :content [{:type "cardEmbed" :attrs {:id 1 :_id "c"}}]}]}))
+                                   :content [{:type "resizeNode" :attrs {"height" "442" "minHeight" 280}
+                                              :content [{:type "cardEmbed" :attrs {"id" 1 "_id" "c"}}]}]}))
          "{height=442 minHeight=280}")))
   (testing "non-coercible attrs are teaching errors, not ClassCastException/NPE"
-    (doseq [ast [{:type "doc" :content [{:type "cardEmbed" :attrs {:id nil :_id "c"}}]}
-                 {:type "doc" :content [{:type "cardEmbed" :attrs {:id "nope" :_id "c"}}]}
-                 {:type "doc" :content [{:type "resizeNode" :attrs {:height {:x 1} :minHeight 280}
-                                         :content [{:type "cardEmbed" :attrs {:id 1 :_id "c"}}]}]}
-                 {:type "doc" :content [{:type "paragraph" :attrs {:_id "p"}
-                                         :content [{:type "smartLink" :attrs {:entityId "bad" :model "card"}}]}]}]]
+    (doseq [ast [{:type "doc" :content [{:type "cardEmbed" :attrs {"id" nil "_id" "c"}}]}
+                 {:type "doc" :content [{:type "cardEmbed" :attrs {"id" "nope" "_id" "c"}}]}
+                 {:type "doc" :content [{:type "resizeNode" :attrs {"height" {"x" 1} "minHeight" 280}
+                                         :content [{:type "cardEmbed" :attrs {"id" 1 "_id" "c"}}]}]}
+                 {:type "doc" :content [{:type "paragraph" :attrs {"_id" "p"}
+                                         :content [{:type "smartLink" :attrs {"entityId" "bad" "model" "card"}}]}]}]]
       (is (= 400 (try (md/serialize ast)
                       ::no-error
                       (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))))))
@@ -825,15 +825,15 @@
 (deftest ^:parallel out-of-range-numeric-attr-test
   (testing "an integral double a long can't hold is a teaching error, not an IllegalArgumentException"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"expected a positive integer"
-                          (md/serialize {:type "doc" :content [{:type "cardEmbed" :attrs {:id 1.0E19 :_id "c"}}]})))
+                          (md/serialize {:type "doc" :content [{:type "cardEmbed" :attrs {"id" 1.0E19 "_id" "c"}}]})))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"expected a positive integer"
                           (md/serialize {:type "doc"
-                                         :content [{:type "paragraph" :attrs {:_id "p"}
+                                         :content [{:type "paragraph" :attrs {"_id" "p"}
                                                     :content [{:type "smartLink"
-                                                               :attrs {:entityId 1.0E19 :model "card"}}]}]}))))
+                                                               :attrs {"entityId" 1.0E19 "model" "card"}}]}]}))))
   (testing "a resize height past long range serializes in double notation instead of throwing"
-    (let [ast {:type "doc" :content [{:type "resizeNode" :attrs {:height 1.0E19 :minHeight 280}
-                                      :content [{:type "cardEmbed" :attrs {:id 1 :_id "c"}}]}]}]
+    (let [ast {:type "doc" :content [{:type "resizeNode" :attrs {"height" 1.0E19 "minHeight" 280}
+                                      :content [{:type "cardEmbed" :attrs {"id" 1 "_id" "c"}}]}]}]
       (is (str/includes? (:markdown (md/serialize ast)) "height=1.0E19")))))
 
 ;;; ------------------------------------------------ Smart links ---------------------------------------------------
@@ -841,7 +841,7 @@
 (deftest ^:parallel unresolved-smart-link-defaults-test
   (testing "an entity token whose id doesn't resolve keeps the node with default label/href"
     (let [reparsed (md/parse "x {% entity id=\"987654321\" model=\"dashboard\" %} y")]
-      (is (= {:entityId 987654321 :model "dashboard" :label nil :href "/"}
+      (is (= {"entityId" 987654321 "model" "dashboard" "label" nil "href" "/"}
              (get-in reparsed [:content 0 :content 1 :attrs]))))))
 
 (defn- smart-links-in
@@ -923,19 +923,19 @@
     (is (identical? (nth (:content ast) 2) (nth (:content out) 2)))
     (is (= "block TWO" (get-in out [:content 1 :content 0 :text])))
     (testing "the rewritten block keeps its node id, so comments anchored to it stay anchored"
-      (is (= (get-in ast [:content 1 :attrs :_id])
-             (get-in out [:content 1 :attrs :_id]))))))
+      (is (= (get-in ast [:content 1 :attrs "_id"])
+             (get-in out [:content 1 :attrs "_id"]))))))
 
 (deftest ^:parallel splice-descends-into-containers-test
   (let [ast {:type "doc"
-             :content [{:type "resizeNode" :attrs {:height 300 :minHeight 280}
-                        :content [{:type "flexContainer" :attrs {:columnWidths nil}
-                                   :content [{:type "supportingText" :attrs {:_id "st"}
+             :content [{:type "resizeNode" :attrs {"height" 300 "minHeight" 280}
+                        :content [{:type "flexContainer" :attrs {"columnWidths" nil}
+                                   :content [{:type "supportingText" :attrs {"_id" "st"}
                                               :content [(para "inner one") (para "inner two")]}]}]}]}
         ser (md/serialize ast)
         s   (str/index-of (:markdown ser) "inner one")
         out (md/splice ast ser s (+ s 9) "INNER ONE")]
-    (is (= "st" (get-in out [:content 0 :content 0 :content 0 :attrs :_id])))
+    (is (= "st" (get-in out [:content 0 :content 0 :content 0 :attrs "_id"])))
     (is (identical? (get-in ast [:content 0 :content 0 :content 0 :content 1])
                     (get-in out [:content 0 :content 0 :content 0 :content 1])))))
 
@@ -945,7 +945,7 @@
         out (md/splice ast ser 0 11 "")]
     (is (= 1 (count (:content out))))
     (is (= "paragraph" (:type (first (:content out)))))
-    (is (some? (get-in out [:content 0 :attrs :_id])))))
+    (is (some? (get-in out [:content 0 :attrs "_id"])))))
 
 (deftest ^:parallel splice-deep-replacement-is-a-teaching-error-test
   (testing "the replacement text re-parses behind the same StackOverflowError backstop [[md/parse]]
@@ -992,7 +992,7 @@
           out (md/splice ast ser s (+ s 2) " ")]
       (is (= 1 (count (remove #(empty? (:content %)) (:content out)))))
       (is (= "alpha omega" (get-in out [:content 0 :content 0 :text])))
-      (is (= (get-in ast [:content 0 :attrs :_id]) (get-in out [:content 0 :attrs :_id])))))
+      (is (= (get-in ast [:content 0 :attrs "_id"]) (get-in out [:content 0 :attrs "_id"])))))
   (testing "deleting the separator outright merges the blocks the same way"
     (let [ast (md/parse "alpha\n\nomega")
           ser (md/serialize ast)
@@ -1012,7 +1012,7 @@
   "Every `:_id` in the ast, mapped to the type and leading text of the node carrying it."
   [ast]
   (into {} (for [n     (tree-seq :content :content ast)
-                 :let  [id (get-in n [:attrs :_id])]
+                 :let  [id (get-in n [:attrs "_id"])]
                  :when id]
              [id [(:type n) (some :text (:content n))]])))
 
@@ -1046,29 +1046,29 @@
     (let [ast (md/parse "one two three")
           out (edit-text ast "two" "two\n\nsplit")]
       (is (= 2 (count (:content out))))
-      (is (= (get-in ast [:content 0 :attrs :_id]) (get-in out [:content 0 :attrs :_id])))
-      (is (not= (get-in ast [:content 0 :attrs :_id]) (get-in out [:content 1 :attrs :_id])))))
+      (is (= (get-in ast [:content 0 :attrs "_id"]) (get-in out [:content 0 :attrs "_id"])))
+      (is (not= (get-in ast [:content 0 :attrs "_id"]) (get-in out [:content 1 :attrs "_id"])))))
   (testing "a merge keeps the head block's id and drops the tail's"
     (let [ast (md/parse "head block\n\ntail block")
           out (edit-text ast "head block\n\ntail block" "head block tail block")]
-      (is (= (get-in ast [:content 0 :attrs :_id]) (get-in out [:content 0 :attrs :_id])))
-      (is (not (contains? (ids-of out) (get-in ast [:content 1 :attrs :_id]))))))
+      (is (= (get-in ast [:content 0 :attrs "_id"]) (get-in out [:content 0 :attrs "_id"])))
+      (is (not (contains? (ids-of out) (get-in ast [:content 1 :attrs "_id"]))))))
   (testing "converting a paragraph to a heading keeps the id, matching setNode in the editor"
     (let [ast (md/parse "Some title")
           out (edit-text ast "Some title" "## Some title")]
       (is (= "heading" (get-in out [:content 0 :type])))
-      (is (= (get-in ast [:content 0 :attrs :_id]) (get-in out [:content 0 :attrs :_id])))))
+      (is (= (get-in ast [:content 0 :attrs "_id"]) (get-in out [:content 0 :attrs "_id"])))))
   (testing "a deleted block's id is dropped rather than handed to a surviving neighbour"
     (let [ast   (md/parse "alpha\n\nbeta\n\ngamma")
-          alpha (get-in ast [:content 0 :attrs :_id])
-          beta  (get-in ast [:content 1 :attrs :_id])
+          alpha (get-in ast [:content 0 :attrs "_id"])
+          beta  (get-in ast [:content 1 :attrs "_id"])
           out   (edit-text ast "alpha\n\nbeta" "beta")]
       (is (= "beta" (get-in out [:content 0 :content 0 :text])))
-      (is (= beta (get-in out [:content 0 :attrs :_id])))
+      (is (= beta (get-in out [:content 0 :attrs "_id"])))
       (is (not (contains? (ids-of out) alpha)))))
   (testing "a card embed never donates its id to prose that replaces it"
     (let [ast  (md/parse "::: flex\n{% card id=118 %}\n::: supporting\nwords\n:::\n:::")
-          card (some #(when (= "cardEmbed" (:type %)) (get-in % [:attrs :_id]))
+          card (some #(when (= "cardEmbed" (:type %)) (get-in % [:attrs "_id"]))
                      (tree-seq :content :content ast))
           out  (edit-text ast "{% card id=118 %}" "::: supporting\njust words now\n:::")]
       (is (some? card))
@@ -1099,8 +1099,8 @@
   (testing "re-parsing a card embed keeps the attrs its token does not carry -- child_target_id
            anchors comments and the rest is user-visible visualization state"
     (let [card {:type "cardEmbed"
-                :attrs {:id 7 :name "Chart" :_id "c1" :stored_result_id 42 :sort "asc"
-                        :chart_href "/q/7" :child_target_id "anchor-9" :host_data {:k "v"}}}
+                :attrs {"id" 7 "name" "Chart" "_id" "c1" "stored_result_id" 42 "sort" "asc"
+                        "chart_href" "/q/7" "child_target_id" "anchor-9" "host_data" {"k" "v"}}}
           ast  {:type "doc" :content [(para "intro") card]}
           ser  (md/serialize ast)
           s    (str/index-of (:markdown ser) "\n\n")
@@ -1109,16 +1109,16 @@
       (is (= (:attrs card) (:attrs out-card)))))
   (testing "a freshly parsed value still wins over the carried one, so retargeting a card works"
     (let [card {:type "cardEmbed"
-                :attrs {:id 7 :name "Chart" :_id "c1" :stored_result_id 42 :child_target_id "anchor-9"}}
+                :attrs {"id" 7 "name" "Chart" "_id" "c1" "stored_result_id" 42 "child_target_id" "anchor-9"}}
           ast  {:type "doc" :content [(para "intro") card]}
           ser  (md/serialize ast)
           m    (:markdown ser)
           s    (str/index-of m "{%")
           out  (md/splice ast ser s (count m) "{% card id=1234 name=\"Other\" %}")
           out-card (first (collect-type out "cardEmbed"))]
-      (is (= 1234 (get-in out-card [:attrs :id])))
-      (is (= "Other" (get-in out-card [:attrs :name])))
-      (is (= "anchor-9" (get-in out-card [:attrs :child_target_id]))))))
+      (is (= 1234 (get-in out-card [:attrs "id"])))
+      (is (= "Other" (get-in out-card [:attrs "name"])))
+      (is (= "anchor-9" (get-in out-card [:attrs "child_target_id"]))))))
 
 (deftest ^:parallel lone-cr-cannot-manufacture-a-card-embed-test
   (testing "the scanner and the parser have to agree on where a line begins. `str/split-lines`
@@ -1145,7 +1145,7 @@
       (is (empty? (collect-type (md/parse (str \tab "::: flex\n" \tab "{% card id=1 %}\n" \tab ":::"))
                                 "cardEmbed"))))
     (testing "while a token indented within the parser's 3-column budget is still structure"
-      (is (= [7] (mapv #(get-in % [:attrs :id])
+      (is (= [7] (mapv #(get-in % [:attrs "id"])
                        (collect-type (md/parse "   {% card id=7 %}") "cardEmbed")))))
     (testing "and a blank line separates blocks however wide its whitespace — measuring the indent
              must not turn one into a code block"

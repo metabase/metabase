@@ -230,7 +230,7 @@
   (mapv (fn [node]
           (u/remove-nils {:type    (:type node)
                           :card_id (when (= (:type node) prose-mirror/card-embed-type)
-                                     (get-in node [:attrs :id]))
+                                     (get-in node [:attrs "id"]))
                           :text    (not-empty (prose-mirror/ast->text node))}))
         (get-in row [::document :document :content])))
 
@@ -252,7 +252,7 @@
    in one, while their `supportingText` children are emitted verbatim and do have spans."
   [row]
   (letfn [(walk [node ancestors]
-            (let [id       (get-in node [:attrs :_id])
+            (let [id       (get-in node [:attrs "_id"])
                   inherited (cond->> ancestors id (cons id))]
               (concat (when id [[id ancestors]])
                       (mapcat #(walk % inherited) (:content node)))))]

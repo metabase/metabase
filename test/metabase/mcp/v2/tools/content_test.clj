@@ -571,13 +571,13 @@
    paragraph has its own id (nested blocks carry no span of their own), an empty paragraph
    (zero-width span), and a closing paragraph."
   {:type    "doc"
-   :content [{:type    "paragraph" :attrs {:_id "para-1"}
+   :content [{:type    "paragraph" :attrs {"_id" "para-1"}
               :content [{:type "text" :text "First paragraph."}]}
-             {:type    "blockquote" :attrs {:_id "quote-1"}
-              :content [{:type    "paragraph" :attrs {:_id "quote-para"}
+             {:type    "blockquote" :attrs {"_id" "quote-1"}
+              :content [{:type    "paragraph" :attrs {"_id" "quote-para"}
                          :content [{:type "text" :text "Quoted text."}]}]}
-             {:type "paragraph" :attrs {:_id "empty-1"}}
-             {:type    "paragraph" :attrs {:_id "para-2"}
+             {:type "paragraph" :attrs {"_id" "empty-1"}}
+             {:type    "paragraph" :attrs {"_id" "para-2"}
               :content [{:type "text" :text "Last paragraph."}]}]})
 
 (deftest get-content-document-comments-include-test
@@ -647,18 +647,18 @@
    block nested inside one has to resolve its anchor past them; the paragraph inside the list item
    is the block with no span of its own — the list re-renders it with a `- ` prefix."
   {:type    "doc"
-   :content [{:type    "resizeNode" :attrs {:height 442 :minHeight 280}
-              :content [{:type    "flexContainer" :attrs {:columnWidths [60 40]}
-                         :content [{:type    "supportingText" :attrs {:_id "support-1"}
-                                    :content [{:type    "bulletList" :attrs {:_id "list-1"}
+   :content [{:type    "resizeNode" :attrs {"height" 442 "minHeight" 280}
+              :content [{:type    "flexContainer" :attrs {"columnWidths" [60 40]}
+                         :content [{:type    "supportingText" :attrs {"_id" "support-1"}
+                                    :content [{:type    "bulletList" :attrs {"_id" "list-1"}
                                                :content [{:type    "listItem"
-                                                          :content [{:type    "paragraph" :attrs {:_id "list-para"}
+                                                          :content [{:type    "paragraph" :attrs {"_id" "list-para"}
                                                                      :content [{:type "text"
                                                                                 :text "Nested in a list."}]}]}]}]}
-                                   {:type    "supportingText" :attrs {:_id "support-2"}
-                                    :content [{:type    "paragraph" :attrs {:_id "support-para"}
+                                   {:type    "supportingText" :attrs {"_id" "support-2"}
+                                    :content [{:type    "paragraph" :attrs {"_id" "support-para"}
                                                :content [{:type "text" :text "Beside it."}]}]}]}]}
-             {:type "paragraph" :attrs {:_id "tail"} :content [{:type "text" :text "Tail."}]}]})
+             {:type "paragraph" :attrs {"_id" "tail"} :content [{:type "text" :text "Tail."}]}]})
 
 (deftest get-content-document-comments-inside-a-layout-container-test
   (testing "a live comment inside a layout container is anchored, not reported orphaned — a block
@@ -758,9 +758,9 @@
                                               :attrs   {:level 1 :_id "h-1"}
                                               :content [{:type "text" :text "Q3 revenue"}]}
                                              {:type  "mysteryBlock"
-                                              :attrs {:_id "m-1"}}
+                                              :attrs {"_id" "m-1"}}
                                              {:type  "cardEmbed"
-                                              :attrs {:id 118 :_id "c-1"}}]}
+                                              :attrs {"id" 118 "_id" "c-1"}}]}
                     :content_type "application/json+vnd.prose-mirror"}]
       (mt/with-test-user :crowberto
         (let [row (content-one {:items [{:type "document" :id doc-id}]})]

@@ -125,7 +125,7 @@
                                        :content_markdown "## Heading\n\nEdit me please.\n\nLeave me alone."}))
               doc-id  (:id payload)
               blocks  (fn [] (:content (t2/select-one-fn :document :model/Document :id doc-id)))
-              id-of   (fn [bs pred] (some #(when (pred %) (get-in % [:attrs :_id])) bs))
+              id-of   (fn [bs pred] (some #(when (pred %) (get-in % [:attrs "_id"])) bs))
               before  (blocks)
               heading-id (id-of before #(= "heading" (:type %)))
               edited-id  (id-of before #(str/includes? (str (get-in % [:content 0 :text])) "Edit me"))]
@@ -155,7 +155,7 @@
                                        :content_markdown "Keep me.\n\nDelete me.\n\nKeep me too."}))
               doc-id  (:id payload)
               blocks  (:content (t2/select-one-fn :document :model/Document :id doc-id))
-              id-of   (fn [pred] (some #(when (pred %) (get-in % [:attrs :_id])) blocks))
+              id-of   (fn [pred] (some #(when (pred %) (get-in % [:attrs "_id"])) blocks))
               doomed  (id-of #(= "Delete me." (get-in % [:content 0 :text])))]
           (t2/insert! :model/Comment {:target_type     "document"
                                       :target_id       doc-id
@@ -197,8 +197,8 @@
    document written by a newer frontend, or by a REST caller (`[:document :any]`), looks like to
    this tool."
   {:type    "doc"
-   :content [{:type "mysteryBlock" :attrs {:_id "m1"}}
-             {:type "paragraph" :attrs {:_id "p1"} :content [{:type "text" :text "After."}]}]})
+   :content [{:type "mysteryBlock" :attrs {"_id" "m1"}}
+             {:type "paragraph" :attrs {"_id" "p1"} :content [{:type "text" :text "After."}]}]})
 
 (deftest unrenderable-body-does-not-fail-a-committed-write-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -266,7 +266,7 @@
                                               :content_markdown "Replace me."}))
                     doc-id   (:id payload)
                     old-id   (-> (t2/select-one-fn :document :model/Document :id doc-id)
-                                 :content first :attrs :_id)
+                                 :content first :attrs (get "_id"))
                     updated  (call {:method "update" :id doc-id
                                     :edits [{:old_str "Replace me." :new_str replacement}]})]
                 (is (= expected-markdown (:content_markdown updated)))
@@ -282,7 +282,7 @@
                                            :content_markdown "Replace me."}))
                   doc-id  (:id payload)
                   old-id  (-> (t2/select-one-fn :document :model/Document :id doc-id)
-                              :content first :attrs :_id)
+                              :content first :attrs (get "_id"))
                   updated (call {:method "update" :id doc-id
                                  :edits [{:old_str "Replace me."
                                           :new_str "::: flex\n::: supporting\nwords\n:::\n:::"}]})]
@@ -376,19 +376,19 @@
         (fn [created!]
           (mt/with-current-user (mt/user->id :rasta)
             (testing "an unreadable target is indistinguishable from a dangling id"
-              (is (= [{:entityId hidden-id :model "dashboard" :label nil :href "/"}
-                      {:entityId secret-id :model "collection" :label nil :href "/"}]
+              (is (= [{"entityId" hidden-id "model" "dashboard" "label" nil "href" "/"}
+                      {"entityId" secret-id "model" "collection" "label" nil "href" "/"}]
                      (written-smart-link-attrs
                       created!
                       (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
                               hidden-id secret-id)))))
             (testing "a readable target still resolves its label and href"
-              (is (= [{:entityId readable-id :model "card" :label "Open Question"
-                       :href (str "/question/" readable-id)}]
+              (is (= [{"entityId" readable-id "model" "card" "label" "Open Question"
+                       "href" (str "/question/" readable-id)}]
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"card\" %%}" readable-id)))))
             (testing "user mentions resolve under the mention picker's visibility rule: a visible user"
-              (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label "Crowberto Corv" :href "/"}]
+              (is (= [{"entityId" (mt/user->id :crowberto) "model" "user" "label" "Crowberto Corv" "href" "/"}]
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"user\" %%}"
                                                        (mt/user->id :crowberto))))))
@@ -396,7 +396,7 @@
                      :model/User has no can-read?, and resolving any id would let a document author
                      enumerate names and emails the picker would never show them"
               (mt/with-temp [:model/User {inactive-id :id} {:first_name "Gone" :last_name "Person" :is_active false}]
-                (is (= [{:entityId inactive-id :model "user" :label nil :href "/"}]
+                (is (= [{"entityId" inactive-id "model" "user" "label" nil "href" "/"}]
                        (written-smart-link-attrs created!
                                                  (format "{%% entity id=\"%d\" model=\"user\" %%}" inactive-id))))
                 ;; `user-visibility` is gated on :email-restrict-recipients — in OSS the setting reads
@@ -404,15 +404,15 @@
                 ;; assertion below pins the default instead of the rule.
                 (mt/with-premium-features #{:email-restrict-recipients}
                   (mt/with-temporary-setting-values [user-visibility :none]
-                    (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label nil :href "/"}
-                            {:entityId (mt/user->id :rasta) :model "user" :label "Rasta Toucan" :href "/"}]
+                    (is (= [{"entityId" (mt/user->id :crowberto) "model" "user" "label" nil "href" "/"}
+                            {"entityId" (mt/user->id :rasta) "model" "user" "label" "Rasta Toucan" "href" "/"}]
                            (written-smart-link-attrs created!
                                                      (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
                                                              (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
           (testing "an admin resolves what a non-admin could not"
             (mt/with-current-user (mt/user->id :crowberto)
-              (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
-                       :href (str "/dashboard/" hidden-id)}]
+              (is (= [{"entityId" hidden-id "model" "dashboard" "label" "CONFIDENTIAL Layoffs"
+                       "href" (str "/dashboard/" hidden-id)}]
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"dashboard\" %%}"
                                                        hidden-id)))))))))))
@@ -448,10 +448,10 @@
                              (->> (tree-seq :content :content
                                             (t2/select-one-fn :document :model/Document :id doc-id))
                                   (some #(when (= "smartLink" (:type %)) (:attrs %)))))
-                resolved   {:entityId hidden-id
-                            :model    "card"
-                            :label    "CONFIDENTIAL Revenue"
-                            :href     (str "/question/" hidden-id)}]
+                resolved   {"entityId" hidden-id
+                            "model"    "card"
+                            "label"    "CONFIDENTIAL Revenue"
+                            "href"     (str "/question/" hidden-id)}]
             (testing "a writer who can read the target stores its label"
               (is (= resolved (link-attrs))))
             (let [updated (mt/with-current-user (mt/user->id :rasta)
@@ -472,15 +472,15 @@
                        :edits  [{:old_str "for detail."
                                  :new_str (str "for detail, and {% entity id=\"" unseen-id
                                                "\" model=\"card\" %} too.")}]}))
-              (is (= {:entityId unseen-id :model "card" :label nil :href "/"}
+              (is (= {"entityId" unseen-id "model" "card" "label" nil "href" "/"}
                      (->> (tree-seq :content :content
                                     (t2/select-one-fn :document :model/Document :id doc-id))
-                          (some #(when (= unseen-id (get-in % [:attrs :entityId])) (:attrs %)))))))))))))
+                          (some #(when (= unseen-id (get-in % [:attrs "entityId"])) (:attrs %)))))))))))))
 
 (deftest smart-link-labels-are-not-resolved-by-the-markdown-layer-test
   (testing "parse leaves label/href at their defaults — the Markdown namespace performs no lookup,
            which is what keeps the documents module free of a permissions dependency"
-    (is (= [{:entityId 1 :model "dashboard" :label nil :href "/"}]
+    (is (= [{"entityId" 1 "model" "dashboard" "label" nil "href" "/"}]
            (->> (tree-seq :content :content (documents/parse "see {% entity id=\"1\" model=\"dashboard\" %}"))
                 (keep #(when (= "smartLink" (:type %)) (:attrs %)))
                 vec)))))
