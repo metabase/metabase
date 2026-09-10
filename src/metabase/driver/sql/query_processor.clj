@@ -2238,7 +2238,7 @@
       :stages))
 
 (defmulti use-ctes-for-stages?
-  "Whether to compile the stages of a multi-stage query as a chain of CTEs instead of nested subselects, e.g.
+  "Whether to compile the stages of a multi-stage query with CTEs instead of nested subselects, e.g.
 
     WITH \"__mb_stage_0\" AS (SELECT \"a\", \"b\" FROM \"t\" WHERE \"b\" = 1)
     SELECT \"a\", COUNT(*) FROM \"__mb_stage_0\" AS \"__mb_source\" GROUP BY \"a\"
@@ -2254,9 +2254,7 @@
   * as the body of another CTE, since a native first stage compiles to `WITH __mb_stage_0 AS (<native SQL>) ...` and
     that native SQL may itself start with `WITH`
   * inside a subquery, e.g. a card referenced from a native query via `{{#123}}` or a metadata probe
-  * after `CREATE TABLE ... AS` and `INSERT INTO ...`, for transforms and persisted models
-
-  Postgres accepts all of these."
+  * after `CREATE TABLE ... AS` and `INSERT INTO ...`, for transforms and persisted models"
   {:added "0.65.0", :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -2328,10 +2326,7 @@
       [cte-name hsql])))
 
 (defn- stages->honeysql-ctes
-  "Compile `stages` to HoneySQL, putting each stage but the last in a CTE named `__mb_stage_<idx>` that the following
-  stage selects from. All the CTEs end up in the `:with` clause of the final stage's form. Each CTE only references the
-  one before it, so the chain is valid without `RECURSIVE`. A native (or persisted-model) first stage becomes a CTE
-  whose body is the raw SQL."
+  "Compile `stages` to HoneySQL, putting each stage but the last in a CTE that the following stage selects from."
   [driver stages]
   (let [stages   (vec stages)
         last-idx (dec (count stages))]
