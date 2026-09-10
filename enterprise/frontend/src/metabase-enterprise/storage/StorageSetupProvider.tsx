@@ -12,9 +12,6 @@ import { usePurchaseStorageAddOn } from "./use-purchase-storage-add-on";
 import { useStorageAddOn } from "./use-storage-add-on";
 
 /**
- * The real storage setup provider, injected into the OSS Add data modal via
- * `PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider` on hosted instances.
- *
  * Must be mounted outside the modal's `Modal.Root`, so its polling survives the
  * modal closing and its purchase modal replaces the host modal rather than
  * stacking on it.

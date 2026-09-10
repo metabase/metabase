@@ -163,6 +163,7 @@ export const ChartSettingFieldPicker = ({
                 <ChartSettingColorPicker
                   pillSize="small"
                   value={colors[seriesKey]}
+                  forwardColorName
                   onChange={(hexValue, colorName) => {
                     onChangeSeriesColor?.(seriesKey, hexValue, colorName);
                   }}
