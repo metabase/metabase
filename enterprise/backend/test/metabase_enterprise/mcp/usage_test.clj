@@ -280,8 +280,8 @@
                                        :description "throws on purpose"
                                        :args        [:map]
                                        :handler     (fn [_ _] (throw (ex-info "kaboom" {})))})
-          (let [result (v2.registry/call-tool #{"agent:content:read"} sid tool-name {})]
-            (is (:isError result) "the client sees an error result"))
+          (let [{:keys [result error]} (v2.registry/call-tool #{"agent:content:read"} sid tool-name {})]
+            (is (or error (:isError result)) "the client sees an error result"))
           (let [row (t2/select-one :model/McpToolCallLog :tool_name tool-name)]
             (is (some? row) "an error row is recorded even though the handler threw")
             (is (= "error" (:status row))))
@@ -382,17 +382,24 @@
                           :post "mcp"
                           {:request-options {:headers {"mcp-session-id" sid}}}
                           (jsonrpc "tools/call" {:name "no_such_tool" :arguments {}} 3))]
-            (is (true? (boolean (get-in err-resp [:body :result :isError]))))
+            ;; The bare alias now serves v2, whose registry rejects an unknown tool before dispatch:
+            ;; that is `{:error ...}`, not a handler result carrying `:isError`.
+            (is (boolean (or (get-in err-resp [:body :error])
+                             (get-in err-resp [:body :result :isError]))))
             (let [row (t2/select-one :model/McpToolCallLog :tool_name "no_such_tool" :client_version ver)]
               (is (some? row))
               (is (= "error" (:status row)))
               ;; unknown tool -> JSON-RPC "method not found"; error_code is non-PII, always recorded
               (is (= -32601 (:error_code row))))))
-        (testing "DELETE stamps ended_at on the session row"
-          (client/client-full-response (test.users/username->token :crowberto)
-                                       :delete "mcp"
-                                       {:request-options {:headers {"mcp-session-id" sid}}})
-          (is (some? (:ended_at (t2/select-one :model/McpSessionLog :id sid)))))
+        (testing "DELETE is refused: v2 does not support client-initiated termination"
+          ;; v1 tore the session down here and stamped `ended_at` on the way out. The v2 transport
+          ;; answers 405 instead, so nothing on this path ends the session row. `record-mcp-session-end!`
+          ;; is now callerless -- tracked separately rather than wired up here, since choosing where a
+          ;; v2 session ends is a design question, not a test fix.
+          (is (= 405 (:status (client/client-full-response
+                               (test.users/username->token :crowberto)
+                               :delete "mcp"
+                               {:request-options {:headers {"mcp-session-id" sid}}})))))
         (finally
           (cleanup-calls! :client_version ver)
           (cleanup! sid))))))
