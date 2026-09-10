@@ -55,7 +55,7 @@ export const Legend = ({
   const overflowIndex = visibleIndex + visibleLength;
   const visibleItems = items.slice(visibleIndex, overflowIndex);
   const overflowLength = items.length - overflowIndex;
-  const { itemGap, rowGap, maxVerticalWidth } = LEGEND_SIZES[size];
+  const { itemGap, rowGap, maxVerticalWidth, typography } = LEGEND_SIZES[size];
 
   return (
     <Flex
@@ -99,8 +99,8 @@ export const Legend = ({
               component="div"
               className={S.overflowLabel}
               c="text-secondary"
-              fz={size}
-              lh={size}
+              fz={typography}
+              lh={typography}
             >
               {getOverflowLabel(overflowLength)}
             </Text>

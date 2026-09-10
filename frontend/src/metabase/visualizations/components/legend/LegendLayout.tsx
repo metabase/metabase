@@ -9,7 +9,7 @@ import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";
 import type { LegendItemData } from "./LegendItem";
 import S from "./LegendLayout.module.css";
-import { LEGEND_SIZES, type LegendSize, getLegendLayout } from "./layout";
+import { LEGEND_SIZES, getLegendLayout, getLegendSize } from "./layout";
 
 interface LegendLayoutProps {
   className?: string;
@@ -57,7 +57,7 @@ export const LegendLayout = ({
   isReversed,
 }: LegendLayoutProps) => {
   const hasDimensions = width > 0 && height > 0;
-  const size: LegendSize = isQueryBuilder || isFullscreen ? "md" : "sm";
+  const size = getLegendSize({ width, height, isQueryBuilder, isFullscreen });
 
   const layout = useMemo(
     () =>

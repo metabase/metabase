@@ -85,8 +85,8 @@ describe("scenarios > embedding-sdk > popovers", () => {
     });
 
     cy.log("check that the popover is showing chart legends");
-    H.popover().findByText("WV").should("be.visible");
-    H.popover().findByText("WY").should("be.visible");
+    H.popover().findByText("IA").should("be.visible");
+    H.popover().findByText("ID").should("be.visible");
   });
 
   it("should prevent closing the ChartNestedSettingsSeriesSingle popover when clicking it", () => {

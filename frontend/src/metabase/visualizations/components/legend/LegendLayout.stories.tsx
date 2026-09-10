@@ -35,9 +35,20 @@ interface CardProps {
   width: number;
   height: number;
   isQueryBuilder?: boolean;
+  alwaysVisible?: boolean;
 }
 
-const Card = ({ names, width, height, isQueryBuilder }: CardProps) => (
+// vertical padding of the card wrapper below; real charts measure their
+// viewport, so the stories pass the equivalent height for exact row fitting
+const CARD_VERTICAL_PADDING = 16;
+
+const Card = ({
+  names,
+  width,
+  height,
+  isQueryBuilder,
+  alwaysVisible,
+}: CardProps) => (
   <Box
     w={width}
     h={height}
@@ -50,7 +61,9 @@ const Card = ({ names, width, height, isQueryBuilder }: CardProps) => (
       hasLegend
       width={width}
       height={height}
+      chartHeight={height - CARD_VERTICAL_PADDING}
       isQueryBuilder={isQueryBuilder}
+      alwaysVisible={alwaysVisible}
       fontFamily="Lato"
       measureText={measureTextWidth}
     >
@@ -73,6 +86,8 @@ export const Horizontal: StoryObj = {
   render: () => <Card names={SHORT_NAMES} width={600} height={300} />,
 };
 
+// the smallest card that still shows a legend (the unit tests cover the
+// exact 420x200 boundary)
 export const MinimumCardSize: StoryObj = {
   render: () => (
     <Card
@@ -84,18 +99,12 @@ export const MinimumCardSize: StoryObj = {
 };
 
 export const HiddenOnSmallCard: StoryObj = {
-  render: () => (
-    <Card
-      names={SHORT_NAMES}
-      width={MIN_LEGEND_CARD_WIDTH - 1}
-      height={MIN_LEGEND_CARD_HEIGHT}
-    />
-  ),
+  render: () => <Card names={SHORT_NAMES} width={360} height={180} />,
 };
 
 export const Vertical: StoryObj = {
   render: () => (
-    <Card names={MANY_NAMES.slice(0, 8)} width={600} height={300} />
+    <Card names={MANY_NAMES.slice(0, 12)} width={600} height={300} />
   ),
 };
 
@@ -113,8 +122,34 @@ export const VerticalTruncated: StoryObj = {
   ),
 };
 
+// more than half of the names are truncated, so the legend is dropped
 export const HiddenWhenMostlyTruncated: StoryObj = {
   render: () => <Card names={LONG_NAMES} width={600} height={300} />,
+};
+
+export const LargeCardHorizontal: StoryObj = {
+  render: () => <Card names={SHORT_NAMES} width={700} height={420} />,
+};
+
+export const LargeCardVertical: StoryObj = {
+  render: () => (
+    <Card names={MANY_NAMES.slice(0, 10)} width={700} height={420} />
+  ),
+};
+
+export const LargeCardVerticalOverflow: StoryObj = {
+  render: () => <Card names={MANY_NAMES} width={700} height={420} />,
+};
+
+export const VisualizerSmallCanvasAlwaysVisible: StoryObj = {
+  render: () => (
+    <Card
+      names={MANY_NAMES.slice(0, 8)}
+      width={360}
+      height={220}
+      alwaysVisible
+    />
+  ),
 };
 
 export const QueryBuilderHorizontal: StoryObj = {

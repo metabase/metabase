@@ -40,7 +40,7 @@ const LegendItemInner = ({
   onSelectSeries,
   onToggleSeriesVisibility,
 }: LegendItemProps) => {
-  const { dotSize, dotGap } = LEGEND_SIZES[size];
+  const { dotSize, dotGap, typography } = LEGEND_SIZES[size];
 
   const handleDotClick = (event: React.MouseEvent) => {
     onToggleSeriesVisibility?.(event, index);
@@ -81,8 +81,8 @@ const LegendItemInner = ({
             [S.clickableTitle]: onSelectSeries != null,
           })}
           c="text-primary"
-          fz={size}
-          lh={size}
+          fz={typography}
+          lh={typography}
           ml={dotGap}
           miw={0}
           onClick={onSelectSeries && handleItemClick}

@@ -4,6 +4,7 @@ import {
   LEGEND_SIZES,
   type LegendSize,
   getLegendLayout,
+  getLegendSize,
 } from "./layout";
 
 const CHAR_WIDTH = 6;
@@ -173,15 +174,11 @@ describe("getLegendLayout overflow label", () => {
   });
 });
 
-describe("getLegendLayout truncation against the width cap", () => {
-  it("should keep the legend when names only truncate because of the 25% squeeze", () => {
-    // labels 180 < cap room 200 - 14 = 186, but 25% of 568 = 142 forces ellipsis
+describe("getLegendLayout truncation at the rendered width", () => {
+  it("should hide the legend when all names are truncated by the 25% squeeze, even if they would fit a wider card", () => {
+    // labels 180 fit the 200px cap but not the squeezed 142px column
     const names = Array.from({ length: 4 }, (_, i) => `${i}`.padEnd(30, "a"));
-    expect(layout(names, { width: 600 })).toMatchObject({
-      type: "vertical",
-      width: 146,
-      visibleCount: 4,
-    });
+    expect(layout(names, { width: 600 })).toEqual({ type: "hidden" });
   });
 });
 
@@ -215,5 +212,40 @@ describe("getLegendLayout alwaysVisible", () => {
         ...opts,
       }),
     ).toMatchObject({ type: "vertical", visibleCount: 1 });
+  });
+});
+
+describe("getLegendSize", () => {
+  it("should pick lg for large dashboard cards and sm otherwise", () => {
+    expect(getLegendSize({ width: 640, height: 360 })).toBe("lg");
+    expect(getLegendSize({ width: 639, height: 360 })).toBe("sm");
+    expect(getLegendSize({ width: 640, height: 359 })).toBe("sm");
+  });
+
+  it("should always pick md in the query builder and fullscreen", () => {
+    expect(
+      getLegendSize({ width: 300, height: 200, isQueryBuilder: true }),
+    ).toBe("md");
+    expect(
+      getLegendSize({ width: 2000, height: 900, isFullscreen: true }),
+    ).toBe("md");
+  });
+});
+
+describe("getLegendLayout lg size", () => {
+  it("should use the roomier lg metrics for row fitting", () => {
+    const names = Array.from({ length: 20 }, (_, i) => `series ${i}`);
+    // (200 + 12) / (13.8 + 12) = 8 rows, 7 items + the overflow label
+    expect(
+      getLegendLayout({
+        items: createItems(names),
+        width: 700,
+        height: 400,
+        chartHeight: 200,
+        size: "lg",
+        fontFamily: "Lato",
+        measureText,
+      }),
+    ).toMatchObject({ type: "vertical", visibleCount: 7 });
   });
 });
