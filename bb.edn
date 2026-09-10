@@ -346,6 +346,23 @@
    :requires [[mage.kondo-ratchet]]
    :task (task! (mage.kondo-ratchet/insert-ignores (:arguments parsed)))}
 
+  owner-approval-audit
+  {:doc "Audit whether merged PRs were approved by a member of every module-owner team (point-in-time)."
+   :examples [["./bin/mage owner-approval-audit" "Walk PRs back to the module-team boundary SHA, write report CSV"]
+              ["./bin/mage owner-approval-audit 200" "Only the 200 most-recent PR commits"]
+              ["./bin/mage owner-approval-audit --back-to <sha>" "Use a different lower-bound commit"]]
+   :options [[nil "--back-to SHA" "Lower-bound commit (default: first commit with module :team data)"]
+             [nil "--ref REF" "Ref to walk (default origin/master)"]
+             [nil "--batch N" "PRs per GraphQL request (default 50)"]]
+   :requires [[mage.owner-approval]]
+   :task (task! (mage.owner-approval/cli-audit (cli/parse! (current-task))))}
+
+  owner-approval-viz
+  {:doc "Render the owner-approval report CSV to a standalone HTML summary."
+   :examples [["./bin/mage owner-approval-viz" "Write report.html from the last audit's CSV"]]
+   :requires [[mage.owner-approval]]
+   :task (task! (mage.owner-approval/cli-viz (cli/parse! (current-task))))}
+
   ls
   {:doc "List all mage public and private tasks"
    :examples [["./bin/mage ls" "List all tasks"]]
