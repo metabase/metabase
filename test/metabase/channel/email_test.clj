@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.audit-app.events.audit-log]
    [metabase.channel.api.email :as api.email]
    [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
@@ -25,6 +26,8 @@
    (javax.activation MimeType)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.audit-app.events.audit-log/keep-me)
 
 ;; TODO - this should be made dynamic so it's (at least theoretically) possible to use this in parallel
 (def inbox
