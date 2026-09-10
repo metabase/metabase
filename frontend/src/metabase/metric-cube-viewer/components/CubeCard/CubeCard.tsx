@@ -202,11 +202,14 @@ function LoadedCubeCard({
   const chartTypes = getDimensionBreakoutConfig(
     model.dimensionBreakout.type,
   ).availableDisplayTypes;
+  const pickerValue =
+    chartTypes.find((option) => option.type === seriesResult.display)?.type ??
+    card.display;
   const picker =
     chartTypes.length > 1 ? (
       <ChartTypePicker
         chartTypes={chartTypes}
-        value={seriesResult.display}
+        value={pickerValue}
         onChange={onDisplayChange}
       />
     ) : null;

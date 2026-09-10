@@ -24,8 +24,10 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import {
   AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE,
+  RENDERABLE_DISPLAYS,
   type VizInput,
   isAllowedDisplay,
+  useDatasetQuery,
   useResolvedDisplay,
 } from "metabase/visualizations/lib/viz-heuristics";
 import type { MetricDefinition } from "metabase-lib/metric";
@@ -36,6 +38,7 @@ import type {
   DatasetColumn,
   MetricDimension,
   SingleSeries,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
@@ -166,45 +169,52 @@ function MetricDimensionCard({
   const { data } = useMetricDimensionQuery(definition, dimension.dimensionId);
   const title = t`By ${dimension.label}`;
 
-  const allowedDisplayTypes =
-    AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE[dimension.dimensionType];
+  const query = useDatasetQuery(data);
   const vizInput = useMemo<VizInput>(
     () => ({
       cols: data?.data.cols ?? EMPTY_COLUMNS,
       rows: data?.data.rows,
-      query: null,
+      query,
       dimensionType: dimension.dimensionType,
       hint: { display: hintDisplayType },
-      allowed: allowedDisplayTypes,
+      allowed: RENDERABLE_DISPLAYS,
       context: "metric-grid",
     }),
-    [data, dimension.dimensionType, hintDisplayType, allowedDisplayTypes],
+    [data, query, dimension.dimensionType, hintDisplayType],
   );
-  const { display } = useResolvedDisplay(
+  const { display, settings } = useResolvedDisplay(
     dimension.dimensionId,
     vizInput,
     title,
   );
-  const displayType = isAllowedDisplay(display, allowedDisplayTypes)
+  const displayType = isAllowedDisplay(display, RENDERABLE_DISPLAYS)
     ? display
     : hintDisplayType;
 
   const rawSeries = useMemo(
-    () => (data ? buildSingleSeries(data, displayType) : null),
-    [data, displayType],
+    () => (data ? buildSingleSeries(data, displayType, settings) : null),
+    [data, displayType, settings],
   );
 
+  // The metrics viewer only knows its own displays, so a heuristic's pick
+  // outside that set opens the viewer with the overview's default instead.
+  const exploreDisplayType = isAllowedDisplay(
+    displayType,
+    AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE[dimension.dimensionType],
+  )
+    ? displayType
+    : hintDisplayType;
   const handleClick = useCallback(() => {
     navigate(
       exploreMetricDimensionUrl({
         metricId,
         dimensionId: dimension.dimensionId,
         dimensionType: dimension.dimensionType,
-        displayType,
+        displayType: exploreDisplayType,
         label: dimension.label,
       }),
     );
-  }, [metricId, dimension, displayType, navigate]);
+  }, [metricId, dimension, exploreDisplayType, navigate]);
 
   return (
     <Paper withBorder shadow="none" className={S.card} onClick={handleClick}>
@@ -234,6 +244,7 @@ function MetricDimensionCard({
 function buildSingleSeries(
   dataset: Dataset,
   displayType: CardDisplayType,
+  settings: Partial<VisualizationSettings> = {},
 ): SingleSeries[] {
   const { cols } = dataset.data;
   const dimensionName = cols[0]?.name;
@@ -246,6 +257,7 @@ function buildSingleSeries(
         visualization_settings: {
           ...(dimensionName ? { "graph.dimensions": [dimensionName] } : {}),
           ...(metricName ? { "graph.metrics": [metricName] } : {}),
+          ...settings,
         },
         dataset_query: dataset.json_query ?? STRUCTURED_QUERY_TEMPLATE,
       },

@@ -129,3 +129,25 @@ export function resolveLegacyDefault(input: VizInput): VizDecision {
     : hintDecision(input);
   return constrainToAllowed(switchToScalarIfOneByOne(base, input), input);
 }
+
+/**
+ * Displays a plain single-series `Visualization` can draw from one result
+ * without extra queries or insights (pivot needs a pivot query, object/list a
+ * primary key, smartscalar insights, gauge/progress a goal).
+ */
+export const RENDERABLE_DISPLAYS: readonly CardDisplayType[] = [
+  "table",
+  "bar",
+  "line",
+  "pie",
+  "scalar",
+  "row",
+  "area",
+  "combo",
+  "funnel",
+  "map",
+  "scatter",
+  "waterfall",
+  "treemap",
+  "sankey",
+];

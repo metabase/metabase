@@ -15,5 +15,7 @@ export {
   type DimensionDisplayType,
   AVAILABLE_DISPLAYS_BY_DIMENSION_TYPE,
   DEFAULT_DISPLAY_BY_DIMENSION_TYPE,
+  RENDERABLE_DISPLAYS,
   isAllowedDisplay,
 } from "./shared";
+export { useDatasetQuery } from "./use-dataset-query";

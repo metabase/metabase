@@ -21,6 +21,15 @@ import { cardToViewerModel } from "../utils/card-viewer-model";
 
 import { type CubeCardTile, useCubeCardSeries } from "./use-cube-card-series";
 
+// The query behind a result needs the redux metadata store; these tests only
+// exercise display resolution, so no query is provided.
+jest.mock(
+  "metabase/visualizations/lib/viz-heuristics/use-dataset-query",
+  () => ({
+    useDatasetQuery: () => null,
+  }),
+);
+
 jest.mock("metabase/metrics-viewer/hooks/use-definition-queries", () => ({
   useDefinitionQueries: jest.fn(),
 }));
@@ -176,8 +185,15 @@ describe("useCubeCardSeries", () => {
     expect(result.current.display).toBe("line");
   });
 
-  it("keeps the card's display when the heuristic picks a display the dimension type does not offer", () => {
+  it("draws a single result plainly when the heuristic picks a display the metrics viewer does not offer", () => {
     const { result } = setup({ heuristic: heuristicReturning("pie") });
+
+    expect(result.current.display).toBe("pie");
+    expect(result.current.series.map((s) => s.card.display)).toEqual(["pie"]);
+  });
+
+  it("keeps the card's display when the heuristic picks a display nothing can render", () => {
+    const { result } = setup({ heuristic: heuristicReturning("pivot") });
 
     expect(result.current.display).toBe("line");
   });
