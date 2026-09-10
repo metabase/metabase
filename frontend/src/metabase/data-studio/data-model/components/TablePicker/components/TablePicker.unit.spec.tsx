@@ -9,6 +9,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   fireEvent,
   mockGetBoundingClientRect,
@@ -20,7 +21,6 @@ import {
 import * as Analytics from "metabase/analytics";
 import { SelectionProvider } from "metabase/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
 import { reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Database, Table, TokenFeatures, User } from "metabase-types/api";
 import {

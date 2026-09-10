@@ -5,17 +5,16 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase-enterprise.semantic-search.db :as semantic-search.db]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase.activity-feed.core :as activity-feed]
-   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
    [metabase.util :as u]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2]))
+   [next.jdbc.result-set :as jdbc.rs]))
 
 ;;
 ;; index-based scorers: these scorers only rely on columns in the search index in the pgvector db
@@ -156,26 +155,6 @@
 ;; appdb-based scorers: these scorers rely on tables in the appdb
 ;;
 
-(defn- search-doc->select
-  [{:keys [id model]}]
-  ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline (str id)]] [^:allow-raw-sql [:inline model]]]})
-
-(defn- search-index-query
-  [search-results]
-  {:with     [[[:search_index ^:allow-subquery {:columns [:model_id :model]}]
-               ;; We could use :values here, except MySQL uses a slightly different syntax and I can't seem to get
-               ;; honeysql to generate a valid WITH ... VALUES statement for MySQL, so fallback to UNION + SELECT
-               ;; which works with all supported appdbs. https://dev.mysql.com/doc/refman/8.4/en/values.html
-               ^:allow-subquery
-               {:union (map search-doc->select search-results)}]]
-   :select   [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type))
-                                               :unsigned
-                                               :int)]
-               :id]
-              [:search_index.model :model]]
-   :from     [:search_index]})
-
 (defn- update-with-appdb-score
   [weights scorers grouped-appdb-results search-result]
   (let [id-model-key ((juxt :id :model) search-result)
@@ -207,14 +186,6 @@
   ;; #{"segment" "database" "action" "indexed-entity"}
   (set/difference (set search.spec/search-models) appdb-scorer-models))
 
-(defn appdb-scorers
-  "The appdb-based scorers for search ranking results. Like `base-scorers`, but for scorers that need to query the appdb."
-  [search-ctx]
-  (when-not (search.scoring/no-scoring-required? search-ctx)
-    {:bookmarked search.scoring/bookmark-score-expr
-     :user-recency (search.scoring/inverse-duration
-                    (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)}))
-
 (defn with-appdb-scores
   "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.
 
@@ -225,16 +196,12 @@
   combined `:score`."
   [search-ctx appdb-scorers weights search-results]
   ;; search-results-to-score are the search-results that have models that are relevant to the appdb-scorers.
-  (let [{:keys [current-user-id]} search-ctx
-        search-results-to-score (filter (comp appdb-scorer-models :model) search-results)
-        maybe-join-bookmarks #(cond-> % (:bookmarked appdb-scorers) (search.scoring/join-bookmarks current-user-id))]
+  (let [search-results-to-score (filter (comp appdb-scorer-models :model) search-results)]
     (if-not (and (seq search-results-to-score)
                  (seq appdb-scorers))
       search-results
-      (->> (search-index-query search-results-to-score)
-           (search.scoring/with-scores search-ctx appdb-scorers)
-           maybe-join-bookmarks
-           t2/query
+      (->> (semantic-search.db/appdb-scored-rows (mapv #(select-keys % [:id :model]) search-results-to-score)
+                                                 search-ctx)
            (update-with-appdb-scores weights (keys appdb-scorers) search-results)
            (sort-by :score >)
            vec))))

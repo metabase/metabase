@@ -67,6 +67,7 @@ const SHARED_DOMAIN = [
   "shared/nav",
   "shared/notifications",
   "shared/palette",
+  "shared/segments",
   "shared/static-viz",
   "shared/status",
   "shared/timelines",

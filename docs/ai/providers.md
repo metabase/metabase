@@ -104,6 +104,7 @@ Supported models:
 | GPT-5.6 Terra          | `openai/gpt-5.6-terra`            | 922,000                 |
 | Qwen3.8 Max            | `qwen/qwen3.8-max`                | 1,000,000               |
 | GLM-5.2                | `z-ai/glm-5.2`                    | 1,048,576               |
+| GLM-5.3                | `z-ai/glm-5.3`                    | 1,048,576               |
 
 Credentials:
 
@@ -138,6 +139,7 @@ Supported models:
 | Model   | Model ID  | Context window (tokens) |
 | ------- | --------- | ----------------------- |
 | GLM-5.2 | `glm-5.2` | 1,048,576               |
+| GLM-5.3 | `glm-5.3` | 1,048,576               |
 
 Credentials:
 
@@ -248,10 +250,10 @@ Supported models:
 
 Credentials:
 
-- **Access key ID** (required). [Where do I find this?](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html) You can also set it with the environment variable `MB_LLM_BEDROCK_ACCESS_KEY_ID`.
-- **Secret access key** (required). You can also set it with the environment variable `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`.
+- **Access key ID**. Only together with **Secret access key**. Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile). On Metabase Cloud, Bedrock always authenticates with your own AWS keys. [Where do I find this?](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html) You can also set it with the environment variable `MB_LLM_BEDROCK_ACCESS_KEY_ID`.
+- **Secret access key**. Only together with **Access key ID**. Required on Metabase Cloud. You can also set it with the environment variable `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`.
 - **Region**. Pick one from the dropdown in **Admin > AI**. Defaults to `us-east-1`. You can also set it with the environment variable `MB_LLM_BEDROCK_REGION`.
-- **Session token** (advanced). Only needed for temporary credentials. You can also set it with the environment variable `MB_LLM_BEDROCK_SESSION_TOKEN`.
+- **Session token** (advanced). Only together with **Access key ID** and **Secret access key**. Only needed for temporary credentials. You can also set it with the environment variable `MB_LLM_BEDROCK_SESSION_TOKEN`.
 
 ## vLLM
 

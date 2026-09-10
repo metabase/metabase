@@ -7,13 +7,16 @@ import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
-import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
+import {
+  getMetadata,
+  paramFieldsFetched,
+  selectQuestionFromCard,
+} from "metabase/metadata-store";
 import {
   getParameterValuesForQuestion,
   resolveCards,
 } from "metabase/query_builder";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import Question from "metabase-lib/v1/Question";
 import type { SeriesCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
@@ -63,13 +66,11 @@ export const loadQuestionSdk =
       await dispatch(loadMetadataForCard(card, { token }));
     }
 
-    const metadata = getMetadata(getState());
-
     const originalQuestion = originalCard
-      ? new Question(originalCard, metadata)
+      ? selectQuestionFromCard(getState(), originalCard)
       : undefined;
 
-    let question = new Question(card, metadata);
+    let question = selectQuestionFromCard(getState(), card);
     if (targetDashboardId) {
       question = question.setDashboardId(targetDashboardId);
     }
@@ -82,7 +83,9 @@ export const loadQuestionSdk =
 
     const parameterValues = getParameterValuesForQuestion({
       card,
-      metadata,
+      // getParameterValuesForQuestion reaches getCardUiParameters, which still
+      // takes the Metadata object. It migrates when that utility does.
+      metadata: getMetadata(getState()),
       queryParams: initialSqlParameters,
     });
 

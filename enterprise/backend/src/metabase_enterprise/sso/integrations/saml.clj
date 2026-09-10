@@ -32,6 +32,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.sso.api.interface :as sso.i]
+   [metabase-enterprise.sso.db :as sso.db]
    [metabase-enterprise.sso.integrations.saml-utils :as saml-utils]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
@@ -50,8 +51,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [ring.util.response :as response]
-   [saml20-clj.core :as saml]
-   [toucan2.core :as t2]))
+   [saml20-clj.core :as saml]))
 
 (set! *warn-on-reflection* true)
 
@@ -242,7 +242,7 @@
                                           :response-validators [:signature :require-authenticated :issuer]})]
       (if-let [metabase-session-key (and (saml/logout-success? response) (get-in cookies [request/metabase-session-cookie :value]))]
         (do
-          (t2/delete! :model/Session :key_hashed (session/hash-session-key metabase-session-key))
+          (sso.db/delete-session! (session/hash-session-key metabase-session-key))
           (request/clear-session-cookie (response/redirect (system/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

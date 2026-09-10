@@ -67,7 +67,7 @@
   metadata providers other than [[metabase.lib-be.metadata.jvm/application-database-metadata-provider]], which
   implements equivalent filter logic in SQL.
 
-  This should match [[metabase.lib-be.metadata.jvm/metadata-spec->honey-sql]] as closely as
+  This should match [[metabase.lib-be.db/metadata-where]] as closely as
   possible."
   [{metadata-type :lib/type, id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::metadata-spec]
   (let [active-only? (not (or id-set name-set))

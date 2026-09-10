@@ -148,6 +148,8 @@ jobs:
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.outputs.no_source_code_changes != 'true')
     uses: ./.github/workflows/uberjar.yml
+    with:
+      containerize: ${{ (github.event_name == 'push' && github.ref_name == 'master') || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') }}
     secrets: inherit
 
   # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
@@ -414,15 +416,3 @@ jobs:
       self_hosting: false
       analytics_dev_mode: false
       stats_dump: true
-
-  containerize:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      needs.uberjar.result == 'success' &&
-      (
-        (github.event_name == 'push' && contains(fromJson('["master", "metabot-v3-main", "internal-tools"]'), github.ref_name)) ||
-        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
-      )
-    uses: ./.github/workflows/containerize-uberjar.yml
-    secrets: inherit
