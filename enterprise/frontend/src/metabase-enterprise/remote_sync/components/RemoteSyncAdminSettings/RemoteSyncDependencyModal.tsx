@@ -3,7 +3,7 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import {
   Accordion,
   Anchor,
@@ -123,7 +123,7 @@ const RequiredSyncItem = ({
   syncedCollections,
   onToggle,
 }: RequiredSyncItemProps) => {
-  const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
+  const getIcon = useGetIcon();
   const { dependencies } = requiredSync;
   const row = getRequiredSyncRow(requiredSync);
   const { syncableId } = row;
