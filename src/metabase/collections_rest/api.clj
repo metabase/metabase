@@ -353,15 +353,7 @@
       (api/read-check)
       (dissoc ::collection.root/is-root?)))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/root/items"
+(api.macros/defendpoint :get "/root/items" :- ::ItemsResponse
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
   `collection_id` exist. It does, however, have its own set of Permissions.
