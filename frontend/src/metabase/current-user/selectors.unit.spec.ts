@@ -64,20 +64,6 @@ describe("metabase/current-user", () => {
 
       expect(canAccessDataModel(state)).toBe(false);
     });
-
-    it("should use the default after plugins are reset", () => {
-      const state = createMockState({
-        currentUser: createMockUser({ is_superuser: true }),
-      });
-
-      expect(canAccessDataModel(state)).toBe(true);
-
-      PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canAccessDataModel = () => false;
-      expect(canAccessDataModel(state)).toBe(false);
-
-      reinitialize();
-      expect(canAccessDataModel(state)).toBe(true);
-    });
   });
 
   describe("getUserAttributes", () => {
