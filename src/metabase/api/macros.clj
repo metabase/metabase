@@ -239,9 +239,9 @@
                                 :raise   symbol?))))))
 
 (def ^:private default-params-schema
-  "Schema for route params, query params, and the request body when an endpoint binds them without declaring one. A
-  bare `:map` strips every key on decode, so endpoints have to declare the keys they read."
-  [:map])
+  "Schema for route params, query params, and the request body when an endpoint binds them without declaring one. It
+  declares no keys, so every key is stripped on decode: an endpoint has to declare the keys it reads."
+  [:map {:closed true}])
 
 (mu/defn- parse-params :- ::params
   [params]
@@ -319,7 +319,7 @@
    {:name :normalize}
    ;; A param map drops the keys it doesn't declare instead of rejecting them, so a client sending a field the
    ;; endpoint has no use for is still served -- which in turn means every key an endpoint reads has to be declared,
-   ;; at every level of nesting. `ms/Map` (and any other `{:closed false}` map) opts out, for values we deliberately
+   ;; at every level of nesting. A `{:closed false}` map opts out, for values we deliberately
    ;; pass through as they arrived: a query, viz settings, database details, a settings bag.
    ;;
    ;; Runs last: `:normalize` renames keys into the ones the schema declares, so stripping any earlier would drop
