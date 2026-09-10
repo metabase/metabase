@@ -88,7 +88,7 @@
 }
 
 .messagesContainer {
-  padding: 1rem 0 1.5rem;
+  padding: 1.5rem 0;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -106,7 +106,6 @@
   width: 100%;
   max-width: 49.5rem;
   margin-inline: auto;
-  padding-top: 0.5rem;
   padding-inline: 1rem;
 }
 
@@ -185,7 +184,7 @@
   opacity: 1;
 }
 
-.messageContainerAgent + .messageContainerAgent {
+.messageContainer + .messageContainer {
   margin-top: var(--mantine-spacing-lg);
 }
 
