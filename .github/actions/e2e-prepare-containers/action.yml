@@ -117,7 +117,7 @@ runs:
         if ${{ inputs.mocksaml }}; then
           echo -e "${Y}checking mock saml container..." &&
           while ! nc -z localhost 8090; do sleep 1; done &&
-          echo -e "${G}Openldap is up and running!"
+          echo -e "${G}Mock SAML is up and running!"
         fi
 
         if ${{ inputs.postgres }}; then
