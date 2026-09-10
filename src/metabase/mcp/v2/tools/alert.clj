@@ -15,7 +15,6 @@
    [metabase.api.common :as api]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
@@ -309,7 +308,7 @@
   [id]
   (when-not (int? id)
     (common/throw-teaching-error "Alerts take a numeric id — they have no entity_id."))
-  (let [notification (mcp.db/notification-by-payload-type id :notification/card)]
+  (let [notification (t2/select-one :model/Notification :id id :payload_type :notification/card)]
     (when-not (and notification (mi/can-read? notification) (mi/can-write? notification))
       (common/throw-not-found :alert id))
     (notification.api/get-notification id)))
@@ -443,5 +442,4 @@
                                       (create! a))
                           :update (do (when-let [reason (execute-scope-trigger b)]
                                         (check-query-execute-scope! token-scopes reason))
-                                      (update! a b)))
-                        nil))))
+                                      (update! a b)))))))

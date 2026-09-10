@@ -9,9 +9,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.queries :as v2.queries]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -299,7 +299,9 @@
   (let [field-ids (into #{} (keep :id) cols)]
     (boolean
      (when (seq field-ids)
-       (->> (mcp.db/nullable-fields field-ids)
+       (->> (t2/select [:model/Field :id :database_is_nullable :fingerprint]
+                       :id [:in field-ids]
+                       :database_is_nullable true)
             (some (fn [field]
                     (pos? (or (get-in (:fingerprint field) [:global :nil%]) 0)))))))))
 

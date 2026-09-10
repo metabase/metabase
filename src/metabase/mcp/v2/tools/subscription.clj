@@ -18,7 +18,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
@@ -317,7 +316,7 @@
   (v2.resolve/resolve-and-read-with
    :model/Pulse id-or-eid
    (fn [id]
-     (when (mcp.db/subscription-pulse-exists? id)
+     (when (t2/exists? :model/Pulse :id id :alert_condition nil)
        (api/write-check (pulse/retrieve-pulse id))))))
 
 (defn- patched-channels
@@ -346,7 +345,7 @@
                        (assoc :parameters
                               (resolve-parameters
                                parameters
-                               (mcp.db/dashboard-parameters (:dashboard_id subscription))))
+                               (t2/select-one-fn :parameters :model/Dashboard :id (:dashboard_id subscription))))
 
                        (channel-affecting? args)
                        (assoc :channels (patched-channels (:channels subscription) channel
@@ -486,5 +485,4 @@
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (projections/project :subscription :concise
                                              (projections/subscription-row
-                                              (redaction/redact-pulse (pulse/retrieve-pulse id))))
-                        nil))))
+                                              (redaction/redact-pulse (pulse/retrieve-pulse id))))))))
