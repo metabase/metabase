@@ -2,7 +2,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   width: 100%;
   background: var(--mb-color-background-primary);
   background-image: url("./metabot-ask-background.svg");
@@ -30,6 +31,7 @@
 .inputWrapper {
   width: 100%;
   max-width: 42rem;
+  padding-bottom: 4rem;
 }
 
 .inputContainer {
@@ -82,6 +84,9 @@
   gap: 0;
   width: 100%;
   min-height: 10.75rem;
+  background: var(--mb-color-background-primary);
+  border-radius: 1rem;
+  box-shadow: var(--mantine-shadow-xs);
 }
 
 .promptSuggestion {
