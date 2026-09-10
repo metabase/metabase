@@ -43,6 +43,7 @@
   batch-delete-permissions!
   batch-insert-permissions!
   disable-perms-cache
+  do-with-schema-consistent-new-table-perms
   download-perms-level
   full-database-permission-for-user
   full-schema-permission-for-user
