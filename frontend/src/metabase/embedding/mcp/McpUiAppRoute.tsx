@@ -11,7 +11,7 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
 import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
-import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
+import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
@@ -123,12 +123,12 @@ function McpUiAppRouteContent({
     mcpSessionId,
   });
 
-  const deserializedCard = useMemo(() => {
+  const deserializedQuery = useMemo(() => {
     if (!query) {
       return null;
     }
 
-    return getMcpDeserializedCard(query);
+    return getMcpDeserializedQuery(query);
   }, [query]);
 
   const { isSettingsReady, userAndSettingsFetchError } =
@@ -144,7 +144,7 @@ function McpUiAppRouteContent({
     hostContext &&
     isSettingsReady &&
     uiCredential &&
-    deserializedCard
+    deserializedQuery
   );
 
   useEffect(() => {
@@ -227,9 +227,10 @@ function McpUiAppRouteContent({
   };
 
   const renderQuestionCardView = () =>
-    deserializedCard && (
+    deserializedQuery && (
       <SdkQuestion
-        deserializedCard={deserializedCard}
+        deserializedCard={deserializedQuery.card}
+        initialSqlParameters={deserializedQuery.initialSqlParameters}
         isSaveEnabled={false}
         // we should never show query builder in chat interfaces
         withEditorButton={false}
