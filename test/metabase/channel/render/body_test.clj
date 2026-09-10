@@ -395,6 +395,11 @@
       [{:min 0 :max 10 :color segment-color}]
       [{:min 50 :color segment-color}]
       [{:min nil :max nil :color segment-color}]))
+  (testing "a matching segment without a color gets the same fallback as in the app"
+    (are [segments] (str/includes? (scalar-style (scalar-results segments)) style/color-text-secondary)
+      [{:min 0 :max 100}]
+      [{:min 0 :max 100 :color nil}]
+      [{:min 0 :max 100} {:min 0 :max 100 :color segment-color}]))
   (testing "a non-numeric value is never colored"
     (is (not (str/includes? (scalar-style (scalar-results [{:min 0 :color segment-color}] "foo")) segment-color))))
   (testing "a bound that can't resolve fails the render"

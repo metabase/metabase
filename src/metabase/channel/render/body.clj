@@ -99,12 +99,13 @@
                  (or (some? min) (some? max))))))
 
 (defn- scalar-color
-  "Return the color of the first segment containing `value`, or nil if none matches or `value` is not numeric."
+  "Return the color of the first segment containing `value`, or nil if none matches or `value` is not numeric.
+  A segment without a color gets the same fallback as in the app."
   [segments value]
   (when (number? value)
     (some (fn [{:keys [min max color]}]
             (when (<= (or min Double/NEGATIVE_INFINITY) value (or max Double/POSITIVE_INFINITY))
-              color))
+              (or color style/color-text-secondary)))
           segments)))
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
