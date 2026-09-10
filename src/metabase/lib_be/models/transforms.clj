@@ -27,7 +27,9 @@
                              [:multi {:dispatch (comp boolean empty?)}
                               [true  [:= {:description "empty map"} {}]]
                               [false ::lib.schema/query]]]
-  "Normalize an MBQL `query` to MBQL 5 and attach a metadata provider."
+  "Normalize an MBQL `query` to MBQL 5 and attach a metadata provider. Also runs [[lib/prepare-after-deserialization]]
+  on the result, which drops the internal keys and the undeclared keys a query read from JSON may carry, before the
+  result is checked against the schema."
   ([query]
    (normalize-query nil query))
 
@@ -68,14 +70,14 @@
               (not (:database query))
               (throw (ex-info "Query must include :database" {:query query}))
 
-              (lib/cached-metadata-provider-with-cache? (:lib/metadata query))
-              (lib/normalize ::lib.schema/query query)
-
               :else
-              (->> query
-                   (lib-be.bootstrap/resolve-database (when (lib/metadata-provider? metadata-providerable)
-                                                        metadata-providerable))
-                   (lib/query metadata-providerable)))))))
+              (lib/prepare-after-deserialization
+               (if (lib/cached-metadata-provider-with-cache? (:lib/metadata query))
+                 (lib/normalize ::lib.schema/query query)
+                 (->> query
+                      (lib-be.bootstrap/resolve-database (when (lib/metadata-provider? metadata-providerable)
+                                                           metadata-providerable))
+                      (lib/query metadata-providerable)))))))))
     ;; Normalization failed. Degrade to {} so bad stored data can't break callers,
     ;; but in strict mode (saving) rethrow rather than persist a query we couldn't parse.
     (fn [e]
@@ -102,9 +104,7 @@
            (throw (ex-info (format "Expected deserialized query to be a map, got ^%s %s"
                                    (.getCanonicalName (class query)) (pr-str query))
                            {:query query})))
-         (-> query
-             normalize-query
-             lib/prepare-after-deserialization)))
+         (normalize-query query)))
      (fn [e]
        (log/errorf "Error deserializing dataset_query from app DB: %s" (ex-message e))
        {}))))

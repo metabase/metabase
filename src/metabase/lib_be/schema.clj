@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [empty?])
   (:require
    [metabase.lib-be.models.transforms :as lib-be.transforms]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.util :as lib.util]
@@ -19,8 +18,7 @@
   [query message]
   (if (map? query)
     (try
-      (-> (lib-be.transforms/normalize-query nil query {:strict? true})
-          lib/prepare-after-deserialization)
+      (lib-be.transforms/normalize-query nil query {:strict? true})
       (catch Exception e
         (throw (ex-info (ex-message e)
                         {:status-code (or (:status-code (ex-data e)) 400)}))))
