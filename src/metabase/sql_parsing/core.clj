@@ -9,6 +9,7 @@
     (referenced-fields dialect sql) → [[catalog schema table field] ...]
     (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
+    (select-structure dialect sql) → {:aggregated bool :kind \"select\" :items [...]}
 
   The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
   GraalPy or native-CPython implementation, per [[metabase.sql-parsing.parser/parser]]); this namespace
@@ -348,6 +349,29 @@
   [dialect sql]
   (protocol/simple-query (parser) dialect (strip-large-literal-lists sql)))
 
+(defn select-structure
+  "Describe the shape of a SELECT's projection: whether it aggregates and, per SELECT item, its `:kind`
+   (\"column\", \"aggregate\", or \"expression\"), `:source_column`, `:in_group_by`, and `:contains_aggregate`.
+
+   Returns a map with snake_case keys, `{:aggregated bool :kind \"select\" :items [...]}`; `:kind` is \"union\" or
+   \"other\" (with empty `:items`) for non-SELECT statements. Window functions do not count as aggregation.
+   On a parse error or timeout, returns `{:aggregated false :kind \"other\" :items [] :error ...}` instead of
+   throwing.
+
+   Example:
+   (select-structure \"postgres\" \"SELECT status, count(*) AS n FROM t GROUP BY 1\")
+   => {:aggregated true
+       :kind \"select\"
+       :items [{:name \"status\" :kind \"column\" :in_group_by true :contains_aggregate false
+                :source_column {:table \"t\" :schema nil :column \"status\"}}
+               {:name \"n\" :kind \"aggregate\" :fn \"COUNT\" :distinct false :in_group_by false
+                :contains_aggregate true}]}"
+  [dialect sql]
+  (try
+    (protocol/select-structure (parser) dialect (strip-large-literal-lists sql))
+    (catch TimeoutException _
+      {:aggregated false :kind "other" :items [] :error "timeout"})))
+
 (defn add-into-clause
   "Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
 
@@ -532,7 +556,9 @@
 
   (validate-query "postgres" "SELECT * FROM users" nil)
 
-  (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
+  (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true")
+
+  (select-structure "postgres" "SELECT status, count(*) FROM t GROUP BY 1"))
 
 ;;;; Transpile sql
 

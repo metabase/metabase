@@ -2370,8 +2370,7 @@
 
   sql-tools
   {:team "DevEx"
-   :api #{metabase.sql-tools.core
-          metabase.sql-tools.init}
+   :api #{metabase.sql-tools.core metabase.sql-tools.init metabase.sql-tools.sqlglot.core}
    :uses #{analytics
            analytics-interface
            driver
@@ -2847,6 +2846,21 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Document
+                    :model/Table}}
+
+  viz-eval
+  {:team "Querying Platform"
+   :api #{metabase.viz-eval.api}
+   :uses #{analyze
+           api
+           app-db
+           query-processor
+           sql-parsing
+           sql-tools
+           util}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
                     :model/Table}}
 
   warehouse-schema

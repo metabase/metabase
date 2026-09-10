@@ -4,6 +4,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
+import { ExploreMeasuresLink } from "metabase/data-studio/common/components/ExploreMeasuresLink";
 import { useSelector } from "metabase/redux";
 import { Button, Group, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -40,21 +41,30 @@ export function MeasureList({ table }: MeasureListProps) {
 
   return (
     <Stack gap="lg" data-testid="table-measures-page">
-      {canWriteMeasures && (
+      {(canWriteMeasures || measures.length > 0) && (
         <Group gap="lg" justify="flex-start" wrap="nowrap">
-          <Button
-            component={ForwardRefLink}
+          {canWriteMeasures && (
+            <Button
+              component={ForwardRefLink}
+              h={32}
+              leftSection={<Icon name="add" />}
+              onAuxClick={onNewMeasureClick}
+              onClickCapture={onNewMeasureClick}
+              px="sm"
+              py="xxs"
+              size="xs"
+              to={newMeasureUrl}
+            >
+              {t`New measure`}
+            </Button>
+          )}
+          <ExploreMeasuresLink
+            table={table}
+            size="xs"
             h={32}
-            leftSection={<Icon name="add" />}
-            onAuxClick={onNewMeasureClick}
-            onClickCapture={onNewMeasureClick}
             px="sm"
             py="xxs"
-            size="xs"
-            to={newMeasureUrl}
-          >
-            {t`New measure`}
-          </Button>
+          />
         </Group>
       )}
 

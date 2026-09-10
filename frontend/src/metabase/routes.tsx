@@ -124,6 +124,18 @@ const metricsViewerPage = () =>
     Component: MetricsViewerPage,
   }));
 
+const metricCubeViewerPage = () =>
+  import(
+    /* webpackChunkName: "metric-cube-viewer" */ "metabase/metric-cube-viewer"
+  ).then(({ MetricCubeViewerPage }) => ({
+    Component: MetricCubeViewerPage,
+  }));
+
+const vizAbPage = () =>
+  import(/* webpackChunkName: "viz-ab" */ "metabase/viz-ab/VizAbPage").then(
+    ({ VizAbPage }) => ({ Component: VizAbPage }),
+  );
+
 const tableDetailPage = () =>
   import(
     /* webpackChunkName: "table-detail" */ "metabase/detail-view/pages/TableDetailPage"
@@ -224,7 +236,8 @@ registerPagePrefetch("/document/", documentPage);
 registerPagePrefetch("/document/", commentsSidesheet);
 registerPagePrefetch("/dashboard/", dashboardApp);
 registerPagePrefetch("/auto/dashboard/", automaticDashboardApp);
-registerPagePrefetch("/explore", metricsViewerPage);
+registerPagePrefetch("/explore", metricsViewerPage, { exact: true });
+registerPagePrefetch("/explore/table/", metricCubeViewerPage);
 // The login page asks for this one by hand, so a user who signs in has the home
 // page in hand by the time they land on it. Exact, because every path starts
 // with "/".
@@ -317,6 +330,12 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                     },
                   ],
                 }),
+              },
+
+              {
+                path: "_internal/viz-ab",
+                element: <IsAdmin />,
+                children: [{ index: true, lazy: vizAbPage }],
               },
 
               {
@@ -511,6 +530,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               },
 
               { path: "explore", lazy: metricsViewerPage },
+              { path: "explore/table/:tableId", lazy: metricCubeViewerPage },
 
               {
                 path: "table",

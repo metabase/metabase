@@ -68,7 +68,7 @@
   [{:keys [type]} :- [:map {:closed true}
                       [:type ms/NonBlankString]]
    _query-params
-   body]
+   body :- [:map-of :keyword :any]]
   (let [id (t2/insert-returning-pk! (prototype-table)
                                     {:type    type
                                      :content (json/encode body)})]
@@ -80,7 +80,7 @@
                          [:type ms/NonBlankString]
                          [:id ms/PositiveInt]]
    _query-params
-   body]
+   body :- [:map-of :keyword :any]]
   (t2/update! (prototype-table) id
               {:type    type
                :content (json/encode body)})

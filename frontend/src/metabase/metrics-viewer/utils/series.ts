@@ -85,6 +85,8 @@ interface BuildSeriesParams {
   display: MetricsViewerDisplayType;
   sourceBreakoutColors: SourceBreakoutColorMap;
   extraVizSettings?: Partial<VisualizationSettings>;
+  /** Overrides the names derived from the definitions, keyed by entity index. */
+  entityNames?: Map<number, string>;
 }
 
 export function buildSeries({
@@ -94,15 +96,14 @@ export function buildSeries({
   display,
   sourceBreakoutColors,
   extraVizSettings,
+  entityNames,
 }: BuildSeriesParams): {
   series: MetricsViewerSeries[];
   cardIdToEntityIndex: Record<CardId, number>;
   activeBreakoutColors: SourceBreakoutColorMap;
 } {
-  const uniqueNamesByEntityIndex = computeUniqueEntityNames(
-    formulaEntities,
-    definitions,
-  );
+  const uniqueNamesByEntityIndex =
+    entityNames ?? computeUniqueEntityNames(formulaEntities, definitions);
   const displayType = DISPLAY_TYPE_REGISTRY[display];
 
   let isFirstSeries = true;
@@ -259,8 +260,10 @@ export function computeSourceBreakoutColors(
   formulaEntities: MetricsViewerFormulaEntity[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   breakoutValuesByEntityIndex?: Map<number, MetricBreakoutValuesResponse>,
+  entityNames?: Map<number, string>,
 ): SourceBreakoutColorMap {
-  const uniqueNames = computeUniqueEntityNames(formulaEntities, definitions);
+  const uniqueNames =
+    entityNames ?? computeUniqueEntityNames(formulaEntities, definitions);
 
   const entries: SourceColorEntry[] = [];
 

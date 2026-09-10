@@ -338,9 +338,11 @@ const elements = [
     mode: "full",
   }),
   createElement({ type: "feature", name: "explorations" }),
+  createElement({ type: "feature", name: "metric-cube-viewer" }),
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
+  createElement({ type: "feature", name: "viz-ab" }),
   createElement({
     type: "feature",
     name: "query_builder",
@@ -478,6 +480,13 @@ const baseRules = [
     from: ["feature/public"],
     allow: ["feature/*"],
     message: "Public module can import from all feature modules",
+  },
+  {
+    // The Metric Cube Viewer is built on the metrics viewer's query and series
+    // pipeline by design (see its spec); it is a sibling of that feature.
+    from: ["feature/metric-cube-viewer"],
+    allow: ["feature/metrics-viewer", "feature/metrics"],
+    message: "The metric cube viewer may reuse the metrics viewer and metrics modules",
   },
   {
     from: ["app/*"],

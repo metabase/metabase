@@ -75,6 +75,7 @@
    [metabase.user-key-value.api]
    [metabase.users-rest.api]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.viz-eval.api]
    [metabase.warehouse-schema-rest.api]
    [metabase.warehouses-rest.api]
    [metabase.xrays.api]))
@@ -251,7 +252,8 @@
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
-   "/util"                 'metabase.api.util})
+   "/util"                 'metabase.api.util
+   "/viz-eval"             (+auth 'metabase.viz-eval.api)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

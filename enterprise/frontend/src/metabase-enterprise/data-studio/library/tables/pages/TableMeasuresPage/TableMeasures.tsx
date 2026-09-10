@@ -6,6 +6,7 @@ import {
   EntityList,
   EntityListItem,
 } from "metabase/data-studio/common/components/EntityList";
+import { ExploreMeasuresLink } from "metabase/data-studio/common/components/ExploreMeasuresLink";
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -31,6 +32,7 @@ export function TableMeasures({ table }: TableMeasuresProps) {
           title: t`No measures yet`,
           message: t`Create a measure to define aggregations for this table.`,
         }}
+        headerActions={<ExploreMeasuresLink table={table} />}
         newButtonProps={
           canWriteMeasures
             ? {

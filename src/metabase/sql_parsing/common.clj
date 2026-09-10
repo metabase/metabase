@@ -141,6 +141,8 @@
                             dialect sql default-table-schema (json/encode (or sqlglot-schema {})))))
     (simple-query [_ dialect sql]
       (json/decode+kw (call "simple_query" sql dialect)))
+    (select-structure [_ dialect sql]
+      (json/decode+kw (call "select_structure" sql dialect)))
     (add-into-clause [_ dialect sql table-name]
       (call "add_into_clause" sql table-name dialect))
     (field-references [_ dialect sql]

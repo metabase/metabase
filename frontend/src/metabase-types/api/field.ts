@@ -26,6 +26,9 @@ export type TextFieldFingerprint = {
   "percent-json": number;
   "percent-state": number;
   "percent-url": number;
+  "percent-blank"?: number;
+  "mode-fraction"?: number;
+  "top-3-fraction"?: number;
 };
 
 export type NumberFieldFingerprint = {
@@ -35,11 +38,18 @@ export type NumberFieldFingerprint = {
   q1?: number;
   q3?: number;
   sd?: number;
+  skewness?: number;
+  "excess-kurtosis"?: number;
+  "mode-fraction"?: number;
+  "top-3-fraction"?: number;
+  "zero-fraction"?: number;
 };
 
 export type DateTimeFieldFingerprint = {
   earliest: string;
   latest: string;
+  "mode-fraction"?: number;
+  "top-3-fraction"?: number;
 };
 
 export type FieldVisibilityType =
@@ -108,6 +118,9 @@ export interface Field {
   json_unfolding: boolean | null;
   coercion_strategy: string | null;
   fingerprint: FieldFingerprint | null;
+  dimension_interestingness?: number | null;
+  database_is_pk?: boolean;
+  database_is_auto_increment?: boolean;
 
   last_analyzed: string;
   created_at: string;
