@@ -32,33 +32,40 @@
   ([session-id tool-name arguments scopes]
    (registry/call-tool scopes session-id tool-name arguments)))
 
+(defn- dispatch-error?
+  "Whether a [[call!]] outcome is an error, at either layer: a registry-level rejection
+   (`{:error …}`, from a scope denial or an args-schema failure) or `:isError` tool content."
+  [{:keys [result error]}]
+  (boolean (or error (:isError result))))
+
 (defn- response-text
-  [result]
-  (-> result :content first :text))
+  "The outcome's text block, or a registry-level rejection's message."
+  [{:keys [result error]}]
+  (if error (:message error) (-> result :content first :text)))
 
 (defn- payload
-  "Parse the JSON payload line of a successful response. Throws if the tool returned an
-   error, so a tool-level error can never masquerade as an empty result."
-  [result]
-  (when (:isError result)
-    (throw (ex-info "expected success, got tool error" {:result result})))
-  (-> result response-text str/split-lines first json/decode+kw))
+  "Parse the JSON payload line of a successful response. Throws if the call errored at either
+   layer, so an error can never masquerade as an empty result."
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info "expected success, got tool error" {:outcome outcome})))
+  (-> outcome response-text str/split-lines first json/decode+kw))
 
 (defn- steering-line
   "The steering sentence appended after the JSON payload, or nil on an unsteered response.
-   Throws on a tool-level error for the same reason as [[payload]]."
-  [result]
-  (when (:isError result)
-    (throw (ex-info "expected success, got tool error" {:result result})))
-  (second (str/split-lines (response-text result))))
+   Throws on an error at either layer, for the same reason as [[payload]]."
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info "expected success, got tool error" {:outcome outcome})))
+  (second (str/split-lines (response-text outcome))))
 
 (defn- error-text
-  "The error message of a tool-level error response. Throws if the call succeeded, so a
-   passing call can never satisfy an error assertion."
-  [result]
-  (when-not (:isError result)
-    (throw (ex-info "expected tool error, got success" {:result result})))
-  (response-text result))
+  "The message of an errored call, at either layer. Throws if the call succeeded, so a passing
+   call can never satisfy an error assertion."
+  [outcome]
+  (when-not (dispatch-error? outcome)
+    (throw (ex-info "expected tool error, got success" {:outcome outcome})))
+  (response-text outcome))
 
 (defn- stored-query
   "Decode the serialized query a handle stores, exactly as downstream consumers will read it."
@@ -267,6 +274,54 @@
             (is (= [{:type "number" :target ["variable" ["template-tag" "min_total"]] :value 7}]
                    (:parameters stored)))
             (is (= "number" (-> stored :stages first :template-tags first :type)))))))))
+
+;;; ---------------------------------------------- MBQL-expressible hint -------------------------------------------
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest execute-sql-mbql-hint-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid  (str (random-uuid))
+            sql  "SELECT PRODUCT_ID, count(*) FROM ORDERS GROUP BY PRODUCT_ID"
+            hint @#'tools.query/mbql-hint]
+        (testing "an MBQL-expressible aggregate carries the hint on both the execute and validate_only paths"
+          (is (= hint (:hint (payload (call! sid {:database_id (mt/id) :sql sql})))))
+          (is (= hint (:hint (payload (call! sid {:database_id (mt/id) :sql sql :validate_only true}))))))
+        (testing "other SQL carries no hint key at all"
+          (is (not (contains? (payload (call! sid {:database_id (mt/id) :sql "SELECT ID FROM ORDERS ORDER BY ID LIMIT 5"}))
+                              :hint))))))))
+
+(deftest ^:parallel mbql-expressible-sql?-test
+  (let [expressible? #'tools.query/mbql-expressible-sql?]
+    (testing "plain aggregates, with joins/having/order/limit and trailing semicolon, are expressible"
+      (is (true? (expressible? "SELECT status, count(*) FROM orders GROUP BY status")))
+      (is (true? (expressible? (str "select o.status, count(*) from orders o join products p on p.id = o.product_id "
+                                    "where o.total > 10 group by o.status having count(*) > 5 order by 2 desc limit 10;")))))
+    (testing "keywords inside string literals and comments do not disqualify"
+      (is (true? (expressible? "SELECT status, count(*) FROM orders WHERE note = 'with over (' GROUP BY status")))
+      (is (true? (expressible? "-- with\nSELECT status, count(*) FROM orders /* over ( */ GROUP BY status"))))
+    (testing "no GROUP BY, CTEs, window functions, set ops, subselects, template tags, and multiple statements are not"
+      (is (false? (expressible? "SELECT id FROM orders ORDER BY id")))
+      (is (false? (expressible? "WITH t AS (SELECT status FROM orders) SELECT status, count(*) FROM t GROUP BY status")))
+      (is (false? (expressible? "SELECT status, count(*) OVER () FROM orders GROUP BY status")))
+      (is (false? (expressible? "SELECT status, count(*) FROM orders GROUP BY status UNION SELECT 'x', 0")))
+      (is (false? (expressible? "SELECT status, count(*) FROM (SELECT * FROM orders) o GROUP BY status")))
+      (is (false? (expressible? "SELECT status, count(*) FROM orders WHERE {{status}} GROUP BY status")))
+      (is (false? (expressible? "SELECT status, count(*) FROM orders GROUP BY status; DROP TABLE x"))))
+    (testing "GHY-4363: a long literal or an unbalanced quote must not blow the stack"
+      ;; the literal-blanking regex used to be `'(?:[^']|'')*'`, an alternation under a quantifier,
+      ;; which java.util.regex compiles to one stack frame per character consumed. A single
+      ;; unterminated quote — an ordinary agent typo — made it backtrack across the whole query and
+      ;; throw StackOverflowError, which is an Error and so escapes the tool's Exception handler.
+      ;; the point of each of these is that it RETURNS rather than throwing; the particular
+      ;; verdict is incidental
+      (is (true? (expressible? (str "select x from t where note = '" (apply str (repeat 8000 \x))
+                                    "' group by x"))))
+      (is (false? (expressible? (str "select * from t where a = 'abc and b = "
+                                     (apply str (repeat 8000 \y))))))
+      (is (true? (expressible? (str "SELECT status, count(*) FROM orders WHERE note = '"
+                                    (apply str (repeat 8000 \z))
+                                    "' GROUP BY status")))))))
 
 ;;; ---------------------------------------------------- Gates -----------------------------------------------------
 

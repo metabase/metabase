@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.queries :as queries]
    [metabase.mcp.v2.query :as q]
@@ -102,6 +103,32 @@
         (lib/order-by p-title :asc)
         (lib/with-fields [p-id p-title]))))
 
+(deftest next-page-query-appended-stage-stays-continuable-test
+  ;; GHY-4363: the stage next-page-query appends for an aggregated page must stay a pass-through
+  ;; — no :fields, no joins — because the uniqueness proof for every later page looks back
+  ;; through it to the aggregating stage. A :fields on that stage could drop a breakout column
+  ;; and silently un-prove the tuple, so pin its shape here rather than only through the chain.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [aggregated (-> (orders-query)
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib.metadata/field (mp) (mt/id :orders :user_id)))
+                         lib/prepare-for-serialization
+                         q/with-total-order)
+          page-of    (fn [serialized] (run-rows+cols (lib/query (mp) serialized)))
+          [rows cols] (page-of aggregated)
+          page-2     (#'q/next-page-query aggregated cols (nth rows 2))]
+      (testing "GHY-4363: the appended stage carries the order and the keyset, and nothing that could drop a column"
+        (is (some? page-2))
+        (is (= 2 (count (:stages page-2))))
+        (let [appended (last (:stages page-2))]
+          (is (seq (:order-by appended)))
+          (is (seq (:filters appended)))
+          (is (nil? (:fields appended)) "a :fields here could drop a breakout column and un-prove the tuple")
+          (is (nil? (:joins appended)))))
+      (testing "GHY-4363: and the page it mints is itself continuable — the chain does not die at page 2"
+        (let [[rows-2 cols-2] (page-of page-2)]
+          (is (some? (#'q/next-page-query page-2 cols-2 (nth rows-2 2)))))))))
+
 (deftest next-page-cursor-fan-out-join-test
   ;; The contract pinned here is "no silent gaps": whenever a cursor IS minted, following the
   ;; chain must serve exactly the unpaged result set — and when that can't be guaranteed, the
@@ -171,6 +198,76 @@
           (testing "GHY-4142: sourcing a join-free saved question is not a fan-out"
             (is (false? (#'q/fan-out-join? (mp) (sourcing plain-id))))))))))
 
+(defn- page-chain
+  "Page `serialized` through [[next-page-query]] `n` times at `page-size` rows a page, returning the
+   serialized query for each page, starting with `serialized` itself. The boundary handed to
+   [[next-page-query]] is the last row of the served page, the way a truncated tool response
+   reports it — the run itself is not capped, so an aggregated stage stays free of the `:limit`
+   that would (rightly) refuse the cursor. Stops early if the result runs out or a page mints
+   nothing."
+  [serialized n page-size]
+  (loop [query serialized, acc [serialized]]
+    (if (>= (count acc) n)
+      acc
+      (let [[rows cols] (run-rows+cols (lib/query (mp) query))]
+        (if (< (count rows) page-size)
+          acc
+          (if-let [nxt (#'q/next-page-query query cols (nth rows (dec page-size)))]
+            (recur nxt (conj acc nxt))
+            acc))))))
+
+(defn- last-stage-filters [serialized]
+  (:filters (last (:stages serialized))))
+
+(deftest next-page-query-replaces-the-previous-keyset-test
+  ;; GHY-4363: each page's keyset predicate supersedes the last one — every row it admits is
+  ;; strictly past a boundary the previous predicate already admitted. Appending instead of
+  ;; replacing leaves a chain of dead predicates that grows linearly and without bound: the
+  ;; stored handle payload, the emitted WHERE, and the warehouse's parse/plan cost all grow with
+  ;; page depth, on a query whose meaning never changes.
+  (mt/with-current-user (mt/user->id :rasta)
+    (testing "GHY-4363: an unaggregated chain carries exactly one keyset predicate at every depth"
+      (let [pages (page-chain (q/with-total-order
+                                (lib/prepare-for-serialization (lib/limit (orders-query) 2)))
+                              6 2)]
+        (is (= 6 (count pages)) "the chain must actually reach depth 6 for this to prove anything")
+        (is (= [0 1 1 1 1 1] (mapv (comp count last-stage-filters) pages)))))
+    (testing "GHY-4363: an aggregated chain carries exactly one on its appended stage too"
+      (let [aggregated (-> (orders-query)
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (lib.metadata/field (mp) (mt/id :orders :user_id)))
+                           lib/prepare-for-serialization
+                           q/with-total-order)
+            pages      (page-chain aggregated 5 3)]
+        (is (= 5 (count pages)))
+        (is (= [0 1 1 1 1] (mapv (comp count last-stage-filters) pages)))))))
+
+(deftest next-page-query-keeps-caller-filters-test
+  ;; GHY-4363: only the predicate this namespace minted may be superseded. A filter the caller
+  ;; wrote has to survive every page verbatim and keep being applied — dropping it would widen the
+  ;; result past what the caller asked for.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [total-col   (lib.metadata/field (mp) (mt/id :orders :total))
+          caller      (-> (orders-query)
+                          (lib/filter (lib/> total-col 50))
+                          (lib/limit 2)
+                          lib/prepare-for-serialization
+                          q/with-total-order)
+          caller-clause (first (last-stage-filters caller))
+          pages       (page-chain caller 5 2)]
+      (is (= 5 (count pages)) "the chain must actually reach depth 5 for this to prove anything")
+      (testing "GHY-4363: the caller's filter stays, and only one keyset rides alongside it"
+        (is (= [1 2 2 2 2] (mapv (comp count last-stage-filters) pages)))
+        (doseq [page (rest pages)]
+          (is (some #(lib.equality/= caller-clause %) (last-stage-filters page))
+              "the caller's own clause must survive verbatim")))
+      (testing "GHY-4363: and it is still enforced — no page returns a row the caller excluded"
+        (doseq [page pages]
+          (let [[rows cols] (run-rows+cols (lib/query (mp) page))
+                idx         (col-index cols "TOTAL")]
+            (is (seq rows))
+            (is (every? #(> (nth % idx) 50) rows))))))))
+
 (deftest next-page-cursor-pages-without-gaps-or-dups-test
   ;; Proves the keyset seek is correct across page boundaries: for a unique-key (PK) source, paging
   ;; returns strictly increasing, distinct PKs — no row skipped, none repeated. (The non-unique-key
@@ -196,3 +293,77 @@
         (is (= (* page-size n-pages) (count ids)))
         (is (apply < ids) "strictly increasing => no boundary repeats and no rows skipped backwards")
         (is (= (count ids) (count (distinct ids))))))))
+
+(deftest with-total-order-preserves-parameters-test
+  ;; GHY-4363: `:parameters` are a real filter on an MBQL query — the QP's parameter middleware ANDs
+  ;; them on — but `lib/prepare-for-serialization` strips them as runtime-only. Both rewrite paths
+  ;; round-trip through serialization, so both have to put them back or the rewritten query asks a
+  ;; wider question than the caller did.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [params    [{:type   :number/=
+                      :value  [2]
+                      :target [:dimension [:field (mt/id :orders :quantity) nil]]}]
+          ;; deliberately unordered so `with-total-order` actually rewrites — the pre-existing
+          ;; coverage used an already-PK-ordered query, which only exercises the short-circuit
+          unordered (-> (orders-query)
+                        (lib/limit 5)
+                        lib/prepare-for-serialization
+                        (assoc :parameters params))
+          ordered   (q/with-total-order unordered)]
+      (is (not= (:stages unordered) (:stages ordered))
+          "the rewrite must actually fire, or this test proves nothing")
+      (testing "with-total-order keeps :parameters"
+        (is (= params (:parameters ordered))))
+      (testing "and the parameter is still enforced against the warehouse"
+        (let [[rows cols] (run-rows+cols (lib/query (mp) ordered))
+              idx         (col-index cols "QUANTITY")]
+          (is (seq rows))
+          (is (every? #(= 2 (nth % idx)) rows)
+              "every row must satisfy the parameter filter the caller supplied")))
+      (testing "next-page-query keeps :parameters too, so the cursor stays as narrow as page 1"
+        (let [[rows cols] (run-rows+cols (lib/query (mp) ordered))]
+          (when-let [nxt (#'q/next-page-query ordered cols (last rows))]
+            (is (= params (:parameters nxt)))))))))
+
+(deftest caller-cannot-forge-the-keyset-marker-test
+  ;; GHY-4363: the keyset marker means "this namespace minted this predicate". A tool's `:query` is
+  ;; an open [:map] and a namespaced option key rides through JSON decode and serialization intact,
+  ;; so without stripping, a caller could stamp its own filter and have it silently dropped from the
+  ;; saved handle (and from every later page) while the visible first page still looked narrow.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [total-col (lib.metadata/field (mp) (mt/id :orders :total))
+          forged    (-> (orders-query)
+                        (lib/filter (-> (lib/> total-col 50)
+                                        (assoc-in [1 :metabase.mcp.v2.query/keyset] true)))
+                        lib/prepare-for-serialization)
+          cleaned   (q/strip-caller-keyset-markers forged)]
+      (testing "the forged marker survives serialization untouched (this is the hazard)"
+        (is (some #(get-in % [1 :metabase.mcp.v2.query/keyset])
+                  (last-stage-filters forged))))
+      (testing "stripping removes it"
+        (is (not-any? #(get-in % [1 :metabase.mcp.v2.query/keyset])
+                      (last-stage-filters cleaned))))
+      (testing "so the caller's filter now survives into the handle instead of vanishing"
+        (is (= 0 (count (last-stage-filters (q/without-page-boundary forged))))
+            "unstripped: without-page-boundary eats the caller's own filter")
+        (is (= 1 (count (last-stage-filters (q/without-page-boundary cleaned))))
+            "stripped: the caller's filter is part of the question and stays")))))
+
+(deftest no-cursor-for-a-nullable-key-column-test
+  ;; GHY-4363: a keyset predicate is all comparisons, and under three-valued logic every term is
+  ;; NULL — never true — for a row whose key column is NULL. Those rows are never served, and the
+  ;; response still says truncated:false. ORDERS.DISCOUNT is NULL for 16845 of 18760 rows, so a
+  ;; DISCOUNT-keyed cursor would silently serve about a tenth of the table and call it complete.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [disc     (lib.metadata/field (mp) (mt/id :orders :discount))
+          nullable (-> (orders-query)
+                       (lib/order-by disc :desc)
+                       lib/prepare-for-serialization
+                       q/with-total-order)
+          [rows cols] (run-rows+cols (lib/query (mp) (lib/limit (lib/query (mp) nullable) 5)))]
+      (testing "a nullable key column gets no cursor at all, rather than one with silent gaps"
+        (is (nil? (#'q/next-page-query nullable cols (last rows)))))
+      (testing "while a NOT NULL key (the PK) still pages normally"
+        (let [pk-q (q/with-total-order (lib/prepare-for-serialization (orders-query)))
+              [pk-rows pk-cols] (run-rows+cols (lib/query (mp) (lib/limit (lib/query (mp) pk-q) 5)))]
+          (is (some? (#'q/next-page-query pk-q pk-cols (last pk-rows)))))))))

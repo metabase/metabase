@@ -108,6 +108,11 @@
                            [:= :mqh.id handle-id]
                            [:= :cs.user_id user-id]]}))
 
+(defn delete-query-handles-created-before!
+  "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
+  [cutoff]
+  (t2/delete! :model/McpQueryHandle {:where [:< :created_at cutoff]}))
+
 (defn delete-session-for-user!
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
   [key-hashed user-id]
@@ -143,6 +148,15 @@
   "The Notification with `id` whose `payload_type` is `payload-type`, or nil."
   [id payload-type]
   (t2/select-one :model/Notification :id id :payload_type payload-type))
+
+(defn nullable-fields-with-fingerprints
+  "The Fields among `field-ids` the warehouse declares nullable, carrying their `:fingerprint`.
+  `field-ids` is expected non-empty — an empty `:in` is a SQL error rather than an empty result,
+  so callers guard it."
+  [field-ids]
+  (t2/select [:model/Field :id :database_is_nullable :fingerprint]
+             :id [:in field-ids]
+             :database_is_nullable true))
 
 (defn active-user-exists?
   "Whether an active User with `user-id` exists."

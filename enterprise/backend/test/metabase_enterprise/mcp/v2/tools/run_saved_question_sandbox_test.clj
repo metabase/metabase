@@ -44,12 +44,23 @@
                       :type   :string/=
                       :target [:dimension [:field (mt/id :products :category) nil]]}]}))
 
+(defn- response-text
+  "A dispatch outcome's text block, or a registry-level rejection's message."
+  [{:keys [result error]}]
+  (if error (:message error) (-> result :content first :text)))
+
+(defn- dispatch-error?
+  "Whether a dispatch outcome is an error, at either layer: a registry-level rejection
+   (`{:error …}`, from a scope denial or an args-schema failure) or `:isError` tool content."
+  [{:keys [result error]}]
+  (boolean (or error (:isError result))))
+
 (defn- categories
   "The distinct CATEGORY values in a successful tool result's rows."
-  [result]
-  (when (:isError result)
-    (throw (ex-info (str "Tool call errored: " (-> result :content first :text)) {:result result})))
-  (let [[payload]           (str/split (-> result :content first :text) #"\n" 2)
+  [outcome]
+  (when (dispatch-error? outcome)
+    (throw (ex-info (str "Tool call errored: " (response-text outcome)) {:outcome outcome})))
+  (let [[payload]           (str/split (response-text outcome) #"\n" 2)
         {:keys [cols rows]} (json/decode+kw payload)
         idx                 (first (keep-indexed #(when (= "CATEGORY" (:name %2)) %1) cols))]
     (set (map #(nth % idx) rows))))
