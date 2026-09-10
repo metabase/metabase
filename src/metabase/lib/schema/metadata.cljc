@@ -358,6 +358,9 @@
    [:qp/ignore-coercion                                {:optional true} :boolean]
    [:qp/native-sandbox-column.force-coercion-strategy  {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
    [:qp/native-sandbox-column.propagate-coercion?      {:optional true} [:maybe :boolean]]
+   [:metabase.query-processor.util.add-alias-info/source-table  {:optional true} [:maybe [:or :int :string :keyword]]]
+   [:metabase.query-processor.util.add-alias-info/source-alias  {:optional true} [:maybe :string]]
+   [:metabase.query-processor.util.add-alias-info/desired-alias {:optional true} [:maybe :string]]
    [:metabase.query-processor.middleware.add-remaps/original-field-dimension-id {:optional true} [:maybe ::lib.schema.id/dimension]]
    [:metabase.query-processor.middleware.add-remaps/new-field-dimension-id      {:optional true} [:maybe ::lib.schema.id/dimension]]])
 
@@ -608,6 +611,10 @@
     [:lib/original-join-name      {:optional true} [:maybe :string]]
     [:lib/source-display-name     {:optional true} [:maybe :string]]
     [:metabase.lib.join/HACK-from-incomplete-join? {:optional true} [:maybe :boolean]]
+    ;; where the Mongo driver keeps the aliases of a `:field` ref while it compiles the ref as a column
+    [:metabase.driver.mongo.query-processor/source-alias {:optional true} [:maybe :string]]
+    [:metabase.driver.mongo.query-processor/join-field   {:optional true} [:maybe :string]]
+    [:metabase.driver.mongo.query-processor/inherited?   {:optional true} [:maybe :boolean]]
     ;;
     ;; `:unit` and `:binning-info` are legacy keys and should not be set on a Lib column; `:lib/temporal-unit` and
     ;; `:lib/binning` are the keys for that. [[metabase.lib.metadata.result-metadata]] pins these two on a column on its

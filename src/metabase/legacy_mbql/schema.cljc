@@ -1783,6 +1783,7 @@
   (when (map? m)
     (-> m
         lib.schema.common/normalize-map-no-kebab-case
+        lib.schema.common/remove-internal-keys
         ;; remove deprecated `:ident` key.
         (dissoc :ident)
         ;; set `display_name` to `name` if it's unset.
