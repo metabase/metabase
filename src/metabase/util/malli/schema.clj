@@ -196,12 +196,6 @@
    [:fn #(isa? (keyword %) :Coercion/*)]
    (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
 
-(def EntityTypeKeywordOrString
-  "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
-  (mu/with-api-error-message
-   [:fn #(isa? (keyword %) :entity/*)]
-   (deferred-tru "value must be a valid entity type (keyword or string).")))
-
 (def Map
   "Schema for a valid map. Open: it constrains nothing about its keys, so its contents pass through as they arrived."
   (mu/with-api-error-message
