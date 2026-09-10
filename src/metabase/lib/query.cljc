@@ -175,7 +175,7 @@
                          (-> legacy-query
                              mbql.normalize/normalize-or-throw
                              lib.convert/->mbql5
-                             lib.serialize/strip-undeclared-keys))
+                             lib.serialize/prepare-after-deserialization))
            mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
            mbql5-query (add-types-to-fields mbql5-query mp)]
        (merge

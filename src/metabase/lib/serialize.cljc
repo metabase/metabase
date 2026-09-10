@@ -32,22 +32,6 @@
                                    {:name :api}
                                    (mtx/strip-extra-keys-transformer))))))
 
-(defn- stripper [schema]
-  (mr/cached ::stripper
-             schema
-             (fn []
-               (mc/decoder schema (mtx/strip-extra-keys-transformer)))))
-
-(defn strip-undeclared-keys
-  "Drop, from every `{:closed true}` map `schema` reaches in `x`, the keys the schema does not declare, the way the
-  request decoder in `metabase.api.macros` does. Nothing else: unlike [[prepare-after-deserialization]] this keeps the
-  internal keys, so it is safe on a query that is being worked on rather than one that just arrived."
-  ([x]
-   (strip-undeclared-keys ::lib.schema/query x))
-
-  ([schema x]
-   ((stripper schema) x)))
-
 (defn prepare-after-deserialization
   "Inverse of [[prepare-for-serialization]]: run on a query `x` right after it is decoded from JSON coming in from a
   REST API request or the application database, to strip the internal query-processor keys that the query processor adds

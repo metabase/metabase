@@ -167,7 +167,6 @@
              :lib/type               :mbql/query
              :lib/metadata           lib.metadata.protocols/cached-metadata-provider?
              :stages                 [{:lib/type :mbql.stage/mbql, :source-table 74040}]
-             :lib.convert/converted? true
              :type                   (symbol "nil #_\"key is not present.\"")
              :query                  (symbol "nil #_\"key is not present.\"")}
             (lib.query/query meta/metadata-provider
@@ -180,7 +179,6 @@
              :lib/metadata           lib.metadata.protocols/cached-metadata-provider?
              :stages                 [{:lib/type :mbql.stage/native
                                        :native "select * from products limit 3;"}]
-             :lib.convert/converted? true
              :type                   (symbol "nil #_\"key is not present.\"")
              :query                  (symbol "nil #_\"key is not present.\"")}
             (lib.query/query meta/metadata-provider
@@ -608,7 +606,6 @@
         (is (= {:lib/type               :mbql/query
                 :stages                 [{:lib/type :mbql.stage/mbql, :source-table 2}]
                 :database               1
-                :lib.convert/converted? true
                 :lib/metadata           (lib.metadata.cached-provider/cached-metadata-provider mp)}
                (lib.query/query mp query)))))))
 
