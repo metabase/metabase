@@ -818,6 +818,11 @@
   (testing "a datetime literal with a sub-day unit is rewritten the same way"
     (is (= ["=" {} (created-at-bucketed "hour") "2025-01-01T10:30:00"]
            (repair-filter ["during" {} created-at "2025-01-01T10:30:00" "hour"]))))
+  (testing "a sub-day unit on a date-only literal is left alone, like the comparison arm"
+    (doseq [[literal unit] [["2025-01-01" "hour"] ["2025-01-01" "minute"] ["2025-01-01" "second"]
+                            ["2025-03" "hour"] ["2025" "hour"]]]
+      (let [input ["during" {} created-at literal unit]]
+        (is (= input (hoist-filter input)) (str literal " " unit)))))
   (testing "the `default` unit is left alone: `during` does not accept it, so Pass 6 reports it"
     (let [input ["during" {} created-at "2025-01-01" "default"]]
       (is (= input (hoist-filter input)))))
@@ -934,6 +939,8 @@
              {"filters" [["between" {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-06-01" "year")]]}
              "`during` against an already-bucketed ref"
              {"filters" [["during" {} (created-at-bucketed "day") "2025-01-01" "month"]]}
+             "`during` with a sub-day unit on a date-only literal"
+             {"filters" [["during" {} created-at "2025-01-01" "hour"]]}
              ;; a `value` clause keeps its raw string keys and still passes validation (BOT-2095)
              "a `value` clause carrying a unit"
              {"filters" [["=" {} created-at ["value" {"base-type" "type/DateTime" "unit" "day"} "2025-01-01"]]]}

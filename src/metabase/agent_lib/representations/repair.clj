@@ -1011,6 +1011,15 @@
     (catch Exception _
       false)))
 
+(defn- truncation-units-for
+  "The bucketing units a widened literal of this shape can carry.
+
+  A date-only literal takes the date units; a datetime literal also takes the sub-day ones."
+  [literal]
+  (if (re-matches date-only-pattern literal)
+    date-truncation-units
+    datetime-truncation-units))
+
 (defn- hoistable-bucket
   "Return `[literal unit]` for an `absolute-datetime` literal whose bucket the compared ref can take.
 
@@ -1031,9 +1040,7 @@
              (string? (nth v 3)))
     (let [literal (widen-partial-date (str/trim (nth v 2)))
           unit    (u/lower-case-en (nth v 3))
-          units   (if (re-matches date-only-pattern literal)
-                    date-truncation-units
-                    datetime-truncation-units)]
+          units   (truncation-units-for literal)]
       (when (and (iso-date-string? literal)
                  (or (= "default" unit) (contains? units unit))
                  (parseable-temporal-literal? literal))
@@ -1112,13 +1119,19 @@
   "`during` is `=` against the ref bucketed by the same unit; say it that way.
 
     [\"during\" {} [\"field\" {} <col>] \"2025-01-01\" \"month\"]
-    => [\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\"]"
+    => [\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\"]
+
+    [\"during\" {} [\"field\" {} <col>] \"2025-01-01\" \"hour\"] => unchanged
+
+  The unit set follows the literal's shape, as it does for a comparison ([[hoistable-bucket]]):
+  rewriting `hour` on a date would narrow the filter to one hour.
+  [[unencodable-temporal-clause-error!]] reports what is left standing."
   [[_ opts ref literal unit :as node]]
   (let [literal (when (string? literal) (widen-partial-date (str/trim literal)))
         unit    (when (string? unit) (u/lower-case-en unit))]
     (if (and literal
              (iso-date-string? literal)
-             (contains? datetime-truncation-units unit)
+             (contains? (truncation-units-for literal) unit)
              (parseable-temporal-literal? literal))
       ["=" opts (with-temporal-unit ref unit) literal]
       node)))
