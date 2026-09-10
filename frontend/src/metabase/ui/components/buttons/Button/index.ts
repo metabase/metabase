@@ -17,8 +17,7 @@ export type ButtonVariant =
   | "subtle"
   | "transparent"
   | "on-dark-primary"
-  | "on-dark-secondary"
-  | "visualizer";
+  | "on-dark-secondary";
 
 export type ButtonProps = Omit<MantineButtonProps, "size" | "variant"> & {
   size?: ButtonSize;
