@@ -3005,13 +3005,13 @@
             (is (= "New Target Table" (:display_name provisional)))))))))
 
 (deftest retire-mcp-v1-oauth-scopes-test
-  (testing (str "v64.2026-09-09T12:00:00/01: a client connected to a shipped v0.60–v0.63 release holds a 17-scope "
+  (testing (str "v64.2026-09-09T12:00:00: a client connected to a shipped v0.60–v0.63 release holds a 17-scope "
                 "registration snapshot and tokens scoped to it. The v2 surface gates on six coarse scopes that no "
                 "legacy scope satisfies, so without this migration the client gets HTTP 200 with an empty tools list "
                 "and never recovers — the refresh grant can only narrow. The migration widens the ceiling so a "
                 "re-authorization validates, then revokes the legacy-shaped tokens so the client actually "
                 "re-authenticates instead of refreshing.")
-    (impl/test-migrations ["v64.2026-09-09T12:00:00" "v64.2026-09-09T12:00:01"] [migrate!]
+    (impl/test-migrations ["v64.2026-09-09T12:00:00"] [migrate!]
       (let [;; The 17 scopes DCR snapshots on v0.63: 15 per-entity agent scopes + 2 mcp-ui resource scopes.
             legacy-scopes   ["agent:sql:construct" "agent:sql:create" "agent:sql:edit" "agent:sql:read"
                              "agent:notebook:create" "agent:query:construct" "agent:query:execute"
@@ -3070,9 +3070,13 @@
               (is (every? scopes legacy-scopes)))))
         (testing "a statically registered client is left alone — it did not snapshot via DCR"
           (is (= (set legacy-scopes) (scopes-of :oauth_client static-id :scopes))))
-        (testing "legacy-scoped tokens are revoked — both tables, or the client refreshes instead of re-authing"
-          (is (revoked? :oauth_access_token legacy-access))
-          (is (revoked? :oauth_refresh_token legacy-refresh)))
+        (testing "no token is revoked yet — widening the ceiling grants nothing and logs nobody out"
+          ;; `RevokeLegacyMcpOAuthTokens` is written and tested but deliberately not wired into a
+          ;; changeset: revoking logs every connected MCP client out once, which is a release
+          ;; decision rather than a migration detail. This pins that the shipped changeset is the
+          ;; harmless half, so wiring the second one up is a visible change rather than a silent one.
+          (is (not (revoked? :oauth_access_token legacy-access)))
+          (is (not (revoked? :oauth_refresh_token legacy-refresh))))
         (testing "tokens already carrying a v2 tool scope keep working"
           (is (not (revoked? :oauth_access_token v2-access)))
           (is (not (revoked? :oauth_refresh_token v2-refresh))))))))
