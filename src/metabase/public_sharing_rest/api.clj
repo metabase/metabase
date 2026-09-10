@@ -144,14 +144,28 @@
   [x]
   x)
 
+(defn- scrub-referenced-entity-errors
+  "A failed referenced query carries the raw driver message, which can name tables and columns. Public and
+  embedded viewers get the same generic text the `:failed` method gives the main query."
+  [referenced-entities]
+  (reduce-kv (fn [acc entity-type by-id]
+               (assoc acc entity-type
+                      (update-vals by-id (fn [result]
+                                           (cond-> result
+                                             (:error result)
+                                             (assoc :error (tru "An error occurred while running the query.")))))))
+             {}
+             referenced-entities))
+
 (defmethod transform-qp-result :completed
   [results]
-  (u/select-nested-keys
-   results
-   ;; :referenced_entities carries dynamic-goal values for public/embedded cards.
-   [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone :referenced_entities]
-    [:json_query :parameters]
-    :status]))
+  (-> (u/select-nested-keys
+       results
+       ;; :referenced_entities carries dynamic-goal values for public/embedded cards.
+       [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone :referenced_entities]
+        [:json_query :parameters]
+        :status])
+      (m/update-existing-in [:data :referenced_entities] scrub-referenced-entity-errors)))
 
 (defmethod transform-qp-result :failed
   [{error-type :error_type, :as results}]

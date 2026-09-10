@@ -49,9 +49,13 @@
 
 (defn shown-goal-values
   "Like [[goal-values]], minus the goals this chart doesn't show. Nothing renders those, so nothing
-  needs to run the queries behind them."
-  [viz-settings]
-  (values-in viz-settings (shown-goal-settings viz-settings)))
+  needs to run the queries behind them. Toggles come from `effective-settings`, which defaults to
+  `viz-settings`: reading one half of a card+dashcard pair has to consult the merge, since either half
+  can flip `graph.show_goal`."
+  ([viz-settings]
+   (shown-goal-values viz-settings viz-settings))
+  ([viz-settings effective-settings]
+   (values-in viz-settings (shown-goal-settings effective-settings))))
 
 (defn- update-values-in
   [viz-settings settings f]
