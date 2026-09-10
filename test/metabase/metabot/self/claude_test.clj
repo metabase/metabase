@@ -747,7 +747,7 @@
                                                               :headers {"anthropic-version" "2023-06-01"
                                                                         "x-api-key"        "sk-ant-byok"}}
                                                              req))
-                                                     {:body "{\"data\":[]}"})]
+                                                     {:status 200 :body {:data []}})]
             (is (= {:models []}
                    (claude/list-models {:credentials byok-credentials})))))
         (testing "Uses ai proxy when explicitly requested"
@@ -757,7 +757,7 @@
                                                               :headers {"anthropic-version"         "2023-06-01"
                                                                         "x-metabase-instance-token" "proxy-token"}}
                                                              req))
-                                                     {:body "{\"data\":[]}"})]
+                                                     {:status 200 :body {:data []}})]
             (is (= {:models []}
                    (claude/list-models {:ai-proxy? true})))))
         (testing "Does not fall back to ai proxy when the connection carries no key"
@@ -794,7 +794,7 @@
       (mt/with-dynamic-fn-redefs [http/request (fn [req]
                                                  (is (=? {:headers {"x-api-key" "sk-ant-explicit"}}
                                                          req))
-                                                 {:body "{\"data\":[]}"})]
+                                                 {:status 200 :body {:data []}})]
         (is (= {:models []}
                (claude/list-models {:credentials {:api-key "sk-ant-explicit"}})))))))
 
