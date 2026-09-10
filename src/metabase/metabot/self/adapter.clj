@@ -50,11 +50,10 @@
    [:errors      {:optional true} [:maybe [:map-of :int [:fn fn?]]]]
    [:headers     {:optional true} [:maybe [:map-of :string :string]]]
    [:auth        {:optional true} [:maybe [:fn fn?]]]
-   [:ai-proxy?   {:optional true} [:maybe :boolean]]
-   [:span        {:optional true} [:maybe :keyword]]])
+   [:ai-proxy?   {:optional true} [:maybe :boolean]]])
 
 (def Provider
-  "A built descriptor: a [[ProviderSpec]] with `:auth` and `:span` defaulted and `:error-msg` derived.
+  "A built descriptor: a [[ProviderSpec]] with `:auth` defaulted and `:span` and `:error-msg` derived.
   Every helper here takes one as its first argument."
   [:map
    [:slug                         :string]
@@ -166,8 +165,8 @@
 (mu/defn provider :- Provider
   "Build the descriptor the helpers in this namespace take as their first argument.
 
-    :slug         - the `llm-providers` type string. Tags errors and debug logs, and names the span
-                    unless `:span` overrides it.
+    :slug         - the `llm-providers` type string. Tags errors and debug logs, and names the request
+                    span `:metabot.{slug}/request`.
     :display-name - the human name spliced into user-facing messages.
     :errors       - HTTP status -> thunk returning that status's message (see [[status-error-msg-fn]]).
     :headers      - headers every request to this provider carries (e.g. an API version).
@@ -178,13 +177,12 @@
                     header the key travels in, the validation its credentials need, or a signature over
                     the request itself.
     :ai-proxy?    - whether the Metabase Cloud AI proxy can serve this provider. Defaults to false,
-                    which makes [[request!]] reject a proxied request.
-    :span         - the request span's `:name`. Defaults to `:metabot.{slug}/request`."
-  [{:keys [slug display-name errors auth span] :as descriptor} :- ProviderSpec]
+                    which makes [[request!]] reject a proxied request."
+  [{:keys [slug display-name errors auth] :as descriptor} :- ProviderSpec]
   (assoc descriptor
          :error-msg (status-error-msg-fn display-name errors)
          :auth      (or auth bearer-auth)
-         :span      (or span (keyword (str "metabot." slug) "request"))))
+         :span      (keyword (str "metabot." slug) "request")))
 
 (mu/defn rethrow!
   "Rethrow a provider HTTP exception with `p`'s own user-facing message. See [[core/rethrow-api-error!]]."
