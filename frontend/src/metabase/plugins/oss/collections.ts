@@ -7,6 +7,7 @@ import type {
   CollectionInstanceAnaltyicsConfig,
 } from "metabase/common/collections/types";
 import { useGetIconBase } from "metabase/hooks/use-icon";
+import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
 import type {
@@ -16,8 +17,6 @@ import type {
   CollectionEssentials,
   CollectionId,
 } from "metabase-types/api";
-
-import { definePluginSlot } from "../slot";
 
 // Types
 export type ItemWithCollection = { collection: CollectionEssentials };

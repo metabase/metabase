@@ -1,10 +1,9 @@
 import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
+import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { GetDependencyGraphRequest } from "metabase-types/api";
-
-import { definePluginSlot } from "../slot";
 
 // Types
 export type DependencyGraphPageContextType = {

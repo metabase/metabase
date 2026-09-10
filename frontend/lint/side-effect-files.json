@@ -32,8 +32,6 @@
     "enterprise/frontend/src/custom-viz/src/cli.ts": "entry",
     "enterprise/frontend/src/custom-viz/src/templates/vite.config.ts": "self",
     "enterprise/frontend/src/custom-viz/vite.config.ts": "self",
-    "enterprise/frontend/src/embedding-sdk-ee/auth/auth.ts": "global",
-    "enterprise/frontend/src/embedding-sdk-ee/auth/index.ts": "global",
     "enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotQuestion.tsx": "global",
     "enterprise/frontend/src/embedding-sdk-ee/metabot/hooks/use-metabot.tsx": "global",
     "enterprise/frontend/src/embedding-sdk-ee/metabot/index.ts": "global",

@@ -181,7 +181,6 @@ export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
-export { definePluginSlot } from "./slot";
 
 // Re-export types that are used by other files
 export type {
@@ -191,9 +190,7 @@ export type {
   SyncedCollectionsSidebarSectionProps,
 } from "./types";
 
-import { reinitializeRequestHandlers } from "metabase/api/client";
-
-import { resetPluginSlots } from "./slot";
+import { resetPluginSlots } from "metabase/plugin-slots";
 
 /**
  * Mostly for test purposes, reinitialize all plugins.
@@ -202,7 +199,4 @@ import { resetPluginSlots } from "./slot";
  */
 export function reinitialize() {
   resetPluginSlots();
-  // metabase/api can't import metabase/plugins under the module rules, so its slot is reset by hand.
-  // This is temporary: once plugins can sit below api, the slot uses definePluginSlot and this goes.
-  reinitializeRequestHandlers();
 }

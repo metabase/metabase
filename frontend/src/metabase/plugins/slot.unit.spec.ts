@@ -1,6 +1,5 @@
+import { definePluginSlot } from "metabase/plugin-slots";
 import { reinitialize } from "metabase/plugins";
-
-import { definePluginSlot } from "./slot";
 
 describe("definePluginSlot", () => {
   it("should return the defaults", () => {
