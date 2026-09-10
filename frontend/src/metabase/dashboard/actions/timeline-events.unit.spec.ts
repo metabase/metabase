@@ -11,6 +11,7 @@ import { getDashCardVisibleTimelineEventIds } from "metabase/dashboard/timeline-
 import {
   hideTimelineEvents,
   showCreatedTimelineEvent,
+  showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -23,6 +24,9 @@ import {
 
 import { updateDashCardsTimelineEventsVisibility } from "./timeline-events";
 
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+
+const DASHBOARD_ID = 1;
 const DASHCARD_ID = 1;
 
 const eventA = createMockTimelineEvent({
@@ -66,10 +70,10 @@ function setup({
   return getMainStore(
     createMockState({
       dashboard: createMockDashboardState({
-        dashboardId: 1,
+        dashboardId: DASHBOARD_ID,
         dashboards: {
-          1: createMockStoreDashboard({
-            id: 1,
+          [DASHBOARD_ID]: createMockStoreDashboard({
+            id: DASHBOARD_ID,
             dashcards: dashcards.map(({ id }) => id),
           }),
         },
@@ -97,6 +101,10 @@ const getDashCard = (store: Store) =>
   getDashCardById(store.getState(), DASHCARD_ID);
 
 describe("dashboard timeline events visibility", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("shows nothing for a question saved without events", () => {
     const store = setup();
 
@@ -122,6 +130,7 @@ describe("dashboard timeline events visibility", () => {
         [DASHCARD_ID],
         (visibility, timelines) =>
           showTimelines(visibility, [timeline.id], timelines),
+        "dashboard",
       ),
     );
 
@@ -142,6 +151,7 @@ describe("dashboard timeline events visibility", () => {
         [DASHCARD_ID],
         (visibility, context) =>
           hideTimelineEvents(visibility, [eventA], context),
+        "dashboard",
       ),
     );
 
@@ -165,6 +175,7 @@ describe("dashboard timeline events visibility", () => {
         [DASHCARD_ID],
         (visibility, timelines) =>
           hideTimelineEvents(visibility, [eventA], timelines),
+        "dashboard",
       ),
     );
 
@@ -189,6 +200,7 @@ describe("dashboard timeline events visibility", () => {
         [DASHCARD_ID],
         (visibility, timelines) =>
           showCreatedTimelineEvent(visibility, created, timelines),
+        "dashboard",
       ),
     );
 
@@ -209,9 +221,72 @@ describe("dashboard timeline events visibility", () => {
         [DASHCARD_ID],
         (visibility, timelines) =>
           showTimelines(visibility, [timeline.id], timelines),
+        "dashboard",
       ),
     );
 
     expect(store.getState().dashboard.timelineEvents.overrides).toEqual({});
+  });
+
+  it("tracks hiding and showing events for the session", () => {
+    const store = setup({
+      savedVisibility: {
+        "timeline.selected_timeline_ids": [timeline.id],
+        "timeline.excluded_timeline_event_ids": [],
+      },
+    });
+
+    store.dispatch(
+      updateDashCardsTimelineEventsVisibility(
+        [DASHCARD_ID],
+        (visibility, timelines) =>
+          hideTimelineEvents(visibility, [eventA], timelines),
+        "dashcard",
+      ),
+    );
+
+    expect(trackSimpleEvent).toHaveBeenLastCalledWith({
+      event: "dashboard_events_visibility_changed",
+      target_id: DASHBOARD_ID,
+      triggered_from: "dashcard",
+      event_detail: "hidden",
+    });
+
+    store.dispatch(
+      updateDashCardsTimelineEventsVisibility(
+        [DASHCARD_ID],
+        (visibility, timelines) =>
+          showTimelineEvents(visibility, [eventA], timelines),
+        "dashboard",
+      ),
+    );
+
+    expect(trackSimpleEvent).toHaveBeenLastCalledWith({
+      event: "dashboard_events_visibility_changed",
+      target_id: DASHBOARD_ID,
+      triggered_from: "dashboard",
+      event_detail: "shown",
+    });
+    expect(trackSimpleEvent).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not track a toggle that changes nothing", () => {
+    const store = setup({
+      savedVisibility: {
+        "timeline.selected_timeline_ids": [timeline.id],
+        "timeline.excluded_timeline_event_ids": [],
+      },
+    });
+
+    store.dispatch(
+      updateDashCardsTimelineEventsVisibility(
+        [DASHCARD_ID],
+        (visibility, timelines) =>
+          showTimelines(visibility, [timeline.id], timelines),
+        "dashboard",
+      ),
+    );
+
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 });

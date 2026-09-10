@@ -29,8 +29,9 @@
 
 (def Source
   "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
-  Events are added from one of three sources: `collections`, `questions` (cards in backend code), or directly with an API call. An API call is indicated by having no source key in the `timeline-event` request."
-  [:enum "collections" "question"])
+  Events are added from one of four sources: `collections`, `question` (cards in backend code), `dashboard`, or directly
+  with an API call. An API call is indicated by having no source key in the `timeline-event` request."
+  [:enum "collections" "question" "dashboard"])
 
 ;;;; transforms
 

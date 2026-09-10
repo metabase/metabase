@@ -13,7 +13,7 @@ type ValidateEvent<
 
 export type NewEventCreatedEvent = ValidateEvent<{
   event: "new_event_created";
-  source: "questions" | "collections" | "api";
+  source: "question" | "dashboard" | "collections" | "api";
   question_id: number | null;
   collection_id: number | null;
   time_matters: boolean;

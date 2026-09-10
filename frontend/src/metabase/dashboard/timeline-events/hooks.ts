@@ -131,7 +131,9 @@ export const useDashCardTimelineEvents = (
 
   const onOpenTimelines = useCallback(
     (eventIds?: TimelineEventId[]) =>
-      dispatch(openEventsSidebar({ dashcardId, focusedEventIds: eventIds })),
+      dispatch(
+        openEventsSidebar({ dashcardId, focusedEventIds: eventIds }, "chart"),
+      ),
     [dispatch, dashcardId],
   );
   const onSelectTimelineEvents = useCallback(

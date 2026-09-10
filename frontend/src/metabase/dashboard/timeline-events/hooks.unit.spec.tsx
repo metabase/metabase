@@ -222,6 +222,39 @@ describe("dashboard timeline events", () => {
     expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
+  it.each(["chart", "dashcard_menu", "dashboard_menu"] as const)(
+    "tracks opening the events panel from the %s once until it closes",
+    async (location) => {
+      const { store } = setup();
+      trackSimpleEvent.mockClear();
+
+      await act(async () => {
+        store.dispatch(
+          openEventsSidebar({ dashcardId: DASHCARD_ID }, location),
+        );
+        store.dispatch(openEventsSidebar({}, location));
+      });
+
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dashboard_events_panel_opened",
+        target_id: DASHBOARD_ID,
+        triggered_from: location,
+      });
+    },
+  );
+
+  it("does not track reopening the panel from within it", async () => {
+    const { store } = setup();
+    trackSimpleEvent.mockClear();
+
+    await act(async () => {
+      store.dispatch(openEventsSidebar({ dashcardId: DASHCARD_ID }));
+    });
+
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
   it("lists the events of the charts on the selected tab", async () => {
     setup({
       savedVisibility: EVENTS_RECORDED,
