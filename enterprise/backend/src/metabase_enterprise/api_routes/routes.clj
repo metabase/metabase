@@ -40,6 +40,7 @@
    [metabase-enterprise.security-center.api]
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
+   [metabase-enterprise.session-management.api]
    [metabase-enterprise.stale.api]
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
@@ -73,6 +74,7 @@
    :semantic-search            (deferred-tru "Semantic Search")
    :admin-security-center      (deferred-tru "Security Center")
    :serialization              (deferred-tru "Serialization")
+   :session-management         (deferred-tru "Session management")
    :table-data-editing         (deferred-tru "Table Data Editing")
    :tenants                    (deferred-tru "Tenants")
    :upload-management          (deferred-tru "Upload Management")
@@ -157,6 +159,7 @@
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/security-center"              (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
+   "/session-management"           (premium-handler metabase-enterprise.session-management.api/routes :session-management)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)

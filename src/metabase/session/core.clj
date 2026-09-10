@@ -1,6 +1,7 @@
 (ns metabase.session.core
   (:require
    [metabase.session.models.session]
+   [metabase.session.query]
    [metabase.session.settings]
    [metabase.util :as u]
    [potemkin :as p]))
@@ -8,9 +9,15 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.session.models.session/keep-me
+         metabase.session.query/keep-me
          metabase.session.settings/keep-me)
 
 (p/import-vars
+ [metabase.session.query
+  live-session-conditions
+  liveness-params
+  mcp-provider
+  session-from-and-joins]
  [metabase.session.models.session
   generate-session-key
   generate-session-id

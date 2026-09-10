@@ -107,7 +107,10 @@
                         ;; child must be classified here on its own when it ships
                         :provider/emailed-secret                :exempt
                         ;; the second factor itself, never a first factor
-                        :provider/totp                          :exempt}]
+                        :provider/totp                          :exempt
+                        ;; not a login provider: it attributes the `core_session` rows an MCP handshake creates,
+                        ;; which never run `login!`; the user proved their identity to obtain the OAuth grant
+                        :provider/mcp                           :exempt}]
     (testing "every registered provider has a deliberate MFA classification"
       (is (= (set (keys classification))
              (set (auth-identity/descendants :metabase.auth-identity.provider/provider)))))

@@ -34,3 +34,11 @@
    [:auth_identity_id {:optional true} [:maybe ms/PositiveInt]]
    [:expires_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:last_active_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::liveness-params
+  "The instance-wide inputs to [[metabase.session.query/live-session-conditions]]."
+  [:map {:closed true}
+   [:db-type                 :keyword]
+   [:max-age-minutes         [:maybe :int]]
+   [:enable-tenants?         :boolean]
+   [:session-timeout-seconds [:maybe :int]]])

@@ -560,6 +560,7 @@
     :metabase-ai-managed
     :metabot-v3
     :cloud-custom-smtp
+    :session-management
     :session-timeout-config
     :sso-oidc
     :admin-security-center})
