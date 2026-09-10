@@ -26,10 +26,10 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 describe("scenarios > embedding-sdk > content-translations", () => {
   beforeEach(() => {
     // These tests assert English UI chrome while checking that content is
-    // translated, so the UI catalogue has to stay out of the way. It now arrives
-    // as an rspack chunk rather than a JSON fetch, so it cannot be stubbed with a
-    // body. Block it instead: LocaleProvider catches the failure and leaves the UI
-    // untranslated, which is what the previous empty-catalogue stub achieved.
+    // translated, so the UI catalogue has to stay out of the way. It arrives as
+    // an rspack chunk, not a JSON fetch, so it cannot be stubbed with a body.
+    // Block it instead: LocaleProvider catches the failure and leaves the UI
+    // untranslated.
     cy.intercept("GET", "**/locale-de-json*.js", { forceNetworkError: true });
     cy.intercept("GET", "**/locale-ar-json*.js", { forceNetworkError: true });
   });
