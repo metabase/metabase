@@ -1391,6 +1391,7 @@
                     :model/Segment
                     :model/Table
                     :model/Transform
+                    :model/TransformTag
                     :model/User}}
 
   measures

@@ -184,3 +184,12 @@
   (if (seq user-ids)
     (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids])
     {}))
+
+(defn existing-transform-tag-ids
+  "The subset of `tag-ids` that name a real TransformTag, as a set. `ids` is expected non-empty — an
+  empty `:in` is a SQL error rather than an empty result, so callers guard it.
+
+  A set rather than the select's own return: `t2/select-fn-set` answers nil when nothing matches,
+  which is exactly the all-unknown case the caller is checking for."
+  [tag-ids]
+  (into #{} (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids])))
