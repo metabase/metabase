@@ -933,51 +933,64 @@
 
 ;;;; Module boundary debt
 
-(def ^:private module-boundary-ratchets-path
-  ".clj-kondo/config/modules/ratchets.edn")
-
 (defn- graph-nodes [graph]
   (into (set (keys graph)) (mapcat val) graph))
 
 (defn strongly-connected-components
   "The strongly connected components of `graph`, a map of node to successor nodes, as a vector of sets.
   A node outside every cycle comes back as a singleton set.
-  Recursive; fine for graphs a few thousand nodes deep."
+  Recursive; intended for the small module graph."
   [graph]
   ;; Tarjan's algorithm.
-  (let [index    (volatile! {})
-        lowlink  (volatile! {})
-        on-stack (volatile! #{})
-        stack    (volatile! [])
-        counter  (volatile! 0)
-        sccs     (volatile! [])]
-    (letfn [(strongconnect [v]
-              (vswap! index assoc v @counter)
-              (vswap! lowlink assoc v @counter)
-              (vswap! counter inc)
-              (vswap! stack conj v)
-              (vswap! on-stack conj v)
-              (doseq [w (get graph v)]
-                (cond
-                  (not (contains? @index w))
-                  (do (strongconnect w)
-                      (vswap! lowlink update v min (get @lowlink w)))
+  (letfn [(pop-component [state root]
+            (loop [state state, component #{}]
+              (let [node      (peek (:stack state))
+                    state     (-> state
+                                  (update :stack pop)
+                                  (update :on-stack disj node))
+                    component (conj component node)]
+                (if (= node root)
+                  (update state :components conj component)
+                  (recur state component)))))
+          (visit [state node]
+            (let [node-index (:next-index state)
+                  state      (-> state
+                                 (assoc-in [:index node] node-index)
+                                 (assoc-in [:lowlink node] node-index)
+                                 (update :next-index inc)
+                                 (update :stack conj node)
+                                 (update :on-stack conj node))
+                  state      (reduce (fn [state successor]
+                                       (cond
+                                         (not (contains? (:index state) successor))
+                                         (let [state (visit state successor)]
+                                           (update-in state [:lowlink node]
+                                                      min
+                                                      (get-in state [:lowlink successor])))
 
-                  (contains? @on-stack w)
-                  (vswap! lowlink update v min (get @index w))))
-              (when (= (get @lowlink v) (get @index v))
-                (loop [component #{}]
-                  (let [w (peek @stack)]
-                    (vswap! stack pop)
-                    (vswap! on-stack disj w)
-                    (let [component (conj component w)]
-                      (if (= w v)
-                        (vswap! sccs conj component)
-                        (recur component)))))))]
-      (doseq [v (sort (graph-nodes graph))]
-        (when-not (contains? @index v)
-          (strongconnect v))))
-    @sccs))
+                                         (contains? (:on-stack state) successor)
+                                         (update-in state [:lowlink node]
+                                                    min
+                                                    (get-in state [:index successor]))
+
+                                         :else
+                                         state))
+                                     state
+                                     (get graph node))]
+              (cond-> state
+                (= (get-in state [:lowlink node]) (get-in state [:index node]))
+                (pop-component node))))]
+    (:components
+     (reduce (fn [state node]
+               (cond-> state
+                 (not (contains? (:index state) node)) (visit node)))
+             {:components []
+              :index      {}
+              :lowlink    {}
+              :next-index 0
+              :on-stack   #{}
+              :stack      []}
+             (sort (graph-nodes graph))))))
 
 (defn cyclic-components
   "The strongly connected components of `graph` with more than one node, largest first.
@@ -995,21 +1008,6 @@
           {:modules    (count component)
            :namespaces (transduce (map #(get node->namespace-count % 0)) + 0 component)})
         (cyclic-components graph)))
-
-(defn module-boundary-debt
-  "Count the module config's escape hatches.
-
-  - `:api-any`      modules with `:api :any`, which expose every namespace
-  - `:uses-any`     modules with `:uses :any`, which may require any module
-  - `:friend-edges` `:friends` grants, each letting one module reach past another's `:api`"
-  ([]
-   (module-boundary-debt (kondo-config)))
-  ([config]
-   ;; Count from the config alone: the test stays cheap, and a source change elsewhere never moves a ratchet.
-   (let [values (vals config)]
-     {:api-any      (count (filter #(= :any (:api %)) values))
-      :friend-edges (transduce (map (comp count :friends)) + 0 values)
-      :uses-any     (count (filter #(= :any (:uses %)) values))})))
 
 (defn module-boundary-stats
   "Measure how tangled the module graph is, for reading at the REPL.
@@ -1033,42 +1031,5 @@
       :scc-module-sizes    (mapv :modules sizes)
       :scc-namespace-sizes (mapv :namespaces sizes)})))
 
-(defn module-boundary-ratchets
-  "Read the committed ratchet values for [[module-boundary-debt]]."
-  []
-  (edn/read-string (slurp module-boundary-ratchets-path)))
-
-(defn lowered-module-boundary-ratchets
-  "Return `actual` when no count in it is above its ratchet. Throw when one is, or when the keys differ."
-  [ratchets actual]
-  (when-not (= (set (keys ratchets)) (set (keys actual)))
-    (throw (ex-info "Module-boundary ratchet metrics do not match"
-                    {:ratchets ratchets
-                     :actual   actual})))
-  (let [increases (into (sorted-map)
-                        (filter (fn [[metric value]]
-                                  (> value (get ratchets metric -1))))
-                        actual)]
-    (when (seq increases)
-      (throw (ex-info "Refusing to increase module-boundary ratchets"
-                      {:increases increases
-                       :ratchets  ratchets
-                       :actual    actual})))
-    actual))
-
-(defn update-module-boundary-ratchets!
-  "Lower the committed ratchets to the current counts, throwing if any count went up.
-  Run with `clojure -X:dev dev.deps-graph/update-module-boundary-ratchets!`."
-  [_]
-  (let [ratchets (module-boundary-ratchets)
-        updated  (lowered-module-boundary-ratchets ratchets (module-boundary-debt))]
-    (if (= ratchets updated)
-      (println "Module-boundary ratchets are already current.")
-      (do
-        (spit module-boundary-ratchets-path
-              (str (pr-str (into (sorted-map) updated)) \newline))
-        (println "Lowered module-boundary ratchets in" module-boundary-ratchets-path)))))
-
 (comment
-  (module-boundary-debt)
   (module-boundary-stats))

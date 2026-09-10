@@ -330,7 +330,20 @@
            (is (= (sort imports)
                   imports))))))))
 
-;;;; Module boundary debt ratchets
+;;;; Module boundary analysis
+
+(deftest ^:parallel strongly-connected-components-test
+  (let [graph {:a #{:b}
+               :b #{:a :c}
+               :c #{}
+               :d #{:e}
+               :e #{:f}
+               :f #{:d}
+               :g #{:h}}]
+    (is (= #{#{:a :b} #{:c} #{:d :e :f} #{:g} #{:h}}
+           (set (dev.deps-graph/strongly-connected-components graph))))
+    (is (= [#{:d :e :f} #{:a :b}]
+           (dev.deps-graph/cyclic-components graph)))))
 
 (deftest ^:parallel module-boundary-config-values-have-valid-types-test
   (testing "Module boundary keys have the shapes the ratchet counts expect"
@@ -347,32 +360,3 @@
         (is (or (nil? (:friends config))
                 (set? (:friends config)))
             ":friends must be a set when present")))))
-
-(deftest ^:parallel module-boundary-debt-matches-ratchets-test
-  (testing "Module boundary escape-hatch counts match their exact ratchets"
-    (let [actual   (dev.deps-graph/module-boundary-debt)
-          ratchets (dev.deps-graph/module-boundary-ratchets)]
-      (is (= (set (keys actual)) (set (keys ratchets)))
-          "Every escape hatch must have an exact committed ratchet")
-      (doseq [[metric ratchet] ratchets
-              :let [value (get actual metric)]]
-        (testing (format "\n%s" metric)
-          (is (= value ratchet)
-              (if (< value ratchet)
-                (format (str "%s improved from %d to %d. Run "
-                             "`clojure -X:dev dev.deps-graph/update-module-boundary-ratchets!` "
-                             "and commit the lower value now.")
-                        metric ratchet value)
-                (format (str "%s increased from its ratchet of %d to %d. Reduce the new boundary debt; "
-                             "the updater will not bless increases.")
-                        metric ratchet value))))))))
-
-(deftest ^:parallel module-boundary-ratchets-can-only-be-lowered-test
-  (is (= {:debt 2}
-         (dev.deps-graph/lowered-module-boundary-ratchets {:debt 3} {:debt 2})))
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                        #"Refusing to increase"
-                        (dev.deps-graph/lowered-module-boundary-ratchets {:debt 2} {:debt 3})))
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                        #"metrics do not match"
-                        (dev.deps-graph/lowered-module-boundary-ratchets {:debt 2} {:other 1}))))

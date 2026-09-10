@@ -19,10 +19,12 @@
   "Return [[kondo-ratchet/check-report]] output for `ratchets`. Supply the defaults that
   [[kondo-ratchet/read-ratchets]] adds to a partial file."
   ([ratchets occurrences text]
-   (report-lines ratchets occurrences {} text))
+   (report-lines ratchets occurrences {} {} text))
   ([ratchets occurrences config-actual text]
+   (report-lines ratchets occurrences config-actual {} text))
+  ([ratchets occurrences config-actual module-actual text]
    (vec (kondo-ratchet/check-report (merge {:config-counts {}, :comment-exempt #{}} ratchets)
-                                    occurrences config-actual text))))
+                                    occurrences config-actual module-actual text))))
 
 (deftest ^:parallel clean-test
   (let [ratchets {:ignore-counts {:a 2, :b 1}}]
@@ -69,6 +71,18 @@
            (report-lines ratchets [] {:a 2, :b 1, :new 1} (kondo-ratchet/render ratchets)))
         "a lowered config count passes; growth and new entries are reported")))
 
+(deftest ^:parallel module-over-budget-test
+  (let [ratchets {:ignore-counts {}, :module-counts {:api-any 1, :friend-edges 3}}]
+    (is (= ["module boundaries over budget -- reduce the boundary debt, or raise the budget manually and explain the increase in the PR:"
+            "  :api-any: 1 recorded, 2 actual"
+            "  :uses-any: 0 recorded, 1 actual"]
+           (report-lines ratchets
+                         []
+                         {}
+                         {:api-any 2, :friend-edges 2, :uses-any 1}
+                         (kondo-ratchet/render ratchets)))
+        "lower counts pass; growth and new metrics are reported")))
+
 (defn- check-with!
   "Output lines of [[kondo-ratchet/check]] against `ratchets` written to a temp file, with `occurrences`
   standing in for the tree scan; `:thrown?` says whether it failed."
@@ -82,6 +96,7 @@
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
       (with-redefs [kondo-ratchet/known-linters (constantly (set (keys (:ignore-counts ratchets))))
                     kondo-ratchet/config-suppressions (constantly {})
+                    kondo-ratchet/module-counts (constantly {})
                     kondo-ratchet/scan          (constantly occurrences)]
         {:lines   (str/split-lines
                    (with-out-str

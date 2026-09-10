@@ -28,8 +28,8 @@
       (is (= {:a {:recorded 0, :actual 1, :examples ["f.clj:1"]}}
              (kondo-ratchet/over-budget {:b 1} occurrences))))
     (testing "config budgets"
-      (is (= {} (kondo-ratchet/config-over-budget {:cfg 3} {:cfg 1})))
-      (is (= {:cfg {:recorded 1, :actual 2}} (kondo-ratchet/config-over-budget {:cfg 1} {:cfg 2}))))))
+      (is (= {} (kondo-ratchet/counts-over-budget {:cfg 3} {:cfg 1})))
+      (is (= {:cfg {:recorded 1, :actual 2}} (kondo-ratchet/counts-over-budget {:cfg 1} {:cfg 2}))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Scanner unit tests
@@ -170,6 +170,12 @@
 ;;;; Budget bookkeeping unit tests
 ;;;; ---------------------------------------------------------------------------
 
+(deftest ^:parallel module-counts-test
+  (is (= {:api-any 1, :friend-edges 3, :uses-any 1}
+         (kondo-ratchet/module-counts
+          {'a {:api :any, :friends #{'b 'c}, :uses #{'b}}
+           'b {:api #{'b.api}, :friends #{'a}, :uses :any}}))))
+
 (deftest ^:parallel render-test
   (testing "keys come out sorted, values aligned, and the text round-trips losslessly"
     (let [ratchets {:ignore-counts  {:all              1
@@ -178,6 +184,7 @@
                                      :unused-alias     :unlimited}
                     :config-counts  {:inline-def        1
                                      :unresolved-symbol 18}
+                    :module-counts  {:api-any 1}
                     :comment-exempt #{:metabase/modules :discouraged-var}}
           text     (kondo-ratchet/render ratchets)]
       (is (str/ends-with? text (str "{:ignore-counts  {:all              1\n"
@@ -186,13 +193,14 @@
                                     "                  :unused-alias     :unlimited}\n"
                                     " :config-counts  {:inline-def        1\n"
                                     "                  :unresolved-symbol 18}\n"
+                                    " :module-counts  {:api-any 1}\n"
                                     " :comment-exempt #{:discouraged-var\n"
                                     "                   :metabase/modules}}\n")))
       (is (= ratchets (edn/read-string text)))
       (is (= text (kondo-ratchet/render (edn/read-string text))))))
   (testing "empty ratchets"
-    (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
-                        "{:ignore-counts  {}\n :config-counts  {}\n :comment-exempt #{}}\n"))))
+    (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :module-counts {}, :comment-exempt #{}})
+                        "{:ignore-counts  {}\n :config-counts  {}\n :module-counts  {}\n :comment-exempt #{}}\n"))))
 
 (deftest read-ratchets-policy-values-test
   (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
@@ -213,18 +221,20 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo message
                               (kondo-ratchet/read-ratchets)))))))
 
-(deftest read-ratchets-validates-config-counts-test
-  (doseq [value [-1 :unlimited "1"]]
+(deftest read-ratchets-validates-non-ignore-counts-test
+  (doseq [field [:config-counts :module-counts]
+          value [-1 :unlimited "1"]]
     (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
-                 (spit (pr-str {:config-counts {:a value}})))]
+                 (spit (pr-str {field {:a value}})))]
       (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"expected a non-negative integer"
                               (kondo-ratchet/read-ratchets))
-            (str "a config budget is always a plain count, so " (pr-str value) " is rejected"))))))
+            (str field " budgets are always plain counts, so " (pr-str value) " is rejected"))))))
 
 (deftest read-ratchets-validates-field-shapes-test
   (doseq [[field message] [[:ignore-counts  #":ignore-counts must be a map"]
                            [:config-counts  #":config-counts must be a map"]
+                           [:module-counts  #":module-counts must be a map"]
                            [:comment-exempt #":comment-exempt must be a set"]]]
     (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
                  (spit (pr-str {field []})))]
@@ -377,6 +387,31 @@
                 "unchanged"]
                (run!))
             "a second run changes nothing and still reports")))))
+
+(deftest ^:synchronized fix-lowers-module-counts-test
+  (let [dir      (.toFile (java.nio.file.Files/createTempDirectory
+                           "kondo-ratchet-test"
+                           (make-array java.nio.file.attribute.FileAttribute 0)))
+        ratchets {:ignore-counts  {}
+                  :config-counts  {}
+                  :module-counts  {:api-any 2, :friend-edges 5, :uses-any 1}
+                  :comment-exempt #{}}
+        budgets  (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))]
+    (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
+      (with-redefs [kondo-ratchet/known-linters       (constantly #{})
+                    kondo-ratchet/scan                (constantly [])
+                    kondo-ratchet/config-suppressions (constantly {})
+                    kondo-ratchet/module-counts       (constantly {:api-any 1, :friend-edges 4, :uses-any 0})]
+        (is (= ["lowered module :api-any 2 -> 1"
+                "lowered module :friend-edges 5 -> 4"
+                "lowered module :uses-any 1 -> 0"
+                (str "wrote " (.getPath budgets))]
+               (str/split-lines (with-out-str (kondo-ratchet/fix!)))))
+        (is (= {:ignore-counts  {}
+                :config-counts  {}
+                :module-counts  {:api-any 1, :friend-edges 4}
+                :comment-exempt #{}}
+               (kondo-ratchet/read-ratchets)))))))
 
 (deftest read-ratchets-requires-one-map-test
   (doseq [[content message] [[""                       #"is empty; expected one map"]
@@ -541,12 +576,12 @@
        var), per-var re-allows count at any nesting depth, discouragements and enablements count
        nothing; groups, :config-in-comment and :config-in-call sum per linter"))
 
-(deftest ^:parallel config-drift-test
+(deftest ^:parallel count-drift-test
   (is (= {:gone {:recorded 2, :actual 0}
           :new  {:recorded 0, :actual 1}
           :up   {:recorded 1, :actual 3}}
-         (kondo-ratchet/config-drift {:gone 2, :same 5, :up 1}
-                                     {:same 5, :new 1, :up 3}))))
+         (kondo-ratchet/count-drift {:gone 2, :same 5, :up 1}
+                                    {:same 5, :new 1, :up 3}))))
 
 (defn- merge-policies
   "[[kondo-ratchet/merge-ratchets]] over `:ignore-counts` maps alone, so a test reads as the three stages."
@@ -581,12 +616,13 @@
     (is (= {} (merge-policies {:a 5} {} {:a 4})))
     (is (= {} (merge-policies {:a 5} {:a :unlimited} {})))))
 
-(deftest ^:parallel merge-ratchets-config-counts-test
-  (is (= {:config-counts {:lowered 1, :ours-add 2, :theirs-add 3}}
-         (select-keys (kondo-ratchet/merge-ratchets {:config-counts {:lowered 4, :dropped 1}}
-                                                    {:config-counts {:lowered 2, :ours-add 2}}
-                                                    {:config-counts {:lowered 1, :dropped 1, :theirs-add 3}})
-                      [:config-counts]))))
+(deftest ^:parallel merge-ratchets-count-maps-test
+  (doseq [field [:config-counts :module-counts]]
+    (is (= {field {:lowered 1, :ours-add 2, :theirs-add 3}}
+           (select-keys (kondo-ratchet/merge-ratchets {field {:lowered 4, :dropped 1}}
+                                                      {field {:lowered 2, :ours-add 2}}
+                                                      {field {:lowered 1, :dropped 1, :theirs-add 3}})
+                        [field])))))
 
 (deftest ^:parallel merge-ratchets-absent-base-test
   (testing "with no base stage, each policy is a one-sided addition and shared linters take the stricter"
@@ -695,6 +731,8 @@
             "dropped config :cfg-gone (no suppressions left)"
             "lowered config :cfg-lower 4 -> 2"
             "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
+            "lowered module :api-any 2 -> 1"
+            "WARNING: module :uses-any is over budget (1 recorded, 2 actual) -- reduce the boundary debt or raise the budget by hand"
             "WARNING: :comment-exempt is no longer needed for these linters: :polite -- delete the stale entries by hand"]
            (kondo-ratchet/change-report {:ignore-counts  {:empty  :unlimited
                                                           :free   :unlimited
@@ -708,9 +746,11 @@
                                                           :cfg-lower 4
                                                           :cfg-over  1
                                                           :cfg-same  6}
+                                         :module-counts  {:api-any 2, :uses-any 1}
                                          :comment-exempt #{:lower :polite}}
                                         occurrences
                                         {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
+                                        {:api-any 1, :uses-any 2}
                                         [:new :void]))
         "untouched budgets (:same, :cfg-same), a used unlimited policy (:free), and a still-needed
          exemption (:lower) earn no line; a hand-written 0 (:zero) is dropped like any bounded budget with no
@@ -719,13 +759,16 @@
 (deftest ^:parallel shrink-summary-test
   (is (= (str "{:a                      2 => 1\n"
               " :config/unused-import   4 => 0\n"
+              " :module/friend-edges    3 => 2\n"
               " :z                     10 => 3}")
          (kondo-ratchet/shrink-summary
           {:ignore-counts {:a 2, :same 1, :unlimited :unlimited, :z 10}
            :config-counts {:same 2, :unused-import 4}
+           :module-counts {:friend-edges 3}
            :comment-exempt #{:a}}
           {:ignore-counts {:a 1, :raised 2, :same 1, :unlimited :unlimited, :z 3}
            :config-counts {:same 2}
+           :module-counts {:friend-edges 2}
            :comment-exempt #{}})))
   (is (= "{}" (kondo-ratchet/shrink-summary {:ignore-counts {:a 1}}
                                             {:ignore-counts {:a 2}}))
