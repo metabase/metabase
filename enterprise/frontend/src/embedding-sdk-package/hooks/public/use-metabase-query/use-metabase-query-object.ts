@@ -41,6 +41,8 @@ export function useMetabaseQueryObject(
     },
   } = useMetabaseProviderPropsStore();
 
+  const isEnabled = query.enabled !== false && dynamicQuery?.enabled !== false;
+
   const queryKey = useMemo(
     () => stableStringifyQuery([query, dynamicQuery]),
     [query, dynamicQuery],
@@ -77,6 +79,7 @@ export function useMetabaseQueryObject(
 
   useEffect(() => {
     if (
+      !isEnabled ||
       !reduxStore ||
       !getResolveDatasetQueryFromBundle() ||
       loginStatus?.status !== "success"
@@ -87,12 +90,17 @@ export function useMetabaseQueryObject(
     pendingQueryKeyRef.current = queryKey;
     resolveQueryObject();
   }, [
+    isEnabled,
     loadingState,
     loginStatus?.status,
     queryKey,
     reduxStore,
     resolveQueryObject,
   ]);
+
+  if (!isEnabled) {
+    return { query: null, error: null, isLoading: false };
+  }
 
   if (error && !loading && pendingQueryKeyRef.current === queryKey) {
     return { query: null, error, isLoading: false };
