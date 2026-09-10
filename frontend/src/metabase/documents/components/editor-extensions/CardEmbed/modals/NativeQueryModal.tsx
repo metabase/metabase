@@ -418,7 +418,6 @@ export const NativeQueryModal = ({
                 <Box flex={1} mih="300px">
                   <Visualization
                     rawSeries={rawSeries}
-                    metadata={metadata}
                     mode={defaultClickActionMode}
                     onChangeCardAndRun={() => {}}
                     getExtraDataForClick={() => ({})}
