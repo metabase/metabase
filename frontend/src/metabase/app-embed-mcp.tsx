@@ -9,12 +9,13 @@ import "metabase/embedding-sdk/vendors-side-effects";
 
 import { McpUiAppRoute } from "metabase/embedding/mcp/McpUiAppRoute";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { enterSdkMode } from "metabase/embedding-sdk/lib/enter-sdk-mode";
 import { setBasename } from "metabase/utils/basename";
 
 // Load EE plugins (whitelabeling, etc.) - no-op in OSS
 import "sdk-iframe-embedding-ee-plugins";
 
-EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+enterSdkMode();
 EMBEDDING_SDK_CONFIG.isMcpApp = true;
 EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "mcp-apps";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";

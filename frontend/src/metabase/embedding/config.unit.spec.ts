@@ -11,13 +11,13 @@ import {
 import { isEmbedPreview, setDataApp } from "./config";
 import { setRequestClientHeaders } from "./lib/auth/set-request-client-headers";
 
-const iframeState = { iframedInSelf: false };
+const iframeState = { iframedInSelf: false, withinIframe: false };
 
 jest.mock("metabase/utils/iframe", () => ({
   get IFRAMED_IN_SELF() {
     return iframeState.iframedInSelf;
   },
-  isWithinIframe: () => false,
+  isWithinIframe: () => iframeState.withinIframe,
 }));
 
 const REQUEST: OnBeforeRequestHandlerConfig = {
@@ -36,6 +36,7 @@ describe("setDataApp", () => {
     Object.assign(EMBEDDING_SDK_CONFIG, originalConfig);
     Object.assign(PLUGIN_API.onBeforeRequestHandlers, originalHandlers);
     iframeState.iframedInSelf = false;
+    iframeState.withinIframe = false;
   });
 
   it("configures the data-app context on the shared config", () => {
@@ -71,6 +72,15 @@ describe("setDataApp", () => {
         PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders,
       ),
     ).toEqual({ headers: { "X-Metabase-Client": "data-app" } });
+  });
+
+  it("does not tag the request as embedded when the data app is inside an iframe", async () => {
+    iframeState.withinIframe = true;
+    setDataApp("sales");
+
+    expect(
+      await runHandler(PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader),
+    ).toBeUndefined();
   });
 
   it("does not send the embed-preview header for a non-dev data app", async () => {
