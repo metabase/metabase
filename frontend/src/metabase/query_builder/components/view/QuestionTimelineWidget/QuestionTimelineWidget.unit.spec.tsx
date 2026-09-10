@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, renderWithProviders } from "__support__/ui";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { getIcon, renderWithProviders } from "__support__/ui";
 
 import { QuestionTimelineWidget } from "./QuestionTimelineWidget";
 
