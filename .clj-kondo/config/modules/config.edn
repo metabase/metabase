@@ -594,7 +594,8 @@
 
   collections
   {:team "UX West"
-   :api  #{metabase.collections.core
+   :api  #{metabase.collections.children
+           metabase.collections.core
            metabase.collections.curation
            metabase.collections.init
            metabase.collections.models.collection
@@ -606,12 +607,19 @@
            audit-app
            config
            events
+           lib-be
            models
            notification
            permissions
            premium-features
+           queries
            remote-sync
+           request
+           revisions
            search
+           tracing
+           transforms
+           upload
            util}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
@@ -634,32 +642,17 @@
   {:team "UX West"
    :api  #{metabase.collections-rest.api}
    :uses #{api
-           app-db
            collections
            documents
            eid-translation
            events
-           lib-be
            models
            permissions
            premium-features
            queries
            request
-           revisions
-           tracing
-           transforms
-           upload
            util}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/Document
-                    :model/Exploration
-                    :model/NativeQuerySnippet
-                    :model/Pulse
-                    :model/Table
-                    :model/Timeline
-                    :model/Transform}}
+   :model-imports #{:model/Card :model/Collection}}
 
   comments
   {:team "UX West"
@@ -773,7 +766,6 @@
            app-db
            channel
            collections
-           collections-rest
            dashboards
            eid-translation
            embedding
@@ -1379,7 +1371,8 @@
            task
            transforms
            users
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -2865,7 +2858,9 @@
            api
            app-db
            audit-app
+           classloader
            collections
+           config
            driver
            lib
            lib-be
@@ -2877,7 +2872,8 @@
            remote-sync
            search
            util
-           warehouses}
+           warehouses
+           enterprise/advanced-permissions}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings

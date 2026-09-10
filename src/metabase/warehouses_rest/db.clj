@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (defn active-visible-tables-for-databases
@@ -72,13 +73,9 @@
   Databases. When `filter-by-data-access?` is true, further restricted to Databases the user can query, manage, or
   edit the metadata of."
   [user-info filter-by-data-access? router-database-id include-analytics?]
-  (let [base-where [:and
-                    [:= :is_stub false]
-                    (when-not include-analytics?
-                      [:= :is_audit false])
-                    (if router-database-id
-                      [:= :router_database_id router-database-id]
-                      [:= :router_database_id nil])]
+  (let [base-where (schema.table/browsable-databases-honeysql-filter
+                    {:include-analytics? include-analytics?
+                     :router-database-id router-database-id})
         where      (if filter-by-data-access?
                      [:and base-where
                       [:or
@@ -246,42 +243,6 @@
                                                 :from       [[:metabase_field :f]]
                                                 :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
                                                 :where      [:= :t.db_id database-id]}]}))
-
-(defn active-tables-for-database
-  "The active Tables of the Database with `database-id`."
-  [database-id]
-  (t2/select :model/Table :db_id database-id :active true))
-
-(defn active-table-schemas
-  "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
-  `include-hidden?` is false, restricted to Tables with no `visibility_type` (a non-nil value means the Table is
-  hidden -- see [[metabase.warehouse-schema.models.table/visibility-types]])."
-  [database-id include-hidden?]
-  (let [clauses (cond-> []
-                  (not include-hidden?) (conj [:= :visibility_type nil]))]
-    (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                      (merge {:order-by [[:%lower.schema :asc]]}
-                             (when clauses
-                               {:where (into [:and] clauses)})))))
-
-(defn active-tables-in-schema
-  "The active Tables in `schema` of the Database with `database-id`, in display name order."
-  [database-id schema]
-  (t2/select :model/Table
-             :db_id database-id
-             :schema schema
-             :active true
-             {:order-by [[:display_name :asc]]}))
-
-(defn active-visible-tables-in-schema
-  "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
-  [database-id schema]
-  (t2/select :model/Table
-             :db_id database-id
-             :schema schema
-             :active true
-             :visibility_type nil
-             {:order-by [[:display_name :asc]]}))
 
 (defn collection-ids-named
   "The ids of the Collections named `collection-name`, or nil."
