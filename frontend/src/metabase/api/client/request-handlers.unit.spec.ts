@@ -1,4 +1,4 @@
-import { resetPluginSlots } from "metabase/plugin-slots";
+import { resetPluginSlots } from "metabase/plugins/slot";
 
 import { PLUGIN_API } from "../plugins";
 
@@ -10,36 +10,41 @@ const REQUEST: OnBeforeRequestHandlerConfig = {
   data: {},
 };
 
-const runEmbeddedHeaderHandler = () =>
-  PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST);
-
 describe("setEmbeddedHeader", () => {
   afterEach(() => {
     delete window.overrideIsWithinIframe;
     resetPluginSlots();
   });
 
-  it("should tag the request as embedded when the page is inside an iframe", async () => {
+  it("adds the embedded header inside an iframe", async () => {
     window.overrideIsWithinIframe = true;
 
-    expect(await runEmbeddedHeaderHandler()).toEqual({
+    expect(
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
+    ).toEqual({
       headers: { "X-Metabase-Embedded": "true" },
     });
   });
 
-  it("should not tag the request when the page is not inside an iframe", async () => {
-    expect(await runEmbeddedHeaderHandler()).toBeUndefined();
+  it("omits the embedded header outside an iframe", async () => {
+    expect(
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
+    ).toBeUndefined();
   });
 
-  it("should tag the request again after the request handlers are reinitialized", async () => {
+  it("restores the embedded header handler after reinitialization", async () => {
     window.overrideIsWithinIframe = true;
     PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader = async () => {};
 
-    expect(await runEmbeddedHeaderHandler()).toBeUndefined();
+    expect(
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
+    ).toBeUndefined();
 
     resetPluginSlots();
 
-    expect(await runEmbeddedHeaderHandler()).toEqual({
+    expect(
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
+    ).toEqual({
       headers: { "X-Metabase-Embedded": "true" },
     });
   });
