@@ -42,6 +42,7 @@
   do-before-commit
   do-after-commit
   in-transaction?
+  quartz-data-source
   quoting-style
   unique-identifier
   transaction-state
@@ -72,6 +73,7 @@
   spec]
  [metabase.app-db.query
   compile
+  current-timestamp-string
   isa
   join
   qualify

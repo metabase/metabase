@@ -155,14 +155,14 @@ export function RunListPage() {
       wrap="nowrap"
       data-testid="transforms-run-list"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
+      <Stack className={S.main} flex={1} px="3.5rem" pb="lg" gap={0}>
         <TransformsHeader showMetabotButton />
         {!data || isLoading || error != null ? (
           <Center h="100%">
             <LoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <Stack flex="0 1 auto" mih={0} gap="lg" pt="2.5rem">
+          <Stack flex="0 1 auto" mih={0} gap="xl" pt="2.5rem">
             {isMeterLocked && <LockedTransformsBanner />}
             <Group justify="space-between" align="center" wrap="nowrap">
               <RunFilterBar

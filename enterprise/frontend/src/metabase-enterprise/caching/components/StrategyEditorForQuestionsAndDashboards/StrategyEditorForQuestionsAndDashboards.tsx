@@ -243,7 +243,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
         >
           {confirmationModal}
           {shouldShowControls && (
-            <Flex gap="md" align="center">
+            <Flex gap="lg" align="center">
               <DebouncedSearchInput
                 value={searchQuery}
                 placeholder={t`Search by name or collection…`}
@@ -263,7 +263,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
             selectedRowId={targetRow?.id ?? null}
             onRowClick={navigateToRow}
             emptyState={
-              <Center p="xl">
+              <Center p="xxl">
                 <Text fw="bold" c="text-secondary">
                   {allRows.length === 0
                     ? t`No dashboards or questions have their own caching policies yet.`

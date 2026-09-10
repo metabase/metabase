@@ -249,37 +249,6 @@
                        (projections/notification-row
                         (redaction/hydrate-and-redact-notification notification))))
 
-(defn- create!
-  [{:keys [card_id condition schedule active] :as args}]
-  (let [condition      (m/remove-vals nil? condition)
-        card           (resolve-card card_id)
-        send-condition (or (:type condition) "has_result")]
-    (when (goal-conditions send-condition)
-      (check-goal-line! card))
-    (alert-response
-     (notification.api/create-notification!
-      {:payload_type  :notification/card
-       :active        (if (some? active) (boolean active) true)
-       :creator_id    api/*current-user-id*
-       :payload       {:card_id        (:id card)
-                       :send_condition (keyword send-condition)
-                       :send_once      (boolean (:send_once condition))}
-       :subscriptions (cron-subscription schedule)
-       :handlers      [(build-handler args nil)]}))))
-
-;;; ---------------------------------------------------- update ----------------------------------------------------
-
-(defn- fetch-alert
-  "Fetch the stored alert as the whole hydrated notification an update writes back. Notifications
-   have no entity_id column, so a non-numeric id is a teaching error rather than a lookup."
-  [id]
-  (when-not (int? id)
-    (common/throw-teaching-error "Alerts take a numeric id — they have no entity_id."))
-  (let [notification (t2/select-one :model/Notification :id id :payload_type :notification/card)]
-    (when-not (and notification (mi/can-read? notification))
-      (common/throw-not-found :alert id))
-    (notification.api/get-notification id)))
-
 (defn- delivery-targets
   "Where the alert's handlers deliver: recipient email addresses, plus slack channel names."
   [notification]
@@ -288,12 +257,13 @@
               (keep #(or (-> % :user :email) (-> % :details :value))))
         (:handlers notification)))
 
-(defn- notify-creator-of-delivery-change!
-  "The create-side confirmation tells the creator an alert exists, and recipient-diff emails go to
-   the people added or removed — nobody tells the creator when an existing alert's delivery
-   changes. In the UI that's fine: they made the change themselves. Through this tool the recipient
-   list may be the agent's choice, so when the updated delivery reaches anyone besides the caller,
-   send the caller the added-to-an-alert notice."
+(defn- notify-caller-of-delivery!
+  "Tell the caller where this alert now delivers, whenever that is anyone but themselves. The
+   notification API's own \"you were added\" mail deliberately skips the creator
+   ([[metabase.notification.api.notification/send-you-were-added-card-notification-email!]] removes
+   the current user), which is right in the UI — they picked the recipients themselves — but through
+   this tool the list may be the agent's choice, and the caller is the one person positioned to
+   notice an address they never picked. So both write paths end here."
   [notification]
   (when (channel.settings/email-configured?)
     (let [caller-email (:email @api/*current-user*)]
@@ -302,6 +272,46 @@
          (update notification :payload t2/hydrate :card)
          [caller-email]
          @api/*current-user*)))))
+
+(defn- create!
+  [{:keys [card_id condition schedule active] :as args}]
+  (let [condition      (m/remove-vals nil? condition)
+        card           (resolve-card card_id)
+        send-condition (or (:type condition) "has_result")]
+    (when (goal-conditions send-condition)
+      (check-goal-line! card))
+    (let [created (notification.api/create-notification!
+                   {:payload_type  :notification/card
+                    :active        (if (some? active) (boolean active) true)
+                    :creator_id    api/*current-user-id*
+                    :payload       {:card_id        (:id card)
+                                    :send_condition (keyword send-condition)
+                                    :send_once      (boolean (:send_once condition))}
+                    :subscriptions (cron-subscription schedule)
+                    :handlers      [(build-handler args nil)]})]
+      (notify-caller-of-delivery! created)
+      (alert-response created))))
+
+;;; ---------------------------------------------------- update ----------------------------------------------------
+
+(defn- fetch-alert
+  "Fetch the stored alert as the whole hydrated notification an update writes back. Notifications
+   have no entity_id column, so a non-numeric id is a teaching error rather than a lookup.
+
+   GHY-4217: unreadable, unwritable, and nonexistent all collapse to the same not-found. A
+   recipient can read an alert without being able to edit it, so answering that case with a 403
+   would tell targets apart from strangers — an existence oracle. Checking write here rather than
+   letting the API's own 403 surface later is what lets the update path report every *other* 403 —
+   a disallowed email domain, a channel template the caller can't write — with its real message.
+   `can-write?` mirrors `can-update?` for the bodies this tool sends: it never reassigns
+   `creator_id` and never moves the alert to another card."
+  [id]
+  (when-not (int? id)
+    (common/throw-teaching-error "Alerts take a numeric id — they have no entity_id."))
+  (let [notification (t2/select-one :model/Notification :id id :payload_type :notification/card)]
+    (when-not (and notification (mi/can-read? notification) (mi/can-write? notification))
+      (common/throw-not-found :alert id))
+    (notification.api/get-notification id)))
 
 (defn- update!
   [id {:keys [condition schedule active] :as args}]
@@ -322,22 +332,21 @@
       (common/throw-teaching-error
        (str "This alert delivers over more than one channel, and alert_write writes a single one — "
             "editing its delivery here would silently drop the others. Edit it in Metabase instead.")))
-    (let [updated (try
-                    (notification.api/update-notification!
-                     id
-                     (cond-> (assoc existing :payload payload)
-                       (some? active) (assoc :active (boolean active))
-                       schedule       (assoc :subscriptions (cron-subscription schedule))
-                       delivery?      (assoc :handlers [(build-handler args (first (:handlers existing)))])))
-                    ;; GHY-4217: a recipient can read the alert but not update it, so the API's 403
-                    ;; here would tell targets apart from the collapsed not-found the fetch gives
-                    ;; everyone else — an existence oracle. Rejections must be indistinguishable.
-                    (catch clojure.lang.ExceptionInfo e
-                      (if (= 403 (:status-code (ex-data e)))
-                        (common/throw-not-found "alert" id)
-                        (throw e))))]
+    ;; `:subscriptions` is a `:multi-row?` nested spec, so writing one back deletes the rest.
+    (when (and schedule (< 1 (count (:subscriptions existing))))
+      (common/throw-teaching-error
+       (str "This alert runs on more than one schedule, and alert_write writes a single one — "
+            "changing its schedule here would silently drop the others. Edit it in Metabase instead.")))
+    ;; The permission rejection [[fetch-alert]] has to hide is already spent; any 403 from here on
+    ;; is about the edit itself, and says so.
+    (let [updated (notification.api/update-notification!
+                   id
+                   (cond-> (assoc existing :payload payload)
+                     (some? active) (assoc :active (boolean active))
+                     schedule       (assoc :subscriptions (cron-subscription schedule))
+                     delivery?      (assoc :handlers [(build-handler args (first (:handlers existing)))])))]
       (when delivery?
-        (notify-creator-of-delivery-change! updated))
+        (notify-caller-of-delivery! updated))
       (alert-response updated))))
 
 ;;; ----------------------------------------------------- tool -----------------------------------------------------
@@ -359,7 +368,8 @@
   "The reason [[check-query-execute-scope!]] should refuse `updates` with, or nil when the update
    commits the alert to nothing it wasn't already committed to. Every field that newly puts the
    question in front of the scheduler counts, not just the delivery target: resuming a paused alert
-   restarts the sends, and a new schedule changes how often they happen. Pausing (`active: false`)
+   restarts the sends, a new schedule changes how often they happen, and dropping `send_once` turns
+   a single run into an unbounded series. Pausing (`active: false`)
    is deliberately absent — a kill switch must never need more scope than the thing it kills. The
    alert's stored state is not consulted, so `active: true` on an already-running alert is refused
    too: telling that no-op from a real resume would take a read the token may not be entitled to."
@@ -372,7 +382,14 @@
     "Resuming a paused alert"
 
     (contains? updates :schedule)
-    "Changing an alert's schedule"))
+    "Changing an alert's schedule"
+
+    ;; `send_once` archives the alert after its first send, so clearing it turns one scheduled run
+    ;; into an unbounded series — the same commitment a new schedule makes. Only an explicit
+    ;; `false` counts: nested nulls survive the boundary's stripping, so `send_once: null` is an
+    ;; omission.
+    (false? (:send_once (:condition updates)))
+    "Removing an alert's send-once limit"))
 
 (def ^:private alert-write-args-schema
   [:map {:closed true}
@@ -408,8 +425,8 @@
   \"#data-team\" (recipients don't apply). Passing any of channel, slack_channel, or recipients on update replaces the
   alert's delivery; omit them all to leave it alone. active: false pauses an alert and true resumes it — alerts have no
   archived state, and this tool cannot delete one. An alert's question is fixed at creation. Creating an alert, changing
-  its delivery or its schedule, or resuming a paused one additionally requires the agent:query:run scope — the alert
-  runs the question and delivers its results. Pausing one never does. Alerts are for saved questions; use subscription_write to schedule a whole dashboard."
+  its delivery or its schedule, resuming a paused one, or clearing send_once additionally requires the agent:query:run
+  scope — the alert runs the question and delivers its results. Pausing one never does. Alerts are for saved questions; use subscription_write to schedule a whole dashboard."
   {:name         "alert_write"
    :scope        metabot.scope/agent-delivery-write
    :annotations  {:readOnlyHint false :destructiveHint false}

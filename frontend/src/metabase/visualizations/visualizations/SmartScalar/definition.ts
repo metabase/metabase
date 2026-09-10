@@ -67,6 +67,14 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     inline: true,
     getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
   },
+  "scalar.show_comparison_value": {
+    getSection: () => t`Display`,
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+    title: t`Show comparison value`,
+    widget: "toggle",
+    inline: true,
+    getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.show_comparison_value"],
+  },
   ...columnSettings({
     getSection: () => t`Display`,
     getColumns: (
@@ -103,6 +111,8 @@ export const SMART_SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   identifier: "smartscalar",
   iconName: "smartscalar",
   canSavePng: true,
+  noHeader: true,
+  noLoadingHeader: true,
 
   minSize: getMinSize("smartscalar"),
   defaultSize: getDefaultSize("smartscalar"),

@@ -16,7 +16,7 @@ export const StorageSetupStatusView = ({
   title,
   description,
 }: StorageSetupStatusViewProps) => (
-  <Stack pt="40" align="center" gap="lg">
+  <Stack pt="40" align="center" gap="xl">
     <Box h={96} pos="relative" w={96}>
       <Box component={databaseAdd} />
 

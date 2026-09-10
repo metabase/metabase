@@ -36,9 +36,8 @@ export function ExtraEditButtonsMenu() {
       </Popover.Target>
       <Popover.Dropdown>
         <Stack>
-          <Box px="md" py="sm">
+          <Box px="lg" py="sm">
             <Switch
-              size="sm"
               checked={dashboard?.width === "full"}
               onChange={handleToggleWidth}
               label={t`Full width`}

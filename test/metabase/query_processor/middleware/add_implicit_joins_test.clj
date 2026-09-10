@@ -18,8 +18,11 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel fk-field-infos->joins-test
   (is (=? [{:lib/type    :mbql/join

@@ -25,7 +25,7 @@ export function EmbeddingThemeCard({
     >
       <EmbeddingThemeCardPreview theme={theme.settings} />
 
-      <Flex align="center" justify="space-between" px="md" py="sm">
+      <Flex align="center" justify="space-between" px="lg" py="sm">
         <Text fz="lg" truncate="end" title={theme.name}>
           {theme.name}
         </Text>
