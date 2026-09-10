@@ -28,7 +28,7 @@ Run as a JAR, using Docker, or on [Metabase Cloud](https://store.metabase.com/ch
 
 Once installed, set up your Metabase and connect to your data.
 
-### [Getting started](https://www.metabase.com/learn/metabase-basics/getting-started/index)
+### [Getting started](https://www.metabase.com/learn/metabase-basics/getting-started)
 
 With your data connected, get started asking questions, creating dashboards, and sharing your work.
 
@@ -329,8 +329,8 @@ Contribute to the Metabase open source project!
 
 Data jargon explained.
 
-### [Metabase Experts](https://www.metabase.com/partners/)
+### [Metabase Experts](https://www.metabase.com/partners)
 
-If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners).
 
 <!-- bump 2 -->

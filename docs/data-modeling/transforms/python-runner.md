@@ -119,7 +119,7 @@ Below are example configurations for different scenarios.
 
 ### Self-hosted storage with MinIO
 
-[MinIO](https://min.io/) is an S3-compatible server you can run yourself, which makes it a common pick for self-hosted Metabase. This Compose file runs Metabase, the Python runner, MinIO, and a short-lived container that creates the bucket Metabase will use — neither MinIO nor Metabase creates that bucket for you.
+[MinIO](https://www.min.io/) is an S3-compatible server you can run yourself, which makes it a common pick for self-hosted Metabase. This Compose file runs Metabase, the Python runner, MinIO, and a short-lived container that creates the bucket Metabase will use — neither MinIO nor Metabase creates that bucket for you.
 
 ```yml
 name: metabase-python-runner

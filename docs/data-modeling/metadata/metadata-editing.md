@@ -222,4 +222,4 @@ See [Working with JSON](./json-unfolding.md).
 ## Further reading
 
 - [Keeping your analytics organized](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/same-page)
-- [Data modeling tutorials](https://www.metabase.com/learn/metabase-basics/getting-started/models)
+- [Data modeling tutorials](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/models)

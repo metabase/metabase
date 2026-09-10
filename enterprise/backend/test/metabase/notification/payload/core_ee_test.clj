@@ -1,4 +1,7 @@
-(ns metabase.notification.payload.core-test
+(ns metabase.notification.payload.core-ee-test
+  "EE-only tests for `metabase.notification.payload.core`. Kept in its own ns to avoid
+  colliding with the OSS `metabase.notification.payload.core-test` ns, which lives under
+  `test/` and would otherwise shadow this file on the classpath."
   (:require
    [clojure.test :refer :all]
    [metabase.notification.payload.core :as notification.payload]

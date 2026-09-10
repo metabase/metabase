@@ -182,6 +182,6 @@ With records that include integer entity keys, you can also configure text field
 
 ## Further Reading
 
-- [Exploring data with Metabase's data browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
+- [Data reference](../exploration-and-organization/data-model-reference.md).
 - [The Table Metadata page: editing metadata](./metadata-editing.md).
 - [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters).

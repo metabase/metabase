@@ -18,7 +18,7 @@ Some Metabase functionality requires write access to the database. Depending on 
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
-- Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-landscape) that need read-only access to the analytics tables in your database.
+- Use the same `analytics` role for other BI tools in your data stack that need read-only access to the analytics tables in your database.
 - Revoke the write access for `metabase_model_persistence` without affecting the write access for `metabase_actions`.
 
 For operations that require write access, we recommend using separate [writable connections](./writable-connection.md).

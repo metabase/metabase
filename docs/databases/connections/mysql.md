@@ -12,7 +12,7 @@ To add a database connection, click the **grid** icon in the top right, and navi
 
 ## Supported versions
 
-Metabase supports the oldest supported version through the latest stable version. See [MySQL end-of-life dates](https://endoflife.software/applications/databases/mysql).
+Metabase supports the oldest supported version through the latest stable version. See [MySQL end-of-life dates](https://endoflife.date/mysql).
 
 ## Edit connection details
 

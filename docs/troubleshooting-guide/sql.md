@@ -33,4 +33,4 @@ If you can’t solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community](https://discourse.metabase.com/).
 - Search for [known bugs or limitations](./known-issues.md).
-- Hire a [Metabase Expert](https://www.metabase.com/partners/){:target="\_blank"}.
+- Hire a [Metabase Expert](https://www.metabase.com/partners){:target="\_blank"}.
