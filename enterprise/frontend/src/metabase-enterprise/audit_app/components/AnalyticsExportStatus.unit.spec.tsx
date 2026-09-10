@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { openSaveDialog } from "metabase/utils/dom";
+import { defer } from "metabase/utils/promise";
 
 import { AnalyticsExportStatus } from "./AnalyticsExportStatus";
 import { CollectionExportAnalytics } from "./CollectionExportAnalytics";
@@ -14,14 +15,18 @@ jest.mock("metabase/utils/dom", () => ({
 
 const EXPORT_URL = "path:/api/ee/audit-app/analytics-dev/export";
 
-const setup = () => {
-  renderWithProviders(
+function ExportControls() {
+  return (
     <>
       <CollectionExportAnalytics />
       <AnalyticsExportStatus />
-    </>,
+    </>
   );
-};
+}
+
+function setup() {
+  return renderWithProviders(<ExportControls />);
+}
 
 describe("AnalyticsExportStatus", () => {
   it("renders nothing before an export starts", () => {
@@ -30,57 +35,61 @@ describe("AnalyticsExportStatus", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("tracks an export through loading, success, and dismissal", async () => {
-    let resolveExport = (_response: unknown) => {};
-    fetchMock.post(
-      EXPORT_URL,
-      () =>
-        new Promise<unknown>((resolve) => {
-          resolveExport = resolve;
-        }),
-    );
-
+  it("disables the export button while an export is in progress", async () => {
+    const request = defer<string>();
+    fetchMock.post(EXPORT_URL, () => request.promise);
     setup();
 
-    await userEvent.click(screen.getByLabelText("Export analytics"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Export analytics" }),
+    );
 
     expect(
       await screen.findByText("Exporting analytics content…"),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Export analytics")).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Export analytics" }),
+    ).toBeDisabled();
 
-    resolveExport({
-      status: 200,
+    request.resolve("tarball");
+
+    expect(
+      await screen.findByText("Analytics content exported"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Export analytics" }),
+    ).toBeEnabled();
+  });
+
+  it("downloads the export using the filename from the response", async () => {
+    fetchMock.post(EXPORT_URL, {
       headers: {
         "Content-Disposition": 'attachment; filename="analytics.tar.gz"',
       },
       body: "tarball",
     });
+    setup();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Export analytics" }),
+    );
 
     expect(
       await screen.findByText("Analytics content exported"),
     ).toBeInTheDocument();
-    // The response body is a whatwg-fetch polyfill Blob in jest,
-    // so match on the parsed filename only.
     expect(openSaveDialog).toHaveBeenCalledWith(
       "analytics.tar.gz",
       expect.anything(),
     );
-    expect(screen.getByLabelText("Export analytics")).toBeEnabled();
-
-    await userEvent.click(screen.getByLabelText("Dismiss"));
-
-    await waitFor(() => {
-      expect(screen.queryByRole("status")).not.toBeInTheDocument();
-    });
   });
 
-  it("shows the error state when the export fails", async () => {
+  it("shows an error when the export fails", async () => {
     fetchMock.post(EXPORT_URL, 500);
-
     setup();
 
-    await userEvent.click(screen.getByLabelText("Export analytics"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Export analytics" }),
+    );
 
     expect(
       await screen.findByText("Error exporting analytics"),
@@ -88,58 +97,59 @@ describe("AnalyticsExportStatus", () => {
     expect(screen.getByText("Export failed")).toBeInTheDocument();
   });
 
-  it("keeps an in-flight export across navigation and allows another after dismissal", async () => {
-    let resolveExport = (_response: unknown) => {};
-    fetchMock.post(
-      EXPORT_URL,
-      () =>
-        new Promise<unknown>((resolve) => {
-          resolveExport = resolve;
-        }),
-    );
+  it("preserves an in-progress export when the controls remount", async () => {
+    const request = defer<string>();
+    fetchMock.post(EXPORT_URL, () => request.promise);
+    const { rerender } = setup();
 
-    const content = (
-      <>
-        <CollectionExportAnalytics />
-        <AnalyticsExportStatus />
-      </>
+    await userEvent.click(
+      screen.getByRole("button", { name: "Export analytics" }),
     );
-    const { rerender } = renderWithProviders(content);
-    await userEvent.click(screen.getByLabelText("Export analytics"));
     expect(
       await screen.findByText("Exporting analytics content…"),
     ).toBeInTheDocument();
 
     rerender(<></>);
-    rerender(content);
+    rerender(<ExportControls />);
 
-    expect(screen.getByLabelText("Export analytics")).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Export analytics" }),
+    ).toBeDisabled();
     expect(
       screen.getByText("Exporting analytics content…"),
     ).toBeInTheDocument();
     expect(fetchMock.callHistory.calls(EXPORT_URL)).toHaveLength(1);
 
-    resolveExport({ status: 200, body: "tarball" });
+    request.resolve("tarball");
+
+    expect(
+      await screen.findByText("Analytics content exported"),
+    ).toBeInTheDocument();
+  });
+
+  it("allows another export after dismissing the result", async () => {
+    fetchMock.post(EXPORT_URL, { body: "tarball" });
+    setup();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Export analytics" }),
+    );
     expect(
       await screen.findByText("Analytics content exported"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText("Dismiss"));
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     await waitFor(() => {
-      expect(
-        screen.queryByText("Analytics content exported"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByLabelText("Export analytics"));
-    expect(
-      await screen.findByText("Exporting analytics content…"),
-    ).toBeInTheDocument();
-    expect(fetchMock.callHistory.calls(EXPORT_URL)).toHaveLength(2);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Export analytics" }),
+    );
 
-    resolveExport({ status: 200, body: "second tarball" });
     expect(
       await screen.findByText("Analytics content exported"),
     ).toBeInTheDocument();
+    expect(fetchMock.callHistory.calls(EXPORT_URL)).toHaveLength(2);
   });
 });
