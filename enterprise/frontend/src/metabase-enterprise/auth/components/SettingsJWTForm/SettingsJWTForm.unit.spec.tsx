@@ -219,7 +219,9 @@ describe("SettingsJWTForm", () => {
     expect(await screen.findByLabelText("New secret key")).toHaveValue(
       GENERATED_TOKEN,
     );
-    await userEvent.click(await screen.findByRole("button", { name: "Create" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create" }),
+    );
   };
 
   it("saves the server settings, turns automatic on and enables the other cards", async () => {
