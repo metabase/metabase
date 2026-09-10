@@ -1,10 +1,10 @@
-import type { EChartsType } from "echarts/core";
 import { useCallback, useMemo, useRef } from "react";
 
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
+import type { EChartsType } from "metabase/viz-core";
 import {
   extractRemappings,
   getSankeyChartModel,

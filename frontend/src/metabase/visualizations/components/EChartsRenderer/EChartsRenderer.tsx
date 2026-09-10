@@ -1,18 +1,16 @@
 import { mergeRefs } from "@mantine/hooks";
-import type { EChartsCoreOption, EChartsType } from "echarts/core";
-import { init } from "echarts/core";
 import { forwardRef, useEffect, useRef } from "react";
 import { useMount, useUnmount, useUpdateEffect } from "react-use";
 
-import {
-  type EChartsEventHandler,
-  type ZREventHandler,
-  registerEChartsModules,
+import type {
+  EChartsCoreOption,
+  EChartsEventHandler,
+  EChartsType,
+  ZREventHandler,
 } from "metabase/viz-core";
+import { init } from "metabase/viz-core";
 
 import { EChartsRendererRoot } from "./EChartsRenderer.styled";
-
-registerEChartsModules();
 
 export interface EChartsRendererProps {
   option: EChartsCoreOption;

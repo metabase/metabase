@@ -1,11 +1,11 @@
-import type { EChartsType } from "echarts/core";
-import type { TooltipOption } from "echarts/types/dist/shared";
 import _ from "underscore";
 
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import {
   type ChartPointer,
   EChartsTooltip,
+  type EChartsType,
+  type TooltipOption,
   type TreemapInlineValueIds,
   type TreemapNode,
   type TreemapTree,

@@ -1,5 +1,3 @@
-import type { EChartsOption } from "echarts";
-import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
@@ -18,10 +16,12 @@ import {
   type BaseCartesianChartModel,
   type ChartDataset,
   type EChartsEventHandler,
+  type EChartsOption,
   type EChartsSeriesBrushEndEvent,
   type EChartsSeriesBrushEvent,
   type EChartsSeriesBrushSelectedEvent,
   type EChartsSeriesMouseEvent,
+  type EChartsType,
   GOAL_LINE_SERIES_ID,
   INDEX_KEY,
   type RenderingContext,

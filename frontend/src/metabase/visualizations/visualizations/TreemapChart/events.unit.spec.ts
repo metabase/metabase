@@ -1,7 +1,6 @@
-import type { EChartsType } from "echarts/core";
-
 import {
   type ComputedVisualizationSettings,
+  type EChartsType,
   TREEMAP_HOVER_OVERLAY_FILL,
   type TreemapChartColumns,
   type TreemapRect,

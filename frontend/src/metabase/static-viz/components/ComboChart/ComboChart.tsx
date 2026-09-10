@@ -1,5 +1,4 @@
 import { Group } from "@visx/group";
-import { init } from "echarts/core";
 import { t } from "ttag";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
@@ -11,7 +10,7 @@ import {
   getCartesianChartOption,
   getChartLayout,
   getLegendItems,
-  registerEChartsModules,
+  init,
 } from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
@@ -26,8 +25,6 @@ const DATA_OUT_OF_RANGE_RECT = {
   height: 40,
   width: 210,
 };
-
-registerEChartsModules();
 
 export const ComboChart = ({
   rawSeries,

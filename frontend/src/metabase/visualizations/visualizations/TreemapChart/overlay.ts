@@ -1,10 +1,11 @@
-import { type EChartsType, graphic } from "echarts/core";
 import type { MutableRefObject } from "react";
 
 import {
+  type EChartsType,
   HOVER_OVERLAY_Z,
   TREEMAP_HOVER_OVERLAY_FILL,
   getTreemapNodeRectById,
+  graphic,
 } from "metabase/viz-core";
 
 export type TreemapHoverOverlay = InstanceType<typeof graphic.Rect>;
