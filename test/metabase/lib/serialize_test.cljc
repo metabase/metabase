@@ -30,6 +30,30 @@
     (testing (str schema " via " f)
       (is (= m (f schema (assoc m :a/b 1)))))))
 
+(deftest ^:parallel strip-undeclared-keys-test
+  (testing "a key a closed map does not declare is dropped on the way in, the way the request decoder drops it"
+    (is (= {:type :text, :name "t", :display-name "T", :id "id1"}
+           (lib.serialize/prepare-after-deserialization
+            ::lib.schema.template-tag/template-tag
+            {:type :text, :name "t", :display-name "T", :id "id1", :bogus 1})))
+    (testing "wherever it is in a query"
+      (is (= {:lib/type :mbql/query
+              :database 1
+              :stages   [{:lib/type      :mbql.stage/native
+                          :native        "SELECT 1"
+                          :template-tags [{:type :text, :name "t", :display-name "T", :id "id1"}]}]}
+             (lib.serialize/prepare-after-deserialization
+              {:lib/type :mbql/query
+               :database 1
+               :stages   [{:lib/type      :mbql.stage/native
+                           :native        "SELECT 1"
+                           :template-tags [{:type :text, :name "t", :display-name "T", :id "id1", :bogus 1}]}]}))))
+    (testing "but not on the way out: serialization does not judge what it did not produce"
+      (is (= {:type :text, :name "t", :display-name "T", :id "id1", :bogus 1}
+             (lib.serialize/prepare-for-serialization
+              ::lib.schema.template-tag/template-tag
+              {:type :text, :name "t", :display-name "T", :id "id1", :bogus 1}))))))
+
 (deftest ^:parallel remove-info-test
   (is (= {:lib/type :mbql/query
           :stages   [{:lib/type     :mbql.stage/mbql
