@@ -12,6 +12,7 @@
    [metabase.query-processor.middleware.enterprise :as qp.enterprise]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
@@ -24,7 +25,12 @@
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
     (f (f query rff)) -> (f query rff)"
-  [#'qp.enterprise/swap-destination-db-middleware
+  ;; `capture-execution-context-middleware` is first so it runs INNERMOST, inside the `binding`s that the two EE
+  ;; middlewares establish -- same ordering rule as [[metabase.query-processor.execute/middleware]]; see its docstring
+  ;; for what it captures.
+  [#'qp.process-userland-query/capture-execution-context-middleware
+   #'qp.enterprise/swap-destination-db-middleware
+   #'qp.enterprise/apply-impersonation-postprocessing-middleware
    #'qp.perms/check-query-action-permissions])
 
 (defn- apply-middleware [qp middleware-fns]

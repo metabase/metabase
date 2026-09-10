@@ -119,6 +119,7 @@
                     :model/DashboardCard
                     :model/Database
                     :model/Field
+                    :model/QueryExecution
                     :model/Table
                     :model/User}}
 
