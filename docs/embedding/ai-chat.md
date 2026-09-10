@@ -13,7 +13,7 @@ redirect_from:
 
 You can embed an AI chat in your app, so people can ask questions of their data in natural language. Embedded chat is a focused version of [Metabot](../ai/metabot.md): it builds a question in the query builder and charts the answer.
 
-To build that question, embedded chat first searches your Metabase for the best thing to build on: a [metric](../data-modeling/metrics.md), a [model](../data-modeling/models.md), a saved question, or a table (tables drop out once you [scope the chat to a collection](#set-up-ai-chat-in-metabase)). Then it writes a query against whatever it picked. So embedded chat does look through your saved content, but as raw material for a new question, not as results to hand back. What people get back is always a new question they can drill into, and save if you [turn saving on](#let-people-save-questions-metabot-creates).
+To build that question, embedded chat first searches your Metabase for the best thing to build on: a [metric](../data-modeling/semantic-layer/metrics.md), a [model](../data-modeling/models/models.md), a saved question, or a table (tables drop out once you [scope the chat to a collection](#set-up-ai-chat-in-metabase)). Then it writes a query against whatever it picked. So embedded chat does look through your saved content, but as raw material for a new question, not as results to hand back. What people get back is always a new question they can drill into, and save if you [turn saving on](#let-people-save-questions-metabot-creates).
 
 Embedded chat won't write SQL, build or edit dashboards, or create metrics and models — it builds on the ones you already have. It also won't work as a search box for finding existing content. For those, chat will suggest doing the work in Metabase itself.
 

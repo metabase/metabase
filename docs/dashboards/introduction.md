@@ -356,7 +356,7 @@ There is one important limitation with the `fullscreen` option: for security rea
 
 ## Dashboard version history
 
-For [questions](../questions/start.md), dashboards, and [models](../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
+For [questions](../questions/start.md), dashboards, and [models](../data-modeling/models/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
 See [History](../exploration-and-organization/history.md).
 

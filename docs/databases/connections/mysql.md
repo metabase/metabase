@@ -64,7 +64,7 @@ See our [guide to SSH tunneling](../ssh-tunnel.md).
 
 For MySQL databases, Metabase can unfold JSON columns into component fields to yield a table where each JSON key becomes a column. JSON unfolding is on by default, but you can turn off JSON unfolding if performance is slow.
 
-If you turn on JSON unfolding, you can also toggle the unfolding for individual columns in [table metadata](../../data-modeling/metadata-editing.md#unfold-json).
+If you turn on JSON unfolding, you can also toggle the unfolding for individual columns in [table metadata](../../data-modeling/metadata/metadata-editing.md#unfold-json).
 
 ### Additional JDBC connection string options
 
@@ -193,15 +193,15 @@ Set up an additional connection used for write operations. See [Writable connect
 
 ## Model features
 
-Choose whether to enable features related to [Metabase models](../../data-modeling/models.md). These features will often require that the database user account, the one you use to connect to your database, has both read and write privileges.
+Choose whether to enable features related to [Metabase models](../../data-modeling/models/models.md). These features will often require that the database user account, the one you use to connect to your database, has both read and write privileges.
 
 ### Model actions
 
-Turn this setting on to allow [actions](../../actions/introduction.md) from models created from this data to be run. Actions can read, write, and delete data. Your database user will need write permissions.
+Turn this setting on to allow [actions](../../data-modeling/models/actions/introduction.md) from models created from this data to be run. Actions can read, write, and delete data. Your database user will need write permissions.
 
 ### Model persistence
 
-We'll create tables with model data and refresh them on a schedule you define. To enable [model persistence](../../data-modeling/model-persistence.md), you need to grant this connection's credentials read and write permissions on a schema Metabase provides.
+We'll create tables with model data and refresh them on a schedule you define. To enable [model persistence](../../data-modeling/models/model-persistence.md), you need to grant this connection's credentials read and write permissions on a schema Metabase provides.
 
 ## Editable table data
 
@@ -225,6 +225,6 @@ See [Danger zone](../danger-zone.md).
 
 - [MariaDB](./mariadb.md)
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)
