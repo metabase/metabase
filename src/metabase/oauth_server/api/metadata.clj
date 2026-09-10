@@ -3,6 +3,7 @@
    Mounted under `/.well-known/`."
   (:require
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.system.core :as system]
@@ -38,9 +39,6 @@
   (or (discovery-response)
       {:status 404 :body {:error "not_found"}}))
 
-;; One endpoint per MCP path (canonical, legacy and v2), kept in sync with [[metabase.mcp.paths/endpoint-paths]].
-;; Each advertises its own path as `:resource`, so a strict RFC 9728 client connecting via the legacy
-;; alias still sees a resource value matching the URL it hit.
 (def ^:private resource-metadata-response-schema
   [:map
    [:status [:= 200]]
@@ -51,16 +49,25 @@
            [:bearer_methods_supported [:sequential :string]]]]])
 
 (defn- protected-resource-metadata
-  "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource."
+  "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource.
+
+   The advertised scopes are derived from `resource-path` rather than passed in, so the resource and the
+   scope set it accepts cannot disagree. A client reads `:scopes_supported` here and requests exactly
+   those; advertising another path's set hands it a token that authorizes nothing on the resource it
+   asked about, with no in-product way to widen the grant afterwards."
   [resource-path]
   (let [site-url (system/site-url)]
     {:status  200
      :headers {"Content-Type" "application/json"}
      :body    {:resource                  (str site-url resource-path)
                :authorization_servers     [site-url]
-               :scopes_supported          (vec (oauth-server/all-agent-scopes))
+               :scopes_supported          (vec (oauth-server/mcp-resource-scopes resource-path))
                :bearer_methods_supported  ["header"]}}))
 
+;; One endpoint per MCP path, kept in sync with [[metabase.mcp.paths/endpoint-paths]]. Each advertises its own
+;; path as `:resource`, so a strict RFC 9728 client connecting via an alias still sees a resource value matching
+;; the URL it hit — and [[metabase.oauth-server.core/narrow-scope-to-resource]] recognizes all of them, so the
+;; scope narrowing applies whichever path the client came in on.
 (api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
@@ -75,15 +82,15 @@
 
 (api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp/v2"
   :- resource-metadata-response-schema
-  "Returns OAuth Protected Resource Metadata (RFC 9728) for the `/api/metabase-mcp/v2` MCP path."
+  "Returns OAuth Protected Resource Metadata (RFC 9728) for the `/v2` MCP alias."
   []
   (protected-resource-metadata "/api/metabase-mcp/v2"))
 
 ;; Some clients probe the bare resource path instead of the resource-specific one; serve metadata here so the
 ;; request doesn't fall through to the SPA's HTML catch-all and trip a `JSON.parse` error (BOT-1617). Advertise the
-;; canonical `/api/metabase-mcp` resource, matching the URL clients are now told to use.
+;; canonical path, matching the URL clients are told to use.
 (api.macros/defendpoint :get "/oauth-protected-resource"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
   []
-  (protected-resource-metadata "/api/metabase-mcp"))
+  (protected-resource-metadata (mcp/mcp-canonical-path)))
