@@ -25,6 +25,7 @@ import { connect, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
+import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
@@ -60,8 +61,12 @@ function DatabaseEditAppInner({
     RETURN_TO_SETUP_GUIDE_PARAM,
   );
   const fromEmbeddingSetupGuide = returnToSetupGuide != null;
+  // Checked the way `useSetupGuideReturnPath` checks the same param: the value
+  // comes from the URL and is navigated to.
   const setupGuideOrigin =
-    returnToSetupGuide && returnToSetupGuide !== "true"
+    returnToSetupGuide &&
+    returnToSetupGuide !== "true" &&
+    isSameOrSiteUrlOrigin(returnToSetupGuide)
       ? returnToSetupGuide
       : undefined;
 
