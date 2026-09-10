@@ -112,6 +112,12 @@ databaseChangeLog:
                   remarks: Caller classified from the raw User-Agent (metabase-cli, curl, postman, python-requests, r, node, or other). Non-PII, always recorded — distinct from the raw, PII-gated user_agent column.
                   constraints:
                     nullable: false
+              - column:
+                  name: embedding_client
+                  type: varchar(255)
+                  remarks: Raw X-Metabase-Client header value, when present. Non-PII, same status as view_log/query_execution.embedding_client. Supplementary to client_name (the primary classification axis) — almost never set on API-key traffic, since the SDK/embed.js clients that send it authenticate via JWT/SSO, not API keys.
+                  constraints:
+                    nullable: true
       rollback:
         - dropTable:
             tableName: api_key_usage_log
