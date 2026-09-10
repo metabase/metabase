@@ -530,17 +530,17 @@
 
 (deftest ^:parallel scope-gating-test
   (testing "GHY-4146: a bearer token without the write scope can't call the tool at all"
-    (is (= "Insufficient scope to call tool: metric_write"
-           (tool-error (call-tool! :crowberto #{"agent:content:read"} "metric_write"
-                                   {:method "update" :id 13371337 :name "x"})))))
+    (is (re-find #"^Insufficient scope to call tool: metric_write\."
+                 (tool-error (call-tool! :crowberto #{"agent:content:read"} "metric_write"
+                                         {:method "update" :id 13371337 :name "x"})))))
   (testing "GHY-4146: the one write scope covers update as well as create — there is no second method-level gate"
     (is (re-find #"not found"
                  (tool-error (call-tool! :crowberto write-scope "metric_write"
                                          {:method "update" :id 13371337 :name "x"})))))
   (testing "GHY-4146: v1's create/update scopes do not reach the v2 tool, which gates on agent:content:write"
-    (is (= "Insufficient scope to call tool: metric_write"
-           (tool-error (call-tool! :crowberto #{"agent:metric:create" "agent:metric:update"} "metric_write"
-                                   {:method "update" :id 13371337 :name "x"})))))
+    (is (re-find #"^Insufficient scope to call tool: metric_write\."
+                 (tool-error (call-tool! :crowberto #{"agent:metric:create" "agent:metric:update"} "metric_write"
+                                         {:method "update" :id 13371337 :name "x"})))))
   ;; GHY-4225: the metabot permission wildcards no longer bear on v2. In-app callers reach
   ;; v2 through cookie sessions bound to the unrestricted sentinel, and OAuth tokens draw
   ;; their scopes from the tool registry (`registered-scopes`), not from

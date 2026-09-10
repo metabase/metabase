@@ -233,6 +233,24 @@
   (when-let [explanation ((mr/explainer schema) arguments)]
     (str "Invalid arguments: " (common/humanize-detail (me/humanize explanation)))))
 
+(defn- insufficient-scope-message
+  "The scope-denial error text. Names the scope the tool requires and the ones the token holds — both are
+   in hand here, and a message that names only the tool leaves the caller with nothing to act on, against
+   the server's own `initialize` instructions promising that a failed call always names its fix.
+
+   `required` is a scope string or a set of alternatives ([[metabase.mcp.scope/matches?]] accepts either);
+   `token-scopes` may carry the `::api.scope/unrestricted` keyword alongside its strings, which is not a
+   scope a caller can request, so only strings are listed back."
+  [tool-name required token-scopes]
+  (let [held  (sort (filter string? token-scopes))
+        needs (if (set? required)
+                (str "one of " (str/join ", " (sort required)))
+                (str required))]
+    (str "Insufficient scope to call tool: " tool-name ". Requires " needs "; "
+         (if (seq held)
+           (str "your token holds " (str/join ", " held) ".")
+           "your token holds no scopes."))))
+
 (defn- dispatch-tool-call
   [token-scopes session-id tool-name arguments options]
   (let [tool    (get @tools* tool-name)
@@ -249,7 +267,8 @@
       {:error {:code common/error-code-invalid-params :message "Invalid arguments: expected a JSON object."}}
 
       (not (mcp.scope/matches? token-scopes (:scope tool)))
-      {:error {:code common/error-code-invalid-request :message (str "Insufficient scope to call tool: " tool-name)}}
+      {:error {:code common/error-code-invalid-request
+               :message (insufficient-scope-message tool-name (:scope tool) token-scopes)}}
 
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
       ;; scope/disabled cases it stays listed for capable clients, so name what's missing.

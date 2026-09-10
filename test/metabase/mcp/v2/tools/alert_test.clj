@@ -836,14 +836,14 @@
 (deftest ^:parallel scope-gating-test
   (let [args (wire {:method "update" :id 13371337 :active false})]
     (testing "GHY-4155: a bearer token without the alert scope is refused before dispatch"
-      (is (= "Insufficient scope to call tool: alert_write"
-             (tool-error (call-tool! :crowberto #{"agent:content:read"} args)))))
+      (is (re-find #"^Insufficient scope to call tool: alert_write\."
+                   (tool-error (call-tool! :crowberto #{"agent:content:read"} args)))))
     (testing "GHY-4155: the write scope covers both methods — there is no create-only alert token"
       (is (re-find #"not found"
                    (tool-error (call-tool! :crowberto #{metabot.scope/agent-delivery-write} args)))))
     (testing "GHY-4155: v1's agent:alert:create does not reach this tool — it gates the v1 tool only"
-      (is (= "Insufficient scope to call tool: alert_write"
-             (tool-error (call-tool! :crowberto #{metabot.scope/agent-alert-create} args)))))
+      (is (re-find #"^Insufficient scope to call tool: alert_write\."
+                   (tool-error (call-tool! :crowberto #{metabot.scope/agent-alert-create} args)))))
     ;; GHY-4225: the metabot permission wildcards no longer bear on v2. In-app callers reach
     ;; v2 through cookie sessions bound to the unrestricted sentinel, and OAuth tokens draw
     ;; their scopes from the tool registry (`registered-scopes`), not from

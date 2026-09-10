@@ -351,8 +351,8 @@
 (deftest scope-gating-test
   (mt/with-model-cleanup [:model/Collection]
     (testing "a bearer token without the write scope cannot call the tool at all"
-      (is (= "Insufficient scope to call tool: collection_write"
-             (tool-error (call-tool! :crowberto #{"agent:content:read"} {:method "create" :name "x"})))))
+      (is (re-find #"^Insufficient scope to call tool: collection_write\."
+                   (tool-error (call-tool! :crowberto #{"agent:content:read"} {:method "create" :name "x"})))))
     (testing "the write scope creates"
       (is (int? (:id (tool-result (call-tool! :crowberto #{"agent:content:write"}
                                               {:method "create" :name "Scoped create"}))))))
@@ -363,9 +363,9 @@
                                            {:method "update" :id 13371337 :name "x"})))))
     (testing "the v1 create scope does not reach this tool — it gates POST /api/agent/v1/collection,
               and collection_write is not that endpoint"
-      (is (= "Insufficient scope to call tool: collection_write"
-             (tool-error (call-tool! :crowberto #{"agent:collection:create"}
-                                     {:method "create" :name "x"})))))
+      (is (re-find #"^Insufficient scope to call tool: collection_write\."
+                   (tool-error (call-tool! :crowberto #{"agent:collection:create"}
+                                           {:method "create" :name "x"})))))
     ;; GHY-4225: the metabot permission wildcards no longer bear on v2 — in-app callers use
     ;; the unrestricted sentinel and OAuth tokens draw scopes from the tool registry.
     ))

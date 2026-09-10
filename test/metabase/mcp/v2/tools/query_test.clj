@@ -588,7 +588,7 @@
       (testing "GHY-4142: a token without the execute scope is denied before dispatch"
         ;; A scope denial is a JSON-RPC error, not `isError` tool content — nothing reaches the handler.
         (let [{:keys [error]} (registry/call-tool #{"agent:content:read"} sid "execute_query" {})]
-          (is (= "Insufficient scope to call tool: execute_query" (:message error)))))
+          (is (re-find #"^Insufficient scope to call tool: execute_query\." (:message error)))))
       (testing "GHY-4142: the identical call with the execute scope reaches the handler (positive control)"
         ;; It fails input validation — proof it got past the scope gate without minting anything.
         (is (str/starts-with? (error-text (registry/call-tool execute-scope sid "execute_query" {}))

@@ -525,8 +525,8 @@
           :let [args {:method "update" :id 13371337 :revision_message "x"}]]
     (testing tool
       (testing "GHY-4137: a bearer token without the write scope is refused before dispatch"
-        (is (= (str "Insufficient scope to call tool: " tool)
-               (tool-error (call-tool! :crowberto #{"agent:content:read"} tool args)))))
+        (is (re-find (re-pattern (str "^Insufficient scope to call tool: " tool "\\."))
+                     (tool-error (call-tool! :crowberto #{"agent:content:read"} tool args)))))
       (testing "GHY-4137: the exact scope passes the gate — the identical call reaches the id lookup"
         (is (re-find #"not found" (tool-error (call-tool! :crowberto #{scope} tool args)))))
       (testing "GHY-4137: the wildcard the metabot permission bucket grants passes too"

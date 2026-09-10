@@ -144,9 +144,9 @@
 (deftest scope-test
   (testing "GHY-4152: the tool requires agent:content:write"
     (mt/with-temp [:model/Card {card-id :id} {:type :question}]
-      (is (= "Insufficient scope to call tool: bookmark_content"
-             (tool-error (call-tool! :rasta #{metabot.scope/agent-content-read}
-                                     {:type "question" :id card-id :bookmarked true}))))
+      (is (re-find #"^Insufficient scope to call tool: bookmark_content\."
+                   (tool-error (call-tool! :rasta #{metabot.scope/agent-content-read}
+                                           {:type "question" :id card-id :bookmarked true}))))
       ;; Reachability is the point here — without agent:content:read the echo degrades to the
       ;; GHY-4227 ack, so the bookmark itself is what proves the call landed.
       (is (=? {:id card-id}

@@ -35,9 +35,11 @@
 (deftest ^:parallel call-tool-scope-check-test
   (testing "tools/call re-checks scope even for a tool that exists"
     (let [{:keys [error]} (registry/call-tool #{"agent:metadata:read"} nil "ping_v2" {})]
-      (is (= {:code common/error-code-invalid-request
-              :message "Insufficient scope to call tool: ping_v2"}
-             error)))))
+      (is (= common/error-code-invalid-request (:code error)))
+      (is (= (str "Insufficient scope to call tool: ping_v2. Requires "
+                  (:scope (get @@#'registry/tools* "ping_v2"))
+                  "; your token holds agent:metadata:read.")
+             (:message error))))))
 
 (deftest ^:parallel call-tool-success-test
   (testing "a valid call dispatches to the handler; top-level nils are stripped first"
@@ -140,7 +142,7 @@
           (is (= "ping_v2" (:tool-name r)))
           (is (= "error" (:status r)))
           (is (= common/error-code-invalid-request (:error-code r)))
-          (is (= "Insufficient scope to call tool: ping_v2" (:error-message r))))))
+          (is (str/starts-with? (:error-message r) "Insufficient scope to call tool: ping_v2.")))))
     (testing "unknown tool → status \"error\", method-not-found code"
       (let [records (capture-usage-records! #(registry/call-tool nil nil "does_not_exist" {}))]
         (is (= 1 (count records)))
@@ -354,6 +356,11 @@
             ;; `{}` suffices: the registry checks scope before it validates arguments, so a refusal
             ;; here can't be an argument error wearing a scope error's clothes.
             (let [{:keys [error]} (registry/call-tool #{"agent:content:read"} nil tool-name {})]
-              (is (= {:code common/error-code-invalid-request
-                      :message (str "Insufficient scope to call tool: " tool-name)}
-                     error)))))))))
+              (is (= common/error-code-invalid-request (:code error)))
+              (is (str/starts-with? (:message error)
+                                    (str "Insufficient scope to call tool: " tool-name ".")))
+              (testing "the message names the scope the tool wants and the ones the token holds —
+                        naming only the tool leaves the caller nothing to act on"
+                (is (str/includes? (:message error)
+                                   (str "Requires " (:scope (get @@#'registry/tools* tool-name)))))
+                (is (str/includes? (:message error) "your token holds agent:content:read."))))))))))

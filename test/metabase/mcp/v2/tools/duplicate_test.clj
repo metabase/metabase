@@ -505,9 +505,9 @@
 (deftest scope-test
   (testing "GHY-4151: the tool itself requires agent:content:write"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales"}]
-      (is (= "Insufficient scope to call tool: duplicate_content"
-             (tool-error (call-tool! :crowberto #{metabot.scope/agent-content-read}
-                                     {:type "dashboard" :id dash-id}))))))
+      (is (re-find #"^Insufficient scope to call tool: duplicate_content\."
+                   (tool-error (call-tool! :crowberto #{metabot.scope/agent-content-read}
+                                           {:type "dashboard" :id dash-id}))))))
   ;; GHY-4225 folded duplicate_content's per-type create scopes into the single
   ;; `agent:content:write` the tool already gates on, so there is no second scope to check.
   (testing "the tool's own write scope is all a copy needs"

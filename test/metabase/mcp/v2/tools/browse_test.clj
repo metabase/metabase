@@ -1092,8 +1092,10 @@
 
 (deftest ^:parallel browse-data-scope-gating-test
   (testing "GHY-4138: a token without the content-read scope is refused before dispatch"
-    (are [scopes] (= "Insufficient scope to call tool: browse_data"
-                     (dispatch-text scopes {:action "list_databases"}))
+    ;; The message also names the required scope and the ones the token holds; asserted on the
+    ;; prefix here because the held set differs per case below.
+    (are [scopes] (str/starts-with? (dispatch-text scopes {:action "list_databases"})
+                                    "Insufficient scope to call tool: browse_data. Requires ")
       #{metabot.scope/agent-query-run}
       #{metabot.scope/agent-content-write}
       #{}))

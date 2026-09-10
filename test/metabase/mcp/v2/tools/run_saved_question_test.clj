@@ -324,8 +324,8 @@
   (mt/with-temp [:model/Card {card-id :id} (plain-card "rsq scope")]
     (mt/with-current-user (mt/user->id :rasta)
       (testing "a token without agent:query:execute is refused"
-        (is (= "Insufficient scope to call tool: run_saved_question"
-               (tool-error (call-run-saved-question #{"agent:metadata:read"} {:id card-id})))))
+        (is (re-find #"^Insufficient scope to call tool: run_saved_question\."
+                     (tool-error (call-run-saved-question #{"agent:metadata:read"} {:id card-id})))))
       (testing "the identical call succeeds once the token carries the scope"
         (is (pos? (:returned (tool-result (call-run-saved-question #{"agent:query:run"}
                                                                    {:id card-id :row_limit 5})))))))))

@@ -134,8 +134,8 @@
     (let [narrow #{"agent:query:run"}]
       (testing "a token on another surface scope neither sees nor can call it"
         (is (not (some #(= "ping_v2" (:name %)) (registry/list-tools narrow))))
-        (is (= "Insufficient scope to call tool: ping_v2"
-               (get-in (registry/call-tool narrow nil "ping_v2" {}) [:error :message]))))
+        (is (re-find #"^Insufficient scope to call tool: ping_v2\."
+                     (get-in (registry/call-tool narrow nil "ping_v2" {}) [:error :message]))))
       (testing "the published description names the required scope and the unscoped fallback"
         (let [description (->> (registry/list-tools nil)
                                (filter #(= "ping_v2" (:name %)))
