@@ -344,13 +344,13 @@ describe("Scalar conditional colors", () => {
     renderWithProviders(
       <Scalar
         {...mockedProps}
-        showTitle
-        series={series}
-        rawSeries={series}
-        settings={{ ...settings, "scalar.segments": segments }}
-        visualizationIsClickable={() => false}
         actionButtons={<button>Download</button>}
         height={200}
+        rawSeries={series}
+        series={series}
+        settings={{ ...settings, "scalar.segments": segments }}
+        showTitle
+        visualizationIsClickable={() => false}
         width={230}
       />,
     );
