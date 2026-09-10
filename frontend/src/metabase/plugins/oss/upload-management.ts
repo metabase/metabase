@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 
 import { StorageSetupProvider } from "metabase/common/components/upsells/StoragePurchaseModal/storage-setup-context";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 
 import { definePluginSlot } from "../slot";
 
@@ -17,7 +16,6 @@ type GdriveAddDataPanelProps = {
 };
 
 const getDefaultPluginUploadManagement = () => ({
-  FileUploadErrorModal: _FileUploadErrorModal,
   UploadManagementTable: PluginPlaceholder,
   GdriveSyncStatus: PluginPlaceholder,
   GdriveConnectionModal:
