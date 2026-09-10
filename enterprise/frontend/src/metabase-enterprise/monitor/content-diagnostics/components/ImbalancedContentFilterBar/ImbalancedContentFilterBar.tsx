@@ -8,17 +8,10 @@ import {
   areImbalancedFilterOptionsEqual,
   getImbalancedDefaultFilterOptions,
 } from "../imbalanced-utils";
-import type { ImbalancedContentFilterOptions } from "../types";
-
-type ImbalancedContentFilterBarProps = {
-  query?: string;
-  filterOptions: ImbalancedContentFilterOptions;
-  isLoading: boolean;
-  onQueryChange: (query: string | undefined) => void;
-  onFilterOptionsChange: (
-    filterOptions: ImbalancedContentFilterOptions,
-  ) => void;
-};
+import type {
+  ContentDiagnosticsFilterBarProps,
+  ImbalancedContentFilterOptions,
+} from "../types";
 
 export const ImbalancedContentFilterBar = memo(
   function ImbalancedContentFilterBar({
@@ -27,11 +20,13 @@ export const ImbalancedContentFilterBar = memo(
     isLoading,
     onQueryChange,
     onFilterOptionsChange,
-  }: ImbalancedContentFilterBarProps) {
+    onReset,
+  }: ContentDiagnosticsFilterBarProps<ImbalancedContentFilterOptions>) {
     const hasDefaultFilterOptions = areImbalancedFilterOptionsEqual(
       filterOptions,
       getImbalancedDefaultFilterOptions(),
     );
+    const canReset = !hasDefaultFilterOptions || query !== undefined;
 
     return (
       <Group gap="md" align="center" wrap="nowrap">
@@ -40,7 +35,9 @@ export const ImbalancedContentFilterBar = memo(
           filterOptions={filterOptions}
           isDisabled={isLoading}
           hasDefaultOptions={hasDefaultFilterOptions}
+          canReset={canReset}
           onFilterOptionsChange={onFilterOptionsChange}
+          onReset={onReset}
         />
       </Group>
     );

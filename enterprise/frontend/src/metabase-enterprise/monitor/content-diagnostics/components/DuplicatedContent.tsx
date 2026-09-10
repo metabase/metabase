@@ -14,6 +14,7 @@ import type { ContentDiagnosticsDuplicatedSortColumn } from "metabase-types/api"
 
 import {
   trackContentDiagnosticsFiltersChanged,
+  trackContentDiagnosticsFiltersReset,
   trackContentDiagnosticsFindingSelected,
   trackContentDiagnosticsTabViewed,
 } from "../analytics";
@@ -25,6 +26,7 @@ import { DuplicatedContentFilterBar } from "./DuplicatedContentFilterBar";
 import { DuplicatedContentSidebar } from "./DuplicatedContentSidebar";
 import { DuplicatedContentTable } from "./DuplicatedContentTable";
 import {
+  getDuplicatedDefaultFilterOptions,
   getDuplicatedEntityTypesParam,
   getDuplicatedFilterOptions,
   getDuplicatedFilterParams,
@@ -132,6 +134,20 @@ export function DuplicatedContent({
     );
   };
 
+  const handleReset = () => {
+    trackContentDiagnosticsFiltersReset("duplicated");
+    clearRowSelection();
+    onParamsChange(
+      {
+        ...params,
+        ...getDuplicatedFilterParams(getDuplicatedDefaultFilterOptions()),
+        query: undefined,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
+  };
+
   const handlePageChange = (page: number) => {
     clearRowSelection();
     onParamsChange({ ...params, page });
@@ -169,6 +185,7 @@ export function DuplicatedContent({
             isLoading={isLoading}
             onQueryChange={handleQueryChange}
             onFilterOptionsChange={handleFilterOptionsChange}
+            onReset={handleReset}
           />
           {error != null ? (
             <Center flex={1}>

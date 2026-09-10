@@ -26,7 +26,9 @@ type DiagnosticsFilterPickerProps<
   isDisabled?: boolean;
   hasDefaultOptions?: boolean;
   extraFilters?: ReactNode;
+  canReset?: boolean;
   onFilterOptionsChange: (filterOptions: TOptions) => void;
+  onReset: () => void;
 };
 
 export function DiagnosticsFilterPicker<
@@ -38,7 +40,9 @@ export function DiagnosticsFilterPicker<
   isDisabled = false,
   hasDefaultOptions = false,
   extraFilters,
+  canReset,
   onFilterOptionsChange,
+  onReset,
 }: DiagnosticsFilterPickerProps<TType, TOptions>) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
@@ -49,6 +53,11 @@ export function DiagnosticsFilterPicker<
     const entityTypes =
       selectedTypes.length > 0 ? selectedTypes : availableTypes;
     onFilterOptionsChange({ ...filterOptions, entityTypes });
+  };
+
+  const handleReset = () => {
+    onReset();
+    close();
   };
 
   const handlePersonalCollectionsChange = (
@@ -113,6 +122,9 @@ export function DiagnosticsFilterPicker<
                 />
               </Stack>
             </Input.Wrapper>
+            <Button size="sm" disabled={!canReset} onClick={handleReset}>
+              {t`Reset to defaults`}
+            </Button>
           </Stack>
         </Box>
       </Popover.Dropdown>

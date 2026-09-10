@@ -1,5 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { FixedSizeIcon, TextInput } from "metabase/ui";
@@ -23,6 +23,11 @@ export function DiagnosticsSearchInput({
     },
     SEARCH_DEBOUNCE_DURATION,
   );
+
+  useEffect(() => {
+    handleSearchDebounce.cancel();
+    setSearchValue(query ?? "");
+  }, [handleSearchDebounce, query]);
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newSearchValue = event.target.value;

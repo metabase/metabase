@@ -17,6 +17,7 @@ import type {
 
 import {
   trackContentDiagnosticsFiltersChanged,
+  trackContentDiagnosticsFiltersReset,
   trackContentDiagnosticsFindingSelected,
   trackContentDiagnosticsTabViewed,
 } from "../analytics";
@@ -28,6 +29,7 @@ import { SlowContentFilterBar } from "./SlowContentFilterBar";
 import { SlowContentSidebar } from "./SlowContentSidebar";
 import { SlowContentTable } from "./SlowContentTable";
 import {
+  getSlowDefaultFilterOptions,
   getSlowEntityTypesParam,
   getSlowFilterOptions,
   getSlowFilterParams,
@@ -134,6 +136,20 @@ export function SlowContent({
     );
   };
 
+  const handleReset = () => {
+    trackContentDiagnosticsFiltersReset("slow");
+    clearRowSelection();
+    onParamsChange(
+      {
+        ...params,
+        ...getSlowFilterParams(getSlowDefaultFilterOptions()),
+        query: undefined,
+        page: undefined,
+      },
+      { withSetLastUsedParams: true },
+    );
+  };
+
   const handlePageChange = (page: number) => {
     clearRowSelection();
     onParamsChange({ ...params, page });
@@ -171,6 +187,7 @@ export function SlowContent({
             isLoading={isLoading}
             onQueryChange={handleQueryChange}
             onFilterOptionsChange={handleFilterOptionsChange}
+            onReset={handleReset}
           />
           {error != null ? (
             <Center flex={1}>

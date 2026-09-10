@@ -342,10 +342,10 @@ describe("StaleContentPage", () => {
     );
     expect(sidebarRegion).toHaveTextContent("Revenue by category");
     expect(
-      within(sidebarHeader).queryByRole("link", {
+      within(sidebarHeader).getByRole("link", {
         name: "Revenue by category",
       }),
-    ).not.toBeInTheDocument();
+    ).toHaveAttribute("href", "/question/42-revenue-by-category");
     const locationRegion = within(sidebarRegion).getByRole("region", {
       name: "Location",
     });
@@ -504,6 +504,51 @@ describe("StaleContentPage", () => {
       "document",
       "transform",
     ]);
+  });
+
+  it("clears the filters and the search box from the Filter popover", async () => {
+    const { router } = setup({
+      findings: FINDINGS,
+      urlParams: { query: "revenue", entityTypes: ["dashboard"] },
+    });
+    await waitForListToLoad();
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Reset to defaults",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({});
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Search" })).toHaveValue("");
+    const searchParams = getLastRequestUrl().searchParams;
+    expect(searchParams.get("query")).toBeNull();
+    expect(searchParams.getAll("entity-types")).toEqual([]);
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "content_diagnostics_filters_reset",
+      triggered_from: "stale",
+    });
+  });
+
+  it("offers nothing to reset while the filters and search are untouched", async () => {
+    setup({ findings: FINDINGS });
+    await waitForListToLoad();
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+
+    expect(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Reset to defaults",
+      }),
+    ).toBeDisabled();
   });
 
   it("filters by personal collections server-side via the Location toggle", async () => {

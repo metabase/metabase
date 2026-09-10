@@ -8,15 +8,10 @@ import {
   areStaleFilterOptionsEqual,
   getStaleDefaultFilterOptions,
 } from "../stale-utils";
-import type { StaleContentFilterOptions } from "../types";
-
-type StaleContentFilterBarProps = {
-  query?: string;
-  filterOptions: StaleContentFilterOptions;
-  isLoading: boolean;
-  onQueryChange: (query: string | undefined) => void;
-  onFilterOptionsChange: (filterOptions: StaleContentFilterOptions) => void;
-};
+import type {
+  ContentDiagnosticsFilterBarProps,
+  StaleContentFilterOptions,
+} from "../types";
 
 export const StaleContentFilterBar = memo(function StaleContentFilterBar({
   query,
@@ -24,11 +19,13 @@ export const StaleContentFilterBar = memo(function StaleContentFilterBar({
   isLoading,
   onQueryChange,
   onFilterOptionsChange,
-}: StaleContentFilterBarProps) {
+  onReset,
+}: ContentDiagnosticsFilterBarProps<StaleContentFilterOptions>) {
   const hasDefaultFilterOptions = areStaleFilterOptionsEqual(
     filterOptions,
     getStaleDefaultFilterOptions(),
   );
+  const canReset = !hasDefaultFilterOptions || query !== undefined;
 
   return (
     <Group gap="md" align="center" wrap="nowrap">
@@ -37,7 +34,9 @@ export const StaleContentFilterBar = memo(function StaleContentFilterBar({
         filterOptions={filterOptions}
         isDisabled={isLoading}
         hasDefaultOptions={hasDefaultFilterOptions}
+        canReset={canReset}
         onFilterOptionsChange={onFilterOptionsChange}
+        onReset={onReset}
       />
     </Group>
   );

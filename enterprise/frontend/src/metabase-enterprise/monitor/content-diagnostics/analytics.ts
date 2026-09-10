@@ -63,6 +63,15 @@ export const trackContentDiagnosticsFiltersChanged = ({
   });
 };
 
+export const trackContentDiagnosticsFiltersReset = (
+  tab: ContentDiagnosticsFindingType,
+) => {
+  trackSimpleEvent({
+    event: "content_diagnostics_filters_reset",
+    triggered_from: tab,
+  });
+};
+
 export const trackContentDiagnosticsFindingsBulkTrashed = ({
   tab,
   removedCount,
