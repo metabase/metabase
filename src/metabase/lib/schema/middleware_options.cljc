@@ -8,7 +8,7 @@
   [:map
    {:decode/normalize lib.schema.common/normalize-map
     :decode/api       lib.schema.common/remove-internal-keys
-    :encode/serialize lib.schema.common/remove-internal-keys}
+    :encode/serialize lib.schema.common/remove-internal-keys :closed true}
    [:skip-results-metadata?
     {:optional true
      :description
@@ -74,4 +74,41 @@
      :description
      "Whether to ignore any cached results and re-run the query. Used by the query results cache middleware; default
   `false`."}
-    [:maybe :boolean]]])
+    [:maybe :boolean]]
+   [:disable-remaps?
+    {:optional true
+     :description
+     "Whether to skip the remapped (human-readable) columns that `metabase.query-processor.middleware.add-remaps`
+  normally splices in. Set by callers that want the query's own columns and nothing else -- calculating a Card's
+  result metadata, or fetching field values for a filter widget; default `false`."}
+    [:maybe :boolean]]
+   [:csv-include-bom?
+    {:optional true
+     :description
+     "Whether a CSV download should start with a UTF-8 byte-order mark, which Excel needs to read the file as UTF-8.
+  Set by `metabase.query-processor.api` from the download's options and read by
+  `metabase.query-processor.middleware.format-rows` and the CSV writer; default `true`."}
+    [:maybe :boolean]]
+   [:pivot?
+    {:optional true
+     :description
+     "Whether the results should be laid out as a pivot table. Set by `metabase.query-processor.api` from the
+  `format_rows`/pivot download options and read by `metabase.query-processor.middleware.pivot-export` and the
+  streaming writers; default `false`."}
+    [:maybe :boolean]]
+   [:pivot-options
+    {:optional true
+     :description
+     "Which of the query's breakouts and aggregations are the pivot table's rows, columns and measures, and whether it
+  shows totals. Attached by `metabase.query-processor.pivot` from the question's visualization settings (or from the
+  matching top-level query keys) so the export middleware and streaming writers can lay the results out; not something
+  a client sets itself."}
+    [:maybe
+     [:map
+      {:closed true}
+      [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+      [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+      [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+      [:show-row-totals    {:optional true} [:maybe :boolean]]
+      [:show-column-totals {:optional true} [:maybe :boolean]]
+      [:column-sort-order  {:optional true} [:maybe [:map-of [:maybe [:int {:min 0}]] [:maybe :keyword]]]]]]]])

@@ -31,12 +31,14 @@
 
 ;;; Things required by all template tag types.
 (mr/def ::common
-  [:map
+  [:map {:closed true}
    [:name         ::name]
    [:display-name ::common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
-   [:id {:optional true} [:ref ::id]]])
+   [:id {:optional true} [:ref ::id]]
+   [:lib.walk/template-tag-name {:optional true} ::name]
+   [:sectionid {:optional true} ::common/non-blank-string]])
 
 ;;; Stuff shared between the Field filter and raw value template tag schemas.
 (mr/def ::value.common
@@ -67,7 +69,7 @@
   "Options appended to the filter clause a Field Filter template tag generates. These get merged into the parameter
   value the QP builds for the tag, so they are the same options as `:metabase.lib.schema.parameter/parameter.options`."
   [:map
-   {:decode/normalize common/normalize-map-no-kebab-case}
+   {:decode/normalize common/normalize-map-no-kebab-case :closed true}
    [:case-sensitive  {:optional true} :boolean]
    [:include-current {:optional true} :boolean]])
 
@@ -129,7 +131,7 @@
 (mr/def ::source-query
   [:and
    [:merge
-    [:ref ::common]
+    [:ref ::value.common]
     [:map
      [:type    [:= :card]]
      [:card-id ::id/card]]]
@@ -141,7 +143,7 @@
 
 (mr/def ::source-filter
   "Schema for a single source-filter applied to a table template tag."
-  [:map
+  [:map {:closed true}
    [:field-id ::id/field]
    [:op       (into [:enum] allowed-source-filter-ops)]
    [:value    [:ref ::lib.schema.parameter/parameter.value]]])
@@ -157,7 +159,7 @@
 (mr/def ::source-table
   [:and
    [:merge
-    [:ref ::common]
+    [:ref ::value.common]
     [:map
      [:type                  [:= :table]]
      [:table-id              ::id/table]
@@ -188,7 +190,8 @@
     ;; `:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
     ;; which types of parameters are allowed to be passed in for this template tag.
     [:map
-     [:type [:ref ::raw-value.type]]]]
+     [:type [:ref ::raw-value.type]]
+     [:widget-type {:optional true} [:ref ::widget-type]]]]
    [:ref ::disallow-dimension]])
 
 (mr/def ::template-tag

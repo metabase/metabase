@@ -9,6 +9,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -127,7 +128,7 @@
   "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =
   external` associated with a `Field` in the application database.
   See [[metabase.query-processor.middleware.add-remaps]] for what this means."
-  [:map
+  [:map {:closed true}
    [:lib/type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/external]]
    [:id       ::lib.schema.id/dimension]
    ;; from `dimension.name`
@@ -140,16 +141,16 @@
   "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =
   internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application
   database. See [[metabase.query-processor.middleware.add-remaps]] for what this means."
-  [:map
+  [:map {:closed true}
    [:lib/type              [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/internal]]
    [:id                    ::lib.schema.id/dimension]
    ;; from `dimension.name`
    [:name                  ::lib.schema.common/non-blank-string]
    ;; From `metabase_fieldvalues.values`. Original values
-   [:values                [:sequential :any]]
+   [:values                [:sequential [:ref ::lib.schema.literal/literal]]]
    ;; From `metabase_fieldvalues.human_readable_values`. Human readable remaps for the values at the same indexes in
    ;; `:values`
-   [:human-readable-values [:sequential :any]]])
+   [:human-readable-values [:sequential [:ref ::lib.schema.literal/literal]]]])
 
 ;; these can both be empty strings like `""` because SQL Server (and possibly some other DBs) allow empty strings as
 ;; column identifiers
@@ -333,6 +334,47 @@
   instead."
   [:enum {:decode/normalize keyword} :aggregation :fields :breakout :native])
 
+(mr/def ::column.snapshot
+  "A whole column metadata map stashed on *another* column under one of the internal keys below.
+
+  Deliberately NOT `[:ref ::column]`: [[malli.util/merge]] recurses into the entries that the two schemas being merged
+  share, so a self-referential `::column` entry makes any `[:merge ...]` of two column-bearing maps -- for instance
+  `:metabase.lib.schema.drill-thru/drill-thru.column-filter`, which merges two maps that both have a `:column` --
+  recur until the stack blows. This shallow shape says what the value is without reintroducing the cycle."
+  [:map
+   [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata/column]]
+   [:name      :string]
+   [:base-type {:optional true} ::lib.schema.common/base-type]])
+
+(mr/def ::column.timestamp
+  "A timestamp column of a `metabase_field` row: a `java.time` value on the JVM, the string it was encoded as elsewhere."
+  #?(:clj  [:or :string (lib.schema.common/instance-of-class java.time.temporal.Temporal)]
+     :cljs :string))
+
+(mr/def ::column.options
+  "What the query processor stashes under a column's `:options` while it runs: never sent by a client, and never
+  handed back to one."
+  [:map {:closed true, :decode/api lib.schema.common/remove-internal-keys, :encode/serialize lib.schema.common/remove-internal-keys}
+   [:qp/ignore-coercion {:optional true} :boolean]
+   [:metabase.query-processor.middleware.add-remaps/original-field-dimension-id {:optional true} [:maybe ::lib.schema.id/dimension]]
+   [:metabase.query-processor.middleware.add-remaps/new-field-dimension-id      {:optional true} [:maybe ::lib.schema.id/dimension]]])
+
+(mr/def ::column.binning-info
+  "The legacy description of how a column was binned, as [[metabase.lib.metadata.result-metadata]] spells it out for
+  the frontend."
+  [:map {:closed true}
+   [:strategy         {:optional true} [:maybe [:ref ::lib.schema.binning/strategy]]]
+   [:binning-strategy {:optional true} [:maybe [:ref ::lib.schema.binning/strategy]]]
+   [:binning_strategy {:optional true} [:maybe [:ref ::lib.schema.binning/strategy]]]
+   [:num-bins         {:optional true} [:maybe :int]]
+   [:num_bins         {:optional true} [:maybe :int]]
+   [:bin-width        {:optional true} [:maybe number?]]
+   [:bin_width        {:optional true} [:maybe number?]]
+   [:min-value        {:optional true} [:maybe number?]]
+   [:min_value        {:optional true} [:maybe number?]]
+   [:max-value        {:optional true} [:maybe number?]]
+   [:max_value        {:optional true} [:maybe number?]]])
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -348,8 +390,11 @@
   to differentiate between the two versions."
   [:and
    [:map
-    {:error/message    "Valid column metadata"
-     :decode/normalize normalize-column}
+    {:closed           true
+     :error/message    "Valid column metadata"
+     :decode/normalize normalize-column
+     :decode/api       lib.schema.common/remove-internal-keys
+     :encode/serialize lib.schema.common/remove-internal-keys}
     [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword, :default :metadata/column} :metadata/column]]
     ;;
     ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have
@@ -511,10 +556,66 @@
     ;; including BigQuery `RECORD` columns and MongoDB nested columns. See
     ;; https://metaboat.slack.com/archives/C0645JP1W81/p1754949404592539 for code archeology
     [:nfc-path {:optional true} [:maybe [:sequential :string]]]
+    ;; the rest of the `metabase_field` row a metadata provider hands back
+    [:table-id                   {:optional true} [:maybe ::lib.schema.id/table]]
+    [:parent-id                  {:optional true} [:maybe ::lib.schema.id/field]]
+    [:description                {:optional true} [:maybe :string]]
+    [:caveats                    {:optional true} [:maybe :string]]
+    [:points-of-interest         {:optional true} [:maybe :string]]
+    [:coercion-strategy          {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
+    [:position                   {:optional true} [:maybe :int]]
+    [:custom-position            {:optional true} [:maybe :int]]
+    [:database-position          {:optional true} [:maybe :int]]
+    [:database-default           {:optional true} [:maybe :string]]
+    [:database-indexed           {:optional true} [:maybe :boolean]]
+    [:database-is-auto-increment {:optional true} [:maybe :boolean]]
+    [:database-is-generated      {:optional true} [:maybe :boolean]]
+    [:database-is-nullable       {:optional true} [:maybe :boolean]]
+    [:database-is-pk             {:optional true} [:maybe :boolean]]
+    [:database-partitioned       {:optional true} [:maybe :boolean]]
+    [:database-required          {:optional true} [:maybe :boolean]]
+    [:json-unfolding             {:optional true} [:maybe :boolean]]
+    [:preview-display            {:optional true} [:maybe :boolean]]
+    [:fingerprint-version        {:optional true} [:maybe :int]]
+    [:created-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
+    [:updated-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
+    [:last-analyzed              {:optional true} [:maybe [:ref ::column.timestamp]]]
+    [:target                     {:optional true} [:maybe [:ref ::column]]]
+    [:name-field                 {:optional true} [:maybe [:ref ::column]]]
+    ;; the Dimension and FieldValues joined onto a Field by the application database metadata provider
+    [:dimension/id                      {:optional true} [:maybe ::lib.schema.id/dimension]]
+    [:dimension/name                    {:optional true} [:maybe :string]]
+    [:dimension/type                    {:optional true} [:maybe [:enum {:decode/normalize lib.schema.common/normalize-keyword} :internal :external]]]
+    [:dimension/human-readable-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+    [:values/values                     {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/literal]]]]
+    [:values/human-readable-values      {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/literal]]]]
+    ;; what Lib annotates a column with when it returns it from a query
+    [:breakout-positions  {:optional true} [:maybe [:sequential :int]]]
+    [:filter-positions    {:optional true} [:maybe [:sequential :int]]]
+    [:order-by-position   {:optional true} [:maybe :int]]
+    [:converted-timezone  {:optional true} [:maybe :string]]
+    [:remapped-from       {:optional true} [:maybe :string]]
+    [:remapped-to         {:optional true} [:maybe :string]]
+    [:remapped-from-index {:optional true} [:maybe :int]]
+    [:dimension-interestingness {:optional true} [:maybe number?]]
+    [:options             {:optional true} [:maybe [:ref ::column.options]]]
+    [:lib/options                 {:optional true} [:maybe [:ref ::lib.schema.common/options]]]
+    [:lib/original-fk-field-id    {:optional true} [:maybe ::lib.schema.id/field]]
+    [:lib/original-fk-field-name  {:optional true} [:maybe :string]]
+    [:lib/original-fk-join-alias  {:optional true} [:maybe ::lib.schema.join/alias]]
+    [:lib/original-join-name      {:optional true} [:maybe :string]]
+    [:lib/source-display-name     {:optional true} [:maybe :string]]
+    [:metabase.lib.join/HACK-from-incomplete-join? {:optional true} [:maybe :boolean]]
+    ;;
+    ;; `:unit` and `:binning-info` are legacy keys and should not be set on a Lib column; `:lib/temporal-unit` and
+    ;; `:lib/binning` are the keys for that. [[metabase.lib.metadata.result-metadata]] pins these two on a column on its
+    ;; way to becoming legacy result metadata, which is the only reason they are declared.
+    [:unit                {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
+    [:binning-info        {:optional true} [:maybe [:ref ::column.binning-info]]]
     ;;
     ;; populated by the `metabase_field.settings` column in the application database; I'm not really sure what goes in
     ;; here and if it's actually used for anything important in Lib or the QP (I suspect it's not).
-    [:settings {:optional true} [:maybe [:map-of {:decode/normalize lib.schema.common/normalize-map-no-kebab-case} :keyword :any]]]
+    [:settings {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
     ;;
     ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
     ;; legacy viz settings. This should not be used for anything other than that.
@@ -558,7 +659,17 @@
     [:qp/native-sandbox-column.force-coercion-strategy {:optional true} [:ref ::lib.schema.common/coercion-strategy]]
     ;;
     ;; See above about `:qp/native-sandbox-column.force-coercion-strategy`.
-    [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]]
+    [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]
+    [:metabase.lib.metadata.result-metadata/remove-join-alias? {:optional true} :boolean]
+    [:lib/original-ref-style-for-result-metadata-purposes
+     {:optional true}
+     [:enum :original-ref-style/id :original-ref-style/name]]
+    [:metabase.lib.field.resolution/fallback-metadata? {:optional true} :boolean]
+    [:metabase.lib.join/target {:optional true} [:ref ::column.snapshot]]
+    [:metabase.lib.underlying/original      {:optional true} [:ref ::column.snapshot]]
+    [:metabase.lib.underlying/temporal-unit {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
+    [:metabase.lib.underlying/binning       {:optional true} [:maybe [:ref ::lib.schema.binning/binning]]]
+    [:metabase.query-processor.pivot/idx {:optional true} [:int {:min 0}]]]
    ;;
    ;; Additional constraints
    ;;
@@ -831,7 +942,7 @@
    [:features        {:optional true} [:set [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:is-audit        {:optional true} :boolean]
    [:is-attached-dwh {:optional true} :boolean]
-   [:settings        {:optional true} [:maybe :map]]])
+   [:settings        {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]])
 
 (mr/def ::metadata-provider
   "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
@@ -871,7 +982,7 @@
   `frontend/src/metabase/query_builder/selectors.js` -- but this is ridiculous. Let's try to merge anything missing in
   `results_metadata` into `cols` going forward so things don't need to be manually merged in the future."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map}
+   {:decode/normalize lib.schema.common/normalize-map :closed true}
    [:lib/type [:= {:default :metadata/results} :metadata/results]]
    [:columns [:sequential ::column]]])
 

@@ -142,7 +142,7 @@
             binning (lib.binning/binning column-ref)
             column (cond-> (:column drill-details)
                      temporal-unit (assoc :temporal-unit temporal-unit)
-                     binning       (assoc :lib/binning binning))]
+                     binning       (lib.binning/with-binning binning))]
         (merge drill-details
                {:lib/type   :metabase.lib.drill-thru/drill-thru
                 :type       :drill-thru/quick-filter

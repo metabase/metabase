@@ -442,14 +442,17 @@
 ;;
 ;; As of 0.42.0 `:aggregation` references can have an optional options map.
 (mr/def ::AggregationRefOptions
-  [:map
-   {:decode/normalize (fn [m]
-                        (when-let [m (lib.schema.ref/normalize-aggregation-ref-options m)]
-                          (not-empty (dissoc m :lib/uuid))))}
-   [:name           {:optional true} ::lib.schema.common/non-blank-string]
-   [:display-name   {:optional true} ::lib.schema.common/non-blank-string]
-   [:base-type      {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]])
+  "Options for a legacy `:aggregation` ref in MBQL 4 are the same as in MBQL 5, except that `:lib/uuid` is optional and
+  the map cannot be empty."
+  [:and
+   [:merge
+    {:decode/normalize (fn [m]
+                         (when-let [m (lib.schema.ref/normalize-aggregation-ref-options m)]
+                           (not-empty (dissoc m :lib/uuid))))}
+    ::lib.schema.ref/aggregation-options
+    [:map
+     [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]
+   (lib.schema.common/disallowed-keys {:lib/uuid "MBQL 4 refs should not have :lib/uuid"})])
 
 (defclause* aggregation
   [:and
@@ -1587,12 +1590,15 @@
 ;;     :dimension    [:field 4 nil]
 ;;     :widget-type  :date/all-options}
 (mr/def ::TemplateTag.FieldFilter.Options
-  [:map-of
+  "Options appended to the filter clause a Field Filter template tag generates. Mirrors its MBQL 5 twin,
+  `:metabase.lib.schema.template-tag/field-filter.options`; the map stays open there and here because these options
+  are merged into the parameter value the QP builds for the tag."
+  [:map
    {:decode/normalize (fn [m]
                         (when (map? m)
                           (update-keys m lib.schema.common/normalize-keyword)))}
-   :keyword
-   :any])
+   [:case-sensitive  {:optional true} :boolean]
+   [:include-current {:optional true} :boolean]])
 
 (mr/def ::TemplateTag.FieldFilter
   "Schema for a field filter template tag."
@@ -1794,11 +1800,14 @@
                              (cond-> m
                                (and (:binning_strategy m)
                                     (not (:strategy m)))
-                               (assoc :strategy (:binning_strategy m))))))}
+                               (assoc :strategy (:binning_strategy m))))))
+     :closed true}
     [:strategy         [:ref ::lib.schema.binning/strategy]]
     [:binning_strategy {:optional true} [:ref ::lib.schema.binning/strategy]]
     [:bin_width        {:optional true} [:ref ::lib.schema.binning/bin-width]]
-    [:num_bins         {:optional true} [:ref ::lib.schema.binning/num-bins]]]
+    [:num_bins         {:optional true} [:ref ::lib.schema.binning/num-bins]]
+    [:min_value        {:optional true} number?]
+    [:max_value        {:optional true} number?]]
    [:fn
     {:error/message "bin_width is a required key when strategy is bin-width"}
     (fn [m]
@@ -1850,7 +1859,9 @@
    [:merge
     [:map
      ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
-     {:decode/normalize #'normalize-legacy-column}
+     {:closed           true
+      :decode/normalize #'normalize-legacy-column
+      :decode/api       lib.schema.common/remove-internal-keys}
      [:base_type          {:default :type/*} ::lib.schema.common/base-type]
      [:display_name       :string]
      [:name               :string]
@@ -1875,12 +1886,25 @@
      [:inherited_temporal_unit {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
      [:nfc_path           {:optional true} [:maybe [:sequential :string]]]
      [:position           {:optional true} [:maybe :int]]
+     [:custom_position    {:optional true} [:maybe :int]]
+     [:database_position  {:optional true} [:maybe :int]]
+     [:database_is_auto_increment {:optional true} [:maybe :boolean]]
+     [:database_partitioned       {:optional true} [:maybe :boolean]]
+     [:database_required          {:optional true} [:maybe :boolean]]
+     [:data_sensitivity   {:optional true} [:maybe [:or :string :keyword]]]
+     [:fingerprint_version {:optional true} [:maybe :int]]
+     [:parent_id          {:optional true} [:maybe ::lib.schema.id/field]]
+     [:points_of_interest {:optional true} [:maybe :string]]
+     [:preview_display    {:optional true} [:maybe :boolean]]
+     [:caveats            {:optional true} [:maybe :string]]
+     [:target             {:optional true} [:maybe [:ref ::legacy-column-metadata]]]
+     [:options            {:optional true} [:maybe [:ref ::lib.schema.metadata/column.options]]]
      [:remapped_from      {:optional true} [:maybe :string]]
      [:remapped_to        {:optional true} [:maybe :string]]
      [:selected?          {:optional true} :boolean]
      ;; name is allowed to be empty in some databases like SQL Server.
      [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-     [:settings           {:optional true} [:maybe [:map {:closed false}]]]
+     [:settings           {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
      [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
      [:table_id           {:optional true} [:maybe [:ref ::SourceTable]]]
      [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
@@ -2107,10 +2131,9 @@
    ;;    {:aggregation "ROWS"} => {:aggregation nil}
    ;;
    ;; but not actually remove that key; so we need this second pass to remove it.
-   ;; open: this only exists to run a second normalization pass, so it must not constrain (or strip) any keys
    [:schema
     {:decode/normalize #'remove-empty-keys-from-mbql-inner-query}
-    [:map {:closed false}]]
+    :any]
    ;;
    ;; CONSTRAINTS
    ;;

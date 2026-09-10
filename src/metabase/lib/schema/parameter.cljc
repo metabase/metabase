@@ -27,6 +27,7 @@
        ([flatland.ordered.map :as ordered-map]))
    [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -238,7 +239,7 @@
 (mr/def ::dimension.options
   [:map
    {:error/message    "dimension options"
-    :decode/normalize lib.schema.common/normalize-map}
+    :decode/normalize lib.schema.common/normalize-map :closed true}
    [:stage-number {:optional true} :int]])
 
 ;;; TODO (Cam 8/8/25) -- seems really WACK to have dimension use MBQL 4 clause order even in Lib... I guess it's not a
@@ -269,7 +270,7 @@
 
 (mr/def ::template-tag.tag-name
   [:multi {:dispatch map?}
-   [true  [:map
+   [true  [:map {:closed true}
            [:id ::lib.schema.common/non-blank-string]]]
    [false [:schema
            {:decode/normalize (fn [x]
@@ -379,7 +380,7 @@
 (mr/def ::parameter.options
   "Options the frontend attaches to a parameter value."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map}
+   {:closed true, :decode/normalize lib.schema.common/normalize-map}
    [:case-sensitive  {:optional true} :boolean]
    [:include-current {:optional true} :boolean]])
 
@@ -394,7 +395,8 @@
    [:map
     {:decode/normalize #'normalize-parameter
      :decode/api       #'lib.schema.common/remove-internal-keys
-     :encode/serialize #'lib.schema.common/remove-internal-keys}
+     :encode/serialize #'lib.schema.common/remove-internal-keys
+     :closed           true}
     [:type [:ref ::type]]
     ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
     ;; At some point we need to go fix those tests and then make these keys required
@@ -411,7 +413,8 @@
     [:slug     {:optional true} ::lib.schema.common/non-blank-string]
     [:default  {:optional true} [:ref ::parameter.value]]
     [:required {:optional true} [:maybe :boolean]]
-    [:options  {:optional true} [:maybe [:ref ::parameter.options]]]]
+    [:options  {:optional true} [:maybe [:ref ::parameter.options]]]
+    [:temporal-units {:optional true} [:maybe [:sequential [:ref ::lib.schema.temporal-bucketing/unit]]]]]
    ::lib.schema.common/kebab-cased-map
    (lib.schema.common/disallowed-keys
     {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])
