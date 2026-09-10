@@ -31,6 +31,24 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(defn- default-last-synced-at
+  "A sync that records `last_synced_sha` happened now unless it says otherwise."
+  [row]
+  (cond-> row
+    (and (contains? row :last_synced_sha) (not (contains? row :last_synced_at)))
+    (assoc :last_synced_at (mi/now))))
+
+(t2/define-before-insert :model/DataApp
+  [data-app]
+  (default-last-synced-at data-app))
+
+(t2/define-before-update :model/DataApp
+  [data-app]
+  (let [changes (t2/changes data-app)]
+    (cond-> data-app
+      (and (contains? changes :last_synced_sha) (not (contains? changes :last_synced_at)))
+      (assoc :last_synced_at (mi/now)))))
+
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
 ;; the column existed has NULL until it's re-synced. Guard on `contains?` so
 ;; selects that don't fetch the column (e.g. `select-one-fn :bundle`) are left

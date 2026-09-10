@@ -201,23 +201,12 @@
   (u/minutes->ms 5))
 
 (defn- database-fk-relationships* [database-id enable-reverse-joins?]
-  (let [rows (mdb/query {:select    [[:fk-field.id :f1]
-                                     [:fk-table.id :t1]
-                                     [:pk-field.id :f2]
-                                     [:pk-field.table_id :t2]]
-                         :from      [[:metabase_field :fk-field]]
-                         :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                                     :fk-table.active]
-                                     [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                                     [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                                     :pk-field.active]]
-                         :where     [:and
-                                     [:= :database.id database-id]
-                                     [:not= :fk-field.fk_target_field_id nil]
-                                     :fk-field.active]
-                         :order-by [[:fk-field.id :desc]
-                                    [:pk-field.id :desc]]})
-        joins (for [{:keys [t1 f1 t2 f2]} rows]
+  (let [rows (parameters.db/fk-relationships-for-database database-id)
+        ;; The `:fk-table.active` / `:pk-field.active` LEFT JOIN clauses null out the target endpoint
+        ;; when the FK-owning table or FK target field is inactive; drop those rows so no nil-keyed
+        ;; entries leak into the join graph. Regression for #80557.
+        joins (for [{:keys [t1 f1 t2 f2]} rows
+                    :when (and t1 f1 t2 f2)]
                 {:lhs {:table t1, :field f1}
                  :rhs {:table t2, :field f2}})
         reversed (map (fn [{:keys [lhs rhs]}]
@@ -259,7 +248,7 @@
            seen  #{start}]
       (let [path (peek paths)
             node (peek path)]
-        (cond (nil? node)
+        (cond (nil? path)
               nil
               ;; found a path, bfs finds shortest first
               (= node end)

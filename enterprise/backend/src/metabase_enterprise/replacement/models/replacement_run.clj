@@ -13,6 +13,16 @@
 
 (derive :model/ReplacementRun :metabase/model)
 
+(def ^:private terminal-statuses
+  #{:succeeded :failed :canceled :timeout})
+
+(t2/define-before-update :model/ReplacementRun
+  [run]
+  (let [changes (t2/changes run)]
+    (cond-> run
+      (and (contains? terminal-statuses (keyword (:status changes))) (not (contains? changes :end_time)))
+      (assoc :end_time (mi/now)))))
+
 (t2/deftransforms :model/ReplacementRun
   {:status             mi/transform-keyword
    :source_entity_type mi/transform-keyword
@@ -48,8 +58,7 @@
   (replacement.db/update-active-run! run-id
                                      {:status    :succeeded
                                       :progress  1.0
-                                      :is_active nil
-                                      :end_time  :%now}))
+                                      :is_active nil}))
 
 (defn fail-run!
   "Mark the active run as failed."
@@ -57,7 +66,6 @@
   (replacement.db/update-active-run! run-id
                                      {:status    :failed
                                       :is_active nil
-                                      :end_time  :%now
                                       :message   message}))
 
 (defn cancel-run!
@@ -66,7 +74,6 @@
   (replacement.db/update-active-run! run-id
                                      {:status    :canceled
                                       :is_active nil
-                                      :end_time  :%now
                                       :message   "Canceled by user"}))
 
 (defn timeout-old-runs!

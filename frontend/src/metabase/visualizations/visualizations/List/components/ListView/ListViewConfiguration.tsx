@@ -291,7 +291,6 @@ export const ListViewConfiguration = ({
                 <Box p="lg">
                   <Switch
                     label={t`Show image`}
-                    size="sm"
                     labelPosition="left"
                     w="100%"
                     styles={{

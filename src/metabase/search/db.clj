@@ -3,72 +3,136 @@
   additional logic, so no other namespace in the module runs a query itself (connection and transaction handling still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as mdb]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.search.appdb.index-schema :as index-schema]
+   [metabase.search.appdb.query :as appdb.query]
+   [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.config :as search.config]
+   [metabase.search.in-place.legacy :as legacy]
+   [metabase.search.ingestion.query :as ingestion.query]
+   [metabase.search.schema :as search.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn spec-index-rows
-  "The rows matching the Honey SQL `query` built from a search model's spec by `metabase.search.ingestion`."
-  [query]
-  (t2/query query))
+(mu/defn spec-index-reducible-rows
+  "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
+  matching `where-clause`, or every row when it is nil.
 
-(defn scored-search-rows
-  "The rows matching the scored, filtered search Honey SQL `query` built by `metabase.search.appdb.core`."
-  [query]
-  (t2/query query))
+  `where-clause` is the one Honey SQL argument left in this namespace. It is the search-spec generated `:where`
+  fragment of `metabase.search.spec/search-models-to-update`, which is the payload of the ingestion queue itself:
+  `metabase.search.util/impossible-condition?` drops entries by inspecting it, `metabase.search.ingestion` ORs the
+  distinct clauses of a batch together and parses `[model id]` pairs back out of them to decide what to purge.
+  Turning it into plain data means redesigning that queue, not restructuring a caller."
+  [search-model :- :string
+   where-clause :- [:maybe vector?]]
+  (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause)))
 
-(defn distinct-model-rows
-  "The rows matching the Honey SQL `query` built by `metabase.search.appdb.core` to find the distinct search models
-  present in the results."
-  [query]
-  (t2/query query))
+(mu/defn spec-index-row
+  "A probe row when the `search-model` row with the underlying model PK `id` is indexable, or nil."
+  [search-model :- :string
+   id           :- ms/PositiveInt]
+  (t2/query-one (-> (ingestion.query/spec-index-query-where search-model [:= :this.id id])
+                    (assoc :select [[[:inline 1] :one]] :limit 1))))
 
-(defn search-index-probe-rows
-  "The rows matching the Honey SQL `query` built by `metabase.search.appdb.core` to check whether a single row
-  survives a filter."
-  [query]
-  (t2/query query))
+(mu/defn spec-index-count
+  "The number of indexable rows of `search-model`."
+  [search-model :- :string]
+  (:count (t2/query-one (assoc (ingestion.query/spec-index-query search-model) :select [[:%count.* :count]]))))
 
-(defn search-index-rows
-  "The rows matching the Honey SQL `query` built by `metabase.search.appdb.index/search-query`."
-  [query]
-  (t2/query query))
+(mu/defn in-place-model-set-rows
+  "The `:model` rows of the in-place search engine's model-set query for `search-ctx`, or nil when no model applies."
+  [search-ctx :- search.config/SearchContext]
+  (some-> (legacy/model-set-query search-ctx) mdb/query))
 
-(defn view-count-percentile-rows
+(mu/defn in-place-search-reducible
+  "A reducible of the in-place (index-free) search results for `search-ctx`."
+  [search-ctx :- search.config/SearchContext]
+  (mdb/streaming-reducible-query (legacy/full-search-query search-ctx)))
+
+(mu/defn scored-search-rows
+  "The scored, filtered rows of the search index `index-table` for `search-ctx` and `search-string`, best first.
+  `view-count-percentiles` maps each model to its view-count percentile (see [[view-count-percentile-rows]])."
+  [index-table            :- [:or :keyword :string]
+   search-ctx             :- search.config/SearchContext
+   search-string          :- [:maybe :string]
+   view-count-percentiles :- [:map-of :keyword [:maybe number?]]]
+  (t2/query (search.scoring/with-scores search-ctx
+              (search.scoring/scorers search-ctx view-count-percentiles)
+              (appdb.query/base-filtered-query index-table search-ctx search-string [:legacy_input]))))
+
+(mu/defn distinct-model-rows
+  "The distinct `:model` rows of the search index `index-table` with at least one visible result for `search-ctx`."
+  [index-table :- [:or :keyword :string]
+   search-ctx  :- search.config/SearchContext]
+  (t2/query (appdb.query/model-set-query index-table search-ctx)))
+
+(mu/defn search-index-probe-row
+  "A probe row when the `model`/`id` row of the search index `index-table` survives the first `layer-count`
+  `metabase.search.appdb.query/filter-layers` (nil = every layer) for `search-ctx` and `search-string`, or nil."
+  [index-table   :- [:or :keyword :string]
+   search-ctx    :- search.config/SearchContext
+   search-string :- [:maybe :string]
+   model         :- :string
+   id            :- [:or :string ms/PositiveInt]
+   layer-count   :- [:maybe nat-int?]]
+  (t2/query-one (appdb.query/probe-query index-table search-ctx search-string model id layer-count)))
+
+(defn- index-search-query
+  "The Honey SQL query selecting `select-items` from the search index `table-name`, matching `search-term` (or every
+  row, when blank/nil), honoring `search-native-query?` (see `metabase.search.appdb.specialization.postgres/base-query`
+  and `.h2/base-query`)."
+  [table-name search-term search-native-query? select-items]
+  (specialization/base-query table-name search-term {:search-native-query search-native-query?} select-items))
+
+(mu/defn search-index-rows
+  "The `select-items` rows of the search index `table-name` matching `search-term`, honoring
+  `search-native-query?`."
+  [table-name           :- [:or :keyword :string]
+   search-term          :- [:maybe :string]
+   search-native-query? :- [:maybe :boolean]
+   select-items         :- [:sequential :keyword]]
+  (t2/query (index-search-query table-name search-term search-native-query? select-items)))
+
+(mu/defn view-count-percentile-rows
   "The Model to view-count-percentile rows for the search index table `index-table` at percentile `p-value`."
-  [index-table p-value]
+  [index-table :- [:or :keyword :string]
+   p-value     :- number?]
   (t2/query (specialization/view-count-percentile-query index-table p-value)))
 
-(defn drop-search-index-table-if-exists!
+(mu/defn drop-search-index-table-if-exists!
   "Drop the search index table named `table-name`, if it exists."
-  [table-name]
+  [table-name :- [:or :keyword :string]]
   (t2/query (sql.helpers/drop-table :if-exists table-name)))
 
-(defn drop-search-index-table!
+(mu/defn drop-search-index-table!
   "Drop the search index table named `table-name`."
-  [table-name]
+  [table-name :- [:or :keyword :string]]
   (t2/query (sql.helpers/drop-table table-name)))
 
-(defn create-search-index-table!
-  "Create the search index table named `table-name` with `columns` (the Honey SQL column definitions built by the
-  active search engine specialization)."
-  [table-name columns]
+(mu/defn create-search-index-table!
+  "Create the search index table named `table-name`: the columns of `metabase.search.appdb.index-schema/base-schema`
+  as shaped by the active search engine specialization, then that specialization's post-creation statements (index
+  creation and the like)."
+  [table-name :- [:or :keyword :string]]
   (t2/query (-> (sql.helpers/create-table table-name)
-                (sql.helpers/with-columns columns))))
+                (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema))))
+  (let [table-name (name table-name)]
+    (doseq [statement (specialization/post-create-statements table-name table-name)]
+      (t2/query statement))))
 
-(defn run-search-index-statement!
-  "Run a single post-creation SQL statement (e.g. an index creation) for a search index table."
-  [statement]
-  (t2/query statement))
-
-(defn analyze-search-index-table!
+(mu/defn analyze-search-index-table!
   "Run `ANALYZE` on the search index table `table-name` (Postgres only)."
-  [table-name]
+  [table-name :- [:or :keyword :string]]
   (t2/query (str "ANALYZE " (name table-name))))
 
-(defn postgres-batch-upsert!
+(mu/defn postgres-batch-upsert!
   "Upsert `entries` into the search index `table`, on conflict of `(model, model_id)` overwriting every other column
   with the new value."
-  [table entries]
+  [table   :- [:or :keyword :string]
+   entries :- [:sequential :map]]
   (when (seq entries)
     (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
           excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
@@ -78,62 +142,63 @@
                  :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
                                            {:allow-subquery true})}))))
 
-(defn commit!
+(mu/defn commit!
   "Commit the current transaction."
   []
   (t2/query ["commit"]))
 
-(defn user-exists?
+(mu/defn user-exists?
   "Whether a User with `user-id` exists."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User :id user-id))
 
-(defn entity-exists?
+(mu/defn entity-exists?
   "Whether a `model` row with `id` exists."
-  [model id]
+  [model :- :keyword
+   id    :- ms/PositiveInt]
   (t2/exists? model :id id))
 
-(defn any-card
-  "Some Card, or nil."
-  []
-  (t2/select-one :model/Card))
-
-(defn index-metadata-for-engine
+(mu/defn index-metadata-for-engine
   "The SearchIndexMetadata rows of `engine`."
-  [engine]
+  [engine :- :keyword]
   (t2/select :model/SearchIndexMetadata :engine engine))
 
-(defn index-row
+(mu/defn index-row
   "The row of the search index `table` for `model` and `model-id`, or nil."
-  [table model model-id]
+  [table    :- [:or :keyword :string]
+   model    :- [:or :keyword :string]
+   model-id :- [:or :string ms/PositiveInt]]
   (t2/select-one table :model model :model_id model-id))
 
-(defn delete-all-rows!
+(mu/defn delete-all-rows!
   "Delete every row of the search index `table`."
-  [table]
+  [table :- [:or :keyword :string]]
   (t2/delete! table))
 
-(defn delete-index-rows!
+(mu/defn delete-index-rows!
   "Delete the rows of the search index `table` for `model` and `model-ids`."
-  [table model model-ids]
+  [table      :- [:or :keyword :string]
+   model      :- [:or :keyword :string]
+   model-ids  :- [:or [:set [:or :string ms/PositiveInt]] [:sequential [:or :string ms/PositiveInt]]]]
   (t2/delete! table :model model :model_id [:in model-ids]))
 
-(defn insert-rows!
+(mu/defn insert-rows!
   "Insert `entries` into the search index `table`."
-  [table entries]
+  [table   :- [:or :keyword :string]
+   entries :- [:sequential :map]]
   (t2/insert! table entries))
 
-(defn index-entry-count
+(mu/defn index-entry-count
   "The number of entries in the search index table `index-table`."
-  [index-table]
+  [index-table :- [:or :keyword :string]]
   (t2/count index-table))
 
-(defn table-exists?
+(mu/defn table-exists?
   "Whether a table named `table-name` exists in the app DB."
-  [table-name]
+  [table-name :- :string]
   (t2/exists? :information_schema.tables :table_name table-name))
 
-(defn orphan-index-table-names
+(mu/defn orphan-index-table-names
   "The `:table_name`s of search index tables in the current schema with no SearchIndexMetadata."
   []
   (t2/query {:select [:ist.table_name]
@@ -153,22 +218,23 @@
                                                                 [:= :sim.engine "appdb"]
                                                                 [:= [:lower :sim.index_name] [:lower :ist.table_name]]]}]]]}))
 
-(defn pg-class-estimate
+(mu/defn pg-class-estimate
   "The planner's `:reltuples` and `:relpages` estimate for `table-name` (Postgres only), or nil."
-  [table-name]
+  [table-name :- :string]
   (t2/query-one {:select [:reltuples :relpages]
                  :from   [:pg_class]
                  :where  [:= :oid [:to_regclass table-name]]}))
 
-(defn pg-text-search-configs
+(mu/defn pg-text-search-configs
   "The `:cfgname`s of the Postgres text search configurations."
   []
   (t2/query {:select [:cfgname]
              :from   [:pg_ts_config]}))
 
-(defn active-index-created-at
+(mu/defn active-index-created-at
   "When the active `appdb` search index for `version` and `lang-code` was created, or nil."
-  [version lang-code]
+  [version   :- :string
+   lang-code :- :string]
   (t2/select-one-fn :created_at
                     :model/SearchIndexMetadata
                     :engine :appdb
@@ -177,73 +243,90 @@
                     :status :active
                     {:order-by [[:created_at :desc]]}))
 
-(defn insert-index-metadata!
+(mu/defn insert-index-metadata!
   "Insert the SearchIndexMetadata `row`."
-  [row]
+  [row :- ::search.schema/search-index-metadata.update]
   (t2/insert! :model/SearchIndexMetadata row))
 
-(defn delete-index-metadata-by-version!
+(mu/defn delete-index-metadata-by-version!
   "Delete the SearchIndexMetadata rows of `version`."
-  [version]
+  [version :- :string]
   (t2/delete! :model/SearchIndexMetadata :version version))
 
-(defn delete-index-metadata-by-name-on-conn!
+(mu/defn delete-index-metadata-by-name-on-conn!
   "Delete the SearchIndexMetadata rows named `index-name`, on `conn`."
-  [conn index-name]
+  [conn       :- (ms/InstanceOfClass java.sql.Connection)
+   index-name :- :string]
   (t2/delete! :conn conn :model/SearchIndexMetadata :index_name index-name))
 
-(defn delete-index-metadata!
+(mu/defn delete-index-metadata!
   "Delete the SearchIndexMetadata row of `engine`, `version`, `lang-code`, and `index-name`."
-  [engine version lang-code index-name]
+  [engine     :- :keyword
+   version    :- :string
+   lang-code  :- :string
+   index-name :- :string]
   (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :index_name index-name))
 
-(defn index-metadata
+(mu/defn index-metadata
   "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and
   `lang-code`."
-  [engine version lang-code]
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
   (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
              :engine engine
              :version version
              :lang_code lang-code
              :status [:in [:active :pending]]))
 
-(defn delete-expired-pending-index-metadata!
+(mu/defn delete-expired-pending-index-metadata!
   "Delete the pending SearchIndexMetadata rows of `lang-code` created before `created-before`."
-  [lang-code created-before]
+  [lang-code      :- :string
+   created-before :- ms/TemporalInstant]
   (t2/delete! :model/SearchIndexMetadata
               {:where [:and
                        [:= :lang_code lang-code]
                        [:= :status "pending"]
                        [:< :created_at created-before]]}))
 
-(defn pending-index-metadata-exists?
+(mu/defn pending-index-metadata-exists?
   "Whether a pending SearchIndexMetadata row of `engine`, `version`, and `lang-code` exists."
-  [engine version lang-code]
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
   (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :pending))
 
-(defn delete-retired-index-metadata!
+(mu/defn delete-retired-index-metadata!
   "Delete the retired SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
-  [engine version lang-code]
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
   (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :retired))
 
-(defn retire-active-index-metadata!
+(mu/defn retire-active-index-metadata!
   "Retire the active SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
-  [engine version lang-code]
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
   (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code lang-code :status :active} {:status :retired}))
 
-(defn activate-pending-index-metadata!
+(mu/defn activate-pending-index-metadata!
   "Activate the pending SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
-  [engine version lang-code]
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
   (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code lang-code :status :pending} {:status :active}))
 
-(defn active-index-name
+(mu/defn active-index-name
   "The name of the active SearchIndexMetadata row of `engine`, `version`, and `lang-code`, or nil."
-  [engine version lang-code]
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
   (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :active))
 
-(defn recent-index-versions
+(mu/defn recent-index-versions
   "The `:version`s of the `limit` most recently updated SearchIndexMetadata versions."
-  [limit]
+  [limit :- ms/PositiveInt]
   (t2/query {:select   [:version]
              :from     [(t2/table-name :model/SearchIndexMetadata)]
              :group-by [:version]
@@ -252,10 +335,12 @@
                         [[:max :id] :desc]]
              :limit    limit}))
 
-(defn delete-obsolete-index-metadata!
+(mu/defn delete-obsolete-index-metadata!
   "Delete the SearchIndexMetadata rows whose version is not in `recent-versions`, or not in `keep-versions` and last
   updated before `updated-before`."
-  [recent-versions keep-versions updated-before]
+  [recent-versions :- [:sequential :string]
+   keep-versions   :- [:sequential :string]
+   updated-before  :- ms/TemporalInstant]
   (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
                  :where       [:or
                                [:not-in :version recent-versions]
@@ -263,22 +348,17 @@
                                 [:not-in :version keep-versions]
                                 [:< :updated_at updated-before]]]}))
 
-(defn personal-collection-root-id
-  "The id of the root personal Collection of the User with `user-id`, or nil."
-  [user-id]
-  (t2/select-one-pk :model/Collection :personal_owner_id [:= user-id] :location "/"))
-
-(defn non-destination-database-ids
+(mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, or nil."
   []
   (t2/select-pks-set :model/Database :router_database_id nil))
 
-(defn user-common-names
+(mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."
-  [user-ids]
+  [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
 
-(defn card-result-metadata
+(mu/defn card-result-metadata
   "A map of Card id to result metadata for the Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))

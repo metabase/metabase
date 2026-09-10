@@ -1,4 +1,13 @@
 (ns metabase.lib.schema.metadata.fingerprint
+  "Schemas for the `fingerprint` a Field carries: the summary statistics the analysis stage computes from a sample of
+  its values.
+
+  Every map in here is deliberately open. A fingerprint is not something anybody sends us -- it is written by sync,
+  stored in the app DB, and read back by whatever version happens to be running later, so a row can easily hold stats
+  an older (or newer) version of this schema does not name, and rejecting one would make the whole column metadata map
+  it hangs off of invalid. It is provider content in the same sense `:metabase.lib.schema.metadata/column` is, and is
+  covered by the same `:lib/metadata` exception. Rather than a `:map-of`, the statistics we do know about are named
+  and typed, so a fingerprint with a nonsense *value* is still rejected."
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
@@ -15,14 +24,14 @@
 (mr/def ::fingerprint.global
   "Fingerprint values that Fields of all types should have."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:distinct-count {:optional true} :int]
    [:nil%           {:optional true} [:maybe [:ref ::percent]]]])
 
 (mr/def ::fingerprint.number
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:min             {:optional true} [:maybe number?]]
    [:max             {:optional true} [:maybe number?]]
    [:avg             {:optional true} [:maybe number?]]
@@ -38,7 +47,7 @@
 (mr/def ::fingerprint.text
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:percent-json   {:optional true} [:maybe [:ref ::percent]]]
    [:percent-url    {:optional true} [:maybe [:ref ::percent]]]
    [:percent-email  {:optional true} [:maybe [:ref ::percent]]]
@@ -51,7 +60,7 @@
 (mr/def ::fingerprint.temporal
   "Schema for fingerprint information for Fields deriving from `:type/Temporal`."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:earliest             {:optional true} [:maybe :string]]
    [:latest               {:optional true} [:maybe :string]]
    [:mode-fraction        {:optional true} [:maybe [:ref ::percent]]]
@@ -66,12 +75,14 @@
    {:decode/normalize (fn [m]
                         (some-> (lib.schema.common/normalize-map-no-kebab-case m)
                                 (perf/update-keys lib.schema.common/normalize-base-type)))}
-   [:map
+   [:map {:closed true}
     [:type/Number   {:optional true} [:ref ::fingerprint.number]]
     [:type/Text     {:optional true} [:ref ::fingerprint.text]]
     ;; temporal fingerprints are keyed by `:type/DateTime` for historical reasons. `DateTime` used to be the parent of
     ;; all temporal MB types.
-    [:type/DateTime {:optional true} [:ref ::fingerprint.temporal]]]
+    [:type/DateTime {:optional true} [:ref ::fingerprint.temporal]]
+    [:type/Date     {:optional true} [:ref ::fingerprint.temporal]]
+    [:type/Time     {:optional true} [:ref ::fingerprint.temporal]]]
    [:fn
     {:error/message "Type-specific fingerprint with exactly one key"}
     (fn [m]
@@ -81,7 +92,7 @@
   "Schema for a Field 'fingerprint' generated as part of the analysis stage. Used to power the 'classification'
    sub-stage of analysis. Stored as the `fingerprint` column of Field."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:global       {:optional true} [:ref ::fingerprint.global]]
    [:type         {:optional true} [:ref ::fingerprint.type-specific]]
-   [:experimental {:optional true} [:map-of :keyword :any]]])
+   [:experimental {:optional true} [:map {:closed true}]]])

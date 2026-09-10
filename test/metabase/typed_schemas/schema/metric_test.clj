@@ -4,9 +4,12 @@
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.schema.metric :as schema.metric]
    [metabase.typed-schemas.schema.table :as schema.table]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel metric-dimension-schema-uses-dimension-id-test
   (is (= {:type        "column"

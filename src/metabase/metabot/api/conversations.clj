@@ -16,6 +16,8 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema :as metabot.schema]
+   [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.request.core :as request]
@@ -60,7 +62,8 @@
                                   [:map
                                    [:card_id  ms/PositiveInt]
                                    [:chart_id [:maybe :string]]]]]
-   [:messages                    [:sequential :map]]])
+   [:messages                    [:sequential ::metabot.schema/client-message]]
+   [:context_window_tokens       {:optional true} :int]])
 
 (def ^:private ConversationTitleResponse
   [:map
@@ -68,31 +71,31 @@
    [:title  [:maybe :string]]])
 
 (def ^:private ConversationIdParams
-  [:map [:id ms/UUIDString]])
+  [:map {:closed true} [:id ms/UUIDString]])
 
 (def ^:private ListConversationsQueryParams
   [:maybe
-   [:map
+   [:map {:closed true}
     [:profile_id {:optional true} [:maybe ms/NonBlankString]]]])
 
 (def ^:private ForkConversationBody
-  [:map
+  [:map {:closed true}
    ;; the `external_id` of the assistant message to fork at (the FE's message id)
    [:message_id ms/UUIDString]])
 
 (def ^:private SaveEntityCard
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
    [:description            {:optional true} [:maybe :string]]
    [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    [:display                ms/NonBlankString]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private SaveEntityBody
-  [:map
+  [:map {:closed true}
    ;; stamped onto report_card.metabot_chart_id, a varchar(36) — clamp to fit
    [:chart_id [:and ms/NonBlankString [:string {:max 36}]]]
    [:card     SaveEntityCard]])
@@ -102,9 +105,9 @@
    [:id                      ms/PositiveInt]
    [:name                    ms/NonBlankString]
    [:description             {:optional true} [:maybe :string]]
-   [:dataset_query           ms/Map]
+   [:dataset_query           ::lib-be.schema/maybe-legacy-query]
    [:display                 :keyword]
-   [:visualization_settings  {:optional true} [:maybe ms/Map]]
+   [:visualization_settings  {:optional true} [:maybe ms/VisualizationSettings]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id            {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id        {:optional true} [:maybe ms/PositiveInt]]
@@ -154,13 +157,22 @@
   (let [conversation (api/read-check :model/MetabotConversation id)]
     (conversation-title/title-status id (:title conversation))))
 
+(defn- with-context-window
+  "Attach the window each message's `contextTokens` should be read against. It comes
+  from the model currently serving requests rather than the one that served the
+  turn, because the client uses it to judge whether the *next* message will fit."
+  [detail]
+  (let [window (metabot.self/context-window-tokens (metabot.settings/llm-metabot-provider))]
+    (cond-> detail
+      (and detail window) (assoc :context_window_tokens window))))
+
 (api.macros/defendpoint :get "/:id" :- ConversationDetail
   "Return a single conversation with its flattened chat messages.
 
   Accessible to any participant in the conversation or to any superuser."
   [{:keys [id]} :- ConversationIdParams]
   (api/read-check :model/MetabotConversation id)
-  (metabot.persistence/conversation-detail id))
+  (with-context-window (metabot.persistence/conversation-detail id)))
 
 (api.macros/defendpoint :post "/:id/fork" :- ConversationDetail
   "Fork a conversation at an assistant message, returning a brand-new conversation
@@ -179,7 +191,7 @@
     (let [new-conversation-id (metabot.persistence/fork-conversation! id message_id api/*current-user-id*)]
       (api/check-400 (some? new-conversation-id)
                      (tru "Can only fork from a completed Metabot response."))
-      (metabot.persistence/conversation-detail new-conversation-id))))
+      (with-context-window (metabot.persistence/conversation-detail new-conversation-id)))))
 
 (api.macros/defendpoint :post "/:id/saved-entity" :- SaveEntityResponse
   "Save a Metabot-generated chart from this conversation as a card, stamping the

@@ -1,4 +1,5 @@
 import type {
+  GroupId,
   TaskRunDateFilterOption,
   TaskRunEntityType,
   TaskRunType,
@@ -93,8 +94,9 @@ export function monitorAiAuditing() {
   return `${ROOT_URL}/ai-auditing`;
 }
 
-export function monitorAiAuditingUsage() {
-  return `${monitorAiAuditing()}/usage`;
+export function monitorAiAuditingUsage(opts?: { groupId?: GroupId }) {
+  const path = `${monitorAiAuditing()}/usage`;
+  return opts?.groupId == null ? path : `${path}?group=${opts.groupId}`;
 }
 
 export function monitorAiAuditingConversations() {
