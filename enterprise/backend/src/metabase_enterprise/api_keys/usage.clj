@@ -44,6 +44,11 @@
   enough for IPv6; a forwarded-for header longer than that is truncated rather than failing the insert."
   45)
 
+(def ^:private embedding-client-max-length
+  "Cap on the stored embedding_client length, matching the `api_key_usage_log.embedding_client` column
+  width. Caller-supplied and unvalidated, unlike client_name — truncate rather than fail the insert."
+  255)
+
 ;;; ------------------------------------------------- usage log ----------------------------------------------------
 
 (def ^:private usage-log-batch-capacity
@@ -81,12 +86,13 @@
   inserted by a Grouper batch, never synchronously on the request thread. `ip_address` and
   `user_agent` are PII — stored only when `analytics-pii-retention-enabled` is on. `client_name` is
   classified from `user-agent` via [[metabase.api-keys.usage/detect-client]] and always recorded —
-  non-PII, mirrors `agent_api_call_log`'s `client_name`. `route_template` and `http_method` are
-  truncated to their column widths; a row missing a NOT NULL value is dropped rather than queued, so
-  it can't sink the batch it would land in."
+  non-PII, mirrors `agent_api_call_log`'s `client_name`. `embedding_client` is the raw
+  `X-Metabase-Client` header, passed through unclassified and non-PII, supplementary to `client_name`.
+  `route_template`, `http_method`, and `embedding_client` are truncated to their column widths; a row
+  missing a NOT NULL value is dropped rather than queued, so it can't sink the batch it would land in."
   :feature :none
   [{:keys [api-key-id user-id tenant-id route-template http-method status duration-ms
-           user-agent ip-address]}]
+           user-agent ip-address embedding-client]}]
   (try
     (let [;; `pii-fields-from` returns the gated PII columns only when retention is on (nil
           ;; otherwise). Allowlist the two columns this row has, so a new field on the shared helper
@@ -95,14 +101,15 @@
                                                   :ip-address ip-address})
                       (select-keys [:user_agent :ip_address])
                       (update :ip_address #(some-> % (u/truncate ip-address-max-length))))
-          row (merge {:api_key_id     api-key-id
-                      :user_id        user-id
-                      :tenant_id      tenant-id
-                      :route_template (some-> route-template (u/truncate route-template-max-length))
-                      :http_method    (some-> http-method (u/truncate http-method-max-length))
-                      :status         status
-                      :duration_ms    duration-ms
-                      :client_name    (api-keys.usage/detect-client user-agent)}
+          row (merge {:api_key_id        api-key-id
+                      :user_id           user-id
+                      :tenant_id         tenant-id
+                      :route_template    (some-> route-template (u/truncate route-template-max-length))
+                      :http_method       (some-> http-method (u/truncate http-method-max-length))
+                      :status            status
+                      :duration_ms       duration-ms
+                      :client_name       (api-keys.usage/detect-client user-agent)
+                      :embedding_client  (some-> embedding-client (u/truncate embedding-client-max-length))}
                      pii)]
       (if-let [missing (not-empty (remove #(some? (get row %)) not-null-columns))]
         (log/warnf "Not recording API key usage, row is missing %s" (pr-str missing))

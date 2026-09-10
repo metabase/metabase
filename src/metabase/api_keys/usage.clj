@@ -28,7 +28,12 @@
   `client_name` is classified from the caller's self-reported `User-Agent` via [[detect-client]] —
   analytics only, never used to gate access — mirroring `agent_api_call_log`'s `client_name`. Unlike
   `user_agent` (raw, PII-gated), `client_name` is a canonical, low-cardinality value and is always
-  recorded."
+  recorded.
+
+  `embedding_client` is the raw `X-Metabase-Client` header, when present — non-PII (same status as
+  `view_log`/`query_execution.embedding_client`), passed through unclassified. It's supplementary:
+  `client_name` stays the primary classification axis, since almost no API-key traffic sets this
+  header (the SDK/embed.js clients that do authenticate via JWT/SSO, not API keys)."
   (:require
    [clojure.string :as str]
    [metabase.premium-features.core :refer [defenterprise]]

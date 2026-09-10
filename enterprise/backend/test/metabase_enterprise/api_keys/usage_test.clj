@@ -108,6 +108,36 @@
                 (is (nil? (:user_agent row)))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
+(deftest record-api-key-request!-embedding-client-test
+  (testing "embedding_client carries the raw X-Metabase-Client header, never gated, unlike client_name it's not classified"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates       true
+                                         analytics-pii-retention-enabled false]
+        (let [route (unique-route)]
+          (try
+            (usage/record-api-key-request! (request-info route :embedding-client "embedding-sdk-react"))
+            (is (= "embedding-sdk-react" (:embedding_client (row-for route))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))
+  (testing "absent when not passed — the common case for API-key traffic"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (let [route (unique-route)]
+          (try
+            (usage/record-api-key-request! (request-info route))
+            (is (nil? (:embedding_client (row-for route))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
+
+(deftest record-api-key-request!-truncates-embedding-client-test
+  (testing "an over-long embedding_client is truncated to the column width so the row still records"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (let [route (unique-route)
+              long-value (apply str (repeat 300 \x))]
+          (try
+            (usage/record-api-key-request! (request-info route :embedding-client long-value))
+            (is (= 255 (count (:embedding_client (row-for route)))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
+
 (deftest record-api-key-request!-unrecognized-user-agent-is-other-test
   (testing "an unrecognized or absent User-Agent classifies as \"other\""
     (mt/with-premium-features #{:audit-app}
