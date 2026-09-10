@@ -256,9 +256,11 @@
   the composed request and its response, and translation of failures into the provider's own messages —
   both at request time and mid-stream, since the SSE body is consumed lazily, long after this returns.
 
-  `opts` is the caller's request — its `:model` names the span and the debug log, and its `:credentials`
-  and `:ai-proxy?` are what the descriptor's `:auth` authenticates from. The third argument says how this
-  adapter puts that request on the wire:
+  `opts` is the caller's request — its `:model` names the span and the debug log, its `:credentials`
+  and `:ai-proxy?` are what the descriptor's `:auth` authenticates from, and its `:input` and `:tools`
+  are what the span counts.
+
+  The third argument says how this adapter puts that request on the wire:
 
     :path       - the streaming endpoint, relative to the base URL.
     :body       - the composed request body. Encoded here.
@@ -268,10 +270,10 @@
     :wrap       - applied to the reducible before error translation, for an adapter with its own
                   translation to do first.
     :on-error   - replaces the default [[rethrow!]] catch, for an adapter that retries."
-  [{:keys [slug display-name span] :as p}   :- Provider
-   {:keys [model credentials ai-proxy?]}   :- core/LLMRequestOpts
+  [{:keys [slug display-name span] :as p}            :- Provider
+   {:keys [model input tools credentials ai-proxy?]} :- core/LLMRequestOpts
    {:keys [path body headers request span-attrs wrap on-error]
-    :or   {wrap identity}}                 :- StreamOpts]
+    :or   {wrap identity}}                           :- StreamOpts]
   (let [send!      (fn []
                      ;; encoded up front, since a provider may sign over the body
                      (request! p {:credentials credentials
@@ -282,9 +284,8 @@
                                   :headers     (merge {"Content-Type" "application/json"} headers)
                                   :body        (json/encode body)}
                                request))
-        ;; every dialect we speak carries its turns under one of these two keys
-        msg-count  (count (or (:messages body) (:input body)))
-        tool-count (count (:tools body))]
+        msg-count  (count input)
+        tool-count (count tools)]
     (log/debug (str display-name " request") {:model model :msg-count msg-count :tools tool-count})
     (with-span :info (cond-> {:name       span
                               :model      model
