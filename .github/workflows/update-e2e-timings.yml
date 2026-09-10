@@ -56,48 +56,64 @@ jobs:
 
             core.setOutput('artifact-count', result.artifactCount);
 
-      - name: Set up git configuration
+      - name: Configure git and commit changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          BRANCH_NAME="update-e2e-timings-$(date +%Y%m%d-%H%M%S)"
+
+          DATE=$(date +%Y%m%d-%H%M%S)
+          BRANCH_NAME="update-e2e-timings-$DATE"
           echo "BRANCH_NAME=$BRANCH_NAME" >> "$GITHUB_ENV"
           echo "Branch name will be: $BRANCH_NAME"
 
+          git checkout -b "$BRANCH_NAME"
+          git add e2e/support/timings.json
+          git commit -m "update e2e timings $DATE" --allow-empty --no-verify
+          git push -u origin "$BRANCH_NAME"
+      
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          branch: ${{ env.BRANCH_NAME }}
-          base: master
-          commit-message: |
-            Update E2E test timings with averaged data
+        id: create_pr
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          BODY=
 
-            Collected timing data from ${{ env.DAYS_BACK }} days of test runs.
-            All specs with timing data were included (simple averages).
+          ## Summary
+          This PR updates the E2E test timing data with averaged values from recent test runs.
 
-            🤖 Generated automatically by update-e2e-timings workflow
+          ## Details
+          - Collected data from the last **${{ env.DAYS_BACK }} days** of test runs
+          - Averaged timing data from **${{ steps.collect-timings.outputs.artifact-count }}** test runs
 
-            Co-Authored-By: GitHub Actions <actions@github.com>
-          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          title: "[chore] Update E2E test timings with recent data"
-          body: |
-            ## Summary
-            This PR updates the E2E test timing data with averaged values from recent test runs.
+          ## Generated automatically
+          🤖 This PR was created automatically by the `update-e2e-timings` workflow.
+          The timing data helps cypress-split optimize test distribution across parallel jobs.
 
-            ## Details
-            - Collected data from the last **${{ env.DAYS_BACK }} days** of test runs
-            - Averaged timing data from **${{ steps.collect-timings.outputs.artifact-count }}** test runs
+          Co-Authored-By: GitHub Actions <actions@github.com>
 
-            ## Generated automatically
-            🤖 This PR was created automatically by the `update-e2e-timings` workflow.
-            The timing data helps cypress-split optimize test distribution across parallel jobs.
 
-            Co-Authored-By: GitHub Actions <actions@github.com>
-          labels: |
-            .CI & Tests
-            no-backport
-          add-paths: e2e/support/timings.json
-          team-reviewers: |
-            devexp
+          URL=$(gh pr create \
+            --base master \
+            --head "$BRANCH_NAME"
+            --title "[chore] Update E2E test timings with recent data"
+            --body "$BODY"
+            --label ".CI & Tests"
+            --label "no-backport"
+            --reviewer devexp
+          )
+
+          PR_NUMBER=${URL##*/}
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Approve and Merge the PR
+        env:
+          # uses a different token than the token that created the PR so we can approve and merge it
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
+        shell: bash
+        run: |
+          gh pr review --approve "$PR_NUMBER"
+          gh pr merge --squash --auto "$PR_NUMBER"
