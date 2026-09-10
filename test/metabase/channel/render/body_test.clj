@@ -1516,6 +1516,109 @@
       (testing "only the four m2 value cells (> 50) are colored"
         (is (= 4 (count (re-seq #"background-color" h))))))))
 
+(def ^:private simple-pivot-cols
+  [{:name "CATEGORY" :display_name "Category" :base_type :type/Text}
+   {:name "SOURCE"   :display_name "Source"   :base_type :type/Text}
+   {:name "count"    :display_name "Count"    :base_type :type/Integer}])
+
+(def ^:private simple-pivot-rows
+  "Ordered by category then source, as a two-breakout query returns them: sorted within each category but not
+  overall, so the browser sorts both axes."
+  [["Gizmo" "Google" 1] ["Gizmo" "Organic" 2]
+   ["Widget" "Affiliate" 3] ["Widget" "Google" 4]])
+
+(def ^:private simple-pivot-settings
+  {:table.pivot true :table.pivot_column "SOURCE" :table.cell_column "count"})
+
+(defn- rendered-grid
+  "The text of every <th> and <td> of a rendered part, one vector per <tr>."
+  [part]
+  (for [tr (render.tu/nodes-with-tag (:content part) :tr)]
+    (->> (tree-seq #(and (seqable? %) (not (map? %)) (not (string? %))) seq tr)
+         (filter #(and (vector? %) (#{:th :td} (first %))))
+         (mapv last))))
+
+(defn- render-simple-pivot
+  ([viz-settings] (render-simple-pivot viz-settings simple-pivot-cols simple-pivot-rows))
+  ([viz-settings cols rows]
+   (body/render :table :inline "UTC" {:display :table :visualization_settings viz-settings} nil
+                {:cols cols :rows rows :viz-settings viz-settings})))
+
+(deftest ^:parallel simple-pivot-test
+  (testing "a Table card with the \"Pivot table\" toggle on renders as the browser's simple pivot (#76931)"
+    (is (= [["Category" "Affiliate" "Google" "Organic"]
+            ["Gizmo"    ""          "1"      "2"]
+            ["Widget"   "3"         "4"      ""]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings)))))
+  (testing "string-keyed settings pivot too"
+    (is (= (rendered-grid (render-simple-pivot simple-pivot-settings))
+           (rendered-grid (render-simple-pivot (update-keys simple-pivot-settings name))))))
+  (testing "the row-label header is the column's display name; a column title override is ignored, as in the browser"
+    (let [card {:display                :table
+                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:column_title "Cat"}}}}
+          part (body/render :table :inline "UTC" card nil
+                            {:cols simple-pivot-cols :rows simple-pivot-rows :viz-settings simple-pivot-settings})]
+      (is (= "Category" (ffirst (rendered-grid part))))))
+  (testing "the flat table is unchanged when the toggle does not apply"
+    (let [flat (html (:content (render-simple-pivot {})))]
+      (doseq [[reason settings cols] [["toggle off"           (assoc simple-pivot-settings :table.pivot false)]
+                                      ["unknown pivot column" (assoc simple-pivot-settings :table.pivot_column "NOPE")]
+                                      ["cell column missing"  (dissoc simple-pivot-settings :table.cell_column)]
+                                      ["pivot and cell alike" (assoc simple-pivot-settings :table.cell_column "SOURCE")]
+                                      ["four columns"         simple-pivot-settings
+                                       (conj simple-pivot-cols {:name "extra" :display_name "Extra" :base_type :type/Text})]]]
+        (testing reason
+          (let [rows (if cols (map #(conj % "x") simple-pivot-rows) simple-pivot-rows)
+                part (render-simple-pivot settings (or cols simple-pivot-cols) rows)]
+            (is (= 5 (count (rendered-grid part))))
+            (when-not cols
+              (is (= flat (html (:content part)))))))))))
+
+(deftest simple-pivot-row-limit-test
+  (testing "the grid is built from every row, not only the first attachment-table-row-limit rows"
+    (mt/with-temporary-setting-values [attachment-table-row-limit 2]
+      (is (= [["Category" "Affiliate" "Google" "Organic"]
+              ["Gizmo"    ""          "1"      "2"]
+              ["Widget"   "3"         "4"      ""]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings)))))))
+
+(deftest ^:parallel simple-pivot-order-test
+  (testing "a native query's deliberate row order is kept when the rows are not sorted within groups"
+    (is (= [["Category" "Organic" "Google"]
+            ["Widget"   "1"       ""]
+            ["Gizmo"    ""        "2"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Widget" "Organic" 1] ["Gizmo" "Google" 2]])))))
+  (testing "rows sorted descending within groups sort the headings descending"
+    (is (= [["Category" "Organic" "Google"]
+            ["Gizmo"    "2"       "1"]
+            ["Widget"   "4"       "3"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Gizmo" "Organic" 2] ["Gizmo" "Google" 1]
+                                                ["Widget" "Organic" 4] ["Widget" "Google" 3]])))))
+  (testing "numeric pivot values are formatted as headings and sorted numerically"
+    (let [cols [{:name "CATEGORY" :display_name "Category" :base_type :type/Text}
+                {:name "YEAR"     :display_name "Year"     :base_type :type/Integer}
+                {:name "count"    :display_name "Count"    :base_type :type/Integer}]]
+      (is (= [["Category" "2" "10"]
+              ["Gizmo"    "1" "2"]
+              ["Widget"   "3" "4"]]
+             (rendered-grid (render-simple-pivot (assoc simple-pivot-settings :table.pivot_column "YEAR") cols
+                                                 [["Gizmo" 2 1] ["Gizmo" 10 2] ["Widget" 2 3] ["Widget" 10 4]])))))))
+
+(deftest simple-pivot-conditional-formatting-test
+  (let [render-with (fn [rule]
+                      (html (:content (render-simple-pivot (assoc simple-pivot-settings
+                                                                  :table.column_formatting [rule])))))]
+    (testing "a value rule on the cell column colors the matching cells, and nothing else"
+      (is (= 2 (count (re-seq #"background-color"
+                              (render-with {:type "single" :columns ["count"] :color "#ff0000"
+                                            :operator ">" :value 2}))))))
+    (testing "a row-highlight rule colors only the matching cells, as in the browser's pivoted table"
+      (is (= 2 (count (re-seq #"background-color"
+                              (render-with {:type "single" :columns ["count"] :color "#ff0000"
+                                            :operator ">" :value 2 :highlight_row true}))))))))
+
 (deftest render-pin-map-resolves-columns-by-semantic-type-test
   (testing "render :pin_map finds lat/long columns by semantic type when the column settings aren't persisted"
     (fake/with-fake-routes (render.tu/fake-tile-routes #"https://.*tile\.openstreetmap\.org/.*")

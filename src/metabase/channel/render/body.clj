@@ -214,7 +214,8 @@
         colorable-cell (fn [cell ^long c]
                          ;; value cells are NumericWrapper; map each value column back to its measure column
                          ;; so the matching conditional-formatting rule applies. Row highlighting is disabled
-                         ;; for pivots (:table.pivot in pivot-table-content), so the row index is unused.
+                         ;; for pivots (:table.pivot in pivot-table-content and simple-pivot-content), so the
+                         ;; row index is unused.
                          (when (and color-data (formatter/NumericWrapper? cell))
                            (let [vpos (- c (long left-width))]
                              (when (nat-int? vpos)
@@ -246,6 +247,126 @@
            row)])
        rows)]]))
 
+;;; --------------------------------------------------- simple pivot ---------------------------------------------------
+
+(defn- simple-pivot-indexes
+  "Column indexes `{:normal i, :pivot j, :cell k}` when the Table viz's \"Pivot table\" toggle applies to `cols`, else
+  nil. Mirrors the browser's `isPivoted` and `isValid` (viz-core/lib/settings/column.ts, Table/definition.ts):
+  `:table.pivot` is set, there are exactly three columns, and `:table.pivot_column` and `:table.cell_column` name two
+  different columns. The remaining column is the normal one; its values become the row labels."
+  [cols viz-settings]
+  (when (and (setting-value viz-settings :table.pivot)
+             (= 3 (count cols)))
+    (let [index-of  (fn [k]
+                      (let [col-name (setting-value viz-settings k)]
+                        (some (fn [[i col]] (when (= (:name col) col-name) i))
+                              (map-indexed vector cols))))
+          pivot-idx (index-of :table.pivot_column)
+          cell-idx  (index-of :table.cell_column)]
+      (when (and pivot-idx cell-idx (not= pivot-idx cell-idx))
+        {:normal (first (remove #{pivot-idx cell-idx} (range 3)))
+         :pivot  pivot-idx
+         :cell   cell-idx}))))
+
+(defn- compare-pivot-values
+  "The browser's `DEFAULT_COMPARE` (visualizations/lib/data_grid.ts): strings compare as strings, other comparable values
+  of one class compare naturally, and anything else counts as equal."
+  [a b]
+  (cond
+    (and (string? a) (string? b))                    (compare a b)
+    (and (number? a) (number? b))                    (compare a b)
+    (and (instance? Comparable a) (some? b)
+         (= (class a) (class b)))                    (compare a b)
+    :else                                            0))
+
+(def ^:private unsorted-state
+  {:asc true, :desc true, :group-asc true, :group-desc true, :grouped? false})
+
+(defn- track-order
+  "One step of the browser's `SortState.update` (visualizations/lib/data_grid.ts): fold `value` into `state`, noting
+  whether the values seen so far are monotonic overall, and monotonic within runs of one `group-key`."
+  [{:keys [last-value last-group] :as state} value group-key]
+  (let [state (if (contains? state :last-value)
+                (let [result (compare-pivot-values value last-value)
+                      state  (-> state
+                                 (update :asc #(and % (>= result 0)))
+                                 (update :desc #(and % (<= result 0))))]
+                  (if (and (not (zero? result)) (= last-group group-key))
+                    (-> state
+                        (update :group-asc #(and % (>= result 0)))
+                        (update :group-desc #(and % (<= result 0)))
+                        (assoc :grouped? true))
+                    state))
+                state)]
+    (assoc state :last-value value :last-group group-key)))
+
+(defn- order-distinct-values
+  "The browser's `SortState.sort`: keep `values` in first-seen order, and re-sort them only when the source rows were
+  sorted within groups of the other column but not overall. A two-breakout query therefore gets both axes sorted,
+  while a native query's deliberate row order is kept."
+  [{:keys [grouped? asc desc group-asc group-desc]} values]
+  (cond
+    (not grouped?)              values
+    (and group-asc group-desc)  values
+    (and group-asc (not asc))   (sort compare-pivot-values values)
+    (and group-desc (not desc)) (sort #(compare-pivot-values %2 %1) values)
+    :else                       values))
+
+(defn- distinct-values-sorted
+  "Distinct values of column `value-idx` across `rows`, in the order the browser's `distinctValuesSorted` gives them,
+  with column `group-idx` as the grouping column."
+  [rows value-idx group-idx]
+  (let [state (reduce (fn [state row]
+                        (track-order state (nth row value-idx) (nth row group-idx)))
+                      unsorted-state
+                      rows)]
+    (order-distinct-values state (distinct (map #(nth % value-idx) rows)))))
+
+(defn- simple-pivot-grid
+  "Port of the browser's `pivot` (visualizations/lib/data_grid.ts): fold a three-column result into a 2D grid, header
+  row first. Column 0 holds the normal column's title and its values; the other columns are the distinct pivot values.
+  Each cell is the cell column's value for that (normal, pivot) pair, or nil when no row has the pair."
+  [timezone-id {:keys [cols rows viz-settings] :as data} {:keys [normal pivot cell]}]
+  (let [format-rows?  (get data :format-rows? true)
+        formatter-for (fn [idx]
+                        (formatter/create-formatter timezone-id (nth cols idx) viz-settings format-rows?))
+        format-normal (formatter-for normal)
+        format-pivot  (formatter-for pivot)
+        format-cell   (formatter-for cell)
+        pivot-values  (distinct-values-sorted rows pivot normal)
+        normal-values (distinct-values-sorted rows normal pivot)
+        ;; the last row wins for a repeated (normal, pivot) pair, as the browser's `lastIndexOf` does
+        cells         (into {} (map (fn [row] [[(nth row normal) (nth row pivot)] (nth row cell)])) rows)]
+    ;; the browser's `getTitleForColumn` skips the column title override when the table is pivoted
+    (into [(into [(table-data/remapped-display-name (nth cols normal))]
+                 ;; headers are plain strings so that pivot->hiccup does not color a numeric pivot value
+                 (map (comp pivot-cell->str format-pivot))
+                 pivot-values)]
+          (map (fn [normal-value]
+                 (into [(format-normal normal-value)]
+                       (map (fn [pivot-value]
+                              (let [k [normal-value pivot-value]]
+                                (when (contains? cells k)
+                                  (format-cell (get cells k))))))
+                       pivot-values)))
+          normal-values)))
+
+(defn simple-pivot?
+  "Does the Table viz's \"Pivot table\" toggle apply to this query result? See [[simple-pivot-indexes]]."
+  [{:keys [cols viz-settings]}]
+  (some? (simple-pivot-indexes cols viz-settings)))
+
+(defn- simple-pivot-content
+  "Hiccup for a Table card whose \"Pivot table\" toggle applies (see [[simple-pivot-indexes]]). The grid is built from
+  every row and, like `render :pivot`, is not cut at the attachment row limit."
+  [timezone-id {:keys [cols viz-settings] :as data} {:keys [cell] :as indexes}]
+  (pivot->hiccup (simple-pivot-grid timezone-id data indexes)
+                 {:color-data     (select-keys data [:cols :rows])
+                  ;; viz-settings carries :table.pivot, which tells the shared color JS to skip row-highlight rules
+                  :color-settings viz-settings
+                  :left-width     1
+                  :measure-names  [(:name (nth cols cell))]}))
+
 (defn- order-data [data viz-settings]
   (if (some? (::mb.viz/table-columns viz-settings))
     (let [;; Deduplicate table-columns by name to handle duplicated viz settings
@@ -272,12 +393,11 @@
                                    ::mb.viz/show-mini-bar]))
    cols))
 
-(mu/defmethod render :table :- ::RenderedPartCard
-  [_chart-type
-   _render-type
-   timezone-id :- [:maybe :string]
+(mu/defn- flat-table-content
+  "Hiccup for a Table card as a flat table: the columns in `table.columns` order, the rows cut at the attachment row
+  limit with a \"Showing N of M rows\" line when some are cut."
+  [timezone-id :- [:maybe :string]
    card
-   _dashcard
    {:keys [rows viz-settings format-rows?] :as unordered-data}]
   (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
         data                        (-> unordered-data
@@ -297,8 +417,19 @@
                                       viz-settings
                                       minibar-cols)
                                      (render-truncation-warning (channel.settings/attachment-table-row-limit) (count rows))]]
-    {:content     table-body
-     :attachments nil}))
+    table-body))
+
+(mu/defmethod render :table :- ::RenderedPartCard
+  [_chart-type
+   _render-type
+   timezone-id :- [:maybe :string]
+   card
+   _dashcard
+   {:keys [cols viz-settings] :as data}]
+  {:content     (if-let [indexes (simple-pivot-indexes cols viz-settings)]
+                  (simple-pivot-content timezone-id data indexes)
+                  (flat-table-content timezone-id card data))
+   :attachments nil})
 
 (defn- blank-cell-value?
   "True when a raw cell value should render as an empty placeholder (nil, or a blank string)."
