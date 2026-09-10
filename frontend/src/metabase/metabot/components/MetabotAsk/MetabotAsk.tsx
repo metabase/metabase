@@ -76,7 +76,6 @@ export const MetabotAsk = () => {
         </>
       ) : (
         <Box pos="relative" h="100%" w="100%">
-          <Box className={S.topFade} />
           <MetabotChat
             conversationId={conversationId}
             agentId="ask"
