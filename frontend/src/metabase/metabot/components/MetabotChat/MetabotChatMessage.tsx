@@ -32,7 +32,6 @@ import {
   Flex,
   type FlexProps,
   Icon,
-  Loader,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -46,6 +45,7 @@ import { AgentToolCallPart } from "./MetabotAgentToolCallPart";
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
+import { MetabotResponseLoader } from "./MetabotResponseLoader";
 
 const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
@@ -603,14 +603,7 @@ const MessageStatus = ({
         onContinue={onContinue}
       />
     ))
-    .with({ type: "in_progress" }, () => (
-      <Loader
-        type="dots"
-        size="lg"
-        color="core-brand"
-        data-testid="metabot-response-loader"
-      />
-    ))
+    .with({ type: "in_progress" }, () => <MetabotResponseLoader />)
     .exhaustive();
 
 const AbortedTurnAlert = ({
