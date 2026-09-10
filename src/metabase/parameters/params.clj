@@ -113,8 +113,12 @@
 (def param-field-columns
   "The only Field columns appropriate for returning in public/embedded API endpoints, which make heavy use of the
   functions in this namespace. Used to narrow the Fields selected here, and by the public/embed endpoints to strip
-  every other column from the Fields (and their hydrated `:target`/`:name_field`) in `:param_fields`."
-  [:id :table_id :display_name :base_type :name :semantic_type :has_field_values :fk_target_field_id])
+  every other column from the Fields (and their hydrated `:target`/`:name_field`) in `:param_fields`.
+
+  A parameter widget reads all of these. `:effective_type` decides which widget a coerced Field gets, and
+  `:settings` formats the values it shows."
+  [:id :table_id :display_name :base_type :effective_type :name :semantic_type :has_field_values
+   :fk_target_field_id :settings])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
@@ -183,6 +187,20 @@
   [card-or-dashboard]
   (m/update-existing card-or-dashboard :param_fields update-vals #(mapv remove-param-field-non-public-columns %)))
 
+(defn- hydrate-param-field-targets
+  "Attach each FK Field's `:target`, with the `:name_field` that labels the target's
+  values. The usual `:target` hydration reads the target Field through permissions,
+  which an anonymous public or embedded request does not have, so it is selected
+  directly here. Without the target a public parameter widget cannot label an FK's
+  values."
+  [fields]
+  (let [target-ids (into #{} (keep :fk_target_field_id) fields)
+        id->target (when (seq target-ids)
+                     (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns target-ids)
+                                         (t2/hydrate :has_field_values :name_field))))]
+    (for [field fields]
+      (assoc field :target (some-> (:fk_target_field_id field) id->target)))))
+
 (mu/defn- param-field-ids->fields
   "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card
   or Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
@@ -191,7 +209,8 @@
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
                           (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns field-ids)
-                                              (t2/hydrate :has_field_values :name_field [:target :has_field_values :name_field] [:dimensions [:human_readable_field :has_field_values]])
+                                              (t2/hydrate :has_field_values :name_field [:dimensions [:human_readable_field :has_field_values]])
+                                              hydrate-param-field-targets
                                               remove-dimensions-nonpublic-columns)))]
     (->> param-id->field-ids
          (m/map-vals #(into [] (keep field-id->field) %)))))

@@ -85,11 +85,11 @@ Our docs on [Authenticating with SAML][authenticating-with-saml] and [Authentica
 **Steps to take**:
 
 1. Go into **Admin Panel** > **Permissions** for the table in question.
-2. Check that the row and columns security is set up, and that the question used to create a custom view of the table excludes the columns you don't want people to see.
+2. Check that the row and column security is set up, and that the question used to create a custom view of the table excludes the columns you don't want people to see.
 
 ### Does the question used to set up row and column security include the columns?
 
-**Root cause:** The question used to create apply row and column security includes the columns they're not supposed to see.
+**Root cause:** The question used to apply row and column security includes the columns they're not supposed to see.
 
 **Steps to take**:
 
@@ -99,7 +99,7 @@ If you build a question using the query builder (i.e., use a simple or custom qu
 
 ## Is the person in _another_ group with a different permission level for the table?
 
-**Root cause:** You've applied row and column security to the table with the question, but the person is also in an group with a higher level of access to the table. If a person is in multiple groups, they'll get the most permissive access to a data source across all of their groups.
+**Root cause:** You've applied row and column security to the table with the question, but the person is also in a group with a higher level of access to the table. If a person is in multiple groups, they'll get the most permissive access to a data source across all of their groups.
 
 **Steps to take**:
 
@@ -109,7 +109,7 @@ Remove the person from all groups with higher level access to the secured table.
 
 ### Does their group have row and column security applied to the table?
 
-**Root cause:** They only have access to a table with row and columns security applied, where only some columns are shown.
+**Root cause:** They only have access to a table with row and column security applied, where only some columns are shown.
 
 **Steps to take**:
 
@@ -142,7 +142,7 @@ Since someone must log in so that Metabase can apply row security for that perso
 
 ## People can't see data they're supposed to be able to see
 
-Someone is supposed to be able to view some of the values in a table in their queries, but are denied access or get an empty set of results where there should be data.
+Someone is supposed to be able to view some of the values in a table in their queries, but is denied access or get an empty set of results where there should be data.
 
 **Root cause**: The administrator restricted access to the table. If the restrictions are too tight by mistake (e.g., "no access"), then people might not be able to see any data at all.
 

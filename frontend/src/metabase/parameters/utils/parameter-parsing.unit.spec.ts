@@ -1,23 +1,19 @@
-import Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  Field,
   Parameter,
   ParameterValueOrArray,
   ParameterValuesMap,
 } from "metabase-types/api";
-import {
-  createMockNormalizedField,
-  createMockParameter,
-} from "metabase-types/api/mocks";
+import { createMockField, createMockParameter } from "metabase-types/api/mocks";
 
 import {
   getParameterValueFromQueryParams,
   getParameterValuesByIdFromQueryParams,
 } from "./parameter-parsing";
 
-function createMockField(mocks: Partial<Field>): Field {
-  return Object.assign(new Field(createMockNormalizedField({})), mocks);
-}
+// the root type, so every type predicate is false until a test sets a type
+const UNTYPED = "type/*";
 
 // bypasses the strict signature to pin the runtime `|| {}` guard
 const UNDEFINED_QUERY_PARAMS = undefined as unknown as ParameterValuesMap;
@@ -38,38 +34,22 @@ describe("parameters/utils/parameter-values", () => {
     field1 = createMockField({
       id: 1,
       table_id: 1,
-      isString: () => false,
-      isStringLike: () => false,
-      isNumeric: () => false,
-      isDate: () => false,
-      isBoolean: () => false,
+      base_type: UNTYPED,
     });
     field2 = createMockField({
       id: 2,
       table_id: 1,
-      isString: () => false,
-      isStringLike: () => false,
-      isNumeric: () => false,
-      isDate: () => false,
-      isBoolean: () => false,
+      base_type: UNTYPED,
     });
     field3 = createMockField({
       id: 3,
       table_id: 1,
-      isString: () => false,
-      isStringLike: () => false,
-      isNumeric: () => false,
-      isDate: () => false,
-      isBoolean: () => false,
+      base_type: UNTYPED,
     });
     field4 = createMockField({
       id: 4,
       table_id: 1,
-      isString: () => false,
-      isStringLike: () => false,
-      isNumeric: () => false,
-      isDate: () => false,
-      isBoolean: () => false,
+      base_type: UNTYPED,
     });
 
     // found in queryParams and not defaulted
@@ -181,11 +161,8 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should parse the parameter value as a float if all associated fields are numeric and not dates", () => {
-      field1.isNumeric = () => true;
-      field1.isDate = () => false;
-
-      field4.isNumeric = () => true;
-      field4.isDate = () => false;
+      field1.base_type = "type/Integer";
+      field4.base_type = "type/Integer";
 
       expect(
         getParameterValueFromQueryParams(parameter1, {
@@ -201,11 +178,11 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should not parse numeric values that are dates as floats", () => {
-      field1.isNumeric = () => true;
-      field1.isDate = () => true;
-
-      field4.isNumeric = () => true;
-      field4.isDate = () => false;
+      // a unix timestamp is stored as a number and coerced to a date
+      field1.base_type = "type/BigInteger";
+      field1.effective_type = "type/DateTime";
+      field1.coercion_strategy = "Coercion/UNIXSeconds->DateTime";
+      field4.base_type = "type/Integer";
 
       expect(
         getParameterValueFromQueryParams(parameter1, {
@@ -215,8 +192,8 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should convert boolean arguments to strings if all mapped fields are strings", () => {
-      field1.isString = () => true;
-      field4.isStringLike = () => true;
+      field1.base_type = "type/Text";
+      field4.base_type = "type/TextLike";
 
       expect(
         getParameterValueFromQueryParams(parameter1, {
@@ -226,8 +203,8 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should parse a value of 'true' or 'false' as a boolean if all associated fields are booleans", () => {
-      field1.isBoolean = () => true;
-      field4.isBoolean = () => true;
+      field1.base_type = "type/Boolean";
+      field4.base_type = "type/Boolean";
 
       expect(
         getParameterValueFromQueryParams(parameter1, {
@@ -305,7 +282,7 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should be able to get the underlying field of a parameter tied to a dimension", () => {
-      field3.isBoolean = () => true;
+      field3.base_type = "type/Boolean";
 
       expect(
         getParameterValueFromQueryParams(parameter3, {
@@ -338,8 +315,7 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should not try to parse default values", () => {
-      field2.isNumeric = () => true;
-      field2.isDate = () => false;
+      field2.base_type = "type/Integer";
 
       expect(
         getParameterValueFromQueryParams(parameter2, {
@@ -516,9 +492,9 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should not filter out falsy non-nil values", () => {
-      field1.isNumeric = () => true;
-      field4.isNumeric = () => true;
-      field3.isBoolean = () => true;
+      field1.base_type = "type/Integer";
+      field4.base_type = "type/Integer";
+      field3.base_type = "type/Boolean";
 
       expect(
         getParameterValuesByIdFromQueryParams(parameters, {
@@ -555,9 +531,9 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should not filter out falsy non-nil, non-empty-string values", () => {
-      field1.isNumeric = () => true;
-      field4.isNumeric = () => true;
-      field3.isBoolean = () => true;
+      field1.base_type = "type/Integer";
+      field4.base_type = "type/Integer";
+      field3.base_type = "type/Boolean";
 
       expect(
         getParameterValuesByIdFromQueryParams(

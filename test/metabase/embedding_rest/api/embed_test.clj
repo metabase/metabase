@@ -49,6 +49,38 @@
 (defmacro with-new-secret-key! {:style/indent 0} [& body]
   `(do-with-new-secret-key! (fn [] ~@body)))
 
+(defn- field-effective-type
+  "A Field's `:effective_type` as the API returns it. It varies with the driver,
+  so a `:param_fields` expectation reads it rather than naming a value."
+  [field-id]
+  (u/qualified-name (t2/select-one-fn :effective_type :model/Field :id field-id)))
+
+(defn- categories-id-target
+  "The `:target` a `:param_fields` entry for `venues.category_id` carries: the
+  Categories primary key in public columns, with the `:name_field` that labels its
+  values. A public parameter widget cannot remap an FK's values without it."
+  []
+  {:id                 (mt/id :categories :id)
+   :table_id           (mt/id :categories)
+   :display_name       "ID"
+   :base_type          "type/BigInteger"
+   :effective_type     (field-effective-type (mt/id :categories :id))
+   :settings           nil
+   :name               "ID"
+   :semantic_type      "type/PK"
+   :has_field_values   "none"
+   :fk_target_field_id nil
+   :name_field         {:id                 (mt/id :categories :name)
+                        :table_id           (mt/id :categories)
+                        :display_name       "Name"
+                        :base_type          "type/Text"
+                        :effective_type     (field-effective-type (mt/id :categories :name))
+                        :settings           nil
+                        :name               "NAME"
+                        :semantic_type      "type/Name"
+                        :has_field_values   "list"
+                        :fk_target_field_id nil}})
+
 (defn- the-id-or-entity-id
   "u/the-id doesn't work on entity-ids, so we should just pass them through."
   [id-or-entity-id]
@@ -693,10 +725,13 @@
                                 :table_id           (mt/id :venues)
                                 :display_name       "Category ID"
                                 :base_type          "type/Integer"
+                                :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                :settings           nil
                                 :name               "CATEGORY_ID"
                                 :semantic_type      "type/FK"
                                 :has_field_values   "none"
                                 :fk_target_field_id (mt/id :categories :id)
+                                :target             (categories-id-target)
                                 :dimensions         []}]}
                  (:param_fields (client/client :get 200 (card-url card))))))))))
 
@@ -715,10 +750,13 @@
                                  :table_id           (mt/id :venues)
                                  :display_name       "Category ID"
                                  :base_type          "type/Integer"
+                                 :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                 :settings           nil
                                  :name               "CATEGORY_ID"
                                  :semantic_type      "type/FK"
                                  :has_field_values   "none"
                                  :fk_target_field_id (mt/id :categories :id)
+                                 :target             (categories-id-target)
                                  :dimensions         []}]}
                (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard))))))))))
 
@@ -758,10 +796,13 @@
                                 :table_id           (mt/id :venues)
                                 :display_name       "Category ID"
                                 :base_type          "type/Integer"
+                                :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                :settings           nil
                                 :name               "CATEGORY_ID"
                                 :semantic_type      "type/FK"
                                 :has_field_values   "none"
                                 :fk_target_field_id (mt/id :categories :id)
+                                :target             (categories-id-target)
                                 :dimensions         []}]}
                  (:param_fields (client/client :get 200 (card-url card {:params {:id 1}}))))))))))
 
@@ -786,10 +827,13 @@
                                  :table_id           (mt/id :venues)
                                  :display_name       "Category ID"
                                  :base_type          "type/Integer"
+                                 :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                 :settings           nil
                                  :name               "CATEGORY_ID"
                                  :semantic_type      "type/FK"
                                  :has_field_values   "none"
                                  :fk_target_field_id (mt/id :categories :id)
+                                 :target             (categories-id-target)
                                  :dimensions         []}]}
                (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard) {:params {:id 1}})))))))))
 
@@ -823,10 +867,13 @@
                                      :table_id           (mt/id :venues)
                                      :display_name       "Category ID"
                                      :base_type          "type/Integer"
+                                     :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                     :settings           nil
                                      :name               "CATEGORY_ID"
                                      :semantic_type      "type/FK"
                                      :has_field_values   "none"
                                      :fk_target_field_id (mt/id :categories :id)
+                                     :target             (categories-id-target)
                                      :dimensions         []}]}
                    (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard))))))))))))
 

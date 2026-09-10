@@ -6,7 +6,9 @@
   `:direction`) to strings; [[keywordize-structured]] turns them back into keywords so a driver can dispatch on
   `:kind`."
   (:require
-   [metabase.util.malli.registry :as mr]))
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -99,3 +101,34 @@
 (def statuses
   "Valid lifecycle states for a table index request."
   #{:create-pending :update-pending :delete-pending :running :succeeded :failed})
+
+(mr/def ::table-index.structured
+  "The `:structured` column of a TableIndex, decoded."
+  :map)
+
+(mr/def ::table-index
+  "A TableIndex as selected from the app DB: every column of `:metabase_table_indexes`."
+  [:map {:closed true}
+   [:id               ms/PositiveInt]
+   [:transform_id     ::lib.schema.id/transform]
+   [:index_name       :string]
+   [:structured       ::table-index.structured]
+   [:status           [:or :keyword :string]]
+   [:error_message    [:maybe :string]]
+   [:created_by       [:maybe :int]]
+   [:created_at       ms/TemporalInstant]
+   [:updated_at       ms/TemporalInstant]
+   [:last_executed_at [:maybe ms/TemporalInstant]]])
+
+(mr/def ::table-index.update
+  "What an update (or insert) of a TableIndex accepts: every column of `:metabase_table_indexes` except `id`, all optional."
+  [:map {:closed true}
+   [:transform_id     {:optional true} [:maybe ::lib.schema.id/transform]]
+   [:index_name       {:optional true} [:maybe :string]]
+   [:structured       {:optional true} [:maybe ::table-index.structured]]
+   [:status           {:optional true} [:maybe [:or :keyword :string]]]
+   [:error_message    {:optional true} [:maybe :string]]
+   [:created_by       {:optional true} [:maybe :int]]
+   [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_executed_at {:optional true} [:maybe ms/TemporalInstant]]])
