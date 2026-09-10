@@ -33,7 +33,7 @@ export const DatabaseFormError = () => {
 
   return (
     <Paper className={S.paper} ref={ref}>
-      <Box p="md" pb={0}>
+      <Box p="lg" pb={0}>
         <Alert
           size="compact"
           color="warning"
@@ -52,7 +52,7 @@ export const DatabaseFormError = () => {
       </Box>
       {isHostAndPortError && (
         <>
-          <Divider mt="md" />
+          <Divider mt="lg" />
           <CheckHostAndPortButton />
         </>
       )}

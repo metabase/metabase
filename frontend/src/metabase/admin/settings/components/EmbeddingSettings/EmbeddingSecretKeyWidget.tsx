@@ -36,14 +36,14 @@ export const EmbeddingSecretKeyWidget = () => {
       <SettingHeader
         id="embedding-secret-key"
         title={t`Embedding secret key`}
-        titleProps={{ fz: "lg", mb: "xs" }}
+        titleProps={{ fz: "lg", mb: "xxs" }}
         description={t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`}
       />
       <SetByEnvVarWrapper
         settingDetails={settingDetails}
         settingKey="embedding-secret-key"
       >
-        <Flex gap="md" w="100%">
+        <Flex gap="lg" w="100%">
           <TextInputBlurChange
             value={value}
             onBlurChange={(e) => handleChange(e.target.value)}

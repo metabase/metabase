@@ -35,6 +35,7 @@
                 line   -1
                 column -1
                 time   (java.util.Date.)}}]
+   ;; tap> is how values reach Portal; that's this helper's whole job
    #_{:clj-kondo/ignore [:discouraged-var]}
    (tap> {:result value
           :level  level
@@ -68,13 +69,14 @@
          :dev.debug-qp/transformed-result, :dev.debug-qp/transformed-row}
        tag)
     (send-log (with-meta [before after]
-                {:portal.viewer/default :portal.viewer/diff})
+                         {:portal.viewer/default :portal.viewer/diff})
               (update (meta middleware-var) :ns #(.name %)))
     (send-log event)))
 
 (defmacro diff->
   "Drop-in replacement for `->` that sends diffs to Portal at each stage."
   [x & forms]
+  ;; the expansion taps each stage to Portal; tap> is the delivery mechanism
   #_{:clj-kondo/ignore [:discouraged-var]}
   (loop [x x, forms forms]
     (if forms
@@ -89,10 +91,10 @@
                               ~@(when (seq args)
                                   (mapcat identity args))
                               ~after-sym ~(if (seq args)
-                                             ;; Has args: a list with their new symbols!
-                                             `(-> ~before-sym ~(list* (first form) (map first args)))
-                                             ;; No args: just inline the form.
-                                             `(-> ~before-sym ~form))]
+                                            ;; Has args: a list with their new symbols!
+                                            `(-> ~before-sym ~(list* (first form) (map first args)))
+                                            ;; No args: just inline the form.
+                                            `(-> ~before-sym ~form))]
                           (tap> [~(list `quote form)
                                  ~@(when (seq args)
                                      `[(into {} [~@(for [[sym form] args]

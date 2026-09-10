@@ -6,7 +6,7 @@ redirect_from:
 
 # Setting up Metabase
 
-This guide will help you set up Metabase once you’ve gotten it installed. If you haven’t installed Metabase yet, you can [get Metabase here](https://metabase.com/pricing/).
+This guide will help you set up Metabase once you’ve gotten it installed. If you haven’t installed Metabase yet, you can [get Metabase here](https://www.metabase.com/pricing).
 
 Start Metabase up for the first time and you’ll see this screen:
 ![Welcome Screen](images/WelcomeScreen.png)
@@ -60,7 +60,7 @@ For more on connecting to databases, see [Adding and managing databases](../data
 
 If you're self-hosting Metabase on the [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan, Metabase will prompt you for your license. This step is just a convenience. You don't need to enter your license here; you can [activate your license](../installation-and-operation/activating-the-enterprise-edition.md) at any time. Just know that all of your Pro and Enterprise features won't work until you've activated your license.
 
-If you're running Pro on [Metabase Cloud](https://www.metabase.com/cloud/), we'll handle this step for you. Your Pro features should already be available.
+If you're running Pro on [Metabase Cloud](https://www.metabase.com/cloud), we'll handle this step for you. Your Pro features should already be available.
 
 ## Usage data preferences
 
@@ -82,10 +82,16 @@ At this point you are all set and ready to use Metabase. Since we like keeping i
 
 Once you're done here simply follow the link to **Take me to Metabase**. And if you decided to skip the newsletter sign-up, it's cool, we still like you :)
 
+## Connect an AI provider
+
+If you click **Set up AI**, Metabase walks you through [connecting an AI provider](../ai/settings.md).
+
+The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](../ai/mcp.md#with-the-mcp-server-your-client-provides-the-ai).
+
 ## Getting started with Metabase
 
-For a tutorial on getting up and running with questions and dashboards, head over to [Learn Metabase](https://www.metabase.com/learn/metabase-basics/getting-started/).
+For a tutorial on getting up and running with questions and dashboards, head over to [Learn Metabase](https://www.metabase.com/learn/metabase-basics/getting-started).
 
 ---
 
-If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/){:target="\_blank"}.
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners){:target="\_blank"}.

@@ -95,9 +95,9 @@ function BillingInfoRow({
         className={S.row}
         align="center"
         justify="space-between"
-        gap="lg"
-        px="lg"
-        py="md"
+        gap="xl"
+        px="xl"
+        py="lg"
         {...props}
       >
         <Text
@@ -125,7 +125,7 @@ export const BillingInfoTable = ({
   return (
     <Box>
       <SettingHeader id="billing" title={t`Billing`} />
-      <Card mt="md" p={0} radius="md" shadow="none" withBorder>
+      <Card mt="lg" p={0} radius="sm" shadow="none" withBorder>
         {billingInfo.content?.map((lineItem) => (
           <BillingInfoRow key={lineItem.name} lineItem={lineItem} />
         ))}

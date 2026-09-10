@@ -177,6 +177,21 @@
            (sgc/parts->contents
             [{:type :tool-output :id "call-9" :result {:output "orphan"}}])))))
 
+(deftest ^:parallel parts->contents-reasoning-part-dropped-test
+  (testing "a :reasoning part is display-only and contributes no content"
+    (is (= [{:role "user" :parts [{:text "question"}]}
+            {:role "model" :parts [{:text "answer"}]}]
+           (sgc/parts->contents
+            [{:role :user :content "question"}
+             {:type :reasoning :text "thinking..." :id "r1"}
+             {:type :text :text "answer"}]))))
+  (testing "and dropping it does not split the model contents that surrounded it"
+    (is (= [{:role "model" :parts [{:text "first"} {:text "second"}]}]
+           (sgc/parts->contents
+            [{:type :text :text "first"}
+             {:type :reasoning :text "thinking..." :id "r1"}
+             {:type :text :text "second"}])))))
+
 (deftest ^:parallel parts->contents-thought-signature-replay-test
   (testing "a thoughtSignature carried in :provider-metadata is echoed on the replayed functionCall part"
     (is (= [{:role  "model"
@@ -330,6 +345,77 @@
              :tool_choice "auto"
              :schema      {:type "object"}})))))
 
+(deftest ^:parallel request-body-thinking-config-test
+  (testing "a catalog model asks for thought summaries by default"
+    (is (=? {:generationConfig {:thinkingConfig {:includeThoughts true}}}
+            (sgc/request-body {:model "google/gemini-3.5-flash"
+                               :input [{:role :user :content "hi"}]}))))
+  (testing "structured output pins thinking to LOW instead, with or without :reasoning?"
+    (is (=? {:generationConfig {:thinkingConfig {:thinkingLevel "LOW"}}}
+            (sgc/request-body {:model  "google/gemini-3.7-flash"
+                               :input  [{:role :user :content "hi"}]
+                               :schema {:type "object"}})))
+    (is (=? {:generationConfig {:thinkingConfig {:thinkingLevel "LOW"}}}
+            (sgc/request-body {:model      "google/gemini-3.5-flash"
+                               :input      [{:role :user :content "hi"}]
+                               :reasoning? false
+                               :schema     {:type "object"}}))))
+  (testing ":reasoning? false sends no thinkingConfig, leaving the server default"
+    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+           (sgc/request-body {:model      "google/gemini-3.6-flash"
+                              :input      [{:role :user :content "hi"}]
+                              :reasoning? false}))))
+  (testing "an off-catalog or absent model gets no thinkingConfig at all"
+    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+           (sgc/request-body {:model "google/gemini-2.5-flash"
+                              :input [{:role :user :content "hi"}]})))
+    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+           (sgc/request-body {:input [{:role :user :content "hi"}]})))))
+
+(deftest ^:parallel request-body-forced-tool-call-token-floor-test
+  (testing "a catalog model's structured call has its caller cap raised to the floor"
+    (is (=? {:generationConfig {:maxOutputTokens 2048}}
+            (sgc/request-body {:model      "google/gemini-3.7-flash"
+                               :input      [{:role :user :content "hi"}]
+                               :schema     {:type "object"}
+                               :max-tokens 512}))))
+  (testing "a cap already above the floor is left alone"
+    (is (=? {:generationConfig {:maxOutputTokens 8000}}
+            (sgc/request-body {:model      "google/gemini-3.7-flash"
+                               :input      [{:role :user :content "hi"}]
+                               :schema     {:type "object"}
+                               :max-tokens 8000}))))
+  (testing "an uncapped structured call stays uncapped — the floor raises, it never introduces a cap"
+    (is (nil? (get-in (sgc/request-body {:model  "google/gemini-3.7-flash"
+                                         :input  [{:role :user :content "hi"}]
+                                         :schema {:type "object"}})
+                      [:generationConfig :maxOutputTokens]))))
+  (testing "an unforced call keeps the caller's cap"
+    (is (=? {:generationConfig {:maxOutputTokens 512}}
+            (sgc/request-body {:model      "google/gemini-3.7-flash"
+                               :input      [{:role :user :content "hi"}]
+                               :max-tokens 512}))))
+  (testing "an off-catalog model gets no floor, as it gets no thinkingConfig"
+    (is (=? {:generationConfig {:maxOutputTokens 512}}
+            (sgc/request-body {:model      "google/gemini-2.5-flash"
+                               :input      [{:role :user :content "hi"}]
+                               :schema     {:type "object"}
+                               :max-tokens 512}))))
+  (testing "a schema is not the only way to force a call: tool_choice \"required\" gets the floor, \"auto\" does not"
+    (let [body-for (fn [tool-choice]
+                     (sgc/request-body
+                      {:model       "google/gemini-3.7-flash"
+                       :input       [{:role :user :content "hi"}]
+                       :tools       [{:tool-name "t" :doc "d"
+                                      :schema    [:=> [:cat [:map [:x :string]]] :any]
+                                      :fn        identity}]
+                       :tool_choice tool-choice
+                       :max-tokens  512}))]
+      (is (=? {:generationConfig {:maxOutputTokens 2048}}
+              (body-for "required")))
+      (is (=? {:generationConfig {:maxOutputTokens 512}}
+              (body-for "auto"))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming event conversion tests.
 ;;; ──────────────────────────────────────────────────────────────────
@@ -438,16 +524,77 @@
                {:type :text :text "Hello world"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
-(deftest ^:parallel thought-parts-ignored-test
-  (testing "thinking summaries are dropped"
+(deftest ^:parallel thought-parts-stream-as-reasoning-test
+  (testing "thinking summaries stream as a reasoning part ahead of the answer text"
     (let [events [{:responseId "r5"
                    :candidates [{:content {:role "model"
                                            :parts [{:thought true :text "reasoning..."}
                                                    {:text "Answer"}]}
                                  :finishReason "STOP"}]}]]
       (is (=? [{:type :start}
+               {:type :reasoning :text "reasoning..."}
                {:type :text :text "Answer"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel thought-text-transitions-close-and-reopen-blocks-test
+  (testing "a thought/text transition closes the one block kind and opens the other"
+    (let [events [{:responseId "r5b"
+                   :candidates [{:content {:role "model"
+                                           :parts [{:thought true :text "t1"}
+                                                   {:text "a1"}
+                                                   {:thought true :text "t2"}]}
+                                 :finishReason "STOP"}]}]]
+      (is (=? [{:type :start}
+               {:type :reasoning-start}
+               {:type :reasoning-delta :delta "t1"}
+               {:type :reasoning-end}
+               {:type :text-start}
+               {:type :text-delta :delta "a1"}
+               {:type :text-end}
+               {:type :reasoning-start}
+               {:type :reasoning-delta :delta "t2"}
+               {:type :reasoning-end}]
+              (into [] (sgc/->aisdk-chunks-xf) events))))))
+
+(deftest ^:parallel thought-before-tool-call-closes-reasoning-test
+  (testing "a functionCall closes the open reasoning block before the tool chunks"
+    (let [events [{:responseId "r5c"
+                   :candidates [{:content {:role "model"
+                                           :parts [{:thought true :text "planning..."}
+                                                   {:functionCall     {:name "search" :args {}}
+                                                    :thoughtSignature "sig-1"}]}
+                                 :finishReason "STOP"}]}]]
+      (is (=? [{:type :start}
+               {:type :reasoning-start}
+               {:type :reasoning-delta}
+               {:type :reasoning-end}
+               {:type :tool-input-start :providerMetadata {:google {:thoughtSignature "sig-1"}}}
+               {:type :tool-input-delta}
+               {:type :tool-input-available}]
+              (into [] (sgc/->aisdk-chunks-xf) events))))))
+
+(deftest ^:parallel empty-parts-do-not-split-a-reasoning-block-test
+  (testing "an empty thought and a signature-only empty text part emit nothing and close nothing"
+    (let [events [{:responseId "r5d"
+                   :candidates [{:content {:role "model"
+                                           :parts [{:thought true :text "before"}
+                                                   {:thought true :text ""}
+                                                   {:text "" :thoughtSignature "sig-tail"}
+                                                   {:thought true :text " after"}]}
+                                 :finishReason "STOP"}]}]]
+      (is (=? [{:type :start}
+               {:type :reasoning :text "before after"}]
+              (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel stream-end-closes-open-reasoning-block-test
+  (testing "a stream that ends mid-thought still closes the reasoning block"
+    (let [events [{:responseId "r5e"
+                   :candidates [{:content {:role "model" :parts [{:thought true :text "unfinished"}]}}]}]]
+      (is (=? [{:type :start}
+               {:type :reasoning-start}
+               {:type :reasoning-delta}
+               {:type :reasoning-end}]
+              (into [] (sgc/->aisdk-chunks-xf) events))))))
 
 (deftest ^:parallel usage-buffered-and-emitted-once-test
   (testing "usageMetadata is buffered last-wins and emitted once at stream end, after content"
@@ -531,21 +678,119 @@
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
 (deftest ^:parallel max-tokens-finish-reason-test
-  (testing "a MAX_TOKENS truncation emits an error part after the partial text, instead of reading as a complete answer"
+  (testing "a MAX_TOKENS truncation becomes :finish-reason \"length\" on the usage chunk not an error part"
     (let [events [{:responseId "r11" :modelVersion "gemini-3.5-flash"
                    :candidates [{:content {:role "model" :parts [{:text "half an ans"}]}
                                  :finishReason "MAX_TOKENS"}]
                    :usageMetadata {:promptTokenCount 4 :thoughtsTokenCount 2000}}]]
       (is (=? [{:type :start}
                {:type :text :text "half an ans"}
-               {:type  :error
-                :error {:message #"(?s)Gemini stopped early \(MAX_TOKENS\): the output token limit was reached.*"}}
-               {:type :usage}]
+               {:type              :usage
+                :finish-reason     "length"
+                :raw-finish-reason "MAX_TOKENS"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel max-tokens-truncation-never-reads-as-complete-test
+  (testing "a MAX_TOKENS turn that carries no usageMetadata still reports the truncation"
+    (let [events [{:responseId "r11b"
+                   :candidates [{:content {:role "model" :parts [{:text "half an ans"}]}
+                                 :finishReason "MAX_TOKENS"}]}]]
+      (is (=? [{:type :start}
+               {:type :text-start}
+               {:type :text-delta}
+               {:type :text-end}
+               {:type              :usage
+                :finish-reason     "length"
+                :raw-finish-reason "MAX_TOKENS"}]
+              (into [] (sgc/->aisdk-chunks-xf) events))))))
+
+(deftest ^:parallel finish-reason-translation-test
+  (let [usage-chunk (fn [reason]
+                      (->> (into [] (sgc/->aisdk-chunks-xf)
+                                 [{:responseId    "r11c"
+                                   :candidates    [{:content {:role "model" :parts [{:text "hi"}]}
+                                                    :finishReason reason}]
+                                   :usageMetadata {:promptTokenCount 4}}])
+                           (m/find-first #(= :usage (:type %)))))]
+    (testing "the AI SDK finish reason rides the usage chunk alongside the raw provider value"
+      (are [raw finish-reason] (=? {:finish-reason finish-reason :raw-finish-reason raw}
+                                   (usage-chunk raw))
+        "STOP"                      "stop"
+        "MAX_TOKENS"                "length"
+        "SAFETY"                    "content-filter"
+        "RECITATION"                "content-filter"
+        "BLOCKLIST"                 "content-filter"
+        "PROHIBITED_CONTENT"        "content-filter"
+        "SPII"                      "content-filter"
+        "IMAGE_SAFETY"              "content-filter"
+        "IMAGE_PROHIBITED_CONTENT"  "content-filter"
+        "IMAGE_RECITATION"          "content-filter"
+        "MODEL_ARMOR"               "content-filter"
+        "LANGUAGE"                  "content-filter"
+        "ESCALATION"                "content-filter"
+        "MALFORMED_FUNCTION_CALL"   "error"
+        "UNEXPECTED_TOOL_CALL"      "error"
+        "TOO_MANY_TOOL_CALLS"       "error"
+        "MISSING_THOUGHT_SIGNATURE" "error"
+        "MALFORMED_RESPONSE"        "error"
+        "OTHER"                     "other"
+        "FINISH_REASON_UNSPECIFIED" "other"
+        "IMAGE_OTHER"               "other"
+        "NO_IMAGE"                  "other"
+        "SOMETHING_NEW"             "other"))))
+
+(deftest ^:parallel content-filter-finish-reason-emits-no-error-test
+  (testing "a filtered response reports itself as :finish-reason \"content-filter\", which the client renders itself"
+    (let [events [{:responseId    "r11d"
+                   :candidates    [{:content {:role "model" :parts [{:text "partial"}]}
+                                    :finishReason "SAFETY"}]
+                   :usageMetadata {:promptTokenCount 4}}]]
+      (is (=? [{:type :start}
+               {:type :text :text "partial"}
+               {:type              :usage
+                :finish-reason     "content-filter"
+                :raw-finish-reason "SAFETY"}]
+              (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel content-filter-truncation-never-reads-as-complete-test
+  (testing "a filtered turn that carries no usageMetadata still reports the filtering"
+    (let [events [{:responseId "r11e"
+                   :candidates [{:content {:role "model" :parts [{:text "partial"}]}
+                                 :finishReason "SAFETY"}]}]]
+      (is (=? [{:type :start}
+               {:type :text :text "partial"}
+               {:type              :usage
+                :finish-reason     "content-filter"
+                :raw-finish-reason "SAFETY"}]
+              (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel stop-reasons-translate-to-aisdk-finish-reasons-test
+  (testing "every translation is one of the AI SDK v5 FinishReason values the client knows how to render"
+    (is (every? self.core/finish-reasons (vals @#'sgc/stop-reasons)))))
+
+(deftest ^:parallel finish-reasons-without-error-are-the-ones-the-client-renders-test
+  (testing "STOP plus every reason translating to \"length\" or \"content-filter\" emits no error part"
+    (is (= #{"STOP" "MAX_TOKENS"
+             "BLOCKLIST" "ESCALATION" "IMAGE_PROHIBITED_CONTENT" "IMAGE_RECITATION" "IMAGE_SAFETY" "LANGUAGE"
+             "MODEL_ARMOR" "PROHIBITED_CONTENT" "RECITATION" "SAFETY" "SPII"}
+           @#'sgc/finish-reasons-without-error))))
 
 (deftest ^:parallel malformed-function-call-finish-reason-test
   (testing "MALFORMED_FUNCTION_CALL arrives with no parts at all, so the error part is the only diagnostic"
-    (let [events [{:responseId "r12"
+    (let [events [{:responseId    "r12"
+                   :candidates    [{:finishReason "MALFORMED_FUNCTION_CALL"}]
+                   :usageMetadata {:promptTokenCount 4}}]]
+      (is (=? [{:type :start}
+               {:type  :error
+                :error {:message #"(?s)Gemini stopped early \(MALFORMED_FUNCTION_CALL\).*"}}
+               {:type              :usage
+                :finish-reason     "error"
+                :raw-finish-reason "MALFORMED_FUNCTION_CALL"}]
+              (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel finish-reason-with-error-gets-no-synthetic-usage-test
+  (testing "a reason that emits an :error chunk already says what went wrong, so no zero-token :usage is invented"
+    (let [events [{:responseId "r12b"
                    :candidates [{:finishReason "MALFORMED_FUNCTION_CALL"}]}]]
       (is (=? [{:type :start}
                {:type  :error
@@ -554,12 +799,16 @@
 
 (deftest ^:parallel unknown-finish-reason-test
   (testing "a finish reason we have no message for still reports itself rather than passing silently"
-    (let [events [{:responseId "r13"
-                   :candidates [{:content {:role "model" :parts [{:text "hi"}]}
-                                 :finishReason "SOMETHING_NEW"}]}]]
+    (let [events [{:responseId    "r13"
+                   :candidates    [{:content {:role "model" :parts [{:text "hi"}]}
+                                    :finishReason "SOMETHING_NEW"}]
+                   :usageMetadata {:promptTokenCount 4}}]]
       (is (=? [{:type :start}
                {:type :text :text "hi"}
-               {:type :error :error {:message "Gemini stopped early (SOMETHING_NEW)"}}]
+               {:type :error :error {:message "Gemini stopped early (SOMETHING_NEW)"}}
+               {:type              :usage
+                :finish-reason     "other"
+                :raw-finish-reason "SOMETHING_NEW"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
 (deftest ^:parallel stop-finish-reason-emits-no-error-test
@@ -598,3 +847,23 @@
                {:type :text :text "partial answer"}
                {:type :usage :usage {:promptTokens 4 :completionTokens 0}}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel cancelled-consumer-is-not-fed-further-events-test
+  (testing "once the consumer stops early (reduced), nothing from later events reaches it"
+    ;; the agent loop signals a client disconnect or cancellation by returning `reduced` from the
+    ;; reducing fn; a plain `reduce` over an event's parts would strip that wrapper and keep feeding
+    ;; every event that follows
+    (let [event      {:responseId "r15"
+                      :candidates [{:content {:role "model" :parts [{:text "a"} {:text "b"}]}}]}
+          seen       (atom [])
+          cancelled? (atom false)
+          rf         (fn
+                       ([] [])
+                       ([acc] acc)
+                       ([acc {:keys [type delta]}]
+                        (swap! seen conj (or delta type))
+                        (when (= :text-delta type)
+                          (reset! cancelled? true))
+                        (if @cancelled? (reduced acc) acc)))]
+      (transduce (sgc/->aisdk-chunks-xf) rf [event event event])
+      (is (= [:start :text-start "a" :text-end] @seen)))))

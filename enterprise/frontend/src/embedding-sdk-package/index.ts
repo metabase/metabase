@@ -148,6 +148,7 @@ export type {
   ParameterChangePayload,
   UseMetabotResult,
   SdkEntityToken,
+  SdkBrowserCollectionId,
   SdkCollectionId,
   SdkDashboardId,
   SdkDashboardEntityPublicProps,

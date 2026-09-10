@@ -54,19 +54,16 @@ The function receives a URL string. Return `{ handled: true }` to prevent defaul
 
 The plugin `handleLink` can only be used [globally](#plugin-scope) on provider level. `handleLink` is also available in [modular embedding](../modular-embedding.md#page-level-config) via `pluginsConfig` in `defineMetabaseConfig`, with the same API.
 
-To create clickable links in your table columns, set the column's formatting to [display as link](../../data-modeling/formatting.md#display-as).
+To create clickable links in your table columns, set the column's formatting to [display as link](../../data-modeling/metadata/formatting.md#display-as).
 
 ### `getNoDataIllustration` and `getNoObjectIllustration`
 
-By default, Metabase displays a sailboat image when a query returns no results. To use a different image, you can use `getNoDataIllustration` and `getNoObjectIllustration` plugins which can accept a custom base64-encoded image:
+By default, Metabase displays a sailboat image when a query returns no results. The plugins `getNoDataIllustration` and `getNoObjectIllustration` swap in an image of your own. Both can only be used [globally](#plugin-scope) on provider level.
 
-```typescript
-{% include_file "{{ dirname }}/snippets/plugins/custom-images.tsx" snippet="example" %}
-```
-
-The plugins `getNoDataIllustration` and `getNoObjectIllustration` can only be used [globally](#plugin-scope) on provider level.
+See [Replace the no-results illustration](./loading-and-errors.md#replace-the-no-results-illustration) for more information and examples.
 
 ## Further reading
 
 - [Question plugins](../chart.md#customize-what-happens-when-someone-clicks-on-a-chart)
 - [Dashboard plugins](../dashboard.md#customize-the-menu-on-dashboard-cards-react-sdk-only)
+- [Customize loading, error, and empty states](./loading-and-errors.md)

@@ -1,5 +1,5 @@
-import { updateMetadata } from "metabase/redux/metadata";
-import { ForeignKeySchema, TableSchema } from "metabase/schema";
+import type { ThunkAction, UnknownAction } from "@reduxjs/toolkit";
+
 import type {
   BulkTableRequest,
   BulkTableSelectionInfo,
@@ -30,7 +30,7 @@ import {
   provideTableTags,
   tag,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
+import { rollbackOnError } from "./utils/rollback-on-error";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -41,10 +41,6 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [TableSchema])),
-        ),
     }),
     getTable: builder.query<Table, GetTableRequest>({
       query: ({ id }) => ({
@@ -52,10 +48,6 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, TableSchema)),
-        ),
     }),
     getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -64,10 +56,6 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, TableSchema)),
-        ),
     }),
     getTableData: builder.query<TableData, GetTableDataRequest>({
       query: ({ tableId }) => ({
@@ -81,10 +69,6 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/fks`,
       }),
       providesTags: [listTag("field")],
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [ForeignKeySchema])),
-        ),
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({
       query: ({ id, ...body }) => ({
@@ -100,6 +84,24 @@ export const tableApi = Api.injectEndpoints({
           tag("dataset"),
           listTag("erd"),
         ]),
+      onQueryStarted: async (
+        { id, ...body },
+        { dispatch, getState, queryFulfilled },
+      ) => {
+        const patches = selectCachedTableMetadata(getState(), [
+          idTag("table", id),
+        ]).map(({ originalArgs }) =>
+          dispatch(
+            patchCachedTableMetadata(originalArgs, (table) => {
+              if (table.id === id) {
+                Object.assign(table, body);
+              }
+            }),
+          ),
+        );
+
+        await rollbackOnError(queryFulfilled, patches);
+      },
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
       query: (body) => ({
@@ -287,6 +289,13 @@ export const {
 } = tableApi;
 
 /**
+ * Reads a table's already-fetched `query_metadata` out of the RTK cache. Use it
+ * after awaiting the fetch, where a hook is not an option.
+ */
+export const selectTableQueryMetadata =
+  tableApi.endpoints.getTableQueryMetadata.select;
+
+/**
  * Fetches metadata for all foreign tables referenced by the given table's foreign key fields.
  * Dispatches queries to load metadata for each related table.
  *
@@ -313,3 +322,30 @@ export const fetchForeignTablesMetadata = (
     );
   };
 };
+
+export type TableMetadataPatch = {
+  undo: () => void;
+};
+
+/**
+ * `updateQueryData` is generic over every endpoint in this file, and TypeScript
+ * can only instantiate that from inside the `injectEndpoints` call above
+ * (TS2589 anywhere else). Pinning the single endpoint we patch keeps the call
+ * sites, including the one in `field.ts`, fully checked.
+ */
+export const patchCachedTableMetadata = tableApi.util.updateQueryData.bind(
+  null,
+  "getTableQueryMetadata",
+) as (
+  args: GetTableQueryMetadataRequest,
+  recipe: (table: Table) => void,
+) => ThunkAction<TableMetadataPatch, unknown, unknown, UnknownAction>;
+
+export function selectCachedTableMetadata(
+  state: Parameters<typeof tableApi.util.selectInvalidatedBy>[0],
+  tags: Parameters<typeof tableApi.util.selectInvalidatedBy>[1],
+) {
+  return tableApi.util
+    .selectInvalidatedBy(state, tags)
+    .filter(({ endpointName }) => endpointName === "getTableQueryMetadata");
+}

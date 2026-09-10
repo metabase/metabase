@@ -6,9 +6,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
-   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
@@ -45,6 +43,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
@@ -72,12 +71,7 @@
   "Hydrate tables for each database. Optional `can-query?` and `can-write-metadata?` filters
    can be applied to filter tables by permission level."
   [dbs & {:keys [can-query? can-write-metadata?]}]
-  (let [all-tables (t2/select :model/Table
-                              :active          true
-                              :db_id           [:in (map :id dbs)]
-                              :visibility_type nil
-                              {:order-by [[:%lower.schema :asc]
-                                          [:%lower.display_name :asc]]})
+  (let [all-tables (warehouses-rest.db/active-visible-tables-for-databases (map :id dbs))
         _ (perms/prime-table-perms-cache {:db-ids (into #{} (map :id) dbs)})
         filtered-tables (cond->> (filter mi/can-read? all-tables)
                           can-query?          (filter mi/can-query?)
@@ -96,12 +90,7 @@
   (if (empty? dbs)
     dbs
     (let [db-ids        (map :id dbs)
-          rows          (t2/query {:select-distinct [:db_id :schema]
-                                   :from            [(t2/table-name :model/Table)]
-                                   :where           [:and
-                                                     [:in :db_id db-ids]
-                                                     [:= :active true]
-                                                     [:= :visibility_type nil]]})
+          rows          (warehouses-rest.db/active-visible-schemas-for-databases db-ids)
           schemas-by-db (reduce
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))
@@ -209,12 +198,12 @@
                    (:id db))
                  (catch Throwable e
                    (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
-             (t2/select [:model/Database :id :engine]))))
+             (warehouses-rest.db/database-engines))))
 
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  [card-type :- ::queries.schema/card-type
-   & {:keys [additional-constraints xform], :or {xform identity}}]
+  [card-type :- ::queries.schema/card.type
+   & {:keys [collection-scope xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
      (comp (map (partial mi/do-after-select :model/Card))
@@ -222,44 +211,25 @@
            xform)
      (completing conj #(t2/hydrate % :collection :metrics))
      []
-     (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
-                                     :result_metadata :type :source_card_id :card_schema
-                                     [^:allow-subquery {:select   [:status]
-                                                        :from     [:moderation_review]
-                                                        :where    [:and
-                                                                   [:= :moderated_item_type "card"]
-                                                                   [:= :moderated_item_id :report_card.id]
-                                                                   [:= :most_recent true]]
-                                                        :order-by [[:id :desc]]
-                                                        :limit    1}
-                                      :moderated_status]]
-                          :from     [:report_card]
-                          :where    (into [:and
-                                           [:not= :result_metadata nil]
-                                           [:= :archived false]
-                                           ;; always return metrics for now
-                                           [:in :type [(u/qualified-name card-type) "metric"]]
-                                           [:in :database_id ids-of-dbs-that-support-source-queries]
-                                           (collection/visible-collection-filter-clause)]
-                                          additional-constraints)
-                          :order-by [[:%lower.name :asc]]}))))
+     (warehouses-rest.db/source-query-cards-reducible
+      card-type ids-of-dbs-that-support-source-queries collection-scope))))
 
 (mu/defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
-  [card-type :- ::queries.schema/card-type]
+  [card-type :- ::queries.schema/card.type]
   (seq (source-query-cards card-type :xform (take 1))))
 
 (mu/defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [card-type :- ::queries.schema/card-type
+  [card-type :- ::queries.schema/card.type
    & {:keys [include-fields?]}]
   (schema.table/cards->virtual-tables (source-query-cards card-type)
                                       :include-fields? include-fields?))
 
 (mu/defn- saved-cards-virtual-db-metadata
-  [card-type :- ::queries.schema/card-type
+  [card-type :- ::queries.schema/card.type
    & {:keys [include-tables? include-fields?]}]
   (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
@@ -334,23 +304,9 @@
         filter-by-data-access? (not (or include-editable-data-model?
                                         exclude-uneditable-details?
                                         filter-on-router-database-id))
-        user-info {:user-id api/*current-user-id*
-                   :is-superuser? (mi/superuser?)
-                   :is-data-analyst? api/*is-data-analyst?*}
-        base-where [:and
-                    [:= :is_stub false]
-                    (when-not include-analytics?
-                      [:= :is_audit false])
-                    (if filter-on-router-database-id
-                      [:= :router_database_id router-database-id]
-                      [:= :router_database_id nil])]
-        where-clause (if filter-by-data-access?
-                       [:and base-where [:or (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
-                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
-                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
-                       base-where)
-        dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
-                                        :where where-clause})
+        dbs (warehouses-rest.db/databases-where api/*current-user-id* (mi/superuser?) api/*is-data-analyst?*
+                                                filter-by-data-access? filter-on-router-database-id
+                                                include-analytics?)
         ;; everything below walks the list one database at a time
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
@@ -405,7 +361,7 @@
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
            router_database_id can-query can-write-metadata]}
-   :- [:map
+   :- [:map {:closed true}
        [:include                     {:optional true} (mu/with-api-error-message
                                                        [:maybe [:enum "tables" "schemas"]]
                                                        (deferred-tru "include must be either empty, ''tables'', or ''schemas''"))]
@@ -471,9 +427,9 @@
   [db include]
   (if-not include
     db
-    (-> (t2/hydrate db (case include
-                         "tables"        :tables
-                         "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
+    (-> (case include
+          "tables"        (t2/hydrate db :tables)
+          "tables.fields" (t2/hydrate db [:tables [:fields [:target :has_field_values] :has_field_values]]))
         (update :tables (fn [tables]
                           (cond->> tables
                             ; filter hidden tables
@@ -491,8 +447,8 @@
     :- [:map
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
-                    (t2/exists? :model/Database :id id)
-                    (t2/exists? :model/Database :id id :router_database_id nil)))))
+                    (warehouses-rest.db/database-exists? id)
+                    (warehouses-rest.db/non-destination-database-exists? id)))))
 
 (defn- present-database
   "Get a single Database with `id`."
@@ -529,10 +485,10 @@
    [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
    in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
    database details."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include include_editable_data_model exclude_uneditable_details]}
-   :- [:map
+   :- [:map {:closed true}
        [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]
        [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
        [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]]
@@ -545,52 +501,6 @@
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))
 
-(def ^:private database-usage-models
-  "List of models that are used to report usage on a database."
-  [:question :dataset :metric :segment :transform]) ; TODO -- rename `:dataset` to `:model`?
-
-(defmulti ^:private database-usage-query
-  "Query that will returns the number of `model` that use the database with id `database-id`.
-  The query must returns a scalar, and the method could return `nil` in case no query is available."
-  {:arglists '([model database-id])}
-  (fn [model _database-id] (keyword model)))
-
-(defn- card-query
-  [db-id model type-str]
-  ^:allow-subquery {:select [[:%count.* model]]
-                    :from   [:report_card]
-                    :where  [:and
-                             [:= :database_id db-id]
-                             [:= :type type-str]]})
-
-(defmethod database-usage-query :question
-  [_ db-id]
-  (card-query db-id :question "question"))
-
-(defmethod database-usage-query :dataset
-  [_ db-id]
-  (card-query db-id :dataset "model"))
-
-(defmethod database-usage-query :metric
-  [_ db-id]
-  (card-query db-id :metric "metric"))
-
-(defmethod database-usage-query :segment
-  [_ db-id]
-  ^:allow-subquery {:select [[:%count.* :segment]]
-                    :from   [:segment]
-                    :where  [:in :table_id ^:allow-subquery {:select [:id]
-                                                             :from   [:metabase_table]
-                                                             :where  [:= :db_id db-id]}]})
-
-(defmethod database-usage-query :transform
-  [_ db-id]
-  ^:allow-subquery {:select [[:%count.* :transform]]
-                    :from   [:transform]
-                    :where  [:or
-                             [:= :source_database_id db-id]
-                             [:= :target_db_id db-id]]})
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -601,16 +511,11 @@
 (api.macros/defendpoint :get "/:id/usage_info"
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-database-exists id)
-  (first (mdb/query
-          {:select [:*]
-           :from   (for [model database-usage-models
-                         :let [query (database-usage-query model id)]
-                         :when query]
-                     [query model])})))
+  (first (warehouses-rest.db/database-usage-counts id)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
@@ -631,10 +536,10 @@
 
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-               (t2/hydrate
-                (if skip-fields?
-                  [:tables :segments :metrics]
-                  [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics])))
+               ((if skip-fields?
+                  #(t2/hydrate % [:tables :segments :metrics])
+                  #(t2/hydrate % [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics]))))
+        _ (perms/prime-table-perms-cache {:db-ids #{id}})
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -685,10 +590,10 @@
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]}
-   :- [:map
+   :- [:map {:closed true}
        [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
        [:remove_inactive             {:default false} [:maybe ms/BooleanValue]]
@@ -701,14 +606,8 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id search-string limit]
-  (t2/select [:model/Table :id :db_id :schema :name]
-             {:where    [:and [:= :db_id db-id]
-                         [:= :active true]
-                         [:like :%lower.name (u/lower-case-en search-string)]
-                         [:= :visibility_type nil]]
-              :order-by [[:%lower.name :asc]]
-              :limit    limit}))
+(defn- autocomplete-tables [db-id like-pattern limit]
+  (warehouses-rest.db/autocomplete-tables db-id like-pattern limit))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -719,59 +618,10 @@
    If the search string contains a number at the start AND text like '123-foo' we match do an exact match on card ID, and a substring match on the card name.
    If the search string does not start with a number, and is text like 'foo' we match that as a substring on the card name."
   [database-id search-card-slug include-dashboard-questions?]
-  (let [search-id   (re-find #"\d*" search-card-slug)
-        search-name (-> (re-matches #"\d*-?(.*)" search-card-slug)
-                        second
-                        (str/replace #"-" " ")
-                        u/lower-case-en)]
-    (t2/select [:model/Card :id :type :database_id :name :collection_id
-                [:collection.name :collection_name] :card_schema]
-               {:where    [:and
-                           [:= :report_card.database_id database-id]
-                           [:= :report_card.archived false]
-                           (when-not include-dashboard-questions?
-                             [:= :report_card.dashboard_id nil])
-                           (cond
-                             ;; e.g. search-string = "123"
-                             (and (not-empty search-id) (empty? search-name))
-                             [:like
-                              (h2x/cast (if (= (mdb/db-type) :mysql) :char :text) :report_card.id)
-                              (str search-id "%")]
+  (warehouses-rest.db/autocomplete-cards database-id search-card-slug include-dashboard-questions?))
 
-                             ;; e.g. search-string = "123-foo"
-                             (and (not-empty search-id) (not-empty search-name))
-                             [:and
-                              [:= :report_card.id (Integer/parseInt search-id)]
-                              ;; this is a prefix match to be consistent with substring matches on the entire slug
-                              [:like [:lower :report_card.name] (str search-name "%")]]
-
-                             ;; e.g. search-string = "foo"
-                             (and (empty? search-id) (not-empty search-name))
-                             [:like [:lower :report_card.name] (str "%" search-name "%")])]
-                :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
-                ;; prioritize models. This relies of `model` coming before `question` alphabetically, and Tamas pointed
-                ;; out this is a little brittle. He's right -- once we put v2 Metrics in then we can replace this with a
-                ;; fancy `CASE` expression or something so we can sort things exactly how we like.
-                :order-by [[:type :asc]
-                           [:report_card.id :desc]] ; sort by most recently created after sorting by type
-                :limit    50})))
-
-(defn- autocomplete-fields [db-id search-string limit]
-  ;; NOTE: measuring showed that this query performance is improved ~4x when adding trgm index in pgsql and ~10x when
-  ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
-  ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
-  ;; expressions.
-  (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
-             :metabase_field.active          true
-             :%lower.metabase_field/name     [:like (u/lower-case-en search-string)]
-             :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
-             :table.db_id                    db-id
-             {:order-by   [[[:lower :metabase_field.name] :asc]
-                           [[:lower :table.name] :asc]]
-              ;; checking for table.active in join makes query faster when there are a lot of inactive tables
-              :inner-join [[:metabase_table :table] [:and :table.active
-                                                     [:= :table.id :metabase_field.table_id]]]
-              :limit      limit}))
+(defn- autocomplete-fields [db-id like-pattern limit]
+  (warehouses-rest.db/autocomplete-fields db-id like-pattern limit))
 
 (defn- autocomplete-results [tables fields limit]
   (let [tbl-count   (count tables)
@@ -788,11 +638,12 @@
                            (str " " semantic_type)))]))))
 
 (defn- autocomplete-suggestions
-  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
-  [db-id match-string]
+  "`like-pattern` is a `LIKE` right-hand side (see [[h2x/like-substring]] and [[h2x/like-prefix]]) matched against
+  lowercased table and field names."
+  [db-id like-pattern]
   (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
-        fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
+        tables (filter mi/can-read? (autocomplete-tables db-id like-pattern limit))
+        fields (readable-fields-only (autocomplete-fields db-id like-pattern limit))]
     (autocomplete-results tables fields limit)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -812,9 +663,9 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [prefix substring]} :- [:map
+   {:keys [prefix substring]} :- [:map {:closed true}
                                   [:prefix    {:optional true} [:maybe ms/NonBlankString]]
                                   [:substring {:optional true} [:maybe ms/NonBlankString]]]]
   (api/read-check (warehouses/get-database id))
@@ -829,8 +680,8 @@
      :headers {"Cache-Control" "public, max-age=60"
                "Vary"          "Cookie"}
      :body    (cond
-                substring (autocomplete-suggestions id (str "%" substring "%"))
-                prefix    (autocomplete-suggestions id (str prefix "%")))}
+                substring (autocomplete-suggestions id (h2x/like-substring substring))
+                prefix    (autocomplete-suggestions id (h2x/like-prefix prefix)))}
     (catch Throwable e
       (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 
@@ -848,9 +699,9 @@
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [query include_dashboard_questions]} :- [:map
+   {:keys [query include_dashboard_questions]} :- [:map {:closed true}
                                                    [:query                       ms/NonBlankString]
                                                    [:include_dashboard_questions {:optional true} ms/BooleanValue]]]
   (api/read-check (warehouses/get-database id))
@@ -869,13 +720,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/fields"
   "Get a list of all `Fields` in `Database`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (warehouses/get-database id)
   (perms/prime-table-perms-cache {:db-ids #{id}})
-  (let [fields (filter mi/can-read? (-> (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
-                                                   :table_id        [:in (t2/select-fn-set :id :model/Table, :db_id id)]
-                                                   :visibility_type [:not-in ["sensitive" "retired"]])
+  (let [fields (filter mi/can-read? (-> (warehouses-rest.db/non-sensitive-fields-for-tables (warehouses-rest.db/table-ids-for-database id))
                                         (t2/hydrate :table)))]
     (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
       {:id            id
@@ -896,9 +745,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include_editable_data_model]} :- [:map
+   {:keys [include_editable_data_model]} :- [:map {:closed true}
                                              [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
   (let [[db-perm-check field-perm-check] (if include_editable_data_model
                                            [check-db-data-model-perms mi/can-write?]
@@ -920,10 +769,10 @@
    _query-params
    {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source provider_name]
     :as   body}
-   :- [:map
+   :- [:map {:closed true}
        [:name              ms/NonBlankString]
        [:engine            DBEngineString]
-       [:details           ms/Map]
+       [:details           ms/DatabaseDetails]
        [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
        [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
@@ -945,21 +794,20 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
-                                      :model/Database
-                                      (merge
-                                       {:name         name
-                                        :engine       engine
-                                        :details      details-or-error
-                                        :is_full_sync is_full_sync
-                                        :is_on_demand is_on_demand
-                                        :cache_ttl    cache_ttl
-                                        :provider_name provider_name
-                                        :creator_id   api/*current-user-id*}
-                                       (when schedules
-                                         (sync.schedules/schedule-map->cron-strings schedules))
-                                       (when (some? auto_run_queries)
-                                         {:auto_run_queries auto_run_queries})))))
+      (u/prog1 (api/check-500 (warehouses-rest.db/insert-database!
+                               (merge
+                                {:name         name
+                                 :engine       engine
+                                 :details      details-or-error
+                                 :is_full_sync is_full_sync
+                                 :is_on_demand is_on_demand
+                                 :cache_ttl    cache_ttl
+                                 :provider_name provider_name
+                                 :creator_id   api/*current-user-id*}
+                                (when schedules
+                                  (sync.schedules/schedule-map->cron-strings schedules))
+                                (when (some? auto_run_queries)
+                                  {:auto_run_queries auto_run_queries}))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
         (analytics/track-event! :snowplow/database
                                 {:event        :database-connection-successful
@@ -985,10 +833,10 @@
   ;; TODO - why do we pass the DB in under the key `details`?
   [_route-params
    _query-params
-   {{:keys [engine details]} :details} :- [:map
-                                           [:details [:map
+   {{:keys [engine details]} :details} :- [:map {:closed true}
+                                           [:details [:map {:closed true}
                                                       [:engine  DBEngineString]
-                                                      [:details ms/Map]]]]]
+                                                      [:details ms/DatabaseDetails]]]]]
   (api/check-superuser)
   (let [details-or-error (warehouses/test-connection-details engine details)]
     ;; details that come back without a `:valid` key at all are... valid!
@@ -1008,25 +856,32 @@
   []
   (api/check-superuser)
   (sample-data/extract-and-sync-sample-database!)
-  (t2/select-one :model/Database :is_sample true))
+  (warehouses-rest.db/sample-database))
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (defn- upsert-sensitive-fields
   "Replace any sensitive values not overridden in the PUT with the original values.
-  `details-key` is the key in the database map to use (e.g., :details or :write_data_details)."
-  ([database details]
-   (upsert-sensitive-fields database details :details))
-  ([database details details-key]
-   (when details
-     (merge (get database details-key)
-            (reduce
-             (fn [details k]
-               (if (= secret/protected-password (get details k))
-                 (m/update-existing details k (constantly (get-in database [details-key k])))
-                 details))
-             details
-             (database/sensitive-fields-for-db database))))))
+  `details-key` is the key in the database map to use (e.g., :details or :write_data_details).
+  When `engine-changed?` is truthy, the existing details belong to a different driver, so they are not merged into the
+  new details (#77480)."
+  ([database new-details]
+   (upsert-sensitive-fields database new-details :details false))
+  ([database new-details details-key]
+   (upsert-sensitive-fields database new-details details-key false))
+  ([database new-details details-key engine-changed?]
+   (when new-details
+     (let [existing-details (get database details-key)
+           details (reduce
+                    (fn [details k]
+                      (if (= secret/protected-password (get details k))
+                        (m/update-existing details k (constantly (get-in database [details-key k])))
+                        details))
+                    new-details
+                    (database/sensitive-fields-for-db database))]
+       (if engine-changed?
+         details
+         (merge existing-details details))))))
 
 (def ^:private connection-marker-key->details-column
   {:write-data-connection "write_data_details"})
@@ -1042,7 +897,7 @@
         article-noun   (str article " " noun)]
     (api/check-400 (not (:router_database_id existing-database))
                    (tru "Cannot configure {0} connection on a destination database" article-noun))
-    (api/check-400 (not (t2/exists? :model/Database :router_database_id (:id existing-database)))
+    (api/check-400 (not (warehouses-rest.db/destination-database-exists-for-router? (:id existing-database)))
                    (tru "Cannot configure {0} connection on a router database" article-noun))
     (when-not (get overlay-details marker-key)
       (throw (ex-info (tru "{0} must be set in {1}" marker-name column-name)
@@ -1074,18 +929,18 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Database`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [name engine details write_data_details is_full_sync is_on_demand description caveats
            points_of_interest schedules auto_run_queries refingerprint cache_ttl settings provider_name]
     :as   body}
-   :- [:map
+   :- [:map {:closed true}
        [:name               {:optional true} [:maybe ms/NonBlankString]]
        [:engine             {:optional true} [:maybe DBEngineString]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
-       [:details            {:optional true} [:maybe ms/Map]]
-       [:write_data_details {:optional true} [:maybe ms/Map]]
+       [:details            {:optional true} [:maybe ms/DatabaseDetails]]
+       [:write_data_details {:optional true} [:maybe ms/DatabaseDetails]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
        [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
@@ -1095,7 +950,7 @@
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
-       [:settings           {:optional true} [:maybe ms/Map]]
+       [:settings           {:optional true} [:maybe ms/DatabaseSettings]]
        [:is_stub            {:optional true} [:maybe :boolean]]]]
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
@@ -1106,7 +961,7 @@
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
                     {:status-code 400})))
-  (let [existing-database               (api/write-check (t2/select-one :model/Database :id id))
+  (let [existing-database               (api/write-check (warehouses-rest.db/database id))
         ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
         ;; table editing), so the guard is lifted when test endpoints are enabled
         _                               (when (and (:is_sample existing-database)
@@ -1117,14 +972,14 @@
                                           (validate-write-data-details! existing-database write_data_details))
         incoming-details                details
         incoming-write-data-details     write_data_details
-        details-with-secrets            (some->> details
-                                                 (upsert-sensitive-fields existing-database))
-        write-data-details-with-secrets (when write_data_details
-                                          (upsert-sensitive-fields existing-database write_data_details :write_data_details))
+        engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
+        details-with-secrets            (when incoming-details
+                                          (upsert-sensitive-fields existing-database incoming-details :details engine-changed?))
+        write-data-details-with-secrets (when  write_data_details
+                                          (upsert-sensitive-fields existing-database write_data_details :write_data_details engine-changed?))
         ;; verify that we can connect to the database if details OR `:engine` have changed.
         details-changed?                (some-> details-with-secrets (not= (:details existing-database)))
         write-details-changed?          (some-> write-data-details-with-secrets (not= (:write_data_details existing-database)))
-        engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
         main-conn-error                 (when (or details-changed? engine-changed?)
                                           (warehouses/test-database-connection (or engine (:engine existing-database))
                                                                                (or details-with-secrets (driver.conn/default-details existing-database))))
@@ -1193,12 +1048,12 @@
               (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)
               (catch Exception e
                 (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e))))))
-        (t2/update! :model/Database id updates)
+        (warehouses-rest.db/update-database! id updates)
         ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
         ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
-          (t2/update! :model/Database id {:cache_ttl cache_ttl}))
-        (let [db (t2/select-one :model/Database :id id)]
+          (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl}))
+        (let [db (warehouses-rest.db/database id)]
           ;; the details in db and existing-database have been normalized so they are the same here
           ;; we need to pass through details-changed? which is calculated before detail normalization
           ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
@@ -1221,15 +1076,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a `Database`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
-    (api/let-404 [db (t2/select-one :model/Database :id id)]
+    (api/let-404 [db (warehouses-rest.db/database id)]
       (api/check-403 (mi/can-write? db))
-      (t2/delete! :model/Database :router_database_id id)
+      (warehouses-rest.db/delete-destination-databases! id)
       (database-routing/delete-associated-database-router! id)
-      (t2/delete! :model/Database :id id)
+      (warehouses-rest.db/delete-database! id)
       (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
@@ -1246,7 +1101,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
@@ -1281,7 +1136,7 @@
 (api.macros/defendpoint :post "/:id/dismiss_spinner"
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   ;; manual full sync needs to be async, but this is a simple update of `Database`
   (let [db     (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))
@@ -1289,7 +1144,7 @@
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]
-      (t2/update! :model/Table {:id [:in table-ids]} {:initial_sync_status "complete"})))
+      (warehouses-rest.db/mark-tables-sync-complete! table-ids)))
   {:status :ok})
 
 ;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------
@@ -1312,7 +1167,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
@@ -1331,12 +1186,7 @@
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
-  (t2/query-one {:delete-from :metabase_fieldvalues
-                 :where      [:in :field_id
-                              ^:allow-subquery {:select     [:f.id]
-                                                :from       [[:metabase_field :f]]
-                                                :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                                :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
+  (warehouses-rest.db/delete-field-values-for-database! (u/the-id database-or-id)))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 ;;
@@ -1349,7 +1199,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discards all saved field values for this `Database`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-discard-field-values {:object db :user-id api/*current-user-id*})
@@ -1387,7 +1237,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [db (warehouses/get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
@@ -1410,14 +1260,10 @@
                              (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
                              schemas)
                            (filter (partial can-read-schema? id) schemas)))
-        clauses         (cond-> []
-                          ;; a non-nil value means Table is hidden --
-                          ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
-                          (not include-hidden?) (conj [:= :visibility_type nil]))
         ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
-                                     (let [tables (t2/select :model/Table :db_id id :active true)
+                                     (let [tables (warehouses-rest.db/active-tables-for-database id)
                                            _ (perms/prime-table-perms-cache {:db-ids #{id}})
                                            filtered-tables (cond->> tables
                                                              can-query?          (filter mi/can-query?)
@@ -1426,12 +1272,7 @@
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
     (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-    (->> (t2/select-fn-set :schema :model/Table
-                           :db_id id :active true
-                           (merge
-                            {:order-by [[:%lower.schema :asc]]}
-                            (when clauses
-                              {:where (into [:and] clauses)})))
+    (->> (warehouses-rest.db/active-table-schemas id include-hidden?)
          filter-schemas
          filter-schemas-by-tables
          ;; for `nil` schemas return the empty string
@@ -1449,12 +1290,12 @@
   Optional filters:
   - `can-query=true` - filter to only schemas containing tables the user can query
   - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model
            include_hidden
            can-query
-           can-write-metadata]} :- [:map
+           can-write-metadata]} :- [:map {:closed true}
                                     [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
                                     [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
                                     [:can-query                   {:optional true} [:maybe :boolean]]
@@ -1502,17 +1343,8 @@
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
    (let [candidate-tables (if include-hidden?
-                            (t2/select :model/Table
-                                       :db_id db-id
-                                       :schema schema
-                                       :active true
-                                       {:order-by [[:display_name :asc]]})
-                            (t2/select :model/Table
-                                       :db_id db-id
-                                       :schema schema
-                                       :active true
-                                       :visibility_type nil
-                                       {:order-by [[:display_name :asc]]}))
+                            (warehouses-rest.db/active-tables-in-schema db-id schema)
+                            (warehouses-rest.db/active-visible-tables-in-schema db-id schema))
          _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (if-let [f (when config/ee-available?
@@ -1548,10 +1380,10 @@
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
-  [{:keys [id schema]} :- [:map
+  [{:keys [id schema]} :- [:map {:closed true}
                            [:id ms/PositiveInt]
                            [:schema ms/NonBlankString]]
-   {:keys [include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map
+   {:keys [include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map {:closed true}
                                                                                                           [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
                                                                                                           [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
                                                                                                           [:can-query                   {:optional true} [:maybe :boolean]]
@@ -1583,9 +1415,9 @@
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [schema include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map
+   {:keys [schema include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map {:closed true}
                                                                                                                  [:schema                      {:optional true} [:maybe :string]]
                                                                                                                  [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
                                                                                                                  [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
@@ -1609,14 +1441,14 @@
 (api.macros/defendpoint :get ["/:virtual-db/schema/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
-  [{:keys [schema]} :- [:map
+  [{:keys [schema]} :- [:map {:closed true}
                         [:schema :string]]]
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :question
-          :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
-                                     [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
+          :collection-scope (if (= schema (schema.table/root-collection-schema-name))
+                              :root
+                              (api/check-404 (not-empty (warehouses-rest.db/collection-ids-named schema)))))
          (map schema.table/card->virtual-table))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1625,10 +1457,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/healthcheck"
   "Reports whether the database can currently connect"
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [connection-type]} :- [:map [:connection-type {:optional true} ::driver.conn/connection-type]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [connection-type]} :- [:map {:closed true} [:connection-type {:optional true} ::driver.conn/connection-type]]]
   (api/check-superuser)
-  (let [{:as database :keys [engine]} (api/check-404 (t2/select-one :model/Database :id id))
+  (let [{:as database :keys [engine]} (api/check-404 (warehouses-rest.db/database id))
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
@@ -1646,14 +1478,14 @@
 (api.macros/defendpoint :get ["/:virtual-db/datasets/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
-  [{:keys [schema]} :- [:map
+  [{:keys [schema]} :- [:map {:closed true}
                         [:schema :string]]]
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :model
-          :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
-                                     [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
+          :collection-scope (if (= schema (schema.table/root-collection-schema-name))
+                              :root
+                              (api/check-404 (not-empty (warehouses-rest.db/collection-ids-named schema)))))
          (map schema.table/card->virtual-table))))
 
 ;;; -------------------------------- GET /api/database/:id/settings-available ------------------------------------
@@ -1703,7 +1535,7 @@
 
 (api.macros/defendpoint :get "/:id/settings-available" :- [:map [:settings ::available-settings]]
   "Get all database-local settings and their availability for the given database."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [database (api/read-check (warehouses/get-database id))]
     {:settings (database-local-settings database)}))

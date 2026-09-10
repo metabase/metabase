@@ -274,11 +274,13 @@
                                        :database_is_auto_increment true
                                        :name_field                 {:base_type "type/Text",
                                                                     :display_name "Name",
+                                                                    :effective_type "type/Text",
                                                                     :fk_target_field_id nil,
                                                                     :has_field_values "list",
                                                                     :id (mt/id :users :name),
                                                                     :name "NAME",
                                                                     :semantic_type "type/Name",
+                                                                    :settings nil,
                                                                     :table_id (mt/id :users)})
                                 (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
                                        :semantic_type              "type/Name"
@@ -356,11 +358,13 @@
                                        :database_is_auto_increment true
                                        :name_field {:base_type "type/Text",
                                                     :display_name "Name",
+                                                    :effective_type "type/Text",
                                                     :fk_target_field_id nil,
                                                     :has_field_values "list",
                                                     :id (mt/id :users :name),
                                                     :name "NAME",
                                                     :semantic_type "type/Name",
+                                                    :settings nil,
                                                     :table_id (mt/id :users)})
                                 (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
                                        :table_id         (mt/id :users)
@@ -392,6 +396,18 @@
                  :id           (mt/id :users)})
                (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
             "Make sure that getting the User table does *not* include password info")))))
+
+(deftest query-metadata-data-sensitivity-test
+  (testing "GET api/table/:id/query_metadata returns each field's data_sensitivity, nil when unclassified"
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db)}
+                   :model/Field    _     {:table_id (:id table) :name "email" :data_sensitivity :PII}
+                   :model/Field    _     {:table_id (:id table) :name "id"}]
+      (is (= {"email" "PII"
+              "id"    nil}
+             (->> (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" (:id table)))
+                  :fields
+                  (into {} (map (juxt :name :data_sensitivity)))))))))
 
 (deftest query-metadata-transform-hydration-test
   (testing "GET /api/table/:id/query_metadata hydrates the source :transform based on transforms availability (GDGT-2523)"
@@ -685,11 +701,13 @@
                                 :database_is_auto_increment true
                                 :name_field        {:base_type "type/Text",
                                                     :display_name "Name",
+                                                    :effective_type "type/Text",
                                                     :fk_target_field_id nil,
                                                     :has_field_values "list",
                                                     :id (mt/id :categories :name),
                                                     :name "NAME",
                                                     :semantic_type "type/Name",
+                                                    :settings nil,
                                                     :table_id (mt/id :categories)}})
                               (merge
                                (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))

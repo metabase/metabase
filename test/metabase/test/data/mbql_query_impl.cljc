@@ -1,6 +1,7 @@
 (ns metabase.test.data.mbql-query-impl
   "Internal implementation of [[metabase.test.data/$ids]] and [[metabase.test.data/$ids]] and related macros."
   (:require
+   ;; $ids/mbql-query resolution reuses the ambient store's provider when one is already bound
    #?@(:clj (^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
              [metabase.lib-be.core :as lib-be]
              [metabase.lib.metadata :as lib.metadata]))
@@ -10,7 +11,6 @@
 
 #?(:clj (set! *warn-on-reflection* true))
 
-#_:clj-kondo/ignore
 #?(:clj
    (defn druid-id-fn
      "I have a strong feeling this should be handled differently! Let's discuss that during review!"

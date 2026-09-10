@@ -5,7 +5,7 @@ import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
-import { getAccentColors } from "metabase/ui/colors/groups";
+import { getNamedAccentColors } from "metabase/ui/colors/groups";
 import type { AccentColorOptions } from "metabase/ui/colors/types";
 
 interface ChartSettingColorPickerProps {
@@ -13,7 +13,13 @@ interface ChartSettingColorPickerProps {
   value: string;
   title?: string;
   pillSize?: PillSize;
-  onChange?: (newValue: string) => void;
+  /**
+   * Reports the palette color name of the picked color to onChange. Off by
+   * default because the settings widget framework treats the second onChange
+   * argument as a Question override.
+   */
+  forwardColorName?: boolean;
+  onChange?: (hexValue: string, colorName?: string) => void;
   accentColorOptions?: AccentColorOptions;
 }
 
@@ -22,6 +28,7 @@ export const ChartSettingColorPicker = ({
   value,
   title,
   pillSize,
+  forwardColorName,
   onChange,
   accentColorOptions = {
     main: true,
@@ -39,9 +46,11 @@ export const ChartSettingColorPicker = ({
     <Box className={cx(CS.flex, CS.alignCenter, className)}>
       <ColorSelector
         value={value}
-        colors={getAccentColors(accentColorOptions)}
+        colors={getNamedAccentColors(accentColorOptions)}
         withinPortal={withinPortal}
-        onChange={onChange}
+        onChange={(hexValue, colorName) =>
+          onChange?.(hexValue, forwardColorName ? colorName : undefined)
+        }
         pillSize={pillSize}
       />
       {title && <h4 className={CS.ml1}>{title}</h4>}

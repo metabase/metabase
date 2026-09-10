@@ -1,5 +1,4 @@
 import type { Store } from "@reduxjs/toolkit";
-import FakeTimers from "@sinonjs/fake-timers";
 import type { Meta, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { merge } from "icepick";
@@ -7,10 +6,10 @@ import { type ComponentProps, useEffect } from "react";
 
 import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Box, Popover } from "metabase/ui";
 
 import { DatePicker } from "./DatePicker";
@@ -39,20 +38,24 @@ export default {
   decorators: [ReduxDecorator],
 } as Meta<typeof DatePicker>;
 
-let clock: FakeTimers.InstalledClock | undefined;
+const MOCKED_NOW = new Date("2025-01-01T00:00:00.000Z").getTime();
+const OriginalDate = Date;
+
+const MockedDate: DateConstructor = new Proxy(OriginalDate, {
+  construct: (target, args: unknown[]) =>
+    Reflect.construct(target, args.length ? args : [MOCKED_NOW]),
+  get: (target, property, receiver) =>
+    property === "now"
+      ? () => MOCKED_NOW
+      : Reflect.get(target, property, receiver),
+});
+
 function WithMockDate(StoryFn: StoryFn) {
-  if (!clock) {
-    clock = FakeTimers.install({
-      toFake: ["Date"],
-      // Happy new year 2025! 🥳
-      now: new Date("2025-01-01T00:00:00.000Z"),
-    });
-  }
+  window.Date = MockedDate;
 
   useEffect(() => {
     return () => {
-      clock?.uninstall();
-      clock = undefined;
+      window.Date = OriginalDate;
     };
   }, []);
 

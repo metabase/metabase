@@ -2,7 +2,9 @@ import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 const migrateModelsPage = () =>
-  import("./pages/MigrateModelsPage").then(({ MigrateModelsPage }) => ({
+  import(
+    /* webpackChunkName: "model-replacement" */ "./pages/MigrateModelsPage"
+  ).then(({ MigrateModelsPage }) => ({
     Component: MigrateModelsPage,
   }));
 

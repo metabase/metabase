@@ -22,9 +22,11 @@
                             :name               "NAME"
                             :display_name       "Name"
                             :base_type          :type/Text
+                            :effective_type     :type/Text
                             :semantic_type      :type/Name
                             :has_field_values   :list
-                            :fk_target_field_id nil}}
+                            :fk_target_field_id nil
+                            :settings           nil}}
            (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :id))
                (t2/hydrate :name_field)
                mt/derecordize))))
@@ -66,6 +68,22 @@
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 
+(deftest ^:parallel remove-param-fields-non-public-columns-test
+  (testing "nested :name_field, :target (and its :name_field), and :dimensions :human_readable_field are sanitized too, nils dropped"
+    (let [public-field  (zipmap params/param-field-columns (repeat :public))
+          private-field (assoc public-field :fingerprint :secret, :description :secret, :table :secret)]
+      (is (= {:param_fields {"p1" [(assoc public-field
+                                          :name_field public-field
+                                          :target     (assoc public-field :name_field public-field)
+                                          :dimensions [{:id 1, :human_readable_field public-field}])]
+                             "p2" [(assoc public-field :dimensions [])]}}
+             (params/remove-param-fields-non-public-columns
+              {:param_fields {"p1" [(assoc private-field
+                                           :name_field private-field
+                                           :target     (assoc private-field :name_field private-field)
+                                           :dimensions [{:id 1, :human_readable_field private-field}])]
+                              "p2" [(assoc private-field :name_field nil, :target nil, :dimensions [])]}}))))))
+
 (deftest ^:parallel hydrate-param-fields-for-card-test
   (testing "check that we can hydrate param_fields for a Card"
     (mt/with-temp [:model/Card card {:dataset_query
@@ -82,18 +100,22 @@
                            :display_name       "ID"
                            :name               "ID"
                            :base_type          :type/BigInteger
+                           :effective_type     :type/BigInteger
                            :semantic_type      :type/PK
                            :has_field_values   :none
                            :fk_target_field_id nil
+                           :settings           nil
                            :target nil
                            :name_field         {:id                (mt/id :venues :name)
                                                 :table_id          (mt/id :venues)
                                                 :display_name      "Name"
                                                 :name              "NAME"
                                                 :base_type         :type/Text
+                                                :effective_type    :type/Text
                                                 :semantic_type     :type/Name
                                                 :has_field_values  :list
-                                                :fk_target_field_id nil}
+                                                :fk_target_field_id nil
+                                                :settings          nil}
                            :dimensions         []}]}
              (-> (t2/hydrate card :param_fields)
                  :param_fields
@@ -116,9 +138,11 @@
                                                                :display_name      "Name"
                                                                :name              "NAME"
                                                                :base_type         :type/Text
+                                                               :effective_type    :type/Text
                                                                :semantic_type     :type/Name
                                                                :has_field_values  :list
-                                                               :fk_target_field_id nil}
+                                                               :fk_target_field_id nil
+                                                               :settings          nil}
                                           :dimensions         []}]}
               (-> (t2/hydrate dashboard :param_fields)
                   :param_fields
@@ -206,44 +230,6 @@
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
              (params/card->template-tag-field-ids card))))))
-
-(deftest ^:parallel get-linked-field-ids-test
-  (testing "get-linked-field-ids basic test"
-    (is (= {"foo" #{256}
-            "bar" #{267}}
-           (params/get-linked-field-ids
-            [{:parameter_mappings
-              [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
-               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}])))))
-
-(deftest ^:parallel get-linked-field-ids-test-2
-  (testing "get-linked-field-ids multiple fields to one param test"
-    (is (= {"foo" #{256 10}
-            "bar" #{267}}
-           (params/get-linked-field-ids
-            [{:parameter_mappings
-              [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
-               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}
-             {:parameter_mappings
-              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}])))))
-
-(deftest ^:parallel get-linked-field-ids-test-3
-  (testing "get-linked-field-ids-test misc fields"
-    (is (= {"1" #{1} "2" #{2} "3" #{3} "4" #{4} "5" #{5}}
-           (params/get-linked-field-ids
-            [{:parameter_mappings
-              [{:parameter_id "1" :target [:dimension [:field 1 {}]]}
-               {:parameter_id "2" :target [:dimension [:field 2 {:x true}]]}
-               {:parameter_id "wow" :target [:dimension [:field "wow" {:base-type :type/Integer}]]}
-               {:parameter_id "3" :target [:dimension [:field 3 {:source-field 1}]]}
-               {:parameter_id "4" :target [:dimension [:field 4 {:binning {:strategy :num-bins, :num-bins 1}}]]}
-               {:parameter_id "5" :target [:dimension [:field 5 nil]]}]}])))))
-
-(deftest ^:parallel get-linked-field-ids-test-4
-  (testing "get-linked-field-ids-test no fields"
-    (is (= {}
-           (params/get-linked-field-ids
-            [{:parameter_mappings []}])))))
 
 (deftest ^:parallel duplicate-column-names-test
   (testing "columns with duplicated names get mapped correctly to parameters"

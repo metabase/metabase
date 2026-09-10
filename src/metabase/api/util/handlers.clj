@@ -66,6 +66,7 @@
   "Replacement for [[compojure.core/routes]] that supports [[open-api-spec]]."
   [& handlers]
   (open-api/handler-with-open-api-spec
+   ;; this is the sanctioned routes wrapper itself; it delegates to compojure and adds OpenAPI
    (apply #_{:clj-kondo/ignore [:discouraged-var]} compojure/routes handlers)
    (fn [prefix]
      (routes->open-api-spec handlers prefix))))

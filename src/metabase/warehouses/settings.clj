@@ -21,6 +21,7 @@
 
 (defsetting cloud-gateway-ips
   (deferred-tru "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls")
+  :encryption :no
   :visibility :public
   :type       :string
   :setter     :none

@@ -1,14 +1,16 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/redux";
+import type Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
+
 import {
   getIsRunning,
   getLastRunQuestion,
   getQuestion,
   getRawSeries,
-} from "metabase/query_builder/selectors";
-import { useSelector } from "metabase/redux";
-import type Question from "metabase-lib/v1/Question";
+} from "../../../store/selectors";
 
 // The current question can be ahead of the retained result while a forced rerun is
 // pending or was cancelled, so whether the result is pivoted has to come from the card
@@ -37,7 +39,9 @@ export const useRenderedQuestion = () => {
     const renderedCard = rawSeries?.[0]?.card;
     const renderedQuestion =
       question != null && renderedCard != null
-        ? question.setCard(renderedCard)
+        ? // Question's card is typed as Card, but it's not always actually a Card
+          // clean this up when Question gets cleaned up
+          question.setCard(renderedCard as Card)
         : question;
     const isPivotResult = lastRunQuestion?.display() === "pivot";
     return {

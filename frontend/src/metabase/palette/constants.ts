@@ -79,6 +79,9 @@ export const getAdminSettingsSections = (
     name: t`Api keys`,
     adminOnly: true,
   },
+  domains: {
+    name: t`Domains`,
+  },
   maps: {
     name: t`Maps`,
   },

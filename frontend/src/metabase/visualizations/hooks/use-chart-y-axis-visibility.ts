@@ -1,13 +1,13 @@
 import type { EChartsType } from "echarts/core";
 import { useLayoutEffect, useMemo } from "react";
 
-import type {
-  DataKey,
-  SeriesModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import { createAxisVisibilityOption } from "metabase/visualizations/echarts/cartesian/option/axis";
-import type { HoveredObject } from "metabase/visualizations/types";
 import { getHoveredSeriesDataKey } from "metabase/visualizations/visualizations/CartesianChart/utils";
+import {
+  type DataKey,
+  type HoveredObject,
+  type SeriesModel,
+  createAxisVisibilityOption,
+} from "metabase/viz-core";
 
 type UseChartYAxisVisibilityProps = {
   chartRef: React.RefObject<EChartsType | undefined>;

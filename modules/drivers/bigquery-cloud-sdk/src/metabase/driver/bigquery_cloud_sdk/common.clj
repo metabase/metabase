@@ -1,12 +1,11 @@
 (ns metabase.driver.bigquery-cloud-sdk.common
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
+   [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.connection :as driver.conn]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (com.google.auth.oauth2 ServiceAccountCredentials)
    (java.io ByteArrayInputStream)))
@@ -47,10 +46,13 @@
       .getProjectId))
 
 (defn get-project-id
-  "Project-id for `details`. Prefers the user-supplied `:project-id`, falls back to the
-  one embedded in the service-account credentials."
-  [{:keys [project-id] :as details}]
-  (or project-id (database-details->credential-project-id details)))
+  "Data project-id for `details`. Fallback: `:project-id`, then `:billing-project-id`, then the
+  SA credentials' project. `:billing-project-id` is included because a service account granted
+  `bigquery.jobs.create` on a project typically also has data access there — so setting only the
+  billing field implies the data lives there too. Users who want billing ≠ data set both keys
+  explicitly."
+  [{:keys [project-id billing-project-id] :as details}]
+  (or project-id billing-project-id (database-details->credential-project-id details)))
 
 (mu/defn populate-project-id-from-credentials!
   "Update the given `database` details blob to include the credentials' project-id as a separate entry (under a
@@ -80,7 +82,5 @@
                           "(%s vs %s). The cached project-id-from-credentials uses the read SA's project; "
                           "query qualification may be incorrect for write connections.")
                      (u/the-id database) creds-proj-id write-proj-id))))
-    (t2/update! :model/Database
-                (u/the-id database)
-                {:details (assoc details :project-id-from-credentials creds-proj-id)})
+    (bigquery.db/update-database-details! (u/the-id database) (assoc details :project-id-from-credentials creds-proj-id))
     creds-proj-id))

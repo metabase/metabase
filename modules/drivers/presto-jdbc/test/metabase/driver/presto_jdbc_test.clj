@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -302,3 +303,12 @@
             :database-position 0
             :field-comment "foo comment"}
            (#'presto-jdbc/column->field 0 {:column "foo" :type "integer" :comment "foo comment"})))))
+
+(deftest ^:parallel row-struct-column-test
+  (mt/test-driver :presto-jdbc
+    (testing "STRUCT/ROW-typed columns can be queried (#19841)"
+      (is (= [[{"foo" "bar"}]]
+             (->> "SELECT CAST(ROW('bar') AS ROW(foo VARCHAR))"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/rows)))))))

@@ -7,9 +7,8 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import CS from "metabase/css/core/index.css";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { getQueryAndColumns } from "metabase/querying/common/utils";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, DelayGroup, Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -53,15 +52,15 @@ export const DataSelectorFieldPicker = ({
   hasFiltering,
   hasInitialFocus,
 }: DataSelectorFieldPickerProps) => {
-  const metadata = useSelector(getMetadata);
+  const metadataProvider = useMetadataProvider(selectedTable?.db_id ?? null);
   const queryAndColumns = useMemo(
     () =>
       getQueryAndColumns(
-        metadata,
+        metadataProvider,
         selectedTable,
         fields.map((field) => field.getPlainObject()),
       ),
-    [metadata, selectedTable, fields],
+    [metadataProvider, selectedTable, fields],
   );
 
   const header = <Header onBack={onBack} selectedTable={selectedTable} />;

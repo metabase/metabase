@@ -2,6 +2,7 @@
   "/api/dataset endpoints."
   (:refer-clojure :exclude [get-in select-keys])
   (:require
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
@@ -13,6 +14,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as mb.viz]
@@ -23,6 +25,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -36,10 +39,10 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [get-in select-keys]]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -65,13 +68,13 @@
     (let [table-id (when (= (lib/normalized-query-type query) :mbql/query)
                      (lib/primary-source-table-id query))]
       (when (int? table-id)
-        (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
+        (events/publish-event! :event/table-read {:object  (query-processor.db/table table-id)
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (when (= (lib/normalized-query-type query) :mbql/query)
                            (query->source-card-id query))
           source-card    (when source-card-id
-                           (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
+                           (query-processor.db/source-card-metadata source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
@@ -100,6 +103,7 @@
    query :- ::lib-be.schema/maybe-legacy-or-internal-query]
   (run-streaming-query
    (-> query
+       (dissoc :cache-strategy)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)))
 
@@ -126,7 +130,7 @@
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and download the result data as a file in the specified format."
-  [{:keys [export-format]} :- [:map
+  [{:keys [export-format]} :- [:map {:closed true}
                                [:export-format ::qp.schema/export-format]]
    _query-params
    {{:keys [was-pivot] :as query} :query
@@ -136,17 +140,16 @@
     visualization-settings        :visualization_settings}
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-   :- [:map
+   :- [:map {:closed true}
        [:query                  [:schema
                                  {:decode/api (fn [x]
                                                 (cond-> x
                                                   (string? x) json/decode))}
                                  ::lib-be.schema/maybe-legacy-or-internal-query]]
-       [:visualization_settings {:default {}} [:map
-                                               {:closed     false
-                                                :decode/api (fn [x]
-                                                              (cond-> x
-                                                                (string? x) (json/decode viz-setting-key-fn)))}]]
+       [:visualization_settings {:default {}} (mu/with ms/VisualizationSettings
+                                                       {:decode/api (fn [x]
+                                                                      (cond-> x
+                                                                        (string? x) (json/decode viz-setting-key-fn)))})]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]
        [:csv_include_bom         {:default false} ms/BooleanValue]]]
@@ -154,7 +157,7 @@
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
         query                         (-> query
-                                          (dissoc :constraints)
+                                          (dissoc :constraints :cache-strategy)
                                           (assoc :viz-settings viz-settings)
                                           (update :middleware #(-> %
                                                                    (select-keys [:ignore-cached-results?])
@@ -199,9 +202,9 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map {:closed false}
-                                           [:database ms/PositiveInt]
-                                           [:pretty   {:default true} [:maybe :boolean]]]]
+   {:keys [database pretty] :as query} :- [:map {:closed true}
+                                           [:pretty {:default true} [:maybe :boolean]]
+                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]]
   (model-persistence/with-persisted-substituion-disabled
     (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
                     (dissoc :constraints :middleware)
@@ -223,8 +226,9 @@
             (let [compiled (qp.compile/compile-preprocessed preprocessed)
                   driver (driver.u/database->driver database)]
               ;; Return only the compiled query and its params, not the internal keys the compiler carries
-              ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids).
-              (-> (select-keys compiled [:query :params])
+              ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids). `:collection` is kept so
+              ;; the frontend can pre-select the source table when converting a MongoDB question to native.
+              (-> (select-keys compiled [:query :params :collection])
                   (cond-> pretty (update :query #(driver/prettify-native-form driver %)))))))))))
 
 (api.macros/defendpoint :post "/pivot"
@@ -237,7 +241,9 @@
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [rff :api]
-      (qp.pivot/run-pivot-query (assoc (update query :middleware select-keys [:js-int-to-string? :ignore-cached-results?])
+      (qp.pivot/run-pivot-query (assoc (-> query
+                                           (dissoc :cache-strategy)
+                                           (update :middleware select-keys [:js-int-to-string? :ignore-cached-results?]))
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
                                 rff)
@@ -276,7 +282,7 @@
   [_route-params
    _query-params
    {:keys     [parameter]
-    field-ids :field_ids} :- [:map
+    field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids nil))
@@ -287,11 +293,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  [{:keys [query]} :- [:map
+  [{:keys [query]} :- [:map {:closed true}
                        [:query ms/NonBlankString]]
    _query-params
    {:keys     [parameter]
-    field-ids :field_ids} :- [:map
+    field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids query))
@@ -318,8 +324,8 @@
   "Return the remapped parameter values for cards or dashboards that are being edited."
   [_route-params
    _query-params
-   {:keys [parameter value field_ids]} :- [:map
+   {:keys [parameter value field_ids]} :- [:map {:closed true}
                                            [:parameter ::parameters.schema/parameter]
-                                           [:value :any]
+                                           [:value [:ref ::lib.schema.parameter/parameter.value]]
                                            [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (param-remapped-value field_ids parameter value))

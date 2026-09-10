@@ -150,7 +150,8 @@
                                             (not (:effective-type m)))
                                  (assoc :effective-type (:base-type m))))))}
     [:effective-type ::common/base-type]
-    [:unit {:optional true} [:maybe ::temporal-bucketing/unit]]]])
+    [:unit {:optional true} [:maybe ::temporal-bucketing/unit]]
+    [:coercion-strategy {:optional true} [:maybe ::common/coercion-strategy]]]])
 
 (mr/def ::value.value
   "The value slot of a `:value` clause: a single literal that is not a Clojure collection."
@@ -173,6 +174,14 @@
    #_tag   [:= {:decode/normalize common/normalize-keyword} :value]
    #_opts  [:ref ::value.options]
    #_value [:ref ::value.value]])
+
+(mr/def ::param-value
+  "A value bound to a native query parameter: a literal or, once the query processor has substituted parameters, a
+  UUID or a `java.time` object."
+  [:or
+   [:ref ::literal]
+   :uuid
+   #?@(:clj [(common/instance-of-class java.time.temporal.Temporal)])])
 
 (mr/def ::literal
   [:or

@@ -17,12 +17,13 @@ import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.modu
 import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
 import { InsightsTabOrLink } from "metabase/common/components/upsells/components/InsightsTabOrLink";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 import { useDispatch } from "metabase/redux";
-import { onCloseQuestionInfo } from "metabase/redux/query-builder";
 import { Flex, Icon, Stack, Tabs } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
+
+import { onCloseQuestionInfo } from "../../../../store/actions";
+import { QuestionActivityTimeline } from "../../../QuestionActivityTimeline";
 
 import { QuestionDetails } from "./QuestionDetails";
 import { QuestionRelationshipsTab } from "./components/QuestionRelationshipsTab";
@@ -78,13 +79,13 @@ export const QuestionInfoSidebar = ({
         defaultValue="overview"
         className={SidesheetStyles.FlexScrollContainer}
       >
-        <Tabs.List mx="xl">
+        <Tabs.List mx="xxl">
           <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
           {!isIAQuestion && <Tabs.Tab value="history">{t`History`}</Tabs.Tab>}
           <Tabs.Tab value="relationships">{t`Relationships`}</Tabs.Tab>
           {question.type() === "model" && !question.isArchived() && (
             <Link to={Urls.modelDetail(question.card())}>
-              <Flex gap="xs" className={SidesheetStyles.TabSibling}>
+              <Flex gap="xxs" className={SidesheetStyles.TabSibling}>
                 <Icon name="external" />
                 {t`Actions`}
               </Flex>
@@ -95,8 +96,8 @@ export const QuestionInfoSidebar = ({
 
         <SidesheetTabPanelContainer>
           <Tabs.Panel value="overview">
-            <Stack gap="lg">
-              <SidesheetCard pb="md">
+            <Stack gap="xl">
+              <SidesheetCard pb="lg">
                 <Stack gap={0}>
                   <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
 
