@@ -52,6 +52,10 @@
       (= column :coercion_strategy)
       [:case [:not= (u/qualified-key settings-alias :effective_type) nil] settings-column :else field-column]
 
+      ;; a CASE on the boolean gives every app DB a value its JDBC driver reads back as a boolean or a number
+      (= column :json_unfolding)
+      [:case [:= [:coalesce settings-column field-column] true] true :else false]
+
       :else
       [:coalesce settings-column field-column])))
 
