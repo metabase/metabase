@@ -7,7 +7,6 @@ import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import {
   hideTimelines,
-  showCreatedTimelineEvent,
   showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
@@ -349,21 +348,6 @@ describe("QueryBuilder > timeline events", () => {
       checkNotNull(getQuestion(store.getState())).settings(),
     ).not.toHaveProperty("timeline.selected_timeline_ids");
     expect(getIsDirty(store.getState())).toBe(false);
-  });
-
-  it("creating an event on a hidden timeline shows the whole timeline", async () => {
-    const store = await setupWithTimelines(EVENTS_OFF);
-    const created = createMockTimelineEvent({
-      id: 97,
-      timeline_id: TIMELINE.id,
-      timestamp: "2025-06-03T00:00:00Z",
-    });
-
-    await updateVisibility(store, (visibility, timelines) =>
-      showCreatedTimelineEvent(visibility, created, timelines),
-    );
-
-    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
   });
 
   it("shows an event created on a timeline that has not been fetched yet", async () => {

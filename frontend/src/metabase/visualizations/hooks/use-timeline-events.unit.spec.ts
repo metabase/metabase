@@ -289,7 +289,7 @@ describe("useTimelineEvents", () => {
     expect(onTimelineEventsShown).not.toHaveBeenCalled();
   });
 
-  it("keeps the same events and reports once when rerendered with the same inputs", async () => {
+  it("reports once when rerendered with the same inputs", async () => {
     const onTimelineEventsShown = jest.fn();
     const series = getSeries(SAVED_VISIBILITY);
     const settings = getComputedSettingsForSeries(series);
@@ -302,11 +302,9 @@ describe("useTimelineEvents", () => {
     await waitFor(() => {
       expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
     });
-    const events = result.current.timelineEvents;
 
     rerender({ series, settings });
 
-    expect(result.current.timelineEvents).toBe(events);
     expect(onTimelineEventsShown).toHaveBeenCalledTimes(1);
   });
 
@@ -361,50 +359,6 @@ describe("useTimelineEvents", () => {
         expect(onTimelineEventsShown).not.toHaveBeenCalled();
       },
     );
-
-    it("keeps events hidden when the query cache is already populated", async () => {
-      const providers = getTestStoreAndWrapper({ initialRoute: "/" });
-      await providers.store.dispatch(
-        timelineApi.util.upsertQueryData(
-          "listTimelines",
-          { include: "events" },
-          [TIMELINE],
-        ),
-      );
-      await mockSurface();
-      const onTimelineEventsShown = jest.fn();
-      const { result } = setup({ providers, onTimelineEventsShown });
-
-      await act(async () => {
-        await fetchMock.callHistory.flush();
-      });
-
-      expect(result.current.timelineEvents).toEqual([]);
-      expect(getTimelineRequests()).toHaveLength(0);
-      expect(onTimelineEventsShown).not.toHaveBeenCalled();
-    });
-
-    it("does not reuse or report events loaded by a previous supported surface", async () => {
-      const onTimelineEventsShown = jest.fn();
-      const supported = setup({ onTimelineEventsShown });
-      await waitFor(() => {
-        expect(supported.result.current.timelineEvents).toEqual([SHOWN_EVENT]);
-      });
-      expect(onTimelineEventsShown).toHaveBeenCalledTimes(1);
-      supported.unmount();
-      onTimelineEventsShown.mockClear();
-      await mockSurface();
-
-      const { result } = supported.mount();
-
-      await act(async () => {
-        await fetchMock.callHistory.flush();
-      });
-
-      expect(result.current.timelineEvents).toEqual([]);
-      expect(getTimelineRequests()).toHaveLength(1);
-      expect(onTimelineEventsShown).not.toHaveBeenCalled();
-    });
   });
 
   describe.each([

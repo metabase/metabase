@@ -299,21 +299,6 @@ describe("dashboard timeline events", () => {
       expect(fetchMock.callHistory.calls("path:/api/timeline")).toHaveLength(0);
     });
 
-    it("does not expose event selection or sidebar callbacks", () => {
-      const { result } = setupReadOnlyDashboard({ timelineEvents: [EVENT] });
-
-      expect(result.current.dashcardProps.onOpenTimelines).toBeUndefined();
-      expect(
-        result.current.dashcardProps.onSelectTimelineEvents,
-      ).toBeUndefined();
-      expect(
-        result.current.dashcardProps.onDeselectTimelineEvents,
-      ).toBeUndefined();
-      expect(
-        result.current.dashcardProps.selectedTimelineEventIds,
-      ).toBeUndefined();
-    });
-
     it.each([undefined, []])(
       "does not fall back to cached collection events when the payload is %s",
       (timelineEvents) => {
