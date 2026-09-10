@@ -15,6 +15,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.util.add-alias-info :as-alias add-alias-info]
    [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -1135,16 +1136,34 @@
               (map ::result-metadata/field-ref (#'result-metadata/deduplicate-field-refs cols)))))))
 
 (deftest ^:parallel remove-namespaced-options-test
+  ;; `::add-alias-info/desired-alias` stands in for the namespaced keys this drops -- an option a piece of middleware
+  ;; really does add to a ref -- and `:base-type` for the plain ones it has to keep. Made-up keys would not do: ref
+  ;; options are a closed schema, so a key nobody declares never survives to reach this function.
   (are [clause expected] (= expected
                             (#'result-metadata/remove-namespaced-options clause))
-    [:field 1 {::namespaced true}]                [:field 1 nil]
-    [:field 1 {::namespaced true, :a 1}]          [:field 1 {:a 1}]
-    [:expression "wow"]                           [:expression "wow"]
-    [:expression "wow" {::namespaced true}]       [:expression "wow"]
-    [:expression "wow" {::namespaced true, :a 1}] [:expression "wow" {:a 1}]
-    [:aggregation 0]                              [:aggregation 0]
-    [:aggregation 0 {::namespaced true}]          [:aggregation 0]
-    [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))
+    [:field 1 {::add-alias-info/desired-alias "ID"}]
+    [:field 1 nil]
+
+    [:field 1 {::add-alias-info/desired-alias "ID", :base-type :type/Integer}]
+    [:field 1 {:base-type :type/Integer}]
+
+    [:expression "wow"]
+    [:expression "wow"]
+
+    [:expression "wow" {::add-alias-info/desired-alias "wow"}]
+    [:expression "wow"]
+
+    [:expression "wow" {::add-alias-info/desired-alias "wow", :base-type :type/Integer}]
+    [:expression "wow" {:base-type :type/Integer}]
+
+    [:aggregation 0]
+    [:aggregation 0]
+
+    [:aggregation 0 {::add-alias-info/desired-alias "count"}]
+    [:aggregation 0]
+
+    [:aggregation 0 {::add-alias-info/desired-alias "count", :base-type :type/Integer}]
+    [:aggregation 0 {:base-type :type/Integer}]))
 
 (deftest ^:parallel always-include-desired-column-alias-test
   (testing "Populate source and desired column aliases for native queries without stage metadata"

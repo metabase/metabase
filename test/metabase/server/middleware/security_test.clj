@@ -10,7 +10,6 @@
    [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [stencil.core :as stencil]))
 
 (defn- header->directive
@@ -72,7 +71,7 @@
   ;; on, its value becomes ordinary pages' `frame-ancestors`. It must stay confined to that
   ;; directive: a `;` in the value must not break out and append further CSP directives. The
   ;; worst is `script-src-elem` — the base policy omits it, so an injected one is honored and
-  ;; overrides the nonce/hash `script-src` allowlist the app relies on to block XSS.
+  ;; overrides the hash-based `script-src` allowlist the app relies on to block XSS.
   (mt/with-premium-features #{:embedding}
     (let [csp-directive-names
           (fn [origins]
@@ -363,29 +362,46 @@
                               "https://api.example.com"))))))
 
 (deftest nonce-test
+  (mt/initialize-if-needed! :web-server)
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
-    (let [nonceJSON (atom nil)
-          render-file (mt/original-fn #'stencil/render-file)]
+    (let [template-nonce (atom nil)
+          render-file    (mt/original-fn #'stencil/render-file)]
       ;; http/get hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
       (with-redefs [stencil/render-file (fn [path variables]
-                                          (reset! nonceJSON (:nonceJSON variables))
+                                          (reset! template-nonce (:nonce variables))
                                           ;; Use index_template.html instead of index.html so the frontend doesn't
                                           ;; have to be built to run the test. The only difference between them
                                           ;; should be the script tags for the webpack bundles
                                           (assert (= path "frontend_client/index.html"))
                                           (render-file "frontend_client/index_template.html" variables))]
-        (let [response  (http/get (str "http://localhost:" (server.instance/server-port)))
-              nonce     (json/decode @nonceJSON)
-              csp       (get-in response [:headers "Content-Security-Policy"])
-              style-src (->> (str/split csp #"; *")
-                             (filter #(str/starts-with? % "style-src "))
-                             first)]
+        (let [response   (http/get (str "http://localhost:" (server.instance/server-port)))
+              nonce      @template-nonce
+              csp        (get-in response [:headers "Content-Security-Policy"])
+              style-src  (header->directive csp "style-src")
+              script-src (header->directive csp "script-src")]
           (testing "The nonce is 10 characters long and alphanumeric"
             (is (re-matches #"^[a-zA-Z0-9]{10}$" nonce)))
           (testing "The same nonce is in the CSP header"
             (is (str/includes? style-src (str "nonce-" nonce))))
-          (testing "The same nonce is in the body of the rendered page"
-            (is (str/includes? (:body response) nonce))))))))
+          (testing "The app document does not get a script-src nonce"
+            (is (not (str/includes? script-src "'nonce-"))))
+          (testing "The nonce reaches the page only as a script attribute, which the browser then blanks"
+            (is (str/includes? (:body response) (format "nonce=\"%s\"" nonce)))
+            (is (not (str/includes? (:body response) "_metabaseNonce")))
+            (is (= 1 (count (re-seq (re-pattern nonce) (:body response))))
+                "the nonce appears exactly once, on the bootstrap script tag")))))))
+
+(deftest script-src-nonce-opt-in-test
+  (testing "script-src only carries a nonce for responses that opt in"
+    (with-redefs [config/is-dev? false]
+      (let [script-src-for  (fn [response-extras]
+                              (-> ((mw.security/add-security-headers
+                                    (fn [_request respond _raise]
+                                      (respond (merge {:status 200 :headers {} :body "ok"} response-extras))))
+                                   {:uri "/" :headers {}} identity identity)
+                                  (csp-directive-from-response "script-src")))]
+        (is (not (str/includes? (script-src-for {}) "'nonce-")))
+        (is (str/includes? (script-src-for {mw.security/script-nonce-response-key true}) "'nonce-"))))))
 
 (deftest data-app-inline-style-csp-test
   (testing "Only data-app iframe responses allow inline styles"
@@ -408,7 +424,7 @@
         (is (not (str/includes? app-style-src "'unsafe-inline'")))
         (is (str/includes? data-style-src "'unsafe-inline'"))
         (is (not (str/includes? data-style-src "'nonce-")))
-        (is (str/includes? data-script-src "'nonce-"))
+        (is (not (str/includes? data-script-src "'nonce-")))
         (is (not (str/includes? data-script-src "'unsafe-inline'")))))))
 
 ;; NOTE: `unsafe-eval` was removed from the data-app iframe document (it now lives

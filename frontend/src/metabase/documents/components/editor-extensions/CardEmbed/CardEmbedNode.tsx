@@ -823,7 +823,6 @@ export const CardEmbedComponent = memo(
                   <ExplicitSizeRefreshModeContext.Provider value="layout">
                     <Visualization
                       rawSeries={series}
-                      metadata={metadata}
                       mode={visualizationMode}
                       hasColumnReordering
                       highlighted={highlighted}
