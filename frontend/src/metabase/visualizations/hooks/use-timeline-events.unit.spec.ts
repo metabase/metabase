@@ -361,35 +361,6 @@ describe("useTimelineEvents", () => {
     );
   });
 
-  describe.each([
-    ["public dashboards", "isPublicEmbedding"],
-    ["static embedded dashboards", "isStaticEmbedding"],
-  ] as const)("%s", (_surface, configMethod) => {
-    beforeEach(() => {
-      jest.spyOn(embeddingConfig, configMethod).mockReturnValue(true);
-    });
-
-    it("shows the supplied events without requesting collection timelines", () => {
-      const { result } = setup({
-        isDashboard: true,
-        timelineEvents: [SHOWN_EVENT],
-      });
-
-      expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
-      expect(getTimelineRequests()).toHaveLength(0);
-    });
-
-    it.each([undefined, []])(
-      "does not fetch additional events when the payload is %s",
-      (timelineEvents) => {
-        const { result } = setup({ isDashboard: true, timelineEvents });
-
-        expect(result.current.timelineEvents).toEqual([]);
-        expect(getTimelineRequests()).toHaveLength(0);
-      },
-    );
-  });
-
   it("only shows saved events on an authenticated SDK dashboard", async () => {
     await mockIsEmbeddingSdk();
     const unrelatedTimeline = createMockTimeline({

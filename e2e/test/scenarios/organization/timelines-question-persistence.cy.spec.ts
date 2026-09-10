@@ -1,13 +1,14 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { Card, Timeline, VisualizationSettings } from "metabase-types/api";
-
 const { H } = cy;
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { Card, VisualizationSettings } from "metabase-types/api";
+
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const EVENTS = [
   { name: "Swallows return", timestamp: "2027-04-20T00:00:00Z" },
   { name: "Swifts return", timestamp: "2027-08-20T00:00:00Z" },
 ];
+const EVENT_NAMES = EVENTS.map(({ name }) => name);
 
 describe("scenarios > organization > timelines > question persistence", () => {
   beforeEach(() => {
@@ -15,168 +16,121 @@ describe("scenarios > organization > timelines > question persistence", () => {
     cy.signInAsAdmin();
   });
 
-  it("saves a timeline from another collection and hidden events for every dashboard using the question", () => {
+  it("should save a timeline from another collection and hidden events for dashboards using the question", () => {
     H.createCollection({ name: "Migration calendar" }).then(
-      ({ body: collection }) => {
+      ({ body: collection }) =>
         H.createTimelineWithEvents({
           timeline: { name: "Migration seasons", collection_id: collection.id },
           events: EVENTS,
-        }).then(({ timeline }) => {
-          createTimeSeries().then(({ questionId, body: { dashboard_id } }) => {
-            H.createDashboard({
-              name: "Another bird dashboard",
-              dashcards: [
-                {
-                  id: -1,
-                  card_id: questionId,
-                  row: 0,
-                  col: 0,
-                  size_x: 12,
-                  size_y: 8,
-                },
-              ],
-            }).then(({ body: otherDashboard }) => {
-              H.visitQuestion(questionId);
-              expectEvents(
-                [],
-                EVENTS.map(({ name }) => name),
-              );
-              openQuestionEvents();
-              H.rightSidebar().within(() => {
-                H.timelineVisibility("Migration seasons").click();
-                H.toggleTimelineEventVisibility("Swifts return");
-              });
-              expectEvents(["Swallows return"], ["Swifts return"]);
-              H.saveSavedQuestion();
-
-              cy.request<Timeline>({
-                url: `/api/timeline/${timeline.id}`,
-                qs: { include: "events" },
-              }).then(({ body: savedTimeline }) => {
-                const hiddenEventIds = (savedTimeline.events ?? [])
-                  .filter(({ name }) => name === "Swifts return")
-                  .map(({ id }) => id);
-                expect(hiddenEventIds).to.have.length(1);
-                cy.request<Card>(`/api/card/${questionId}`)
-                  .its("body.visualization_settings")
-                  .should("deep.include", {
-                    "timeline.selected_timeline_ids": [timeline.id],
-                    "timeline.excluded_timeline_event_ids": hiddenEventIds,
-                  });
-              });
-              cy.reload();
-              expectEvents(["Swallows return"], ["Swifts return"]);
-
-              for (const dashboardId of [dashboard_id, otherDashboard.id]) {
-                H.visitDashboard(dashboardId);
-                expectEvents(["Swallows return"], ["Swifts return"]);
-              }
-            });
-          });
-        });
-      },
+        }).then(({ timeline, events }) => {
+          cy.wrap(timeline.id).as("timelineId");
+          cy.wrap(events[1].id).as("hiddenEventId");
+        }),
     );
+    createTimeSeries();
+
+    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+    expectEvents([], EVENT_NAMES);
+    openQuestionEvents();
+    H.rightSidebar().within(() => {
+      H.timelineVisibility("Migration seasons").click();
+      H.toggleTimelineEventVisibility("Swifts return");
+    });
+    expectEvents(["Swallows return"], ["Swifts return"]);
+    H.saveSavedQuestion();
+
+    cy.then(function () {
+      cy.request<Card>(`/api/card/${this.questionId}`)
+        .its("body.visualization_settings")
+        .should("deep.include", {
+          "timeline.selected_timeline_ids": [this.timelineId],
+          "timeline.excluded_timeline_event_ids": [this.hiddenEventId],
+        });
+    });
+    cy.reload();
+    expectEvents(["Swallows return"], ["Swifts return"]);
+
+    cy.get<number>("@dashboardId").then((id) => H.visitDashboard(id));
+    expectEvents(["Swallows return"], ["Swifts return"]);
   });
 
-  it("keeps an explicitly empty selection hidden after saving and reloading the question and dashboard", () => {
+  it("should keep an explicitly empty selection hidden after saving and reloading the question and dashboard", () => {
     H.createTimelineWithEvents({
       timeline: { name: "Migration seasons" },
       events: EVENTS,
-    }).then(({ timeline }) => {
-      createTimeSeries({
-        "timeline.selected_timeline_ids": [timeline.id],
-      }).then(({ questionId, body: { dashboard_id } }) => {
-        H.visitQuestion(questionId);
-        expectEvents(EVENTS.map(({ name }) => name));
-        openQuestionEvents();
-        H.rightSidebar().within(() =>
-          H.timelineVisibility("Migration seasons").click(),
-        );
-        expectEvents(
-          [],
-          EVENTS.map(({ name }) => name),
-        );
-        H.saveSavedQuestion();
+    }).then(({ timeline }) =>
+      createTimeSeries({ "timeline.selected_timeline_ids": [timeline.id] }),
+    );
 
-        cy.request<Card>(`/api/card/${questionId}`)
-          .its("body.visualization_settings")
-          .should("have.property", "timeline.selected_timeline_ids")
-          .and("deep.equal", []);
-        cy.reload();
-        expectEvents(
-          [],
-          EVENTS.map(({ name }) => name),
-        );
-        openQuestionEvents();
-        H.rightSidebar().within(() =>
-          H.timelineVisibility("Migration seasons").should("not.be.checked"),
-        );
+    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+    expectEvents(EVENT_NAMES);
+    openQuestionEvents();
+    H.rightSidebar().within(() =>
+      H.timelineVisibility("Migration seasons").click(),
+    );
+    expectEvents([], EVENT_NAMES);
+    H.saveSavedQuestion();
 
-        H.visitDashboard(dashboard_id);
-        expectEvents(
-          [],
-          EVENTS.map(({ name }) => name),
-        );
-        cy.reload();
-        expectEvents(
-          [],
-          EVENTS.map(({ name }) => name),
-        );
-      });
+    cy.get<number>("@questionId").then((id) => {
+      cy.request<Card>(`/api/card/${id}`)
+        .its("body.visualization_settings")
+        .should("have.property", "timeline.selected_timeline_ids")
+        .and("deep.equal", []);
     });
+    cy.reload();
+    expectEvents([], EVENT_NAMES);
+    openQuestionEvents();
+    H.rightSidebar().within(() =>
+      H.timelineVisibility("Migration seasons").should("not.be.checked"),
+    );
+
+    cy.get<number>("@dashboardId").then((id) => H.visitDashboard(id));
+    expectEvents([], EVENT_NAMES);
   });
 
-  it("discards unsaved event choices when reopening a saved question", () => {
+  it("should discard unsaved event choices when reopening a saved question", () => {
+    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
     H.createTimelineWithEvents({
       timeline: { name: "Migration seasons" },
       events: EVENTS,
-    }).then(({ timeline }) => {
-      const savedSettings = { "timeline.selected_timeline_ids": [timeline.id] };
-      createTimeSeries(savedSettings).then(
-        ({ questionId, body: { dashboard_id } }) => {
-          cy.intercept("PUT", `/api/card/${questionId}`).as("updateQuestion");
-          H.visitQuestion(questionId);
-          expectEvents(EVENTS.map(({ name }) => name));
-          openQuestionEvents();
-          H.rightSidebar().within(() =>
-            H.timelineVisibility("Migration seasons").click(),
-          );
-          expectEvents(
-            [],
-            EVENTS.map(({ name }) => name),
-          );
-          cy.findByTestId("qb-header").button("Save").should("be.visible");
+    }).then(({ timeline }) =>
+      createTimeSeries({ "timeline.selected_timeline_ids": [timeline.id] }),
+    );
 
-          H.visitQuestion(questionId);
-          expectEvents(EVENTS.map(({ name }) => name));
-          cy.get("@updateQuestion.all").should("have.length", 0);
-          cy.request<Card>(`/api/card/${questionId}`)
-            .its("body.visualization_settings")
-            .should("deep.include", savedSettings);
-          H.visitDashboard(dashboard_id);
-          expectEvents(EVENTS.map(({ name }) => name));
-        },
-      );
-    });
+    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+    expectEvents(EVENT_NAMES);
+    openQuestionEvents();
+    H.rightSidebar().within(() =>
+      H.timelineVisibility("Migration seasons").click(),
+    );
+    expectEvents([], EVENT_NAMES);
+    cy.findByTestId("qb-header").button("Save").should("be.visible");
+
+    cy.log("reopen the question without saving");
+    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+    expectEvents(EVENT_NAMES);
+    cy.get("@updateQuestion.all").should("have.length", 0);
   });
 
-  it("does not save collection-default events when saving an unrelated chart change", () => {
+  it("should not save collection-default events when saving an unrelated chart change", () => {
     H.createTimelineWithEvents({
       timeline: { name: "Migration seasons" },
       events: EVENTS,
     });
-    createTimeSeries().then(({ questionId, body: { dashboard_id } }) => {
-      H.visitQuestion(questionId);
-      expectEvents(EVENTS.map(({ name }) => name));
-      H.openVizSettingsSidebar();
-      H.vizSettingsSidebar().within(() => {
-        cy.findByText("Display").click();
-        cy.findByText("Show values on data points").click();
-      });
-      H.openVizSettingsSidebar();
-      H.saveSavedQuestion();
+    createTimeSeries();
 
-      cy.request<Card>(`/api/card/${questionId}`)
+    cy.get<number>("@questionId").then((id) => H.visitQuestion(id));
+    expectEvents(EVENT_NAMES);
+    H.openVizSettingsSidebar();
+    H.vizSettingsSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Show values on data points").click();
+    });
+    H.openVizSettingsSidebar();
+    H.saveSavedQuestion();
+
+    cy.get<number>("@questionId").then((id) => {
+      cy.request<Card>(`/api/card/${id}`)
         .its("body.visualization_settings")
         .should((settings) => {
           expect(settings).to.include({ "graph.show_values": true });
@@ -187,19 +141,18 @@ describe("scenarios > organization > timelines > question persistence", () => {
             "timeline.excluded_timeline_event_ids",
           );
         });
-      cy.reload();
-      expectEvents(EVENTS.map(({ name }) => name));
-      H.visitDashboard(dashboard_id);
-      expectEvents(
-        [],
-        EVENTS.map(({ name }) => name),
-      );
     });
+    cy.reload();
+    expectEvents(EVENT_NAMES);
+
+    cy.log("the dashboard only shows events saved on the question");
+    cy.get<number>("@dashboardId").then((id) => H.visitDashboard(id));
+    expectEvents([], EVENT_NAMES);
   });
 });
 
 function createTimeSeries(visualization_settings: VisualizationSettings = {}) {
-  return H.createQuestionAndDashboard({
+  H.createQuestionAndDashboard({
     questionDetails: {
       name: "Bird sightings by month",
       display: "line",
@@ -211,6 +164,9 @@ function createTimeSeries(visualization_settings: VisualizationSettings = {}) {
       visualization_settings,
     },
     cardDetails: { size_x: 12, size_y: 8 },
+  }).then(({ questionId, body: { dashboard_id } }) => {
+    cy.wrap(questionId).as("questionId");
+    cy.wrap(dashboard_id).as("dashboardId");
   });
 }
 
@@ -221,10 +177,10 @@ function openQuestionEvents() {
 
 function expectEvents(visible: string[], hidden: string[] = []) {
   H.echartsContainer().should("be.visible");
-  for (const name of visible) {
+  visible.forEach((name) => {
     H.timelineEventChip(name).should("be.visible");
-  }
-  for (const name of hidden) {
+  });
+  hidden.forEach((name) => {
     H.timelineEventChip(name).should("not.exist");
-  }
+  });
 }

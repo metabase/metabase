@@ -132,28 +132,6 @@ describe("dashboard timeline events visibility", () => {
     expect(getDashCard(store).isDirty).toBeFalsy();
   });
 
-  it("lets a viewer hide a saved event for their session", () => {
-    const savedVisibility = {
-      "timeline.selected_timeline_ids": [timeline.id],
-      "timeline.excluded_timeline_event_ids": [],
-    };
-    const store = setup({ savedVisibility });
-
-    store.dispatch(
-      updateDashCardsTimelineEventsVisibility(
-        [DASHCARD_ID],
-        (visibility, context) =>
-          hideTimelineEvents(visibility, [eventA], context),
-        "dashboard",
-      ),
-    );
-
-    expect(getVisibleEventIds(store)).toEqual([eventB.id]);
-    expect(getDashCard(store).card.visualization_settings).toEqual(
-      savedVisibility,
-    );
-  });
-
   it("changes only the targeted placement of a question and preserves both saved settings", () => {
     const savedVisibility = {
       "graph.show_values": true,

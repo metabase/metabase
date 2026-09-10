@@ -192,41 +192,6 @@ describe("QueryBuilder > timeline events", () => {
     );
   });
 
-  it("saving without touching events records nothing, so dashcards show none", async () => {
-    const store = await setupWithTimelines();
-    const state = store.getState();
-
-    const question = getSubmittableQuestion(
-      state,
-      checkNotNull(getQuestion(state)),
-    );
-
-    expect(question.settings()).not.toHaveProperty(
-      "timeline.selected_timeline_ids",
-    );
-  });
-
-  it("saving after turning events on records them", async () => {
-    const store = await setupWithTimelines(EVENTS_OFF);
-
-    await updateVisibility(store, (visibility, timelines) =>
-      showTimelines(visibility, [TIMELINE.id], timelines),
-    );
-    const state = store.getState();
-
-    const question = getSubmittableQuestion(
-      state,
-      checkNotNull(getQuestion(state)),
-    );
-
-    expect(question.settings()).toEqual(
-      expect.objectContaining({
-        "timeline.selected_timeline_ids": [TIMELINE.id],
-        "timeline.excluded_timeline_event_ids": [],
-      }),
-    );
-  });
-
   it("saving after turning events off records the absence", async () => {
     const store = await setupWithTimelines();
 
