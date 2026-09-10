@@ -327,16 +327,19 @@
   {:team "UX West"
    :api  #{metabase.api-keys.api
            metabase.api-keys.core
-           metabase.api-keys.schema}
+           metabase.api-keys.db
+           metabase.api-keys.schema
+           metabase.api-keys.usage}
    :uses #{api
            app-db
            events
            lib
            models
            permissions
+           premium-features
            users
            util}
-   :model-exports #{:model/ApiKey}
+   :model-exports #{:model/ApiKey :model/ApiKeyUsageLog}
    :model-imports #{:model/User}}
 
   api-routes
@@ -3108,6 +3111,16 @@
    :uses #{api
            premium-features
            util}}
+
+  enterprise/api-keys
+  {:team "UX West"
+   :api  #{}
+   :uses #{analytics
+           api-keys
+           batch-processing
+           premium-features
+           util}
+   :model-imports #{:model/ApiKeyUsageLog}}
 
   enterprise/api-routes
   {:team "UX West"
