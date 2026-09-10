@@ -6,7 +6,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -41,14 +40,6 @@
   [table]
   (mi/can-read? table))
 
-(mu/defn hydrate-fields-with-user-settings :- [:sequential :map]
-  "`tables` with their active, unretired Fields as users see them under `:fields`, fetched in one query. Hydrate
-  `:fields` this way wherever the Fields are shown to users."
-  [tables :- [:sequential :map]]
-  (let [fields-by-table (group-by :table_id (warehouse-schema.db/fields-with-user-settings
-                                             {:table-ids (into #{} (map :id) tables)}))]
-    (mapv #(assoc % :fields (get fields-by-table (:id %) [])) tables)))
-
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
@@ -57,14 +48,12 @@
   (if include-editable-data-model?
     (api/write-check table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
-  (let [table-hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                                      [:segments :definition_description] [:measures :definition_description]
-                                      :metrics :collection]
-                               (premium-features/any-transforms-enabled?) (conj :transform))]
-    (-> [(update table :collection nil-if-unreadable)]
-        hydrate-fields-with-user-settings
-        first
-        (#(apply t2/hydrate % table-hydration-keys))
+  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
+                                [:segments :definition_description] [:measures :definition_description] :metrics :collection]
+                         (premium-features/any-transforms-enabled?) (conj :transform))]
+    (-> table
+        (update :collection nil-if-unreadable)
+        (#(apply t2/hydrate % hydration-keys))
         (m/dissoc-in [:db :details])
         format-fields-for-response
         present-table
@@ -86,8 +75,7 @@
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                                   :table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
-           tables (t2/hydrate (hydrate-fields-with-user-settings tables) [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                              :segments :measures :metrics)
+           tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)
            excluded-visibility-types (cond-> #{:hidden}
                                        (not include-sensitive-fields?) (conj :sensitive))]
        (for [table tables]
@@ -132,8 +120,8 @@
   `metadata-fields` can be nil."
   [card-id metadata metadata-fields]
   (let [underlying (m/index-by :id (or metadata-fields
-                                       (when-let [ids (seq (keep :id metadata))]
-                                         (-> (warehouse-schema.db/fields ids)
+                                       (when-let [ids (not-empty (into #{} (keep :id) metadata))]
+                                         (-> (warehouse-schema.db/fields-with-user-settings {:field-ids ids})
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
@@ -172,7 +160,7 @@
                                        (keep :id))
                                  cards)
         metadata-fields    (if (seq metadata-field-ids)
-                             (-> (warehouse-schema.db/fields metadata-field-ids)
+                             (-> (warehouse-schema.db/fields-with-user-settings {:field-ids metadata-field-ids})
                                  (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                  (->> (m/index-by :id)))
                              {})]

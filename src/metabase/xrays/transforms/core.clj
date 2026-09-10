@@ -11,12 +11,12 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.db :as xrays.db]
    [metabase.xrays.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* DomainEntitySpec]]
    [metabase.xrays.transforms.materialize :as tf.materialize]
-   [metabase.xrays.transforms.specs :as transforms.specs :refer [*transform-specs* Step TransformSpec]]))
+   [metabase.xrays.transforms.specs :as transforms.specs :refer [*transform-specs* Step TransformSpec]]
+   [toucan2.core :as t2]))
 
 (mu/defn- add-bindings :- Bindings
   [bindings     :- Bindings
@@ -188,13 +188,11 @@
       (map first matches))))
 
 (mu/defn- tableset :- Tableset
-  "The Tables of `schema` in the Database with `db-id`, with domain entities and, in one query, their Fields as the
-  user sees them."
   [db-id  :- ::lib.schema.id/database
    schema :- [:maybe :string]]
   (-> (xrays.db/tables-in-schema db-id schema)
-      schema.table/hydrate-fields-with-user-settings
-      de/with-domain-entity))
+      de/with-domain-entity
+      (t2/hydrate :fields)))
 
 (mu/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`.

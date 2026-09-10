@@ -429,10 +429,7 @@
     db
     (-> (case include
           "tables"        (t2/hydrate db :tables)
-          "tables.fields" (-> db
-                              (t2/hydrate :tables)
-                              (update :tables schema.table/hydrate-fields-with-user-settings)
-                              (t2/hydrate [:tables [:fields [:target :has_field_values] :has_field_values]])))
+          "tables.fields" (t2/hydrate db [:tables [:fields [:target :has_field_values] :has_field_values]]))
         (update :tables (fn [tables]
                           (cond->> tables
                             ; filter hidden tables
@@ -539,12 +536,9 @@
 
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-               (t2/hydrate :tables))
-        db (if skip-fields?
-             (t2/hydrate db [:tables :segments :metrics])
-             (-> db
-                 (update :tables schema.table/hydrate-fields-with-user-settings)
-                 (t2/hydrate [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics])))
+               ((if skip-fields?
+                  #(t2/hydrate % [:tables :segments :metrics])
+                  #(t2/hydrate % [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics]))))
         _ (perms/prime-table-perms-cache {:db-ids #{id}})
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for

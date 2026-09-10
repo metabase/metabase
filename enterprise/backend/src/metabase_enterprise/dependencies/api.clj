@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.api
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
@@ -22,7 +21,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (def ^:private entity-keys
@@ -266,7 +264,7 @@
               (t2/hydrate :creator :dashboard :document [:collection :is_personal])
               (->> (map collection.root/hydrate-root-collection))
               (revisions/with-last-edit-info :card))
-    :table (t2/hydrate (schema.table/hydrate-fields-with-user-settings entities) :db :transform :owner)
+    :table (t2/hydrate entities :fields :db :transform :owner)
     :transform (-> entities
                    (t2/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
                    (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
@@ -277,12 +275,7 @@
     :document (-> entities
                   (t2/hydrate :creator [:collection :is_personal])
                   (->> (map collection.root/hydrate-root-collection)))
-    :sandbox (let [entities    (t2/hydrate entities [:table :db])
-                   table-by-id (->> entities
-                                    (into [] (keep :table))
-                                    schema.table/hydrate-fields-with-user-settings
-                                    (m/index-by :id))]
-               (map #(cond-> % (:table %) (update :table (comp table-by-id :id))) entities))
+    :sandbox (t2/hydrate entities [:table :db :fields])
     :snippet (-> entities
                  (t2/hydrate :creator :collection)
                  (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))

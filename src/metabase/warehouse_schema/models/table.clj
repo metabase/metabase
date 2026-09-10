@@ -531,7 +531,7 @@
   [tables]
   (with-objects :fields
     (fn [table-ids]
-      (warehouse-schema.db/active-fields-for-tables table-ids))
+      (warehouse-schema.db/fields-with-user-settings {:table-ids table-ids}))
     tables))
 
 (mi/define-batched-hydration-method fields

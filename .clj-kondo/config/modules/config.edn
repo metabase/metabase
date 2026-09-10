@@ -110,7 +110,6 @@
            search
            settings
            util
-           warehouse-schema
            warehouses}
    :model-exports #{:model/Action}
    :model-imports #{:model/Card
@@ -1448,7 +1447,6 @@
               transforms
               transforms-base
               util
-              warehouse-schema
               warehouses}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
@@ -2594,8 +2592,7 @@
            task-history
            tracing
            transforms-base
-           util
-           warehouse-schema}
+           util}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2853,6 +2850,7 @@
            metabase.warehouse-schema.field
            metabase.warehouse-schema.field-values.distinct-batch
            metabase.warehouse-schema.humanization
+           metabase.warehouse-schema.init
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
@@ -3392,8 +3390,7 @@
            task
            transforms
            transforms-base
-           util
-           warehouse-schema}
+           util}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard

@@ -39,10 +39,29 @@
 
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 
-(methodical/defmethod t2/model-for-automagic-hydration [:default :destination]          [_model _k]  :model/Field)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :field]                [_model _k]  :model/Field)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :origin]               [_model _k]  :model/Field)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :human_readable_field] [_model _k]  :model/Field)
+(defn- hydrate-fields-with-user-settings
+  "Hydrate `k` on `instances` with the Fields, as users see them, whose ids are under `id-key`."
+  [k id-key instances]
+  (mi/instances-with-hydrated-data
+   instances k
+   #(m/index-by :id (warehouse-schema.db/fields-with-user-settings {:field-ids (into #{} (keep id-key) instances)}))
+   id-key))
+
+(methodical/defmethod t2/batched-hydrate [:default :destination]
+  [_model k instances]
+  (hydrate-fields-with-user-settings k :destination_id instances))
+
+(methodical/defmethod t2/batched-hydrate [:default :field]
+  [_model k instances]
+  (hydrate-fields-with-user-settings k :field_id instances))
+
+(methodical/defmethod t2/batched-hydrate [:default :origin]
+  [_model k instances]
+  (hydrate-fields-with-user-settings k :origin_id instances))
+
+(methodical/defmethod t2/batched-hydrate [:default :human_readable_field]
+  [_model k instances]
+  (hydrate-fields-with-user-settings k :human_readable_field_id instances))
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
@@ -378,7 +397,8 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (m/index-by :id (when (seq target-field-ids)
-                                           (readable-fields-only (warehouse-schema.db/fields target-field-ids))))]
+                                           (readable-fields-only
+                                            (warehouse-schema.db/fields-with-user-settings {:field-ids target-field-ids}))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -388,7 +408,8 @@
   [field]
   (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
                           (:fk_target_field_id field))
-        target-field    (when-let [target-field (and target-field-id (warehouse-schema.db/field target-field-id))]
+        target-field    (when-let [target-field (and target-field-id
+                                                     (warehouse-schema.db/field-with-user-settings target-field-id))]
                           (when (mi/can-write? (t2/hydrate target-field :table))
                             target-field))]
     (assoc field :target target-field)))
@@ -431,10 +452,7 @@
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :parent]
   [_model k fields]
-  (mi/instances-with-hydrated-data
-   fields k
-   #(warehouse-schema.db/fields-by-id (map :parent_id fields))
-   :parent_id))
+  (hydrate-fields-with-user-settings k :parent_id fields))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

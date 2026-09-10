@@ -188,10 +188,7 @@
     (if changed-field-order?
       (do
         (table/update-field-positions! updated-table)
-        (-> [updated-table]
-            schema.table/hydrate-fields-with-user-settings
-            first
-            (t2/hydrate [:fields [:target :has_field_values] :dimensions :has_field_values])))
+        (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 ;; TODO (Cam 2015/01/16) this seems like it belongs in the `sync` module... right?

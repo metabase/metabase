@@ -14,7 +14,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.table :as schema.table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -274,7 +273,7 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (schema.table/hydrate-fields-with-user-settings (actions.db/tables table-ids)))]
+                 (t2/hydrate (actions.db/tables table-ids) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]

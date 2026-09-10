@@ -32,16 +32,6 @@
    field-names :- [:sequential :string]]
   (models.db/field-in-path table-id field-names))
 
-(mu/defn fields
-  "The Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
-
-(mu/defn fields-by-id
-  "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids]))
-
 (mu/defn field-table-id-rows
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
@@ -108,15 +98,6 @@
                                  :where     [:= :f.table_id table-id]
                                  :order-by  (field-order-order-by field-order)}))
 
-(mu/defn active-fields-for-tables
-  "The active, unretired Fields of the Tables with `table-ids`, in field order."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field
-             :active true
-             :table_id [:in table-ids]
-             :visibility_type [:not= "retired"]
-             {:order-by field-order-rule}))
-
 (mu/defn pk-field-ids-by-table
   "A map of ::warehouse-schema.schema/table ID to the ID of its visible primary key ::warehouse-schema.schema/field for `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
@@ -182,7 +163,7 @@
   "Fields as users see them, in one query: those with `field-ids` (any state, e.g. to re-read hydrated Fields before
   showing them), or the active, unretired ones of the Tables with `table-ids` in field order."
   [{:keys [field-ids table-ids]} :- [:map {:closed true}
-                                     [:field-ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]
+                                     [:field-ids {:optional true} [:maybe [:set ::lib.schema.id/field]]]
                                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]]]
   (cond
     (seq field-ids)

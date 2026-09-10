@@ -5,7 +5,6 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.util :as u]
-   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
@@ -43,8 +42,8 @@
          fill-tables (metabot.db/most-viewed-tables-visible-to-current-user database-id all-tables-limit)
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
-         fill-tables (schema.table/hydrate-fields-with-user-settings fill-tables)
-         priority-tables (schema.table/hydrate-fields-with-user-settings priority-tables)
+         fill-tables (t2/hydrate fill-tables :fields)
+         priority-tables (t2/hydrate priority-tables :fields)
          all-tables (concat priority-tables fill-tables)
          all-tables (take all-tables-limit all-tables)]
      (mapv (fn [{:keys [fields] :as table}]
@@ -219,11 +218,11 @@
          tables (if (> (count tables) all-tables-limit)
                   (used-tables query)
                   tables)
-         tables (schema.table/hydrate-fields-with-user-settings tables)]
+         tables (t2/hydrate tables :fields)]
      (format-schema-ddl tables))))
 
 (defn schema-full
   "Returns the DDL for all tables in a database."
   [database-id]
   (let [tables (database-tables database-id)]
-    (format-schema-ddl (schema.table/hydrate-fields-with-user-settings tables))))
+    (format-schema-ddl (t2/hydrate tables :fields))))
