@@ -23,8 +23,8 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.quartz]
    [metabase.classloader.core :as classloader]
-   [metabase.task.bootstrap]
    [metabase.task.job-factory :as job-factory]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -86,7 +86,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- set-jdbc-backend-properties! []
-  (metabase.task.bootstrap/set-jdbc-backend-properties! (mdb/db-type)))
+  (metabase.app-db.quartz/set-jdbc-backend-properties! (mdb/db-type)))
 
 (defn- delete-jobs-with-no-class!
   "Delete any jobs that have been scheduled but whose class is no longer available."

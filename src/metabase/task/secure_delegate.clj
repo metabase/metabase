@@ -12,7 +12,7 @@
 
   The delegate classes are `gen-class`. [[install!]] loads the one matching the app DB and sets it as
   Quartz's `driverDelegateClass`; it must run before the scheduler initializes (see
-  `metabase.task.bootstrap`)."
+  `metabase.app-db.quartz`)."
   (:require
    [clojure.java.io :as io]
    [metabase.classloader.core :as classloader]

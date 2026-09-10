@@ -352,6 +352,7 @@
    :api  #{metabase.app-db.cluster-lock ; TODO (Chris 2026-09-16) -- callers should go through app-db.core
            metabase.app-db.core
            metabase.app-db.init
+           metabase.app-db.quartz
            metabase.app-db.setting
            metabase.app-db.setup
            metabase.app-db.sql-errors
@@ -2460,10 +2461,9 @@
 
   segments
   {:team "Graphy"
-   :api  #{metabase.segments.api
-           metabase.segments.schema}
+   :module-exports #{segments.rest}
+   :api  #{metabase.segments.schema}
    :uses #{api
-           events
            lib
            lib.be
            lib.schema
@@ -2474,10 +2474,24 @@
            users
            util
            warehouse-schema-overlay
-           warehouses.schema
-           xrays}
+           warehouses.schema}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/User}}
+
+  segments.rest
+  {:team "Graphy"
+   :ns-prefix "metabase.segments.api"
+   :api  #{metabase.segments.api}
+   :uses #{api
+           events
+           lib
+           lib.be
+           models
+           permissions
+           segments
+           util
+           xrays}
+   :model-imports #{:model/Segment}}
 
   server
   {:team "UX West"
@@ -2506,14 +2520,12 @@
            request
            session
            settings
-           sso
            system
            tracing
            users
            util
            util.config
-           enterprise/custom-viz-plugin
-           enterprise/sso}
+           enterprise/custom-viz-plugin}
    :model-imports #{:model/Session}}
 
   session
@@ -2635,7 +2647,7 @@
   {:team "UX West"
    :module-exports #{sso.auth-identity}
    :api     #{metabase.sso.api
-              metabase.sso.api.slack-connect
+              metabase.sso.auth-wrapper
               metabase.sso.core
               metabase.sso.init
               metabase.sso.settings}
@@ -2649,7 +2661,8 @@
               sso.auth-identity
               system
               util
-              util.config}
+              util.config
+              enterprise/sso}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
   sso.auth-identity
@@ -2748,8 +2761,7 @@
   task
   {:team "UX West"
    :module-exports #{task.history}
-   :api  #{metabase.task.bootstrap
-           metabase.task.core}
+   :api  #{metabase.task.core metabase.task.secure-delegate}
    :uses #{app-db
            tracing
            util
@@ -2843,7 +2855,8 @@
   {:team "DevEx"
    :api  #{metabase.tracing.core
            metabase.tracing.init}
-   :uses #{events
+   :uses #{app-db
+           events
            settings
            task
            util
@@ -3146,7 +3159,7 @@
                      util.config
                      util.graph}
    :api  :any
-   :uses #{settings util.classloader util.config}}
+   :uses #{util.classloader util.config}}
 
   util.classloader
   {:team "DevEx"
