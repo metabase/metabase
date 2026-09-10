@@ -492,9 +492,16 @@
                                                 ;; dashboard is empty by definition, so compiling against a blank
                                                 ;; checks everything the post-create compile would.
                                                 (apply-ops! (blank-dashboard attrs) ops attrs true)
-                                                (apply-ops! (t2/hydrate (dashboards.write/create-dashboard! attrs)
-                                                                        [:dashcards :series :card] :tabs)
-                                                            ops {} false))
+                                                ;; ...and the two writes share a transaction, because the compile
+                                                ;; above only proves the OPS are good. Anything else that throws
+                                                ;; after the row exists — a schema check, a permission check, a
+                                                ;; failing save — would otherwise strand an empty dashboard that
+                                                ;; the tool's own advice ("find it by name and finish it with
+                                                ;; update") turns into a pile of them on retry (GHY-4501).
+                                                (t2/with-transaction [_conn]
+                                                  (apply-ops! (t2/hydrate (dashboards.write/create-dashboard! attrs)
+                                                                          [:dashcards :series :card] :tabs)
+                                                              ops {} false)))
                                :else          (saved-row (:id (dashboards.write/create-dashboard! attrs)))))
 
                            :update

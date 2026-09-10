@@ -7,6 +7,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
@@ -111,6 +112,25 @@
                                                           {:op "remove" :dashcard_id 999999}]})))]
           (is (re-find #"op 1" err))
           (is (= before (t2/count :model/Dashboard))))))))
+
+(deftest create-rolls-back-when-the-second-save-fails-test
+  (testing "GHY-4501: `create` with ops writes the row, then applies the ops in a second save. A
+            failure in that second save must take the row with it — otherwise the agent sees an
+            error, is told to retry, and leaves a pile of empty dashboards behind. The pre-compile
+            above catches a bad OP; it cannot catch a save that fails for any other reason, which is
+            what happened in the field."
+    (mt/with-model-cleanup [:model/Dashboard]
+      (mt/with-temp [:model/Card card {}]
+        (let [before (t2/count :model/Dashboard)]
+          ;; Fail only the real save: the pre-compile runs validate-only and never gets here.
+          (mt/with-dynamic-fn-redefs [dashboards.write/update-dashboard!
+                                      (fn [& _] (throw (ex-info "boom" {})))]
+            (is (some? (tool-error (call-tool! :crowberto nil "dashboard_write"
+                                               (wire {:method "create" :name "Sales"
+                                                      :ops [{:op "add_card" :id -1 :card_id (:id card)}]}))))
+                "the call reports an error"))
+          (is (= before (t2/count :model/Dashboard))
+              "and leaves no dashboard behind"))))))
 
 (deftest ops-are-atomic-test
   (testing "GHY-4147: a batch with a bad op writes nothing — the error names the op index"
