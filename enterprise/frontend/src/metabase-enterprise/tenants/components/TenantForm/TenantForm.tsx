@@ -66,7 +66,7 @@ export const TenantForm = ({
             title={t`Give this tenant a name`}
             label={t`Give this tenant a name`}
             description={t`This will be visible to users assigned to this tenant.`}
-            mb="md"
+            mb="lg"
             placeholder="A wonderful tenant"
             onChange={(e) => {
               const value = e.target.value;
@@ -87,7 +87,7 @@ export const TenantForm = ({
             description={t`This can’t be changed later, so choose wisely.`}
             placeholder="permanent-tenant-identifier"
             disabled={!!initialValues.slug}
-            mb="xl"
+            mb="xxl"
           />
           <LoginAttributesWidget
             name="attributes"

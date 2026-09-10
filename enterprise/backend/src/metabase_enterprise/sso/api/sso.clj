@@ -5,6 +5,7 @@
   we can have a uniform interface both via the API and code"
   (:require
    [metabase-enterprise.sso.api.interface :as sso.i]
+   [metabase-enterprise.sso.db :as sso.db]
    [metabase-enterprise.sso.integrations.jwt :as jwt]
    [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
    [metabase-enterprise.sso.integrations.saml]
@@ -18,8 +19,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [saml20-clj.core :as saml]
-   [stencil.core :as stencil]
-   [toucan2.core :as t2]))
+   [stencil.core :as stencil]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +38,7 @@
 (api.macros/defendpoint :get "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [_route-params
-   _query-params :- [:map
+   _query-params :- [:map {:closed true}
                      [:jwt              {:optional true} [:maybe :string]]
                      [:preferred_method {:optional true} [:maybe :string]]
                      [:redirect         {:optional true} [:maybe :string]]
@@ -71,10 +71,10 @@
 (api.macros/defendpoint :post "/"
   "Route the SSO backends call with successful login details"
   [_route-params
-   _query-params :- [:map
+   _query-params :- [:map {:closed true}
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]
-   _body :- [:maybe [:map
+   _body :- [:maybe [:map {:closed true}
                      [:jwt          {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]]
@@ -103,14 +103,11 @@
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
         metabase-session-key-hashed (session/hash-session-key metabase-session-key)
         {:keys [email sso_source]}
-        (t2/query-one {:select [:u.email :u.sso_source]
-                       :from   [[:core_user :u]]
-                       :join   [[:core_session :session] [:= :u.id :session.user_id]]
-                       :where  [:= :key_hashed metabase-session-key-hashed]})]
+        (sso.db/session-user-email-and-source metabase-session-key-hashed)]
     ;; If a user doesn't have SLO setup on their IdP,
     ;; they will never hit "/handle_slo" so we must delete the session here:
     (when-not (sso-settings/saml-slo-enabled)
-      (t2/delete! :model/Session :key_hashed metabase-session-key-hashed))
+      (sso.db/delete-session! metabase-session-key-hashed))
     {:saml-logout-url
      (when (and (sso-settings/saml-slo-enabled)
                 (= sso_source "saml"))
@@ -136,7 +133,7 @@
   this provides a path for them to do so."
   [_route-params
    _query-params
-   {:keys [jwt]} :- [:map
+   {:keys [jwt]} :- [:map {:closed true}
                      [:jwt ms/NonBlankString]]
    request]
   (when-not (sso-settings/jwt-enabled-and-configured)
@@ -156,11 +153,11 @@
 (api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
   [_route-params
-   _query-params :- [:map
+   _query-params :- [:map {:closed true}
                      [:SAMLRequest  {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]
-   _body :- [:maybe [:map
+   _body :- [:maybe [:map {:closed true}
                      [:SAMLRequest  {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]]
@@ -183,9 +180,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key"
   "Initiate OIDC SSO for a specific provider."
-  [{provider-key :key} :- [:map
+  [{provider-key :key} :- [:map {:closed true}
                            [:key ProviderKey]]
-   _query-params :- [:map
+   _query-params :- [:map {:closed true}
                      [:redirect {:optional true} [:maybe :string]]]
    _body request]
   (try
@@ -199,9 +196,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key/callback"
   "OIDC callback for a specific provider."
-  [{provider-key :key} :- [:map
+  [{provider-key :key} :- [:map {:closed true}
                            [:key ProviderKey]]
-   _query-params :- [:map
+   _query-params :- [:map {:closed true}
                      [:code  {:optional true} [:maybe :string]]
                      [:state {:optional true} [:maybe :string]]]
    _body request]

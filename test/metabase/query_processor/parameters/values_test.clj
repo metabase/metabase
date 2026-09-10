@@ -444,6 +444,7 @@
         (mt/with-persistence-enabled! [persist-models!]
           (let [mp         (mt/metadata-provider)
                 mbql-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
+            ;; persist-models! and the persistence job machinery need real app-db rows
             #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Card model {:name          "model"
                                               :type          :model
@@ -728,17 +729,20 @@
            (query->params-map query))))))
 
 (deftest ^:parallel dont-be-too-strict-test
-  (testing "values-for-tag should allow unknown keys (used only by FE) (#13868)"
-    (testing "\nUnknown key 'filteringParameters'"
+  (testing "values-for-tag should allow the extra keys the FE sends along (#13868)"
+    ;; `:filteringParameters` used to stand in for "some key the FE tacked on". Template tags and parameters are
+    ;; closed schemas now, and the request decoder drops whatever they do not declare before a query gets here, so
+    ;; the keys that actually have to survive are the *declared* ones nothing in this code path reads.
+    (testing "\nExtra declared key 'id'"
       (testing "in tag"
         (is (= "2"
                (value-for-tag
-                {:name                "id"
-                 :display-name        "ID"
-                 :type                :text
-                 :required            true
-                 :default             "100"
-                 :filteringParameters "222b245f"}
+                {:name         "id"
+                 :display-name "ID"
+                 :type         :text
+                 :required     true
+                 :default      "100"
+                 :id           "222b245f"}
                 [{:type   :category
                   :target [:variable [:template-tag "id"]]
                   :value  "2"}]))))
@@ -750,10 +754,10 @@
                  :type         :text
                  :required     true
                  :default      "100"}
-                [{:type                :category
-                  :target              [:variable [:template-tag "id"]]
-                  :value               "2"
-                  :filteringParameters "222b245f"}])))))))
+                [{:type   :category
+                  :target [:variable [:template-tag "id"]]
+                  :value  "2"
+                  :id     "222b245f"}])))))))
 
 (deftest ^:parallel parse-card-include-parameters-test
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"

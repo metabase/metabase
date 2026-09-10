@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockDashboardState, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
@@ -22,10 +23,6 @@ import {
 import * as dashboardSelectors from "metabase/dashboard/selectors";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { reinitialize } from "metabase/plugins";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {

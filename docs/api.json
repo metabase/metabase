@@ -2316,60 +2316,6 @@
           "type" : "boolean"
         } ]
       },
-      "metabase-enterprise.security-center.schema.advisory-id" : {
-        "type" : "string",
-        "minLength" : 1
-      },
-      "metabase-enterprise.security-center.schema.affected-versions" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.version-range"
-        }
-      },
-      "metabase-enterprise.security-center.schema.download-jar-url" : {
-        "description" : "A downloadable JAR for a given fixed version.",
-        "type" : "object",
-        "properties" : {
-          "url" : {
-            "type" : "string"
-          },
-          "version" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
-          }
-        },
-        "required" : [ "version", "url" ]
-      },
-      "metabase-enterprise.security-center.schema.download-jar-urls" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.download-jar-url"
-        }
-      },
-      "metabase-enterprise.security-center.schema.match-status" : {
-        "type" : "string",
-        "enum" : [ "unknown", "active", "resolved", "not_affected", "error" ]
-      },
-      "metabase-enterprise.security-center.schema.semver" : {
-        "type" : "string",
-        "pattern" : "^\\d+(?:\\.\\d+)*$"
-      },
-      "metabase-enterprise.security-center.schema.severity" : {
-        "type" : "string",
-        "enum" : [ "critical", "high", "medium", "low" ]
-      },
-      "metabase-enterprise.security-center.schema.version-range" : {
-        "description" : "A single affected version range with inclusive min and exclusive fixed.",
-        "type" : "object",
-        "properties" : {
-          "fixed" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
-          },
-          "min" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
-          }
-        },
-        "required" : [ "min", "fixed" ]
-      },
       "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
         "description" : "Schema for POST /api/ee/support-access-grants request body.",
         "type" : "object",
@@ -5715,6 +5661,60 @@
           "required" : [ "channel_type" ]
         } ]
       },
+      "metabase.collections-rest.api.Collection" : {
+        "description" : "A Collection as the REST API returns it. Deliberately open: which hydrated keys come back varies by endpoint and\n  by what the Collection is. `POST /` returns the freshly inserted row with no permission flags; `/root` describes a\n  virtual Collection with a string id and none of the database-backed columns; `/tree` nests `:children`. Only `:id`\n  and `:name` are present in every case, so only those are required here.",
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.collections-rest.api.CollectionId"
+          },
+          "name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "anyOf" : [ { }, { } ]
+            } ]
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
+      "metabase.collections-rest.api.CollectionId" : {
+        "description" : "A Collection's ID: an integer for a real row, or the string \"root\" for the virtual Root Collection.",
+        "anyOf" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "type" : "integer",
+          "minimum" : 1
+        }, {
+          "type" : "string"
+        } ]
+      },
+      "metabase.collections-rest.api.CollectionTreeNode" : {
+        "description" : "A Collection in the `/tree` response. `:children` are nested tree nodes, except under `?shallow=true`, where the\n  endpoint returns only the requested level and `:children` degrades to a boolean saying whether any exist.",
+        "type" : "object",
+        "properties" : {
+          "children" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.collections-rest.api.CollectionTreeNode"
+              }
+            } ]
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.collections-rest.api.CollectionId"
+          },
+          "name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "anyOf" : [ { }, { } ]
+            } ]
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
       "metabase.collections-rest.api.DashboardQuestionCandidate" : {
         "type" : "object",
         "properties" : {
@@ -5769,6 +5769,72 @@
           }
         },
         "required" : [ "data", "total" ]
+      },
+      "metabase.collections-rest.api.ItemsMetadata" : {
+        "type" : "object",
+        "properties" : {
+          "available_models" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "total_items" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "available_models", "total_items" ]
+      },
+      "metabase.collections-rest.api.ItemsResponse" : {
+        "description" : "A page of a Collection's items. `:available_models` is present only when the request asked for it, and\n  `:limit`/`:offset` are dropped entirely in the `snippets` namespace, which is not paginated.",
+        "type" : "object",
+        "properties" : {
+          "available_models" : {
+            "type" : "array",
+            "items" : { }
+          },
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "models" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "total", "data", "models" ]
       },
       "metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse" : {
         "type" : "object",
@@ -6235,16 +6301,6 @@
         "type" : "integer",
         "minimum" : 1
       },
-      "metabase.documents.schema.document" : {
-        "description" : "Schema for an instance of a `:model/Document`.",
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
-          }
-        },
-        "required" : [ "id" ]
-      },
       "metabase.driver.connection.connection-type" : {
         "type" : "string",
         "enum" : [ "default", "write-data", "admin", "transform" ]
@@ -6378,7 +6434,7 @@
         "required" : [ "metrics", "dimension_groups" ]
       },
       "metabase.explorations.api.ExplorationBlockNode" : {
-        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is\n   anchored on its metric or its dimension; `:name` is the computed heading (the metric name, or\n   `By <dimension>`). `:position` is the block's 0-indexed authoring slot.",
+        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:name` is the computed heading\n   (the metric name). `:position` is the block's 0-indexed authoring slot.",
         "type" : "object",
         "properties" : {
           "explore_filters" : {
@@ -6500,13 +6556,9 @@
             "description" : "value must be an integer greater or equal to than zero.",
             "type" : "integer",
             "minimum" : 0
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "metric", "dimension" ]
           }
         },
-        "required" : [ "id", "type", "name", "position", "pages" ]
+        "required" : [ "id", "name", "position", "pages" ]
       },
       "metabase.explorations.api.ExplorationDimensionGroup" : {
         "description" : "Schema for a dimension group in the /dimensions response. A group bundles together dimensions that\n   refer to the same underlying source (same field/binning) so the FE can show a single user-facing\n   entry while still tracking the actual per-metric dimensions needed by `start exploration`.",
@@ -6530,6 +6582,48 @@
           }
         },
         "required" : [ "name", "dimension_interestingness", "dimensions" ]
+      },
+      "metabase.explorations.api.ExplorationDocument" : {
+        "description" : "Schema for the Summary document attached to an exploration.",
+        "type" : "object",
+        "properties" : {
+          "is_placeholder" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "archived" : {
+            "type" : "boolean"
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "exploration_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creator_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "content_type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "exploration_id", "creator_id", "content_type", "is_placeholder", "created_at", "updated_at" ]
       },
       "metabase.explorations.api.ExplorationMetric" : {
         "description" : "Schema for a metric in the /dimensions response: dimensions referenced by id only.",
@@ -6946,6 +7040,13 @@
             "description" : "value must be an integer greater than zero.",
             "type" : "integer",
             "minimum" : 1
+          },
+          "document" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationDocument"
+            }, {
+              "type" : "null"
+            } ]
           },
           "creator" : {
             "oneOf" : [ {
@@ -9867,6 +9968,10 @@
         "type" : "string",
         "enum" : [ "question", "metric", "model" ]
       },
+      "metabase.lib.schema.metadata..column.data-sensitivity" : {
+        "type" : "string",
+        "enum" : [ "SEC_KEY", "SYS_TELEMETRY", "PHI", "BIO_GEN", "PCI_FIN", "SENS_PERS", "PII", "CORP_IP", "BIZ_CONF", "PUBLIC" ]
+      },
       "metabase.lib.schema.metadata..column.has-field-values" : {
         "type" : "string",
         "enum" : [ "auto-list", "list", "none", "search" ]
@@ -10067,6 +10172,13 @@
             "lib/source-uuid" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "data-sensitivity" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.data-sensitivity"
               }, {
                 "type" : "null"
               } ]
@@ -10639,6 +10751,13 @@
               "lib/source-uuid" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "data-sensitivity" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.data-sensitivity"
                 }, {
                   "type" : "null"
                 } ]
@@ -12213,6 +12332,175 @@
           }
         } ]
       },
+      "metabase.metabot.schema.client-message" : {
+        "description" : "One persisted message as the client models it.",
+        "type" : "object",
+        "properties" : {
+          "contextTokens" : {
+            "type" : "integer"
+          },
+          "externalId" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "parts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.metabot.schema.client-message-part"
+            }
+          },
+          "role" : {
+            "type" : "string",
+            "enum" : [ "user", "agent" ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase.metabot.schema.client-message-status"
+          }
+        },
+        "required" : [ "id", "role", "parts", "status" ]
+      },
+      "metabase.metabot.schema.client-message-part" : {
+        "description" : "One part of a persisted message: its a text, tool call, or data blob.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "string"
+            },
+            "message" : {
+              "type" : "string"
+            },
+            "role" : {
+              "type" : "string",
+              "enum" : [ "user", "agent" ]
+            },
+            "type" : {
+              "const" : "text"
+            }
+          },
+          "required" : [ "id", "role", "type", "message" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "args" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "id" : {
+              "type" : "string"
+            },
+            "is_error" : {
+              "type" : "boolean"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "result" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "role" : {
+              "const" : "agent"
+            },
+            "status" : {
+              "type" : "string",
+              "enum" : [ "started", "ended" ]
+            },
+            "type" : {
+              "const" : "tool_call"
+            }
+          },
+          "required" : [ "id", "role", "type", "name", "args", "status" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "id" : {
+              "type" : "string"
+            },
+            "part" : {
+              "type" : "object",
+              "properties" : {
+                "data" : { },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "data" ]
+            },
+            "role" : {
+              "const" : "agent"
+            },
+            "type" : {
+              "const" : "data_part"
+            }
+          },
+          "required" : [ "id", "role", "type", "part" ]
+        } ]
+      },
+      "metabase.metabot.schema.client-message-status" : {
+        "description" : "Where a message's turn got to.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "type" : {
+              "const" : "done"
+            }
+          },
+          "required" : [ "type" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "type" : {
+              "const" : "aborted"
+            }
+          },
+          "required" : [ "type" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "type" : {
+              "const" : "in_progress"
+            }
+          },
+          "required" : [ "type" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "error" : {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "object",
+                "properties" : {
+                  "data" : { },
+                  "message" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "type" : {
+                    "type" : "string"
+                  }
+                }
+              } ]
+            },
+            "type" : {
+              "const" : "errored"
+            }
+          },
+          "required" : [ "type", "error" ]
+        } ]
+      },
       "metabase.metabot.schema.state" : {
         "type" : "object",
         "properties" : {
@@ -12923,7 +13211,7 @@
         "additionalProperties" : false
       },
       "metabase.notification.api.notification.CreateNotificationParams" : {
-        "description" : "Notification schema for a create request.",
+        "description" : "Notification schema for a create request, or for sending one that was never saved. Like\n  FullyHydratedNotification but restricts templates to user-provided types only (no handlebars-resource),\n  and carries no ids since the body has no row of its own.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -13014,13 +13302,6 @@
             "payload" : {
               "$ref" : "#/components/schemas/metabase.notification.models.CreateNotificationCardParams"
             },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "payload_type" : {
               "type" : "string",
               "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
@@ -13120,13 +13401,6 @@
                 "required" : [ "channel_type" ]
               }
             },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "payload_type" : {
               "type" : "string",
               "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
@@ -13141,245 +13415,8 @@
           "required" : [ "payload_type" ]
         } ]
       },
-      "metabase.notification.api.notification.NotificationApiInput" : {
-        "description" : "Notification schema for API input. Like FullyHydratedNotification but restricts templates\n  to user-provided types only (no handlebars-resource).",
-        "oneOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "payload_type" : {
-              "type" : "string",
-              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
-            },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "handlers" : {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "template_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "recipients" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
-                    }
-                  },
-                  "template" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_type" : { },
-                  "channel" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "notification_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "active" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "channel_type" ]
-              }
-            },
-            "id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "active" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "payload" : {
-              "$ref" : "#/components/schemas/metabase.notification.models.NotificationCard"
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "subscriptions" : {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
-              }
-            }
-          },
-          "required" : [ "payload_type", "payload" ]
-        }, {
-          "type" : "object",
-          "properties" : {
-            "active" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "handlers" : {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "template_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "recipients" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
-                    }
-                  },
-                  "template" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "channel_type" : { },
-                  "channel" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "notification_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "active" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "channel_type" ]
-              }
-            },
-            "id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "payload_id" : {
-              "oneOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "payload_type" : {
-              "type" : "string",
-              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
-            },
-            "subscriptions" : {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
-              }
-            }
-          },
-          "required" : [ "payload_type" ]
-        } ]
-      },
       "metabase.notification.api.notification.NotificationApiUpdateInput" : {
-        "description" : "::NotificationApiInput restricted to what `notification-update-spec` writes. On PUT the URL,\n  not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped.",
+        "description" : "Notification schema for an update request, restricted to what `notification-update-spec` writes. On PUT\n  the URL, not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -14865,7 +14902,7 @@
           "$ref" : "#/components/schemas/metabase.permissions-rest.schema.perms"
         } ]
       },
-      "metabase.queries.schema.card-type" : {
+      "metabase.queries.schema..card.type" : {
         "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
       },
       "metabase.query-processor.schema..query-result.data" : {
@@ -14982,6 +15019,60 @@
           }
         },
         "required" : [ "status", "row_count" ]
+      },
+      "metabase.security-center.schema.advisory-id" : {
+        "type" : "string",
+        "minLength" : 1
+      },
+      "metabase.security-center.schema.affected-versions" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.security-center.schema.version-range"
+        }
+      },
+      "metabase.security-center.schema.download-jar-url" : {
+        "description" : "A downloadable JAR for a given fixed version.",
+        "type" : "object",
+        "properties" : {
+          "url" : {
+            "type" : "string"
+          },
+          "version" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.semver"
+          }
+        },
+        "required" : [ "version", "url" ]
+      },
+      "metabase.security-center.schema.download-jar-urls" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.security-center.schema.download-jar-url"
+        }
+      },
+      "metabase.security-center.schema.match-status" : {
+        "type" : "string",
+        "enum" : [ "unknown", "active", "resolved", "not_affected", "error" ]
+      },
+      "metabase.security-center.schema.semver" : {
+        "type" : "string",
+        "pattern" : "^\\d+(?:\\.\\d+)*$"
+      },
+      "metabase.security-center.schema.severity" : {
+        "type" : "string",
+        "enum" : [ "critical", "high", "medium", "low" ]
+      },
+      "metabase.security-center.schema.version-range" : {
+        "description" : "A single affected version range with inclusive min and exclusive fixed.",
+        "type" : "object",
+        "properties" : {
+          "fixed" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.semver"
+          },
+          "min" : {
+            "$ref" : "#/components/schemas/metabase.security-center.schema.semver"
+          }
+        },
+        "required" : [ "min", "fixed" ]
       },
       "metabase.segments.schema.definition" : {
         "description" : "value must be a valid MBQL query with a source table and filters.",
@@ -15503,6 +15594,207 @@
         }, {
           "$ref" : "#/components/schemas/metabase.transforms.schema.table-incremental-target"
         } ]
+      },
+      "metabase.users-rest.api.current-user-response" : {
+        "description" : "Response for `GET /api/user/current`.",
+        "type" : "object",
+        "properties" : {
+          "permissions" : {
+            "$ref" : "#/components/schemas/metabase.users-rest.api.user-permissions"
+          },
+          "has_model" : {
+            "type" : "boolean"
+          },
+          "login_attributes" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "additionalProperties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "sso_source" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "jwt_attributes" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "additionalProperties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_qbnewb" : {
+            "type" : "boolean"
+          },
+          "is_active" : {
+            "type" : "boolean"
+          },
+          "last_login" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "tenant_collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "email" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "group_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "uniqueItems" : true
+          },
+          "is_data_analyst" : {
+            "type" : "boolean"
+          },
+          "locale" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "first_login" : { },
+          "is_superuser" : {
+            "type" : "boolean"
+          },
+          "tenant_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "custom_homepage" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "dashboard_id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                }
+              },
+              "required" : [ "dashboard_id" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_installer" : {
+            "type" : "boolean"
+          },
+          "attributes" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "first_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "date_joined" : { },
+          "has_invited_second_user" : {
+            "type" : "boolean"
+          },
+          "personal_collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "common_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "has_question_and_dashboard" : {
+            "type" : "boolean"
+          },
+          "can_write_any_collection" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "can_write_any_collection", "sso_source", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
+      },
+      "metabase.users-rest.api.user-permissions" : {
+        "description" : "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,\n  `is_data_analyst`, and `is_group_manager` flags are only included when `advanced-permissions` is enabled.",
+        "type" : "object",
+        "properties" : {
+          "can_access_subscription" : {
+            "type" : "boolean"
+          },
+          "can_create_native_queries" : {
+            "type" : "boolean"
+          },
+          "can_access_setting" : {
+            "type" : "boolean"
+          },
+          "is_data_analyst" : {
+            "type" : "boolean"
+          },
+          "is_group_manager" : {
+            "type" : "boolean"
+          },
+          "can_access_monitoring" : {
+            "type" : "boolean"
+          },
+          "can_access_data_model" : {
+            "type" : "boolean"
+          },
+          "can_access_db_details" : {
+            "type" : "boolean"
+          },
+          "can_create_queries" : {
+            "type" : "boolean"
+          },
+          "can_access_transforms" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "can_create_queries", "can_create_native_queries" ]
       },
       "metabase.users.schema.user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
@@ -19004,7 +19296,7 @@
                   },
                   "type" : {
                     "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.queries.schema.card-type"
+                      "$ref" : "#/components/schemas/metabase.queries.schema..card.type"
                     }, {
                       "type" : "null"
                     } ]
@@ -19361,7 +19653,7 @@
       "post" : {
         "operationId" : "post-api-card-card-id-query",
         "summary" : "POST /api/card/{card-id}/query",
-        "description" : "Run the query associated with a Card.",
+        "description" : "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query\n  and optionally re-sorts the rows via the `sort` body param.",
         "parameters" : [ {
           "in" : "path",
           "name" : "card-id",
@@ -19421,6 +19713,23 @@
                       "items" : {
                         "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
                       }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "sort" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "value_asc", "value_desc", "label_asc", "label_desc" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "stored_result_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
                     }, {
                       "type" : "null"
                     } ]
@@ -19709,7 +20018,7 @@
                   },
                   "type" : {
                     "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.queries.schema.card-type"
+                      "$ref" : "#/components/schemas/metabase.queries.schema..card.type"
                     }, {
                       "type" : "null"
                     } ]
@@ -20911,7 +21220,17 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20929,7 +21248,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21010,7 +21336,38 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "groups" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "object",
+                        "additionalProperties" : {
+                          "allOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "string",
+                            "enum" : [ "write", "read", "none" ]
+                          } ]
+                        }
+                      }
+                    },
+                    "revision" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "groups" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21052,7 +21409,23 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "revision" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21117,7 +21490,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21160,7 +21540,7 @@
       "get" : {
         "operationId" : "get-api-collection-root-items",
         "summary" : "GET /api/collection/root/items",
-        "description" : "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection\n  doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no\n  `collection_id` exist. It does, however, have its own set of Permissions.\n\n  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection\n  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective\n  location of `/`.\n\n  This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the\n  top-level objects you're allowed to access.\n\n  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as\n  `snippets`, you can pass the `?namespace=` parameter.\n\n  By default, library collections are excluded from the results; to include them, pass `?include_library=true`.\n\n  Pass `?q=` to filter items by name or last editor. Pass `?include_available_models=true` to include the models that\n  have at least one visible item in the requested scope.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
+        "description" : "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection\n  doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no\n  `collection_id` exist. It does, however, have its own set of Permissions.\n\n  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection\n  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective\n  location of `/`.\n\n  This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the\n  top-level objects you're allowed to access.\n\n  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as\n  `snippets`, you can pass the `?namespace=` parameter.\n\n  By default, library collections are excluded from the results; to include them, pass `?include-library=true`.\n\n  Pass `?q=` to filter items by name or last editor. Pass `?include-available-models=true` to include the models that\n  have at least one visible item in the requested scope.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
         "parameters" : [ {
           "in" : "query",
           "name" : "models",
@@ -21178,7 +21558,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "collection_type",
+          "name" : "collection-type",
           "required" : false,
           "schema" : {
             "type" : "string",
@@ -21210,7 +21590,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "include_library",
+          "name" : "include-library",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -21222,7 +21602,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "pinned_state",
+          "name" : "pinned-state",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21234,7 +21614,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "sort_column",
+          "name" : "sort-column",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21246,7 +21626,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "sort_direction",
+          "name" : "sort-direction",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21258,7 +21638,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "official_collections_first",
+          "name" : "official-collections-first",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21269,7 +21649,18 @@
           }
         }, {
           "in" : "query",
-          "name" : "show_dashboard_questions",
+          "name" : "show-dashboard-questions",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-exploration-documents",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21291,7 +21682,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "include_available_models",
+          "name" : "include-available-models",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -21304,7 +21695,136 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.ItemsResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/collection" ]
+      }
+    },
+    "/api/collection/root/items/metadata" : {
+      "get" : {
+        "operationId" : "get-api-collection-root-items-metadata",
+        "summary" : "GET /api/collection/root/items/metadata",
+        "description" : "Metadata about the Root Collection's items list: the models with at least one visible item plus the item count.\n  Unlike `GET /api/collection/root/items`, the result does not depend on search text; pass that endpoint's other\n  scope params so the metadata describes the list being shown.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "models",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "namespace",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "pinned-state",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "is_not_pinned", "is_pinned", "all" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "collection-type",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "remote-synced" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include-library",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-dashboard-questions",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-exploration-documents",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.ItemsMetadata"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21375,7 +21895,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21482,7 +22009,17 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.collections-rest.api.CollectionTreeNode"
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21517,7 +22054,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21544,7 +22088,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.Collection"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21624,7 +22175,16 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "value must be an integer greater or equal to than zero.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "description" : "value must be an integer greater or equal to than zero.",
+                  "type" : "integer",
+                  "minimum" : 0
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21676,7 +22236,7 @@
       "get" : {
         "operationId" : "get-api-collection-id-items",
         "summary" : "GET /api/collection/{id}/items",
-        "description" : "Fetch a specific Collection's items with the following options:\n\n  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models\n  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.\n  *  `pinned_state` - when `is_pinned`, return pinned objects only.\n                   when `is_not_pinned`, return non pinned objects only.\n                   when `all`, return everything. By default returns everything.\n  *  `q` - filter items by name or last editor. Blank or whitespace-only values are ignored.\n  *  `include_available_models` - include the models that have at least one visible item in the requested scope.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
+        "description" : "Fetch a specific Collection's items with the following options:\n\n  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models\n  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.\n  *  `pinned-state` - when `is_pinned`, return pinned objects only.\n                   when `is_not_pinned`, return non pinned objects only.\n                   when `all`, return everything. By default returns everything.\n  *  `q` - filter items by name or last editor. Blank or whitespace-only values are ignored.\n  *  `include-available-models` - include the models that have at least one visible item in the requested scope.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -21721,7 +22281,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "pinned_state",
+          "name" : "pinned-state",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21733,7 +22293,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "sort_column",
+          "name" : "sort-column",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21745,7 +22305,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "sort_direction",
+          "name" : "sort-direction",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21757,7 +22317,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "official_collections_first",
+          "name" : "official-collections-first",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -21768,7 +22328,19 @@
           }
         }, {
           "in" : "query",
-          "name" : "show_dashboard_questions",
+          "name" : "show-dashboard-questions",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-exploration-documents",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -21791,7 +22363,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "include_available_models",
+          "name" : "include-available-models",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -21804,7 +22376,119 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.ItemsResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/collection" ]
+      }
+    },
+    "/api/collection/{id}/items/metadata" : {
+      "get" : {
+        "operationId" : "get-api-collection-id-items-metadata",
+        "summary" : "GET /api/collection/{id}/items/metadata",
+        "description" : "Metadata about the collection's items list: the models with at least one visible item plus the item count. Unlike\n  `GET /api/collection/:id/items`, the result does not depend on search text; pass that endpoint's other scope\n  params -- `models`, `archived`, `pinned-state`, `show-dashboard-questions`, `show-exploration-documents` -- so the\n  metadata describes the list being shown.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "description" : "String must be a valid 21-character NanoID string.",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "models",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "pinned-state",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "is_not_pinned", "is_pinned", "all" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-dashboard-questions",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "show-exploration-documents",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.ItemsMetadata"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -26863,7 +27547,13 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.documents.schema.document"
+                  "type" : "object",
+                  "properties" : {
+                    "id" : {
+                      "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
+                    }
+                  },
+                  "required" : [ "id" ]
                 }
               }
             }
@@ -29606,6 +30296,83 @@
         "tags" : [ "/api/ee/data-studio/table" ]
       }
     },
+    "/api/ee/data-studio/table/{id}/publishing-info" : {
+      "get" : {
+        "operationId" : "get-api-ee-data-studio-table-id-publishing-info",
+        "summary" : "GET /api/ee/data-studio/table/{id}/publishing-info",
+        "description" : "Return the latest valid publishing information for a published table, or no content when unavailable.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "type" : "object",
+                    "properties" : {
+                      "published_at" : {
+                        "type" : "string",
+                        "format" : "date-time"
+                      },
+                      "published_by" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "common_name" : {
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "required" : [ "id", "common_name" ],
+                          "additionalProperties" : false
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "published_at", "published_by" ],
+                    "additionalProperties" : false
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
     "/api/ee/database-replication/connection/{database-id}" : {
       "post" : {
         "operationId" : "post-api-ee-database-replication-connection-database-id",
@@ -31370,8 +32137,15 @@
                     "messages" : {
                       "type" : "array",
                       "items" : {
+                        "description" : "One persisted message as the client models it.",
                         "type" : "object",
                         "properties" : {
+                          "contextTokens" : {
+                            "type" : "integer"
+                          },
+                          "externalId" : {
+                            "type" : "string"
+                          },
                           "id" : {
                             "type" : "string"
                           },
@@ -31382,15 +32156,21 @@
                               "type" : "null"
                             } ]
                           },
+                          "parts" : {
+                            "type" : "array",
+                            "items" : {
+                              "$ref" : "#/components/schemas/metabase.metabot.schema.client-message-part"
+                            }
+                          },
                           "role" : {
                             "type" : "string",
                             "enum" : [ "user", "agent" ]
                           },
-                          "type" : {
-                            "type" : "string"
+                          "status" : {
+                            "$ref" : "#/components/schemas/metabase.metabot.schema.client-message-status"
                           }
                         },
-                        "required" : [ "id", "parent_message_id", "role", "type" ]
+                        "required" : [ "id", "role", "parts", "status", "parent_message_id" ]
                       }
                     },
                     "ip_address" : {
@@ -34077,7 +34857,7 @@
                         "type" : "object",
                         "properties" : {
                           "download_jar_urls" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.download-jar-urls"
+                            "$ref" : "#/components/schemas/metabase.security-center.schema.download-jar-urls"
                           },
                           "published_at" : {
                             "type" : "string",
@@ -34100,7 +34880,7 @@
                             } ]
                           },
                           "match_status" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                            "$ref" : "#/components/schemas/metabase.security-center.schema.match-status"
                           },
                           "acknowledged_by" : {
                             "oneOf" : [ {
@@ -34130,17 +34910,17 @@
                             "minLength" : 1
                           },
                           "affected_versions" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.affected-versions"
+                            "$ref" : "#/components/schemas/metabase.security-center.schema.affected-versions"
                           },
                           "remediation" : {
                             "type" : "string",
                             "minLength" : 1
                           },
                           "advisory_id" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                            "$ref" : "#/components/schemas/metabase.security-center.schema.advisory-id"
                           },
                           "severity" : {
-                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.severity"
+                            "$ref" : "#/components/schemas/metabase.security-center.schema.severity"
                           },
                           "description" : {
                             "type" : "string",
@@ -34230,10 +35010,10 @@
                         } ]
                       },
                       "advisory_id" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                        "$ref" : "#/components/schemas/metabase.security-center.schema.advisory-id"
                       },
                       "match_status" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                        "$ref" : "#/components/schemas/metabase.security-center.schema.match-status"
                       }
                     },
                     "required" : [ "advisory_id", "match_status", "acknowledged_by", "acknowledged_at" ]
@@ -34420,10 +35200,10 @@
                       } ]
                     },
                     "advisory_id" : {
-                      "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                      "$ref" : "#/components/schemas/metabase.security-center.schema.advisory-id"
                     },
                     "match_status" : {
-                      "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                      "$ref" : "#/components/schemas/metabase.security-center.schema.match-status"
                     }
                   },
                   "required" : [ "advisory_id", "match_status", "acknowledged_by", "acknowledged_at" ]
@@ -34920,7 +35700,7 @@
                       "minimum" : 1
                     }
                   },
-                  "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                  "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                   "additionalProperties" : false
                 }
               }
@@ -35033,7 +35813,7 @@
                             "minimum" : 1
                           }
                         },
-                        "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                        "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                         "additionalProperties" : false
                       }
                     }
@@ -35124,7 +35904,7 @@
                       "minimum" : 1
                     }
                   },
-                  "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                  "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                   "additionalProperties" : false
                 }
               }
@@ -35237,7 +36017,7 @@
                       "minimum" : 1
                     }
                   },
-                  "required" : [ "id", "name", "slug", "is_active", "member_count", "attributes", "tenant_collection_id" ],
+                  "required" : [ "id", "name", "slug", "is_active", "tenant_collection_id" ],
                   "additionalProperties" : false
                 }
               }
@@ -36974,7 +37754,7 @@
       "post" : {
         "operationId" : "post-api-exploration",
         "summary" : "POST /api/exploration",
-        "description" : "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,\n  and timelines, and stamp the thread as started. Actual planning is async; this endpoint returns\n  immediately with an empty queries list. Clients should poll `GET /:id` until the queries appear\n  and reach a terminal status.\n\n  Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted\n  verbatim, plus a thread-scoped `:timeline_ids`.",
+        "description" : "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,\n  and timelines, and stamp the thread as started. Also auto-creates a placeholder Summary\n  document in the same collection. Actual planning is async; this endpoint returns immediately\n  with an empty queries list. Clients should poll `GET /:id` until the queries appear and reach\n  a terminal status.\n\n  Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted\n  verbatim, plus a thread-scoped `:timeline_ids`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -37072,14 +37852,6 @@
                             }, {
                               "type" : "null"
                             } ]
-                          },
-                          "type" : {
-                            "oneOf" : [ {
-                              "type" : "string",
-                              "enum" : [ "metric", "dimension" ]
-                            }, {
-                              "type" : "null"
-                            } ]
                           }
                         }
                       }
@@ -37167,7 +37939,7 @@
       "get" : {
         "operationId" : "get-api-exploration-mine",
         "summary" : "GET /api/exploration/mine",
-        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration and its creation — see\n  [[my-explorations-honeysql]]. Explorations that were moved into a collection the user can no\n  longer read are excluded, as are archived ones. Returns the collection-items envelope:\n  `{:total :limit :offset :data}`.",
+        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration, to its Summary document, and its\n  creation — see [[metabase.explorations.db/my-explorations]]. Explorations that were moved into a\n  collection the user can no longer read are excluded, as are archived ones. Returns the\n  collection-items envelope: `{:total :limit :offset :data}`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -37446,7 +38218,7 @@
       "put" : {
         "operationId" : "put-api-exploration-id",
         "summary" : "PUT /api/exploration/{id}",
-        "description" : "Update an exploration's metadata, archive state, or move it to a different collection.\n\n  When `collection_id` changes, the caller must have write perms on the destination collection\n  (or the root collection when `collection_id` is nil). Source perms are enforced by\n  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.",
+        "description" : "Update an exploration's metadata, archive state, or move it to a different collection.\n\n  When `collection_id` changes, the caller must have write perms on the destination collection\n  (or the root collection when `collection_id` is nil). Source perms are enforced by\n  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.\n  Moving an exploration cascades the new `collection_id` onto its Summary document; flipping\n  `archived` cascades to the same document (skipping any that were directly user-archived,\n  mirroring the dashboard / dashboard-question cascade).",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -37524,7 +38296,7 @@
       "delete" : {
         "operationId" : "delete-api-exploration-id",
         "summary" : "DELETE /api/exploration/{id}",
-        "description" : "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.\n\n  Cascades to every `exploration_thread` and `exploration_query` via the on-delete-cascade\n  FKs configured in the explorations migration.",
+        "description" : "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.\n\n  Cascades to every `exploration_thread`, `exploration_query`, and attached Summary `document`\n  via the on-delete-cascade FKs configured in the explorations migration.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -37703,6 +38475,71 @@
         "tags" : [ "/api/exploration" ]
       }
     },
+    "/api/exploration/{id}/summary/append" : {
+      "post" : {
+        "operationId" : "post-api-exploration-id-summary-append",
+        "summary" : "POST /api/exploration/{id}/summary/append",
+        "description" : "Append a static `cardEmbed` representing a *composite chart* — built from one or more\n  `ExplorationQuery` snapshots combined into a single qp-result — to the exploration's\n  Summary document.\n\n  The body `:exploration_query_ids` is the FE-rendered SeriesGroup's full set (one entry\n  for single-query charts; multiple for combined cartesian / heat-map charts). The BE\n  combines those source snapshots (`metabase.explorations.composite/combine`) into one\n  ephemeral `stored_result` and materializes one ephemeral `report_card` referencing it.\n  The cardEmbed node remains single-card.\n\n  - `chart_href` / `child_target_id` / `host_data` are written onto the node so the FE\n    can deep-link the embed title back to the source page, share that page's comment\n    stream (`child_target_id`), and resolve highlight hover and explore-further filter\n    pills via opaque `host_data`.\n  - `display` / `visualization_settings` are required FE-computed render settings (from\n    `buildSeries` / `getDisplay`); the BE bakes them onto the ephemeral card.\n\n  All source EQs must belong to a thread of this exploration. Appending clears\n  `is_placeholder` when it was set.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationDocument"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "display" : {
+                    "type" : "string"
+                  },
+                  "exploration_query_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "minItems" : 1
+                  },
+                  "visualization_settings" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                },
+                "required" : [ "exploration_query_ids", "display", "visualization_settings" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
     "/api/field/table-ids" : {
       "post" : {
         "operationId" : "post-api-field-table-ids",
@@ -37863,6 +38700,14 @@
                   "json_unfolding" : {
                     "oneOf" : [ {
                       "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "data_sensitivity" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "SEC_KEY", "SYS_TELEMETRY", "PHI", "BIO_GEN", "PCI_FIN", "SENS_PERS", "PII", "CORP_IP", "BIZ_CONF", "PUBLIC" ]
                     }, {
                       "type" : "null"
                     } ]
@@ -39776,6 +40621,15 @@
                           "required" : [ "id", "display_name" ]
                         }
                       },
+                      "requires" : {
+                        "type" : "object",
+                        "additionalProperties" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }
+                      },
                       "available" : {
                         "type" : "boolean"
                       },
@@ -39789,7 +40643,7 @@
                         }
                       }
                     },
-                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "fields" ]
+                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "requires", "fields" ]
                   }
                 }
               }
@@ -40909,29 +41763,45 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "user_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "context_window_tokens" : {
+                      "type" : "integer"
+                    },
+                    "title" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     },
-                    "created_at" : {
-                      "type" : "string",
-                      "format" : "date-time"
-                    },
-                    "forked_from_conversation_id" : {
+                    "state" : {
                       "oneOf" : [ {
-                        "description" : "value must be a valid UUID.",
-                        "type" : "string",
-                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
                       }, {
                         "type" : "null"
                       } ]
                     },
+                    "created_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    },
                     "messages" : {
                       "type" : "array",
                       "items" : {
-                        "type" : "object",
-                        "properties" : { }
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.client-message"
                       }
                     },
                     "saved_entities" : {
@@ -40955,25 +41825,11 @@
                         "required" : [ "card_id", "chart_id" ]
                       }
                     },
-                    "state" : {
+                    "forked_from_conversation_id" : {
                       "oneOf" : [ {
-                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "title" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "user_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                       }, {
                         "type" : "null"
                       } ]
@@ -41017,29 +41873,45 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "user_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "context_window_tokens" : {
+                      "type" : "integer"
+                    },
+                    "title" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     },
-                    "created_at" : {
-                      "type" : "string",
-                      "format" : "date-time"
-                    },
-                    "forked_from_conversation_id" : {
+                    "state" : {
                       "oneOf" : [ {
-                        "description" : "value must be a valid UUID.",
-                        "type" : "string",
-                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
                       }, {
                         "type" : "null"
                       } ]
                     },
+                    "created_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    },
                     "messages" : {
                       "type" : "array",
                       "items" : {
-                        "type" : "object",
-                        "properties" : { }
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.client-message"
                       }
                     },
                     "saved_entities" : {
@@ -41063,25 +41935,11 @@
                         "required" : [ "card_id", "chart_id" ]
                       }
                     },
-                    "state" : {
+                    "forked_from_conversation_id" : {
                       "oneOf" : [ {
-                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "title" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "user_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                       }, {
                         "type" : "null"
                       } ]
@@ -43471,7 +44329,7 @@
       "put" : {
         "operationId" : "put-api-mt-user-id-attributes",
         "summary" : "PUT /api/mt/user/{id}/attributes",
-        "description" : "Update the `login_attributes` for a User.",
+        "description" : "Update the `login_attributes` for a User. Only personal users can have attributes.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -44071,7 +44929,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.CreateNotificationParams"
               }
             }
           }
@@ -50044,7 +50902,7 @@
       "post" : {
         "operationId" : "post-api-slack-bug-report",
         "summary" : "POST /api/slack/bug-report",
-        "description" : "Send diagnostic information to the configured Slack channels.",
+        "description" : "Send diagnostic information to the configured Slack channels. Requires bug reporting to be enabled. The report is\n  attributed to the current user when `diagnosticInfo.reporter` is true, and anonymous otherwise. The `{name, email}`\n  form of `reporter` that clients before 0.64 send is treated as true; the identity in it is ignored.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -50064,10 +50922,145 @@
                 "type" : "object",
                 "properties" : {
                   "diagnosticInfo" : {
-                    "type" : "object"
+                    "type" : "object",
+                    "properties" : {
+                      "entityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "frontendErrors" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "entityInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "reporter" : {
+                        "oneOf" : [ {
+                          "anyOf" : [ {
+                            "type" : "object",
+                            "properties" : {
+                              "email" : {
+                                "type" : "string"
+                              },
+                              "name" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "name", "email" ],
+                            "additionalProperties" : false
+                          }, {
+                            "type" : "boolean"
+                          } ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "backendErrors" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "bugReportDetails" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "userLogs" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "localizedEntityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "logs" : {
+                        "oneOf" : [ {
+                          "type" : "array",
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "type" : "object",
+                            "properties" : { }
+                          }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "queryResults" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "browserInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "additionalProperties" : false
                   }
                 },
-                "required" : [ "diagnosticInfo" ]
+                "required" : [ "diagnosticInfo" ],
+                "additionalProperties" : false
               }
             }
           }
@@ -57953,7 +58946,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.users-rest.api.current-user-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -57989,7 +58989,7 @@
       "get" : {
         "operationId" : "get-api-user-id",
         "summary" : "GET /api/user/{id}",
-        "description" : "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.",
+        "description" : "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.\n  Only personal users can be fetched this way; API-key users and the internal user 404.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -58016,7 +59016,7 @@
       "put" : {
         "operationId" : "put-api-user-id",
         "summary" : "PUT /api/user/{id}",
-        "description" : "Update an existing, active `User`.\n  Self or superusers can update user info and groups.\n  Group Managers can only add/remove users from groups they are manager of.",
+        "description" : "Update an existing, active `User`.\n  Self or superusers can update user info and groups.\n  Group Managers can only add/remove users from groups they are manager of.\n  Only personal users can be updated this way; API-key users 404 (manage them via `/api/api-key` instead).",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",

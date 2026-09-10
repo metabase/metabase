@@ -1,7 +1,7 @@
 import { QueryStatus } from "@reduxjs/toolkit/query";
 
+import { createMockState } from "__support__/state";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 

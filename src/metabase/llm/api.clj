@@ -12,14 +12,14 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.api.provider]
    [metabase.llm.context :as llm.context]
+   [metabase.llm.db :as llm.db]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.core :as metabot]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [stencil.core :as stencil]
-   [throttle.core :as throttle]
-   [toucan2.core :as t2])
+   [throttle.core :as throttle])
   (:import
    (java.time LocalDateTime)
    (java.time.format DateTimeFormatter)))
@@ -41,7 +41,7 @@
   "Get the engine keyword for a database."
   [database-id]
   (when database-id
-    (t2/select-one-fn :engine :model/Database :id database-id)))
+    (llm.db/database-engine database-id)))
 
 (def ^:private load-dialect-instructions
   "Load dialect-specific instructions from resources, if available.
@@ -107,7 +107,7 @@
 
 (def ^:private template-tags-schema
   [:map-of :string
-   [:map
+   [:map {:closed true}
     [:type :string]
     [:card-id {:optional true} pos-int?]]])
 
@@ -125,7 +125,7 @@
     or field value fetching."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:database_id pos-int?]
             [:sql :string]
             [:template_tags {:optional true} template-tags-schema]]]
@@ -168,12 +168,12 @@
    Returns generated SQL and the list of tables used for context."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:prompt :string]
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
             [:referenced_entities {:optional true}
-             [:sequential [:map
+             [:sequential [:map {:closed true}
                            [:model :string]
                            [:id pos-int?]]]]]
    request]

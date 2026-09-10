@@ -7,19 +7,17 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type {
   MetricPageParams,
   MetricPageProps,
   MetricUrls,
 } from "metabase/common/metrics/types";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { Card as CardApiType } from "metabase-types/api";
 
 import { MetricPageCard } from "../../components/MetricPageCard";
@@ -63,15 +61,15 @@ function MetricQueryPageBody({
   showAppSwitcher,
   showDataStudioLink,
 }: MetricQueryPageBodyProps) {
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const question = useMemo(() => {
-    return new Question(card, metadata).setDatasetQuery(datasetQuery);
-  }, [card, metadata, datasetQuery]);
+    return buildQuestion(card).setDatasetQuery(datasetQuery);
+  }, [card, buildQuestion, datasetQuery]);
 
   const resultMetadata = useMemo(() => {
     return getResultMetadata(
@@ -130,7 +128,7 @@ function MetricQueryPageBody({
 
   return (
     <>
-      <PageContainer pos="relative" data-testid="metric-query-editor" gap="xl">
+      <PageContainer pos="relative" data-testid="metric-query-editor" gap="xxl">
         <MetricPageShell
           card={card}
           urls={urls}

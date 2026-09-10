@@ -675,6 +675,10 @@
         ;; _
         :else (.getObject rs i)))))
 
+(defmethod sql.qp/inline-value [:clickhouse String]
+  [_driver ^String s]
+  (sql.u/quote-literal s :backslashes))
+
 (defmethod sql.qp/inline-value [:clickhouse LocalDate]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd" t)))

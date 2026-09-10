@@ -8,6 +8,7 @@
    [metabase.parameters.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (deftest get-or-create-field-values!-test
@@ -30,6 +31,15 @@
               (testing "calling a second time shouldn't create new FieldValues"
                 (params.field-values/get-or-create-field-values! field)
                 (is (= 1 (t2/count :model/FieldValues :field_id (u/the-id field) :type :advanced))))
+              (testing "and a warm hit is served without a detached fetch — it is one SELECT, so
+                        handing it to a background thread costs more than it saves (GHY-2937)"
+                (let [detached (atom 0)
+                      real     field-values/detached-fetch!]
+                  (with-redefs [field-values/detached-fetch! (fn [& args]
+                                                               (swap! detached inc)
+                                                               (apply real args))]
+                    (params.field-values/get-or-create-field-values! field)
+                    (is (zero? @detached)))))
               (testing "changing the impersonation role creates new FieldValues"
                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                                :attributes     {"impersonation_attr" "impersonation_role_2"}}

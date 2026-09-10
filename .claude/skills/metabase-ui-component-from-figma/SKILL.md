@@ -31,6 +31,11 @@ Phases 1, 2, 5 and 6 are shared. The middle two differ in **order**: update mode
    - **The component's intended API** — variants, sizes, and states the design system supports for this component. This defines the axes of your showcase (Phase 3).
 3. Decide the mode (see **Two modes** above): search for an existing component — in `metabase/ui` or as a legacy component elsewhere. Found → **update**; nothing equivalent anywhere → **create**. Confirm with the user when unsure.
 4. **Verify a Figma desktop MCP is connected before doing the work** — this skill depends on it for exact tokens in Phase 4 (and styling can't proceed accurately without it). Do a quick read against the issue's node (e.g. `get_metadata`/`get_variable_defs`); if it errors with "nothing selected" or the server isn't connected, prompt the user to enable it (Switch to Dev Mode → MCP section in the right sidebar) and select the relevant layer before continuing.
+5. **Figma Desktop MCP environments only:** open the issue's exact page with [`figma-open`](./figma-open) before MCP reads. Do not run this helper when Desktop MCP is unavailable.
+   ```bash
+   .claude/skills/metabase-ui-component-from-figma/figma-open "<figma-url-with-node-id>"
+   ```
+   A URL with `node-id` needs no token. Bare page-name and `--list` lookups require an already-configured `FIGMA_TOKEN`.
 
 ## Phase 2 — Understand the component
 
@@ -205,7 +210,7 @@ Per `docs/developers-guide/frontend.md` ("Colors"): every color must be a **sema
 
 The same discipline applies to **dimensional** values — radius, spacing/padding/gap, elevation/shadow, and typography (font size, line-height, weight). Prefer the codebase's existing scale variable over a literal: `--mantine-radius-*`, `--mantine-spacing-*`, `--mantine-shadow-*`, and the Mantine font tokens.
 
-But Figma's scales don't always line up with the codebase's. When a Figma value **has no matching step** in the corresponding scale — e.g. Figma `radius/md = 12px` while `--mantine-radius-md` is `8px`, or a Figma `xxxs` spacing step with no Mantine equivalent — **don't silently bake in a literal.** Flag it to the user the same way you flag primitive colors: name the property, the Figma value, and the nearest codebase token, so it can be resolved with design / the scale owners (align the value, or add a scale step). Only fall back to a literal if the user confirms it's an accepted one-off, and leave a short comment in the code explaining why.
+But Figma's scales don't always line up with the codebase's. When a Figma value **has no matching step** in the corresponding scale — e.g. Figma `radius/md = 16px` while `--mantine-radius-md` is `0.75rem`, or a Figma spacing step that has no Mantine equivalent — **don't silently bake in a literal.** Flag it to the user the same way you flag primitive colors: name the property, the Figma value, and the nearest codebase token, so it can be resolved with design / the scale owners (align the value, or add a scale step). Only fall back to a literal if the user confirms it's an accepted one-off, and leave a short comment in the code explaining why. The codebase scales are defined in `frontend/src/metabase/ui/theme.ts` (`SPACING_SCALE`, `RADIUS_SCALE`, `LIGHT_SHADOWS`/`DARK_SHADOWS`).
 
 ### Mantine implementation notes (reference)
 
@@ -240,5 +245,6 @@ Only after sign-off:
 - [ ] Storybook showcase matrix built from the component's full state space (theme excluded — global toggle drives light/dark), single panel, hover/pressed forced via `storybook-addon-pseudo-states`, controls scoped per story; lint + type-check pass. (Update mode: built before styling, **component styles untouched**. Create mode: built after the component is implemented in Phase 4.)
 - [ ] Figma desktop MCP available; exact tokens extracted and mapped to semantic `--mb-color-*` (NO `color-mix`, NO primitives) and to existing scale vars for radius/spacing/elevation/type — any color *or* dimensional value with no matching token/scale step flagged to the user, not baked in as a literal.
 - [ ] Component styled; stylelint + eslint(+CSS modules) + type-check pass.
+- [ ] Loki coverage registered: `storiesFilter` matches exact story display names; targeted `loki update` generated references; reference PNGs and Playwright screenshots visually inspected; targeted `loki test` passes; `.loki/reference/*.png` included in the commit.
 - [ ] Iterated with the user until satisfied.
 - [ ] Committed (when asked); call sites migrated/verified (update) or export wired (create); findings doc handed back.

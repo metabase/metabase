@@ -6,12 +6,14 @@
    [medley.core :as m]
    ;; legacy usages, do not use legacy MBQL stuff in new code.
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; domain-entity specs are written against legacy MBQL clauses; no MBQL 5 port yet
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.yaml :as yaml]
+   [metabase.xrays.domain-entities.hierarchy :as domain-entities.hierarchy]))
 
 (mr/def ::xrays-dimension
   "X-rays has its own special `:dimension` psuedo-MBQL clause in templates; it's different from the `:dimension` clause
@@ -73,7 +75,7 @@
    :keyword
    [:fn
     {:error/message "Valid DomainEntity"}
-    #(isa? % :DomainEntity/*)]])
+    #(domain-entities.hierarchy/isa? % :DomainEntity/*)]])
 
 (def ^:private Identifier :string)
 
@@ -141,7 +143,7 @@
   [{:keys [name refines] :as spec}]
   (let [spec-type (keyword "DomainEntity" name)
         refines   (some->> refines (keyword "DomainEntity"))]
-    (derive spec-type (or refines :DomainEntity/*))
+    (domain-entities.hierarchy/derive! spec-type (or refines :DomainEntity/*))
     (-> spec
         (dissoc :refines)
         (assoc :type spec-type))))

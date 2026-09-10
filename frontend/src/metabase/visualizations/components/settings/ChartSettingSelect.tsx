@@ -3,10 +3,7 @@ import { type ReactNode, useContext, useEffect, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Select, type SelectProps, Stack } from "metabase/ui";
-import {
-  decodeWidgetValue,
-  encodeWidgetValue,
-} from "metabase/visualizations/lib/settings/widgets";
+import { decodeWidgetValue, encodeWidgetValue } from "metabase/viz-core";
 
 import S from "./ChartSettingSelect.module.css";
 import { WidgetPopoverPortalContext } from "./WidgetPopoverPortalContext";

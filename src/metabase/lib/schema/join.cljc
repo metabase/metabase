@@ -122,13 +122,23 @@
     {:default          {}
      :decode/normalize normalize-join
      :decode/api       common/remove-internal-keys
-     :encode/serialize common/remove-internal-keys}
+     :encode/serialize common/remove-internal-keys
+     :closed           true}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
     [:stages      [:ref :metabase.lib.schema/stages]]
     [:conditions  ::conditions]
     [:alias       ::alias]
     [:fields   {:optional true} ::fields]
-    [:strategy {:optional true} ::strategy]]
+    [:strategy {:optional true} ::strategy]
+    [:fk-field-id   {:optional true} [:maybe [:ref :metabase.lib.schema.id/field]]]
+    [:fk-field-name {:optional true} [:maybe :string]]
+    [:fk-join-alias {:optional true} [:maybe ::alias]]
+    [:qp/is-implicit-join {:optional true} :boolean]
+    [:qp/keep-default-join-alias {:optional true} :boolean]
+    [:metabase.query-processor.middleware.add-implicit-joins/original-position {:optional true} [:int {:min 0}]]
+    [:metabase.query-processor.util.add-alias-info/alias          {:optional true} ::alias]
+    [:metabase.query-processor.util.add-alias-info/original-alias {:optional true} ::alias]
+    [:metabase.lib.join/replace-alias {:optional true} :boolean]]
    (common/disallowed-keys
     {:lib/stage-metadata "joins should not have metadata attached directly to them; attach metadata to their last stage instead"
      :source-metadata    "joins should not have metadata attached directly to them; attach metadata to their last stage instead"
@@ -139,7 +149,8 @@
      :filter             "join should not have top-level :filters; these should belong to one of the join :stages"
      :filters            "join should not have top-level :filters; these should belong to one of the join :stages"
      :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"
-     :ident              ":ident is deprecated and should not be included in joins"})
+     :ident              ":ident is deprecated and should not be included in joins"
+     :lib/options        "A join should not have :lib/options"})
    [:ref ::validate-field-aliases-match-join-alias]])
 
 (mr/def ::joins

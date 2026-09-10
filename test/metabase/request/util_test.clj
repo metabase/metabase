@@ -30,29 +30,31 @@
     (is (not (req.util/cacheable? {:request-method :get :uri "/api/dashboard/1"})))
     (is (not (req.util/cacheable? {:request-method :get :uri "/app/dist/main.js"})))))
 
-(deftest ^:parallel https?-test
-  (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
-                              {"x-forwarded-proto" "http"}     false
-                              {"x-forwarded-protocol" "https"} true
-                              {"x-forwarded-protocol" "http"}  false
-                              {"x-url-scheme" "https"}         true
-                              {"x-url-scheme" "http"}          false
-                              {"x-forwarded-ssl" "on"}         true
-                              {"x-forwarded-ssl" "off"}        false
-                              {"front-end-https" "on"}         true
-                              {"front-end-https" "off"}        false
-                              {"origin" "https://mysite.com"}  true
-                              {"origin" "http://mysite.com"}   false
+(deftest ^:parallel https-state-test
+  (doseq [[headers expected] {{"x-forwarded-proto" "https"}    :https
+                              {"x-forwarded-proto" "http"}     :http
+                              {"x-forwarded-protocol" "https"} :https
+                              {"x-forwarded-protocol" "http"}  :http
+                              {"x-url-scheme" "https"}         :https
+                              {"x-url-scheme" "http"}          :http
+                              {"x-forwarded-ssl" "on"}         :https
+                              {"x-forwarded-ssl" "off"}        :http
+                              {"front-end-https" "on"}         :https
+                              {"front-end-https" "off"}        :http
+                              ;; `Origin` names the page that issued the request, not the transport it arrived on,
+                              ;; and the client picks it, so it can only leave the transport unknown
+                              {"origin" "https://mysite.com"}  :unknown
+                              {"origin" "http://mysite.com"}   :http
                               ;; a blank proto header must fall through to the boolean HTTPS indicators (BOT-1617)
-                              {"x-forwarded-proto" "" "x-forwarded-ssl" "on"}          true
-                              {"x-forwarded-proto" "" "front-end-https" "on"}          true
-                              {"x-forwarded-proto" "  " "origin" "https://mysite.com"} true
+                              {"x-forwarded-proto" "" "x-forwarded-ssl" "on"}          :https
+                              {"x-forwarded-proto" "" "front-end-https" "on"}          :https
+                              {"x-forwarded-proto" "  " "origin" "https://mysite.com"} :unknown
                               ;; the first hop of a comma-separated chain wins
-                              {"x-forwarded-proto" "https, http"} true
-                              {"x-forwarded-proto" "HTTPS"}       true}]
-    (testing (pr-str (list 'https? {:headers headers}))
+                              {"x-forwarded-proto" "https, http"} :https
+                              {"x-forwarded-proto" "HTTPS"}       :https}]
+    (testing (pr-str (list 'https-state {:headers headers}))
       (is (= expected
-             (req.util/https? {:headers headers}))))))
+             (req.util/https-state {:headers headers}))))))
 
 (def ^:private mock-request
   (delay (edn/read-string (slurp "test/metabase/server/request/sample-request.edn"))))

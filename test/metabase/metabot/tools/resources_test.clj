@@ -1259,6 +1259,19 @@
           (is (str/includes? output "truncated=\"true\""))
           (is (str/includes? output "?page=2") "truncation note should hint at next page URI"))))))
 
+(deftest pagination-next-page-uri-replaces-existing-page-param-test
+  (testing "a next-page-uri built from an already-paged request replaces, not duplicates, the page param"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (doseq [i (range 1 31)]
+          (t2/insert! :model/Table {:name   (format "TBL-%03d" i)
+                                    :db_id  db-id
+                                    :active true}))
+        (let [{:keys [output]} (read-resource/read-resource
+                                {:uris [(str "metabase://database/" db-id "/tables?page=1")]})]
+          (is (str/includes? output (str "metabase://database/" db-id "/tables?page=2")))
+          (is (not (str/includes? output "page=1&page=2"))))))))
+
 ;; ===== Collection tree ordering =====
 
 (deftest collections-tree-ordering-test
@@ -1288,3 +1301,18 @@
               (is (some? a-root-idx))
               (is (some? a-child-idx))
               (is (= (inc a-root-idx) a-child-idx) "child should immediately follow its parent"))))))))
+
+(deftest list-collection-items-excludes-exploration-summary-documents-test
+  (testing "metabase://collection/{id}/items hides exploration Summary documents"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection  {coll-id :id} {:name "Mixed Coll" :location "/"}
+                     :model/Document    _             {:name "VISIBLE-DOC" :collection_id coll-id}
+                     :model/Exploration {expl-id :id} {:name "An exploration"}
+                     :model/Document    _             {:name           "SUMMARY-DOC"
+                                                       :collection_id  coll-id
+                                                       :exploration_id expl-id}]
+        (let [{:keys [output]} (read-resource/read-resource
+                                {:uris [(str "metabase://collection/" coll-id "/items")]})]
+          (is (str/includes? output "VISIBLE-DOC"))
+          (is (not (str/includes? output "SUMMARY-DOC"))
+              "a Summary document is reachable only through its exploration, so it must not be listed"))))))

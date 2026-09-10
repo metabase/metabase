@@ -11,6 +11,7 @@
 
   Batch processing can be disabled by setting the environment variable `MB_SYNCHRONOUS_BATCH_UPDATES=true`"
   (:require
+   ;; this ns is our grouper facade; the rest of the codebase goes through it
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [grouper.core :as grouper]
    [metabase.app-db.core :as mdb]

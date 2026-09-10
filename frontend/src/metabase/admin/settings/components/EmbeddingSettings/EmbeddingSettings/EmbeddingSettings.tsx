@@ -87,8 +87,8 @@ function EmbeddingSettingsEE() {
       <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
 
       {isReactSdkFeatureAvailable && isHosted && (
-        <Box py="lg" px="xl" className={S.SectionCard}>
-          <Stack gap="xs">
+        <Box py="xl" px="xxl" className={S.SectionCard}>
+          <Stack gap="xxs">
             <Text
               htmlFor="version-pinning"
               component="label"

@@ -51,7 +51,7 @@ On self-hosted Metabases, this option determines whether or not you allow [anony
 
 {% include plans-blockquote.html feature="Collecting user data" %}
 
-You can switch on logging of IP addresses, user agents, embed path, query parameters, and Metabot conversation metadata for people using your Metabase, both for people directly by logging into Metabase, or for people who view an embedded Metabase component in your app. If enabled, you can find this information in your [usage analytics](../usage-and-performance-tools/usage-analytics.md).
+You can switch on logging of IP addresses, user agents, embed path, query parameters, and Metabot conversation metadata for people using your Metabase, both for people logging in directly to Metabase, and for people who view an embedded Metabase component in your app. If enabled, you can find this information in your [usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 By default, collection of user data is turned **off**.
 
@@ -61,7 +61,7 @@ By default, Metabase attempts to make field and table names more readable by cha
 
 If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan.md#how-database-scans-work) against your database to review your table and column names again.
 
-To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin panel. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
+To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata/metadata-editing.md) section in your admin panel. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models/models.md).
 
 ## Enable X-rays
 
@@ -99,6 +99,6 @@ You must turn on this setting to enable [Custom visualizations](../questions/vis
 
 When the [Restrict image domains](#restrict-image-domains) setting is on, Metabase will only allow images served from this Metabase instance, the map tile server used by map visualizations, and any domains listed on this page.
 
-Leave this input empty to allow images hosted by your Metabase instance and the map tile server. The map tile server is always allowed so map visualizations keep working, you don't need to manually add it here.
+Leave this input empty to allow images hosted by your Metabase instance and the map tile server. The map tile server is always allowed so map visualizations keep working; you don't need to manually add it here.
 
 Add multiple domains separated by a comma. Domains follow the same matching rules as [Allowed domains for iframes in dashboards](#allowed-domains-for-iframes-in-dashboards): listing a domain like `example.com` also allows its subdomains, while listing a subdomain like `images.example.com` allows only that subdomain.

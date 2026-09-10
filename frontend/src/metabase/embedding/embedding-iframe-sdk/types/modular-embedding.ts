@@ -234,8 +234,10 @@ export interface MetabaseBrowserAttributes {
   /**
    * Which collection to start from. Values: regular ID, entity ID, `"root"` for
    * the top-level "Our Analytics" collection, `"personal"` for the viewer's
-   * personal collection, or `"tenant"` for the viewer's tenant collection.
-   * People who aren't tenant members get an error for `"tenant"`.
+   * personal collection, `"tenant"` for the viewer's tenant collection, or
+   * `"all"` to show everything the viewer can access: their personal collection
+   * plus the shared collections. People who aren't tenant members get an error
+   * for `"tenant"`.
    */
   "initial-collection": number | string;
 

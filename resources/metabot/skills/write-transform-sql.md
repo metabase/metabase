@@ -54,7 +54,8 @@ When creating a new transform, you must provide:
   available in the artifact. This will help you to use the correct syntax and functions
 
 - When querying Metabase models, remember that their fully qualified name is of the form `{{#model_id}}`,
-  e.g. `SELECT * FROM {{#5}}`
+  e.g. `SELECT * FROM {{#5}} AS user_details`. Always give the model reference an alias, even when the SQL
+  dialect does not require one.
 
 **Limitations:**
 * This tool does not execute SQL queries, it only modifies the query text.

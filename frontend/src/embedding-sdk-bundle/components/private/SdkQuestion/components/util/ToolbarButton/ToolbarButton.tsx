@@ -32,7 +32,7 @@ function _ToolbarButton(
         ) : undefined
       }
       py="sm"
-      px="md"
+      px="lg"
       {...buttonProps}
     >
       {label}

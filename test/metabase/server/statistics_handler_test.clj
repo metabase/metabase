@@ -14,6 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- routes [started continue]
+  ;; throwaway Jetty test handler; no OpenAPI spec needed
   #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
    (GET "/route" []
