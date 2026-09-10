@@ -23,17 +23,20 @@
     (registry/call-tool scopes nil "subscription_write" args)))
 
 (defn- tool-result
-  [response]
-  (when (:isError response)
-    (throw (ex-info (str "tool call failed: " (-> response :content first :text))
-                    {:response response})))
-  (-> response :content first :text json/decode+kw))
+  [{:keys [result error]}]
+  (when error
+    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+  (when (:isError result)
+    (throw (ex-info (str "tool call failed: " (-> result :content first :text))
+                    {:result result})))
+  (-> result :content first :text json/decode+kw))
 
 (defn- tool-error
-  [response]
-  (when-not (:isError response)
-    (throw (ex-info "expected a tool error, got success" {:response response})))
-  (-> response :content first :text))
+  [{:keys [result error]}]
+  (cond
+    error             (:message error)
+    (:isError result) (-> result :content first :text)
+    :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
 
 (defn- wire
   "Round-trip through JSON, as the JSON-RPC transport does, so tests can't pass shapes a real

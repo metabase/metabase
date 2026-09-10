@@ -17,6 +17,7 @@
   (:require
    [malli.error :as me]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
    [metabase.mcp.v2.projections :as projections]
@@ -57,7 +58,7 @@
   [ids]
   (let [ids (into #{} (filter int?) ids)]
     (when (seq ids)
-      (into {} (for [card  (t2/select :model/Card :id [:in ids])
+      (into {} (for [card  (mcp.db/select-by-ids :model/Card ids)
                      :when (mi/can-read? card)]
                  [(:id card) card])))))
 
@@ -78,7 +79,7 @@
   "The projection row for the dashboard `id`, read back through the same hydration `get_content`
    uses so both tools return byte-identical shapes."
   [id]
-  (-> (t2/select-one :model/Dashboard :id id)
+  (-> (mcp.db/select-one-by-id :model/Dashboard id)
       (t2/hydrate [:dashcards :series :card] :tabs)
       redaction/redact-dashboard
       projections/dashboard-row))
