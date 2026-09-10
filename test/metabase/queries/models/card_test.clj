@@ -1459,7 +1459,6 @@
                                   :name "Card with parameter reference"
                                   :parameters [{:id "test-param"
                                                 :name "test-param"
-                                                :display_param "test param"
                                                 :type :category
                                                 :values_source_type "card"
                                                 :values_source_config {:card_id remote-synced-card-id}}]}]

@@ -19,6 +19,7 @@ import {
   isDashcardAccessRestricted,
 } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Path } from "metabase/router";
@@ -55,7 +56,6 @@ import {
   isCartesianChart,
 } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
@@ -123,7 +123,6 @@ interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: DashCardSeries;
   question: Question | null;
-  metadata: Metadata;
   getHref?: () => string | undefined;
 
   gridSize: {
@@ -164,7 +163,6 @@ export function DashCardVisualization({
   dashcard,
   series: rawSeries,
   question,
-  metadata,
   getHref,
   gridSize,
   gridItemWidth,
@@ -244,13 +242,18 @@ export function DashCardVisualization({
     }
   }, [dashcard, rawSeries]);
 
+  // The metric's own database, which is the only one this component resolves.
+  const metadataProvider = useMetadataProvider(
+    rawSeries?.[0]?.json_query?.database ?? null,
+  );
+
   const untranslatedSeries: DashCardSeries | VisualizerSeries = useMemo(() => {
     if (!dashcard || !rawSeries || rawSeries.length === 0) {
       return rawSeries;
     }
 
     if (!isVisualizerDashboardCard(dashcard)) {
-      return getMetricSeriesWithDefaultDisplay(rawSeries, metadata);
+      return getMetricSeriesWithDefaultDisplay(rawSeries, metadataProvider);
     }
 
     const visualizerEntity = dashcard.visualization_settings.visualization;
@@ -339,7 +342,7 @@ export function DashCardVisualization({
     }
 
     return series;
-  }, [rawSeries, dashcard, datasets, metadata]);
+  }, [rawSeries, dashcard, datasets, metadataProvider]);
 
   const series = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries<
     DashCardSeriesItem | VisualizerSeriesItem
@@ -608,7 +611,6 @@ export function DashCardVisualization({
               ? rawSeries
               : undefined
           }
-          metadata={metadata}
           mode={clickActionMode ?? dashboardClickActionMode}
           getHref={getHref}
           gridSize={gridSize}

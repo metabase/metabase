@@ -2,7 +2,6 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
-   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
@@ -75,7 +74,7 @@
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
            published-only can-query can-write include-transform-targets]}
-   :- [:map
+   :- [:map {:closed true}
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
        [:data-layer {:optional true} ::data-layers]
@@ -122,10 +121,10 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `Table` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model]}
-   :- [:map
+   :- [:map {:closed true}
        [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
   ;; partial schema only
   :- [:map {:closed false}
@@ -143,7 +142,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
-  [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
+  [{:keys [table-id]} :- [:map {:closed true} [:table-id ms/PositiveInt]]]
   (let [table (warehouse-schema-rest.db/table table-id)
         db-id (:db_id table)]
     (api/query-check table)
@@ -242,10 +241,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update `Table` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:display_name            {:optional true} [:maybe ms/NonBlankString]]
             [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
             [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
@@ -272,7 +271,7 @@
   Deprecated, should use PUT /table/edit from now on."
   [_route-params
    _query-params
-   {:keys [ids], :as body} :- [:map
+   {:keys [ids], :as body} :- [:map {:closed true}
                                [:ids                                      [:sequential ms/PositiveInt]]
                                [:display_name            {:optional true} [:maybe ms/NonBlankString]]
                                [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
@@ -307,10 +306,10 @@
    data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
 
    These options are provided for use in the Admin Edit Metadata page."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
-   :- [:map
+   :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
@@ -327,7 +326,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
 
@@ -341,7 +340,7 @@
 (api.macros/defendpoint :get "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
-  [_route-params :- [:map
+  [_route-params :- [:map {:closed true}
                      [:id ms/PositiveInt]]]
   []) ; return empty array
 
@@ -351,7 +350,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
@@ -377,7 +376,7 @@
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [table (api/write-check (warehouse-schema-rest.db/table id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
@@ -401,7 +400,7 @@
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check (warehouse-schema-rest.db/table id))
   (when-let [field-ids (warehouse-schema-rest.db/field-ids-for-table id)]
@@ -414,20 +413,20 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (warehouse-schema-rest.db/table id) api/read-check xrays/related))
 
 (api.macros/defendpoint :put "/:id/fields/order" :- [:map
                                                      [:success [:= true]]]
   "Reorder fields"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    ;; Accept either a bare sequential (legacy) or a wrapped {:field_order [...]} body.
    body :- [:or
             [:sequential ms/PositiveInt]
-            [:map [:field_order [:sequential ms/PositiveInt]]]]]
+            [:map {:closed true} [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
     (-> (warehouse-schema-rest.db/table id) api/write-check (table/custom-order-fields! field-order)))
   {:success true})
@@ -453,15 +452,14 @@
   "The multipart parts a CSV upload may carry. A part under any other name is rejected rather than dropped, so a second
   file cannot be smuggled past the upload: `::mc/default` keeps the extra parts, and the check below refuses them."
   [:and
-   [:map
-    [:file
-     [:map
+   (ms/string-keyed-object
+    ["file"
+     [:map {:closed true}
       [:filename :string]
       [:tempfile (ms/InstanceOfClass java.io.File)]]]
-    [:collection_id {:optional true} :string]
-    [::mc/default [:map-of :keyword :any]]]
+    ["collection_id" {:optional true} :string])
    (mu/with-api-error-message
-    [:fn (fn [parts] (every? #{:file :collection_id} (keys parts)))]
+    [:fn (fn [parts] (every? #{"file" "collection_id"} (keys parts)))]
     (deferred-tru "unexpected multipart part"))])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -475,10 +473,10 @@
   The file may be at most 50 MB; larger uploads are rejected with a 413 response."
   {:multipart {:max-file-size  upload/max-upload-size-bytes
                :max-file-count upload/max-upload-part-count}}
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [file]} :- CsvUploadParts]
+   {:strs [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
                 :filename (:filename file)
                 :file     (:tempfile file)
@@ -495,10 +493,10 @@
   The file may be at most 50 MB; larger uploads are rejected with a 413 response."
   {:multipart {:max-file-size  upload/max-upload-size-bytes
                :max-file-count upload/max-upload-part-count}}
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [file]} :- CsvUploadParts]
+   {:strs [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
                 :filename (:filename file)
                 :file     (:tempfile file)
@@ -518,7 +516,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Table`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [table    (api/check-404 (warehouse-schema-rest.db/table id))
         database (api/check-404 (warehouse-schema-rest.db/non-destination-database (:db_id table)))]
