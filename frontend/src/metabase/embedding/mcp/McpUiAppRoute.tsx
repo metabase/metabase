@@ -32,6 +32,7 @@ interface McpUiAppRouteContentProps {
   mcpSessionId: string;
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
+  queryError: McpAppState["queryError"];
   uiCredential: string;
 }
 
@@ -59,6 +60,7 @@ export function McpUiAppRoute() {
     uiCredential,
     prompt,
     query,
+    queryError,
   } = useMcpApp();
 
   const scheme: ResolvedColorScheme =
@@ -94,6 +96,7 @@ export function McpUiAppRoute() {
         mcpSessionId={mcpSessionId}
         prompt={prompt}
         query={query}
+        queryError={queryError}
         uiCredential={uiCredential}
       />
     </ComponentProvider>
@@ -108,6 +111,7 @@ function McpUiAppRouteContent({
   mcpSessionId,
   prompt,
   query,
+  queryError,
   uiCredential,
 }: McpUiAppRouteContentProps) {
   const isHosted = useSetting("is-hosted?");
@@ -145,10 +149,10 @@ function McpUiAppRouteContent({
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready or
     // when initialization fails and the route can render its own error.
-    if (isReady || hostError || userAndSettingsFetchError) {
+    if (isReady || hostError || userAndSettingsFetchError || queryError) {
       document.getElementById("mcp-loading")?.remove();
     }
-  }, [hostError, isReady, userAndSettingsFetchError]);
+  }, [hostError, isReady, queryError, userAndSettingsFetchError]);
 
   const height = `calc(${MCP_CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
@@ -242,6 +246,12 @@ function McpUiAppRouteContent({
 
     if (userAndSettingsFetchError) {
       return <SdkError message={userAndSettingsFetchError} />;
+    }
+
+    // A handle that will not resolve has no card to render. Without this the
+    // route would sit on the loading indicator forever.
+    if (queryError) {
+      return <SdkError message={queryError} />;
     }
 
     if (!isReady) {

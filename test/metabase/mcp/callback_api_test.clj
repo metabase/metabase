@@ -178,3 +178,54 @@
         (mcp.session/get-or-create-embedding-session! owner-session (mt/user->id :crowberto))
         (is (=? {:status 404}
                 (post-mcp-feedback :rasta 404 body owner-session)))))))
+
+;;; --------------------------------------- GET /queries/:handle ---------------------------------------------
+
+(defn- get-query-by-handle
+  "GET /api/embed-mcp/queries/:handle with a UI credential, the way the iframe calls it."
+  [expected-status credential session-id handle]
+  (client/client-full-response :get expected-status (str "embed-mcp/queries/" handle)
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                            "mcp-session-id" session-id}}}))
+
+(deftest queries-get-resolves-handle-test
+  (testing "the iframe exchanges a handle for the encoded query and its prompt"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id    (mt/user->id :crowberto)
+            session-id (mcp.session/create! user-id)
+            credential (mcp.session/issue-ui-credential session-id user-id)
+            handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==" "show me orders")]
+        (is (=? {:status 200
+                 :body   {:query "ZW5jb2RlZA==" :prompt "show me orders"}}
+                (get-query-by-handle 200 credential session-id handle))))))
+  (testing "a handle stored without a prompt resolves with a nil one"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id    (mt/user->id :crowberto)
+            session-id (mcp.session/create! user-id)
+            credential (mcp.session/issue-ui-credential session-id user-id)
+            handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==")]
+        (is (=? {:status 200
+                 :body   {:query "ZW5jb2RlZA==" :prompt nil}}
+                (get-query-by-handle 200 credential session-id handle)))))))
+
+(deftest queries-get-is-user-scoped-test
+  (testing "a handle minted by another user is not resolvable, even with a valid credential"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [owner-id     (mt/user->id :crowberto)
+            owner-session (mcp.session/create! owner-id)
+            handle       (mcp.session/store-handle! owner-session owner-id "ZW5jb2RlZA==")
+            other-id     (mt/user->id :rasta)
+            other-session (mcp.session/create! other-id)
+            other-cred   (mcp.session/issue-ui-credential other-session other-id)]
+        (is (= 404 (:status (get-query-by-handle 404 other-cred other-session handle))))))))
+
+(deftest queries-get-rejects-bad-input-test
+  (let [user-id    (mt/user->id :crowberto)
+        session-id (mcp.session/create! user-id)
+        credential (mcp.session/issue-ui-credential session-id user-id)]
+    (testing "an unknown handle is a 404, not a 500"
+      (is (= 404 (:status (get-query-by-handle 404 credential session-id (str (random-uuid)))))))
+    (testing "a non-UUID handle never reaches the route: the credential allowlist is UUID-pinned"
+      (is (= 401 (:status (get-query-by-handle 401 credential session-id "not-a-uuid")))))
+    (testing "an invalid credential is rejected"
+      (is (= 401 (:status (get-query-by-handle 401 "not-a-credential" session-id (str (random-uuid)))))))))
