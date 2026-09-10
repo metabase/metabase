@@ -127,7 +127,6 @@
       :not-a-number     "name"  self-data
       :not-a-number     "total" (assoc self-data :rows [])
       :not-a-number     "total" (assoc self-data :rows [[3 ##Inf "x"]])
-      ;; an entity ref still here means the referenced query never ran
       :never-ran        ref-a   self-data)))
 
 (deftest ^:parallel resolve-dynamic-goals-test

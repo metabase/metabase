@@ -394,7 +394,6 @@
       []
       [{:min 0 :max 10 :color segment-color}]
       [{:min 50 :color segment-color}]
-      ;; a segment with neither bound set colors nothing
       [{:min nil :max nil :color segment-color}]))
   (testing "a non-numeric value is never colored"
     (is (not (str/includes? (scalar-style (scalar-results [{:min 0 :color segment-color}] "foo")) segment-color))))

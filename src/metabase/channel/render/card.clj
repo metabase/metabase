@@ -214,9 +214,8 @@
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
-    ;; resolve dynamic goals up front so every render path below sees plain numbers in the settings, whether it
-    ;; reads them off the card, the dashcard, or the query result; an unresolvable goal throws into the catch
-    ;; below and renders as the standard error box
+    ;; Renderers read settings from the card, dashcard, or query result, so resolve entity references in all three.
+    ;; Resolution errors are caught below and displayed in the standard error box.
     (let [resolve-goals (fn [m k]
                           (cond-> m
                             (k m)

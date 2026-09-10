@@ -57,8 +57,8 @@
                   {:type ::unresolved-goal, :reason reason, :entity-type type, :entity-id id, :column column})))
 
 (defn- first-row-value
-  "The first-row value of the column named `column` in `data`. Throws `::unresolved-goal` about `ref` when the
-  column is missing or its value isn't a finite number."
+  "Return the value in the first row of `column` in `data`.
+  Throw `::unresolved-goal` with details from `ref` if the column is missing or the value is not a finite number."
   [{:keys [cols rows]} column ref]
   (let [idx (first (keep-indexed (fn [i col] (when (= column (:name col)) i)) cols))]
     (when-not idx
@@ -87,11 +87,10 @@
     goal-value))
 
 (defn resolve-self-column-value
-  "Resolve `goal-value` against the chart's own query result `data`: a column name becomes that column's first-row
-  value, while literal numbers and nil pass through. For renderers without a JS side, which otherwise leave column
-  names for the frontend to resolve. Throws `::unresolved-goal` with `:reason` `:column-not-found`/`:not-a-number`
-  when the column can't produce a finite number, and `:never-ran` for an entity reference, which
-  [[resolve-dynamic-goals]] must have substituted already."
+  "Resolves a column name to its value in the first row of the chart's query result `data`. Numbers and nil pass through.
+  Used by renderers that do not run JavaScript. Entity references must be resolved by [[resolve-dynamic-goals]] first.
+  Throw `::unresolved-goal` with reason `:column-not-found` for a missing column, `:not-a-number` for a value that is
+  not a finite number, or `:never-ran` for an unresolved entity reference."
   [goal-value data]
   (if-let [ref (goal-source goal-value)]
     (unresolved! :never-ran ref)

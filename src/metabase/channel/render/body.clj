@@ -87,9 +87,8 @@
     (str value)))
 
 (defn- scalar-segments
-  "The `:scalar.segments` of `viz-settings` with a bound naming a column of `data` resolved to that column's value.
-  Entity references were resolved upstream, in `metabase.channel.render.card`. A segment with neither bound set
-  colors nothing, so it's dropped."
+  "Resolve column names in scalar segment bounds using `data`. Omit segments with no bounds.
+  Entity references must already be resolved by `metabase.channel.render.card`."
   [viz-settings data]
   (->> (:scalar.segments viz-settings)
        (map (fn [segment]
@@ -100,7 +99,7 @@
                  (or (some? min) (some? max))))))
 
 (defn- scalar-color
-  "Color of the first segment whose (possibly open-ended) range contains `value`; nil for a non-numeric value."
+  "Return the color of the first segment containing `value`, or nil if none matches or `value` is not numeric."
   [segments value]
   (when (number? value)
     (some (fn [{:keys [min max color]}]
