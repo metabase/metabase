@@ -71,7 +71,8 @@
   (let [user-id          (mt/user->id :crowberto)
         credential-id    (mcp.session/create! user-id)
         other-session-id (mcp.session/create! user-id)
-        credential       (mcp.session/issue-ui-credential credential-id user-id)]
+        ;; v1's claimless 2-arity retired with v1; the callback surface takes a scoped credential now.
+        credential       (mcp.session/issue-ui-credential credential-id user-id #{"agent:query:run"})]
     (testing "a credential can use the callback surface for its own MCP session"
       (is (= 200 (:status (post-drill-with-ui-credential 200 credential credential-id)))))
     (testing "a credential cannot be reused with another MCP session"
@@ -81,7 +82,7 @@
       (with-redefs [mcp.session/ui-credential-lifetime-seconds -1]
         (is (= 401 (:status (post-drill-with-ui-credential
                              401
-                             (mcp.session/issue-ui-credential credential-id user-id)
+                             (mcp.session/issue-ui-credential credential-id user-id #{"agent:query:run"})
                              credential-id))))))))
 
 (deftest drills-post-rejects-blank-body-test
@@ -192,7 +193,7 @@
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (let [user-id    (mt/user->id :crowberto)
             session-id (mcp.session/create! user-id)
-            credential (mcp.session/issue-ui-credential session-id user-id)
+            credential (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})
             handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==" "show me orders")]
         (is (=? {:status 200
                  :body   {:query "ZW5jb2RlZA==" :prompt "show me orders"}}
@@ -201,7 +202,7 @@
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (let [user-id    (mt/user->id :crowberto)
             session-id (mcp.session/create! user-id)
-            credential (mcp.session/issue-ui-credential session-id user-id)
+            credential (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})
             handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==")]
         (is (=? {:status 200
                  :body   {:query "ZW5jb2RlZA==" :prompt nil}}
@@ -215,13 +216,13 @@
             handle       (mcp.session/store-handle! owner-session owner-id "ZW5jb2RlZA==")
             other-id     (mt/user->id :rasta)
             other-session (mcp.session/create! other-id)
-            other-cred   (mcp.session/issue-ui-credential other-session other-id)]
+            other-cred   (mcp.session/issue-ui-credential other-session other-id #{"agent:query:run"})]
         (is (= 404 (:status (get-query-by-handle 404 other-cred other-session handle))))))))
 
 (deftest queries-get-rejects-bad-input-test
   (let [user-id    (mt/user->id :crowberto)
         session-id (mcp.session/create! user-id)
-        credential (mcp.session/issue-ui-credential session-id user-id)]
+        credential (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})]
     (testing "an unknown handle is a 404, not a 500"
       (is (= 404 (:status (get-query-by-handle 404 credential session-id (str (random-uuid)))))))
     (testing "a non-UUID handle never reaches the route: the credential allowlist is UUID-pinned"

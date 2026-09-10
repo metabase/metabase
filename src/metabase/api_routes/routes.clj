@@ -38,7 +38,6 @@
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
-   [metabase.mcp.api]
    [metabase.mcp.callback-api]
    [metabase.mcp.v2.api]
    [metabase.measures.api]
@@ -107,7 +106,6 @@
          metabase.indexes-rest.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
-         metabase.mcp.api/keep-me
          metabase.mcp.callback-api/keep-me
          metabase.mcp.v2.api/keep-me
          metabase.oauth-server.api.admin/keep-me
@@ -221,15 +219,16 @@
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    ;; `/mcp` is a legacy alias of the canonical `/metabase-mcp` below, kept for back-compat with
-   ;; existing clients. See [[metabase.mcp.api/endpoint-paths]].
-   "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
+   ;; existing clients. See [[metabase.mcp.paths/endpoint-paths]].
+   "/mcp"                  (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)
    "/measure"              (+auth 'metabase.measures.api)
-   ;; Route-map dispatch matches one path segment at a time, so `/metabase-mcp/v2` needs its own
-   ;; sub-entry; anything else under `/metabase-mcp` falls through to the v1 handler.
+   ;; Route-map dispatch matches one path segment at a time, so `/metabase-mcp/v2` keeps its own
+   ;; sub-entry as a back-compat alias; anything else under `/metabase-mcp` falls through to the same
+   ;; handler. All paths now serve the v2 surface.
    "/metabase-mcp"         (handlers/routes
                             (handlers/route-map-handler
                              {"/v2" (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)})
-                            (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler))
+                            (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler))
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)

@@ -387,7 +387,7 @@
           (let [sid        (str (random-uuid))
                 minted     (mint-mbql-handle! sid user-id)
                 body       (payload (call! "visualize_query" sid {:query_handle minted}))
-                credential (mcp.session/issue-ui-credential sid user-id)]
+                credential (mcp.session/issue-ui-credential sid user-id #{"agent:query:run"})]
             (testing "the payload names a query in a shape the iframe reads"
               (is (seq (filter (set (keys body)) ui-app-payload-keys))
                   (str "structuredContent has no key useMcpApp.tsx acts on: " (pr-str (keys body)))))
@@ -411,7 +411,7 @@
                 ;; The shape `POST /api/embed-mcp/drills` mints: legacy dataset_query, no prompt.
                 drill      (mcp.session/store-handle! sid user-id "ZW5jb2RlZA==")
                 body       (payload (call! "render_drill_through" sid {:query_handle drill}))
-                credential (mcp.session/issue-ui-credential sid user-id)]
+                credential (mcp.session/issue-ui-credential sid user-id #{"agent:query:run"})]
             (is (= drill (:query_handle body)))
             (is (=? {:status 200 :body {:query "ZW5jb2RlZA=="}}
                     (client/client-full-response
