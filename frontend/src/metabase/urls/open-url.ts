@@ -1,5 +1,3 @@
-import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { type Path, queryToSearch } from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
 import {
@@ -10,6 +8,8 @@ import {
   isSameOrSiteUrlOrigin,
   isSameOrigin,
 } from "metabase/utils/dom";
+
+import { PLUGIN_HOST_NAVIGATION } from "./plugins";
 
 // shouldOpenInBlankWindow falls back to these when window.event is not a mouse event,
 // which happens when openUrl is called after an await.
@@ -54,8 +54,7 @@ export function shouldOpenInBlankWindow(
     blankOnDifferentOrigin = true,
   }: ShouldOpenInBlankWindowOptions = {},
 ): boolean {
-  if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + modular embedding)
+  if (PLUGIN_HOST_NAVIGATION.host?.sameOriginTarget === "_blank") {
     return true;
   }
   const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
@@ -74,8 +73,7 @@ export function shouldOpenInBlankWindow(
 export function getUrlTarget(
   url: string | undefined,
 ): "_self" | "_blank" | undefined {
-  if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + modular embedding)
+  if (PLUGIN_HOST_NAVIGATION.host?.sameOriginTarget === "_blank") {
     return "_blank";
   }
 
@@ -92,7 +90,7 @@ export type OpenUrlOptions = {
 /**
  * Opens a URL using the most appropriate strategy: in the current window,
  * a new tab, or via client-side navigation when it's an in-app Metabase URL.
- * Honours the embedding SDK's `handleLink` plugin if installed.
+ * Gives an installed host link handler the first chance to open it.
  */
 export async function openUrl(
   url: string,
@@ -109,13 +107,9 @@ export async function openUrl(
 ): Promise<void> {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
-  // In the sdk, allow the host app to override how to open links
-  if (isEmbeddingSdk()) {
-    const result = await handleLinkSdkPlugin(url);
-    if (result.handled) {
-      // Plugin handled the link, don't continue with default behavior
-      return;
-    }
+  const handleLink = PLUGIN_HOST_NAVIGATION.host?.handleLink;
+  if (handleLink && (await handleLink(url))) {
+    return;
   }
 
   if (shouldOpenInBlankWindow(url, options)) {
