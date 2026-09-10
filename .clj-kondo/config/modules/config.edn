@@ -1347,6 +1347,7 @@
            server
            session
            settings
+           sso.auth-identity
            system
            task
            transforms
@@ -1356,7 +1357,8 @@
            warehouse-schema-overlay
            warehouses
            warehouses.schema}
-   :model-imports #{:model/Card
+   :model-imports #{:model/AuthIdentity
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Database
@@ -4253,6 +4255,16 @@
            setup
            util}
    :model-imports :bypass}
+
+  enterprise/session-management
+  {:team "UX West"
+   :api  #{metabase-enterprise.session-management.api}
+   :uses #{api
+           lib.schema
+           request
+           session
+           users
+           util}}
 
   enterprise/sso
   {:team "UX West"
