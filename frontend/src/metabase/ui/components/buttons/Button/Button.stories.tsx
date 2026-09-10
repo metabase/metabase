@@ -1,7 +1,6 @@
-import { within } from "@storybook/test";
 import { Fragment } from "react";
 
-import { Badge, Box, Group, Icon, KeyboardShortcut, Stack } from "metabase/ui";
+import { Badge, Box, Icon, KeyboardShortcut } from "metabase/ui";
 import {
   StoryBoard,
   StoryJsx,
@@ -35,21 +34,8 @@ const argTypes = {
     control: { type: "inline-radio" },
   },
   size: {
-    control: {
-      type: "select",
-      options: [
-        "xs",
-        "sm",
-        "md",
-        "lg",
-        "xl",
-        "compact-xs",
-        "compact-sm",
-        "compact-md",
-        "compact-lg",
-        "compact-xl",
-      ],
-    },
+    options: ["sm", "md", "lg", "compact-sm", "compact-md"],
+    control: { type: "inline-radio" },
   },
   disabled: {
     control: { type: "boolean" },
@@ -74,65 +60,6 @@ const DefaultTemplate = (args: ButtonProps) => (
   <Button {...args}>Button</Button>
 );
 
-const ButtonGroupTemplate = (args: ButtonProps) => (
-  <Button.Group>
-    <Button {...args}>One</Button>
-    <Button {...args}>Two</Button>
-    <Button {...args}>Three</Button>
-  </Button.Group>
-);
-
-const GridRow = (args: ButtonProps) => (
-  <Group wrap="nowrap">
-    <Button {...args}>Save</Button>
-    <Button {...args} leftSection={<Icon name="add" />}>
-      New
-    </Button>
-    <Button {...args} rightSection={<Icon name="chevrondown" />}>
-      Category
-    </Button>
-    <Button {...args} leftSection={<Icon name="play" />} />
-  </Group>
-);
-
-const GridRowGroup = (args: ButtonProps) => (
-  <Fragment>
-    <GridRow {...args} />
-    <GridRow {...args} radius="xl" />
-  </Fragment>
-);
-
-const GridTemplate = (args: ButtonProps) => (
-  <Stack>
-    <GridRowGroup {...args} variant="filled" />
-    <GridRowGroup {...args} variant="default" />
-    <GridRow {...args} variant="subtle" />
-  </Stack>
-);
-
-const LoadingGridRow = (args: ButtonProps) => (
-  <Group wrap="nowrap">
-    <Button {...args}>Save</Button>
-    <Button {...args}>Save</Button>
-    <Button {...args} leftSection={<Icon name="play" />} />
-  </Group>
-);
-
-const LoadingGridRowGroup = (args: ButtonProps) => (
-  <Fragment>
-    <LoadingGridRow {...args} />
-    <LoadingGridRow {...args} radius="xl" />
-  </Fragment>
-);
-
-const LoadingGridTemplate = (args: ButtonProps) => (
-  <Stack>
-    <LoadingGridRowGroup {...args} variant="filled" />
-    <LoadingGridRowGroup {...args} variant="default" />
-    <LoadingGridRow {...args} variant="subtle" />
-  </Stack>
-);
-
 export default {
   title: "Components/Buttons/Button",
   component: Button,
@@ -142,139 +69,6 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-};
-
-export const ButtonGroup = {
-  render: ButtonGroupTemplate,
-  name: "Button group",
-};
-
-export const DefaultSize = {
-  render: GridTemplate,
-  name: "Default size",
-};
-
-export const DefaultSizeCustomColor = {
-  render: GridTemplate,
-  name: "Default size, custom color",
-  args: {
-    color: "feedback-negative",
-  },
-};
-
-export const DefaultSizeDisabled = {
-  render: GridTemplate,
-  name: "Default size, disabled",
-  args: {
-    disabled: true,
-  },
-};
-
-export const DefaultSizeLoading = {
-  render: LoadingGridTemplate,
-  name: "Default size, loading",
-  args: {
-    loading: true,
-  },
-};
-
-export const DefaultSizeFullWidth = {
-  render: GridTemplate,
-  name: "Default size, full width",
-  args: {
-    fullWidth: true,
-  },
-};
-
-export const DefaultSizeFullWidthDisabled = {
-  render: GridTemplate,
-  name: "Default size, full width, disabled",
-  args: {
-    disabled: true,
-    fullWidth: true,
-  },
-};
-
-export const DefaultSizeFullWidthLoading = {
-  render: LoadingGridTemplate,
-  name: "Default size, full width, loading",
-  args: {
-    loading: true,
-    fullWidth: true,
-  },
-};
-
-export const CompactSize = {
-  render: GridTemplate,
-  name: "Compact size",
-  args: {
-    size: "compact-md",
-  },
-};
-
-export const CompactSizeCustomColor = {
-  render: GridTemplate,
-  name: "Compact size, custom color",
-  args: {
-    color: "feedback-negative",
-    size: "compact-md",
-  },
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const canvas = within(canvasElement);
-    const button = (
-      await canvas.findAllByRole("button", {
-        name: "Save",
-      })
-    )[0];
-    button.classList.add("pseudo-hover");
-  },
-};
-
-export const CompactSizeDisabled = {
-  render: GridTemplate,
-  name: "Compact size, disabled",
-  args: {
-    size: "compact-md",
-    disabled: true,
-  },
-};
-
-export const CompactSizeLoading = {
-  render: LoadingGridTemplate,
-  name: "Compact size, loading",
-  args: {
-    size: "compact-md",
-    loading: true,
-  },
-};
-
-export const CompactSizeFullWidth = {
-  render: GridTemplate,
-  name: "Compact size, full width",
-  args: {
-    size: "compact-md",
-    fullWidth: true,
-  },
-};
-
-export const CompactSizeFullWidthDisabled = {
-  render: GridTemplate,
-  name: "Compact size, full width, disabled",
-  args: {
-    size: "compact-md",
-    disabled: true,
-    fullWidth: true,
-  },
-};
-
-export const CompactSizeFullWidthLoading = {
-  render: LoadingGridTemplate,
-  name: "Compact size, full width, loading",
-  args: {
-    size: "compact-md",
-    loading: true,
-    fullWidth: true,
-  },
 };
 
 const MATRIX_SIZES = ["md", "sm", "lg"] as const;
@@ -515,8 +309,8 @@ const matrixParameters = {
   controls: { disable: true },
 };
 
-export const MatrixFilled = {
-  name: "Matrix: Filled",
+export const VariantFilled = {
+  name: "Variant: Filled",
   render: () => (
     <VariantMatrix
       title="Button · filled"
@@ -528,8 +322,8 @@ export const MatrixFilled = {
   parameters: matrixParameters,
 };
 
-export const MatrixDefault = {
-  name: "Matrix: Default",
+export const VariantDefault = {
+  name: "Variant: Default",
   render: () => (
     <VariantMatrix
       title="Button · default"
@@ -541,8 +335,8 @@ export const MatrixDefault = {
   parameters: matrixParameters,
 };
 
-export const MatrixLight = {
-  name: "Matrix: Light",
+export const VariantLight = {
+  name: "Variant: Light",
   render: () => (
     <VariantMatrix
       title="Button · light"
@@ -554,8 +348,8 @@ export const MatrixLight = {
   parameters: matrixParameters,
 };
 
-export const MatrixSubtle = {
-  name: "Matrix: Subtle",
+export const VariantSubtle = {
+  name: "Variant: Subtle",
   render: () => (
     <VariantMatrix
       title="Button · subtle"
@@ -567,21 +361,8 @@ export const MatrixSubtle = {
   parameters: matrixParameters,
 };
 
-export const MatrixCompact = {
-  name: "Matrix: Compact",
-  render: () => (
-    <VariantMatrix
-      title="Button · compact"
-      variant="transparent"
-      colors={["brand"]}
-      sizes={COMPACT_SIZES}
-    />
-  ),
-  parameters: matrixParameters,
-};
-
 const OnDarkTemplate = () => (
-  <StoryBoard title="Button · onDark" padding="2rem" onDark>
+  <StoryBoard title="Button · on dark" padding="2rem" onDark>
     <MatrixSection
       title="Primary"
       variant="on-dark-primary"
@@ -597,9 +378,21 @@ const OnDarkTemplate = () => (
   </StoryBoard>
 );
 
-export const MatrixOnDark = {
-  name: "Matrix: onDark",
+export const VariantOnDark = {
+  name: "Variant: On Dark",
   render: OnDarkTemplate,
+  parameters: matrixParameters,
+};
+
+export const Compact = {
+  render: () => (
+    <VariantMatrix
+      title="Button · compact"
+      variant="transparent"
+      colors={["brand"]}
+      sizes={COMPACT_SIZES}
+    />
+  ),
   parameters: matrixParameters,
 };
 

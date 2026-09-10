@@ -1,8 +1,4 @@
-import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/blocks";
-import { Icon } from "metabase/ui";
-import { Group, Stack } from "metabase/ui";
-import { Button } from "./";
+import { Canvas, Meta } from "@storybook/blocks";
 import * as ButtonStories from "./Button.stories";
 
 <Meta of={ButtonStories} />
@@ -46,62 +42,30 @@ Not to use:
 
 <Canvas of={ButtonStories.Default} />
 
-### Button.Group
+### Variant: Filled
 
-<Canvas of={ButtonStories.ButtonGroup} />
+<Canvas of={ButtonStories.VariantFilled} />
 
-### Default size
+### Variant: Default
 
-<Canvas of={ButtonStories.DefaultSize} />
+<Canvas of={ButtonStories.VariantDefault} />
 
-#### Custom color
+### Variant: Light
 
-<Canvas of={ButtonStories.DefaultSizeCustomColor} />
+<Canvas of={ButtonStories.VariantLight} />
 
-#### Disabled state
+### Variant: Subtle
 
-<Canvas of={ButtonStories.DefaultSizeDisabled} />
+<Canvas of={ButtonStories.VariantSubtle} />
 
-#### Loading state
+### Variant: On Dark
 
-<Canvas of={ButtonStories.DefaultSizeLoading} />
+<Canvas of={ButtonStories.VariantOnDark} />
 
-### Default size & full width
+### Compact
 
-<Canvas of={ButtonStories.DefaultSizeFullWidth} />
+<Canvas of={ButtonStories.Compact} />
 
-#### Disabled state
+### Sections
 
-<Canvas of={ButtonStories.DefaultSizeFullWidthDisabled} />
-
-#### Loading state
-
-<Canvas of={ButtonStories.DefaultSizeFullWidthLoading} />
-
-### Compact size
-
-<Canvas of={ButtonStories.CompactSize} />
-
-#### Custom color
-
-<Canvas of={ButtonStories.CompactSizeCustomColor} />
-
-#### Disabled state
-
-<Canvas of={ButtonStories.CompactSizeDisabled} />
-
-#### Loading state
-
-<Canvas of={ButtonStories.CompactSizeLoading} />
-
-### Compact size & full width
-
-<Canvas of={ButtonStories.CompactSizeFullWidth} />
-
-#### Disabled state
-
-<Canvas of={ButtonStories.CompactSizeFullWidthDisabled} />
-
-#### Loading state
-
-<Canvas of={ButtonStories.CompactSizeFullWidthLoading} />
+<Canvas of={ButtonStories.Sections} />
