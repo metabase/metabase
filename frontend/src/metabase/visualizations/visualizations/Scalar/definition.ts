@@ -27,7 +27,10 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   },
 
   checkRenderable(series, settings) {
-    validateGoalReferences(series, settings);
+    // extra series turn the number into a bar chart, which ignores the color ranges
+    if (series.length === 1) {
+      validateGoalReferences(series, settings);
+    }
   },
 
   settings: {

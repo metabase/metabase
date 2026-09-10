@@ -90,6 +90,26 @@ describe("SCALAR_CHART_DEFINITION", () => {
       ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
+    it("ignores the ranges when extra series turn the number into a bar chart", () => {
+      const series = createSeries({
+        referenced_entities: {
+          card: { 9: { status: "failed", error: "boom" } },
+        },
+      });
+
+      expect(() =>
+        checkRenderable([...series, ...createSeries()], {
+          "scalar.segments": [
+            {
+              min: { type: "card", id: 9, column: "goal" },
+              max: null,
+              color: "green",
+            },
+          ],
+        }),
+      ).not.toThrow();
+    });
+
     it("refuses to render when a referenced value is not a number", () => {
       const series = createSeries({
         referenced_entities: {
