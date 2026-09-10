@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -407,6 +408,84 @@
           (is (str/starts-with? location "https://example.com/callback?"))
           (is (str/includes? location "error=access_denied"))
           (is (str/includes? location "state=test-state")))))))
+
+;;; -------------------------------------- Subpath hosting (GIT-10551) ---------------------------------------------
+
+;; Metabase doesn't officially support being hosted under a subpath, but the OAuth consent flow is entirely
+;; driven by site-url, so these tests pin the parts of the flow the *browser* sees — the consent form action,
+;; the CSRF cookie path, and the login redirect — to subpath-aware values. The server never sees the subpath
+;; (the reverse proxy strips it), so the routes themselves are unchanged.
+
+(defn- extract-csrf-cookie-path
+  "Extract the Path attribute of the CSRF cookie from the response.
+   Checks both the :cookies map and the Set-Cookie header (which may be a string or vector of strings)."
+  [response]
+  (or (get-in response [:cookies "metabase.OAUTH_CSRF" :path])
+      (let [set-cookie (get-in response [:headers "Set-Cookie"])
+            cookies    (cond
+                         (string? set-cookie)     [set-cookie]
+                         (sequential? set-cookie) (vec set-cookie)
+                         :else                    [])]
+        (some #(when (and (string? %) (str/includes? % "metabase.OAUTH_CSRF="))
+                 (second (re-find #"Path=([^;]+)" %)))
+              cookies))))
+
+(deftest csrf-cookie-path-follows-site-url-test
+  (doseq [[site-url expected-path] {"http://localhost:3000"              "/oauth/authorize"
+                                    "http://localhost:3000/metabase"     "/metabase/oauth/authorize"
+                                    "http://localhost:3000/metabase/"    "/metabase/oauth/authorize"
+                                    "http://localhost:3000/bi/metabase"  "/bi/metabase/oauth/authorize"}]
+    (testing (str "site-url " site-url)
+      (mt/with-temporary-setting-values [site-url site-url]
+        (is (= expected-path (:path (#'api.oauth/csrf-cookie-opts 600))))))))
+
+(deftest subpath-consent-flow-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000/metabase"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [client       (create-test-client!)
+            client-id    (:client_id client)
+            consent-resp (get-consent-page! :crowberto client-id)
+            consent-body (:body consent-resp)]
+        (testing "the consent form posts to the absolute, subpath-prefixed decision URL"
+          (is (str/includes? consent-body
+                             "action=\"http://localhost:3000/metabase/oauth/authorize/decision\"")))
+        (testing "the CSRF cookie path includes the subpath so the browser sends the cookie with the form POST"
+          (is (= "/metabase/oauth/authorize" (extract-csrf-cookie-path consent-resp))))
+        (testing "the consent -> decision flow still round-trips"
+          (let [csrf-token  (extract-csrf-token-from-consent consent-body)
+                csrf-cookie (extract-csrf-cookie consent-resp)
+                params-sig  (extract-params-sig-from-consent consent-body)
+                response    (form-post-decision!
+                             :crowberto
+                             {:approved      "true"
+                              :csrf_token    csrf-token
+                              :params_sig    params-sig
+                              :client_id     client-id
+                              :redirect_uri  "https://example.com/callback"
+                              :response_type "code"
+                              :scope         "profile"
+                              :state         "test-state"}
+                             302
+                             :csrf-cookie csrf-cookie)
+                location    (get-in response [:headers "Location"])]
+            (is (str/starts-with? location "https://example.com/callback?"))
+            (is (str/includes? location "code="))
+            (testing "the decision response clears the CSRF cookie at the same subpath-prefixed path
+                      (a clear at a different path would leave the old cookie shadowing the next flow)"
+              (is (= "/metabase/oauth/authorize" (extract-csrf-cookie-path response))))))))))
+
+(deftest subpath-login-redirect-test
+  (testing "unauthenticated GET /oauth/authorize under a subpath"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000/metabase"]
+      (let [response (client/client-full-response :get 302 "oauth/authorize"
+                                                  :client_id     "some-client"
+                                                  :redirect_uri  "https://example.com/callback"
+                                                  :response_type "code")
+            location (get-in response [:headers "Location"])]
+        (testing "the login page URL carries the subpath"
+          (is (str/starts-with? location "http://localhost:3000/metabase/auth/login?redirect=")))
+        (testing "the redirect param stays basename-relative — the SPA router re-adds the subpath"
+          (is (str/includes? location (str "redirect=" (URLEncoder/encode "/oauth/authorize" "UTF-8")))))))))
 
 (defn- approve-or-deny!
   "Drive the consent + decision flow for `client-id` and return the decision response.
