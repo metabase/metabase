@@ -248,6 +248,15 @@
       :else
       {:type :none})))
 
+(defn- remedy-syncable?
+  "Whether an admin can switch this remedy on from the settings list. Personal and instance-analytics
+  collections are named so the refusal makes sense, but that list never offers either, so neither is
+  something an admin can act on here."
+  [{:keys [type collection]}]
+  (boolean (and (= :collection type)
+                (not (:personal collection))
+                (not= collections/instance-analytics-collection-type (:type collection)))))
+
 (defn- dependency-collection
   "Where the dependency lives, as a map to merge into its description. An explicit `nil` says the root
   collection — a real place, not a missing value — while an absent key says we could not resolve the
@@ -286,15 +295,18 @@
 
 (defn- subsumed-dependency?
   "Whether reporting `dep` would tell an admin nothing new: everything that reaches it is itself an
-  ineligible dependency whose remedy is the same, so the row that fixes it is already on screen. Click
-  behaviour pointing at an unsynced dashboard drags in every card that dashboard holds, and those cards
-  are covered by syncing the dashboard's collection. A referrer with a *different* remedy doesn't
-  subsume — that one needs its own row, or the next save is refused for a reason never shown."
+  ineligible dependency with the same remedy, and that remedy is a switch covering a whole collection, so
+  the row already on screen fixes this one too. Click behaviour pointing at an unsynced dashboard drags in
+  every card that dashboard holds, and syncing the dashboard's collection covers them all. Neither a
+  referrer with a *different* remedy nor a remedy [[remedy-syncable?]] rejects subsumes: there the fix is
+  to move each item, which the parent's move doesn't do, so hiding one refuses the next save for a reason
+  never shown."
   [dep remedies]
   (when-let [referrers (seq (referencing-entities dep))]
     (let [remedy (get remedies (dependency-key dep))]
       ;; Referrers outside `remedies` are eligible content, so they never subsume.
-      (every? #(= remedy (get remedies %)) referrers))))
+      (and (remedy-syncable? remedy)
+           (every? #(= remedy (get remedies %)) referrers)))))
 
 (defn- describe-dependencies
   "Renders [[collections/ineligible-dependencies]] for the API: what each dependency is, the collection it
@@ -365,14 +377,20 @@
       (contains? described :collection) (assoc :collection (:collection described)))
     remedy))
 
-(defn- remedy-syncable?
-  "Whether an admin can switch this remedy on from the settings list. Personal and instance-analytics
-  collections are named so the refusal makes sense, but that list never offers either, so neither is
-  something an admin can act on here."
-  [{:keys [type collection]}]
-  (boolean (and (= :collection type)
-                (not (:personal collection))
-                (not= collections/instance-analytics-collection-type (:type collection)))))
+(defn- pooled-dependencies
+  "One row per dependency, in first-appearance order, with `:used_by` pooled across the group. Each
+  failing selection describes the dependency separately, naming only what reached it from that one, so
+  keeping the first row alone would drop every other selection's referrers. Nothing else varies between
+  those rows — the rest describes the entity itself."
+  [deps]
+  (let [used-by (reduce (fn [acc {:keys [model id used_by]}]
+                          (update acc [model id] (fnil into []) used_by))
+                        {}
+                        deps)]
+    (into []
+          (comp (m/distinct-by (juxt :model :id))
+                (map #(assoc % :used_by (vec (distinct (used-by [(:model %) (:id %)]))))))
+          deps)))
 
 (defn- describe-required-syncs
   "The refusal as clients render it: one entry per collection an admin would act on, carrying the
@@ -391,7 +409,7 @@
               {:remedy       remedy
                :syncable     (remedy-syncable? remedy)
                :blocks       (vec (distinct (map :blocks group)))
-               :dependencies (into [] (m/distinct-by (juxt :model :id)) (map :dep group))}))
+               :dependencies (pooled-dependencies (map :dep group))}))
           (distinct (map :remedy entries)))))
 
 (defn- describe-dependent-failure

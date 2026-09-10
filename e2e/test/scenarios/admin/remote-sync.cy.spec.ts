@@ -661,9 +661,11 @@ describe("Remote Sync", () => {
             cy.findByText(SOURCE_QUESTION_NAME).should("be.visible");
             cy.findByText(OTHER_SOURCE_QUESTION_NAME).should("be.visible");
 
+            // Each dependent reaches the source from a different selected collection, so the cell
+            // names both — one per selection, pooled rather than reported from whichever came first.
             cy.findByText(
               new RegExp(
-                `^(${DEPENDENT_QUESTION_NAME}|${SECOND_DEPENDENT_QUESTION_NAME})$`,
+                `^(${DEPENDENT_QUESTION_NAME}, ${SECOND_DEPENDENT_QUESTION_NAME}|${SECOND_DEPENDENT_QUESTION_NAME}, ${DEPENDENT_QUESTION_NAME})$`,
               ),
             ).should("be.visible");
 

@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [with-library with-library-synced with-library-not-synced]]
    [metabase.events.core :as events]
    [metabase.test :as mt]
@@ -373,6 +374,27 @@
         ;; Only `First` is reached from the synced collection, so only it survives — but something must.
         (is (= #{["dashboard" first-id]} (reported-dependencies ex)))))))
 
+(deftest bulk-set-remote-sync-dependency-pruning-keeps-items-behind-an-unsyncable-remedy-test
+  (testing "content behind a remedy no switch covers is reported item by item — moving the parent leaves the rest"
+    ;; The same shape as the pruning test above, with a personal collection standing in for `Regular`.
+    ;; There one switch covers the dashboard and its cards; here every item has to be moved on its own.
+    (let [personal-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
+      (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                     :model/Card {held-card-id :id} {:name "Held Card"
+                                                     :collection_id personal-id
+                                                     :database_id (mt/id)
+                                                     :dataset_query (mt/mbql-query venues)}
+                     :model/Dashboard {linked-id :id} {:name "Linked" :collection_id personal-id}
+                     :model/DashboardCard _ {:dashboard_id linked-id :card_id held-card-id}
+                     :model/Dashboard {hub-id :id} {:name "Hub" :collection_id synced-id}
+                     :model/DashboardCard _ (link-to-dashboard-dashcard hub-id linked-id)]
+        (let [ex         (is (thrown? clojure.lang.ExceptionInfo
+                                      (core/bulk-set-remote-sync {synced-id true})))
+              [required] (get-in (ex-data ex) [:errors :required])]
+          (testing "the remedy is the personal collection, which the settings list never offers"
+            (is (false? (:syncable required))))
+          (is (= #{["dashboard" linked-id] ["card" held-card-id]} (reported-dependencies ex))))))))
+
 (deftest bulk-set-remote-sync-reports-every-blocked-collection-test
   (testing "one entry covers both selected collections it unblocks, rather than repeating per selection"
     (mt/with-temp [:model/Collection {synced-a-id :id} {:name "Synced A" :location "/" :is_remote_synced false}
@@ -397,7 +419,10 @@
         (is (= 1 (count (get-in (ex-data ex) [:errors :required]))))
         (is (= #{"Synced A" "Synced B"} (into #{} (map :name) (:blocks required))))
         (testing "the shared dependency is listed once, not once per selection"
-          (is (= [source-card-id] (map :id (:dependencies required)))))))))
+          (is (= [source-card-id] (map :id (:dependencies required)))))
+        (testing "collapsing it keeps what uses it in *both* selections, not just the first"
+          (is (= #{"Dependent A" "Dependent B"}
+                 (into #{} (map :name) (:used_by (first (:dependencies required)))))))))))
 
 (deftest bulk-set-remote-sync-dependent-failure-is-structured-test
   (testing "disabling a collection something still depends on fails with a structured payload, not a bare message"
