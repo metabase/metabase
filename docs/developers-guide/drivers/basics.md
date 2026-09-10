@@ -41,7 +41,7 @@ You can't remove the Postgres, H2, or MySQL drivers, because Metabase needs them
 
 ## Example module directory
 
-Let's take a high-level look at how a driver module is laid out, using the [SQLite driver](https://github.com/metabase/metabase/blob/master/src/metabase/driver/sqlite.clj) as the example:
+Let's take a high-level look at how a driver module is laid out, using the [SQLite driver](https://github.com/metabase/metabase/tree/master/modules/drivers/sqlite) as the example:
 
 ```
 |-- deps.edn
