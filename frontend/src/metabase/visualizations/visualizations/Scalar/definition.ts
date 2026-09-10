@@ -54,10 +54,6 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
-      getWrapperStyle: () => ({
-        marginLeft: 0,
-        marginRight: 0,
-      }),
       getProps: ([{ card, data }]) => ({
         canRemoveAll: true,
         data,

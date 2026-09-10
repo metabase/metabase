@@ -127,7 +127,6 @@ export const ChartSettingSegmentsEditor = ({
           mt="2.5rem"
           mb="3rem"
           lh="1.25rem"
-          px="1.5rem"
         >{t`Add color ranges to make this number change color depending on it's value`}</Text>
       )}
 
