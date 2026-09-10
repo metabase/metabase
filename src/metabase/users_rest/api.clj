@@ -635,9 +635,11 @@
                   (tru "Invalid password")))
     ;; We want to propagate MFA info from the old session so that users aren't auto-logged out.
     ;; This needs to be done before we delete the old session.
-    (let [mfa-auth-identity-id (when-let [session-key (:metabase-session-key request)]
-                                 (when-let [session (users-rest.db/mfa-session-id-from-hashed-key
-                                                     (session/hash-session-key session-key))]
+    (let [mfa-auth-identity-id (some-> request
+                                       :metabase-session-key
+                                       session/hash-session-key
+                                       users-rest.db/mfa-session-id-from-hashed-key
+                                       :mfa_auth_identity_id)]
                                    (:mfa_auth_identity_id session)))]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
       (auth-identity/set-password! id password)
