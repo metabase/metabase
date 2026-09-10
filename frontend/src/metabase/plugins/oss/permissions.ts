@@ -2,7 +2,6 @@ import type { Action, ThunkDispatch } from "@reduxjs/toolkit";
 import type { ReactElement, ReactNode } from "react";
 
 import { getUserIsAdmin } from "metabase/current-user";
-import { definePluginSlot } from "metabase/plugin-slots";
 import type { State } from "metabase/redux/store";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
@@ -21,6 +20,7 @@ import type {
 } from "metabase-types/api";
 import { DataPermissionValue } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
 import type { PluginGroupManagersType } from "../types";
 
 // These describe the entries EE plugins contribute to the admin permissions

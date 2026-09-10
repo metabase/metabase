@@ -1,7 +1,4 @@
-import type {
-  OnBeforeRequestHandler,
-  OnBeforeRequestHandlerConfig,
-} from "metabase/api/client";
+import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 import { PLUGIN_API } from "metabase/api/client";
 import {
   EMBEDDING_SDK_CONFIG,
@@ -25,8 +22,6 @@ const REQUEST: OnBeforeRequestHandlerConfig = {
   url: "/api/health",
   data: {},
 };
-
-const runHandler = (handler: OnBeforeRequestHandler) => handler(REQUEST);
 
 describe("setDataApp", () => {
   const originalConfig = { ...EMBEDDING_SDK_CONFIG };
@@ -53,9 +48,7 @@ describe("setDataApp", () => {
     setDataApp("sales");
 
     expect(
-      await runHandler(
-        PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders,
-      ),
+      await PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders(REQUEST),
     ).toEqual({
       headers: {
         "X-Metabase-Client": "data-app",
@@ -68,9 +61,7 @@ describe("setDataApp", () => {
     setDataApp("");
 
     expect(
-      await runHandler(
-        PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders,
-      ),
+      await PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders(REQUEST),
     ).toEqual({ headers: { "X-Metabase-Client": "data-app" } });
   });
 
@@ -79,7 +70,7 @@ describe("setDataApp", () => {
     setDataApp("sales");
 
     expect(
-      await runHandler(PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader),
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
     ).toBeUndefined();
   });
 
@@ -87,9 +78,7 @@ describe("setDataApp", () => {
     setDataApp("sales");
 
     expect(
-      await runHandler(
-        PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader,
-      ),
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader(REQUEST),
     ).toBeUndefined();
   });
 
@@ -98,9 +87,7 @@ describe("setDataApp", () => {
 
     expect(isDataAppDev()).toBe(true);
     expect(
-      await runHandler(
-        PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader,
-      ),
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader(REQUEST),
     ).toEqual({ headers: { "X-Metabase-Embedded-Preview": "true" } });
   });
 
@@ -111,15 +98,12 @@ describe("setDataApp", () => {
     // the data-app attribution.
     setDataApp("sales");
 
-    const installed = await runHandler(
-      PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders,
-    );
-    const reinstalled = await runHandler(
-      setRequestClientHeaders({
-        name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-        identifier: EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier,
-      }),
-    );
+    const installed =
+      await PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders(REQUEST);
+    const reinstalled = await setRequestClientHeaders({
+      name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      identifier: EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier,
+    })(REQUEST);
 
     expect(reinstalled).toEqual(installed);
   });

@@ -1,12 +1,12 @@
 import type { ComponentType } from "react";
 
-import { definePluginSlot } from "metabase/plugin-slots";
 import {
   PluginPlaceholder,
   pluginPlaceholderRoute,
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { User, UserId } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
 import type { GetAuthProviders } from "../types";
 
 export type AuthSettingsPageTab =

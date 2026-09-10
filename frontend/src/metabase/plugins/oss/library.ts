@@ -8,7 +8,6 @@ import type {
   OmniPickerItem,
 } from "metabase/common/components/Pickers/EntityPicker/types";
 import type { MiniPickerCollectionFolderItem } from "metabase/common/components/Pickers/MiniPicker/types";
-import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type {
   DataReferenceLibraryItem,
@@ -26,6 +25,8 @@ import type {
   SchemaId,
   TableId,
 } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 export type CreateLibraryModalProps = {
   title?: string;

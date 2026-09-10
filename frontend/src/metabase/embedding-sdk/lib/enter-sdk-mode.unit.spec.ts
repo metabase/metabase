@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 import { ApiClient, PLUGIN_API } from "metabase/api/client";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import { resetPluginSlots } from "metabase/plugin-slots";
+import { resetPluginSlots } from "metabase/plugins/slot";
 
 import { enterSdkMode } from "./enter-sdk-mode";
 
@@ -12,9 +12,6 @@ const REQUEST: OnBeforeRequestHandlerConfig = {
   url: "/api/health",
   data: {},
 };
-
-const runEmbeddedHeaderHandler = () =>
-  PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST);
 
 describe("enterSdkMode", () => {
   const originalConfig = { ...EMBEDDING_SDK_CONFIG };
@@ -25,29 +22,58 @@ describe("enterSdkMode", () => {
     resetPluginSlots();
   });
 
-  it("should stop tagging requests as embedded when the SDK runs inside an iframe", async () => {
+  it("enables SDK mode", () => {
+    enterSdkMode();
+
+    expect(EMBEDDING_SDK_CONFIG.isEmbeddingSdk).toBe(true);
+  });
+
+  it("omits the embedded header for SDK requests inside an iframe", async () => {
     window.overrideIsWithinIframe = true;
 
-    expect(await runEmbeddedHeaderHandler()).toEqual({
+    expect(
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
+    ).toEqual({
       headers: { "X-Metabase-Embedded": "true" },
     });
 
     enterSdkMode();
 
-    expect(await runEmbeddedHeaderHandler()).toBeUndefined();
+    expect(
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
+    ).toBeUndefined();
   });
+
   it("reinstalls the opt-out after a reset, even if SDK mode is already true", async () => {
     window.overrideIsWithinIframe = true;
     enterSdkMode();
     resetPluginSlots();
-    expect(await runEmbeddedHeaderHandler()).toEqual({
+
+    expect(
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
+    ).toEqual({
       headers: { "X-Metabase-Embedded": "true" },
     });
+
     enterSdkMode();
-    enterSdkMode();
-    expect(await runEmbeddedHeaderHandler()).toBeUndefined();
+
+    expect(
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
+    ).toBeUndefined();
   });
-  it("keeps client and authentication headers on real SDK requests inside an iframe", async () => {
+
+  it("keeps the opt-out when initialized repeatedly", async () => {
+    window.overrideIsWithinIframe = true;
+    enterSdkMode();
+
+    enterSdkMode();
+
+    expect(
+      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
+    ).toBeUndefined();
+  });
+
+  it("preserves client and authentication headers inside an iframe", async () => {
     window.overrideIsWithinIframe = true;
     fetchMock.get("path:/api/health", { body: { status: "ok" } });
     PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders = async () => ({
@@ -61,9 +87,9 @@ describe("enterSdkMode", () => {
 
     await new ApiClient().request({ method: "GET", url: "/api/health" });
 
-    const headers = new Headers(
-      fetchMock.callHistory.lastCall()?.options.headers,
-    );
+    const request = fetchMock.callHistory.lastCall("path:/api/health");
+    expect(request).toBeDefined();
+    const headers = new Headers(request?.options.headers);
     expect(headers.get("X-Metabase-Embedded")).toBeNull();
     expect(headers.get("X-Metabase-Client")).toBe("embedding-sdk-react");
     expect(headers.get("X-Metabase-Session")).toBe("test-session");

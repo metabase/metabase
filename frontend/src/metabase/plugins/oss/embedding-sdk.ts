@@ -1,4 +1,4 @@
-import { definePluginSlot } from "metabase/plugin-slots";
+import { definePluginSlot } from "../slot";
 
 const getDefaultPluginEmbeddingSdk = () => ({
   isEnabled: () => false,

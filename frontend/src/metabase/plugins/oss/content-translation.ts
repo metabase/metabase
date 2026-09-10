@@ -4,10 +4,11 @@ import type {
   ContentTranslationFunction,
   TranslatableSingleSeries,
 } from "metabase/content-translation/types";
-import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { HoveredObject } from "metabase/viz-core";
 import type { EntityToken } from "metabase-types/api/entity";
+
+import { definePluginSlot } from "../slot";
 
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,

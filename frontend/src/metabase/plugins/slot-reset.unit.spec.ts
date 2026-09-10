@@ -1,4 +1,4 @@
-import { definePluginSlot, resetPluginSlots } from "metabase/plugin-slots";
+import { definePluginSlot, resetPluginSlots } from "./slot";
 
 describe("resetPluginSlots", () => {
   it.each(["toString", "constructor", "hasOwnProperty"])(
