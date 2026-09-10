@@ -5,6 +5,7 @@ import { writeResourceLockfile } from "./lockfile";
 import { getErrorMessage, getRelativeDefinitionLocation } from "./messages";
 import type { MetabaseClient } from "./metabase-client";
 import { orNullOn404 } from "./metabase-client";
+import { getSavedCardSourceIds } from "./saved-card-sources";
 import type {
   ActionLockEntry,
   DiscoveredAction,
@@ -144,6 +145,12 @@ async function fetchSourceModels(
       if (card.archived === true) {
         throw new Error(
           `${location} references an action on model ${id}, which is in the trash. Restore the model or remove the declaration, then run sync-resources again.`,
+        );
+      }
+
+      if (getSavedCardSourceIds(card.dataset_query).size > 0) {
+        throw new Error(
+          `Model ${id} depends on saved questions and cannot be synchronized. Use a model without saved question sources or joins.`,
         );
       }
 

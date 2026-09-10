@@ -3,6 +3,7 @@ import { isPositiveInteger, isRecord } from "./guards";
 import { writeResourceLockfile } from "./lockfile";
 import type { MetabaseClient } from "./metabase-client";
 import { orNullOn404 } from "./metabase-client";
+import { getSavedCardSourceIds } from "./saved-card-sources";
 import type { DataAppMetric, ResourceLockfile } from "./types";
 
 interface ResolvedQuery {
@@ -51,32 +52,6 @@ function getMetricClauseIds(
     clause.forEach((item) => getMetricClauseIds(item, ids));
   } else if (isRecord(clause)) {
     Object.values(clause).forEach((item) => getMetricClauseIds(item, ids));
-  }
-
-  return ids;
-}
-
-function getSavedCardSourceIds(
-  query: unknown,
-  ids = new Set<number>(),
-): Set<number> {
-  if (Array.isArray(query)) {
-    query.forEach((item) => getSavedCardSourceIds(item, ids));
-  } else if (isRecord(query)) {
-    Object.entries(query).forEach(([key, value]) => {
-      if (key === "source-card" && isPositiveInteger(value)) {
-        ids.add(value);
-      } else if (key === "source-table" && typeof value === "string") {
-        const match = /^card__(\d+)$/.exec(value);
-        const id = match && Number(match[1]);
-
-        if (isPositiveInteger(id)) {
-          ids.add(id);
-        }
-      }
-
-      getSavedCardSourceIds(value, ids);
-    });
   }
 
   return ids;

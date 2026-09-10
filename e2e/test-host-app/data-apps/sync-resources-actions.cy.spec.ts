@@ -10,6 +10,7 @@ import {
   resetDataAppHostAppSources,
   syncDataAppResources,
 } from "e2e/support/helpers";
+import type { Card } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -555,6 +556,50 @@ describe(
               });
             },
           );
+        });
+      });
+
+      it("does not copy models that are based on saved questions", () => {
+        declareOneAction();
+
+        cy.log("create a saved question");
+        cy.get<number>("@modelId")
+          .then((modelId) => cy.request<Card>(`/api/card/${modelId}`))
+          .then(({ body: model }) =>
+            cy.request<Card>("POST", "/api/card", {
+              name: "Scoreboard source question",
+              display: "table",
+              visualization_settings: {},
+              dataset_query: model.dataset_query,
+            }),
+          )
+          .its("body.id")
+          .as("sourceQuestionId");
+
+        cy.log("change the model to use that saved question as its source");
+        cy.get<number>("@sourceQuestionId").then((sourceQuestionId) => {
+          cy.get<number>("@modelId").then((modelId) => {
+            cy.request("PUT", `/api/card/${modelId}`, {
+              dataset_query: {
+                database: WRITABLE_DB_ID,
+                type: "query",
+                query: { "source-table": `card__${sourceQuestionId}` },
+              },
+            });
+          });
+        });
+
+        cy.request("/api/action").its("body").as("actionsBeforeSync");
+
+        syncExpectingRefusal(
+          "depends on saved questions and cannot be synchronized",
+        );
+
+        cy.log("sync should not copy models that are based on saved questions");
+        copiedModels().should("have.length", 0);
+
+        cy.get("@actionsBeforeSync").then((actions) => {
+          cy.request("/api/action").its("body").should("deep.equal", actions);
         });
       });
     });
