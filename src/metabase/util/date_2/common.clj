@@ -48,3 +48,20 @@
   given `zone-id` at January 1 of the current year (since that is the best we can do in this situation)."
   ^ZoneOffset [^ZoneId zone-id]
   (.. zone-id getRules (getStandardOffset (t/instant (t/offset-date-time (-> (t/zoned-date-time) t/year t/value) 1 1)))))
+
+(defonce ^:private start-of-week-provider
+  ;; :sunday matches the default of the `start-of-week` setting.
+  (atom (constantly :sunday)))
+
+(defn set-start-of-week-provider!
+  "Install the fn used to look up the instance-wide first day of the week.
+  Called at load time by `metabase.lib-be.settings`, which owns the `start-of-week` setting;
+  `util` sits below the settings framework in the module graph and cannot read it directly."
+  [f]
+  (reset! start-of-week-provider f))
+
+(defn start-of-week
+  "The instance-wide first day of the week as a keyword, e.g. `:sunday`.
+  Falls back to the setting's default until `metabase.lib-be.settings` is loaded."
+  []
+  ((deref start-of-week-provider)))

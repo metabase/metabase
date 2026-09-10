@@ -9,7 +9,8 @@
   []
   ;; late-bound: a static require here would drag the whole API route tree into the server module
   (let [api-routes    #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve 'metabase.api-routes.core/routes)
-        server-routes (server/make-routes api-routes)
+        auth-routes   #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve 'metabase.sso.auth-wrapper/routes)
+        server-routes (server/make-routes auth-routes api-routes)
         handler       (server/make-handler server-routes)]
     (fn [request respond raise]
       (letfn [(raise' [e]
