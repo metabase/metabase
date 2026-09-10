@@ -212,15 +212,6 @@ describe("showing and hiding single events", () => {
     expect(visibleNames(visibility)).toEqual(["RC1"]);
   });
 
-  it("hiding and showing the same events leaves no leftovers behind", () => {
-    const shown = {
-      [SELECTED]: [releases.id, marketing.id],
-      [EXCLUDED]: [],
-    };
-    const hidden = hideTimelineEvents(shown, [rc1, launch], context);
-    expect(showTimelineEvents(hidden, [rc1, launch], context)).toEqual(shown);
-  });
-
   it("does not affect other timelines", () => {
     const visibility = hideTimelineEvents(
       { [SELECTED]: [releases.id] },

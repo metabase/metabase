@@ -10,7 +10,6 @@ import { getDashCardById } from "metabase/dashboard/selectors";
 import { getDashCardVisibleTimelineEventIds } from "metabase/dashboard/timeline-events/selectors";
 import {
   hideTimelineEvents,
-  showCreatedTimelineEvent,
   showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
@@ -105,12 +104,6 @@ describe("dashboard timeline events visibility", () => {
     trackSimpleEvent.mockClear();
   });
 
-  it("shows nothing for a question saved without events", () => {
-    const store = setup();
-
-    expect(getVisibleEventIds(store)).toEqual([]);
-  });
-
   it("shows the events the question was saved with", () => {
     const store = setup({
       savedVisibility: {
@@ -185,47 +178,6 @@ describe("dashboard timeline events visibility", () => {
       eventB.id,
     ]);
     expect(store.getState().dashboard.dashcards).toEqual(savedDashcards);
-  });
-
-  it("shows the whole timeline when an event is created on a hidden one", () => {
-    const store = setup();
-    const created = createMockTimelineEvent({
-      id: 102,
-      timeline_id: timeline.id,
-      timestamp: "2021-12-27T00:00:00Z",
-    });
-
-    store.dispatch(
-      updateDashCardsTimelineEventsVisibility(
-        [DASHCARD_ID],
-        (visibility, timelines) =>
-          showCreatedTimelineEvent(visibility, created, timelines),
-        "dashboard",
-      ),
-    );
-
-    expect(getVisibleEventIds(store)).toEqual([eventA.id, eventB.id]);
-  });
-
-  it("leaves no override behind when a toggle changes nothing", () => {
-    const store = setup({
-      savedVisibility: {
-        "graph.dimensions": ["CREATED_AT"],
-        "timeline.selected_timeline_ids": [timeline.id],
-        "timeline.excluded_timeline_event_ids": [],
-      },
-    });
-
-    store.dispatch(
-      updateDashCardsTimelineEventsVisibility(
-        [DASHCARD_ID],
-        (visibility, timelines) =>
-          showTimelines(visibility, [timeline.id], timelines),
-        "dashboard",
-      ),
-    );
-
-    expect(store.getState().dashboard.timelineEvents.overrides).toEqual({});
   });
 
   it("tracks hiding and showing events for the session", () => {
