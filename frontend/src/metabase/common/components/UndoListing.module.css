@@ -8,14 +8,6 @@
   }
 }
 
-/*
- * The message and the controls must occupy rows of identical height. Any
- * half-difference between them resolves to a fractional pixel, which rounds
- * differently depending on the device pixel ratio - the same toast then looks
- * aligned on one screen and 1-2px out on another.
- * 
- * Measurements are derived from https://www.figma.com/design/qYbAmJHUJ2Tkb01WFegUKp/Component-Library?timeline=keyframe&node-id=121-12586&t=NwDtYH0raQzcrlHb-0
- */
 .toast {
   --toast-row-height: rem(24px);
   --toast-line-height: rem(20px);
@@ -39,10 +31,6 @@
   animation-play-state: paused;
 }
 
-/*
- * Pad the message so a single line fills a whole row, and so the first line of
- * a wrapped message stays centred on that row.
- */
 .message {
   padding-block: calc((var(--toast-row-height) - var(--toast-line-height)) / 2);
   overflow: hidden;
