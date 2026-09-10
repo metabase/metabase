@@ -1,10 +1,10 @@
 (ns dev.kondo-ratchet
-  "Check repository debt against the budgets in `.clj-kondo/ratchets.edn`.
+  "Check kondo suppressions and module escape hatches against the budgets in `.clj-kondo/ratchets.edn`.
 
-  The policies cover kondo suppressions, module-boundary escape hatches, and linters exempt from
-  justification comments. Checks fail when a count exceeds its budget, but allow unused budget.
-  `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one; it is
-  the only Mage command that writes the file.
+  Checks fail when a count exceeds its budget, but allow unused budget.
+  Ignores of linters outside `:comment-exempt` also need a justification comment.
+  `./bin/mage kondo-ratchets-shrink` is the only Mage command that writes the file.
+  It lowers budgets unless `--seed` explicitly adds or raises one.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
   (:require
@@ -45,9 +45,13 @@
   {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
 
 (defn validate-policies
-  "`ratchets` when each policy field it carries has the right shape: `:ignore-counts` maps linters to a
-  non-negative integer or `:unlimited`, `:config-counts` maps linters to a non-negative integer, and
-  `:module-counts` maps module-boundary metrics to non-negative integers, while `:comment-exempt` is a set.
+  "`ratchets` when each policy field it carries has the right shape:
+
+  - `:ignore-counts`  linter -> non-negative integer or `:unlimited`
+  - `:config-counts`  linter -> non-negative integer
+  - `:module-counts`  module metric -> non-negative integer
+  - `:comment-exempt` set of linters
+
   Every policy name must be a keyword.
   Throws otherwise, so a malformed file can never be read as a set of removals."
   [ratchets]
@@ -92,6 +96,7 @@
 
 (defn read-ratchets
   "Parsed contents of [[*ratchets-file*]], with empty defaults for omitted keys.
+  `:module-counts` gets no default: a file without it skips the module-boundary check.
   Throws when the file is missing or a policy field is malformed (see [[validate-policies]]); only an
   explicit `{:disabled true}` opts out of enforcement."
   []
@@ -109,10 +114,15 @@
    (true? (:disabled ratchets))))
 
 (defn module-counts
-  "Count the module config's boundary escape hatches."
+  "Count the module config's escape hatches.
+
+  - `:api-any`      modules with `:api :any`, which expose every namespace
+  - `:uses-any`     modules with `:uses :any`, which may require any module
+  - `:friend-edges` `:friends` grants, each letting one module reach past another's `:api`"
   ([]
    (-> (edn/read-string (slurp module-config-file))
        :metabase/modules
+       ;; connection-pool's namespace comes from one of our libraries, not a module in this repo.
        (dissoc 'connection-pool)
        module-counts))
   ([config]
@@ -568,7 +578,7 @@
      [linter {:recorded budget, :actual n}])))
 
 (defn counts-over-budget
-  "Names whose actual count exceeds its budget."
+  "Names whose actual count exceeds their budget."
   [budgets counts]
   (sorted-by-str
    (for [[linter {:keys [recorded actual] :as entry}] (count-drift budgets counts)
@@ -576,10 +586,10 @@
      [linter entry])))
 
 (def ^:private header
-  (str ";; Budgets for repository debt.\n"
-       ";; :ignore-counts tracks inline `" ignore-marker "` forms per linter; :config-counts tracks\n"
-       ";; config-level waivers in .clj-kondo/config.edn (:off switches and :exclude entries).\n"
-       ";; :module-counts bounds escape hatches in .clj-kondo/config/modules/config.edn.\n"
+  (str ";; Budgets for kondo suppressions and module escape hatches.\n"
+       ";; :ignore-counts tracks inline `" ignore-marker "` forms per linter.\n"
+       ";; :config-counts tracks waivers in .clj-kondo/config.edn: :off switches and :exclude entries.\n"
+       ";; :module-counts tracks escape hatches in .clj-kondo/config/modules/config.edn.\n"
        ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
        ";; Checks fail when a count exceeds its numeric budget; unused budget is allowed.\n"
        ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
@@ -602,7 +612,7 @@
            "}"))))
 
 (defn render
-  "Text of the ratchets file.
+  "Text of the ratchets file, with optional `:module-counts` last to keep adding it a minimal diff.
   Byte-stable: [[fix!]] idempotency and the file-hygiene test depend on it."
   [{:keys [ignore-counts config-counts module-counts comment-exempt] :as ratchets}]
   (let [counts-indent (apply str (repeat (count "{:ignore-counts  {") \space))
@@ -610,8 +620,6 @@
     (str header
          "{:ignore-counts  " (render-counts ignore-counts counts-indent)
          "\n :config-counts  " (render-counts config-counts counts-indent)
-         (when (contains? ratchets :module-counts)
-           (str "\n :module-counts  " (render-counts module-counts counts-indent)))
          "\n :comment-exempt "
          (if (empty? comment-exempt)
            "#{}"
@@ -619,6 +627,8 @@
                 (str/join (str "\n" exempt-indent)
                           (sort-by str comment-exempt))
                 "}"))
+         (when (contains? ratchets :module-counts)
+           (str "\n :module-counts  " (render-counts module-counts counts-indent)))
          "}\n")))
 
 (def ^:private absent
@@ -686,7 +696,8 @@
   "Three-way merge ratchets from `base`, the target branch (`ours`), and the incoming branch (`theirs`).
   Every stage is validated first, even when a disabled stage decides the result: a target that
   explicitly disables ratchets stays disabled, and an incoming disabled form leaves `ours` as it is.
-  Otherwise the count maps merge with [[merge-counts]] and `:comment-exempt` with [[merge-exemptions]]."
+  Otherwise the count maps merge with [[merge-counts]] and `:comment-exempt` with [[merge-exemptions]].
+  `:module-counts` is left out when no stage carries it."
   [base ours theirs]
   (let [[base ours theirs] (map validate-merge-shape [base ours theirs])]
     (cond
@@ -905,8 +916,9 @@
                (println (str "wrote " *ratchets-file*)))))))))
 
 (defn check-report
-  "The lines [[check]] prints when inline ignores or config suppressions (`config-actual`) exceed their
-  budgets, an ignore lacks a required justification comment, or `text` is not normalized.
+  "The lines [[check]] prints when inline ignores, config suppressions (`config-actual`), or module escape
+  hatches (`module-actual`) exceed their budgets, an ignore lacks a required justification comment, or
+  `text` is not normalized.
   Lower counts are allowed because the shrink workflow records them after the change lands."
   [{:keys [ignore-counts config-counts module-counts comment-exempt] :or {comment-exempt #{}} :as ratchets}
    occurrences config-actual module-actual text]
@@ -954,8 +966,8 @@
 
 (defn check
   "Fail the babashka task when the ratchets file is missing, a policy names an unknown linter, a kondo
-  suppression or module boundary exceeds its budget, an ignore lacks a required justification comment,
-  or the file is not normalized.
+  suppression or module escape hatch count exceeds its budget, an ignore lacks a required justification
+  comment, or the file is not normalized.
   Only an explicit `{:disabled true}` opts out of enforcement.
   Unused `:unlimited` policies and stale `:comment-exempt` entries are reported but do not fail the check."
   []

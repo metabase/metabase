@@ -177,7 +177,7 @@
            'b {:api #{'b.api}, :friends #{'a}, :uses :any}}))))
 
 (deftest ^:parallel render-test
-  (testing "keys come out sorted, values aligned, and the text round-trips losslessly"
+  (testing "keys come out sorted, values aligned, module counts come last, and the text round-trips losslessly"
     (let [ratchets {:ignore-counts  {:all              1
                                      :discouraged-var  3
                                      :metabase/modules 2
@@ -193,14 +193,14 @@
                                     "                  :unused-alias     :unlimited}\n"
                                     " :config-counts  {:inline-def        1\n"
                                     "                  :unresolved-symbol 18}\n"
-                                    " :module-counts  {:api-any 1}\n"
                                     " :comment-exempt #{:discouraged-var\n"
-                                    "                   :metabase/modules}}\n")))
+                                    "                   :metabase/modules}\n"
+                                    " :module-counts  {:api-any 1}}\n")))
       (is (= ratchets (edn/read-string text)))
       (is (= text (kondo-ratchet/render (edn/read-string text))))))
   (testing "empty ratchets"
     (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :module-counts {}, :comment-exempt #{}})
-                        "{:ignore-counts  {}\n :config-counts  {}\n :module-counts  {}\n :comment-exempt #{}}\n"))))
+                        "{:ignore-counts  {}\n :config-counts  {}\n :comment-exempt #{}\n :module-counts  {}}\n"))))
 
 (deftest read-ratchets-policy-values-test
   (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")

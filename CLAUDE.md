@@ -101,12 +101,11 @@ Module names form a tree: `lib.schema` is a child of `lib`. When OSS module `sea
 ### Module boundary ratchets
 
 The `:module-counts` map in `.clj-kondo/ratchets.edn` counts the module config's escape hatches:
-`:api :any` and `:uses :any` modules, and `:friends` grants. The ratchet check fails when a count goes up.
-Fix the boundary, or raise the number by hand and say why in the commit.
+`:api :any` and `:uses :any` modules, and `:friends` grants. `./bin/mage kondo-ratchets` fails when a count
+goes up. Fix the boundary, or raise the budget by hand and explain the increase in the PR.
 
-Leave the file unchanged when a count goes down. After the feature merges, the ratchet shrink workflow
-records the improvement in its `Tighten ratchets` PR, avoiding ratchet-file conflicts between feature
-branches.
+Leave the budget alone when a count goes down. The ratchet shrink workflow records it after the change
+merges, as it does for the kondo budgets below.
 
 `(dev.deps-graph/module-boundary-stats)` sizes every mutual-dependency cluster, in modules and in
 namespaces. Nothing commits those numbers: they move with any change anywhere in the repo.
@@ -124,7 +123,7 @@ Validate the ratchets with:
 ./bin/mage kondo-ratchets
 ```
 
-`kondo-ratchets` is the command CI runs. It rejects suppression counts above their budgets, ignores without
+`kondo-ratchets` is the command CI runs. It rejects counts above their budgets, ignores without
 required justification comments, unknown linter names, and a missing or incorrectly formatted ratchets
 file. It allows budgets above the current counts.
 

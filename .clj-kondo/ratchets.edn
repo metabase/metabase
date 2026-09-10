@@ -1,7 +1,7 @@
-;; Budgets for repository debt.
-;; :ignore-counts tracks inline `:clj-kondo/ignore` forms per linter; :config-counts tracks
-;; config-level waivers in .clj-kondo/config.edn (:off switches and :exclude entries).
-;; :module-counts bounds escape hatches in .clj-kondo/config/modules/config.edn.
+;; Budgets for kondo suppressions and module escape hatches.
+;; :ignore-counts tracks inline `:clj-kondo/ignore` forms per linter.
+;; :config-counts tracks waivers in .clj-kondo/config.edn: :off switches and :exclude entries.
+;; :module-counts tracks escape hatches in .clj-kondo/config/modules/config.edn.
 ;; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.
 ;; Checks fail when a count exceeds its numeric budget; unused budget is allowed.
 ;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.
@@ -74,13 +74,13 @@
                   :unresolved-symbol                       19
                   :unresolved-var                          1
                   :unused-referred-var                     4}
- :module-counts  {:api-any      1
-                  :friend-edges 28
-                  :uses-any     4}
  :comment-exempt #{:deprecated-namespace
                    :discouraged-namespace
                    :discouraged-var
                    :metabase/modules
                    :metabase/validate-defendpoint-has-response-schema
                    :metabase/validate-defendpoint-query-params-use-kebab-case
-                   :metabase/validate-defendpoint-route-uses-kebab-case}}
+                   :metabase/validate-defendpoint-route-uses-kebab-case}
+ :module-counts  {:api-any      1
+                  :friend-edges 28
+                  :uses-any     4}}
