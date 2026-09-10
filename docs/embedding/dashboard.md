@@ -283,6 +283,8 @@ When someone adds a new question to a dashboard, `EditableDashboard` opens the q
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/editable-dashboard-data-picker.tsx" %}
 ```
 
+`"question"` only takes effect in the full data picker. By default, Metabase shows a simple dropdown menu with tables and models, and only switches to the full data picker when there are 100 or more items. You can opt for the full data picker by adding `dataPicker: "staged"` to `dataPickerProps`.
+
 For the full list of props, see [`EditableDashboard` props](./dashboard-reference.md#react-sdk-editabledashboard-props).
 
 ## Let people create dashboards

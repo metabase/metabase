@@ -206,8 +206,7 @@ export type SdkDashboardProps = PropsWithChildren<
      */
     onParametersChange?: (payload: ParameterChangePayload) => void;
   } & SdkDashboardDisplayProps &
-    DashboardEventHandlersProps &
-    EditableDashboardOwnProps
+    DashboardEventHandlersProps
 >;
 
 type RenderMode = "dashboard" | "question" | "queryBuilder";
@@ -221,10 +220,11 @@ export type EditableDashboardOwnProps = {
   /**
    * Additional props to pass to the query builder rendered by `InteractiveQuestion` when creating a new dashboard question.
    */
-  dataPickerProps?: Pick<SdkQuestionProps, "entityTypes">;
+  dataPickerProps?: Pick<SdkQuestionProps, "entityTypes" | "dataPicker">;
 };
 
 export type SdkDashboardInnerProps = SdkDashboardProps &
+  EditableDashboardOwnProps &
   Partial<
     Pick<
       DashboardContextProps,
@@ -785,6 +785,7 @@ function DashboardQueryBuilder({
         name: dashboard.name,
       }}
       entityTypes={dataPickerProps?.entityTypes}
+      dataPicker={dataPickerProps?.dataPicker}
       withChartTypeSelector
       // Fill the available space so the query builder matches the dashboard's
       // sizing instead of a fixed height that leaves whitespace / scrolls.
