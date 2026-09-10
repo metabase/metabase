@@ -206,8 +206,8 @@ Credentials:
 - **Project ID**. The Google Cloud project to use. Optional if the service account key provides it. [Where do I find this?](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects) You can also set it with the environment variable `MB_LLM_GOOGLE_PROJECT_ID`.
 - **Location**. Optional. Defaults to global. You can also set it with the environment variable `MB_LLM_GOOGLE_LOCATION`.
 - **Authentication method** (required). Authenticate with a service account key or an OAuth access token. One of: `service-account-key`, `oauth-token`. Defaults to `service-account-key`.
-- **Service account key file**. Only when **Authentication method** is **Service account key**. Upload a service account key file to authenticate with. [Where do I find this?](https://docs.cloud.google.com/iam/docs/keys-create-delete) You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
-- **OAuth access token**. Only when **Authentication method** is **OAuth token**. A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing. You can also set it with the environment variable `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`.
+- **Service account key file**. Only when **Authentication method** is `service-account-key`. Upload a service account key file to authenticate with. [Where do I find this?](https://docs.cloud.google.com/iam/docs/keys-create-delete) You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
+- **OAuth access token**. Only when **Authentication method** is `oauth-token`. A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing. You can also set it with the environment variable `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`.
 - **API base URL** (advanced). Derived from the location when left at the global host. Defaults to `https://aiplatform.googleapis.com`. You can also set it with the environment variable `MB_LLM_GOOGLE_API_BASE_URL`.
 
 Google Gemini Enterprise needs either **Service account key file**, or **OAuth access token** and **Project ID**.
