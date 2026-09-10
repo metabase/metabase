@@ -241,12 +241,6 @@
                                               (or (:name entry) (:display_name entry)))
                                             (get-in supported-models [id :display-name]))})))}))
 
-(mu/defn context-window-fn :- [:fn fn?]
-  "The `context-window-tokens` fn for an adapter whose `supported-models` records one per model id."
-  [supported-models :- SupportedModels]
-  (fn [model]
-    (get-in supported-models [model :context-window])))
-
 ;;; ------------------------------------------------- Streaming --------------------------------------------------
 
 (mu/defn stream!

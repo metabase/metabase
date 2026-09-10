@@ -96,9 +96,10 @@
    "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576 :reasoning :renderable}})
 
-(def context-window-tokens
+(defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
-  (adapter/context-window-fn supported-models))
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (defn- reasoning-class
   "The `:reasoning` class [[supported-models]] records for `model`, or nil."

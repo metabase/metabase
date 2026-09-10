@@ -29,10 +29,11 @@
   `list-models` returns the intersection of this map with the `/models` catalog."
   {"mistral-medium-3-5" {:display-name "Mistral Medium 3.5" :context-window 262144}})
 
-(def context-window-tokens
+(defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know.
   Catalog aliases (e.g. `mistral-medium-latest`) are not resolved."
-  (adapter/context-window-fn supported-models))
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (defn reasoning-model?
   "Whether `model` streams thinking that our chain-of-thought UI renders.

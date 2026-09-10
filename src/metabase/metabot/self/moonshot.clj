@@ -37,9 +37,10 @@
   {"kimi-k2.6" {:display-name "Kimi K2.6" :context-window 262144}
    "kimi-k3"   {:display-name "Kimi K3"   :context-window 1048576}})
 
-(def context-window-tokens
+(defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
-  (adapter/context-window-fn supported-models))
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (def ^:private thinking-only-models
   "Models whose catalog entry reports `supports_thinking_type: \"only\"`: thinking cannot be turned off, so sending
