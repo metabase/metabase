@@ -527,29 +527,32 @@
    narrowing), or the `{type, id, error}` object that keeps a failing item from sinking the
    rest of the batch. The `error` text is whatever [[common/->mcp-error-content]] judges safe to
    return, so incidental exceptions collapse to a generic internal error."
-  [{:keys [include] :as args} {:keys [type id fields] :as _item}]
-  (try
-    (let [{:keys [proj fetch]} (type->spec type)
-          proj (or proj (keyword type))
-          row  (fetch id)]
-      (if fields
-        (common/select-fields proj (projections/project proj :detailed row) fields
-                              {:response-format (:response_format args)
-                               :include         include})
-        (let [fmt      (common/response-format args)
-              ;; Only the sections this item's type supports; the batch may name sections that
-              ;; apply to other items (check-includes! has already rejected any that no item has).
-              sections (filter #(contains? (get include->types %) type) (distinct include))]
-          (-> (projections/project proj fmt row)
-              (merge (reduce (fn [acc inc-name]
-                               (merge acc (build-include type row inc-name)))
-                             {}
-                             sections))
-              (assoc :type type)))))
-    (catch Exception e
-      ;; Fault isolation must not become a second, unjudged error channel: reuse the tool-level
-      ;; judgment and unwrap its text back into the item's `{type, id, error}` shape.
-      {:type type :id id :error (-> (common/->mcp-error-content e) :content first :text)})))
+  [{:keys [include] :as args} {:keys [type fields] :as item}]
+  ;; `alert` and `subscription` reject a non-numeric id outright, so an id a client serialized as
+  ;; a string has to be coerced before the fetch rather than inside it (GHY-4498).
+  (let [id (v2.resolve/normalize-id (:id item))]
+    (try
+      (let [{:keys [proj fetch]} (type->spec type)
+            proj (or proj (keyword type))
+            row  (fetch id)]
+        (if fields
+          (common/select-fields proj (projections/project proj :detailed row) fields
+                                {:response-format (:response_format args)
+                                 :include         include})
+          (let [fmt      (common/response-format args)
+                ;; Only the sections this item's type supports; the batch may name sections that
+                ;; apply to other items (check-includes! has already rejected any that no item has).
+                sections (filter #(contains? (get include->types %) type) (distinct include))]
+            (-> (projections/project proj fmt row)
+                (merge (reduce (fn [acc inc-name]
+                                 (merge acc (build-include type row inc-name)))
+                               {}
+                               sections))
+                (assoc :type type)))))
+      (catch Exception e
+        ;; Fault isolation must not become a second, unjudged error channel: reuse the tool-level
+        ;; judgment and unwrap its text back into the item's `{type, id, error}` shape.
+        {:type type :id id :error (-> (common/->mcp-error-content e) :content first :text)}))))
 
 (def ^:private get-content-args-schema
   [:map {:closed true}

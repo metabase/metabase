@@ -94,7 +94,7 @@
               (tool-result (call-tool! :rasta {:type "collection" :id coll-eid :bookmarked true}))))
       (is (t2/exists? :model/CollectionBookmark :collection_id coll-id :user_id (mt/user->id :rasta)))))
   (testing "GHY-4152: a malformed id is a teaching error naming both accepted shapes"
-    (is (= "Invalid id \"nope\" — pass a numeric id or a 21-character entity_id."
+    (is (= "Invalid id \"nope\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
            (tool-error (call-tool! :rasta {:type "collection" :id "nope" :bookmarked true})))))
   (testing "GHY-4152: zero and negative numeric ids are rejected by schema, matching REST's ms/PositiveInt"
     (doseq [bad-id [0 -1]]

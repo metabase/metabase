@@ -213,7 +213,7 @@
 
 (deftest ^:parallel invalid-id-shape-test
   (testing "GHY-4137: an id that is neither numeric nor a 21-char entity_id teaches the two accepted shapes"
-    (is (= "Invalid id \"abc\" — pass a numeric id or a 21-character entity_id."
+    (is (= "Invalid id \"abc\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
            (tool-error (call-tool! :crowberto nil "segment_write"
                                    {:method "update" :id "abc" :revision_message "x"}))))))
 

@@ -106,3 +106,36 @@
       (binding [api/*current-user-id* user-id]
         (is (thrown-with-msg? Exception #"no personal collection"
                               (v2.resolve/resolve-collection-id-or-personal nil)))))))
+
+(deftest ^:parallel normalize-id-test
+  (testing "GHY-4498: a client that serializes an int-or-string id param as a JSON string still
+            names the numeric id"
+    (is (= 16211 (v2.resolve/normalize-id "16211")))
+    (is (= 1 (v2.resolve/normalize-id "1"))))
+  (testing "GHY-4498: anything that isn't the exact shape of a numeric id is left alone"
+    (doseq [x ["0" "-1" "016211" "1.0" "12x" "" "root" "trash" 7 nil]]
+      (is (= x (v2.resolve/normalize-id x)))))
+  (testing "GHY-4498: a run of digits too large for a long stays a string rather than becoming nil"
+    (is (= "99999999999999999999" (v2.resolve/normalize-id "99999999999999999999"))))
+  (testing "GHY-4498: an entity_id is never mistaken for a numeric id"
+    (let [eid (u/generate-nano-id)]
+      (is (= eid (v2.resolve/normalize-id eid))))))
+
+(deftest ^:parallel resolve-id-or-404-accepts-numeric-string-test
+  (testing "GHY-4498: a numeric id sent as a JSON string resolves like the integer it names"
+    (is (= 7 (v2.resolve/resolve-id-or-404 :model/Card "7"))))
+  (testing "GHY-4498: strings that only look numeric keep failing validation"
+    (doseq [bad ["0" "-1" "016211" "1.0"]]
+      (is (thrown-with-msg? Exception #"entity_id"
+                            (v2.resolve/resolve-id-or-404 :model/Card bad))))))
+
+(deftest ^:parallel resolve-collection-id-accepts-numeric-string-test
+  (testing "GHY-4498: the sentinels still win over numeric-string coercion"
+    (is (nil? (v2.resolve/resolve-collection-id "root")))
+    (is (= 99 (v2.resolve/resolve-collection-id "trash" {:trash-collection-id 99})))))
+
+(deftest resolve-collection-id-numeric-string-test
+  (testing "GHY-4498: a collection_id sent as a JSON string resolves to that collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (mt/with-test-user :crowberto
+        (is (= coll-id (v2.resolve/resolve-collection-id (str coll-id))))))))
