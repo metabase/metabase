@@ -186,6 +186,7 @@ export async function syncResources({
   });
   const modelTableIds = await reconcileModels({
     appRoot,
+    slug,
     collectionId: app.resource_collection_id,
     actions,
     lockfile,

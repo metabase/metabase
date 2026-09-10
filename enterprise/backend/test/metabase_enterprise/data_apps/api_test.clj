@@ -266,6 +266,32 @@
         (is (= #{orders-id products-id}
                (set (:table_ids response))))))))
 
+(deftest saved-query-table-dependencies-include-implicitly-joined-tables-test
+  (testing "sync copies models, actions and metrics whose queries never pass through /query, and the
+            table an implicit join reaches is named nowhere in such a query -- only this lookup finds it"
+    (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (create-app!)
+        (let [metadata-provider (mt/metadata-provider)
+              orders-query      (lib/query metadata-provider
+                                           (lib.metadata/table metadata-provider (mt/id :orders)))
+              category          (->> (lib/breakoutable-columns orders-query)
+                                     (filter #(= (:id %) (mt/id :products :category)))
+                                     first)
+              model-query       (lib/breakout orders-query category)]
+          (mt/with-temp [:model/Card {model-id :id}
+                         {:name          "Orders by category"
+                          :type          :model
+                          :database_id   (mt/id)
+                          :table_id      (mt/id :orders)
+                          :dataset_query model-query}]
+            (let [dataset-query (t2/select-one-fn :dataset_query :model/Card :id model-id)
+                  response      (mt/user-http-request
+                                 :crowberto :post 200 "apps/demo/query-table-dependencies"
+                                 {:dataset_queries [dataset-query]})]
+              (is (= #{(mt/id :orders) (mt/id :products)}
+                     (set (:table_ids response)))))))))))
+
 (deftest superuser-can-store-table-dependencies-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]

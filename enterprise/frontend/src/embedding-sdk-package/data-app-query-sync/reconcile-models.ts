@@ -5,7 +5,6 @@ import { writeResourceLockfile } from "./lockfile";
 import { getErrorMessage, getRelativeDefinitionLocation } from "./messages";
 import type { MetabaseClient } from "./metabase-client";
 import { orNullOn404 } from "./metabase-client";
-import { collectTableIds } from "./table-ids";
 import type {
   ActionLockEntry,
   DiscoveredAction,
@@ -17,6 +16,7 @@ import type {
 
 export interface ReconcileModelsOptions {
   appRoot: string;
+  slug: string;
   collectionId: number;
   actions: DiscoveredAction[];
   lockfile: ResourceLockfile;
@@ -394,6 +394,7 @@ async function removeUnusedModels(
  */
 export async function reconcileModels({
   appRoot,
+  slug,
   collectionId,
   actions,
   lockfile,
@@ -438,5 +439,8 @@ export async function reconcileModels({
     source.dataset_query ? [source.dataset_query] : [],
   );
 
-  return collectTableIds([...modelQueries, ...actionQueries]);
+  return client.resolveTableDependencies(slug, [
+    ...modelQueries,
+    ...actionQueries,
+  ]);
 }

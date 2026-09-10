@@ -86,6 +86,30 @@ export class MetabaseClient {
     );
   }
 
+  /**
+   * Resolves the tables that already-saved queries read. Only the server sees an
+   * implicit join: the table a foreign key reaches appears nowhere in the query,
+   * so walking its JSON would leave that table out of the app's dependencies.
+   */
+  async resolveTableDependencies(
+    slug: string,
+    datasetQueries: ReadonlyArray<Record<string, unknown>>,
+  ): Promise<number[]> {
+    if (datasetQueries.length === 0) {
+      return [];
+    }
+
+    const { table_ids } = await this.request<{ table_ids: number[] }>(
+      `apps/${encodeURIComponent(slug)}/query-table-dependencies`,
+      {
+        method: "POST",
+        body: JSON.stringify({ dataset_queries: datasetQueries }),
+      },
+    );
+
+    return table_ids;
+  }
+
   async resolveQuery(slug: string, query: Record<string, unknown>) {
     const resolved = await this.request<{
       database_id: number;

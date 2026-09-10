@@ -120,6 +120,15 @@
   [:map {:closed true}
    [:table_ids [:sequential {:distinct true} ms/PositiveInt]]])
 
+(def ^:private QueryTableDependenciesRequest
+  [:map {:closed true}
+   [:dataset_queries [:sequential [:map {:closed false}
+                                   [:database ms/PositiveInt]]]]])
+
+(def ^:private QueryTableDependenciesResponse
+  [:map {:closed true}
+   [:table_ids [:sequential ms/PositiveInt]]])
+
 (def ^:private PermissionWarningsRequest
   [:map {:closed true}
    [:user_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
@@ -279,6 +288,12 @@
                    (tru "Tenant users cannot be added to data apps."))
     (data-app.user-access/permission-warnings (:table_ids app) users)))
 
+(defn- query-table-ids
+  "The tables a query reads, including ones it reaches only through an implicit join."
+  [query]
+  (into (set (lib/all-source-table-ids query))
+        (lib/all-implicitly-joined-table-ids query)))
+
 (defn- referenced-card-ids
   "Ids of the cards -- metrics, source questions, template-tag questions -- that `metric`'s own
    definition reads."
@@ -323,12 +338,29 @@
         query        (lib/test-query (lib-be/application-database-metadata-provider database-id) query-def)]
     {:database_id database-id
      :dataset_query (lib/prepare-for-serialization query)
-     :table_ids     (->> (concat (lib/all-source-table-ids query)
-                                 (lib/all-implicitly-joined-table-ids query))
-                         set
-                         sort
-                         vec)
+     :table_ids     (vec (sort (query-table-ids query)))
      :metrics       (referenced-metrics query)}))
+
+(api.macros/defendpoint :post ["/:slug/query-table-dependencies" :slug slug-regex]
+  :- QueryTableDependenciesResponse
+  "Return the tables read by already-saved queries, including ones reached only through an implicit join.
+
+   Sync copies models, actions and metrics whose queries it never resolves through `/query`, and only
+   this metadata-based lookup sees an implicit join: the id of a table reached through a foreign key
+   appears nowhere in the query itself."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   {dataset-queries :dataset_queries} :- QueryTableDependenciesRequest]
+  (api/check-superuser)
+  (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+  {:table_ids (->> dataset-queries
+                   (mapcat (fn [dataset-query]
+                             (-> (lib-be/application-database-metadata-provider (:database dataset-query))
+                                 (lib/query dataset-query)
+                                 query-table-ids)))
+                   set
+                   sort
+                   vec)})
 
 (api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DataAppResponse
   "Create or reuse a data app draft before its first repository import."
