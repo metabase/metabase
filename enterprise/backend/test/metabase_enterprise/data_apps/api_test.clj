@@ -188,6 +188,68 @@
                                      :aggregations [{:type "metric" :id metric-id}]}]})]
             (is (= [metric-id] (mapv :id (:metrics response))))))))))
 
+(deftest rejects-metrics-whose-definition-reads-another-card-test
+  (testing "sync copies a referenced metric but rewrites nothing inside the copy, so a metric that
+            itself reads another card would publish and then fail for viewers without access to that
+            card's collection -- resolving the query has to refuse it"
+    (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (create-app!)
+        (let [metadata-provider (mt/metadata-provider)
+              venues            (lib.metadata/table metadata-provider (mt/id :venues))
+              venue-count-query (-> (lib/query metadata-provider venues)
+                                    (lib/aggregate (lib/count)))
+              orders-query      (lib/query metadata-provider
+                                           (lib.metadata/table metadata-provider (mt/id :orders)))
+              app-query         (fn [metric-id]
+                                  {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                             :aggregations [{:type "metric" :id metric-id}]}]})]
+          (mt/with-temp [:model/Card {inner-metric-id :id}
+                         {:name          "Venue count"
+                          :type          :metric
+                          :database_id   (mt/id)
+                          :table_id      (mt/id :venues)
+                          :dataset_query venue-count-query}
+                         :model/Card {question-id :id}
+                         {:name          "Orders"
+                          :type          :question
+                          :database_id   (mt/id)
+                          :table_id      (mt/id :orders)
+                          :dataset_query orders-query}]
+            (let [;; built after the cards exist, so the provider can resolve them
+                  provider     (mt/metadata-provider)
+                  nested-query (lib/test-query provider (app-query inner-metric-id))
+                  question-sourced-query (lib/query provider (lib.metadata/card provider question-id))]
+              (testing "the inner metric on its own resolves"
+                (is (= [inner-metric-id]
+                       (mapv :id (:metrics (mt/user-http-request
+                                            :crowberto :post 200 "apps/demo/query"
+                                            (app-query inner-metric-id)))))))
+              (mt/with-temp [:model/Card {nested-metric-id :id}
+                             {:name          "Nested venue count"
+                              :type          :metric
+                              :database_id   (mt/id)
+                              :table_id      (mt/id :venues)
+                              :dataset_query nested-query}
+                             :model/Card {question-metric-id :id}
+                             {:name          "Orders question metric"
+                              :type          :metric
+                              :database_id   (mt/id)
+                              :table_id      (mt/id :orders)
+                              :dataset_query question-sourced-query}]
+                (testing "a metric that references another metric is refused"
+                  (is (= (str "Data app queries cannot use metrics that reference other saved questions"
+                              " or metrics: Nested venue count")
+                         (mt/user-http-request
+                          :crowberto :post 400 "apps/demo/query"
+                          (app-query nested-metric-id)))))
+                (testing "so is one built on a saved question, which sync does not copy either"
+                  (is (= (str "Data app queries cannot use metrics that reference other saved questions"
+                              " or metrics: Orders question metric")
+                         (mt/user-http-request
+                          :crowberto :post 400 "apps/demo/query"
+                          (app-query question-metric-id)))))))))))))
+
 (deftest resolved-query-includes-implicitly-joined-tables-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]

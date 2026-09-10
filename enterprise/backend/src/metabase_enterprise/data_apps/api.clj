@@ -279,16 +279,35 @@
                    (tru "Tenant users cannot be added to data apps."))
     (data-app.user-access/permission-warnings (:table_ids app) users)))
 
+(defn- referenced-card-ids
+  "Ids of the cards -- metrics, source questions, template-tag questions -- that `metric`'s own
+   definition reads."
+  [metric]
+  (-> (lib-be/application-database-metadata-provider (:database_id metric))
+      (lib/query (:dataset_query metric))
+      lib/all-source-card-ids))
+
 (defn- referenced-metrics
-  "Return direct metric references."
+  "Return direct metric references, rejecting any whose own definition reads another card.
+
+   Sync copies a referenced metric but rewrites nothing inside the copy, and copies nothing the copy
+   in turn reads, so those references still point at the originals. The app would publish successfully
+   and then fail for every viewer without access to the originals' collections, so refuse it here.
+
+   This runs on every sync rather than at codegen, so a metric edited into this shape after its schema
+   was generated is caught too."
   [query]
   (let [metric-ids (lib/all-source-card-ids query)
-        metrics    (data-apps.db/metrics-by-ids metric-ids)]
+        metrics    (sort-by :id (data-apps.db/metrics-by-ids metric-ids))
+        nested     (filter (comp seq referenced-card-ids) metrics)]
+    (api/check-400 (empty? nested)
+                   (tru "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
+                        (str/join ", " (map :name nested))))
     (mapv #(update (select-keys % [:id :name :type :collection_id :dataset_query
                                    :database_id :display :visualization_settings :description])
                    :dataset_query
                    lib/prepare-for-serialization)
-          (sort-by :id metrics))))
+          metrics)))
 
 (api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- QueryResolutionResponse
   "Resolve an authored data-app query definition into a serializable Metabase query."
