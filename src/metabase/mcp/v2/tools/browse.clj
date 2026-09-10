@@ -276,8 +276,15 @@
   "Map of requested table id → vector of its FK-target tables (readable ones only, capped at
    [[max-related-tables]]), the first [[max-related-tables-with-fields]] of which carry their
    visible column names — sandbox-filtered, so a sandboxed caller never sees hidden columns of
-   a neighboring table."
-  [metadata-rows]
+   a neighboring table.
+
+   `browsable-db-ids` re-applies the browsable-database filter the requested tables already
+   passed. `mi/can-read?` on a Table evaluates per-table perms against its `:db_id` and has no
+   notion of a router destination: a destination reads as affirmatively readable, because the
+   Database read check redirects to its router. An FK from a still-router table into a table
+   whose `:db_id` was reassigned would otherwise carry the destination's column names into the
+   response by the neighbour path, which the directly-requested path already refuses."
+  [browsable-db-ids metadata-rows]
   (let [targets-by-table (into {}
                                (map (fn [{:keys [id fields]}]
                                       [id (into []
@@ -289,6 +296,7 @@
         related-ids      (into #{} (mapcat val) targets-by-table)
         related          (when (seq related-ids)
                            (->> (mcp.db/active-tables-by-ids related-ids)
+                                (filter (comp browsable-db-ids :db_id))
                                 (filter mi/can-read?)
                                 (m/index-by :id)))
         expand-ids       (into #{}
@@ -481,7 +489,7 @@
           rows      (cond-> rows
                       detailed? attach-inline-values
                       detailed? withhold-restricted-fingerprints)
-          related   (related-tables-by-requested-table rows)
+          related   (related-tables-by-requested-table browsable-db-ids rows)
           payloads  (mapv #(project-table args related %) rows)
           {:keys [tables message]} (assemble-tables payloads offset)
           ;; `tables` is a prefix of `payloads`, which is index-aligned with `rows`, so the tables
