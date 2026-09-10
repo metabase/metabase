@@ -147,7 +147,7 @@ The **Enable Embedded Metabot** toggle turns embedded Metabot on or off. The tog
 
 _Available on both the Internal and Embedded tabs, configured independently._
 
-Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models.md) and [metrics](../data-modeling/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
+Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models/models.md) and [metrics](../data-modeling/semantic-layer/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
 
 Restricting Metabot to verified models and metrics (and only models and metrics) helps Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
 
@@ -169,7 +169,7 @@ If you're embedding the Metabot component in an app, you can point embedded Meta
 
 Picking **Our analytics** is the same as picking no collection at all, so pick something narrower if you want the scoping to do anything. And once you set a collection, tables drop out of embedded Metabot's search results, so pick a collection with the metrics and models you want people building on.
 
-This setting narrows where embedded Metabot searches; it's _not_ a substitute for setting permissions. Embedded Metabot can still read and query anything the person using it has permissions for. Embedded Metabot can also see the items that person viewed recently, whichever collection those live in. Restricting Metabot to [verified content](#verified-content) narrows those recent items to verified, official, and [Library](../data-studio/library.md) content, but it doesn't confine them to the collection you picked. To control what data people can get to in an embed, set [data permissions](../permissions/embedding.md). See also [Set up AI chat in Metabase](../embedding/ai-chat.md#set-up-ai-chat-in-metabase).
+This setting narrows where embedded Metabot searches; it's _not_ a substitute for setting permissions. Embedded Metabot can still read and query anything the person using it has permissions for. Embedded Metabot can also see the items that person viewed recently, whichever collection those live in. Restricting Metabot to [verified content](#verified-content) narrows those recent items to verified, official, and [Library](../data-modeling/semantic-layer/library.md) content, but it doesn't confine them to the collection you picked. To control what data people can get to in an embed, set [data permissions](../permissions/embedding.md). See also [Set up AI chat in Metabase](../embedding/ai-chat.md#set-up-ai-chat-in-metabase).
 
 ### Prompt suggestions
 
@@ -197,9 +197,9 @@ The best thing you can do to improve Metabot's performance is to prep your data 
 
 ### Add descriptions for your data and content
 
-Add descriptions to your [models](../data-modeling/models.md#add-metadata-to-columns-in-a-model), [metrics](../data-modeling/metrics.md), [dashboards](../dashboards/introduction.md), and [questions](../questions/introduction.md). Write descriptions to provide context, define terms, and explain business logic.
+Add descriptions to your [models](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model), [metrics](../data-modeling/semantic-layer/metrics.md), [dashboards](../dashboards/introduction.md), and [questions](../questions/introduction.md). Write descriptions to provide context, define terms, and explain business logic.
 
-Admins can also curate [table metadata](../data-modeling/metadata-editing.md) by adding descriptions for tables and their fields.
+Admins can also curate [table metadata](../data-modeling/metadata/metadata-editing.md) by adding descriptions for tables and their fields.
 
 For example, here's a decent description for an ID field that provides additional context for the data:
 
@@ -213,7 +213,7 @@ You can even ask Metabot to write descriptions for you. But Metabot will only ha
 
 Make sure the semantic types for each field accurately describe the field's "meaning". For example, if you have a field like `created_at`, you'd want the column type to be Creation date.
 
-Metabase will try to set semantic types automatically, but you should confirm that each field has the relevant semantic type. See [Data types and semantic types](../data-modeling/semantic-types.md). You can also set semantic types for [models](../data-modeling/models.md#add-metadata-to-columns-in-a-model).
+Metabase will try to set semantic types automatically, but you should confirm that each field has the relevant semantic type. See [Data types and semantic types](../data-modeling/metadata/semantic-types.md). You can also set semantic types for [models](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model).
 
 ### Define domain-specific terms in the glossary
 
