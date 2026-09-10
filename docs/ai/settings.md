@@ -27,8 +27,8 @@ _Admin > AI_
 
 You pick which AI providers Metabase can use:
 
-- If you're **self-hosting Metabase** and want to use Metabot, you'll need to [bring your own AI provider](#bring-your-own-ai-provider).
-- On **Metabase Cloud**, you can [bring your own AI provider](#bring-your-own-ai-provider), [use the Metabase AI service](#metabase-ai-service), or both.
+- If you're **self-hosting Metabase** and want to use Metabot, you'll need to [connect to an AI provider](#connect-to-an-ai-provider) with your own credentials.
+- On **Metabase Cloud**, you can [connect to an AI provider](#connect-to-an-ai-provider) with your own credentials, [use the Metabase AI service](#metabase-ai-service), or both.
 
 The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
 
@@ -49,9 +49,9 @@ To use the Metabase AI service for Metabot:
 
 To remove the service: click the **...** next to **Metabase AI service** in the provider list, then click **Remove**.
 
-### Bring your own AI provider
+### Connect to an AI provider
 
-You can bring your own credentials for any [supported AI provider](./providers.md). Most take an API key, but not all: Amazon Bedrock takes an AWS access key pair, and Google Gemini Enterprise a service account key file or an OAuth token.
+You can use your own credentials with any [supported AI provider](./providers.md). Most take an API key, but not all: Amazon Bedrock takes an AWS access key pair, and Google Gemini Enterprise a service account key file or an OAuth token.
 
 To connect a provider with your own credentials:
 
@@ -233,7 +233,7 @@ If you're using the Metabase AI service, you can see how many Metabot requests p
 
 If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
-If you're using your own provider, you can track usage and costs through that provider's dashboard.
+If you're using your own provider credentials, you can track usage and costs through that provider's dashboard.
 
 On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](usage-auditing.md) with detailed breakdown of AI usage by user, tool, feature etc.
 
