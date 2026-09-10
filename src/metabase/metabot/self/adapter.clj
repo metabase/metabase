@@ -82,9 +82,7 @@
 (def CatalogOpts
   "How an adapter reaches its model catalog; see [[fetch-catalog]]."
   [:map
-   [:path    {:optional true} [:maybe :string]]
-   [:headers {:optional true} [:maybe [:map-of :string :string]]]
-   [:extract {:optional true} [:maybe [:fn fn?]]]])
+   [:path {:optional true} [:maybe :string]]])
 
 (def StreamOpts
   "How an adapter puts one request on the wire; see [[stream!]]."
@@ -192,40 +190,33 @@
 
 ;;; ------------------------------------------------ Model catalog -----------------------------------------------
 
-(mu/defn data-entries :- [:maybe [:sequential :map]]
-  "An `:extract` that reads an OpenAI-style catalog leniently, tolerating a body shape we don't recognize.
-  The [[fetch-catalog]] default fails closed instead."
-  [res :- :map]
-  (get-in res [:body :data]))
-
 (mu/defn fetch-catalog :- [:maybe [:sequential :map]]
   "Fetch a provider's OpenAI-style model catalog and return its entries.
 
   This doubles as the credential round trip behind the admin Connect button for every provider whose
   catalog endpoint answers one, so failures are translated with the provider's own messages.
 
-  `opts` is the caller's request; the third argument says how this adapter reaches its catalog:
+  Entries come from [[chat-completions/models-catalog]], which fails closed: a 2xx whose body is not a
+  recognizable catalog throws rather than yielding no entries, which would leave the admin an empty model
+  picker and a Connect button that succeeded against a provider we never actually reached. A well-formed
+  but empty catalog is a legitimate answer and passes.
 
-    :path    - the catalog endpoint, relative to the base URL. Defaults to `/models`.
-    :headers - extra request headers, beyond the descriptor's own.
-    :extract - res -> entries. Defaults to the fail-closed [[chat-completions/models-catalog]], which
-               throws on a 2xx whose body is not a recognizable catalog rather than leaving the admin
-               an empty model picker with no diagnostic."
+  `opts` is the caller's request. The third argument carries `:path`, the catalog endpoint relative to
+  the base URL, for a provider that does not serve one at `/models`. The descriptor's own `:headers`
+  ride along either way."
   ([p opts]
    (fetch-catalog p opts nil))
-  ([{:keys [display-name] :as p}                       :- Provider
-    {:keys [credentials ai-proxy?]}                    :- core/LLMRequestOpts
-    {:keys [path headers extract] :or {path "/models"}} :- [:maybe CatalogOpts]]
+  ([{:keys [display-name] :as p}         :- Provider
+    {:keys [credentials ai-proxy?]}      :- core/LLMRequestOpts
+    {:keys [path] :or {path "/models"}}  :- [:maybe CatalogOpts]]
    (try
      (let [res (request! p {:credentials credentials
                             :ai-proxy?   ai-proxy?
                             :method      :get
                             :path        path
                             :as          :json
-                            :headers     (merge {"Content-Type" "application/json"} headers)})]
-       (if extract
-         (extract res)
-         (chat-completions/models-catalog display-name res)))
+                            :headers     {"Content-Type" "application/json"}})]
+       (chat-completions/models-catalog display-name res))
      (catch Exception e
        (rethrow! p e)))))
 

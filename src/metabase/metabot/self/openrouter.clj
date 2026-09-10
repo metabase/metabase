@@ -87,9 +87,7 @@
   ([] (list-models {}))
   ([opts]
    (adapter/listing supported-models
-                    (adapter/fetch-catalog provider opts
-                                           {:path    "/v1/models"
-                                            :extract adapter/data-entries})
+                    (adapter/fetch-catalog provider opts {:path "/v1/models"})
                     true)))
 
 ;;; Streaming response → AISDK v5 chunks
