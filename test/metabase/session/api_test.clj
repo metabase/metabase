@@ -523,6 +523,63 @@
         (is (nil? (t2/select-one :model/Session :id (:id session)))
             "the pre-existing session should be deleted after resetting the password via token")))))
 
+(deftest reset-password-session-is-attributed-to-password-identity-test
+  (testing "POST /api/session/reset_password issues a session belonging to the user's password AuthIdentity"
+    (mt/with-temp [:model/User user {}
+                   ;; the pre-existing session hangs off a different identity, so last_used_at on the
+                   ;; password identity below is nil until the reset itself touches it
+                   :model/AuthIdentity _ {:user_id (:id user) :provider "google" :metadata {:sso_source "google"}}]
+      (auth-identity/set-password! (:id user) "password")
+      (let [stale-session (auth-identity/create-session-with-auth-tracking!
+                           user
+                           {:device_id "reset-attribution-device" :embedded false :token_exchange false
+                            :device_description "Test" :ip_address "127.0.0.1"}
+                           :provider/google)
+            token         (auth-identity/create-password-reset! (:id user))]
+        (mt/client :post 200 "session/reset_password" {:token token :password "whateverUP12!!"})
+        ;; read core_session directly: auth_identity_id is the column session listing joins the provider on
+        (let [password-identity-id (t2/select-one-pk :model/AuthIdentity :user_id (:id user) :provider "password")
+              sessions             (t2/query {:select [:id :auth_identity_id]
+                                              :from   [:core_session]
+                                              :where  [:= :user_id (:id user)]})]
+          (is (nil? (t2/select-one :model/Session :id (:id stale-session)))
+              "the session that existed before the reset is revoked")
+          (is (= 1 (count sessions))
+              "only the session the reset just created remains")
+          (is (some? (:auth_identity_id (first sessions)))
+              "the new session is attributed to an auth identity")
+          (is (= password-identity-id (:auth_identity_id (first sessions)))
+              "the new session is attributed to the password identity the reset just wrote")
+          (is (some? (t2/select-one-fn :last_used_at :model/AuthIdentity password-identity-id))
+              "completing the reset counts as a use of the password identity")
+          (is (nil? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+              "the consumed reset identity is still deleted"))))))
+
+(deftest reset-password-refused-when-password-login-disabled-test
+  (testing "POST /api/session/reset_password refuses, and changes nothing, when password login is disabled"
+    (ldap.test/with-ldap-server!
+      (mt/with-temp [:model/User user {}]
+        (auth-identity/set-password! (:id user) "password")
+        (let [session     (auth-identity/create-session-with-auth-tracking!
+                           user
+                           {:device_id "reset-disabled-device" :embedded false :token_exchange false
+                            :device_description "Test" :ip_address "127.0.0.1"}
+                           :provider/password)
+              credentials (t2/select-one-fn :credentials :model/AuthIdentity
+                                            :user_id (:id user) :provider "password")
+              token       (auth-identity/create-password-reset! (:id user))]
+          (mt/with-premium-features #{:disable-password-login}
+            (mt/with-temporary-setting-values [enable-password-login false]
+              (is (= "Password login is disabled for this instance."
+                     (mt/client :post 400 "session/reset_password" {:token token :password "whateverUP12!!"})))
+              (is (= credentials
+                     (t2/select-one-fn :credentials :model/AuthIdentity :user_id (:id user) :provider "password"))
+                  "the password is unchanged: the stored credential is still the same hash")
+              (is (some? (t2/select-one :model/Session :id (:id session)))
+                  "the user's existing sessions are not revoked")
+              (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+                  "the reset token is not consumed"))))))))
+
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
