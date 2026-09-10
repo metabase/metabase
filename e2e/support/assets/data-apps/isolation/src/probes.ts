@@ -77,14 +77,24 @@ const endowmentApi = (report: Report) => {
 // `prepareStackTrace` is a non-configurable accessor that rejects functions.
 const stackTraceRealm = (report: Report) => {
   const guestFetch = window.fetch;
+  const captureStackTrace = (
+    Error as { captureStackTrace?: (o: object) => void }
+  ).captureStackTrace;
+
+  if (typeof captureStackTrace !== "function") {
+    report("isolated:no-callsite-formatter");
+    return;
+  }
 
   const original = Error.prepareStackTrace;
-  Error.prepareStackTrace = (_err, frames) => frames;
+  const formatter = (_err: Error, frames: unknown[]) => frames;
+
+  Error.prepareStackTrace = formatter;
+
+  const installed = Error.prepareStackTrace === formatter;
 
   const holder: { stack?: unknown } = {};
-  (Error as { captureStackTrace?: (o: object) => void }).captureStackTrace?.(
-    holder,
-  );
+  captureStackTrace(holder);
 
   const frames = (Array.isArray(holder.stack) ? holder.stack : []) as Array<{
     getFunction?: () => unknown;
@@ -92,6 +102,11 @@ const stackTraceRealm = (report: Report) => {
   }>;
 
   Error.prepareStackTrace = original;
+
+  if (!installed && frames.length === 0) {
+    report("isolated:prepare-stack-trace-gated");
+    return;
+  }
 
   for (const frame of frames) {
     let fn: unknown;
@@ -138,7 +153,7 @@ const stackTraceRealm = (report: Report) => {
     }
   }
 
-  report(`isolated:no-foreign-realm-in-${frames.length}-frames`);
+  report(`reached:call-sites-in-${frames.length}-frames`);
 };
 
 export const createProbes = (
@@ -251,10 +266,7 @@ export const createProbes = (
       id: "import-html-doc-iframe",
       label: "createHTMLDocument iframe + importNode",
       run: () => {
-        const iframe = document.importNode(
-          htmlDocIframe(),
-          true,
-        ) as HTMLIFrameElement;
+        const iframe = document.importNode(htmlDocIframe(), true);
         document.body.appendChild(iframe);
 
         realm(iframe.contentWindow, "import-html-doc");
@@ -315,11 +327,7 @@ export const createProbes = (
       id: "frame-element",
       label: "window.frameElement",
       run: () =>
-        realm(
-          (window.frameElement as HTMLIFrameElement | null)?.ownerDocument
-            ?.defaultView,
-          "frame-element",
-        ),
+        realm(window.frameElement?.ownerDocument?.defaultView, "frame-element"),
     },
     {
       id: "parent-chain",
@@ -329,11 +337,14 @@ export const createProbes = (
     {
       id: "window-frames",
       label: "window.frames[0]",
-      run: () =>
+      run: () => {
+        document.body.appendChild(document.adoptNode(htmlDocIframe()));
+
         realm(
           window.frames?.[0] ?? (window as unknown as Window[])[0],
           "window-frames",
-        ),
+        );
+      },
     },
     {
       id: "window-opener",

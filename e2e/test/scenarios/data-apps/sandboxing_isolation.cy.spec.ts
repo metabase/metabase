@@ -246,10 +246,11 @@ describe("scenarios > data apps > sandbox isolation", () => {
       const iframe = parentDoc.createElement("iframe");
       iframe.style.display = "none";
       doc.body.appendChild(doc.adoptNode(iframe));
-    });
 
-    // Give the adopted iframe a tick to initialize its contentWindow.
-    cy.wait(500);
+      expect(iframe.contentWindow !== null, "adopted iframe realm").to.equal(
+        true,
+      );
+    });
 
     runProbe("isolation-child-frame-grab");
   });
