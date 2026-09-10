@@ -196,11 +196,11 @@
             (t2/insert! (t2/table-name :model/Session)
                         {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now})
             (testing "first call should update last_active_at"
-              (#'mw.session/maybe-update-session-activity! session-key)
+              (#'mw.session/maybe-update-session-activity! key-hashed)
               (is (some? (t2/select-one-fn :last_active_at (t2/table-name :model/Session) :key_hashed key-hashed))))
             (testing "immediate second call should be throttled (no error, just skipped)"
               (let [first-value (t2/select-one-fn :last_active_at (t2/table-name :model/Session) :key_hashed key-hashed)]
-                (#'mw.session/maybe-update-session-activity! session-key)
+                (#'mw.session/maybe-update-session-activity! key-hashed)
                 (is (= first-value
                        (t2/select-one-fn :last_active_at (t2/table-name :model/Session) :key_hashed key-hashed)))))))))))
 

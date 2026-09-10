@@ -103,18 +103,22 @@
   (or (not session-key) (string/valid-uuid? session-key)))
 
 (mu/defn- current-user-info-for-session :- [:maybe ::request.schema/current-user-info]
-  "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
+  "Return User ID and superuser status for Session with `session-key` if it is valid and not expired, plus
+  `:session-key-hash`, the `key_hashed` value the row was matched on."
   [session-key anti-csrf-token]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
-    (some-> (server.db/session-user-info (session/hash-session-key session-key)
-                                         anti-csrf-token
-                                         (config/config-int :max-session-age)
-                                         (premium-features/enable-advanced-permissions?)
-                                         (and (premium-features/enable-tenants?)
-                                              (setting/get :use-tenants))
-                                         (request/enabled-session-timeout-seconds))
-            ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
-            (update :is-group-manager? boolean))))
+    (let [session-key-hash (session/hash-session-key session-key)]
+      (some-> (server.db/session-user-info session-key-hash
+                                           anti-csrf-token
+                                           (config/config-int :max-session-age)
+                                           (premium-features/enable-advanced-permissions?)
+                                           (and (premium-features/enable-tenants?)
+                                                (setting/get :use-tenants))
+                                           (request/enabled-session-timeout-seconds))
+              ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
+              (update :is-group-manager? boolean)
+              ;; so that whatever refers to this session later can do so by the hash without handling the key again
+              (assoc :session-key-hash session-key-hash)))))
 
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
@@ -246,7 +250,14 @@
      request
      ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
      ;; merging it whole both authenticates the request and records the granted scopes.
-     (dissoc (or session-info api-key-info oauth-info mcp-ui-info) :auth-provider)
+     (dissoc (or session-info api-key-info oauth-info mcp-ui-info) :auth-provider :session-key-hash)
+     ;; `:metabase-session-key` is attached by [[wrap-session-key]] from an unvalidated cookie or header, so its
+     ;; presence says nothing about whether the session is the credential that authenticated this request.
+     ;; `:metabase/authed-session-key-hash` identifies the session that did, and being namespaced it cannot arrive
+     ;; from anywhere a request has been: Ring keys are unqualified, so only this function can set it. It carries the
+     ;; `key_hashed` value rather than the key itself, since that is all anything downstream needs and the key is
+     ;; the credential.
+     (when session-info {:metabase/authed-session-key-hash (:session-key-hash session-info)})
      (when auth-method {:embedding/auth-method auth-method})
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
@@ -255,7 +266,9 @@
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
   token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
-  `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential."
+  `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential.
+  `:metabase/authed-session-key-hash` is set only when it was the session that authenticated the request, and carries
+  the `key_hashed` value of the one that did."
   [handler]
   (fn [request respond raise]
     (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
@@ -293,16 +306,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- maybe-update-session-activity!
-  "Update the `last_active_at` column for the session identified by `session-key`, throttled to avoid a DB write on
-   every request. Uses raw SQL to bypass the Session model's no-update restriction."
-  [session-key]
-  (when (request/enabled-session-timeout-seconds)
-    (let [hashed (session/hash-session-key session-key)]
-      (when (session/record-session-activity-update! hashed)
-        (try
-          (server.db/touch-session! hashed)
-          (catch Exception e
-            (log/warnf "Failed to update session last_active_at: %s" (ex-message e))))))))
+  "Update the `last_active_at` column for the session whose `key_hashed` is `session-key-hash`, throttled to avoid a
+   DB write on every request."
+  [session-key-hash]
+  (when (session/record-session-activity-update! session-key-hash)
+    (try
+      (server.db/touch-session! session-key-hash)
+      (catch Exception e
+        (log/warnf "Failed to update session last_active_at: %s" (ex-message e))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              reset-cookie-timeout                                             |
@@ -320,8 +331,9 @@
     response))
 
 (defn reset-session-timeout
-  "Middleware that resets the expiry date on session cookies according to the session-timeout setting.
-   Will not change anything if the session-timeout setting is nil, or the timeout cookie has already expired."
+  "Middleware that records session activity on every session-authenticated request, and additionally resets the expiry
+   date on session cookies when the session-timeout setting is set. The cookie is left alone if that setting is nil or
+   the timeout cookie has already expired."
   [handler]
   (fn [request respond raise]
     (let [;; The expiry time for the cookie is relative to the time the request is received, rather than the time of the
@@ -329,9 +341,7 @@
           request-time (t/zoned-date-time (t/zone-id "GMT"))]
       (handler request
                (fn [response]
-                 ;; Update last_active_at for server-side timeout enforcement
-                 (when-let [session-key (:metabase-session-key request)]
-                   (when (:metabase-user-id request)
-                     (maybe-update-session-activity! session-key)))
+                 (when-let [session-key-hash (:metabase/authed-session-key-hash request)]
+                   (maybe-update-session-activity! session-key-hash))
                  (respond (reset-session-timeout* request response request-time)))
                raise))))
