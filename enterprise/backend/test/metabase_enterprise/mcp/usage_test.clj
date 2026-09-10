@@ -6,7 +6,6 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.mcp.usage :as usage]
-   [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.registry :as v2.registry]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -265,7 +264,8 @@
 
 ;;; ---------------------------------------- call-tool instrumentation --------------------------------------
 
-(deftest ^:parallel call-tool-records-error-when-handler-throws-test
+;; Not ^:parallel: `register-tool!` mutates the shared tool registry.
+(deftest call-tool-records-error-when-handler-throws-test
   (testing "a v2 tool handler that throws still records an error row, and the client sees a
            (redacted) error rather than a silent success"
     (mt/with-premium-features #{:audit-app}
