@@ -13,7 +13,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { dayjs } from "metabase/dayjs";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { MfaAdminOverview, MfaEnforcement } from "metabase-types/api";
 import {
   createMockMfaAdminOverview,

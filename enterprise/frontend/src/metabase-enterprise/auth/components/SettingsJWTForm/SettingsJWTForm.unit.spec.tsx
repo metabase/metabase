@@ -6,6 +6,7 @@ import {
   setupGenerateRandomTokenEndpoint,
   setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   act,
   renderWithProviders,
@@ -13,10 +14,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { settingsApi } from "metabase/settings";
 import type { SettingDefinition } from "metabase-types/api";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
