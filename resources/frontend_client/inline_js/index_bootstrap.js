@@ -26,4 +26,10 @@
   }
 
   window.MetabaseRoot = actualRoot;
+
+  // The app renders light inside an iframe, so the pre-paint background must do the
+  // same. Cypress runs the app in an iframe, but is not an embedding context.
+  if (window.self !== window.top && !window.Cypress) {
+    document.documentElement.setAttribute("data-mb-color-scheme", "light");
+  }
 })();
