@@ -722,8 +722,10 @@
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
            metabase.dashboards.schema
-           metabase.dashboards.settings}
-   :uses #{api
+           metabase.dashboards.settings
+           metabase.dashboards.write}
+   :uses #{analytics
+           api
            app-db
            audit-app
            collections
@@ -735,6 +737,7 @@
            parameters
            permissions
            public-sharing
+           pulse
            queries
            query-permissions
            query-processor
@@ -752,6 +755,7 @@
                     :model/Collection
                     :model/DashboardBookmark
                     :model/ModerationReview
+                    :model/ParameterCard
                     :model/Pulse
                     :model/PulseCard
                     :model/Revision
@@ -1686,6 +1690,7 @@
            metabase.parameters.field
            metabase.parameters.field-values
            metabase.parameters.init
+           metabase.parameters.mapping-targets
            metabase.parameters.params
            metabase.parameters.schema
            metabase.parameters.shared}
@@ -1852,6 +1857,7 @@
   pulse
   {:team "Gadget"
    :api  #{metabase.pulse.api
+           metabase.pulse.broken-subscriptions
            metabase.pulse.core
            metabase.pulse.init}
    :uses #{api
