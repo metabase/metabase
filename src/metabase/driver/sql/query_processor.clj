@@ -2329,17 +2329,12 @@
   "Compile `stages` to HoneySQL, putting each stage but the last in a CTE that the following stage selects from."
   [driver stages]
   (let [stages   (vec stages)
-        last-idx (dec (count stages))]
-    (loop [idx 0, ctes []]
-      (let [stage     (nth stages idx)
-            prev-from (if (zero? idx)
-                        {}
-                        (cte-stage-source-form driver (dec idx)))
-            hsql      (stage->honeysql driver prev-from stage)]
-        (if (= idx last-idx)
-          (cond-> hsql
-            (seq ctes) (update :with #(into ctes %)))
-          (recur (inc idx) (conj ctes (stage-cte idx hsql stage))))))))
+        last-idx (dec (count stages))
+        cte-body  (fn [idx]
+                    (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver (dec idx)))]
+                      (stage->honeysql driver prev-from (stages idx))))
+        ctes     (mapv #(stage-cte % (cte-body %) (stages %)) (range last-idx))]
+    (update (cte-body last-idx) :with #(into ctes %))))
 
 (defn- stages->honeysql [driver stages]
   (if (and (use-ctes-for-stages? driver)
