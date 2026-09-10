@@ -1,9 +1,4 @@
-import {
-  createSelector,
-  createSelectorCreator,
-  lruMemoize,
-} from "@reduxjs/toolkit";
-import { createCachedSelector } from "re-reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { shallowEqual } from "react-redux";
 
 import {
@@ -41,10 +36,9 @@ import {
 
 const NO_EVENT_IDS: TimelineEventId[] = [];
 
-const createShallowEqualResultSelector = createSelectorCreator({
-  memoize: lruMemoize,
+const shallowEqualResult = {
   memoizeOptions: { resultEqualityCheck: shallowEqual },
-});
+};
 
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
@@ -69,8 +63,8 @@ export const getDashCardTimelineEventsVisibility = (
     dashcardId,
   );
 
-// memoized per dashcard on the dashcard and its data, independent of the rest of the state
-const computeCachedDashCardTimeseriesXAxis = createCachedSelector(
+// keyed weakly on the dashcard and its data, independent of the rest of the state
+const computeCachedDashCardTimeseriesXAxis = createSelector(
   [
     (dashcard: DashboardCard) => dashcard,
     (
@@ -79,7 +73,7 @@ const computeCachedDashCardTimeseriesXAxis = createCachedSelector(
     ) => dashcardData,
   ],
   computeDashCardTimeseriesXAxis,
-)((dashcard) => dashcard.id);
+);
 
 export const getDashCardTimeseriesXAxis = (
   state: State,
@@ -94,7 +88,7 @@ export const getDashCardTimeseriesXAxis = (
     : null;
 };
 
-export const getDashCardVisibleTimelineEventIds = createCachedSelector(
+export const getDashCardVisibleTimelineEventIds = createSelector(
   [getTransformedTimelines, getDashCardTimelineEventsVisibility],
   (timelines, visibility): TimelineEventId[] => {
     const ids = resolveVisibleTimelineEvents({ timelines, visibility }).map(
@@ -102,10 +96,8 @@ export const getDashCardVisibleTimelineEventIds = createCachedSelector(
     );
     return ids.length > 0 ? ids : NO_EVENT_IDS;
   },
-)({
-  keySelector: (_state, dashcardId) => dashcardId,
-  selectorCreator: createShallowEqualResultSelector,
-});
+  shallowEqualResult,
+);
 
 export const getDashCardSelectedTimelineEventIds = (
   state: State,
@@ -118,7 +110,7 @@ export const getDashCardSelectedTimelineEventIds = (
     : NO_EVENT_IDS;
 };
 
-export const getTimelineEventsDashCardIds = createShallowEqualResultSelector(
+export const getTimelineEventsDashCardIds = createSelector(
   [getCurrentDashcards, getSelectedTabId, getDashcardDataMap],
   (dashcards, selectedTabId, dashcardDataMap) =>
     dashcards
@@ -133,6 +125,7 @@ export const getTimelineEventsDashCardIds = createShallowEqualResultSelector(
         );
       })
       .map((dashcard) => dashcard.id),
+  shallowEqualResult,
 );
 
 export const getDashboardTimelineEventsAggregate = createSelector(
