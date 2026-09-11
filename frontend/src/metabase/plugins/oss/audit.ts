@@ -1,9 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
-import type { SlashCommand } from "metabase/metabot/state/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { Dispatch, GetState } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -13,13 +11,6 @@ import type {
 } from "metabase-types/api";
 
 import { definePluginSlot } from "../slot";
-
-export type MetabotSlashCommandHandler = (args: {
-  command: SlashCommand;
-  conversationId: string;
-  dispatch: Dispatch;
-  getState: GetState;
-}) => boolean;
 
 export type InsightsLinkProps = (
   | {
@@ -49,7 +40,6 @@ type AuditPlugin = {
   CollectionExportAnalytics: ComponentType;
   isAiAuditingEnabled: boolean;
   getAiAuditingRoutes: () => ReactNode;
-  handleMetabotSlashCommand: MetabotSlashCommandHandler;
 };
 
 const getDefaultPluginAudit = (): AuditPlugin => ({
@@ -61,7 +51,6 @@ const getDefaultPluginAudit = (): AuditPlugin => ({
   CollectionExportAnalytics: PluginPlaceholder,
   isAiAuditingEnabled: false,
   getAiAuditingRoutes: () => null,
-  handleMetabotSlashCommand: (_args) => false,
 });
 
 export const PLUGIN_AUDIT = definePluginSlot(getDefaultPluginAudit);
