@@ -9,7 +9,6 @@ import {
 } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
-
 import { getCardUiParameters } from "./cards";
 
 describe("parameters/utils/cards", () => {
