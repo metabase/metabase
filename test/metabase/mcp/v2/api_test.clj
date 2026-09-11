@@ -11,6 +11,7 @@
    [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
+   [metabase.mcp.v2.test-util]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.middleware.session :as mw.session]
@@ -78,8 +79,8 @@
                              (get-in [:body :result :tools]))]
           (is (= 200 (:status init)))
           (is (some? session-id))
-          (is (some #(= "ping_v2" (:name %)) tools)
-              "ping_v2 is registered only by the v2 registry, so seeing it proves v2 answered"))))))
+          (is (some #(= "learn" (:name %)) tools)
+              "learn is registered only by the v2 registry, so seeing it proves v2 answered"))))))
 
 (deftest alias-discovery-challenge-names-the-path-the-client-hit-test
   (testing "GHY-4250: an unauthenticated request gets a 401 whose resource_metadata names the alias the client
@@ -116,47 +117,16 @@
         tools          (get-in response [:body :result :tools])]
     (testing "the registry drives tools/list; cookie sessions see every tool"
       (is (= 200 (:status response)))
-      (is (some #(= "ping_v2" (:name %)) tools)))
+      (is (some #(= "test_echo" (:name %)) tools)))
     (testing "inputSchema is strict JSON Schema (required + closed), safe for strict clients"
-      (let [schema (:inputSchema (first (filter #(= "ping_v2" (:name %)) tools)))]
+      (let [schema (:inputSchema (first (filter #(= "test_echo" (:name %)) tools)))]
         (is (= "object" (:type schema)))
         (is (false? (:additionalProperties schema)))))))
-
-;; Not ^:parallel: the set-valued-scope probe below calls `register-tool!`, which the deftest linter treats as
-;; destructive even though this call always throws before it can mutate the registry.
-(deftest ping-v2-scope-reach-test
-  (testing "ping_v2 is gated on `agent:content:read` alone, and says so. The registry validates `:scope` as a single
-            non-blank string, so gating the health check on the whole v2 surface scope set — which
-            `metabase.mcp.scope/matches?` would honor — is not expressible: a set-valued `:scope` throws at
-            registration, and `registered-scopes` would collect the set itself rather than its members. A token
-            granted only another surface scope therefore cannot use the tool to confirm its token is accepted; the
-            description points it at the unscoped JSON-RPC `ping` method, which needs no scope."
-    (let [narrow #{"agent:query:run"}]
-      (testing "a token on another surface scope neither sees nor can call it"
-        (is (not (some #(= "ping_v2" (:name %)) (registry/list-tools narrow))))
-        (is (re-find #"^Insufficient scope to call tool: ping_v2\."
-                     (get-in (registry/call-tool narrow nil "ping_v2" {}) [:error :message]))))
-      (testing "the published description names the required scope and the unscoped fallback"
-        (let [description (->> (registry/list-tools nil)
-                               (filter #(= "ping_v2" (:name %)))
-                               first
-                               :description)]
-          (is (str/includes? description "agent:content:read"))
-          (is (str/includes? description "ping"))))
-      (testing "a set-valued :scope is rejected at registration — the reason the single scope stands"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"registered without a :scope string"
-                              (registry/register-tool!
-                               {:name        "set_scope_probe"
-                                :scope       #{metabot.scope/agent-content-read metabot.scope/agent-query-run}
-                                :description "probe: never registers"
-                                :args        [:map]
-                                :handler     (fn [_ _] nil)})))))))
 
 (deftest tools-call-test
   (let [[session-id _] (initialize!)]
     (testing "tools/call dispatches through the registry"
-      (let [response (mcp-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}})
+      (let [response (mcp-request (jsonrpc-request "tools/call" {:name "test_echo" :arguments {}})
                                   {"mcp-session-id" session-id})
             result   (get-in response [:body :result])]
         (is (= 200 (:status response)))
@@ -164,7 +134,7 @@
         (is (= {:ok true :message "pong"} (:structuredContent result)))))
     (testing "argument validation failures are JSON-RPC invalid-params errors, not MCP tool results"
       (let [response (mcp-request (jsonrpc-request "tools/call"
-                                                   {:name "ping_v2" :arguments {:message 42}})
+                                                   {:name "test_echo" :arguments {:message 42}})
                                   {"mcp-session-id" session-id})]
         (is (= -32602 (get-in response [:body :error :code])))
         (is (str/starts-with? (get-in response [:body :error :message]) "Invalid arguments"))
@@ -178,17 +148,17 @@
 
 (deftest disabled-tools-kill-switch-test
   (let [[session-id _] (initialize!)]
-    (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["ping_v2"]]
+    (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["test_echo"]]
       (testing "a disabled tool disappears from tools/list"
         (let [response (mcp-request (jsonrpc-request "tools/list")
                                     {"mcp-session-id" session-id})]
-          (is (not (some #(= "ping_v2" (:name %))
+          (is (not (some #(= "test_echo" (:name %))
                          (get-in response [:body :result :tools]))))))
       (testing "a disabled tool is rejected by tools/call as if it never existed"
-        (let [response (mcp-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}})
+        (let [response (mcp-request (jsonrpc-request "tools/call" {:name "test_echo" :arguments {}})
                                     {"mcp-session-id" session-id})]
           (is (= -32601 (get-in response [:body :error :code])))
-          (is (= "Unknown tool: ping_v2" (get-in response [:body :error :message])))
+          (is (= "Unknown tool: test_echo" (get-in response [:body :error :message])))
           (is (not (contains? (:body response) :result))))))))
 
 (deftest method-dispatch-fallthrough-test
@@ -487,7 +457,7 @@
           (testing "and a tool actually dispatches — the SSO session reaches the surface, not just the handshake"
             (let [response (client/client-full-response session-key :post 200 endpoint
                                                         {:request-options {:headers {"mcp-session-id" session-id}}}
-                                                        (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}}))
+                                                        (jsonrpc-request "tools/call" {:name "test_echo" :arguments {}}))
                   result   (get-in response [:body :result])]
               (is (not (:isError result)))
               (is (= {:ok true :message "pong"} (:structuredContent result))))))))))
@@ -626,10 +596,9 @@
             transport on the same authenticated branch a cookie session does. It must still dispatch with the
             token's granted scopes — the unrestricted fallback that branch gives a cookie session would hand a
             narrow token every tool."
-    ;; This slice's registry holds only ping_v2 + learn, both `agent:content:read`, so asserting the absence of a
-    ;; not-yet-landed write tool would pass even with scope filtering deleted. Register a throwaway tool on a DIFFERENT
-    ;; scope (`agent:content:write`, which the token below does not carry) so the negative half of the scope contract
-    ;; actually has teeth: this test fails if `list-tools`' scope filter is removed.
+    ;; Register a throwaway tool on a DIFFERENT scope (`agent:content:write`, which the token below does not carry)
+    ;; so the negative half of the scope contract has teeth independent of which real write tools are registered:
+    ;; this test fails if `list-tools`' scope filter is removed.
     (do-with-temp-tool!
      {:name        "scope_probe_write"
       :scope       metabot.scope/agent-content-write
@@ -664,7 +633,7 @@
                                     (->> (map :name) set))]
                  (is (some? session-id))
                  (testing "a tool inside the granted scope (agent:content:read) is served"
-                   (is (contains? tool-names "ping_v2")))
+                   (is (contains? tool-names "test_echo")))
                  (testing "a tool gated on a scope the token lacks (agent:content:write) is filtered out"
                    (is (not (contains? tool-names "scope_probe_write"))
                        "scope filtering must hide a write-scoped tool from a read-only token")))))))))))

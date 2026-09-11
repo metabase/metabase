@@ -7,6 +7,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.mcp.usage :as usage]
    [metabase.mcp.v2.registry :as v2.registry]
+   [metabase.mcp.v2.test-util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -269,8 +270,8 @@
   (testing "a v2 tool handler that throws still records an error row, and the client sees a
            (redacted) error rather than a silent success"
     (mt/with-premium-features #{:audit-app}
-      ;; A tool name unique to this run. Driving the real `ping_v2` would make the select read a sibling
-      ;; ^:parallel test's row, and the cleanup would then delete every ping_v2 row in the app DB — the rest
+      ;; A tool name unique to this run. Driving the real `test_echo` would make the select read a sibling
+      ;; ^:parallel test's row, and the cleanup would then delete every test_echo row in the app DB — the rest
       ;; of this ns isolates by a unique column value for exactly that reason.
       (let [sid       (str "throw-session-" (mt/random-name))
             tool-name (str "throwing-" (mt/random-name))]
@@ -364,11 +365,11 @@
                          (test.users/username->token :crowberto)
                          :post "mcp"
                          {:request-options {:headers {"mcp-session-id" sid}}}
-                         (jsonrpc "tools/call" {:name "ping_v2" :arguments {}} 2))]
+                         (jsonrpc "tools/call" {:name "test_echo" :arguments {}} 2))]
           (testing "successful tools/call writes a success row with identity denormalized on it"
             (is (= 200 (:status call-resp)))
             (is (false? (boolean (get-in call-resp [:body :result :isError]))))
-            (let [row (t2/select-one :model/McpToolCallLog :tool_name "ping_v2" :client_version ver)]
+            (let [row (t2/select-one :model/McpToolCallLog :tool_name "test_echo" :client_version ver)]
               (is (some? row))
               (is (= "success" (:status row)))
               (is (= crowberto (:user_id row)))
