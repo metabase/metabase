@@ -217,6 +217,7 @@
            metabase.analytics.core
            metabase.analytics.event
            metabase.analytics.init
+           metabase.analytics.sdk
            metabase.analytics.settings}
    :uses #{analytics-interface
            api
