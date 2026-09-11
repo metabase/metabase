@@ -5,8 +5,8 @@ import {
   PLUGIN_TENANTS,
   type SdkIframeEmbedSetupModalInitialState,
 } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
+import { useNavigate } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import type { SetupGuideStep } from "../types";
 
@@ -16,18 +16,13 @@ const SETUP_GUIDE_URLS = {
 };
 
 export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const openEmbedModal = useCallback(
     (props: { initialState: SdkIframeEmbedSetupModalInitialState }) => {
-      dispatch(
-        setOpenModalWithProps({
-          id: "embed",
-          props,
-        }),
-      );
+      navigate(Urls.embeddingHubNewEmbed(props.initialState));
     },
-    [dispatch],
+    [navigate],
   );
 
   return useMemo(() => {

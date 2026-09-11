@@ -89,11 +89,15 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
 
     H.modal().should("exist");
 
+    // The wizard is its own route outside the hub layout, so it takes over the
+    // whole window rather than rendering over the nav.
+    cy.findByTestId("embedding-hub-nav").should("not.exist");
+
     cy.go("back");
 
     H.modal().should("not.exist");
-    cy.findAllByTestId("settings-sidebar-link")
-      .contains("General")
+    cy.findByTestId("embedding-hub-main")
+      .findByRole("heading", { name: "Security" })
       .should("be.visible");
   });
 

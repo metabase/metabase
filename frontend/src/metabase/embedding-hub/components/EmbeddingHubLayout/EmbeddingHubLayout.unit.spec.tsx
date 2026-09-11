@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -64,6 +66,7 @@ function setup({
         />
       </Route>
       <Route path="security" element={<div>{"Security body"}</div>} />
+      <Route path="new" element={<div>{"New embed body"}</div>} />
     </Route>,
     {
       withRouter: true,
@@ -165,6 +168,18 @@ describe("EmbeddingHubLayout", () => {
       const button = await screen.findByRole("button", { name: "New embed" });
 
       expect(button).toHaveTextContent("");
+    });
+
+    // A route rather than a modal dispatch, so that back closes the wizard
+    // instead of leaving the hub (EMB-2362).
+    it("navigates to the wizard route", async () => {
+      setup();
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "New embed" }),
+      );
+
+      expect(await screen.findByText("New embed body")).toBeInTheDocument();
     });
   });
 });

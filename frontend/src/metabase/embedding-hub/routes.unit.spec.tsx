@@ -15,6 +15,8 @@ describe("embedding hub routes", () => {
     const paths = leafPaths(toRouteObjects(getEmbeddingHubRoutes()));
 
     expect(paths).toEqual([
+      // Outside the layout, so the wizard takes over the window.
+      "embedding/new",
       "embedding",
       "embedding/get-started",
       "embedding/get-started/permissions",
@@ -45,8 +47,8 @@ describe("embedding hub routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getEmbeddingHubRoutes());
 
-    // 22: includes the appearance/theme route, which is lazy too.
-    expect(loaders).toHaveLength(22);
+    // 23: includes the appearance/theme route, which is lazy too.
+    expect(loaders).toHaveLength(23);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
