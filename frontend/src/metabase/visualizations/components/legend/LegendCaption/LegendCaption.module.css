@@ -1,0 +1,54 @@
+/* With an explicit title size the row is capped at the title line-height, so
+   icons and action buttons overflow-center instead of stretching the caption. */
+.rootSm {
+  height: 0.875rem;
+}
+
+.rootMd {
+  height: 1.0625rem;
+}
+
+.label {
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+/* Doubled selectors outrank the shared LegendLabel link line-height. */
+.labelSm {
+  && {
+    font-size: 0.75rem;
+    line-height: 0.875rem;
+  }
+}
+
+.labelMd {
+  && {
+    line-height: 1.0625rem;
+  }
+}
+
+.labelIcon {
+  flex-shrink: 0;
+  margin-right: 0.25rem;
+}
+
+.descriptionIcon {
+  color: var(--mb-color-text-disabled);
+  margin: 0 0.25rem;
+
+  &:hover {
+    color: var(--mb-color-text-secondary);
+  }
+}
+
+/* In a capped row a zero-height box keeps the icon from stretching the
+   caption past the title line-height; the icon still renders, centered on
+   the row middle. */
+.descriptionIconCapped {
+  display: flex;
+  align-items: center;
+  height: 0;
+}

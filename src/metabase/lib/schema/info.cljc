@@ -56,7 +56,7 @@
   like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required"
   [:map
    ;; do not decode, since this should not get written to the app DB or come in from the REST API.
-   {:decode/normalize identity}
+   {:closed true, :decode/normalize identity}
    ;; TODO -- not 100% sure info should be getting normalized, because we're not supposed to be saving this map
    ;; anyway, right?
    ;; These keys are nice to pass in if you're running queries on the backend and you know these values. They aren't
@@ -69,8 +69,10 @@
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:transform-id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:lens-id                 {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:lens-params             {:optional true} [:maybe [:map-of :keyword :any]]]
+   [:lens-params             {:optional true} [:maybe [:map {:closed true}
+                                                       [:join_step {:optional true} [:maybe :int]]]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
+   [:visualization-settings  {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    ;;
@@ -79,9 +81,10 @@
    ;; TODO (Cam 6/13/25) -- weird to put this at the top-level of the query as opposed to in the stage to which this
    ;; applies... I guess it's mostly only used to in [[metabase.lib.metadata.result-metadata]] tho
    [:metadata/model-metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
+   [:metadata/own-model-query? {:optional true} :boolean]
+   [:pivot/original-query    {:optional true} [:maybe [:ref :metabase.lib.schema/query]]]
    ;; Pivot QP runs multiple queries, and in the dataset api, we need to have access to the original query
    ;; so that we can pass it to the pivot.qp for downloads on unsaved questions
-   [:pivot/original-query    {:optional true} [:maybe [:map-of :any :any]]]
    ;; this gets added by [[metabase.query-processor.pivot]] for pivot queries; it's merged in to other metadata
    ;; by [[metabase.query-processor.middleware.results-metadata]] before recording it.
    [:pivot/result-metadata   {:optional true} [:maybe [:multi

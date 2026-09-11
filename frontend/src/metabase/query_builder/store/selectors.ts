@@ -37,7 +37,6 @@ import {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
   normalizeParameterValue,
   normalizeParameters,
@@ -162,10 +161,11 @@ export const getDatabaseId = createSelector(
 export const getTableForeignKeyReferences = (state: QueryBuilderStoreState) =>
   state.qb.tableForeignKeyReferences;
 
+// The question is built from the same card and parameter values, and its
+// `parameters()` is `getCardUiParameters` over them.
 export const getParameters = createSelector(
-  [getCard, getMetadata, getParameterValues],
-  (card, metadata, parameterValues) =>
-    card ? getCardUiParameters(card, metadata, parameterValues) : [],
+  [getQuestionWithoutComposing],
+  (question) => question?.parameters() ?? [],
 );
 
 const getLastRunDatasetQuery = createSelector(

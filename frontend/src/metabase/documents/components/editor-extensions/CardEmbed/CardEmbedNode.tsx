@@ -18,7 +18,7 @@ import { ExplicitSizeRefreshModeContext } from "metabase/common/components/Expli
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
@@ -58,7 +58,6 @@ import {
   getVisualizationTransformed,
   isTimeseries,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
 import type {
   CardDisplayType,
   StoredResultSort,
@@ -328,7 +327,7 @@ export const CardEmbedComponent = memo(
 
     host.useReportPrefetchLoading(_id, isLoading);
 
-    const metadata = useSelector(getMetadata);
+    const buildQuestion = useQuestionFromCard();
     const datasetError = dataset && getDatasetError(dataset);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
@@ -409,8 +408,8 @@ export const CardEmbedComponent = memo(
 
     const displayName = name || card?.name;
     const question = useMemo(
-      () => (card != null ? new Question(card, metadata) : undefined),
-      [card, metadata],
+      () => (card != null ? buildQuestion(card) : undefined),
+      [card, buildQuestion],
     );
     const isNativeQuestion = question?.isNative();
 
@@ -525,13 +524,13 @@ export const CardEmbedComponent = memo(
       if (!host.capabilities.canOpenCardInQueryBuilder) {
         return;
       }
-      if (card && metadata) {
+      if (card) {
         try {
-          const isDraftCard = card.id < 0;
-          const question = new Question(
-            isDraftCard ? { ...card, id: null } : card,
-            metadata,
-          );
+          // A draft card carries a placeholder negative id. An `UnsavedCard`
+          // has no id at all, which is what makes `Urls.question` build an
+          // ad-hoc url rather than a link to a saved question.
+          const { id: _id, ...draftCard } = card;
+          const question = buildQuestion(card.id < 0 ? draftCard : card);
           const url = Urls.question(question);
           dispatch(host.navigateToCard(url, document));
         } catch (error) {
@@ -823,7 +822,6 @@ export const CardEmbedComponent = memo(
                   <ExplicitSizeRefreshModeContext.Provider value="layout">
                     <Visualization
                       rawSeries={series}
-                      metadata={metadata}
                       mode={visualizationMode}
                       hasColumnReordering
                       highlighted={highlighted}

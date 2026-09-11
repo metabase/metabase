@@ -1318,6 +1318,21 @@ When set to `true`, users who log in via LDAP will automatically get a Metabase 
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
 
+### `MB_LLM_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `external-only`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Controls which networks Metabase may connect to for LLM provider base URLs. Set through the environment only; on Metabase Cloud the default applies.
+Options:
+- external-only (default; only globally reachable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+The Metabase AI service and LLM proxy are deployment configuration and may always use private addresses.
+
+Set this when a self-hosted vLLM server is on your private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. With a JVM-wide HTTP(S) proxy, Metabase checks destination addresses available through local DNS; the deployment proxy must enforce destination restrictions on its outbound connections. Proxy-only DNS is supported. Metabase enforces destination addresses at connection time for direct requests.
+
 ### `MB_LLM_ANTHROPIC_API_BASE_URL`
 
 - Type: string
@@ -1628,7 +1643,6 @@ Backed by the openrouter connection in the admin AI settings provider list: read
 
 - Type: json
 - Default: `[]`
-- [Configuration file name](./config-file.md): `llm-providers`
 
 JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type's credential fields.
 
@@ -1770,7 +1784,7 @@ Controls which networks Metabase may connect to for map tile servers.
 - Default: `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`
 - [Configuration file name](./config-file.md): `map-tile-server-url`
 
-The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
+The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys.
 
 ### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
 
@@ -2174,7 +2188,7 @@ Git synchronization type - :read-write or :read-only.
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-url`
 
-The location of your git repository, e.g. https://github.com/acme-inco/metabase.git.
+The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -2500,7 +2514,7 @@ Value for the session cookie's `SameSite` directive.
 
 See [Embedding Metabase in a different domain](../embedding/full-app-embedding.md#embedding-metabase-in-a-different-domain).
         Read more about [Full app embedding](../embedding/full-app-embedding.md).
-        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value).
 
 ### `MB_SESSION_COOKIES`
 
@@ -2964,7 +2978,7 @@ Note: Users with row or column security restrictions will never see suggestions.
 
 Controls which networks Metabase may connect to for warehouse connections.
 Options:
-- external-only (only globally routable public addresses)
+- external-only (only globally reachable public addresses)
 - allow-private (external + private networks but NOT loopback or link-local)
 - allow-all (no restrictions).
 Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
@@ -3519,4 +3533,4 @@ Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name
 Type: string<br>
 Default: `null`
 
-Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
+Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Certificate_Transparency for more information.

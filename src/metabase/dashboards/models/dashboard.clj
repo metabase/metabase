@@ -70,7 +70,7 @@
 (t2/deftransforms :model/Dashboard
   {:parameters       parameters/transform-parameters
    :public_uuid      (mi/transform-encrypted-text "report_dashboard.public_uuid")
-   :embedding_params mi/transform-json})
+   :embedding_params mi/transform-json-no-keywordization})
 
 (t2/define-before-delete :model/Dashboard
   [dashboard]
@@ -255,7 +255,7 @@
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
   [dashboard     :- DashboardWithSeriesAndCard
-   new-dashcards :- [:sequential ms/Map]]
+   new-dashcards :- [:sequential :map]]
   (let [old-dashcards    (:dashcards dashboard)
         id->old-dashcard (m/index-by :id old-dashcards)
         old-dashcard-ids (set (keys id->old-dashcard))

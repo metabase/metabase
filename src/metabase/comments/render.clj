@@ -69,7 +69,7 @@
   "Convert a smartLink node to hiccup. Builds URLs from model + entityId rather than
   trusting the href attribute, which could be crafted to inject phishing links."
   [{:keys [attrs]}]
-  (let [{:keys [label model entityId]} attrs
+  (let [{:strs [label model entityId]} attrs
         display-text (or label
                          (when (= model "user") (str "@" entityId))
                          (str model " " entityId))
@@ -90,7 +90,7 @@
     (case type
       "doc"            (children->hiccup content)
       "paragraph"      (into [:p] (children->hiccup content))
-      "heading"        (let [level (min (max (get attrs :level 1) 1) 6)
+      "heading"        (let [level (min (max (get attrs "level" 1) 1) 6)
                              tag   (keyword (str "h" level))]
                          (into [tag] (children->hiccup content)))
       "bulletList"     (into [:ul] (children->hiccup content))
