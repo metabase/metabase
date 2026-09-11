@@ -43,23 +43,17 @@ const TabCountBadge = ({
         data-testid="tab-count-skeleton"
       />
     ))
-    .with({ status: "loaded" }, ({ value }) =>
-      isActive ? (
-        <Badge
-          variant="light"
-          size="xs"
-          color="neutral"
-          bg="background_surface-secondary-hover"
-          c="text-primary-inverse"
-        >
-          {value}
-        </Badge>
-      ) : (
-        <Badge variant="light" size="xs" color="neutral">
-          {value}
-        </Badge>
-      ),
-    )
+    .with({ status: "loaded" }, ({ value }) => (
+      <Badge
+        variant="light"
+        size="xs"
+        color="neutral"
+        bg={isActive ? "background_surface-secondary-hover" : undefined}
+        c={isActive ? "text-primary-inverse" : undefined}
+      >
+        {value}
+      </Badge>
+    ))
     .with({ status: "error" }, () => null)
     .exhaustive();
 
