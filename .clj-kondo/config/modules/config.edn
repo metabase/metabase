@@ -1343,6 +1343,7 @@
               metabase.metabot.schema
               metabase.metabot.schema.v2
               metabase.metabot.self
+              metabase.metabot.self.catalog
               metabase.metabot.settings
               metabase.metabot.tools
               metabase.metabot.tools.entity-details}
@@ -1461,6 +1462,7 @@
   {:team "Metabot"
    :ns-prefix "metabase.llm"
    :api #{metabase.llm.api
+          metabase.llm.health
           metabase.llm.init
           metabase.llm.provider
           metabase.llm.settings

@@ -2,9 +2,11 @@ import type {
   CreateLlmProviderRequest,
   ExtractSourcesRequest,
   ExtractSourcesResponse,
+  LlmActiveModels,
   LlmConnectionModels,
   LlmProviderConnection,
   LlmProviderType,
+  ReorderLlmProvidersRequest,
   UpdateLlmProviderRequest,
 } from "metabase-types/api";
 
@@ -43,6 +45,30 @@ export const llmApi = Api.injectEndpoints({
       }),
       providesTags: () => [listTag("llm-models")],
     }),
+    getLlmActiveModel: builder.query<LlmActiveModels, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/llm/active-model",
+      }),
+      // "session-properties" so picking a different default or mini model — which invalidates that tag —
+      // also refreshes which provider the notice says is serving requests
+      providesTags: () => [listTag("llm-active-model"), "session-properties"],
+    }),
+    reorderLlmProviders: builder.mutation<
+      LlmProviderConnection[],
+      ReorderLlmProvidersRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/llm/provider-order",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [
+          listTag("llm-providers"),
+          listTag("llm-active-model"),
+        ]),
+    }),
     createLlmProvider: builder.mutation<
       LlmProviderConnection,
       CreateLlmProviderRequest
@@ -56,6 +82,7 @@ export const llmApi = Api.injectEndpoints({
         invalidateTags(error, [
           listTag("llm-providers"),
           listTag("llm-models"),
+          listTag("llm-active-model"),
           "session-properties",
         ]),
     }),
@@ -72,6 +99,7 @@ export const llmApi = Api.injectEndpoints({
         invalidateTags(error, [
           listTag("llm-providers"),
           listTag("llm-models"),
+          listTag("llm-active-model"),
           "session-properties",
         ]),
     }),
@@ -84,6 +112,7 @@ export const llmApi = Api.injectEndpoints({
         invalidateTags(error, [
           listTag("llm-providers"),
           listTag("llm-models"),
+          listTag("llm-active-model"),
           "session-properties",
         ]),
     }),
@@ -95,6 +124,8 @@ export const {
   useListLlmProviderTypesQuery,
   useListLlmProvidersQuery,
   useListLlmModelsQuery,
+  useGetLlmActiveModelQuery,
+  useReorderLlmProvidersMutation,
   useCreateLlmProviderMutation,
   useUpdateLlmProviderMutation,
   useDeleteLlmProviderMutation,

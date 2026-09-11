@@ -6,7 +6,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.provider.settings]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [potemkin :as p])
@@ -420,6 +420,23 @@
 ;;; by an environment variable, which [[metabase.llm.provider/connections]] resolves on every read. Editing one in
 ;;; the app DB would not reach the connection serving requests, so a write is rejected rather than silently ignored.
 ;;; Connections are managed through the `/api/llm/providers` endpoints instead.
+
+(defsetting llm-provider-fallback-enabled?
+  (deferred-tru "Whether Metabot falls back to the next connected provider, in list order, when the one it is set to use is failing. On by default for plans with the AI Controls feature.")
+  :type       :boolean
+  ;; `:feature` serves `:default` to instances without it, so the default is the OSS value — off — and the getter
+  ;; supplies the on-by-default the entitled get: it reads the raw stored/env value itself, because
+  ;; `get-value-of-type` would fill an unset value with this same `:default` and make "never touched" and
+  ;; "turned off" indistinguishable.
+  :feature    :ai-controls
+  :default    false
+  :visibility :settings-manager
+  :export?    true
+  :getter     (fn []
+                (let [stored (some-> (or (setting/env-var-value :llm-provider-fallback-enabled?)
+                                         (setting/db-stored-value :llm-provider-fallback-enabled?))
+                                     setting/string->boolean)]
+                  (if (some? stored) stored true))))
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 

@@ -275,9 +275,12 @@
         ;; auth-bound dynamic. Used for both the conversation `user_id` (on
         ;; first insert) and the user-message row's `user_id`.
         originator-id          (or user-id api/*current-user-id*)
+        ;; from the model actually serving the turn, so a BYOK selection that fell back to the managed provider is
+        ;; recorded as proxied, and a managed selection that fell back to BYOK is not
         ai-proxy?              (if (some? ai-proxy?)
                                  ai-proxy?
-                                 (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider)))
+                                 (llm.provider/managed-model-ref?
+                                  (:model-ref (metabot.settings/metabot-model-selection))))
         user-external-id       (or user-external-id (str (random-uuid)))
         assistant-external-id  (or assistant-external-id (str (random-uuid)))]
     (analytics/inc! :metabase-metabot/turn-started
@@ -343,7 +346,8 @@
 
   Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`."
   [conversation-id profile-id retry-message-external-id & {:keys [assistant-external-id delete-message-ids]}]
-  (let [ai-proxy?             (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
+  (let [ai-proxy?             (llm.provider/managed-model-ref?
+                               (:model-ref (metabot.settings/metabot-model-selection)))
         assistant-external-id (or assistant-external-id (str (random-uuid)))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
