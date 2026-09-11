@@ -5,19 +5,20 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.registry :as registry]
-   [metabase.mcp.v2.tools.parameters]
+   [metabase.mcp.v2.tools.parameters :as parameters]
+   [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
+   [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.field.search-values-query :as search-values-query]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
-
-(comment metabase.mcp.v2.tools.parameters/keep-me)
 
 (defn- call-params
   "Invoke get_parameter_values through the registry — the same seam the JSON-RPC route uses, so
@@ -460,8 +461,9 @@
     (is (re-find #"1000" (arg-description :offset)))
     (is (re-find #"`query`" (arg-description :offset)))))
 
-(deftest date-parameter-values-test
-  (testing "GHY-4141: a date parameter mapped to a column returns that column's distinct values"
+(deftest date-parameter-range-test
+  (testing "GHY-4519: a column-backed date parameter answers with the span its column covers and the
+            grammar to write a value in, rather than paging out the column's distinct dates"
     (mt/with-full-data-perms-for-all-users!
       (mt/with-temp [:model/Dashboard {dash-id :id}
                      {:parameters [{:name "Date" :slug "date" :id "_DATE_" :type "date/all-options"}]}
@@ -474,12 +476,132 @@
                                                                    :card_id      card-id
                                                                    :target       [:dimension (mt/$ids checkins $date)]}]}]
         (mt/with-test-user :rasta
-          (let [{:keys [values returned]} (params-result {:target "dashboard" :id dash-id
-                                                          :parameter_id "_DATE_" :limit 3})]
-            (is (= 3 returned))
-            (is (every? #(re-find #"^\d{4}-\d{2}-\d{2}" (first %)) values)))))))
-  (testing "GHY-4141: so the description must not promise that date parameters return none"
-    (is (not (re-find #"Date and free-text parameters have no value list" (tool-description))))))
+          (let [{:keys [kind distinct_dates accepts values] lo :min hi :max}
+                (params-result {:target "dashboard" :id dash-id :parameter_id "_DATE_"})]
+            (testing "the range replaces the value list outright"
+              (is (= "date" kind))
+              (is (nil? values)))
+            (testing "min and max are the column's real dates, written in the same YYYY-MM-DD the
+                      accepts grammar asks for — a value carrying a time part would contradict it"
+              (is (re-matches #"\d{4}-\d{2}-\d{2}" lo))
+              (is (re-matches #"\d{4}-\d{2}-\d{2}" hi))
+              (is (neg? (compare lo hi))))
+            (testing "the count covers the whole column rather than one page of it"
+              (is (= 618 distinct_dates)))
+            (testing "accepts is the grammar to build a value from — templates, not sample dates,
+                      which are what min and max are for"
+              (is (= ["YYYY-MM-DD" "YYYY-MM-DD~YYYY-MM-DD" "past30days" "thisyear"] accepts)))))))))
+
+(deftest date-parameter-with-static-list-keeps-its-list-test
+  (testing "GHY-4519: a date parameter whose values come from a static list keeps that list — those
+            dates are a curated set to pick from, not a span to write a value inside"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp [:model/Dashboard {dash-id :id}
+                     {:parameters [{:name                 "Date"
+                                    :slug                 "date"
+                                    :id                   "_DATE_"
+                                    :type                 "date/single"
+                                    :values_source_type   "static-list"
+                                    :values_source_config {:values ["2024-01-01" "2024-06-01"]}}]}]
+        (mt/with-test-user :rasta
+          (let [{:keys [kind values]} (params-result {:target "dashboard" :id dash-id
+                                                      :parameter_id "_DATE_"})]
+            (is (nil? kind))
+            (is (= [["2024-01-01"] ["2024-06-01"]] values))))))))
+
+(deftest date-range-past-the-list-cap-test
+  (testing "GHY-4519: max is the column's real last date even when the column holds far more distinct
+            values than a value list would return. This is why the range is aggregated rather than
+            folded out of the fetched values: listing stops at `parameters.dashboard/result-limit` and
+            values arrive ascending, so the list's last value is the 1000th-earliest. orders.created_at
+            holds ~18.7k distinct values, and its 1000th lands in Feb 2019 — more than a year short of
+            the column's true max, which a caller would have filtered against"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp [:model/Dashboard {dash-id :id}
+                     {:parameters [{:name "Created" :slug "created" :id "_CREATED_" :type "date/all-options"}]}
+                     :model/Card {card-id :id} {:database_id   (mt/id)
+                                                :table_id      (mt/id :orders)
+                                                :dataset_query (table-query (mt/id :orders))}
+                     :model/DashboardCard _ {:card_id            card-id
+                                             :dashboard_id       dash-id
+                                             :parameter_mappings [{:parameter_id "_CREATED_"
+                                                                   :card_id      card-id
+                                                                   :target       [:dimension (mt/$ids orders $created_at)]}]}]
+        (mt/with-test-user :rasta
+          (let [{:keys [distinct_dates] hi :max} (params-result {:target "dashboard" :id dash-id
+                                                                 :parameter_id "_CREATED_"})
+                capped (:values (chain-filter/chain-filter (mt/id :orders :created_at) nil
+                                                           :limit parameters.dashboard/result-limit))]
+            (testing "the count is the whole column, well past what a list would return"
+              (is (< parameters.dashboard/result-limit distinct_dates)))
+            (testing "and max is the column's last date, not where the capped list stopped"
+              (is (= "2020-04-19" hi))
+              (is (not= hi (#'parameters/->day (ffirst (take-last 1 capped))))))))))))
+
+(deftest date-range-honors-constraints-test
+  (testing "GHY-4519: the range narrows under chain-filter constraints, so a caller that asked for the
+            dates available alongside another filter's selection isn't handed the whole column's span —
+            the reason the range is built from chain filtering's own query rather than a plain
+            aggregation over the column"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp [:model/Dashboard {dash-id :id}
+                     {:parameters [{:name "Date" :slug "date" :id "_DATE_" :type "date/all-options"}
+                                   {:name "Price" :slug "price" :id "_PRICE_" :type "category"}]}
+                     :model/Card {card-id :id} {:database_id   (mt/id)
+                                                :table_id      (mt/id :checkins)
+                                                :dataset_query (table-query (mt/id :checkins))}
+                     :model/DashboardCard _ {:card_id            card-id
+                                             :dashboard_id       dash-id
+                                             :parameter_mappings [{:parameter_id "_DATE_"
+                                                                   :card_id      card-id
+                                                                   :target       [:dimension (mt/$ids checkins $date)]}
+                                                                  {:parameter_id "_PRICE_"
+                                                                   :card_id      card-id
+                                                                   :target       [:dimension (mt/$ids checkins $venue_id->venues.price)]}]}]
+        (mt/with-test-user :rasta
+          (let [whole      (params-result {:target "dashboard" :id dash-id :parameter_id "_DATE_"})
+                narrowed   (params-result {:target "dashboard" :id dash-id :parameter_id "_DATE_"
+                                           :constraints {:_PRICE_ 4}})]
+            (is (< (:distinct_dates narrowed) (:distinct_dates whole)))
+            (is (neg? (compare (:min whole) (:min narrowed))))))))))
+
+(deftest date-range-rejects-query-test
+  (testing "GHY-4519: `query` searches a list of values by text, and a range is two dates and a
+            grammar — applying it silently would hand back the column's whole span as though it had
+            been narrowed, so it is a teaching error naming what to do instead"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp [:model/Dashboard {dash-id :id}
+                     {:parameters [{:name "Date" :slug "date" :id "_DATE_" :type "date/all-options"}]}
+                     :model/Card {card-id :id} {:database_id   (mt/id)
+                                                :table_id      (mt/id :checkins)
+                                                :dataset_query (table-query (mt/id :checkins))}
+                     :model/DashboardCard _ {:card_id            card-id
+                                             :dashboard_id       dash-id
+                                             :parameter_mappings [{:parameter_id "_DATE_"
+                                                                   :card_id      card-id
+                                                                   :target       [:dimension (mt/$ids checkins $date)]}]}]
+        (mt/with-test-user :rasta
+          (let [msg (params-error {:target "dashboard" :id dash-id :parameter_id "_DATE_"
+                                   :query "2013"})]
+            (is (re-find #"no list for `query` to search" msg))
+            (is (re-find #"`accepts`" msg))))))))
+
+(deftest every-advertised-date-form-parses-test
+  (testing "GHY-4519: every form in `accepts` actually parses as a date filter. This is the one claim
+            in the response the caller acts on directly, and nothing else ties it to the decoders —
+            advertising a form the QP no longer understands would send every date filter into a
+            teaching error"
+    (mt/with-test-user :rasta
+      (doseq [template @#'parameters/date-accepts
+              :let     [value (str/replace template "YYYY-MM-DD" "2024-05-15")]]
+        (testing (pr-str value)
+          (is (some? (params.dates/date-string->filter value (mt/id :checkins :date)))))))))
+
+(deftest date-parameter-description-test
+  (testing "GHY-4141: the description must not promise that date parameters return none"
+    (is (not (re-find #"Date and free-text parameters have no value list" (tool-description)))))
+  (testing "GHY-4519: nor that they hand back the column's distinct dates"
+    (is (not (re-find #"returns the column's distinct dates" (tool-description))))))
 
 (deftest permissions-test
   (testing "GHY-4141: a caller who can't read the dashboard or card gets the collapsed not-found"
@@ -576,6 +698,37 @@
                                                  :parameter_id "_CATEGORY_NAME_" :limit 3})]
             (is (= [["African"] ["American"] ["Artisan"]] values)
                 "filter values come back despite the caller having no table query permission")))))))
+
+(deftest date-range-without-table-perms-test
+  (testing "GHY-4519: the range holds the same permission posture as the value list. It runs a
+            different query shape — an aggregation rather than a breakout — under the same
+            *param-values-query* relaxation, so a caller with collection read and no data-query
+            permission must still get it. If the range path stopped binding that var, or the
+            relaxation stopped covering an aggregation, this flips to a permission error"
+    (mt/with-temp
+      [:model/Collection collection {}
+       :model/Dashboard {dash-id :id}
+       {:collection_id (:id collection)
+        :parameters    [{:name "Date" :slug "date" :id "_DATE_" :type "date/all-options"}]}
+       :model/Card {card-id :id} {:collection_id (:id collection)
+                                  :database_id   (mt/id)
+                                  :table_id      (mt/id :checkins)
+                                  :dataset_query (table-query (mt/id :checkins))}
+       :model/DashboardCard _ {:card_id            card-id
+                               :dashboard_id       dash-id
+                               :parameter_mappings [{:parameter_id "_DATE_"
+                                                     :card_id      card-id
+                                                     :target       [:dimension (mt/$ids checkins $date)]}]}]
+      (perms.test-util/with-restored-data-perms!
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (mt/with-test-user :rasta
+          (let [{:keys [kind] lo :min hi :max} (params-result {:target "dashboard" :id dash-id
+                                                               :parameter_id "_DATE_"})]
+            (is (= "date" kind))
+            (is (= "2013-01-03" lo) "the range comes back despite the caller having no table query permission")
+            (is (= "2015-12-29" hi))))))))
 
 (deftest scope-gate-test
   (testing "GHY-4141: the tool requires agent:content:read"
