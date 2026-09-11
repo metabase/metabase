@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import {
-  needsGraphGoalResolution,
-  resolveGraphGoalSettings,
-} from "metabase/viz-core";
+import { needsGraphGoalResolution, resolveGoalValue } from "metabase/viz-core";
 import type { Card, DatasetData } from "metabase-types/api";
 
 import type { GoalResolutionStatus } from "./use-answered-goal-data";
@@ -23,15 +20,15 @@ export function useResolvedGoalSettings(
   const goal = needsResolving ? (settings["graph.goal_value"] ?? null) : null;
 
   const goalData = useResolvedGoalData(card.dataset_query, data, [goal]);
-  // only a goal that needs resolving can be anything but resolved
-  const resolvedData = goalData.status === "resolved" ? goalData.data : null;
+  const value =
+    goalData.status === "resolved"
+      ? resolveGoalValue(goalData.data, goal).value
+      : null;
 
   const resolvedSettings = useMemo(
     () =>
-      resolvedData !== null
-        ? resolveGraphGoalSettings(card.display, settings, resolvedData)
-        : { ...settings, "graph.goal_value": null },
-    [card.display, settings, resolvedData],
+      needsResolving ? { ...settings, "graph.goal_value": value } : settings,
+    [settings, needsResolving, value],
   );
 
   return { status: goalData.status, settings: resolvedSettings };

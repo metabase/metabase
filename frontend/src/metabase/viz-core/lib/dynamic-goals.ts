@@ -245,27 +245,6 @@ export function needsGraphGoalResolution(
   );
 }
 
-/**
- * Substitutes `graph.goal_value` with the number `data` resolves it to, or
- * null when it can't, so the chart model only ever sees numbers. Returns the
- * given settings untouched when there is nothing to resolve.
- */
-export function resolveGraphGoalSettings<S extends VisualizationSettings>(
-  display: VisualizationDisplay | undefined,
-  settings: S,
-  data: GoalData,
-): S {
-  if (!needsGraphGoalResolution(display, settings)) {
-    return settings;
-  }
-
-  return {
-    ...settings,
-    "graph.goal_value": resolveGoalValue(data, settings["graph.goal_value"])
-      .value,
-  };
-}
-
 function validGoalSegments(segments: unknown): GoalSegment[] {
   return Array.isArray(segments) ? segments.filter(isGoalSegment) : [];
 }

@@ -3,7 +3,7 @@ import {
   getUnresolvedGoalMessage,
   hasUnresolvedGoalValues,
   needsGraphGoalResolution,
-  resolveGraphGoalSettings,
+  resolveGoalValue,
 } from "metabase/viz-core";
 import type { SingleSeries } from "metabase-types/api";
 
@@ -11,12 +11,18 @@ export function resolveGoalSettings(
   { card, data }: SingleSeries,
   settings: ComputedVisualizationSettings,
 ): ComputedVisualizationSettings {
-  if (
-    needsGraphGoalResolution(card.display, settings) &&
-    hasUnresolvedGoalValues(data, [settings["graph.goal_value"]])
-  ) {
+  if (!needsGraphGoalResolution(card.display, settings)) {
+    return settings;
+  }
+
+  const goal = settings["graph.goal_value"];
+
+  if (hasUnresolvedGoalValues(data, [goal])) {
     throw new Error(getUnresolvedGoalMessage("value"));
   }
 
-  return resolveGraphGoalSettings(card.display, settings, data);
+  return {
+    ...settings,
+    "graph.goal_value": resolveGoalValue(data, goal).value,
+  };
 }
