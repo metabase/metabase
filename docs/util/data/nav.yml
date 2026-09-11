@@ -217,6 +217,8 @@ categories:
             url: "data-modeling/semantic-layer/measures"
           - name: "Segments"
             url: "data-modeling/semantic-layer/segments"
+          - name: "Glossary"
+            url: "data-modeling/semantic-layer/glossary"
       - name: "Tools"
         pages:
           - name: "Schema viewer"
