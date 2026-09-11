@@ -68,6 +68,18 @@
   (testing "h2x/literal splices into SQL rather than binding, so strict mode rejects it"
     (is (rejects? {:where [:= :r.model (h2x/literal "Document")]} true))))
 
+(deftest temporal-values-are-accepted-test
+  (testing "java.time values reach the compile step from insert/update hooks and bind as parameters"
+    (are [v] (not (rejects? {:values [{:created_at v}]}))
+      (java.time.ZonedDateTime/now)
+      (java.time.OffsetDateTime/now)
+      (java.time.LocalDateTime/now)
+      (java.time.LocalDate/now)
+      (java.time.Instant/now)
+      (java.util.Date.)))
+  (testing "and in a where clause"
+    (is (not (rejects? {:where [:> :created_at (java.time.ZonedDateTime/now)]})))))
+
 (deftest strict-mode-requires-bound-params-test
   (testing "strict mode rejects a bare scalar and accepts a bound param"
     (is (rejects? {:where [:= :id 1]} true))

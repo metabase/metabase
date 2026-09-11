@@ -78,10 +78,18 @@
    :between #{1 2}
    :is #{1}, :is-not #{1}})
 
+;; `inst?` only covers java.util.Date and Instant, but Toucan hands java.time values
+;; (ZonedDateTime for hook-added timestamps, LocalDate, ...) straight through to JDBC.
+;; All of them bind as parameters rather than compiling to SQL.
+(defn- temporal?
+  [x]
+  (instance? java.time.temporal.Temporal x))
+
 (defn- scalar?
   [x]
   (or (number? x) (string? x) (boolean? x) (nil? x)
-      (inst? x) (uuid? x)))
+      (inst? x) (temporal? x) (uuid? x)
+      (bytes? x)))
 
 (defn- param-form?
   [x]
