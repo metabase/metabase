@@ -115,7 +115,7 @@
                                      (if (= pages 1) " page." " pages."))
                                 {:page page :pages pages})))
         start (* (dec page) page-size)]
-    {:items (vec (take page-size (drop start items)))
+    {:items (subvec items start (min total (+ start page-size)))
      :total total
      :page  page
      :pages pages}))

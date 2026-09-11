@@ -9,6 +9,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.performance :refer [dropv]]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
@@ -573,7 +574,7 @@
     (with-seeded-metric [metric]
       (let [ids            (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
                                 :added (mapv :id))
-            [listed unlisted] [(vec (reverse (take 2 ids))) (vec (drop 2 ids))]
+            [listed unlisted] [(vec (reverse (take 2 ids))) (dropv 2 ids)]
             resp           (mt/user-http-request :crowberto :post 200
                                                  (str "metric/" (:id metric) "/dimension/reorder")
                                                  {:dimension_ids listed})]

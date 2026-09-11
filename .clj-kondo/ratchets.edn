@@ -69,7 +69,7 @@
                   :refer-all                               1
                   :type-mismatch                           1
                   :unexpected-recur                        1
-                  :unresolved-symbol                       19
+                  :unresolved-symbol                       15
                   :unresolved-var                          1
                   :unused-referred-var                     4}
  :comment-exempt #{:deprecated-namespace
