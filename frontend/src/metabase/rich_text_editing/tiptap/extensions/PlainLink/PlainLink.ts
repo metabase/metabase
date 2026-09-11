@@ -9,6 +9,7 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { processUrl } from "metabase/rich_text_editing/tiptap/utils/processUrl";
+import { checkNotNull } from "metabase/utils/types";
 
 import S from "./PlainLink.module.css";
 
@@ -82,12 +83,12 @@ export const PlainLink = Link.extend({
   inclusive: false,
 }).extend({
   addOptions() {
-    const base = this.parent?.();
+    const base = checkNotNull(this.parent?.());
     return {
       ...base,
       HTMLAttributes: {
-        ...base?.HTMLAttributes,
-        class: cx(CS.link, S.plainLink, base?.HTMLAttributes?.class),
+        ...base.HTMLAttributes,
+        class: cx(CS.link, S.plainLink, base.HTMLAttributes.class),
       },
     };
   },
