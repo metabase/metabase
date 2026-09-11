@@ -38,6 +38,7 @@ import {
   TabButtonInput,
   TabButtonInputResizer,
   TabButtonInputWrapper,
+  TabButtonLabel,
   TabButtonRoot,
 } from "./TabButton.styled";
 import { TabButtonMenu } from "./TabButtonMenu";
@@ -143,20 +144,35 @@ const _TabButton = forwardRef(function TabButton(
         <TabButtonInputResizer aria-hidden="true">
           {label}
         </TabButtonInputResizer>
-        <TabButtonInput
-          maxLength={75}
-          type="text"
-          value={label}
-          isSelected={isSelected}
-          disabled={!isRenaming}
-          onChange={onRename}
-          onKeyPress={handleInputKeyPress}
-          onFocus={(e) => e.currentTarget.select()}
-          onBlur={onFinishRenaming}
-          aria-labelledby={getTabId(idPrefix, value)}
-          id={getTabButtonInputId(idPrefix, value)}
-          ref={inputRef}
-        />
+        {isRenaming ? (
+          <TabButtonInput
+            maxLength={75}
+            type="text"
+            value={label}
+            isSelected={isSelected}
+            onChange={onRename}
+            onKeyPress={handleInputKeyPress}
+            onFocus={(e) => e.currentTarget.select()}
+            onBlur={onFinishRenaming}
+            aria-labelledby={getTabId(idPrefix, value)}
+            id={getTabButtonInputId(idPrefix, value)}
+            ref={inputRef}
+            // A tab name is not a credential. Without these, password managers
+            // treat an unlabelled text input as a username field and fill it,
+            // writing `value` straight onto the node where React never sees it.
+            // (metabase#81688)
+            name="tab-name"
+            autoComplete="off"
+            data-1p-ignore
+            data-lpignore="true"
+            data-bwignore
+            data-form-type="other"
+          />
+        ) : (
+          <TabButtonLabel id={getTabButtonInputId(idPrefix, value)}>
+            {label}
+          </TabButtonLabel>
+        )}
       </TabButtonInputWrapper>
       {showMenu && (
         <Popover

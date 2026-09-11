@@ -24,7 +24,7 @@ export const TabButtonInputResizer = styled.span`
   padding-right: 2px;
 `;
 
-export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
+const labelFaceStyles = css`
   position: absolute;
   width: 100%;
   left: 0;
@@ -32,12 +32,26 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
   padding: 0.25rem;
   border: 1px solid transparent;
   border-radius: 4px;
-  outline: none;
-  background-color: transparent;
   color: inherit;
   font-size: inherit;
   font-weight: bold;
   text-align: center;
+`;
+
+/**
+ * Shown whenever the tab is not being renamed. Deliberately not an input: a
+ * disabled input is still a fill target for password-manager extensions, which
+ * write `value` straight onto the DOM node. (metabase#81688)
+ */
+export const TabButtonLabel = styled.span`
+  ${labelFaceStyles}
+  white-space: pre;
+`;
+
+export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
+  ${labelFaceStyles}
+  outline: none;
+  background-color: transparent;
 
   ${(props) =>
     props.disabled &&
