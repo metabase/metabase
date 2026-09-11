@@ -115,12 +115,14 @@
   text-align: center;
 }
 
+/* The gap sits between a section and its neighbour; an icon-only tab has no
+ * neighbour, so it keeps the inline padding symmetric. */
 .tabSection {
-  &[data-position="left"] {
+  &[data-position="left"]:not(:last-child) {
     margin-inline-end: var(--tab-section-gap);
   }
 
-  &[data-position="right"] {
+  &[data-position="right"]:not(:first-child) {
     margin-inline-start: var(--tab-section-gap);
   }
 }
