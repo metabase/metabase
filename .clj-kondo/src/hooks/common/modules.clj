@@ -89,6 +89,12 @@
   [modules module ancestor]
   (boolean (some #{ancestor} (take-while some? (iterate #(parent-module modules %) module)))))
 
+(defn module-team
+  "Team owning `module`: its own `:team`, else its nearest ancestor's."
+  [modules module]
+  (some #(get-in modules [% :team])
+        (take-while some? (iterate #(parent-module modules %) module))))
+
 (defn- rest-module? [module]
   (re-find #"[.-]rest$" (str module)))
 
