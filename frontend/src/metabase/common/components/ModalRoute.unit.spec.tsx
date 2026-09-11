@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import { lazy } from "react";
 
-import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import { act, renderRoutes, renderWithProviders, screen } from "__support__/ui";
 import { Outlet, Route } from "metabase/router";
 
 import {
@@ -150,6 +151,72 @@ describe("modalRoute", () => {
 
     expect(screen.getByText("Modal for 5")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("modalRoute with a suspending component", () => {
+  // Restored here rather than at the end of each test, so a failing
+  // expectation cannot leak the fake clock into the tests that follow.
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  function setupSuspending() {
+    let resolve: (component: typeof TestModal) => void = () => undefined;
+    const SuspendingModal = lazy(
+      () =>
+        new Promise<{ default: typeof TestModal }>((done) => {
+          resolve = (component) => done({ default: component });
+        }),
+    );
+
+    setup(
+      <Route path="/collection/:slug" element={<CollectionPage />}>
+        {modalRoute("edit", SuspendingModal, { modalProps })}
+      </Route>,
+      "/collection/1/edit",
+    );
+
+    return { resolve: () => act(() => resolve(TestModal)) };
+  }
+
+  // The common case: a modal whose component is already there opens straight
+  // onto its content, so nothing may flash in the meantime.
+  it("shows nothing at all before the delay is up", () => {
+    jest.useFakeTimers();
+    setupSuspending();
+
+    expect(screen.getByText("Collection page")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(299);
+    });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  // A wait long enough to read as a dead click gets an answer instead.
+  it("opens the modal on a spinner once the wait runs long", () => {
+    jest.useFakeTimers();
+    setupSuspending();
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByTestId("modal-loading")).toBeInTheDocument();
+  });
+
+  it("replaces the spinner with the component when it arrives", async () => {
+    const { resolve } = setupSuspending();
+
+    resolve();
+
+    expect(await screen.findByText("Modal for 1")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.queryByTestId("modal-loading")).not.toBeInTheDocument();
   });
 });
 

@@ -182,6 +182,7 @@ export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
 export { definePluginSlot } from "./slot";
+export { lazyPluginComponent, lazyPluginSlot } from "./lazy-plugin-component";
 
 // Re-export types that are used by other files
 export type {
