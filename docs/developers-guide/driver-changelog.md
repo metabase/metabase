@@ -4,6 +4,12 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.65.0
+
+- `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
+  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
+  in the docstring of this method.
+
 ## Metabase 0.64.0
 
 - `metabase.driver.sql-jdbc.execute/cancelation-poisons-connection?` `[driver]` -- whether canceling a `Statement`

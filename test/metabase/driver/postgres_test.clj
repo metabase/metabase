@@ -589,21 +589,22 @@
                       {:database (meta/id)
                        :type     :query
                        :query    {:source-table "card__123"}})]
-          (is (= ["SELECT"
+          (is (= ["WITH \"__mb_stage_0\" AS ("
+                  "  SELECT"
+                  "    (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\","
+                  "    COUNT(*) AS \"count\""
+                  "  FROM"
+                  "    \"json_alias_test\""
+                  "  GROUP BY"
+                  "    \"json_alias_test\""
+                  "  ORDER BY"
+                  "    \"json_alias_test\" ASC"
+                  ")"
+                  "SELECT"
                   "  \"__mb_source\".\"json_alias_test\" AS \"json_alias_test\","
                   "  \"__mb_source\".\"count\" AS \"count\""
                   "FROM"
-                  "  ("
-                  "    SELECT"
-                  "      (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\","
-                  "      COUNT(*) AS \"count\""
-                  "    FROM"
-                  "      \"json_alias_test\""
-                  "    GROUP BY"
-                  "      \"json_alias_test\""
-                  "    ORDER BY"
-                  "      \"json_alias_test\" ASC"
-                  "  ) AS \"__mb_source\""]
+                  "  \"__mb_stage_0\" AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
 (deftest ^:parallel nested-field-pivot-compile-test
@@ -637,7 +638,15 @@
                         :show-column-totals true})]
         (qp.store/with-metadata-provider mp
           (let [sql (:query (qp.compile/compile (nest-for-pivot/wrap-nested-field-breakouts pivot-q)))]
-            (is (= ["SELECT"
+            (is (= ["WITH \"__mb_stage_0\" AS ("
+                    "  SELECT"
+                    "    (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
+                    "    \"json_table\".\"region\" AS \"region\","
+                    "    (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
+                    "  FROM"
+                    "    \"json_table\""
+                    ")"
+                    "SELECT"
                     "  \"__mb_source\".\"__mb_pivot_nfc\" AS \"__mb_pivot_nfc\","
                     "  \"__mb_source\".\"region\" AS \"region\","
                     "  GROUPING("
@@ -646,14 +655,7 @@
                     "  ) AS \"pivot-grouping\","
                     "  COUNT(*) AS \"count\""
                     "FROM"
-                    "  ("
-                    "    SELECT"
-                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
-                    "      \"json_table\".\"region\" AS \"region\","
-                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
-                    "    FROM"
-                    "      \"json_table\""
-                    "  ) AS \"__mb_source\""
+                    "  \"__mb_stage_0\" AS \"__mb_source\""
                     "GROUP BY"
                     "  GROUPING SETS ("
                     "    ("
@@ -1735,6 +1737,70 @@
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
+
+(defn- count-by-price-over-1-query
+  "Two-stage query: `venues` counted by `price`, then filtered to rows with more than one venue."
+  [mp]
+  (as-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) $q
+    (lib/aggregate $q (lib/count))
+    (lib/breakout $q (lib.metadata/field mp (mt/id :venues :price)))
+    (lib/append-stage $q)
+    (lib/filter $q (lib/> (m/find-first (comp #{"count"} :name) (lib/filterable-columns $q)) 1))))
+
+(deftest ^:parallel multi-stage-query-test
+  (testing "a multi-stage query, compiled as chained CTEs on Postgres, runs and returns the right result"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [mp    (mt/metadata-provider)
+              query (as-> (count-by-price-over-1-query mp) $q
+                      (lib/append-stage $q)
+                      (lib/aggregate $q (lib/sum (m/find-first (comp #{"count"} :name) (lib/aggregable-columns $q nil)))))]
+          (is (= [[100]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+(deftest ^:parallel multi-stage-join-source-test
+  (testing "a multi-stage join source, compiled as a WITH nested inside the JOIN parens on Postgres, runs"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [mp     (mt/metadata-provider)
+              venues (lib.metadata/table mp (mt/id :venues))
+              price  (lib.metadata/field mp (mt/id :venues :price))
+              source (count-by-price-over-1-query mp)
+              rhs    (m/find-first (comp #{"price"} :name) (lib/returned-columns source))
+              join   (-> (lib/join-clause source [(lib/= price rhs)])
+                         (lib/with-join-alias "J")
+                         (lib/with-join-fields :all))
+              query  (-> (lib/query mp venues)
+                         (lib/join join)
+                         (lib/limit 1))]
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 3 13]]
+                 (mt/formatted-rows [int str int 4.0 4.0 int int int] (qp/process-query query)))))))))
+
+(deftest ^:parallel native-source-stage-test
+  (testing "a native first stage that has its own WITH, compiled as the body of a stage CTE on Postgres, runs"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [mp    (mt/metadata-provider)
+              ;; lib can't see the columns of an unsaved native stage, so the filter uses a literal ref
+              cnt   [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "cnt"]
+              query (-> (lib/native-query mp "WITH v AS (SELECT price, count(*) AS cnt FROM venues GROUP BY price) SELECT * FROM v;")
+                        (lib/append-stage)
+                        (lib/filter (lib/> cnt 1))
+                        (lib/aggregate (lib/count)))]
+          (is (= [[4]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+(deftest ^:parallel multi-stage-card-referenced-from-native-query-test
+  (testing "a multi-stage card spliced into a native query via {{#id}}, with its CTEs inside the subquery parens, runs"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card card {:dataset_query (count-by-price-over-1-query mp)}]
+            (let [tag   (format "#%d" (:id card))
+                  query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
+                            (lib/with-template-tags {tag {:name tag, :display-name tag, :type :card, :card-id (:id card)}}))]
+              (is (= [[100]]
+                     (mt/formatted-rows [int] (qp/process-query query)))))))))))
 
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
