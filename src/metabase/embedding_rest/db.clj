@@ -45,10 +45,10 @@
   (t2/select-one :model/DashboardCard dashcard-id))
 
 (mu/defn embedding-themes
-  "The id, entity id, name, settings, and timestamps of every EmbeddingTheme, oldest first."
+  "The id, entity id, name, settings, default flag, and timestamps of every EmbeddingTheme, oldest first."
   []
   (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]
-                                    :select [:id :entity_id :name :settings :created_at :updated_at]}))
+                                    :select [:id :entity_id :name :settings :is_default :created_at :updated_at]}))
 
 (mu/defn embedding-theme-exists?
   "Whether an EmbeddingTheme with `id` exists."
@@ -66,8 +66,9 @@
   (t2/insert-returning-instance! :model/EmbeddingTheme row))
 
 (mu/defn insert-embedding-themes!
-  "Insert the EmbeddingTheme `rows`."
-  [rows :- [:sequential (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings])]]
+  "Insert the EmbeddingTheme `rows`. Only seeding - the Light/Dark themes written on the first visit
+  to the embedding hub - sets `is_default`, so the single-row insert above leaves it out."
+  [rows :- [:sequential (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings :is_default])]]
   (t2/insert! :model/EmbeddingTheme rows))
 
 (mu/defn update-embedding-theme!

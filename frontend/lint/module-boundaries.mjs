@@ -148,6 +148,16 @@ const elements = [
     name: "mcp-app",
     pattern: "frontend/src/metabase/embedding/mcp/**",
   }),
+  // App tier because ResourcePreview imports the EAJS runtime
+  // (embedding-iframe-sdk), and PreviewPanel then EmbeddingThemeEditorApp import
+  // it in turn -- shared cannot import app. The runtime has real module-load
+  // side effects, so this stays app tier rather than becoming shared. Must
+  // precede shared/embedding below: first match wins.
+  createElement({
+    type: "app",
+    name: "theme-editor",
+    pattern: "frontend/src/metabase/embedding/themes/components/ThemeEditor/**",
+  }),
   ...[
     "frontend/src/metabase/app-embed-mcp.tsx",
     "frontend/src/metabase/app-embed-mcp-public-path.ts",
@@ -242,6 +252,15 @@ const elements = [
   createElement({ type: "shared", name: "segments", enforcePublicApi: true }),
   createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
+  // Settings-page rendering primitives, needed by admin, enterprise and
+  // embedding alike. Not in shared/settings: that module is data only -- api,
+  // selectors and hooks behind a private-by-default barrel -- and reading a
+  // setting value should not drag React components in with it.
+  createElement({
+    type: "shared",
+    name: "settings-components",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "static-viz" }),
   createElement({ type: "shared", name: "status" }),
@@ -258,27 +277,28 @@ const elements = [
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
-  // The theme editor previews the live embed through the app-tier EAJS
-  // runtime, so the whole editor is an app-tier module. It still lives under
-  // the admin folder; the pattern must come before feature/admin (first match
-  // wins).
-  // TODO(embedding-modules): move the folder out of admin so module == folder.
-  createElement({
-    type: "app",
-    name: "theme-editor",
-    pattern: "frontend/src/metabase/admin/embedding/components/ThemeEditor/**",
-  }),
-  // Route composition for the admin app. Must precede feature/admin.
-  ...[
-    "frontend/src/metabase/admin/routes.tsx",
-    "frontend/src/metabase/admin/routes.unit.spec.tsx",
-  ].map((pattern) =>
-    createElement({ type: "app", name: "admin-routes", pattern, mode: "full" }),
-  ),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
   createElement({ type: "shared", name: "documents" }),
+  // The hub's route table and the page that mounts the app-tier theme editor.
+  // Must precede feature/embedding-hub: routes.tsx imports admin's permissions
+  // routes (feature) and EmbeddingHubThemeEditorPage imports
+  // EmbeddingThemeEditorApp (app), neither of which a feature module may import.
+  ...[
+    "frontend/src/metabase/embedding-hub/routes.tsx",
+    "frontend/src/metabase/embedding-hub/routes.unit.spec.tsx",
+    "frontend/src/metabase/embedding-hub/pages/EmbeddingHubThemeEditorPage.tsx",
+    "frontend/src/metabase/embedding-hub/pages/EmbeddingHubThemeEditorPage.unit.spec.tsx",
+  ].map((pattern) =>
+    createElement({
+      type: "app",
+      name: "embedding-hub-routes",
+      pattern,
+      mode: "full",
+    }),
+  ),
+  createElement({ type: "feature", name: "embedding-hub" }),
   // EE plugin-bootstrap files that only wire app-tier SDK modules into plugin
   // slots, so they're app tier, not feature/enterprise. Tagged by which embedding
   // product they belong to. Must precede the feature/enterprise element below

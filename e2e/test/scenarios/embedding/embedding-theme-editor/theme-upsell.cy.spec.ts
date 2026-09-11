@@ -8,14 +8,13 @@ describe("scenarios > embedding > themes > upsell", () => {
     });
 
     it("shows the upsell with Metabase Pro copy and an external upgrade link", () => {
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       cy.log("nav label has an upsell gem");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Themes/ })
-        .within(() => {
-          cy.icon("gem").should("be.visible");
-        });
+      cy.findByRole("navigation", { name: "Embedding hub" })
+        .findByRole("link", { name: "Appearance" })
+        .findByTestId("upsell-gem")
+        .should("exist");
 
       H.main().within(() => {
         cy.log("upsell copy matches the Figma");
@@ -55,14 +54,13 @@ describe("scenarios > embedding > themes > upsell", () => {
         body: { available: false, plan_alias: "pro-cloud" },
       });
 
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       cy.log("nav label has an upsell gem");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Themes/ })
-        .within(() => {
-          cy.icon("gem").should("be.visible");
-        });
+      cy.findByRole("navigation", { name: "Embedding hub" })
+        .findByRole("link", { name: "Appearance" })
+        .findByTestId("upsell-gem")
+        .should("exist");
 
       H.main().within(() => {
         cy.findByText("Metabase Pro").should("be.visible");
@@ -103,7 +101,7 @@ describe("scenarios > embedding > themes > upsell", () => {
         body: { available: false, plan_alias: "pro-cloud" },
       });
 
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.findByText("Metabase Pro").should("be.visible");
@@ -115,7 +113,7 @@ describe("scenarios > embedding > themes > upsell", () => {
         cy.findByText(/Please ask a Metabase Store Admin/).should("not.exist");
 
         cy.log("no trial → no trial line");
-        cy.findByText(/14-day free trial/).should("not.exist");
+        cy.findByText(/14 day trial/).should("not.exist");
 
         cy.log(
           "CTA is rendered (hosted starter as store admin → opens the upgrade modal)",
@@ -145,7 +143,7 @@ describe("scenarios > embedding > themes > upsell", () => {
         body: { available: true, plan_alias: "pro-cloud" },
       });
 
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.findByText("Metabase Pro").should("be.visible");
@@ -155,7 +153,7 @@ describe("scenarios > embedding > themes > upsell", () => {
 
         cy.log("trial line is rendered");
         cy.findByText(
-          /Get a 14-day free trial of this and other pro features/,
+          /Get a 14 day trial of this and other Pro features/,
         ).should("be.visible");
 
         cy.log("button text switches to 'Try for free'");
@@ -173,14 +171,13 @@ describe("scenarios > embedding > themes > upsell", () => {
     });
 
     it("does not show the upsell and renders the themes listing", () => {
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       cy.log("nav label has no upsell gem");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByRole("link", { name: /Themes/ })
-        .within(() => {
-          cy.icon("gem").should("not.exist");
-        });
+      cy.findByRole("navigation", { name: "Embedding hub" })
+        .findByRole("link", { name: "Appearance" })
+        .findByTestId("upsell-gem")
+        .should("not.exist");
 
       H.main().within(() => {
         cy.log("upsell copy is absent");

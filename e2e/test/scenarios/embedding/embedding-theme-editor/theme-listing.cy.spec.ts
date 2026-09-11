@@ -20,7 +20,7 @@ describe(
     });
 
     it("lazily seeds Light and Dark on first visit, and preserves admin deletions across reloads", () => {
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.log(
@@ -46,23 +46,23 @@ describe(
         cy.findByRole("button", { name: /New theme/ }).click();
       });
 
-      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+      cy.url().should("match", /\/embedding\/appearance\/theme\/new$/);
     });
 
     it("does not create a theme when cancelling from the draft editor", () => {
       cy.intercept("POST", "/api/embed-theme").as("createTheme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main()
         .findByRole("button", { name: /New theme/ })
         .click();
 
-      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+      cy.url().should("match", /\/embedding\/appearance\/theme\/new$/);
 
       cy.findByRole("button", { name: /Cancel/ }).click();
 
       cy.log("navigates back to the listing");
-      cy.url().should("match", /\/admin\/embedding\/themes$/);
+      cy.url().should("match", /\/embedding\/appearance$/);
 
       cy.log("new theme card is still visible");
       H.main()
@@ -75,14 +75,14 @@ describe(
 
     it("navigates to theme editor when clicking an existing theme card", () => {
       createThemeViaApi("My theme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.findByText("My theme").click();
       });
 
       cy.log("navigates to the theme editor page");
-      cy.url().should("match", /\/admin\/embedding\/themes\/\d+/);
+      cy.url().should("match", /\/embedding\/appearance\/theme\/\d+/);
     });
 
     it("uses white-labeled colors as a base for creating themes", () => {
@@ -98,7 +98,7 @@ describe(
       H.updateSetting("application-colors", whitelabelColors);
 
       cy.intercept("POST", "/api/embed-theme").as("createTheme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main()
         .findByRole("button", { name: /New theme/ })
@@ -126,7 +126,7 @@ describe(
 
     it("can duplicate a theme", () => {
       createThemeViaApi("Untitled theme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.findByText("Untitled theme").should("be.visible");
@@ -146,7 +146,7 @@ describe(
 
     it("can delete a theme with confirmation", () => {
       createThemeViaApi("Untitled theme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().findByText("Untitled theme").should("be.visible");
 

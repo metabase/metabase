@@ -26,9 +26,8 @@ describe(suiteTitle, () => {
     // guest mode while SSO is unconfigured, so an unaccepted guest CTA would
     // otherwise have to be clicked through first. That flow is covered by
     // embed-flow-enable-embed-js-*.
-    H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("show-simple-embed-terms", false);
-    H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("enable-embedding-modular", true);
+    H.updateSetting("show-modular-embed-terms", false);
     H.updateSetting("show-static-embed-terms", false);
     H.mockEmbedJsToDevServer();
   });

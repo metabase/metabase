@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import { createEmptyTenantDraft } from "metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/utils";
+import { createEmptyTenantDraft } from "metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/utils";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import {
   Button,
