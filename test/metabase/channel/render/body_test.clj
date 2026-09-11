@@ -10,7 +10,6 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.maps :as maps]
@@ -771,8 +770,7 @@
       (let [result (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))
             svg    (atom nil)]
         ;; keep the SVG instead of rasterizing it, so its text can be inspected
-        (with-redefs [js.svg/svg-string->bytes       (fn [s] (reset! svg s) (byte-array 0))
-                      image-bundle/make-image-bundle (fn [_ _] {:image-src "" :render-type :inline})]
+        (with-redefs [js.svg/svg-string->bytes (fn [s] (reset! svg s) (byte-array 0))]
           (channel.render/render-pulse-card :inline "UTC" card nil result))
         (is (= 1000 (get-in result [:data :referenced_entities "card" (str goal-id) :data :rows 0 0])))
         (is (str/includes? (str @svg) "Checkins")
