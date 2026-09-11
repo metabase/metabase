@@ -1,8 +1,10 @@
 (ns mage.modules
   (:require
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [hooks.common.modules :as modules]
    [mage.be-dev :as be-dev]
    [mage.color :as c]
    [mage.util :as u]))
@@ -22,35 +24,73 @@
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
-(defn- file->module [filename]
+(defn- file->ns-symbol [filename]
+  (when (re-find #"^(?:(?:src|test)/metabase|enterprise/backend/(?:src|test)/metabase_enterprise)/" filename)
+    (-> filename
+        (str/replace #"^(?:enterprise/backend/)?(?:src|test)/" "")
+        (str/replace #"\.[^./]+$" "")
+        (str/replace "/" ".")
+        (str/replace "_" "-")
+        symbol)))
+
+(defn- file->module [prefix->module filename]
   (or
+   (some->> (file->ns-symbol filename) (modules/declared-module prefix->module))
+   ;; otherwise a file inside a directory belongs to the (undeclared) module that directory names
    (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
      (symbol (str/replace module #"_" "-")))
    (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
      (symbol "enterprise" (str/replace module #"_" "-")))))
 
+(defn- read-modules-config []
+  (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
+        (edn/read r))
+      :metabase/modules))
+
 (defn- updated-files->updated-modules [updated-files]
-  (into (sorted-set)
-        (keep file->module)
-        updated-files))
+  (let [prefix->module (modules/build-prefix->module (read-modules-config))]
+    (into (sorted-set)
+          (keep #(file->module prefix->module %))
+          updated-files)))
 
 (defn- updated-modules [git-ref]
   (let [git-ref (or git-ref "master")
         updated-files (u/updated-files git-ref)]
     (updated-files->updated-modules updated-files)))
 
-(defn- module->test-directory
-  [module]
-  (case (namespace module)
-    "enterprise" (str "enterprise/backend/test/metabase_enterprise/" (str/replace (name module) #"-" "_"))
-    nil (str "test/metabase/" (str/replace (name module) #"-" "_"))))
+(def ^:private backend-test-source-file-extensions
+  [".clj" ".cljc"])
+
+(defn- module->test-path-prefix [modules-config module]
+  (let [ns-prefix (modules/module-ns-prefix modules-config module)]
+    (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
+         "test/"
+         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
+
+(defn- module->test-paths [modules-config module]
+  (let [prefix->module (modules/build-prefix->module modules-config)
+        path-prefix    (module->test-path-prefix modules-config module)
+        test-dir       (io/file path-prefix)
+        test-files     (concat
+                        (for [extension backend-test-source-file-extensions
+                              :let      [file (io/file (str path-prefix "_test" extension))]
+                              :when     (.isFile file)]
+                          file)
+                        (when (.isDirectory test-dir)
+                          (for [file (file-seq test-dir)
+                                :when (and (.isFile ^java.io.File file)
+                                           (some #(str/ends-with? (str file) %)
+                                                 backend-test-source-file-extensions))]
+                            file)))]
+    (into (sorted-set)
+          (comp (filter #(= module (file->module prefix->module (str %))))
+                (map str))
+          test-files)))
 
 (defn- dependencies
   "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
   []
-  (let [config (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
-                     (edn/read r))
-                   :metabase/modules
+  (let [config (-> (read-modules-config)
                    ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
                    (dissoc 'connection-pool))]
     (into (sorted-map)
@@ -203,7 +243,8 @@
 (defn cli-print-affected-modules
   "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
-  (let [deps (dependencies)
+  (let [modules-config (read-modules-config)
+        deps (dependencies)
         updated (updated-modules git-ref)
         affected (affected-modules deps updated)
         driver-deps-affected? (not (contains? (unaffected-modules deps updated) 'driver))]
@@ -213,8 +254,100 @@
     (println "You can run tests for these modules and all downstream modules as follows:")
     (println)
     (println)
-    (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n" (pr-str (mapv module->test-directory affected)))
+    (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n"
+            (pr-str (into [] (mapcat #(module->test-paths modules-config %)) affected)))
     (flush)
+    (u/exit 0)))
+
+;;;; =============================================================================
+;;;; Module tree
+;;;; =============================================================================
+
+(defn- module->tree-path
+  "The path segments used to display `module` in the tree.
+
+  An enterprise module appears under its OSS counterpart when one exists.
+  Otherwise its full `enterprise/` name appears at the root."
+  [modules-config module]
+  (let [segments (str/split (name module) #"\.")]
+    (if (= (namespace module) "enterprise")
+      (if (contains? modules-config (symbol (first segments)))
+        ;; Keep an enterprise subtree together under its OSS module.
+        (into [(first segments) "enterprise"] (rest segments))
+        (into [(str "enterprise/" (first segments))] (rest segments)))
+      segments)))
+
+(defn- explicit-ns-prefix
+  "Return a module's custom `:ns-prefix`, or `nil` when it uses the default."
+  [modules-config module]
+  (let [prefix (get-in modules-config [module :ns-prefix])]
+    (when (and prefix (not= prefix (modules/default-ns-prefix module)))
+      prefix)))
+
+(defn- module-display-tree
+  "Build the nested map consumed by [[tree-node-lines]].
+
+  Grouping nodes that are not modules omit `:module`."
+  [modules-config]
+  (reduce (fn [tree module]
+            (update-in tree
+                       (into [] (mapcat (fn [segment] [:children segment])) (module->tree-path modules-config module))
+                       assoc :module module))
+          {}
+          (keys modules-config)))
+
+(defn- sorted-children
+  "Sort child nodes alphabetically, with enterprise nodes last."
+  [node]
+  (sort-by (fn [[segment _]] [(if (or (= segment "enterprise")
+                                      (str/starts-with? segment "enterprise/"))
+                                1
+                                0)
+                              segment])
+           (:children node)))
+
+(defn- tree-node-lines
+  "Render a tree node and its descendants.
+
+  Dashes show depth. Grouping nodes are dimmed. Modules with a custom prefix
+  show `*`, or the prefix itself when `show-prefixes?` is true."
+  [modules-config show-prefixes? path node]
+  (let [depth   (dec (count path))
+        module  (:module node)
+        display (str/join "." path)
+        line    (str (when (pos? depth)
+                       (str (apply str (repeat depth "-")) " "))
+                     (if module display (c/dark display))
+                     (when-let [prefix (and module (explicit-ns-prefix modules-config module))]
+                       (if show-prefixes?
+                         (str " " (c/yellow (str "(" prefix ")")))
+                         (str " " (c/yellow "*")))))]
+    (into [line]
+          (mapcat (fn [[segment child]]
+                    (tree-node-lines modules-config show-prefixes? (conj path segment) child)))
+          (sorted-children node))))
+
+(defn cli-print-module-tree
+  "Print the module tree, nesting enterprise extensions under their OSS module.
+
+  Marks modules whose namespace prefix differs from their name."
+  [{:keys [options] :as _parsed}]
+  (let [modules-config (read-modules-config)
+        tree           (module-display-tree modules-config)
+        roots          (cond->> (sorted-children tree)
+                         (:nested-only options) (filter (fn [[_ node]] (seq (:children node)))))
+        starred        (count (keep #(explicit-ns-prefix modules-config %) (keys modules-config)))]
+    (doseq [[segment node] roots
+            line            (tree-node-lines modules-config (:prefixes options) [segment] node)]
+      (println line))
+    (println)
+    (println (c/dark (str (count modules-config) " modules, "
+                          (count (filter #(= (namespace %) "enterprise") (keys modules-config)))
+                          " enterprise"
+                          (when (pos? starred)
+                            (str ", " starred " custom prefixes ("
+                                 (if (:prefixes options) "shown in parentheses" "marked with *")
+                                 ")")))))
     (u/exit 0)))
 
 (defn- changes-important-file-for-drivers?
@@ -231,13 +364,19 @@
 
 (defn driver-deps-affected?
   "Returns true if any of `trigger-modules` are affected by the changed modules.
-   1-arity and 2-arity use [[default-modules-which-trigger-drivers]] for backwards compatibility."
+   1-arity and 2-arity trigger on the union of [[default-modules-which-trigger-drivers]] and
+   [[modules-triggering-cloud-drivers]]."
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
    (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
                                                   modules-triggering-cloud-drivers)))
   ([deps modules trigger-modules]
+   ;; Fail clearly when a renamed trigger is missing from the config.
+   (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
+     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
+                          (pr-str missing))
+                     {:missing missing})))
    (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
      (boolean
       (some #(not (contains? unaffected %)) trigger-modules)))))

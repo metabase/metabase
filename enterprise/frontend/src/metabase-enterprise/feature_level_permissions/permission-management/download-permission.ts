@@ -41,29 +41,33 @@ const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
 
 export const DOWNLOAD_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   none: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`No`,
+    get label() {
+      return t`No`;
+    },
     value: DataPermissionValue.NONE,
     icon: "close",
     iconColor: "feedback-negative",
   },
   limited: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`10 thousand rows`,
+    get label() {
+      return t`10 thousand rows`;
+    },
     value: DataPermissionValue.LIMITED,
     icon: "10k",
     iconColor: "accent7",
   },
   full: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`1 million rows`,
+    get label() {
+      return t`1 million rows`;
+    },
     value: DataPermissionValue.FULL,
     icon: "1m",
     iconColor: "accent7",
   },
   controlled: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Granular`,
+    get label() {
+      return t`Granular`;
+    },
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
     iconColor: "feedback-warning",

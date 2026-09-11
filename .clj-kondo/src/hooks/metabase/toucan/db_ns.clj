@@ -8,10 +8,20 @@
   Registered as an `:analyze-call` hook on each of those functions in `.clj-kondo/config.edn`. The hook
   returns its input unchanged so Kondo's normal analysis of the call (arity, var usage) still runs."
   (:require
-   [clj-kondo.hooks-api :as hooks]))
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.common.modules :as modules]))
 
-(defn- db-namespace? [ns-sym]
-  (boolean (re-matches #"^metabase(?:-enterprise)?\.(?:driver\.)?[^.]+\.db$" (name ns-sym))))
+(def ^:private driver-db-namespace
+  "Matches `metabase.driver.<driver>.db`; individual drivers are not modules."
+  #"^metabase\.driver\.[^.]+\.db$")
+
+(defn- db-namespace? [config ns-sym]
+  (let [ns-str (name ns-sym)]
+    (boolean
+     ;; Resolve ownership first: a nested `.db` name alone does not make a module.
+     (or (when-let [module (modules/module config ns-sym)]
+           (= ns-str (str (modules/module-ns-prefix (:metabase/modules config) module) ".db")))
+         (re-matches driver-db-namespace ns-str)))))
 
 (defn- test-file?
   "Whether `filename` is in a test source tree. Test namespaces are exempt through the `test-namespaces` group in
@@ -24,7 +34,7 @@
   namespace."
   [{:keys [node ns filename] :as input}]
   (when (and ns
-             (not (db-namespace? ns))
+             (not (db-namespace? (modules/config input) ns))
              (not (test-file? filename)))
     (let [fn-node (first (:children node))]
       (hooks/reg-finding!
