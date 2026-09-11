@@ -2,7 +2,7 @@ import type { CustomSeriesOption } from "echarts/charts";
 
 import type { RowValue } from "metabase-types/api";
 
-import { getNumericGoalValue } from "../../../lib/dynamic-goals";
+import { getGoalLineValue } from "../../../lib/settings/goal";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -58,15 +58,13 @@ export function getGoalLineSeriesOption(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
-  const goalValue = getNumericGoalValue(settings);
+  const goalValue = getGoalLineValue(settings, isNormalized);
 
-  if (!settings["graph.show_goal"] || goalValue === null) {
+  if (goalValue === null) {
     return null;
   }
 
-  const value = isNormalized ? goalValue / 100 : goalValue;
-
-  const scaleTransformedGoalValue = toEChartsAxisValue(value);
+  const scaleTransformedGoalValue = toEChartsAxisValue(goalValue);
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
 
   return {
