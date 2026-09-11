@@ -5,7 +5,12 @@ summary: "Reference for parameters in modular embeds: which attribute or prop to
 
 # Embedding parameters reference
 
-Reference material for parameters in embedded dashboards and charts. For how to use all this, check out [Embedding parameters](./parameters.md). For each attribute's or prop's type and description, check out the generated tables in the [dashboard component reference](./dashboard-reference.md) and the [question component reference](./question-reference.md).
+Reference material for parameters in embedded dashboards and charts. For how to use all this, check out [Embedding parameters](./parameters.md). 
+
+For each attribute's or prop's type and description, see:
+
+- [Dashboard component reference](./dashboard-reference.md)
+- [Question component reference](./question-reference.md)
 
 ## Which props to use
 
@@ -71,19 +76,37 @@ The quickest way to get these values is to set the filter in Metabase and copy i
 
 The `exclude-` formats work with dashboard filters and field filters. A plain SQL variable can't take them, because Metabase substitutes a variable with a date range, and an exclusion isn't one.
 
-## Change payload
+ ## Change payload
 
-The payload passed to `onParametersChange` (SDK) and delivered as `event.detail` of the `parameters-change` event (web component) is a [`ParameterChangePayload`](./sdk/api/ParameterChangePayload.html). SQL questions get a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChangePayload.html), which is the same minus `lastUsedParameters`.
+ `onParametersChange` (SDK) and the `parameters-change` event (web component, as `event.detail`) both deliver the same object, a [`ParameterChangePayload`](./sdk/api/ParameterChangePayload.html). Every field is keyed by parameter slug and lists every parameter on the item, with `null` where there's no value.
 
-The payload's [`source`](./sdk/api/ParameterChangeSource.html) is `initial-state` once per load, `manual-change` when someone uses one of Metabase's widgets, or `auto-change` when Metabase normalized a value you pushed. Three things it doesn't spell out:
+ | Field                | What it holds                                                                   |
+ | -------------------- | ------------------------------------------------------------------------------- |
+ | `parameters`         | The values currently applied to the embed.                                      |
+ | `defaultParameters`  | Each parameter's default value.                                                 |
+ | `lastUsedParameters` | The values this person last applied on this dashboard. Dashboards only.         |
+ | `source`             | Why the callback fired. See [When the callback fires](#when-the-callback-fires). |
 
-- On dashboards, editing a widget without applying it doesn't fire `manual-change`.
-- `auto-change` fires when the applied values differ from what you pushed. Metabase stores values as arrays, so pushing `4` fires `auto-change` with `[4]`, and pushing `[4]` fires nothing. Leaving a slug out fires `auto-change` carrying that slug's resolved value: its default, or `null` if it has none.
-- Nothing fires when the applied values don't change, even if what you pushed looks different. Push `"3"` while `[3]` is applied and there's no callback.
+ SQL questions deliver a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChangePayload.html) through `onSqlParametersChange` or `sql-parameters-change`. It's the same object without `lastUsedParameters`.
+
+ ### When the callback fires
+
+ The [`source`](./sdk/api/ParameterChangeSource.html) field says which of these happened:
+
+ | `source`        | Fires when                                                                                                                                                                                   |
+ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+ | `initial-state` | The embed finishes loading. Once per load.                                                                                                                                                   |
+ | `manual-change` | Someone applies a value with one of Metabase's filter widgets. On a dashboard with auto-apply turned off, editing a widget doesn't count; clicking **Apply** does.                            |
+ | `auto-change`   | You pushed values and Metabase applied something different. The payload carries what was actually applied.                                                                                   |
+
+ Metabase normalizes values before applying them, so `auto-change` usually means one of two things:
+
+ - You pushed a bare value. Metabase stores most values as arrays, so pushing `4` fires `auto-change` with `[4]`. Pushing `[4]` fires nothing. Date and time grouping values stay as strings.
+ - You left a slug out. A push replaces every value, so each slug you didn't include resolves to its default, or `null` if it has none, and `auto-change` reports it.
 
 ## Params in a signed token
 
-On guest embeds and static embeds, your server passes parameter values in the `params` object of the JWT it signs. What Metabase does with them depends on the visibility you chose for each parameter in the embed wizard.
+On guest embeds, your server passes parameter values in the `params` object of the JWT it signs. What Metabase does with them depends on the visibility you chose for each parameter in the embed wizard.
 
 | Wizard setting | Token sets it                                               | Page sets it (`initial-parameters`, widget, or URL)                                                          | Widget shows |
 | -------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------ |
@@ -93,10 +116,10 @@ On guest embeds and static embeds, your server passes parameter values in the `p
 
 Other rules:
 
-- Always include `params`, even as `{}`. A token without it is rejected with `Token is missing value for keypath [:params]` before Metabase looks at any parameter.
+- Always include `params` (even just as `{}`). A token without params is rejected with `Token is missing value for keypath [:params]`.
 - A slug that isn't on the item at all is rejected with `Unknown parameter :slug.`
 - Pass values as arrays, one element per value: `{ category: ["Gadget", "Gizmo"] }`. A bare value like `{ category: "Gadget" }` works too, but arrays behave consistently everywhere, including in the dropdown values of editable widgets.
-- For a locked filter connected to a plain variable in a SQL question, Metabase substitutes the values as a comma-separated list. That works inside `IN ({{variable}})`, but after `=` it's a SQL error from your database, not a Metabase error, so pass one element unless the query is written for a list. If the server may send several values, connect the filter to a [field filter](../questions/native-editor/field-filters.md) instead, which expands to `IN (...)` on its own, and wrap the tag in `[[ ]]` so `[]` turns the clause off.
+- For a locked filter connected to a plain variable in a SQL question, Metabase substitutes the values as a comma-separated list. That works inside `{% raw %} IN ({{variable}}) {% endraw %}`, but after `=` it's a SQL error from your database, not a Metabase error. So, unless the query is written for a list, pass one element. To deal with several values, connect the filter to a [field filter](../questions/native-editor/field-filters.md) instead, which expands to `IN (...)` on its own, and wrap the tag in `[[ ]]` so `[]` turns the clause off.
 - An empty array, `[]`, means "no value" and turns the filter off for that token.
 - A blank string, `""`, counts as no value at all. On a locked parameter that's the same as leaving it out, so the token is rejected.
 - Metabase substitutes token values into text cards on the server, so a [text card variable that's connected to the filter](../dashboards/filters.md#wiring-up-dashboard-filters-to-text-cards) shows the value even though the browser never receives it.

@@ -10,7 +10,7 @@ redirect_from:
 
 Guest embeds are a way to embed basic Metabase components in your app without requiring you to create a Metabase account for each person viewing the charts and dashboards. But not logging people in to your Metabase has some major tradeoffs: see [limitations](#guest-embed-limitations).
 
-> Looking for static embedding? It's deprecated in favor of guest embeds. Check out [Static embedding is deprecated](./introduction.md#static-embedding-is-deprecated).
+> Looking for static embedding? It's [deprecated in favor of guest embeds](./introduction.md#static-embedding-is-deprecated).
 
 "Guest" refers to the authentication approach: Metabase doesn't create a session for each person. Authentication has nothing to do with data freshness. Dashboards and charts in guest embeds always show live data from your database.
 
@@ -111,8 +111,8 @@ You can set different attributes to enable/disable UI. Here are some example att
 | `token`                 | Required. The signed JWT token from your server.                                                                                                                                                                                                                                 |
 | `with-title`            | Show or hide the title. Values: `"true"` or `"false"`.                                                                                                                                                                                                                           |
 | `with-downloads`\*      | Enable or disable downloads. Values: `"true"` or `"false"`.                                                                                                                                                                                                                      |
-| `initial-parameters`    | JSON (or JSON5) string of starting parameter values (uncontrolled). Example: `'{"category":["Gizmo"]}'`. See [Embedding parameters](./parameters.md#set-starting-values).                                                                                                        |
-| `parameters`            | JSON (or JSON5) string of parameter values (controlled). Example: `'{"category":["Gizmo"]}'`. See [Embedding parameters](./parameters.md#control-values-from-your-app).                                                                                                          |
+| `initial-parameters`    | JSON (string of starting parameter values (uncontrolled). Example: `'{"category":["Gizmo"]}'`. See [Embedding parameters](./parameters.md#set-starting-values).                                                                                                        |
+| `parameters`            | JSON string of parameter values (controlled). Example: `'{"category":["Gizmo"]}'`. See [Embedding parameters](./parameters.md#control-values-from-your-app).                                                                                                          |
 | `hidden-parameters`     | JSON array of slugs whose widgets to hide. Only **Editable** parameters have a widget on a guest embed, so the wizard won't generate this for you. Hiding a widget doesn't restrict the value. See [Hide parameter widgets](./parameters.md#hide-parameter-widgets).             |
 | `auto-refresh-interval` | Dashboards only. Auto-refresh interval in seconds.                                                                                                                                                                                                                               |
 | `custom-context`        | Forwarded to your [`guestEmbedProviderUri`](#refreshing-or-initializing-the-jwt-from-your-server) endpoint as `customContext`. Either a string (e.g., `"gadgets-tab"`), or a JSON-stringified object like `initial-parameters` (e.g., `'{"tab":"gadgets","region":"us-east"}'`). |
@@ -135,7 +135,7 @@ Locked parameters are how you restrict data in a guest embed. Your server puts t
 
 - For the walkthrough, check out [Restrict data on guest embeds](./parameters.md#restrict-data-on-guest-embeds).
 - For the rules Metabase applies to `params`, check out [Params in a signed token](./parameters-reference.md#params-in-a-signed-token).
-- To drive a locked parameter from a widget you build yourself, check out [Change a locked value from your page](./parameters.md#change-a-locked-value-from-your-page).
+- To control a locked parameter from a widget you build yourself, check out [Change a locked value from your page](./parameters.md#change-a-locked-value-from-your-page).
 
 ## Refreshing or initializing the JWT from your server
 
