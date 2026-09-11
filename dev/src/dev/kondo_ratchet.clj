@@ -132,6 +132,7 @@
   - `:api-any`              modules that expose every namespace
   - `:friend-edges`         individual `:friends` grants
   - `:model-imports-bypass` modules exempt from model-boundary checks
+  - `:ns-prefixes`          modules whose namespaces have not moved to match their module name
   - `:uses-any`             modules that may depend on any module"
   ([]
    (-> (edn/read-string (slurp module-config-file))
@@ -142,6 +143,7 @@
      {:api-any              (count (filter #(= :any (:api %)) values))
       :friend-edges         (transduce (map (comp count :friends)) + 0 values)
       :model-imports-bypass (count (filter #(= :bypass (:model-imports %)) values))
+      :ns-prefixes          (count (keep :ns-prefix values))
       :uses-any             (count (filter #(= :any (:uses %)) values))})))
 
 (def ^:private deps-file

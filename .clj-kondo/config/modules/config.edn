@@ -1314,7 +1314,6 @@
 
   lib.metadata
   {:team "Querying Platform"
-   :ns-prefix "metabase.lib.metadata"
    :api #{metabase.lib.metadata
           metabase.lib.metadata.cached-provider
           metabase.lib.metadata.calculation
@@ -1345,7 +1344,6 @@
 
   lib.schema
   {:team "Querying Platform"
-   :ns-prefix "metabase.lib.schema"
    :api #{metabase.lib.schema
           metabase.lib.schema.actions
           metabase.lib.schema.aggregation
