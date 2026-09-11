@@ -28,11 +28,25 @@
   (t2/select-one-fn :perm_value :model/DataPermissions
                     :group_id group-id :db_id db-id :perm_type perm-type :table_id nil))
 
-(deftest reconcile-resets-create-queries-left-by-the-database-defaults-test
-  (testing "an app group that predates the first non-audit database is given
-            create-queries :query-builder-and-native by `set-new-database-permissions!`, alongside the
-            :blocked view-data it special-cases for app groups. Reconciling has to reset it, or a user
-            with data access through another group gains native query authoring by joining the app."
+(deftest denies-data-permissions-for-new-databases-to-existing-data-app-group-test
+  (mt/with-premium-features #{:advanced-permissions :data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Database]
+      (let [group-id (app-group! "finches")]
+        ;; data app group exists before any database permissions have been assigned
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        ;; should not grant data permissions for new databases to the data app group
+        (let [new-database-id (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))]
+          (is (= {:perms/view-data             :blocked
+                  :perms/create-queries        :no
+                  :perms/download-results      :no
+                  :perms/manage-table-metadata :no
+                  :perms/manage-database       :no
+                  :perms/transforms            :no}
+                 (t2/select-fn->fn :perm_type :perm_value :model/DataPermissions
+                                   :group_id group-id :db_id new-database-id :table_id nil))))))))
+
+(deftest reconcile-resets-create-queries-left-by-old-database-defaults-test
+  (testing "Reconciliation removes query-authoring grants left by the old database defaults."
     (mt/with-premium-features #{:advanced-permissions :data-apps}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (mt/with-restored-data-perms-for-group! (:id (perms/all-users-group))
