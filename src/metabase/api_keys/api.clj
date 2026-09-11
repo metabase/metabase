@@ -29,7 +29,8 @@
                     :group
                     :unmasked_key
                     :name
-                    :masked_key])
+                    :masked_key
+                    :last_used_at])
       (maybe-expose-key)
       (update :updated_by #(select-keys % [:common_name :id]))))
 
