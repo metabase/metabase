@@ -1,4 +1,3 @@
-import { mockDynamicGoalSettingKeys } from "__support__/dynamic-goals";
 import { color } from "metabase/ui/colors";
 import type {
   GoalSegment,
@@ -962,6 +961,8 @@ describe("dynamic goal settings per display", () => {
   it("knows which settings a display resolves", () => {
     expect(isDynamicGoalSetting("gauge", "gauge.segments")).toBe(true);
     expect(isDynamicGoalSetting("gauge", "graph.goal_value")).toBe(false);
+    expect(isDynamicGoalSetting("line", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("line", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("scalar", "scalar.segments")).toBe(true);
     expect(isDynamicGoalSetting("scalar", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting(undefined, "graph.goal_value")).toBe(false);
@@ -981,6 +982,72 @@ describe("dynamic goal settings per display", () => {
   });
 });
 
+describe("line chart goal value", () => {
+  const line: GoalCard = {
+    display: "line",
+    visualization_settings: {
+      "graph.show_goal": true,
+      "graph.goal_value": { type: "card", id: 9, column: "goal" },
+    },
+  };
+  const baseData = createMockDatasetData({
+    cols: [createMockColumn({ name: "count" })],
+    rows: [[50]],
+  });
+  const answeredData = createMockDatasetData({
+    ...baseData,
+    referenced_entities: {
+      card: {
+        9: {
+          status: "completed",
+          data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+        },
+      },
+    },
+  });
+  const failedData = createMockDatasetData({
+    ...baseData,
+    referenced_entities: {
+      card: { 9: { status: "failed", error: "boom" } },
+    },
+  });
+
+  it("asks the query for the entity a foreign goal value references", () => {
+    expect(getReferencedEntities(line)).toEqual([
+      { type: "card", id: 9, columns: ["goal"] },
+    ]);
+  });
+
+  it("asks for nothing when the goal value is static or a self column", () => {
+    expect(
+      getReferencedEntities({
+        ...line,
+        visualization_settings: { "graph.goal_value": 100 },
+      }),
+    ).toEqual([]);
+    expect(
+      getReferencedEntities({
+        ...line,
+        visualization_settings: { "graph.goal_value": "count" },
+      }),
+    ).toEqual([]);
+  });
+
+  it("has unanswered references until the data answers them", () => {
+    expect(hasUnansweredGoalReferences(line, undefined)).toBe(true);
+    expect(hasUnansweredGoalReferences(line, baseData)).toBe(true);
+    expect(hasUnansweredGoalReferences(line, answeredData)).toBe(false);
+    expect(hasUnansweredGoalReferences(line, failedData)).toBe(false);
+  });
+
+  it("has unresolved references until the data answers them successfully", () => {
+    expect(hasUnresolvedGoalReferences(line, undefined)).toBe(true);
+    expect(hasUnresolvedGoalReferences(line, baseData)).toBe(true);
+    expect(hasUnresolvedGoalReferences(line, answeredData)).toBe(false);
+    expect(hasUnresolvedGoalReferences(line, failedData)).toBe(true);
+  });
+});
+
 describe("needsGraphGoalResolution", () => {
   const ref = { type: "card" as const, id: 1, column: "sum" };
 
@@ -997,9 +1064,7 @@ describe("needsGraphGoalResolution", () => {
     expect(needsGraphGoalResolution(undefined, shownGoal(ref))).toBe(false);
   });
 
-  describe("for a display that resolves graph goals", () => {
-    mockDynamicGoalSettingKeys(["graph.goal_value"]);
-
+  describe("for a line chart", () => {
     it("is true for a shown reference", () => {
       expect(needsGraphGoalResolution("line", shownGoal(ref))).toBe(true);
       expect(needsGraphGoalResolution("line", shownGoal("count"))).toBe(true);

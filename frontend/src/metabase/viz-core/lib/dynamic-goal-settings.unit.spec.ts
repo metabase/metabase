@@ -8,6 +8,7 @@ import {
 describe("getDynamicGoalSettingKeys", () => {
   it("lists the goal settings a display resolves", () => {
     expect(getDynamicGoalSettingKeys("gauge")).toEqual(["gauge.segments"]);
+    expect(getDynamicGoalSettingKeys("line")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("scalar")).toEqual(["scalar.segments"]);
   });
 
@@ -26,7 +27,7 @@ describe("getDynamicGoalSettingKeys", () => {
     mockDynamicGoalSettingKeys(["graph.goal_value"]);
 
     it("answers the mocked keys for every display", () => {
-      expect(getDynamicGoalSettingKeys("line")).toEqual(["graph.goal_value"]);
+      expect(getDynamicGoalSettingKeys("table")).toEqual(["graph.goal_value"]);
       expect(getDynamicGoalSettingKeys(undefined)).toEqual([
         "graph.goal_value",
       ]);
@@ -34,6 +35,6 @@ describe("getDynamicGoalSettingKeys", () => {
   });
 
   it("is restored after a mocked describe", () => {
-    expect(getDynamicGoalSettingKeys("line")).toEqual([]);
+    expect(getDynamicGoalSettingKeys("table")).toEqual([]);
   });
 });
