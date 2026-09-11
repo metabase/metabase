@@ -239,6 +239,16 @@
                       child
                       (modules/parent-module config child))))))))
 
+(deftest ^:parallel rest-children-are-exported-by-their-parent-test
+  (testing "every `.rest` child is in its parent's :module-exports, since api-routes names it from outside the subtree"
+    (let [config   (dev.deps-graph/kondo-config)
+          children (sort (filter #(str/ends-with? (name %) ".rest") (keys config)))]
+      (is (seq children) "no `.rest` children, so the check below would hold vacuously")
+      (doseq [child children
+              :let  [parent (modules/parent-module config child)]]
+        (testing (str "\n" child)
+          (is (contains? (set (get-in config [parent :module-exports])) child)))))))
+
 (defn- rest-module? [module]
   (re-find #"[.-]rest$" (str module)))
 

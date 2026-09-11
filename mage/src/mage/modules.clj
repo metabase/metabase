@@ -20,7 +20,7 @@
 (def modules-triggering-cloud-drivers
   "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
   '#{query-processor transforms
-     enterprise/transforms enterprise/transforms-python})
+     enterprise/transforms enterprise/transforms.python})
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
@@ -127,51 +127,51 @@
 
 (def driver-affecting-overrides
   "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
-  '#{agent-api
+  '#{metabot.agent-api
      analytics
-     analytics-interface
+     analytics.interface
      api
      api-keys
      api-scope
      appearance
      audit-app
-     auth-identity
+     sso.auth-identity
      auth-provider
      batch-processing
      channel
-     classloader
+     util.classloader
      collections
-     config
+     util.config
      content-verification
      contextual-interestingness
      custom-viz-plugin
      dashboards
      documents
-     eid-translation
+     api.eid-translation
      embedding
      enterprise/api
-     enterprise/scim
+     enterprise/sso.scim
      enterprise/serialization
      enterprise/sso
      enterprise/transforms
-     enterprise/transforms-inspector
-     entity-retrieval
+     enterprise/transforms.inspector
+     search.entity-retrieval
      events
      explorations
      formatter
      geojson
      indexed-entities
-     initialization-status
+     core.initialization-status
      interestingness
-     internal-stats
-     llm
-     login-history
+     analytics.internal-stats
+     metabot.llm
+     session.login-history
      mcp
      measures
      metabot
      mq
      notification
-     oauth-server
+     mcp.oauth-server
      osi
      permissions
      premium-features
@@ -181,28 +181,28 @@
      request
      sample-data
      search
-     secrets
+     warehouses.secrets
      segments
      server
      session
      settings
      setup
-     slackbot
+     metabot.slackbot
      sso
      staleness
      startup
      system
      task
-     task-history
+     task.history
      tiles
      timeline
      tracing
-     types
+     lib.types
      users
      util
-     version
-     view-log
-     warehouse-schema
+     core.version
+     audit-app.view-log
+     warehouses.schema
      xrays})
 
 (defn- affected-modules
