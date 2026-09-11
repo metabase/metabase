@@ -342,6 +342,7 @@
   app-db
   {:team "UX West"
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
+           metabase.app-db.connection
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setting
@@ -723,6 +724,7 @@
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
+           metabase.dashboards.params
            metabase.dashboards.schema
            metabase.dashboards.settings
            metabase.dashboards.write}
@@ -877,7 +879,7 @@
            metabase.driver.settings
            metabase.driver.sql
            metabase.driver.sql-jdbc
-           metabase.driver.sql-jdbc.connection
+           metabase.driver.sql-jdbc.connection.pool-lock
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync
@@ -1769,6 +1771,7 @@
    :api  #{metabase.permissions.core
            metabase.permissions.init
            metabase.permissions.metric
+           metabase.permissions.path
            metabase.permissions.schema}
    :uses #{api
            app-db
@@ -1831,6 +1834,7 @@
   {:team "UX West"
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
+           metabase.premium-features.defenterprise
            metabase.premium-features.init}
    :uses #{analytics.interface
            analytics.internal-stats
@@ -1953,7 +1957,8 @@
    :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema}
+           metabase.queries.schema
+           metabase.queries.template-tags}
    :uses #{analytics
            analytics.interface
            api
@@ -2570,7 +2575,7 @@
            metabase.sync.field-values
            metabase.sync.init
            metabase.sync.schedules
-           metabase.sync.task.sync-databases
+           metabase.sync.task.sync-databases-trigger
            metabase.sync.util}
    :uses #{analytics.interface
            api

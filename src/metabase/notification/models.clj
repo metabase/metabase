@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.notification.db :as notification.db]
+   [metabase.notification.task.send-trigger :as notification.task.send-trigger]
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -148,14 +149,6 @@
   (validate-notification instance)
   instance)
 
-(defn- update-subscription-trigger!
-  [& args]
-  (apply (requiring-resolve 'metabase.notification.task.send/update-subscription-trigger!) args))
-
-(defn- delete-trigger-for-subscription!
-  [& args]
-  (apply (requiring-resolve 'metabase.notification.task.send/delete-trigger-for-subscription!) args))
-
 (t2/define-before-update :model/Notification
   [instance]
   (validate-notification instance)
@@ -175,14 +168,14 @@
     (let [subscriptions (notification.db/cron-subscriptions-for-notification (:id instance))]
       (doseq [subscription subscriptions]
         (if (:active instance)
-          (update-subscription-trigger! subscription)
-          (delete-trigger-for-subscription! (:id subscription))))))
+          (notification.task.send-trigger/update-subscription-trigger! subscription)
+          (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription))))))
   instance)
 
 (t2/define-before-delete :model/Notification
   [instance]
   (doseq [subscription-id (notification.db/cron-subscription-ids-for-notification (:id instance))]
-    (delete-trigger-for-subscription! subscription-id))
+    (notification.task.send-trigger/delete-trigger-for-subscription! subscription-id))
   (when-let [payload-id (:payload_id instance)]
     (case (:payload_type instance)
       :notification/card (notification.db/delete-notification-card! payload-id)))
@@ -248,18 +241,18 @@
 
 (t2/define-after-insert :model/NotificationSubscription
   [instance]
-  (update-subscription-trigger! instance)
+  (notification.task.send-trigger/update-subscription-trigger! instance)
   instance)
 
 (t2/define-before-update :model/NotificationSubscription
   [instance]
   (validate-subscription instance)
-  (update-subscription-trigger! instance)
+  (notification.task.send-trigger/update-subscription-trigger! instance)
   instance)
 
 (t2/define-before-delete :model/NotificationSubscription
   [instance]
-  (delete-trigger-for-subscription! (:id instance))
+  (notification.task.send-trigger/delete-trigger-for-subscription! (:id instance))
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;

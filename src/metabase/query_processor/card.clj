@@ -15,8 +15,9 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.query :as queries.query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.queries.template-tags :as queries.template-tags]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -48,7 +49,7 @@
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)
-    :ttl (let [et (queries/average-execution-time-ms (qp.util/query-hash query))]
+    :ttl (let [et (queries.query/average-execution-time-ms (qp.util/query-hash query))]
            (assoc strategy :avg-execution-ms (or et 0)))
     strategy))
 
@@ -265,7 +266,7 @@
   is not present in the parameters.
   This function ensures that all template-tags are converted to parameters and added to card.parameters."
   [{:keys [parameters] :as card} :- ::queries.schema/card]
-  (let [template-tag-parameters     (queries/card-template-tag-parameters card)
+  (let [template-tag-parameters     (queries.template-tags/template-tag-parameters card)
         id->template-tags-parameter (m/index-by :id template-tag-parameters)
         parameter-ids               (into #{} (map :id) parameters)
         ;; Preserve the order of card.parameters, merging in template-tag info

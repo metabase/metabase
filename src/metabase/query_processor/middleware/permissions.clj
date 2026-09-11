@@ -9,12 +9,10 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -66,20 +64,6 @@
   [query]
   (throw (ex-info (tru "Querying this database requires the audit-app feature flag")
                   query)))
-
-(mu/defn remove-internal-keys :- ::lib.schema/query
-  "Pre-processing middleware. Strip internal query-processor keys from the incoming `query` so that they can only ever
-  be set by the query processor itself, not supplied by a client. Skipped while re-running pivot sub-queries, which
-  legitimately carry these keys."
-  [query :- ::lib.schema/query]
-  (cond-> query
-    (not qp.pipeline/*pivot?*) lib/prepare-after-deserialization))
-
-(mu/defn record-referenced-card-ids :- ::lib.schema/query
-  "Pre-processing middleware. Record the source-card IDs referenced by `query` under the
-  `:query-permissions/referenced-card-ids` key."
-  [query :- ::lib.schema/query]
-  (u/assoc-dissoc query :query-permissions/referenced-card-ids (lib/all-source-card-ids-recursive query)))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."

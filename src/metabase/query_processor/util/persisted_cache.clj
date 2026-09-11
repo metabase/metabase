@@ -4,6 +4,7 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -32,16 +33,14 @@
   persistence is appropriate. Use [[can-substitute?]] for that check."
   [database-id                              :- ::lib.schema.id/database
    {:keys [table-name] :as _persisted-info} :- ::lib.schema.metadata/persisted-info]
-  (let [driver (or driver/*driver* (driver.u/database->driver database-id))
-        ;; We should not be using specific driver implementations
-        quote-name (requiring-resolve 'metabase.driver.sql.util/quote-name)]
+  (let [driver (or driver/*driver* (driver.u/database->driver database-id))]
     ;; select * because we don't actually know the name of the fields when in the actual query. See #28902
     (format "select * from %s.%s"
-            (quote-name
+            (sql.u/quote-name
              driver
              :table
              (ddl.i/schema-name {:id database-id} (system/site-uuid)))
-            (quote-name
+            (sql.u/quote-name
              driver
              :table
              table-name))))

@@ -1,5 +1,6 @@
 (ns metabase.task.bootstrap
   (:require
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.classloader.core :as classloader]
    [metabase.task.secure-delegate :as secure-delegate]
    [metabase.util.log :as log]))
@@ -8,9 +9,6 @@
 
 ;; Custom `ConnectionProvider` implementation that uses a dedicated connection pool for the application DB to provide
 ;; connections.
-
-(defn- quartz-data-source ^javax.sql.DataSource []
-  ((requiring-resolve 'metabase.app-db.core/quartz-data-source)))
 
 ;; Optional interceptor for wrapping JDBC connections before Quartz uses them.
 ;; Set by task.tracing to add SQL-level tracing. nil means no interception.
@@ -36,7 +34,7 @@
     ;;
     ;; the pool is separate from the main application DB pool so that a Quartz operation triggered by a thread inside
     ;; a `with-transaction` block can't deadlock when application code has saturated the main pool.
-    (let [conn (.getConnection (quartz-data-source))]
+    (let [conn (.getConnection (mdb.connection/quartz-data-source))]
       (if-let [interceptor @connection-interceptor]
         (interceptor conn)
         conn)))
