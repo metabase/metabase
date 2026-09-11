@@ -474,6 +474,13 @@
 (defn- fields-include [row]
   {:result_metadata (vec (strip-restricted-fingerprints (:result_metadata row)))})
 
+(defn- settings-include
+  "The `settings` section: the card's stored `visualization_settings`, verbatim and in the shape
+   `question_write` takes back, so a read-modify-write round-trips. A card with nothing stored
+   returns `{}` rather than omitting the section — an absent key would read as \"not available\"."
+  [row]
+  {:visualization_settings (or (:visualization_settings row) {})})
+
 (def ^:private type->spec
   "Per-type dispatch, co-located. Each entry carries the fetch fn (`:fetch`, id-or-eid ->
    permission-checked row) and the `:includes` sections it supports (section name -> a
@@ -483,9 +490,11 @@
    No entry carries a scope: every type here is gated by the tool's single `agent:content:read`
    check (see the ns docstring)."
   {"question"     {:fetch #(fetch-card :question %)
-                   :includes {"definition" card-definition-include "fields" fields-include}}
+                   :includes {"definition" card-definition-include "fields" fields-include
+                              "settings" settings-include}}
    "model"        {:proj :question   :fetch #(fetch-card :model %)
-                   :includes {"definition" card-definition-include "fields" fields-include}}
+                   :includes {"definition" card-definition-include "fields" fields-include
+                              "settings" settings-include}}
    "metric"       {:fetch #(fetch-card :metric %)
                    :includes {"definition" card-definition-include
                               "dimensions" #(dimensions-section :metric %)}}
@@ -589,16 +598,16 @@
                    [:int {:description "Numeric id."}]
                    [:string {:min 1 :description "A 21-character entity_id (alerts and migrated subscriptions are numeric-only)."}]]]
              [:fields {:optional true}
-              [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from this type's detailed projection (see the catalog://metabase/fields resource), item-relative inside arrays. Mutually exclusive with response_format and include."}]]]]]]]
+              [:maybe [:sequential [:string {:min 1 :description "Dot-paths picked from this type's detailed projection (see the catalog://metabase/fields resource), item-relative inside arrays; a named path with nothing stored comes back null. Mutually exclusive with response_format and include."}]]]]]]]
    [:include {:optional true}
-    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned as the stored query — numeric ids, the shape execute_query and question_write accept back verbatim), fields (question/model column metadata), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned content_markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to the span of the nearest enclosing block that has one, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
-                          "definition" "fields" "parameters" "layout" "dimensions" "comments"]]]]
+    [:maybe [:sequential [:enum {:description "Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned as the stored query — numeric ids, the shape execute_query and question_write accept back verbatim), fields (question/model column metadata), settings (question/model stored visualization_settings, the shape question_write takes back; {} when nothing is stored), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned content_markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to the span of the nearest enclosing block that has one, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error."}
+                          "definition" "fields" "settings" "parameters" "layout" "dimensions" "comments"]]]]
    [:response_format {:optional true}
     [:maybe [:enum {:description "concise (default) returns each type's essential shape; detailed adds entity_id, creator, timestamps, and other secondary columns."}
              "concise" "detailed"]]]])
 
 (registry/deftool get-content
-  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
+  "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database/table/source card), display, one-line query summary, raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; settings returns a question's or model's stored visualization_settings, the shape question_write takes back, so a chart's settings can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
   {:name         "get_content"
    :scope        metabot.scope/agent-content-read
    :annotations  {:readOnlyHint true :idempotentHint true}

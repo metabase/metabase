@@ -479,6 +479,38 @@
         (is (not (:isError result)) (-> result :content first :text))
         (is (= "new desc" (t2/select-one-fn :description :model/Card :id (:id card))))))))
 
+(deftest write-echoes-visualization-settings-test
+  (testing "GHY-4511: question_write echoes visualization_settings, so a chart write is
+            verifiable from its own response instead of a second get_content"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "an update that sets them"
+        (mt/with-temp [:model/Card card {:name "Chart" :display :line :dataset_query (orders-query)}]
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method "update" :id (:id card)
+                                   :visualization_settings {"graph.show_goal"  true
+                                                            "graph.goal_value" 50000}})]
+            (is (not (:isError result)) (-> result :content first :text))
+            (is (= {:graph.show_goal true :graph.goal_value 50000}
+                   (:visualization_settings (:structuredContent result)))))))
+      (testing "and an update that leaves them alone still reports what is stored"
+        (mt/with-temp [:model/Card card {:name                   "Chart"
+                                         :display                :line
+                                         :dataset_query          (orders-query)
+                                         :visualization_settings {"graph.goal_value" 10}}]
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method "update" :id (:id card) :description "d"})]
+            (is (not (:isError result)) (-> result :content first :text))
+            (is (= {:graph.goal_value 10}
+                   (:visualization_settings (:structuredContent result)))))))
+      (testing "a card with nothing stored echoes {}"
+        (mt/with-model-cleanup [:model/Card]
+          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                  {:method "create" :name "Plain"
+                                   :query  {:database (mt/id)
+                                            :stages   [{:source-table (mt/id :orders)}]}})]
+            (is (not (:isError result)) (-> result :content first :text))
+            (is (= {} (:visualization_settings (:structuredContent result))))))))))
+
 (deftest ^:parallel semantic-type-accepts-relation-types-test
   (testing "type/PK and type/FK are relation types (not Semantic/*), accepted by the column schema and named
             in the tool's own examples, so the check must let them through"

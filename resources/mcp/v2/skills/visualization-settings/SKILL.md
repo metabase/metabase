@@ -55,7 +55,7 @@ Always author `["name", "<output column>"]`. A `["ref", ["field", id, opts]]` ke
 
 ## Escape hatch and catalog
 
-For anything intricate — combo charts, conditional formatting, pivot splits, click behavior — `get_content` a UI-built card with the look you want and reuse its `visualization_settings` verbatim; the server produced it, so it's valid for that display. Every key with values and defaults, `series_settings`, conditional formatting, pivot splits, dashcard click behavior: `learn("visualization-settings", "settings")`.
+For anything intricate — combo charts, conditional formatting, pivot splits, click behavior — read a UI-built card with the look you want (`get_content {"items": [{"type": "question", "id": <id>}], "include": ["settings"]}`) and reuse its `visualization_settings` verbatim; the server produced it, so it's valid for that display. Every key with values and defaults, `series_settings`, conditional formatting, pivot splits, dashcard click behavior: `learn("visualization-settings", "settings")`.
 
 ## Don't
 
@@ -63,8 +63,8 @@ For anything intricate — combo charts, conditional formatting, pivot splits, c
 - Don't put field ids in `graph.dimensions` / `pie.metric` / `scalar.field` — output column names only, or the chart renders blank.
 - Don't write a `column_settings` key as an object, or author the `["ref", …]` form — ignored.
 - Don't pick `pie` for >5 slices, `combo` for unrelated metrics, or `scalar`/`pie` for a trend — renders, misleads.
-- Don't report a chart as rendering from the write response — nothing validates settings.
+- Don't report a chart as rendering from the write response — its `visualization_settings` echo is what got stored, not proof anything draws.
 
 ## To confirm
 
-`get_content {"type": "question", "id": <id>}` returns `display` and `visualization_settings` as stored — proof the settings saved, not that the chart renders. Rendering (a region whose values don't match, a binding to a missing column) has no API check: call it unverified unless the user has viewed the card.
+`get_content {"items": [{"type": "question", "id": <id>}], "include": ["settings"]}` returns `visualization_settings` as stored (alongside `display`, which every question read carries) — proof the settings saved, not that the chart renders. `question_write` also echoes `visualization_settings` in its response, so a write you just made needs no second call. `fields: ["visualization_settings"]` reads the blob alone; a card with nothing stored returns `{}`. Rendering (a region whose values don't match, a binding to a missing column) has no API check: call it unverified unless the user has viewed the card.

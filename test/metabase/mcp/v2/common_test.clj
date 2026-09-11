@@ -150,7 +150,8 @@
 ;; check would confuse. `parameters` is nested so subtree selection and order-absorption can be
 ;; exercised.
 (def ^:private test-catalog
-  ["name" "collection" "collection_path" "parameters.name" "parameters.type"])
+  ["name" "collection" "collection_path" "description" "last_run.status"
+   "parameters.name" "parameters.type"])
 
 (defn- register-fields-test-type! []
   (projections/register-projection!
@@ -189,6 +190,14 @@
       ;; both survive the merge, not just two paths down one branch
       (is (= {:name "Q1" :parameters [{:type "category"}]}
              (common/select-fields :fields-test row ["name" "parameters.type"]))))
+    (testing "GHY-4511: a named leaf the row has no value for answers null — the compact
+              projections drop nils, and an empty object reads as \"not a readable field\""
+      (is (= {:description nil} (common/select-fields :fields-test row ["description"])))
+      (is (= {:name "Q1" :description nil}
+             (common/select-fields :fields-test row ["name" "description"]))))
+    (testing "a path through a missing parent stays dropped — answering `last_run.status` with
+              a null-valued shell would claim a run that never happened"
+      (is (= {} (common/select-fields :fields-test row ["last_run.status"]))))
     (testing "an unknown path is a teaching error naming the nearest valid paths, ranked by edit
               distance — the suggestion is only useful if the closest catalog entry leads"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo

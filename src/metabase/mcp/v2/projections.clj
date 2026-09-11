@@ -161,13 +161,16 @@
    [[question-enrichment-keys]], which `get_content` computes at read time."
   (into question-concise-keys
         [:entity_id :dashboard_id :query_type :collection_position :creator_id :cache_ttl
-         :created_at :updated_at]))
+         :visualization_settings :created_at :updated_at]))
 
 (def question-enrichment-keys
   "Projection keys `get_content` computes at read time — not Card columns. Column-select paths
    (`list_models`, browse rows) can't fetch them, so they drop these before selecting."
   #{:query_summary :template_tags :collection_path})
 
+;; `visualization_settings` stays a scalar in the sample on purpose: its own keys are literal
+;; strings containing dots (`graph.dimensions`), so a dot-path into it could never address
+;; anything. The catalog offers the one whole-blob path.
 (register-key-projection!
  :question question-concise-keys
  :detailed-keys question-detailed-keys
