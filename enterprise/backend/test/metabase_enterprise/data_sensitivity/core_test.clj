@@ -76,14 +76,17 @@
                                           :data_sensitivity :PUBLIC}
                  :model/Field _          {:table_id (mt/id :people) :name "ds_dropped" :base_type :type/Text}
                  :model/Field _          {:table_id (mt/id :people) :name "ds_semantic" :base_type :type/Text
-                                          :semantic_type :type/Name :data_sensitivity :PII}]
+                                          :semantic_type :type/Name :data_sensitivity :PII}
+                 :model/Field _          {:table_id (mt/id :people) :name "ds_keep" :base_type :type/Text
+                                          :semantic_type :type/Category :data_sensitivity :PUBLIC}]
     (field-user-settings/upsert-user-settings human {:data_sensitivity :PII})
     (let [entries {"ds_human"      {:data_sensitivity "PII"}
                    "ds_classifier" {:data_sensitivity "PUBLIC" :confidence "low"}
                    "ds_unscanned"  {:data_sensitivity "PII"}
                    "ds_abstain"    {:data_sensitivity llm/unsure}
                    "ds_dropped"    nil
-                   "ds_semantic"   {:data_sensitivity "PII" :semantic_type "type/Email"}}
+                   "ds_semantic"   {:data_sensitivity "PII" :semantic_type "type/Email"}
+                   "ds_keep"       {:data_sensitivity "PUBLIC"}}
           result  (do-with-llm! (canned-llm #(get entries % {}))
                                 #(do-with-unchanged-fields (mt/id :people)
                                                            (fn [] (core/classify-table! (people-table)
@@ -125,6 +128,11 @@
                  :semantic_changed true}
                 (result-field result "ds_semantic")))
         (is (false? (:semantic_changed (result-field result "ds_human")))))
+      (testing "a semantic type the model keeps is reported as the proposal and not flagged"
+        (is (=? {:current           {:semantic_type :type/Category}
+                 :proposed          {:semantic_type :type/Category}
+                 :semantic_changed false}
+                (result-field result "ds_keep"))))
       (testing "counts match the per-field statuses"
         (let [{:keys [fields agree disagree new abstain dropped semantic_changed]} (:counts result)]
           (is (= (count (:fields result)) fields))

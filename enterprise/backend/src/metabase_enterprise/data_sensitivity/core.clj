@@ -134,14 +134,17 @@
 (mu/defn diff-field :- ::field-result
   "Join one packet field to its parsed model entry. `:status` is `:abstain` or `:dropped` when the parse said so,
   `:new` when the field has no current label, `:agree` when the proposal equals the current label, otherwise
-  `:disagree`. `:state` says where the current label came from so a nil reads as unscanned rather than blank."
+  `:disagree`. `:state` says where the current label came from so a nil reads as unscanned rather than blank.
+  `[:proposed :semantic_type]` is the effective type: the model's proposal when it made one, else the current type,
+  so nil means the field has none and none was proposed; `:semantic_changed` says whether they differ."
   [{:keys [id name display_name base_type semantic_type current]} :- ::context/field
    entry                                                          :- [:maybe ::llm/entry]]
   (let [{:keys [status] :as entry} (or entry dropped-entry)
         current-label  (:data_sensitivity current)
         human-set?     (:human_set current)
         proposed-label (:data-sensitivity entry)
-        proposed-st    (:semantic-type entry)]
+        proposed-st    (:semantic-type entry)
+        effective-st   (or proposed-st semantic_type)]
     {:field_id          id
      :name              name
      :display_name      display_name
@@ -155,7 +158,7 @@
                          :semantic_type    semantic_type}
      :proposed          {:data_sensitivity proposed-label
                          :confidence       (:confidence entry)
-                         :semantic_type    proposed-st
+                         :semantic_type    effective-st
                          :reasoning        (:reasoning entry)}
      :status            (case status
                           :abstain :abstain
