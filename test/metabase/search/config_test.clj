@@ -92,6 +92,6 @@
     (is (> (search.config/weight {:context :data-picker} :library)
            (+ (search.config/weight {:context :data-picker} :official-collection)
               (search.config/weight {:context :data-picker} :verified)))))
-  (testing "Metabot picks data sources too, so it boosts library items as the data picker does"
+  (testing "Metabot applies the same library boost as the data picker"
     (is (= (search.config/weight {:context :data-picker} :library)
            (search.config/weight {:context :metabot} :library)))))
