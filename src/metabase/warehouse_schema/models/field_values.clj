@@ -689,9 +689,8 @@
         {:model "FieldValues" :id "0"}))
 
 (defmethod serdes/deserialization-dependencies "FieldValues" [fv]
-  ;; the parent Field, which is written inside its Table's file rather than one of its own, so depending on it is what
-  ;; makes sure that file is loaded first
-  [(pop (serdes/path fv))])
+  (let [db-path (first (serdes/path fv))]
+    [[db-path]]))
 
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.

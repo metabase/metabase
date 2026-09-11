@@ -686,16 +686,16 @@
           (is (boolean? (:can_query hydrated))))))))
 
 (deftest serdes-descendants-includes-fields-and-segments-test
-  (testing "Table descendants includes Segments, but not Fields -- those ride inside the Table's own export"
+  (testing "Table descendants includes Fields and Segments"
     (mt/with-temp [:model/Database {db-id :id}      {:name "Test DB"}
                    :model/Table    {table-id :id}   {:name "Test Table" :db_id db-id}
                    :model/Field    {field1-id :id}  {:name "Field 1" :table_id table-id :base_type :type/Integer}
                    :model/Field    {field2-id :id}  {:name "Field 2" :table_id table-id :base_type :type/Text}
                    :model/Segment  {segment-id :id} {:name "Test Segment" :table_id table-id :definition {}}]
       (let [descendants (serdes/descendants "Table" table-id {})]
-        (testing "Fields are not descendants"
-          (is (not (contains? descendants ["Field" field1-id])))
-          (is (not (contains? descendants ["Field" field2-id]))))
+        (testing "Fields are included"
+          (is (contains? descendants ["Field" field1-id]))
+          (is (contains? descendants ["Field" field2-id])))
         (testing "Segments are included"
           (is (contains? descendants ["Segment" segment-id]))))))
   (testing "Table with no fields or segments returns empty map"
@@ -712,8 +712,8 @@
                    :model/Segment  {archived-seg-id :id} {:name "Archived Segment" :table_id table-id :definition {} :archived true}]
       (testing "archived segments are excluded when skip-archived: true"
         (let [descendants (serdes/descendants "Table" table-id {:skip-archived true})]
-          (is (not (contains? descendants ["Field" field-id]))
-              "Fields are never descendants")
+          (is (contains? descendants ["Field" field-id])
+              "Fields are still included")
           (is (contains? descendants ["Segment" active-seg-id])
               "Active segments are included")
           (is (not (contains? descendants ["Segment" archived-seg-id]))
@@ -731,7 +731,7 @@
   (testing "Importing a v58 serialization export with legacy medallion data_layer values maps them to current values"
     (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
                    :model/Table {table-id :id} {:db_id db-id}]
-      (let [table      (assoc (t2/select-one :model/Table :id table-id) :fields [])
+      (let [table      (t2/select-one :model/Table :id table-id)
             extracted  (serdes/extract-one "Table" {} table)]
         (doseq [[legacy-value expected] {"copper" "hidden"
                                          "bronze" "final"

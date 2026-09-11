@@ -468,35 +468,29 @@
   (let [db-path (first (serdes/path field))]
     #{[db-path]}))
 
-(defmethod serdes/extract-from "Field" [_model-name {:keys [user-edits-only]}]
-  ;; export what users see, not what sync last wrote: both sources merge in `metabase_field_user_settings`.
-  (if user-edits-only
-    (warehouse-schema-overlay/field-user-edits-query)
-    (warehouse-schema-overlay/field-query)))
+(defmethod serdes/make-spec "Field" [_model-name opts]
+  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :data_sensitivity :database_default :database_indexed
+               :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
+               :database_partitioned :database_position :database_required :database_type
+               :description :display_name :effective_type :has_field_values :is_defective_duplicate
+               :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
+               :unique_field_helper :visibility_type]
+   :skip      [:dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
+   :transform {:created_at         (serdes/date)
+               :table_id           (serdes/fk :model/Table)
+               :fk_target_field_id (serdes/fk :model/Field)
+               :parent_id          (serdes/fk :model/Field)
+               :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :name :created_at)} opts))}
+   :defaults  {:active                     true
+               :database_is_auto_increment false
+               :database_required          false
+               :is_defective_duplicate     false
+               :json_unfolding             false
+               :preview_display            true}})
 
-(defmethod serdes/make-spec "Field" [_model-name {:keys [user-edits-only] :as opts}]
-  (if user-edits-only
-    ;; Only what a user can change, plus the name that says which Field it is. [[serdes/extract-from]] leaves every
-    ;; other column NULL, and a NULL is dropped rather than exported -- so no `:defaults`, which would turn a dropped
-    ;; column back into an assertion that sync's value is the user's.
-    {:copy      (into [:name] (sort (disj warehouse-schema-overlay/user-settable-field-columns :fk_target_field_id)))
-     :transform {:table_id           (serdes/parent-ref)
-                 :fk_target_field_id (serdes/fk :model/Field)}}
-    {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :data_sensitivity :database_default :database_indexed
-                 :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
-                 :database_partitioned :database_position :database_required :database_type
-                 :description :display_name :effective_type :has_field_values :is_defective_duplicate
-                 :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
-                 :unique_field_helper :visibility_type]
-     :skip      [:dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
-     :transform {:created_at         (serdes/date)
-                 :table_id           (serdes/parent-ref)
-                 :fk_target_field_id (serdes/fk :model/Field)
-                 :parent_id          (serdes/fk :model/Field)
-                 :dimensions         (serdes/nested :model/Dimension :field_id (merge {:sort-by (juxt :name :created_at)} opts))}
-     :defaults  {:active                     true
-                 :database_is_auto_increment false
-                 :database_required          false
-                 :is_defective_duplicate     false
-                 :json_unfolding             false
-                 :preview_display            true}}))
+(defmethod serdes/storage-path "Field" [field _]
+  (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))
+        field-name    (str/join "." (map :id fields))]
+    (conj (serdes/storage-path-prefixes path)
+          {:label "fields"}
+          {:label field-name :key field-name})))

@@ -438,35 +438,119 @@ width: fixed
   (binding [tu.thread-local/*thread-local* false]
     (thunk)))
 
-(defn- field-entry
-  "One entry of a Table file's `fields:` list, indented to sit under it."
-  [field-name & {:keys [base-type description database-type]
-                 :or   {base-type "type/Text" database-type "VARCHAR" description nil}}]
-  (let [body (format "name: %s
+(defn generate-table-yaml
+  "Generate YAML content for a table with the given `table-name` and `db-name`.
+  Optionally accepts `:schema`, `:is-published` (defaults to true), and `:description`."
+  [table-name db-name & {:keys [schema is-published description]
+                         :or {is-published true
+                              description nil}}]
+  (format "name: %s
+description: %s
+entity_type: entity/GenericTable
+active: true
+display_name: %s
+visibility_type: null
+schema: %s
+points_of_interest: null
+caveats: null
+show_in_getting_started: false
+field_order: database
+initial_sync_status: complete
+is_upload: false
+database_require_filter: false
+is_defective_duplicate: false
+is_writable: false
+data_authority: unconfigured
+data_source: null
+owner_email: null
+owner_user_id: null
+is_published: %s
+created_at: '2024-08-28T09:46:18.671622Z'
+archived_at: null
+deactivated_at: null
+data_layer: null
+db_id: %s
+collection_id: null
+serdes/meta:
+- id: %s
+  model: Database
+%s- id: %s
+  model: Table
+"
+          table-name
+          (or description "null")
+          (str/replace (u/upper-case-en table-name) #"_" " ")
+          (or schema "null")
+          is-published
+          db-name
+          db-name
+          (if schema (format "- id: %s\n  model: Schema\n" schema) "")
+          table-name))
+
+(defn generate-field-yaml
+  "Generate YAML content for a field with the given `field-name`, `table-name`, and `db-name`.
+  Optionally accepts `:schema`, `:base-type`, `:description`, and `:database-type`."
+  [field-name table-name db-name & {:keys [schema base-type description database-type]
+                                    :or {base-type "type/Text"
+                                         database-type "VARCHAR"
+                                         description nil}}]
+  (format "name: %s
 display_name: %s
 description: %s
 created_at: '2024-08-28T09:46:18.671622Z'
 active: true
 visibility_type: normal
+table_id:
+- %s
+- %s
+- %s
 database_type: %s
 base_type: %s
+effective_type: null
+semantic_type: null
 database_is_auto_increment: false
 database_required: false
+fk_target_field_id: null
 dimensions: []
 json_unfolding: false
+parent_id: null
+coercion_strategy: null
 preview_display: true
 position: 1
 custom_position: 0
 database_position: 0
+has_field_values: null
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: %s
+  model: Database
+%s- id: %s
+  model: Table
+- id: %s
+  model: Field
+database_default: null
+database_indexed: null
+database_is_generated: null
+database_is_nullable: null
+database_is_pk: null
+database_partitioned: null
 "
-                     field-name
-                     (str/replace (u/upper-case-en field-name) #"_" " ")
-                     (or description "null")
-                     database-type
-                     base-type)]
-    (->> (str/split-lines body)
-         (map-indexed (fn [i line] (str (if (zero? i) "- " "  ") line)))
-         (str/join "\n"))))
+          field-name
+          (str/replace (u/upper-case-en field-name) #"_" " ")
+          (or description "null")
+          db-name
+          (or schema "null")
+          table-name
+          database-type
+          base-type
+          db-name
+          (if schema (format "- id: %s\n  model: Schema\n" schema) "")
+          table-name
+          field-name))
+
 (defn generate-segment-yaml
   "Generate YAML content for a segment with the given `segment-name`, `table-name`, and `db-name`.
   Optionally accepts `:schema`, `:description`, `:entity-id`, and `:filter-field-name`."
@@ -525,60 +609,6 @@ serdes/meta:
             table-name
             eid
             (str/replace (u/lower-case-en segment-name) #"\s+" "_"))))
-
-(defn generate-table-yaml
-  "Generate YAML content for a table with the given `table-name` and `db-name`.
-  Optionally accepts `:schema`, `:is-published` (defaults to true), `:description`, and `:fields` -- a seq of
-  `[field-name & opts]` vectors for the Fields written inside this Table, as they are in a real export."
-  [table-name db-name & {:keys [schema is-published description fields]
-                         :or {is-published true
-                              description nil}}]
-  (format "name: %s
-description: %s
-entity_type: entity/GenericTable
-active: true
-display_name: %s
-visibility_type: null
-schema: %s
-points_of_interest: null
-caveats: null
-show_in_getting_started: false
-field_order: database
-initial_sync_status: complete
-is_upload: false
-database_require_filter: false
-is_defective_duplicate: false
-is_writable: false
-data_authority: unconfigured
-data_source: null
-owner_email: null
-owner_user_id: null
-is_published: %s
-created_at: '2024-08-28T09:46:18.671622Z'
-archived_at: null
-deactivated_at: null
-data_layer: null
-db_id: %s
-collection_id: null
-serdes/meta:
-- id: %s
-  model: Database
-%s- id: %s
-  model: Table
-fields:%s
-"
-          table-name
-          (or description "null")
-          (str/replace (u/upper-case-en table-name) #"_" " ")
-          (or schema "null")
-          is-published
-          db-name
-          db-name
-          (if schema (format "- id: %s\n  model: Schema\n" schema) "")
-          table-name
-          (if (seq fields)
-            (str "\n" (str/join "\n" (map #(apply field-entry %) fields)))
-            " []")))
 
 (defn generate-action-yaml
   "Generate YAML content for an action with the given `entity-id`, `name`, and `model-id`.

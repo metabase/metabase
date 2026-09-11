@@ -166,9 +166,14 @@
                             ;; so cards that reference them can still be exported and imported correctly
                             (and analytics-cards (contains? by-model "Card"))
                             (update "Card" (fn [ids] (vec (remove analytics-cards ids)))))
+          ;; the user-settings models have a non-standard PK -- they are keyed by the row they describe.
+          pk-col          (fn [model] (case model
+                                        "FieldUserSettings" :field_id
+                                        "TableUserSettings" :table_id
+                                        :id))
           extract-by-ids  (fn [[model ids]]
                             (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                   :filter-column  :id
+                                                                   :filter-column  (pk-col model)
                                                                    :filter-ids     (vec ids)})))
           extract-all     (fn [model]
                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]

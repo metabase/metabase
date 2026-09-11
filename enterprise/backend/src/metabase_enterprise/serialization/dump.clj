@@ -26,16 +26,6 @@
 
 (def ^:private serialization-sorted-map (memoize/memo serialization-sorted-map*))
 
-(defn- entity-path
-  "The key [[serialization-order]] is read under for `m` at `path`: `path` itself when the file declares one, and
-  otherwise -- for a nested entity such as a Table's Fields -- the entity's own model, so it sorts the same way
-  wherever it is written."
-  [m path]
-  (let [model (some-> (:serdes/meta m) last :model keyword)]
-    (if (and model (not (contains? @serialization-order path)))
-      [model]
-      path)))
-
 (defn serialization-deep-sort
   "Provide a deterministic sort for maps before serialization."
   ([m]
@@ -43,10 +33,9 @@
      (serialization-deep-sort m [(keyword model)])))
   ([m path]
    (cond
-     (map? m)  (let [path (entity-path m path)]
-                 (into (serialization-sorted-map path)
-                       (for [[k v] m]
-                         [k (serialization-deep-sort v (conj path k))])))
+     (map? m)  (into (serialization-sorted-map path)
+                     (for [[k v] m]
+                       [k (serialization-deep-sort v (conj path k))]))
      (sequential? m) (mapv #(serialization-deep-sort % path) m)
      :else                  m)))
 

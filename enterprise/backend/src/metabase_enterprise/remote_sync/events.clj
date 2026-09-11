@@ -244,7 +244,7 @@
 
 ;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
 
-(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection)]
+(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field)]
   (register-events-for-spec! model-spec))
 
 ;;; ----------------------------------------- Collection Event Handler -------------------------------------------------
@@ -300,22 +300,27 @@
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))
 
-;;; ---------------------------------------------- Field Tracking ------------------------------------------------------
-;; A Field is written inside its Table's file, so a field edit is a change to the Table. Field has no spec of its own;
-;; it piggybacks on :event/field-update to mark the Table that holds it.
+;;; ----------------------------------------- FieldUserSettings Tracking -----------------------------------------------
+;; When a field is updated in a published table, also track any FieldUserSettings row for that field.
+;; FieldUserSettings has no separate event; it piggybacks on :event/field-update.
 
-(def ^:private table-spec (get spec/remote-sync-specs :model/Table))
+(def ^:private field-spec (get spec/remote-sync-specs :model/Field))
 
 (events/derive! :event/field-update ::field-update-event)
 (events/derive! ::field-update-event :metabase/event)
 
 (methodical/defmethod events/publish-event! ::field-update-event
   [_topic {:keys [object]}]
-  ;; only a user-edited Field can change the Table's file: git sync exports what users set, not what sync wrote
-  (when (and (:table_id object)
-             (remote-sync.db/field-user-settings-exist? (:id object)))
-    (when-let [table (remote-sync.db/table (:table_id object))]
-      (when (spec/check-eligibility table-spec table)
-        (create-or-update-remote-sync-object-entry!
-         "Table" (:table_id object) "update"
-         (fn [id] (spec/hydrate-model-details table-spec id)))))))
+  (let [field-id  (:id object)
+        eligible? (spec/check-eligibility field-spec object)]
+    (cond
+      (and eligible? (remote-sync.db/field-user-settings-exist? field-id))
+      (create-or-update-remote-sync-object-entry!
+       "FieldUserSettings" field-id "update"
+       (fn [id] (spec/hydrate-model-details field-spec id)))
+
+      (and (not eligible?)
+           (remote-sync.db/rso-exists? "FieldUserSettings" field-id))
+      (create-or-update-remote-sync-object-entry!
+       "FieldUserSettings" field-id "removed"
+       (fn [id] (spec/hydrate-model-details field-spec id))))))

@@ -40,6 +40,19 @@
   "The columns of `metabase_field` users cannot set."
   (sort (remove user-settable-field-columns field-columns)))
 
+(mu/defn field-user-settings-recorded-clause
+  "Honey SQL predicate matching a `metabase_field_user_settings` row aliased `settings-alias` that records something:
+  some user-settable column non-NULL, or some flag true -- a flag is how a user's deliberate NULL is recorded.
+
+  A row with neither records nothing. One exists whenever a user value was written and later taken back, and it is not
+  a user edit: serialization skips it rather than writing an empty file."
+  [settings-alias :- :keyword]
+  (into [:or]
+        (concat (map (fn [column] [:not= (u/qualified-key settings-alias column) nil])
+                     (sort user-settable-field-columns))
+                (map (fn [flag] [:= (u/qualified-key settings-alias flag) true])
+                     (sort (vals field-user-settings-flags))))))
+
 (mu/defn- field-user-settings-join
   "The `:left-join` entries joining `metabase_field_user_settings` as `settings-alias` to the Field table aliased
   `field-alias`; see [[field-user-settings-column]]."
@@ -75,17 +88,6 @@
       (if (= column :json_unfolding)
         [:case [:= [:coalesce settings-column field-column] true] true :else false]
         [:coalesce settings-column field-column]))))
-
-(mu/defn- field-user-edit-column
-  "Honey SQL expression for the user's own value of the Field column `column`, NULL when they never set it -- the
-  settings half of [[field-user-settings-column]], with no fallback to what sync wrote. Requires
-  [[field-user-settings-join]]."
-  [column         :- (into [:enum] user-settable-field-columns)
-   settings-alias :- :keyword]
-  (let [settings-column (u/qualified-key settings-alias column)]
-    (if-let [condition (field-user-set-condition column settings-alias)]
-      [:case condition settings-column :else nil]
-      settings-column)))
 
 (mu/defn field-query :- [:tuple :any :keyword]
   "The source a query over Fields reads from, for its `:from` or a join: a subquery over `metabase_field` left joined
@@ -125,42 +127,6 @@
       (t2/table-name :model/Field))
     alias]))
 
-(def ^:private field-identity-columns
-  "The `metabase_field` columns [[field-user-edits-query]] keeps whole: which Field a row is, rather than anything a
-  user said about it. `parent_id` is here because a nested Field is named through its parents."
-  #{:id :name :table_id :parent_id})
-
-(mu/defn field-user-edits-query :- [:tuple :any :keyword]
-  "The source a query over Fields reads from when it wants only what users changed: a subquery shaped exactly like
-  [[field-query]], but projecting each user-settable column as the user's own value and NULL where they set nothing,
-  and NULL for every synced column except [[field-identity-columns]].
-
-  Serialization reads through this for a user-edits-only export, where a NULL column means `absent`, not `cleared`.
-
-  Fields the user never touched are left out altogether: a row of nothing but a name says nothing, and would only
-  churn the export."
-  ([]
-   (field-user-edits-query nil))
-
-  ([{:keys [alias]
-     :or   {alias (t2/table-name :model/Field)}} :- [:maybe [:map [:alias {:optional true} :keyword]]]]
-   [^:allow-subquery
-    {:select    (into (mapv (fn [column]
-                              (if (field-identity-columns column)
-                                (u/qualified-key :f column)
-                                [nil column]))
-                            sync-owned-field-columns)
-                      (map (fn [column] [(field-user-edit-column column :u) column]))
-                      (sort user-settable-field-columns))
-     :from      [[(t2/table-name :model/Field) :f]]
-     :left-join (field-user-settings-join :f :u)
-     :where     (into [:or]
-                      (map (fn [column]
-                             (or (field-user-set-condition column :u)
-                                 [:not= (u/qualified-key :u column) nil])))
-                      (sort user-settable-field-columns))}
-    alias]))
-
 (def user-settable-table-columns
   "The Table columns users can set. Their user values live in `metabase_table_user_settings`, never in
   `metabase_table`."
@@ -195,6 +161,16 @@
   "The columns of `metabase_table` users cannot set."
   (sort (remove user-settable-table-columns table-columns)))
 
+(mu/defn table-user-settings-recorded-clause
+  "Honey SQL predicate matching a `metabase_table_user_settings` row aliased `settings-alias` that records something.
+  The Table counterpart of [[field-user-settings-recorded-clause]]."
+  [settings-alias :- :keyword]
+  (into [:or]
+        (concat (map (fn [column] [:not= (u/qualified-key settings-alias column) nil])
+                     (sort user-settable-table-columns))
+                (map (fn [flag] [:= (u/qualified-key settings-alias flag) true])
+                     (sort (vals table-user-settings-flags))))))
+
 (mu/defn- table-user-settings-join
   "The `:left-join` entries joining `metabase_table_user_settings` as `settings-alias` to the Table table aliased
   `table-alias`; see [[table-user-settings-column]]."
@@ -216,7 +192,7 @@
     (when (= column :collection_id)
       [:not= (u/qualified-key settings-alias :is_published) nil])))
 
-(mu/defn table-user-settings-column
+(mu/defn- table-user-settings-column
   "Honey SQL expression for the user-settable Table column `column` as users see it: the value in
   `metabase_table_user_settings` (aliased `settings-alias`) when the user set it, else the Table's (aliased
   `table-alias`). Requires [[table-user-settings-join]]."
@@ -231,17 +207,6 @@
       (if (#{:show_in_getting_started :is_published} column)
         [:case [:= [:coalesce settings-column table-column] true] true :else false]
         [:coalesce settings-column table-column]))))
-
-(mu/defn- table-user-edit-column
-  "Honey SQL expression for the user's own value of the Table column `column`, NULL when they never set it -- the
-  settings half of [[table-user-settings-column]], with no fallback to what sync wrote. Requires
-  [[table-user-settings-join]]."
-  [column         :- (into [:enum] user-settable-table-columns)
-   settings-alias :- :keyword]
-  (let [settings-column (u/qualified-key settings-alias column)]
-    (if-let [condition (table-user-set-condition column settings-alias)]
-      [:case condition settings-column :else nil]
-      settings-column)))
 
 (mu/defn table-query :- [:tuple :any :keyword]
   "The source a query over Tables reads from, for its `:from` or a join: a subquery over `metabase_table` left joined
@@ -268,39 +233,4 @@
        :from      [[(t2/table-name :model/Table) :t]]
        :left-join (table-user-settings-join :t :u)}
       (t2/table-name :model/Table))
-    alias]))
-
-(def ^:private table-identity-columns
-  "The `metabase_table` columns [[table-user-edits-query]] keeps whole: which Table a row is, rather than anything a
-  user said about it."
-  #{:id :name :db_id :schema})
-
-(def ^:private table-publishing-columns
-  "The user-settable Table columns [[table-user-edits-query]] keeps merged rather than user-only. Sync never writes
-  either, so the merged value is already the user's -- and an export is selected by `collection_id`, which NULLing
-  would hide the very Tables it is meant to carry."
-  #{:collection_id :is_published})
-
-(mu/defn table-user-edits-query :- [:tuple :any :keyword]
-  "The source a query over Tables reads from when it wants only what users changed. The Table counterpart of
-  [[field-user-edits-query]]."
-  ([]
-   (table-user-edits-query nil))
-
-  ([{:keys [alias]
-     :or   {alias (t2/table-name :model/Table)}} :- [:maybe [:map [:alias {:optional true} :keyword]]]]
-   [^:allow-subquery
-    {:select    (into (mapv (fn [column]
-                              (if (table-identity-columns column)
-                                (u/qualified-key :t column)
-                                [nil column]))
-                            sync-owned-table-columns)
-                      (map (fn [column]
-                             [(if (table-publishing-columns column)
-                                (table-user-settings-column column :t :u)
-                                (table-user-edit-column column :u))
-                              column]))
-                      (sort user-settable-table-columns))
-     :from      [[(t2/table-name :model/Table) :t]]
-     :left-join (table-user-settings-join :t :u)}
     alias]))

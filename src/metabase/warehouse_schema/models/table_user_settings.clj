@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -123,3 +124,65 @@
                           (warehouse-schema-overlay/table-user-settings-flags k)
                           (conj [(warehouse-schema-overlay/table-user-settings-flags k) false]))))
            ks))))
+
+;;; ------------------------------------------------- Serialization -------------------------------------------------
+
+(defmethod serdes/extract-query "TableUserSettings" [_model-name {:keys [filter-column filter-ids]}]
+  ;; see [[metabase.warehouse-schema.models.field-user-settings]]: only rows that record something
+  (warehouse-schema.db/table-user-settings-recording-something filter-column filter-ids))
+
+(defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
+
+(defmethod serdes/generate-path "TableUserSettings" [_ {:keys [table_id]}]
+  (conj (serdes/table->path (serdes/*export-table-fk* table_id))
+        {:model "TableUserSettings" :id "1"}))
+
+(defmethod serdes/deserialization-dependencies "TableUserSettings" [tus]
+  ;; The parent Table is synthesized on import if missing, so only the Database -- and the target Collection, when one
+  ;; is recorded -- has to exist first.
+  (let [db-path (first (serdes/path tus))]
+    (cond-> [[db-path]]
+      (:collection_id tus) (conj [{:model "Collection" :id (:collection_id tus)}]))))
+
+(defmethod serdes/load-find-local "TableUserSettings" [path]
+  ;; Delegate to finding the parent Table, then look up its corresponding TableUserSettings.
+  (let [found-table (serdes/load-find-local (pop path))]
+    (warehouse-schema.db/table-user-settings (:id found-table))))
+
+(defn- table-path->table-ref [tus-path]
+  (let [[db schema table-name :as table-ref] (mapv :id (pop tus-path))]
+    (if table-name
+      table-ref
+      ;; It's too short, so no schema. Shift them over and add a nil schema.
+      [db nil schema])))
+
+(defmethod serdes/make-spec "TableUserSettings" [_model-name _opts]
+  {:copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
+               :show_in_getting_started :data_authority :data_source :owner_email :is_published
+               :display_name_set :description_set :entity_type_set :visibility_type_set :caveats_set
+               :points_of_interest_set :data_layer_set :data_source_set]
+   :defaults  {:display_name_set       false
+               :description_set        false
+               :entity_type_set        false
+               :visibility_type_set    false
+               :caveats_set            false
+               :points_of_interest_set false
+               :data_layer_set         false
+               :data_source_set        false}
+   :transform {:created_at    (serdes/date)
+               :collection_id (serdes/fk :model/Collection)
+               :owner_user_id (serdes/fk :model/User)
+               :data_layer    (serdes/optional-kw)
+               :table_id      {::serdes/fk true
+                               :export     (constantly ::serdes/skip)
+                               :import-with-context (fn [current _ _]
+                                                      (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}}})
+
+(def ^:private table-user-settings-slug "___tableusersettings")
+
+(defmethod serdes/storage-path "TableUserSettings" [tus _]
+  ;; [path to table dir "table-name___tableusersettings"] next to the Table's own YAML, since there is zero or one
+  ;; TableUserSettings per Table.
+  (let [table-path (pop (serdes/path tus))]
+    (conj (serdes/storage-path-prefixes table-path)
+          {:label (str (:id (peek table-path)) table-user-settings-slug)})))

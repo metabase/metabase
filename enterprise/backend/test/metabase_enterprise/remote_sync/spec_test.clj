@@ -93,8 +93,11 @@
         (when-let [cf (:cascade-filter spec)]
           (is (map? cf)
               ":cascade-filter should be a map when present")))))
-  (testing "children-specs returns empty for Table, whose Fields are part of its own file"
-    (is (empty? (spec/children-specs :model/Table))))
+  (testing "children-specs derives the correct children for Table"
+    (let [children (spec/children-specs :model/Table)]
+      (is (= 1 (count children)))
+      (is (= #{:model/Field}
+             (into #{} (map :model-key) children)))))
   (testing "children-specs returns empty for models with no children"
     (is (empty? (spec/children-specs :model/Card)))))
 
@@ -122,12 +125,12 @@
       (is (contains? types "Card"))
       (is (contains? types "Dashboard"))
       (is (contains? types "Table"))
-      (is (not (contains? types "Field")) "Fields ride inside their Table")
+      (is (contains? types "Field"))
       (is (contains? types "Segment"))
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 12 (count types))))))
+      (is (= 13 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -139,9 +142,11 @@
           (is (contains? entity-id-specs :model/Card))
           (is (contains? entity-id-specs :model/Dashboard))
           (is (contains? entity-id-specs :model/Collection))
-          (is (not (contains? entity-id-specs :model/Table))))
+          (is (not (contains? entity-id-specs :model/Table)))
+          (is (not (contains? entity-id-specs :model/Field))))
         (testing "path specs"
           (is (contains? path-specs :model/Table))
+          (is (contains? path-specs :model/Field))
           (is (not (contains? path-specs :model/Card))))
         (testing "hybrid specs"
           (is (contains? hybrid-specs :model/Segment))
@@ -618,3 +623,24 @@
             "the warning covers only the unsynced subset (the potential data loss)")
         (is (set/subset? flagged would-delete)
             "everything the warning flags would indeed be removed")))))
+
+(deftest git-sync-exports-only-user-settings-test
+  (testing "git sync stores what users changed about a Table and its Fields, never the Table or Fields themselves --
+            those belong to sync, which runs against each instance's own warehouse"
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
+                     :model/Database   {db-id :id}    {:name "DB"}
+                     :model/Table      {table-id :id} {:name "T" :db_id db-id
+                                                       :is_published true :collection_id coll-id}
+                     :model/Field      {f1 :id}       {:name "F1" :table_id table-id}
+                     :model/Field      {f2 :id}       {:name "F2" :table_id table-id}]
+        (t2/insert! :model/FieldUserSettings {:field_id f2 :description "curated" :description_set true})
+        (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed" :display_name_set true})
+        (testing "a settings row that records nothing is not a user edit and is not exported"
+          (t2/insert! :model/FieldUserSettings {:field_id f1}))
+        (let [exportable (spec/exportable-entities)]
+          (is (= [f2] (filter #{f1 f2} (get exportable "FieldUserSettings")))
+              "the edited Field's settings, and not the row that records nothing")
+          (is (contains? (set (get exportable "TableUserSettings")) table-id))
+          (is (not (contains? (set (get exportable "Table")) table-id)))
+          (is (empty? (filter #{f1 f2} (get exportable "Field")))))))))

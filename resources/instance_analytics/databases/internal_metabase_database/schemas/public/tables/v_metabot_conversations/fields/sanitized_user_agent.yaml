@@ -1,0 +1,23 @@
+name: sanitized_user_agent
+display_name: Sanitized User Agent
+description: Sanitized User-Agent string (browser + OS family) at the originating conversation, for analytics display.
+created_at: '2026-05-04T00:00:00Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_metabot_conversations]
+database_type: varchar
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/Category
+dimensions: []
+position: 24
+custom_position: 0
+database_position: 24
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_metabot_conversations, model: Table}
+- {id: sanitized_user_agent, model: Field}
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

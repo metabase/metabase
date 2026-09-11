@@ -23,6 +23,8 @@
     :model/Table
     :model/Field
     :model/FieldValues
+    :model/FieldUserSettings
+    :model/TableUserSettings
     ;; OsiAiContext is identified by the entity it describes (entity_type + the entity's portable ref); its
     ;; serdes path nests under that entity, so it has no generated entity_id.
     :model/OsiAiContext
@@ -154,10 +156,7 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction
-    ;; user settings are not serialized: a Table and its Fields export the values users see, merged
-    :model/FieldUserSettings
-    :model/TableUserSettings})
+    :model/CommentReaction})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (keys models.resolution/model->namespace)
@@ -165,9 +164,8 @@
                               (remove entities-external-name))]
     (testing "All exported models should get entity id except those with other unique property (like name)"
       (is (= (set (concat serdes.models/exported-models
-                          ;; those are inline models which still have entity_id, plus Field, which is inline
-                          ;; and named
-                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt" "Field"]))
+                          ;; those are inline models which still have entity_id
+                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt"]))
              (set (->> (concat entity-id-models
                                entities-external-name)
                        (map name))))))

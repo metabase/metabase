@@ -55,29 +55,24 @@
 
 (mu/defn entities-reducible
   "A reducible of the `model` rows whose `filter-column` is one of `filter-ids` (every row when `filter-column` is
-  nil), ordered ascending by `order-columns` (unordered when empty). `from` reads the rows from somewhere other than
-  the model's own table, for a model assembled from more than one."
+  nil), ordered ascending by `order-columns` (unordered when empty)."
   [model         :- [:or :keyword symbol?]
    filter-column :- [:maybe :keyword]
    filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
-   order-columns :- [:maybe [:sequential :keyword]]
-   from          :- [:maybe :any]]
+   order-columns :- [:maybe [:sequential :keyword]]]
   (t2/reducible-select model (cond-> {}
-                               from                (assoc :from [from])
                                filter-column       (assoc :where [:in filter-column filter-ids])
                                (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn entities-in-collections-reducible
   "A reducible of the `model` rows whose `:collection_id` is in `collection-set` (nil in the set counts as the root
   collection) and whose `filter-column` is one of `filter-ids` (unrestricted when `filter-column` is nil), ordered
-  ascending by `order-columns` (unordered when empty). `from` reads the rows from somewhere other than the model's own
-  table, for a model assembled from more than one."
+  ascending by `order-columns` (unordered when empty)."
   [model          :- [:or :keyword symbol?]
    collection-set :- [:or [:set [:maybe ms/PositiveInt]] [:sequential [:maybe ms/PositiveInt]]]
    filter-column  :- [:maybe :keyword]
    filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
-   order-columns  :- [:maybe [:sequential :keyword]]
-   from           :- [:maybe :any]]
+   order-columns  :- [:maybe [:sequential :keyword]]]
   (t2/reducible-select model
                        (cond-> {:where [:and
                                         [:or
@@ -86,7 +81,6 @@
                                            [:= :collection_id nil])]
                                         (when filter-column
                                           [:in filter-column filter-ids])]}
-                         from                (assoc :from [from])
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn update-entity!
@@ -141,23 +135,13 @@
   (t2/delete! model parent-column parent-id))
 
 (mu/defn delete-children-except!
-  "Delete the `model` rows whose `parent-column` is `parent-id` and whose `key-column` is not one of `key-values`,
+  "Delete the `model` rows whose `parent-column` is `parent-id` and whose entity id is not one of `entity-ids`,
   returning the number deleted."
   [model         :- [:or :keyword symbol?]
    parent-column :- :keyword
    parent-id     :- [:or :int :string]
-   key-column    :- :keyword
-   key-values    :- [:sequential :string]]
-  (t2/delete! model parent-column parent-id key-column [:not-in key-values]))
-
-(mu/defn child-by-key
-  "The `model` row whose `parent-column` is `parent-id` and whose `key-column` is `key-value`, or nil."
-  [model         :- [:or :keyword symbol?]
-   parent-column :- :keyword
-   parent-id     :- [:or :int :string]
-   key-column    :- :keyword
-   key-value     :- :any]
-  (t2/select-one model parent-column parent-id key-column key-value))
+   entity-ids    :- [:sequential :string]]
+  (t2/delete! model parent-column parent-id :entity_id [:not-in entity-ids]))
 
 (mu/defn collection-paths-columns
   "The id, entity id, location, and name of every Collection."

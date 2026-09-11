@@ -183,12 +183,30 @@
   [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/FieldUserSettings field-id))
 
+(mu/defn field-user-settings-recording-something
+  "A reducible of the FieldUserSettings rows that record something (see
+  [[warehouse-schema-overlay/field-user-settings-recorded-clause]]), restricted to `filter-ids` on `filter-column`
+  when both are given. Serialization reads through this so a row recording nothing never becomes a file."
+  [filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
+  (let [recorded (warehouse-schema-overlay/field-user-settings-recorded-clause :u)]
+    (t2/reducible-select :model/FieldUserSettings
+                         {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
+                          :where (if filter-column
+                                   [:and recorded [:in (u/qualified-key :u filter-column) filter-ids]]
+                                   recorded)})))
+
 (mu/defn user-edited-field-ids-for-table
-  "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id` that have a FieldUserSettings row."
+  "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id` whose FieldUserSettings records
+  something; see [[warehouse-schema-overlay/field-user-settings-recorded-clause]]."
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-set :field_id :model/FieldUserSettings
-                    {:join  [(warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :field_id]]
-                     :where [:= :f.table_id table-id]}))
+                    {:select [[:u.field_id :field_id]]
+                     :from   [[(t2/table-name :model/FieldUserSettings) :u]]
+                     :join   [(warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :u.field_id]]
+                     :where  [:and
+                              [:= :f.table_id table-id]
+                              (warehouse-schema-overlay/field-user-settings-recorded-clause :u)]}))
 
 (def ^:private field-user-settings-update-keys
   "The columns an insert or update of a FieldUserSettings accepts."
@@ -231,6 +249,28 @@
   "Whether the ::warehouse-schema.schema/table with `table-id` has a TableUserSettings row."
   [table-id :- ::lib.schema.id/table]
   (t2/exists? :model/TableUserSettings table-id))
+
+(mu/defn table-user-settings-recorded?
+  "Whether the TableUserSettings of the ::warehouse-schema.schema/table with `table-id` records something; see
+  [[warehouse-schema-overlay/table-user-settings-recorded-clause]]."
+  [table-id :- ::lib.schema.id/table]
+  (t2/exists? :model/TableUserSettings
+              {:from  [[(t2/table-name :model/TableUserSettings) :u]]
+               :where [:and
+                       [:= :u.table_id table-id]
+                       (warehouse-schema-overlay/table-user-settings-recorded-clause :u)]}))
+
+(mu/defn table-user-settings-recording-something
+  "A reducible of the TableUserSettings rows that record something; the Table counterpart of
+  [[field-user-settings-recording-something]]."
+  [filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
+  (let [recorded (warehouse-schema-overlay/table-user-settings-recorded-clause :u)]
+    (t2/reducible-select :model/TableUserSettings
+                         {:from  [[(t2/table-name :model/TableUserSettings) :u]]
+                          :where (if filter-column
+                                   [:and recorded [:in (u/qualified-key :u filter-column) filter-ids]]
+                                   recorded)})))
 
 (mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
   "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."

@@ -559,12 +559,20 @@
     transform_id  (conj [{:model "Transform" :id transform_id}])))
 
 (defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
-  ;; Fields are not here: they are nested inside the Table's own export, not entities of their own.
-  (let [segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
+  (let [fields   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
+                            [["Field" field-id] {"Table" id}]))
+        ;; a Table's user settings, and its Fields', are models like any other, written beside it whenever they
+        ;; exist. They hang off the Table rather than off each Field so that Field stays a leaf in the descendants
+        ;; graph -- giving Field descendants of its own would make every full export walk every Field.
+        settings (cond-> (into {} (for [field-id (warehouse-schema.db/user-edited-field-ids-for-table id)]
+                                    [["FieldUserSettings" field-id] {"Table" id}]))
+                   (warehouse-schema.db/table-user-settings-recorded? id)
+                   (assoc ["TableUserSettings" id] {"Table" id}))
+        segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
                             [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]
                             [["Measure" measure-id] {"Table" id}]))]
-    (merge segments measures)))
+    (merge fields settings segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (warehouse-schema.db/database-name (:db_id table))]
@@ -585,58 +593,23 @@
         db-id       (warehouse-schema.db/database-id-by-name db-name)]
     (warehouse-schema.db/table-by-name db-id schema-name table-name)))
 
-(defn- find-local-field
-  "The Field `ingested` names inside the Table with `table-id`: its own name under the chain of parent Fields its path
-  records. The name alone would not do -- two Fields of one Table may share one when their parents differ."
-  [table-id ingested]
-  (warehouse-schema.db/field-in-path
-   table-id
-   (into '() (comp (filter #(= "Field" (:model %))) (map :id)) (:serdes/meta ingested))))
-
-(defn- fields-nested [opts]
-  ;; A Table's Fields live inside its file rather than one file each. `:key-field :name` because a Field is addressed
-  ;; by name, not by an `entity_id` it has no column for; `:delete-missing? false` because sync owns which Fields
-  ;; exist -- an import listing three of them is not saying the rest are gone.
-  (serdes/nested :model/Field :table_id (merge {:sort-by         :name
-                                                :key-field       :name
-                                                :delete-missing? false
-                                                :find-local      find-local-field}
-                                               opts)))
-
-(defmethod serdes/extract-from "Table" [_model-name {:keys [user-edits-only]}]
-  ;; export what users see, not what sync last wrote: both sources merge in `metabase_table_user_settings`.
-  (if user-edits-only
-    (warehouse-schema-overlay/table-user-edits-query)
-    (warehouse-schema-overlay/table-query)))
-
-(defmethod serdes/make-spec "Table" [_model-name {:keys [user-edits-only] :as opts}]
-  (if user-edits-only
-    ;; Only what a user can change, plus the name and Database that say which Table it is. See the Field spec: no
-    ;; `:defaults`, because [[serdes/extract-from]] leaves an unedited column NULL for the export to drop.
-    {:copy      [:name :description :entity_type :display_name :visibility_type :schema :points_of_interest :caveats
-                 :show_in_getting_started :field_order :data_authority :data_source :owner_email :owner_user_id
-                 :is_published]
-     :transform {:data_layer    (serdes/optional-kw)
-                 :db_id         (serdes/fk :model/Database)
-                 :collection_id (serdes/fk :model/Collection)
-                 :fields        (fields-nested opts)}}
-    {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
-                 :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-                 :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-                 :data_source :owner_email :owner_user_id :is_published]
-     :skip      [:estimated_row_count :view_count :transform_target]
-     :transform {:created_at     (serdes/date)
-                 :archived_at    (serdes/date)
-                 :deactivated_at (serdes/date)
-                 :data_layer     (serdes/optional-kw)
-                 :db_id          (serdes/fk :model/Database)
-                 :collection_id  (serdes/fk :model/Collection)
-                 :transform_id   (serdes/fk :model/Transform)
-                 :fields         (fields-nested opts)}
-     :defaults {:is_defective_duplicate  false
-                :is_published            false
-                :is_upload               false
-                :show_in_getting_started false}}))
+(defmethod serdes/make-spec "Table" [_model-name _opts]
+  {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
+               :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
+               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
+               :data_source :owner_email :owner_user_id :is_published]
+   :skip      [:estimated_row_count :view_count :transform_target]
+   :transform {:created_at     (serdes/date)
+               :archived_at    (serdes/date)
+               :deactivated_at (serdes/date)
+               :data_layer     (serdes/optional-kw)
+               :db_id          (serdes/fk :model/Database)
+               :collection_id  (serdes/fk :model/Collection)
+               :transform_id   (serdes/fk :model/Transform)}
+   :defaults {:is_defective_duplicate  false
+              :is_published            false
+              :is_upload               false
+              :show_in_getting_started false}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (conj (serdes/storage-path-prefixes (serdes/path table))

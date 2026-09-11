@@ -44,11 +44,6 @@
        (map (comp :id last :serdes/meta))
        set))
 
-(defn- serialized-fields
-  "Every serialized Field in `entities`. Fields are exported inside their Table, not as entities of their own."
-  [entities]
-  (mapcat :fields (by-model entities "Table")))
-
 (defn- ingestion-in-memory [extractions]
   (let [mapped (into {} (for [entity (vec extractions)]
                           [(no-labels (serdes/path entity))
@@ -269,13 +264,15 @@
                       set))))
         (testing "foreign key references are serialized as a field path"
           (is (= ["db1" nil "posts" "Target Field"]
-                 (->> (serialized-fields @serialized)
-                      (u/seek #(-> % :name (= "Foreign Key")))
+                 (->> @serialized
+                      (u/seek #(and (-> % :serdes/meta last :model (= "Field"))
+                                    (-> % :name (= "Foreign Key"))))
                       :fk_target_field_id))))
         (testing "Parent field references are serialized as a field path"
           (is (= ["db1" nil "posts" "Target Field"]
-                 (->> (serialized-fields @serialized)
-                      (u/seek #(-> % :name (= "Nested Field")))
+                 (->> @serialized
+                      (u/seek #(and (-> % :serdes/meta last :model (= "Field"))
+                                    (-> % :name (= "Nested Field"))))
                       :parent_id))))
         (testing "deserialization works properly, keeping the same-named tables apart"
           (ts/with-db dest-db
@@ -1163,7 +1160,7 @@
           (reset! serialized (into [] (serdes.extract/extract {:include-field-values true})))
           (testing "the expected fields are serialized"
             (is (= 1
-                   (->> (serialized-fields @serialized)
+                   (->> @serialized
                         (filter #(= (:serdes/meta %)
                                     [{:model "Database" :id "test-data (h2)"}
                                      {:model "Schema"   :id "PUBLIC"}
@@ -2117,12 +2114,14 @@
              (t2/select-one-fn :description :model/Field (:id f3)))))))
 
 (deftest field-data-sensitivity-round-trip-test
-  (testing "data_sensitivity travels through export and import on the Field"
+  (testing "data_sensitivity travels through export and import on both Field and FieldUserSettings"
     (let [serialized (atom nil)
           in-db?     (fn [entity] (-> entity :serdes/meta first :id (= "labeled-db")))
           field-ser  (fn [entities field-name]
-                       (u/seek #(and (in-db? %) (= field-name (:name %)))
-                               (serialized-fields entities)))]
+                       (u/seek #(and (in-db? %)
+                                     (-> % :serdes/meta last :model (= "Field"))
+                                     (= field-name (:name %)))
+                               entities))]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
           (let [db    (ts/create! :model/Database :name "labeled-db")
@@ -2131,8 +2130,11 @@
                 _     (ts/create! :model/Field    :name "CONTACT_ROW"   :table_id (:id table))
                 _     (ts/create! :model/FieldUserSettings :field_id (:id email) :data_sensitivity :PII)]
             (reset! serialized (into [] (serdes.extract/extract {})))
-            (testing "the labeled Field exports the label"
-              (is (= :PII (:data_sensitivity (field-ser @serialized "CONTACT_EMAIL")))))
+            (testing "the labeled Field and its FieldUserSettings both export the label"
+              (is (= :PII (:data_sensitivity (field-ser @serialized "CONTACT_EMAIL"))))
+              (is (= :PII (:data_sensitivity (u/seek #(and (in-db? %)
+                                                           (-> % :serdes/meta last :model (= "FieldUserSettings")))
+                                                     @serialized)))))
             (testing "the unlabeled Field exports no data_sensitivity key"
               (is (not (contains? (field-ser @serialized "CONTACT_ROW") :data_sensitivity))))))
         (ts/with-db dest-db
@@ -2143,8 +2145,11 @@
                 row-id   (t2/select-one-fn :id :model/Field :name "CONTACT_ROW"   :table_id table-id)]
             (testing "the label imports back to the keyword on the Field"
               (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id email-id))))
-            (testing "the unlabeled field stays nil"
-              (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id row-id))))))))))
+            (testing "the label imports back to the keyword on the FieldUserSettings mirror"
+              (is (= :PII (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id email-id))))
+            (testing "the unlabeled field stays nil with no mirror row"
+              (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id row-id)))
+              (is (not (t2/exists? :model/FieldUserSettings :field_id row-id))))))))))
 
 (deftest blank-eid-creates-new-entity-test
   (mt/with-empty-h2-app-db!

@@ -1,0 +1,23 @@
+name: visibility_type
+display_name: Visibility Type
+created_at: '2023-10-31T21:26:32.933732Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_fields]
+database_type: varchar
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/Category
+dimensions: []
+position: 8
+custom_position: 0
+database_position: 8
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_fields, model: Table}
+- {id: visibility_type, model: Field}
+database_indexed: false
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
