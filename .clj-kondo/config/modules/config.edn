@@ -538,8 +538,7 @@
            util
            util.config}
    :model-exports #{:model/Channel :model/ChannelTemplate}
-   :model-imports #{:model/CustomVizPlugin
-                    :model/Dashboard
+   :model-imports #{:model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/Database

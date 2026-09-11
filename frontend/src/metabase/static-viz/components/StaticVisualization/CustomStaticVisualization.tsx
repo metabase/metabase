@@ -4,9 +4,11 @@ import type {
 } from "custom-viz";
 
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
-import { getVisualizationTransformed } from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { StaticVisualizationProps } from "metabase/visualizations/types";
+import {
+  type StaticVisualizationProps,
+  getComputedSettingsForSeries,
+  getVisualizationTransformed,
+} from "metabase/viz-core";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
 type PluginStaticProps = CustomStaticVisualizationProps<

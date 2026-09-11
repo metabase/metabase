@@ -33,6 +33,11 @@
   [identifier :- :string]
   (t2/select-one :model/CustomVizPlugin :identifier identifier))
 
+(mu/defn enabled-non-blob-plugin-by-identifier
+  "The enabled CustomVizPlugin with `identifier` without its bundle, or nil."
+  [identifier :- :string]
+  (t2/select-one non-blob-columns :identifier identifier :enabled true))
+
 (mu/defn plugin-identifier-exists?
   "Whether a CustomVizPlugin with `identifier` exists."
   [identifier :- :string]

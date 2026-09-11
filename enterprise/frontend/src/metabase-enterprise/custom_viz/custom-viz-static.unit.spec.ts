@@ -1,6 +1,9 @@
 import type { CreateCustomVisualization } from "custom-viz";
 
-import visualizations from "metabase/visualizations";
+import {
+  getCustomVizSettingKeyPrefix,
+  visualizations,
+} from "metabase/viz-core";
 
 import {
   customVizRegistry,
@@ -10,12 +13,12 @@ import {
 const IDENTIFIER = "overwrite-check";
 const DISPLAY = `custom:${IDENTIFIER}` as const;
 const PLUGIN_ID = 1;
+const PREFIX = getCustomVizSettingKeyPrefix(DISPLAY);
 
 function createPluginFactoryWithSetting(
   settingKey: string,
 ): CreateCustomVisualization<Record<string, unknown>> {
   return ({ defineSetting }) => ({
-    id: IDENTIFIER,
     getName: () => IDENTIFIER,
     checkRenderable: () => {},
     settings: {
@@ -39,7 +42,9 @@ describe("registerCustomVizPlugin", () => {
       IDENTIFIER,
       PLUGIN_ID,
     );
-    expect(visualizations.get(DISPLAY)?.settings).toHaveProperty("settingV1");
+    expect(visualizations.get(DISPLAY)?.settings).toHaveProperty([
+      `${PREFIX}settingV1`,
+    ]);
 
     registerCustomVizPlugin(
       createPluginFactoryWithSetting("settingV2"),
@@ -48,8 +53,8 @@ describe("registerCustomVizPlugin", () => {
     );
 
     const registered = visualizations.get(DISPLAY);
-    expect(registered?.settings).toHaveProperty("settingV2");
-    expect(registered?.settings).not.toHaveProperty("settingV1");
+    expect(registered?.settings).toHaveProperty([`${PREFIX}settingV2`]);
+    expect(registered?.settings).not.toHaveProperty([`${PREFIX}settingV1`]);
     expect(customVizRegistry.get(DISPLAY)?.settings).toHaveProperty(
       "settingV2",
     );

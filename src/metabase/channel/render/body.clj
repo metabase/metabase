@@ -31,8 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -497,11 +496,9 @@
    isn't a custom viz or its bundle can't be resolved."
   [card]
   (when-let [identifier (render.util/custom-viz-identifier (:display card))]
-    (let [plugin
-          ;; do not load the (potentially multi-MB) :bundle blob eagerly;
-          ;; resolve-bundle re-fetches bytes from the cache as needed.
-          (t2/select-one [:model/CustomVizPlugin :id :identifier :enabled :manifest :bundle_hash :dev_bundle_url]
-                         :identifier identifier :enabled true)]
+    ;; the plugin comes without its (potentially multi-MB) :bundle blob;
+    ;; resolve-bundle re-fetches bytes from the cache as needed.
+    (let [plugin (custom-viz-plugin/enabled-plugin identifier)]
       (when-let [content (some-> plugin
                                  custom-viz-plugin/resolve-bundle
                                  :content)]

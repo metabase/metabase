@@ -4,12 +4,12 @@
    [hiccup.core :refer [h html]]
    [metabase.channel.render.style :as style]
    [metabase.config.core :as config]
+   [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.parameters.shared :as shared.params]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 ;;; --------------------------------------------------- Helpers ---------------------------------------------------
 
@@ -34,8 +34,7 @@
   [display-type]
   (boolean
    (when-let [identifier (custom-viz-identifier display-type)]
-     (let [plugin (t2/select-one [:model/CustomVizPlugin :bundle_hash :dev_bundle_url]
-                                 :identifier identifier :enabled true)]
+     (let [plugin (custom-viz-plugin/enabled-plugin identifier)]
        (or (:bundle_hash plugin) (:dev_bundle_url plugin))))))
 
 (defn- extract-value-sources

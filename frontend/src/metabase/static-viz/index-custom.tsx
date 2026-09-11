@@ -1,7 +1,5 @@
 import ReactDOMServer from "react-dom/server";
 
-import "metabase/utils/dayjs";
-
 import { CustomStaticVisualization } from "metabase/static-viz/components/StaticVisualization/CustomStaticVisualization";
 import {
   getRawSeriesWithDashcardSettings,
@@ -10,7 +8,7 @@ import {
 } from "metabase/static-viz/lib/entrypoint";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { updateStartOfWeek } from "metabase/utils/i18n";
-import { extractRemappings } from "metabase/visualizations";
+import { extractRemappings } from "metabase/viz-core";
 import type {
   DashCardVisualizationSettings,
   RawSeries,
