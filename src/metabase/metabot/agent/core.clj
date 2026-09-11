@@ -369,14 +369,11 @@
       [(str id) (:query source)])))
 
 (defn- seed-state
-  "Seed state with queries from viewing context, recording their ids under `:client-ids`
-  so presentation paths can tell them from queries the agent's own tools wrote."
+  "Seed state with queries from viewing context."
   [state context]
   (reduce (fn [s item]
             (if-let [[qid q] (extract-query-from-context-item item)]
-              (-> s
-                  (assoc-in [:queries qid] q)
-                  (update :client-ids (fnil conj #{}) qid))
+              (assoc-in s [:queries qid] q)
               s))
           state
           (:user_is_viewing context)))
@@ -435,16 +432,26 @@
      ;; TODO (lbrdnk 2026-03-24): This is developed against adhoc queries. Ensure other cases work too!
      (if-not (seq chart_configs)
        acc
-       (let [charts (into {}
-                          (map (comp
-                                (juxt :chart_id identity)
-                                (partial chart-config->chart id)))
-                          chart_configs)]
-         (-> acc
-             (update :charts merge charts)
-             (update :client-ids (fnil into #{}) (map str (keys charts)))))))
+       (update acc :charts merge
+               (into {}
+                     (map (comp
+                           (juxt :chart_id identity)
+                           (partial chart-config->chart id)))
+                     chart_configs))))
    state
    (:user_is_viewing context)))
+
+(defn- client-content-ids
+  "Ids of the queries and charts this request's viewing context seeds, as opposed to ones the
+  agent's own tools wrote. A refusal to present one of these is a real access attempt and gets
+  the audited treatment; see [[metabase.metabot.tools.shared.content-store]]. Seeding a fresh
+  map keeps this to the context of the turn being served, which is where the distinction comes
+  from - the conversation's `:state` carries no provenance."
+  [context]
+  (let [seeded (-> {} (seed-state context) (seed-charts context))]
+    (into (set (keys (:queries seeded)))
+          (map str)
+          (keys (:charts seeded)))))
 
 ;;; Main loop
 
@@ -484,7 +491,8 @@
                          (seed-chart-configs context)
                          (seed-charts context))
         memory       (assoc (memory/initialize messages seeded context)
-                            :conversation-id conversation-id)
+                            :conversation-id conversation-id
+                            :client-ids (client-content-ids context))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
     (log/info "Starting agent" {:profile  profile-id
