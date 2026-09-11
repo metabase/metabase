@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
 import CS from "metabase/css/core/bordered.module.css";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Box, Flex, Icon, Switch, Text } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -18,7 +18,7 @@ export const CollectionSyncRow = ({
   onToggle,
   isReadOnly,
 }: CollectionSyncRowProps) => {
-  const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
+  const getIcon = useGetIcon();
   const canWrite = collection.can_write ?? false;
   const icon = getIcon({
     model: "collection",

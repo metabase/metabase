@@ -21,13 +21,13 @@ To begin debugging Metabase, switch to the Debug view (shortcut: `Ctrl+Shift+D`)
 
 After that, begin the debugging session by choosing menu _Run_, _Start Debugging_ (shortcut: `F5`).
 
-For more details, please refer to the complete VS Code documentation on [Debugging](https://code.visualstudio.com/docs/editor/debugging).
+For more details, please refer to the complete VS Code documentation on [Debugging](https://code.visualstudio.com/docs/debugtest/debugging).
 
 ## Docker-based Workflow
 
 These instructions allow you to work on Metabase codebase on Windows, Linux, or macOS using [Visual Studio Code](https://code.visualstudio.com/), **without** manually installing the necessary dependencies. This is possible by leveraging Docker container and the Remote Containers extension from VS Code.
 
-For more details, please follow the complete VS Code guide on [Developing inside a Container](https://code.visualstudio.com/docs/remote/containers).
+For more details, please follow the complete VS Code guide on [Developing inside a Container](https://code.visualstudio.com/docs/devcontainers/containers).
 
 Requirements:
 

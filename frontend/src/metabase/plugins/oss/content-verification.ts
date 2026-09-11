@@ -1,4 +1,3 @@
-import type { SearchFilterComponent } from "metabase/common/search/types";
 import type { State } from "metabase/redux/store";
 import type { CollectionEssentials } from "metabase-types/api";
 
@@ -16,8 +15,6 @@ export type MetricFilterSettings = {
 
 const getDefaultPluginContentVerification = () => ({
   contentVerificationEnabled: false,
-  // Unjustified type cast. FIXME
-  VerifiedFilter: {} as SearchFilterComponent<"verified">,
   sortCollectionsByVerification: (
     _a: CollectionEssentials,
     _b: CollectionEssentials,
