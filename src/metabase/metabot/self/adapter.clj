@@ -47,23 +47,19 @@
   [:map
    [:slug                         :string]
    [:display-name                 :string]
-   [:errors      {:optional true} [:maybe [:map-of :int [:fn fn?]]]]
+   [:errors      {:optional true} [:maybe [:map-of :int fn?]]]
    [:headers     {:optional true} [:maybe [:map-of :string :string]]]
-   [:auth        {:optional true} [:maybe [:fn fn?]]]
+   [:auth        {:optional true} [:maybe fn?]]
    [:ai-proxy?   {:optional true} [:maybe :boolean]]])
 
 (def Provider
   "A built descriptor: a [[ProviderSpec]] with `:auth` defaulted and `:span` and `:error-msg` derived.
   Every helper here takes one as its first argument."
-  [:map
-   [:slug                         :string]
-   [:display-name                 :string]
-   [:errors      {:optional true} [:maybe [:map-of :int [:fn fn?]]]]
-   [:headers     {:optional true} [:maybe [:map-of :string :string]]]
-   [:ai-proxy?   {:optional true} [:maybe :boolean]]
-   [:auth                         [:fn fn?]]
-   [:span                         :keyword]
-   [:error-msg                    [:fn fn?]]])
+  [:merge ProviderSpec
+   [:map
+    [:auth      fn?]
+    [:span      :keyword]
+    [:error-msg fn?]]])
 
 (def SupportedModels
   "An adapter's allow-list of the models it offers in the picker, keyed by model id. A provider that
@@ -79,11 +75,6 @@
                           [:id           :string]
                           [:display_name [:maybe :string]]]]]])
 
-(def CatalogOpts
-  "How an adapter reaches its model catalog; see [[fetch-catalog]]."
-  [:map
-   [:path {:optional true} [:maybe :string]]])
-
 (def StreamOpts
   "How an adapter puts one request on the wire; see [[stream!]]."
   [:map
@@ -92,8 +83,8 @@
    [:headers    {:optional true} [:maybe [:map-of :string :string]]]
    [:request    {:optional true} [:maybe :map]]
    [:span-attrs {:optional true} [:maybe :map]]
-   [:wrap       {:optional true} [:maybe [:fn fn?]]]
-   [:on-error   {:optional true} [:maybe [:fn fn?]]]])
+   [:wrap       {:optional true} [:maybe fn?]]
+   [:on-error   {:optional true} [:maybe fn?]]])
 
 ;;; ------------------------------------------------- Descriptor -------------------------------------------------
 
@@ -201,21 +192,19 @@
   picker and a Connect button that succeeded against a provider we never actually reached. A well-formed
   but empty catalog is a legitimate answer and passes.
 
-  `opts` is the caller's request. The third argument carries `:path`, the catalog endpoint relative to
-  the base URL, for a provider that does not serve one at `/models`. The descriptor's own `:headers`
-  ride along either way."
+  `opts` is the caller's request; `path` is the catalog endpoint relative to the base URL, for a provider
+  that does not serve one at `/models`. The descriptor's own `:headers` ride along either way."
   ([p opts]
-   (fetch-catalog p opts nil))
-  ([{:keys [display-name] :as p}         :- Provider
-    {:keys [credentials ai-proxy?]}      :- core/LLMRequestOpts
-    {:keys [path] :or {path "/models"}}  :- [:maybe CatalogOpts]]
+   (fetch-catalog p opts "/models"))
+  ([{:keys [display-name] :as p}    :- Provider
+    {:keys [credentials ai-proxy?]} :- core/LLMRequestOpts
+    path                            :- :string]
    (try
      (let [res (request! p {:credentials credentials
                             :ai-proxy?   ai-proxy?
                             :method      :get
                             :path        path
-                            :as          :json
-                            :headers     {"Content-Type" "application/json"}})]
+                            :as          :json})]
        (chat-completions/models-catalog display-name res))
      (catch Exception e
        (rethrow! p e)))))
@@ -271,26 +260,26 @@
    {:keys [model input tools credentials ai-proxy?]} :- core/LLMRequestOpts
    {:keys [path body headers request span-attrs wrap on-error]
     :or   {wrap identity}}                           :- StreamOpts]
-  (let [send!      (fn []
-                     ;; encoded up front, since a provider may sign over the body
-                     (request! p {:credentials credentials
-                                  :ai-proxy?   ai-proxy?
-                                  :method      :post
-                                  :path        path
-                                  :as          :stream
-                                  :headers     (merge {"Content-Type" "application/json"} headers)
-                                  :body        (json/encode body)}
-                               request))
-        msg-count  (count input)
+  (let [msg-count  (count input)
         tool-count (count tools)]
     (log/debug (str display-name " request") {:model model :msg-count msg-count :tools tool-count})
-    (with-span :info (cond-> {:name       span
-                              :model      model
-                              :msg-count  msg-count
-                              :tool-count tool-count}
-                       span-attrs (merge span-attrs))
+    (with-span :info (merge {:name       span
+                             :model      model
+                             :msg-count  msg-count
+                             :tool-count tool-count}
+                            span-attrs)
       (try
-        (-> (core/sse-reducible (:body (send!)))
+        (-> (request! p {:credentials credentials
+                         :ai-proxy?   ai-proxy?
+                         :method      :post
+                         :path        path
+                         :as          :stream
+                         :headers     (merge {"Content-Type" "application/json"} headers)
+                         ;; encoded up front, since a provider may sign over the body
+                         :body        (json/encode body)}
+                      request)
+            :body
+            core/sse-reducible
             (debug/capture-stream {:provider slug
                                    :model    model
                                    :url      path

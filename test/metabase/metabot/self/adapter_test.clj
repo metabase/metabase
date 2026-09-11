@@ -25,11 +25,84 @@
 ;;; Request counts
 ;;; ──────────────────────────────────────────────────────────────────
 
+;;; ──────────────────────────────────────────────────────────────────
+;;; Descriptor
+;;; ──────────────────────────────────────────────────────────────────
+
+(def ^:private expected-spans
+  "The request span each adapter's descriptor should carry, spelled out rather than recomputed from
+  `:slug`, so that renaming a slug shows up here as a failing test rather than as silently renamed
+  telemetry."
+  {#'azure/provider      :metabot.azure/request
+   #'bedrock/provider    :metabot.bedrock/request
+   ;; Anthropic's span follows its slug, not the `claude` namespace the adapter lives in. It read
+   ;; `:metabot.claude/request` until the `:span` override was dropped, while the debug capture and the
+   ;; error translation had always tagged the same requests `anthropic`.
+   #'claude/provider     :metabot.anthropic/request
+   #'deepseek/provider   :metabot.deepseek/request
+   #'mistral/provider    :metabot.mistral/request
+   #'moonshot/provider   :metabot.moonshot/request
+   #'openai/provider     :metabot.openai/request
+   #'openrouter/provider :metabot.openrouter/request
+   #'vllm/provider       :metabot.vllm/request
+   #'zai/provider        :metabot.zai/request})
+
+(deftest ^:parallel span-name-test
+  (testing "every adapter names its request span for its provider slug, with no per-adapter override"
+    (doseq [[provider-var expected] expected-spans]
+      (is (= expected (:span @provider-var))
+          (str provider-var)))))
+
+(def ^:private expected-fallback-messages
+  "What each adapter renders for an HTTP status it has no specific message for.
+
+  English only, and deliberately so: the fallback is one shared msgid with the provider name as a format
+  argument, so a change to how the provider is named shows up here, but a change to the msgid itself does
+  not — English output is identical either way. The msgid is guarded by review and by the extractor
+  (`clojure -X:build i18n.enumerate/enumerate`), not by this test."
+  {#'azure/provider      "Azure API error (HTTP 418)"
+   #'bedrock/provider    "AWS Bedrock API error (HTTP 418)"
+   #'claude/provider     "Anthropic API error (HTTP 418)"
+   #'deepseek/provider   "DeepSeek API error (HTTP 418)"
+   #'mistral/provider    "Mistral API error (HTTP 418)"
+   #'moonshot/provider   "Moonshot API error (HTTP 418)"
+   #'openai/provider     "OpenAI API error (HTTP 418)"
+   #'openrouter/provider "OpenRouter API error (HTTP 418)"
+   #'vllm/provider       "vLLM API error (HTTP 418)"
+   #'zai/provider        "Z.AI API error (HTTP 418)"})
+
+(deftest ^:parallel error-message-test
+  (testing "a status with no specific message falls back to naming the provider and the status"
+    (doseq [[provider-var expected] expected-fallback-messages
+            :let [render (:error-msg @provider-var)]]
+      (is (= expected (render {:status 418}))
+          (str provider-var))))
+  (testing "a status the provider does have a message for gets that one instead"
+    (is (= "Anthropic API key expired or invalid"
+           ((:error-msg @#'claude/provider) {:status 401}))))
+  (testing "a response with no status at all still renders"
+    (is (= "Anthropic API error (HTTP 0)"
+           ((:error-msg @#'claude/provider) {})))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Request counts
+;;; ──────────────────────────────────────────────────────────────────
+
 (defn- tool [n]
   {:tool-name (str "tool-" n)
    :doc       "A tool."
    :schema    [:=> [:cat [:map {:closed true} [:x :string]]] :any]
    :fn        (fn [_] "ok")})
+
+(defn- streamed-request
+  "Run `thunk` with streaming stubbed to the identity chain, so the adapter's `stream!` hands back the
+  clj-http request map it would have sent."
+  [thunk]
+  (with-redefs [self.core/sse-reducible             identity
+                self.core/reducible-with-api-errors (fn [r _ _] r)
+                debug/capture-stream                (fn [r _] r)
+                http/request                        (fn [req] {:body req})]
+    (thunk)))
 
 (defn- captured-counts
   "Run a Claude request with HTTP and streaming stubbed out, and return the `:msg-count` / `:tool-count`
@@ -40,11 +113,8 @@
   these counts never reach a span. That is true on master too and is not this namespace's to fix."
   [opts]
   (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.adapter :debug]]
-               (with-redefs [self.core/sse-reducible             identity
-                             self.core/reducible-with-api-errors (fn [r _ _] r)
-                             debug/capture-stream                (fn [r _] r)
-                             http/request                        (fn [req] {:body req})]
-                 (claude/claude-raw (merge {:model       "claude-haiku-4-5"
+               (streamed-request
+                #(claude/claude-raw (merge {:model       "claude-haiku-4-5"
                                             :credentials {:api-key  "sk-ant-test"
                                                           :base-url "https://api.anthropic.com"}}
                                            opts)))
@@ -73,16 +143,6 @@
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Descriptor headers
 ;;; ──────────────────────────────────────────────────────────────────
-
-(defn- streamed-request
-  "Run `thunk` with streaming stubbed to the identity chain, so the adapter's `stream!` hands back the
-  clj-http request map it would have sent."
-  [thunk]
-  (with-redefs [self.core/sse-reducible             identity
-                self.core/reducible-with-api-errors (fn [r _ _] r)
-                debug/capture-stream                (fn [r _] r)
-                http/request                        (fn [req] {:body req})]
-    (thunk)))
 
 (deftest descriptor-headers-reach-the-stream-test
   (testing "a provider's `:headers` are on its streaming request — the only thing that puts them there"

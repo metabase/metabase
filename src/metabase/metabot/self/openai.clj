@@ -272,7 +272,7 @@
   ([] (list-models {}))
   ([opts]
    (adapter/listing supported-models
-                    (adapter/fetch-catalog provider opts {:path "/v1/models"}))))
+                    (adapter/fetch-catalog provider opts "/v1/models"))))
 
 (defn- strip-vendor-prefix
   "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `openai.`).
