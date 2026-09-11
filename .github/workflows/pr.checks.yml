@@ -1,0 +1,52 @@
+# Helpful (and quick) checks that run on PRs.
+
+name: PR Checks
+
+on: pull_request
+
+jobs:
+  checks:
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 10
+    permissions:
+      pull-requests: write
+      issues: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /.github/scripts/update-pr-with-issues.js
+            /backport.sh
+          sparse-checkout-cone-mode: false
+          # download repo structure without file contents, fetched on demand since we only need a few files
+          # NOTE: this gets slow if we start accessing more files, remove this filter in that case.
+          filter: blob:none
+
+      - parallel:
+          - name: Block master branch PRs (from forks)
+            if: github.head_ref == 'master'
+            run: |
+              echo "PRs from \`master\` branches are not allowed, please use a new branch name for your PR."
+              exit 1
+
+          - name: Link PR and issues
+            uses: actions/github-script@v9
+            env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+              PR_NUMBER: ${{ github.event.pull_request.number }}
+              REPO_OWNER: ${{ github.repository_owner }}
+              REPO_NAME: ${{ github.event.repository.name }}
+            with:
+              script: |
+                const { link_issues } = require('${{ github.workspace }}/.github/scripts/update-pr-with-issues.js');
+                await link_issues(github)
+
+          - name: Prevent backport.sh from being merged
+            run: |
+              if [ -f "./backport.sh" ]; then
+                echo "backport.sh file exists. Please remove it before merging."
+                exit 1
+              else
+                echo "All good."
+              fi

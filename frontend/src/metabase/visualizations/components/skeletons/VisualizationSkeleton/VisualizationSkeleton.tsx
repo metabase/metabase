@@ -1,8 +1,6 @@
-import cx from "classnames";
 import type { HTMLAttributes } from "react";
 
-import { Box } from "metabase/ui";
-import VisualizationS from "metabase/visualizations/components/Visualization/Visualization.module.css";
+import { VisualizationRoot } from "metabase/visualizations/components/Visualization/Visualization.styled";
 import { VisualizationSkeletonCaption } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton.styled";
 
 export type VisualizationSkeletonProps = HTMLAttributes<HTMLDivElement> & {
@@ -19,13 +17,13 @@ export const VisualizationSkeleton = ({
   className,
 }: VisualizationSkeletonProps) => {
   return (
-    <Box className={cx(VisualizationS.root, className)}>
+    <VisualizationRoot className={className}>
       <VisualizationSkeletonCaption
         name={name}
         description={description}
         actionMenu={actionMenu}
       />
       {children}
-    </Box>
+    </VisualizationRoot>
   );
 };

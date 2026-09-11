@@ -11,7 +11,7 @@ import {
   getResolveDatasetQueryFromBundle,
 } from "./bundle";
 import { stableStringifyQuery } from "./stable-query-key";
-import type { MetabaseQueryOptions } from "./types";
+import type { MetabaseDynamicQuery, MetabaseQueryOptions } from "./types";
 
 export type UseMetabaseQueryObjectResult = {
   query: MetabaseQueryObject | null;
@@ -29,6 +29,7 @@ type QueryObjectState = {
  */
 export function useMetabaseQueryObject(
   query: MetabaseQueryOptions<undefined>,
+  dynamicQuery?: MetabaseDynamicQuery,
 ): UseMetabaseQueryObjectResult {
   const { loadingState } = useSdkLoadingState();
 
@@ -40,11 +41,20 @@ export function useMetabaseQueryObject(
     },
   } = useMetabaseProviderPropsStore();
 
-  const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
+  const isEnabled = query.enabled !== false && dynamicQuery?.enabled !== false;
+
+  const queryKey = useMemo(
+    () => stableStringifyQuery([query, dynamicQuery]),
+    [query, dynamicQuery],
+  );
   const queryRef = useRef(query);
+  const dynamicQueryRef = useRef(dynamicQuery);
   const pendingQueryKeyRef = useRef<string | null>(null);
 
-  queryRef.current = query;
+  useEffect(() => {
+    queryRef.current = query;
+    dynamicQueryRef.current = dynamicQuery;
+  }, [query, dynamicQuery]);
 
   const [{ value, error, loading }, resolveQueryObject] =
     useAsyncFn(async (): Promise<QueryObjectState | null> => {
@@ -54,7 +64,10 @@ export function useMetabaseQueryObject(
         return null;
       }
 
-      const result = await resolveDatasetQuery(reduxStore)(queryRef.current);
+      const result = await resolveDatasetQuery(reduxStore)(
+        queryRef.current,
+        dynamicQueryRef.current,
+      );
 
       return {
         // The bundle returns the opaque `DatasetQuery`; the public API publishes
@@ -66,6 +79,7 @@ export function useMetabaseQueryObject(
 
   useEffect(() => {
     if (
+      !isEnabled ||
       !reduxStore ||
       !getResolveDatasetQueryFromBundle() ||
       loginStatus?.status !== "success"
@@ -76,12 +90,17 @@ export function useMetabaseQueryObject(
     pendingQueryKeyRef.current = queryKey;
     resolveQueryObject();
   }, [
+    isEnabled,
     loadingState,
     loginStatus?.status,
     queryKey,
     reduxStore,
     resolveQueryObject,
   ]);
+
+  if (!isEnabled) {
+    return { query: null, error: null, isLoading: false };
+  }
 
   if (error && !loading && pendingQueryKeyRef.current === queryKey) {
     return { query: null, error, isLoading: false };
