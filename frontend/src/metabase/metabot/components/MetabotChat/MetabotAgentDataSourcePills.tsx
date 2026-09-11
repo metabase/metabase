@@ -430,7 +430,7 @@ const SourceDataSection = ({ children }: { children: React.ReactNode }) => {
       w="100%"
       bg="background_page-secondary"
       style={{
-        borderRadius: "0.5rem",
+        borderRadius: "1rem",
         overflow: "hidden",
         border: "1px solid var(--mb-color-border-neutral)",
       }}
@@ -444,7 +444,7 @@ const SourceDataSection = ({ children }: { children: React.ReactNode }) => {
         data-expanded={isExpanded}
         type="button"
         w="100%"
-        mih="1.75rem"
+        mih="2.25rem"
         px="0.5rem"
         bg="background_page-primary"
         onClick={() => setIsExpanded((isExpanded) => !isExpanded)}

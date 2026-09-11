@@ -1,0 +1,46 @@
+.root {
+  display: flex;
+  align-items: center;
+  height: 1.5rem;
+  padding-left: 0.4375rem;
+}
+
+.dots {
+  --bright: rgba(7, 23, 34, 0.74);
+  --dim: rgba(7, 23, 34, 0.22);
+
+  width: 0.25rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  animation: dots 350ms infinite linear alternate;
+}
+
+@keyframes dots {
+  0% {
+    box-shadow:
+      0.4375rem 0 var(--bright),
+      -0.4375rem 0 var(--dim);
+    background: var(--bright);
+  }
+
+  33% {
+    box-shadow:
+      0.4375rem 0 var(--bright),
+      -0.4375rem 0 var(--dim);
+    background: var(--dim);
+  }
+
+  66% {
+    box-shadow:
+      0.4375rem 0 var(--dim),
+      -0.4375rem 0 var(--bright);
+    background: var(--dim);
+  }
+
+  100% {
+    box-shadow:
+      0.4375rem 0 var(--dim),
+      -0.4375rem 0 var(--bright);
+    background: var(--bright);
+  }
+}

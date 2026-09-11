@@ -32,7 +32,6 @@ import {
   Flex,
   type FlexProps,
   Icon,
-  Loader,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -46,6 +45,7 @@ import { AgentToolCallPart } from "./MetabotAgentToolCallPart";
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
+import { MetabotResponseLoader } from "./MetabotResponseLoader";
 
 const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
@@ -118,11 +118,11 @@ const CopyAction = ({ text }: { text: string }) => {
   return (
     <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
       <ActionIcon
-        h="sm"
+        size="1.5rem"
         data-testid="metabot-chat-message-copy"
         onClick={() => clipboard.copy(text)}
       >
-        <Icon name="copy" size="1rem" />
+        <Icon name="copy" size="0.9rem" c="icon-primary" />
       </ActionIcon>
     </Tooltip>
   );
@@ -132,6 +132,7 @@ interface UserMessageProps extends Omit<FlexProps, "onCopy"> {
   message: MetabotMessage;
   hideActions: boolean;
   extraActions?: ReactNode;
+  size: "md" | "lg";
 }
 
 export const UserMessage = ({
@@ -139,6 +140,7 @@ export const UserMessage = ({
   className,
   hideActions,
   extraActions,
+  size,
   ...props
 }: UserMessageProps) => {
   const text = useMessageText(message);
@@ -153,6 +155,7 @@ export const UserMessage = ({
         <AIMarkdown
           className={cx(Styles.message, Styles.messageUser)}
           singleNewlinesAreParagraphs
+          size={size}
         >
           {text}
         </AIMarkdown>
@@ -169,27 +172,28 @@ export const UserMessage = ({
 interface FeedbackButtonProps {
   disabled: boolean;
   icon: IconName;
+  iconSize: string;
   onClick: () => void;
   hasBeenClicked: boolean;
 }
 
 const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
   function FeedbackButton(
-    { disabled, icon, onClick, hasBeenClicked, ...props },
+    { disabled, icon, iconSize, onClick, hasBeenClicked, ...props },
     ref,
   ) {
     return (
       <ActionIcon
         onClick={onClick}
         disabled={disabled}
-        h="sm"
+        size="1.5rem"
         {...props}
         ref={ref}
       >
         <Icon
           name={icon}
-          size="1rem"
-          c={hasBeenClicked ? "core-brand" : "currentColor"}
+          size={iconSize}
+          c={hasBeenClicked ? "core-brand" : "icon-primary"}
         />
       </ActionIcon>
     );
@@ -206,6 +210,7 @@ type AgentPartProps = {
   supportsReasoning: boolean;
   onInternalLinkClick?: (link: string) => void;
   onToolCallSelect?: (part: MetabotDebugToolCallMessage) => void;
+  size: "md" | "lg";
 };
 
 const AgentPart = ({
@@ -218,6 +223,7 @@ const AgentPart = ({
   supportsReasoning,
   onInternalLinkClick,
   onToolCallSelect,
+  size,
 }: AgentPartProps) =>
   match(part)
     .with({ type: "text" }, (p) => (
@@ -225,6 +231,7 @@ const AgentPart = ({
         className={Styles.message}
         onInternalLinkClick={onInternalLinkClick}
         isStreaming={isStreaming}
+        size={size}
       >
         {p.message}
       </AIMarkdown>
@@ -236,6 +243,7 @@ const AgentPart = ({
         debug={debug}
         readonly={readonly}
         conversationId={conversationId}
+        size={size}
       />
     ))
     .with({ type: "tool_call" }, (p) => (
@@ -264,6 +272,7 @@ interface AgentMessageProps extends Omit<FlexProps, "onCopy"> {
   onFork?: (messageId: string) => void;
   isForking?: boolean;
   onToolCallSelect?: (part: MetabotDebugToolCallMessage) => void;
+  size: "md" | "lg";
 }
 
 type MessageActionsProps = {
@@ -303,6 +312,7 @@ const MessageActions = ({
         <FeedbackButton
           data-testid="metabot-chat-message-thumbs-up"
           icon="thumbs_up"
+          iconSize="0.9rem"
           hasBeenClicked={submittedFeedback === "positive"}
           disabled={!!submittedFeedback}
           onClick={() => setFeedbackMessage({ messageId, positive: true })}
@@ -312,6 +322,7 @@ const MessageActions = ({
         <FeedbackButton
           data-testid="metabot-chat-message-thumbs-down"
           icon="thumbs_down"
+          iconSize="0.9rem"
           hasBeenClicked={submittedFeedback === "negative"}
           disabled={!!submittedFeedback}
           onClick={() => setFeedbackMessage({ messageId, positive: false })}
@@ -325,10 +336,10 @@ const MessageActions = ({
       <Tooltip key="retry" label={t`Retry`}>
         <ActionIcon
           onClick={onRetry}
-          h="sm"
+          size="1.5rem"
           data-testid="metabot-chat-message-retry"
         >
-          <Icon name="revert" size="1rem" />
+          <Icon name="revert" size="0.9rem" c="icon-primary" />
         </ActionIcon>
       </Tooltip>,
     );
@@ -342,13 +353,13 @@ const MessageActions = ({
     actions.push(
       <Tooltip key="fork" label={t`Fork conversation`}>
         <ActionIcon
-          h="sm"
+          size="1.5rem"
           data-testid="metabot-chat-message-fork"
           loading={isForking}
           disabled={isForking}
           onClick={() => onFork(messageId)}
         >
-          <Icon name="git_branch" size="1rem" />
+          <Icon name="git_branch" size="0.9rem" c="icon-primary" />
         </ActionIcon>
       </Tooltip>,
     );
@@ -383,6 +394,7 @@ export const AgentMessage = ({
   onFork,
   isForking,
   onToolCallSelect,
+  size,
   ...props
 }: AgentMessageProps) => {
   const messageId = message.externalId ?? "";
@@ -449,6 +461,7 @@ export const AgentMessage = ({
             supportsReasoning={supportsReasoning}
             onInternalLinkClick={onInternalLinkClick}
             onToolCallSelect={onToolCallSelect}
+            size={size}
           />
           {index === actionsIndex && actions}
         </PartContainer>
@@ -591,14 +604,7 @@ const MessageStatus = ({
         onContinue={onContinue}
       />
     ))
-    .with({ type: "in_progress" }, () => (
-      <Loader
-        type="dots"
-        size="lg"
-        color="core-brand"
-        data-testid="metabot-response-loader"
-      />
-    ))
+    .with({ type: "in_progress" }, () => <MetabotResponseLoader />)
     .exhaustive();
 
 const AbortedTurnAlert = ({
@@ -706,6 +712,7 @@ export const Messages = ({
   getExtraActions,
   renderAfterMessage,
   onToolCallSelect,
+  size,
 }: {
   messages: MetabotMessage[];
   onRetryMessage?: (messageId: string) => void;
@@ -721,6 +728,7 @@ export const Messages = ({
   getExtraActions?: (messageId: string) => ReactNode;
   renderAfterMessage?: (message: MetabotMessage) => ReactNode;
   onToolCallSelect?: (message: MetabotDebugToolCallMessage) => void;
+  size: "md" | "lg";
 }) => {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
@@ -813,12 +821,14 @@ export const Messages = ({
                 onInternalLinkClick={onInternalLinkClick}
                 supportsReasoning={supportsReasoning}
                 onToolCallSelect={onToolCallSelect}
+                size={size}
               />
             ) : (
               <UserMessage
                 message={message}
                 hideActions={isDoingScience && isLastMessage}
                 extraActions={getExtraActions?.(message.id)}
+                size={size}
               />
             )}
             {renderAfterMessage?.(message)}
