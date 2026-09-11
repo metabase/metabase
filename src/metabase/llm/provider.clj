@@ -40,6 +40,15 @@
   (mapv (fn [region] {:value region :label region})
         (sort llm.settings/known-aws-regions)))
 
+(def ollama-self-hosted
+  "The `:hosting` value for a self-hosted Ollama. Named rather than inlined because the adapter
+  matches on it too, and a literal on each side could drift apart silently."
+  "self-hosted")
+
+(def ollama-cloud
+  "The `:hosting` value for Ollama Cloud. See [[ollama-self-hosted]]."
+  "cloud")
+
 (def ^:private provider-type-registry
   "Every provider type Metabase can connect to, in the order the admin UI offers them.
 
@@ -336,6 +345,35 @@
                      ;; not required: a server started without --api-key takes no key, and a base URL on its own
                      ;; is a complete configuration
                      :help     (deferred-tru "Only needed if you started your server with --api-key.")}]}
+   {:type          "ollama"
+    :label         (deferred-tru "Ollama")
+    ;; serves whatever the operator pulled, so a new connection takes its model from the catalog
+    ;; that connecting fetches (see [[metabase.metabot.self.ollama/list-models]])
+    :default-model nil
+    :stored-config-fields [:model-reasoning]
+    ;; the two deployments need opposite things: Cloud has a known address and needs a key,
+    ;; self-hosted has an address only the admin knows and often needs no key
+    :required-any  [[:base-url] [:api-key]]
+    :fields        [{:key       :hosting
+                     :label     (deferred-tru "Where Ollama runs")
+                     :type      :segmented
+                     :required? true
+                     :options   [{:value ollama-self-hosted :label (deferred-tru "Self-hosted")}
+                                 {:value ollama-cloud :label (deferred-tru "Cloud")}]
+                     :default   ollama-self-hosted}
+                    {:key         :base-url
+                     :normalize   strip-trailing-slashes
+                     :validate    llm.settings/llm-url-problem
+                     :label       (deferred-tru "API base URL")
+                     :type        :text
+                     :show-when   {:field :hosting :value ollama-self-hosted}
+                     :placeholder "http://ollama.your.company:11434/v1"
+                     :help        (deferred-tru (str "Your Ollama server''s address, ending in /v1. Add private "
+                                                     "addresses to MB_LLM_ALLOWED_NETWORKS so Metabase can reach them."))}
+                    {:key   :api-key
+                     :label (deferred-tru "API key")
+                     :type  :password
+                     :help  (deferred-tru "Leave blank if your server doesn''t require a key.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
@@ -623,7 +661,16 @@
                  ;; the base URL is the credential here, unlike Azure's: a server started without --api-key takes
                  ;; no key, so the URL alone brings a usable connection into existence
                  :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
-                            :api-key  {:setting :llm-vllm-api-key}}}})
+                            :api-key  {:setting :llm-vllm-api-key}}}
+   "ollama"     {:type     "ollama"
+                 ;; both are credentials, because either deployment can be configured on its own: a base
+                 ;; URL alone is a self-hosted server, which needs no key. Cloud additionally requires an
+                 ;; API key, but using Cloud also requires `:hosting` to be [[ollama-cloud]].
+                 ;; `:hosting` is not a credential — on its own it configures nothing — but it has to be
+                 ;; settable, or an env-configured Cloud connection could not say that is what it is.
+                 :settings {:base-url {:setting :llm-ollama-api-base-url :credential? true}
+                            :api-key  {:setting :llm-ollama-api-key :credential? true}
+                            :hosting  {:setting :llm-ollama-hosting}}}})
 
 (defn connection-env-vars
   "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.

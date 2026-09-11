@@ -607,6 +607,43 @@
   :visibility :settings-manager
   :export?    false)
 
+;;; -------------------------------------------------- Ollama ---------------------------------------------------
+
+(defsetting llm-ollama-hosting
+  (deferred-tru "Whether the Ollama connection configured from the environment is `self-hosted` or `cloud`. Defaults to `self-hosted`.")
+  :encryption :no
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-ollama-hosting)
+  :setter     (connection-field-setter :llm-ollama-hosting)
+  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-ollama-api-base-url
+  (deferred-tru "The base URL of your Ollama server''s OpenAI-compatible API, e.g. `http://localhost:11434/v1`.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-ollama-api-base-url)
+  :setter     (connection-field-setter :llm-ollama-api-base-url)
+  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-ollama-api-key
+  (deferred-tru "The API key for your Ollama server. Only needed when it sits behind a proxy that requires one — Ollama itself is unauthenticated.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-ollama-api-key)
+  :setter     (connection-field-setter :llm-ollama-api-key)
+  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-ollama-request-timeout-ms
+  (deferred-tru "Socket timeout in milliseconds for requests to your Ollama server.")
+  ;; Self-hosted TTFT is bounded by the operator's hardware, as it is for vLLM.
+  :type       :integer
+  :default    300000
+  :visibility :settings-manager
+  :export?    false)
+
 ;;; ---------------------------------------------- Provider connections ------------------------------------------
 
 ;;; The per-provider credential settings above are read-only at runtime: they configure a connection only when set

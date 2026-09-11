@@ -659,7 +659,7 @@
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
     (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-             "vllm" "metabase"}
+             "vllm" "ollama" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -692,9 +692,10 @@
             ;; azure's models are deployment names the admin chooses, so there is nothing to default to
             "azure"      nil
             "bedrock"    "anthropic.claude-opus-4-8"
-            ;; nor is there for vLLM, which serves whatever the operator loaded: connecting adopts the model
-            ;; its probe exercised
+            ;; nor is there for the self-hosted types, which serve whatever the operator loaded or pulled:
+            ;; connecting adopts the model its probe exercised
             "vllm"       nil
+            "ollama"     nil
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "evilai"))))
@@ -711,8 +712,10 @@
             "google"     nil
             "azure"      nil
             "bedrock"    "anthropic.claude-haiku-4-5"
-            ;; a vLLM server serves the one model the operator loaded, so there is no cheaper tier to fall back to
+            ;; a self-hosted server serves the models the operator chose to host, so there is no cheaper tier
+            ;; to fall back to
             "vllm"       nil
+            "ollama"     nil
             "metabase"   nil}
            (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/mini-model "evilai"))))

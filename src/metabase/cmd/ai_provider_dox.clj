@@ -25,7 +25,7 @@
 
 (def ^:private dynamic-catalog-types
   "Provider types that serve whatever models the operator loaded, so there is no list to publish."
-  #{"vllm"})
+  #{"vllm" "ollama"})
 
 (def ^:private max-enumerated-options
   "Above this many `:options`, a field's choices are pointed at rather than listed. Bedrock's dozens of regions are
@@ -105,16 +105,17 @@
   [{:keys [options]}]
   (when (seq options)
     (if (<= (count options) max-enumerated-options)
-      (str "One of: " (str/join ", " (map #(md/code (label %)) options)) ".")
+      (str "One of: " (str/join ", " (map #(md/code (:value %)) options)) ".")
       ;; deliberately not a count: the long lists come from bundled SDKs, and would churn this page on every bump
       (str "Pick one from the dropdown in " (md/bold "Admin > AI") "."))))
 
 (defn- field-default-sentence
   "The value a field starts at, or nil when it has no `:default`."
-  [{:keys [default] :as field}]
+  [{:keys [default]}]
   (when default
-    ;; a field with `:options` stores one value but displays another, so show what the form shows
-    (str "Defaults to " (md/code (option-label field default)) ".")))
+    ;; the stored value, not the form's label — an environment variable or an `MB_LLM_PROVIDERS`
+    ;; config map has to carry the value, and the form's own dropdown is where labels are read
+    (str "Defaults to " (md/code default) ".")))
 
 (defn- field-env-var-sentence
   "The environment variable that can stand in for filling the field in, or nil when none configures it. Phrased as an
@@ -186,8 +187,8 @@
            "works out the model from " (field-labels fields model-fields) " instead.")
 
       (contains? dynamic-catalog-types type)
-      (str "Metabase lists whichever models your " provider-label " server is serving, so what you can "
-           "pick depends on how you started it.")
+      (str "Metabase lists whichever models your " provider-label " server has available, so what you "
+           "can pick depends on how you set it up.")
 
       :else
       (throw (ex-info (str "No model source for provider type " (pr-str type)

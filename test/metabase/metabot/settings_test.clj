@@ -285,6 +285,22 @@
       (with-selected-model "vllm/vllm-test"
         (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
 
+(deftest metabot-supports-reasoning-ollama-test
+  (testing "Ollama answers from the probe as vLLM does, and for the same reason — but from the
+           model's template rather than a server flag, so there is nothing an admin could declare"
+    (doseq [recorded ["true" "false"]]
+      (testing (str "recorded " recorded)
+        (with-connections [(connection "ollama" "ollama" {:hosting         "self-hosted"
+                                                          :base-url        "http://ollama.internal:11434/v1"
+                                                          :model-reasoning recorded})]
+          (with-selected-model "ollama/ollama-test"
+            (is (= (= "true" recorded) (metabot.settings/llm-metabot-supports-reasoning?))))))))
+  (testing "an unprobed server defaults to the non-reasoning renderer rather than guessing"
+    (with-connections [(connection "ollama" "ollama" {:hosting  "self-hosted"
+                                                      :base-url "http://ollama.internal:11434/v1"})]
+      (with-selected-model "ollama/ollama-test"
+        (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
+
 (deftest metabot-supports-reasoning-managed-proxy-test
   (testing "the managed connection answers from the model's own provider segment"
     (with-connections [(connection "metabase" "metabase")]
