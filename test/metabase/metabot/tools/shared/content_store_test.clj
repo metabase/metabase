@@ -273,10 +273,9 @@
   (testing "a stored query that will not parse is not a denial: it comes back with no provider, so
             the caller renders it without resolving anything in it"
     (mt/with-test-user :rasta
-      (let [malformed    {:lib/type :mbql/query :type :query :database (mt/id) :stages []}
-            [checked mp] (shared.content-store/query-for-export malformed false)]
-        (is (= malformed checked))
-        (is (nil? mp))))))
+      (let [malformed {:lib/type :mbql/query :type :query :database (mt/id) :stages []}]
+        (is (= {:query malformed :unchecked? true}
+               (shared.content-store/query-for-export malformed false)))))))
 
 (deftest native-query-needs-database-wide-native-access-test
   (testing "a native query is withheld unless the user may write native queries against the whole database"
