@@ -4,6 +4,9 @@
    (java.io InputStream))
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
+   [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -193,13 +196,30 @@
   (:body (slack-post-json client "/views.open" {:trigger_id trigger_id
                                                 :view       view})))
 
+(defn- slack-host?
+  "Whether `url` points at Slack, and so may be sent the bot token. Any `slack.com` host is allowed rather than
+  `files.slack.com` alone, so that a new Slack file host does not break uploads."
+  [url]
+  (boolean
+   (when-let [host (some-> (u.http/->hostname url) u/lower-case-en)]
+     (or (= host "slack.com")
+         (str/ends-with? host ".slack.com")))))
+
 (defn download-file-stream
   "Download a file from Slack, returning an InputStream instead of buffering in memory.
-   Caller is responsible for closing the stream (e.g. via `with-open`)."
+   Caller is responsible for closing the stream (e.g. via `with-open`).
+
+   Refuses a URL that is not Slack's: `url` arrives on a `file_share` event, and on a Slack remote file it is
+   whatever address the app that registered the file picked."
   ^InputStream
   [client url]
-  (-> (http/get url {:headers {"Authorization" (str "Bearer " (:token client))}
-                     :as      :stream})
+  (when-not (slack-host? url)
+    (throw (ex-info (tru "Refusing to download a file from a non-Slack host.")
+                    {:status-code 400, :host (u.http/->hostname url)})))
+  (-> (http/get url {:headers           {"Authorization" (str "Bearer " (:token client))}
+                     :as                :stream
+                     :redirect-strategy :none
+                     :dns-resolver      (u.http/network-policy-dns-resolver :external-only)})
       :body))
 
 ;; -------------------- SLACK STREAMING API --------------------
