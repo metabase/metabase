@@ -66,6 +66,13 @@ const dependencyDiagnosticsUpsellPage = () =>
     Component: DependencyDiagnosticsUpsellPage,
   }));
 
+const apiKeyUsageUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/api-key-usage/ApiKeyUsageUpsellPage"
+  ).then(({ ApiKeyUsageUpsellPage }) => ({
+    Component: ApiKeyUsageUpsellPage,
+  }));
+
 const jobInfoApp = () =>
   import(
     /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/JobInfoApp"
@@ -136,6 +143,16 @@ export function getMonitorRoutes() {
           <Route path="model-persistence-log" lazy={modelPersistenceLogPage}>
             {modalRoute(":jobId", ModelPersistenceLogJobModal)}
           </Route>
+          {PLUGIN_MONITOR.isApiKeyUsageEnabled ? (
+            <Route path="api-key-usage">
+              {PLUGIN_MONITOR.getApiKeyUsageRoutes()}
+            </Route>
+          ) : (
+            <Route path="api-key-usage">
+              <Route index lazy={apiKeyUsageUpsellPage} />
+              <Route path="*" lazy={apiKeyUsageUpsellPage} />
+            </Route>
+          )}
         </Route>
 
         <Route element={<CanAccessAlertsManagement />}>
