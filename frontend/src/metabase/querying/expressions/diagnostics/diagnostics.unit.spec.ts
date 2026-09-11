@@ -397,6 +397,13 @@ describe("diagnostics", () => {
       it.each([`[`, `[]`])("reject missing field name for %s", (expression) => {
         expect(err(expression)).toBe("Expected a field name");
       });
+
+      it.each([`"]"`, `']'`, `concat("[", "]")`, `concat("[", [Total], "]")`])(
+        "should accept strings containing brackets, like %s (metabase#82328)",
+        (expression) => {
+          expect(err(expression)).toBeUndefined();
+        },
+      );
     });
 
     describe("bad tokens", () => {

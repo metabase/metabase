@@ -12,6 +12,8 @@ function char(char: string): number {
 const BACKSLASH = char("\\");
 const OPEN_BRACKET = char("[");
 const CLOSE_BRACKET = char("]");
+const SINGLE_QUOTE = char("'");
+const DOUBLE_QUOTE = char('"');
 const NEW_LINE = char("\n");
 const EOF = -1;
 
@@ -44,6 +46,12 @@ export const field = new ExternalTokenizer((input) => {
   // We allow any character to potentially start a Field token, except field-delimiting
   // punctuators.
   if (FIELD_PUNCTUATORS.has(current)) {
+    return;
+  }
+
+  // A quote starts a string literal, so a `]` after it (eg. `"]"`) is part of
+  // the string, not the closing bracket of a malformed field token (metabase#82328).
+  if (current === SINGLE_QUOTE || current === DOUBLE_QUOTE) {
     return;
   }
 
@@ -102,6 +110,15 @@ export const field = new ExternalTokenizer((input) => {
       if (wasOpenedByBracket) {
         input.acceptToken(Field);
       }
+      return;
+    }
+
+    if (
+      !wasOpenedByBracket &&
+      (current === SINGLE_QUOTE || current === DOUBLE_QUOTE)
+    ) {
+      // A string literal starts here, so a `]` after it is part of the string.
+      // Inside brackets quotes are just field-name characters (eg. [Bob's Table]).
       return;
     }
 
