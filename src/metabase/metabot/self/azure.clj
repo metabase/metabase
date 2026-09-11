@@ -107,17 +107,12 @@
   credentials)
 
 (defn- azure-auth
-  "Azure's `:auth`. Bearer, like most providers, but it validates the whole credential pair up front so a
-  half-configured connection fails with its own message instead of a 401 from Azure.
-  `ai-proxy?` is accepted for parity with the other adapters but is not supported: throws when true.
-  Auth still goes through [[core/resolve-auth]] so proxy redirection is wired up should Azure proxying
-  ever be supported."
-  [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
-  (let [{:keys [api-key base-url]} (ensure-credentials credentials)]
-    (core/resolve-auth slug display-name
-                       {:url     base-url
-                        :headers {"Authorization" (str "Bearer " api-key)}}
-                       ai-proxy?)))
+  "Azure's `:auth`. The scheme is the default [[adapter/bearer-auth]]; the only difference is that Azure
+  validates the whole credential pair up front, so a half-configured connection fails with its own
+  message instead of a 401 from Azure."
+  [p {:keys [credentials] :as req}]
+  (ensure-credentials credentials)
+  (adapter/bearer-auth p req))
 
 (def ^:private provider
   (adapter/provider
@@ -130,20 +125,17 @@
                    429 #(tru "Azure has rate limited us")
                    500 #(tru "Azure is not working but not saying why")}}))
 
-(defn- azure-request
-  "Perform an HTTP request against the Azure resource's compatible surface.
-  `headers` are extra headers (e.g. `anthropic-version`)."
-  [{:keys [body] :as req}]
-  (adapter/request! provider (cond-> req
-                               body (assoc-in [:headers "Content-Type"] "application/json"))))
-
 ;;; ---------------------------------------------- Connect validation -------------------------------------------
 
 (defn- validate-openai-surface!
   "Round-trip the `/openai` surface: `GET /v1/models` succeeds (with the regional catalog,
   which we discard) iff the key and base URL reach an authenticated OpenAI-compatible surface."
   [credentials ai-proxy?]
-  (azure-request {:method :get :path "/v1/models" :as :json :credentials credentials :ai-proxy? ai-proxy?}))
+  (adapter/request! provider {:method      :get
+                              :path        "/v1/models"
+                              :as          :json
+                              :credentials credentials
+                              :ai-proxy?   ai-proxy?}))
 
 (defn- validate-anthropic-surface!
   "Round-trip the `/anthropic` surface, which exposes no GET routes (they 404 with
@@ -153,12 +145,13 @@
   invoking a model."
   [credentials ai-proxy?]
   (try
-    (azure-request {:method      :post
-                    :path        "/v1/messages"
-                    :body        "{}"
-                    :headers     {"anthropic-version" anthropic-version}
-                    :credentials credentials
-                    :ai-proxy?   ai-proxy?})
+    (adapter/request! provider {:method      :post
+                                :path        "/v1/messages"
+                                :body        "{}"
+                                :headers     {"Content-Type"      "application/json"
+                                              "anthropic-version" anthropic-version}
+                                :credentials credentials
+                                :ai-proxy?   ai-proxy?})
     (catch Exception e
       (when-not (= 400 (:status (ex-data e)))
         (throw e)))))

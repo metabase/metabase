@@ -271,7 +271,7 @@
   ([] (list-models {}))
   ([opts]
    (adapter/listing supported-models
-                    (adapter/fetch-catalog provider opts {:path "/v1/models"}))))
+                    (adapter/fetch-catalog provider opts "/v1/models"))))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.

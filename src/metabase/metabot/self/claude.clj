@@ -383,7 +383,7 @@
   ([] (list-models {}))
   ([opts]
    (adapter/listing supported-models
-                    (adapter/fetch-catalog provider opts {:path "/v1/models"})
+                    (adapter/fetch-catalog provider opts "/v1/models")
                     :display_name)))
 
 (defn- strip-vendor-prefix
