@@ -411,3 +411,19 @@
                                  :data-layer/hidden   0.03}
                     (search-results* "foo table"))
                   (map second)))))))
+
+(deftest metabot-weights-test
+  (testing "under :metabot, metrics outrank saved questions, which outrank models, even a freshly viewed model"
+    (let [now      (Instant/now)
+          long-ago (.minus now 365 ChronoUnit/DAYS)]
+      (with-index-contents
+        [{:model "dataset" :id 1 :name "foo model"    :last_viewed_at now}
+         {:model "card"    :id 2 :name "foo question" :last_viewed_at long-ago}
+         {:model "metric"  :id 3 :name "foo metric"   :last_viewed_at long-ago}]
+        (is (= [3 2 1] (map second (search-results* "foo" :context :metabot)))))))
+  (testing "under :metabot, library membership outranks the entity-type preference"
+    (mt/with-temp [:model/Collection lib {:name "lib" :type "library" :location "/"}]
+      (with-index-contents
+        [{:model "metric"  :id 1 :name "foo metric"}
+         {:model "dataset" :id 2 :name "foo model" :collection_id (:id lib) :collection_location (:location lib) :collection_type "library"}]
+        (is (= [2 1] (map second (search-results* "foo" :context :metabot))))))))
