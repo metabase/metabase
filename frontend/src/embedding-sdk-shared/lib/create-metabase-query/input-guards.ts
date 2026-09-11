@@ -17,16 +17,32 @@ export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
   source: TableSchema;
   limit?: number;
   enabled?: boolean;
+
+  /**
+   * The saved question this static query was published as at build time. Running
+   * the card is what lets an app's viewers run the query at all: it sits in a
+   * collection whose permission group grants them access, which a table source
+   * cannot do. The dev preview ignores it and keeps the table source.
+   */
+  savedQuestionSourceId?: number;
 };
 
-export type QuestionQueryInput = Pick<
+/**
+ * The dynamic clauses applied on top of a static query. They become a stage of
+ * their own, and a stage above the source sees only the previous stage's result
+ * columns — so it takes the same clause set as a card stage.
+ */
+export type DynamicQueryInput = Pick<
   TestStageSpec,
   "breakouts" | "orderBys" | "limit"
 > & {
-  source: QuestionSchema;
   filters?: readonly TestExpressionSpec[];
   aggregations?: readonly TestExpressionSpec[];
   enabled?: boolean;
+};
+
+export type QuestionQueryInput = DynamicQueryInput & {
+  source: QuestionSchema;
 };
 
 export type QueryInput = TableQueryInput | QuestionQueryInput;

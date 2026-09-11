@@ -277,7 +277,8 @@
       (merge query-internal-keys)
       (assoc-in [:stages 0] (merge clean-native-stage
                                    stage-internal-keys
-                                   {:query-permissions/referenced-card-ids #{1}}))
+                                   {:query-permissions/referenced-card-ids #{1}
+                                    :qp/table-name                         "ORDERS"}))
       (assoc-in [:stages 1] (merge clean-mbql-stage stage-internal-keys))
       (assoc-in [:stages 1 :joins 0] (merge clean-join join-internal-keys))
       (assoc-in [:stages 1 :fields 0 1] (merge {:lib/uuid "00000000-0000-0000-0000-000000000001", :base-type :type/Integer}
@@ -328,7 +329,7 @@
       ::lib.schema/query            (keys query-internal-keys)
       ::lib.schema/stage.common     (keys stage-internal-keys)
       ::lib.schema/stage.mbql       (keys stage-internal-keys)
-      ::lib.schema/stage.native     (cons :query-permissions/referenced-card-ids (keys stage-internal-keys))
+      ::lib.schema/stage.native     (list* :query-permissions/referenced-card-ids :qp/table-name (keys stage-internal-keys))
       ::lib.schema.metadata/column  (keys column-internal-keys)
       ::lib.schema.info/info        (keys info-internal-keys))))
 

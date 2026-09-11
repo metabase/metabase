@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import type { DragEndEvent } from "metabase/common/components/Sortable";
 import { Box } from "metabase/ui";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
 import type { Series } from "metabase-types/api";
 
@@ -76,7 +76,7 @@ export const ChartSettingOrderedSimple = ({
 
   const getItemTitle = useCallback((item: SortableItem) => {
     if (isEmpty(item.name)) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
     return item.name;

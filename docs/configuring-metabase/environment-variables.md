@@ -1784,7 +1784,7 @@ Controls which networks Metabase may connect to for map tile servers.
 - Default: `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`
 - [Configuration file name](./config-file.md): `map-tile-server-url`
 
-The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
+The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys.
 
 ### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
 
