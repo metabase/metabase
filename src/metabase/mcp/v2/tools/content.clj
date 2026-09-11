@@ -324,21 +324,45 @@
                  redaction/redact-dashboard)]
     (assoc (projections/dashboard-row dash) ::dashboard dash)))
 
+(defn- link-entity-ref
+  "The read-checked form of one link card's stored entity snapshot, as
+   `:dashcard/linkcard-info` hydrated it: the bare `{model, id}` reference — the shape
+   `patch_dashcard` takes back verbatim — when the caller can read the target, `{restricted
+   true}` when they cannot. The `name` and `description` cached beside the reference when the
+   card was written never ride along; they are a snapshot no read check stands behind."
+  [entity]
+  (if (:restricted entity)
+    {:restricted true}
+    (not-empty (select-keys entity [:model :id]))))
+
+(defn- read-checked-link
+  "A link card's `:link` visualization setting with its entity snapshot reduced to a read-checked
+   reference. An external-url link carries no entity and passes through untouched; an entity that
+   reduces to nothing — a stored snapshot naming neither a model nor an id — drops out rather than
+   reading back as an empty reference."
+  [link]
+  (if-let [entity (some-> (:entity link) link-entity-ref)]
+    (assoc link :entity entity)
+    (dissoc link :entity)))
+
 (defn- dashboard-layout
   "The `layout` include: tabs with positions and the per-dashcard grid/wiring detail
-   `patch_dashcard` edits — parameter mappings, inline parameters, and visualization settings
-   (minus stored link-entity snapshots, which bypass read checks)."
+   `patch_dashcard` edits — parameter mappings, inline parameters, and visualization settings,
+   with each link card's entity reduced to a read-checked reference by [[link-entity-ref]]."
   [row]
-  (let [dash (::dashboard row)]
+  (let [dash      (::dashboard row)
+        ;; the same batched hydration the REST dashboard endpoint runs, so a link target the
+        ;; caller cannot read arrives already collapsed to `{:restricted true}`
+        dashcards (t2/hydrate (:dashcards dash) :dashcard/linkcard-info)]
     {:tabs      (mapv #(select-keys % [:id :name :position]) (:tabs dash))
      :dashcards (mapv (fn [dc]
                         (-> (select-keys dc [:id :card_id :action_id :dashboard_tab_id :row :col
                                              :size_x :size_y :inline_parameters :parameter_mappings
                                              :visualization_settings])
                             (update :visualization_settings
-                                    #(cond-> % (map? (:link %)) (update :link dissoc :entity)))
+                                    #(cond-> % (map? (:link %)) (update :link read-checked-link)))
                             u/remove-nils))
-                      (:dashcards dash))}))
+                      dashcards)}))
 
 ;;; ----------------------------------------------------- alert ----------------------------------------------------
 
