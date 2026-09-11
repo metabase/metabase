@@ -131,14 +131,34 @@
 
 ;;; Call sites that open a credential without comparing an audience, because there is nothing to compare it against.
 ;;; `to-creator` hands a just-created credential to the person who made it; `fixed-endpoint` presents one to a peer no
-;;; setting selects. Neither is verifiable by construction, so each site is a deliberate, reviewed decision and the
-;;; count may only shrink. It stays small because each credential gets one accessor, not one per call site.
-(def ^:private disclosure-call-site-budget 21)
+;;; setting selects; `local-keystore` unlocks a keystore file on this instance's own disk. None is verifiable by
+;;; construction, so each site is a deliberate, reviewed decision and the count may only shrink. It stays small because
+;;; each credential gets one accessor, not one per call site.
+(def ^:private disclosure-call-site-budget 19)
+
+(defn- code-only
+  "`source` with its string literals (docstrings included) and `;` comments blanked out, so that a mention of a keyword
+  in prose does not count as a use of it. A character scanner rather than a regex: a backtracking string pattern
+  overflows the stack on a large namespace."
+  ^String [^String source]
+  (let [sb (StringBuilder.)]
+    (loop [i 0, state :code]
+      (if (>= i (count source))
+        (str sb)
+        (let [c (.charAt source i)]
+          (case state
+            :code    (do (.append sb c)
+                         (recur (inc i) (case c \" :string, \; :comment, \\ :char, :code)))
+            ;; a character literal like \" or \; is not the start of a string or comment
+            :char    (do (.append sb c) (recur (inc i) :code))
+            :string  (recur (if (= c \\) (+ i 2) (inc i)) (if (= c \") :code :string))
+            :comment (recur (inc i) (if (= c \newline) :code :comment))))))))
 
 (deftest disclosure-escape-hatch-ratchet-test
   (let [n (->> (source-files)
-               (remove #{"src/metabase/util/secret.clj"})
-               (map (fn [^java.io.File f] (count (re-seq #":disclosure/" (slurp f)))))
+               ;; where the reasons are defined
+               (remove #(= "src/metabase/util/secret.clj" (str %)))
+               (map (fn [^java.io.File f] (count (re-seq #":disclosure/" (code-only (slurp f))))))
                (reduce + 0))]
     (is (<= n disclosure-call-site-budget)
         (str "There are now " n " sites opening a credential without naming a network audience, over a budget of "
@@ -177,8 +197,9 @@
 
 (deftest secret-opening-sinks-ratchet-test
   ;; only an audience-comparing open is a sink in this sense. Opening with a `:disclosure/` reason compares nothing,
-  ;; so there is no refusal for a handler to swallow and neither rule applies.
-  (let [current (disj (files-matching #"(?<![\w-])maybe-expose(?![\w-])(?![^\n]*:disclosure/)")
+  ;; so there is no refusal for a handler to swallow and neither rule applies. The reason may sit on the line after
+  ;; the call, so the lookahead is a bounded window rather than the rest of the line.
+  (let [current (disj (files-matching #"(?<![\w-])maybe-expose(?![\w-])(?![\s\S]{0,160}:disclosure/)")
                       "src/metabase/util/secret.clj")
         new     (remove secret-opening-sinks current)
         gone    (remove (set current) secret-opening-sinks)]

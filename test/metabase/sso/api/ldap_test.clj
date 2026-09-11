@@ -6,8 +6,7 @@
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.sso.settings :as sso.settings]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (defn ldap-test-details
   ([] (ldap-test-details true))
@@ -70,11 +69,11 @@
         (mt/user-http-request :crowberto :put 200 "ldap/settings"
                               (update (ldap-test-details) :ldap-password setting/obfuscate-value)))
       (testing "...but not while also moving the server, which is what would deliver the stored password to it"
-        (is (= "This secret is not bound to the requested audience."
-               (:message (mt/user-http-request :crowberto :put 400 "ldap/settings"
-                                               (-> (ldap-test-details)
-                                                   (assoc :ldap-host "elsewhere.example.com")
-                                                   (update :ldap-password setting/obfuscate-value)))))))
+        (is (= "secret-audience-mismatch"
+               (:error-code (mt/user-http-request :crowberto :put 400 "ldap/settings"
+                                                  (-> (ldap-test-details)
+                                                      (assoc :ldap-host "elsewhere.example.com")
+                                                      (update :ldap-password setting/obfuscate-value)))))))
       (testing "Requires superusers"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "ldap/settings"
@@ -99,11 +98,12 @@
                                        ldap-security "ssl"
                                        ldap-password "bind-secret"]
       (let [attempted (atom [])]
-        (with-redefs [ldap/test-ldap-connection (fn [details]
-                                                  ;; the real sink: building the options is where the stored Secret is opened
-                                                  (#'ldap/details->ldap-options details)
-                                                  (swap! attempted conj details)
-                                                  {:status :SUCCESS})]
+        (mt/with-dynamic-fn-redefs [ldap/test-ldap-connection (fn [details]
+                                                                ;; the real sink: building the options is where the
+                                                                ;; stored Secret is opened
+                                                                (#'ldap/details->ldap-options details)
+                                                                (swap! attempted conj details)
+                                                                {:status :SUCCESS})]
           (testing "a new host with the mask echoed back"
             (let [resp (mt/user-http-request :crowberto :put 400 "ldap/settings"
                                              {:ldap-host     "evil.example.com"
@@ -157,16 +157,14 @@
                                          ldap-port     636
                                          ldap-security "ssl"
                                          ldap-password "bind-secret"]
-        (with-redefs [ldap/test-ldap-connection (fn [details]
-                                                  (#'ldap/details->ldap-options details)
-                                                  {:status :SUCCESS})]
-          (let [audit-events #(count (filter (fn [e] (= "ldap-password" (get-in e [:details :key])))
-                                             (t2/select :model/AuditLog :topic :setting-update)))
-                before       (audit-events)]
+        (mt/with-dynamic-fn-redefs [ldap/test-ldap-connection (fn [details]
+                                                                (#'ldap/details->ldap-options details)
+                                                                {:status :SUCCESS})]
+          (let [before (mt/setting-update-audit-event-count "ldap-password")]
             (mt/user-http-request :crowberto :put 200 "ldap/settings"
                                   {:ldap-host     "ldap.example.com"
                                    :ldap-port     636
                                    :ldap-security "ssl"
                                    :ldap-password (setting/obfuscate-value "bind-secret")})
-            (is (= before (audit-events)))
+            (is (= before (mt/setting-update-audit-event-count "ldap-password")))
             (is (= "bind-secret" (mt/plaintext (sso.settings/ldap-password))))))))))

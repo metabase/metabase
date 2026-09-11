@@ -43,9 +43,7 @@
                 [(System/getProperty "java.home") "lib" "security" "cacerts"])))
 
 (defn- details->ldap-options
-  "Turn connection `details` into the options map the LDAP client takes. This is where the bind password leaves the
-  process, so a stored one -- a Secret bound to the directory it was saved for -- is opened here, against the very
-  host, port, channel and trust store this connection is about to use."
+  "The options map the LDAP client takes, built from connection `details`."
   [{:keys [host port bind-dn password security]}]
   (let [security    (keyword security)
         port        (if (string? port)

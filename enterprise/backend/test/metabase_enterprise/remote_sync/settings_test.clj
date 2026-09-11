@@ -19,8 +19,9 @@
          :remote-sync-branch  "test-branch"
          :remote-sync-token   nil}]
     (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [{:keys [remote-sync-token]}]
-                                                               ;; git is checked with nil, the stored Secret (sealed until git-source opens it), or a full
-                                                               ;; token -- never the mask
+                                                               ;; git is checked with nil, the stored Secret (sealed
+                                                               ;; until git-source opens it), or a full token -- never
+                                                               ;; the mask
                                                                (is (or (nil? remote-sync-token)
                                                                        (u.secret/secret? remote-sync-token)
                                                                        (#{full-token other-token} remote-sync-token)))
@@ -188,6 +189,21 @@
         (is (= "file://api/url.git" (settings/remote-sync-url)))
         (is (= "api-token" (mt/plaintext (settings/remote-sync-token))))
         (is (= "api-branch" (settings/remote-sync-branch)))))))
+
+(deftest check-and-update-remote-settings-checks-the-stored-branch-test
+  (testing "a write that names a new URL but no branch is checked against the branch it leaves in effect: the stored
+           one"
+    (let [checked (atom nil)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [settings] (reset! checked settings) true)]
+        (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                           remote-sync-token  nil
+                                           remote-sync-branch "stored-branch"
+                                           remote-sync-type   :read-only]
+          (settings/check-and-update-remote-settings! {:remote-sync-url "https://github.com/test/other.git"})
+          (is (=? {:remote-sync-url    "https://github.com/test/other.git"
+                   :remote-sync-branch "stored-branch"}
+                  @checked))
+          (is (= "stored-branch" (settings/remote-sync-branch))))))))
 
 (deftest root-collection-is-not-remote-synced-test
   (testing "Root collection for shared-tenant-collection namespace is never remote-synced (individual children can be toggled)"

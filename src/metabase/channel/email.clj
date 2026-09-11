@@ -306,10 +306,10 @@
      :sender   \"foo@mycompany.com\"
      :security :tls}
 
-  Attempts to connect with different `:security` options. If able to connect successfully, returns working
-  [[SMTPSettings]]. If unable to connect with any `:security` options, returns an [[SMTPStatus]] with the `::error`.
-
-  `:pass` may be a stored password or a Secret bound to the destination it was saved for."
+  `:pass` is a plaintext String or a bound Secret. If able to connect successfully, returns working [[SMTPSettings]];
+  otherwise returns an [[SMTPStatus]] with the `::error`. With a plaintext `:pass`, a failed attempt is retried over
+  the other `:security` options first. With a Secret, only the given `:security` is attempted: the credential was
+  saved for one channel and is not sent over another."
   [details :- SMTPSettings]
   (let [stored?         (u.secret/secret? (:pass details))
         opened          (open-pass details)

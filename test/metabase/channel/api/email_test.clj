@@ -4,8 +4,7 @@
    [metabase.channel.email :as email]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
-   [toucan2.core :as t2]))
+   [metabase.test.util :as tu]))
 
 (defn- email-settings
   []
@@ -185,7 +184,9 @@
                                          email-smtp-username "mb"
                                          email-smtp-password "smtp-secret"]
         (let [attempted (atom [])]
-          (with-redefs [email/test-smtp-settings (fn [settings] (swap! attempted conj settings) {::email/error nil})]
+          (mt/with-dynamic-fn-redefs [email/test-smtp-settings (fn [settings]
+                                                                 (swap! attempted conj settings)
+                                                                 {::email/error nil})]
             (testing "a new host with the mask echoed back"
               (let [resp (mt/user-http-request :crowberto :put 400 "email"
                                                {:email-smtp-host     "evil.example.com"
@@ -221,12 +222,6 @@
               (is (= "new.example.com" (setting/get :email-smtp-host)))
               (is (= "brand-new" (mt/plaintext (setting/get :email-smtp-password)))))))))))
 
-(defn- password-audit-events
-  "Audit-log entries recording a write to `setting-key`."
-  [setting-key]
-  (count (filter #(= setting-key (get-in % [:details :key]))
-                 (t2/select :model/AuditLog :topic :setting-update))))
-
 (deftest stored-password-is-only-tried-on-its-own-channel-test
   (testing "when the stored password is reused, a failed connection is not retried over other security options: the
            credential was saved for one channel and may not be sent over another. A freshly typed password may be."
@@ -245,19 +240,20 @@
                          :email-smtp-port     587
                          :email-smtp-security :starttls
                          :email-smtp-username "mb"}]
-          (with-redefs [email/test-smtp-settings (fn [details]
-                                                   (swap! attempted conj details)
-                                                   {::email/error (ex-info "refused" {})})
-                        email/retry-delay-ms     0]
-            (testing "the stored password: one attempt, on the bound channel"
-              (mt/user-http-request :crowberto :put 400 "email"
-                                    (assoc settings :email-smtp-password (setting/obfuscate-value "smtp-secret")))
-              (is (= [:starttls] (map :security @attempted))))
-            (testing "a fresh password: the usual guessing across channels"
-              (reset! attempted [])
-              (mt/user-http-request :crowberto :put 400 "email"
-                                    (assoc settings :email-smtp-password "brand-new"))
-              (is (< 1 (count @attempted))))))))))
+          ;; `retry-delay-ms` is a def, not a fn, so it stays on `with-redefs`
+          (with-redefs [email/retry-delay-ms 0]
+            (mt/with-dynamic-fn-redefs [email/test-smtp-settings (fn [details]
+                                                                   (swap! attempted conj details)
+                                                                   {::email/error (ex-info "refused" {})})]
+              (testing "the stored password: one attempt, on the bound channel"
+                (mt/user-http-request :crowberto :put 400 "email"
+                                      (assoc settings :email-smtp-password (setting/obfuscate-value "smtp-secret")))
+                (is (= [:starttls] (map :security @attempted))))
+              (testing "a fresh password: the usual guessing across channels"
+                (reset! attempted [])
+                (mt/user-http-request :crowberto :put 400 "email"
+                                      (assoc settings :email-smtp-password "brand-new"))
+                (is (< 1 (count @attempted)))))))))))
 
 (deftest echoed-mask-does-not-rewrite-the-stored-password-test
   (testing "reusing the stored password writes nothing: the endpoint never holds the plaintext, so there is nothing to
@@ -273,8 +269,8 @@
                                            email-smtp-security :starttls
                                            email-smtp-username "mb"
                                            email-smtp-password "smtp-secret"]
-          (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
-            (let [before (password-audit-events "email-smtp-password")
+          (mt/with-dynamic-fn-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+            (let [before (mt/setting-update-audit-event-count "email-smtp-password")
                   resp   (mt/user-http-request :crowberto :put 200 "email"
                                                {:email-smtp-host     "smtp.example.com"
                                                 :email-smtp-port     587
@@ -282,5 +278,5 @@
                                                 :email-smtp-username "mb"
                                                 :email-smtp-password (setting/obfuscate-value "smtp-secret")})]
               (is (= (setting/obfuscate-value "smtp-secret") (:email-smtp-password resp)))
-              (is (= before (password-audit-events "email-smtp-password")))
+              (is (= before (mt/setting-update-audit-event-count "email-smtp-password")))
               (is (= "smtp-secret" (mt/plaintext (setting/get :email-smtp-password)))))))))))

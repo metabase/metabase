@@ -3,7 +3,18 @@
    [clojure.test :refer :all]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.settings.core :as setting]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.secret :as u.secret]))
+
+(use-fixtures :once (fixtures/initialize :db))
+
+(deftest mcp-embedding-signing-secret-wraps-the-stored-value-test
+  (testing "the Secret holds the stored secret itself, not a masked rendering of it; session keys are HMACed with it"
+    (let [secret (mcp.settings/mcp-embedding-signing-secret)]
+      (is (u.secret/secret? secret))
+      (is (= (setting/get-value-of-type :string :mcp-embedding-signing-secret)
+             (u.secret/derive-with secret identity))))))
 
 (deftest mcp-apps-cors-custom-origins-path-validation-test
   (testing "Should reject an origin with a real path (#75839)"

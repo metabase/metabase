@@ -481,9 +481,8 @@
         ;; and would otherwise invalidate every existing Slack auth identity on a form save that changed nothing.
         signing-secret-changed? (and all-set?
                                      (not (setting/obfuscated-value? metabot-slack-signing-secret))
-                                     (not= metabot-slack-signing-secret
-                                           (some-> (server.settings/metabot-slack-signing-secret)
-                                                   (u.secret/maybe-derive-with identity))))]
+                                     (not (u.secret/maybe-derive-with (server.settings/metabot-slack-signing-secret)
+                                                                      #(= % metabot-slack-signing-secret))))]
     ;; all values must be set together or unset together
     (when-not (or all-set? all-unset?)
       (throw (ex-info (tru "Must provide client id, client secret and signing secret together.")

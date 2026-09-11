@@ -494,13 +494,14 @@
     (try
       (log/debug (str "Calling " provider " embeddings API")
                  {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
-      (let [headers              (merge {"Content-Type" "application/json"}
-                                        (if (and (empty? api-key) instance-token?)
-                                          {"x-metabase-instance-token"
-                                           (u/prog1 (u.secret/maybe-expose (premium-features/premium-embedding-token) :disclosure/fixed-endpoint)
-                                             (when (nil? <>)
-                                               (throw (ex-info "Premium embedding token not set"
-                                                               {:provider provider}))))}
+      (let [instance-token       (when (and (empty? api-key) instance-token?)
+                                   (u/prog1 (u.secret/maybe-expose (premium-features/premium-embedding-token)
+                                                                   :disclosure/fixed-endpoint)
+                                     (when (nil? <>)
+                                       (throw (ex-info "Premium embedding token not set" {:provider provider})))))
+            headers              (merge {"Content-Type" "application/json"}
+                                        (if instance-token
+                                          {"x-metabase-instance-token" instance-token}
                                           {"Authorization" (str "Bearer " api-key)}))
             request              (merge embedding-http-timeouts
                                         {:headers headers

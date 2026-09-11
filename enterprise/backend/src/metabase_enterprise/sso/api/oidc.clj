@@ -121,7 +121,7 @@
 
 (def ^:private provider-audience-schema
   "The fields of an OIDC provider that decide where its client secret is presented."
-  [:map [:issuer-uri {:optional true} :string]])
+  [:map [:issuer-uri {:optional true} :metabase.util.secret/url]])
 
 ;; PUT /api/ee/sso/oidc/:key
 (api.macros/defendpoint :put "/:key" :- oidc-provider-response-schema

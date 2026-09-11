@@ -31,8 +31,7 @@
   "Build a certificate store map usable by the saml20-clj library."
   []
   (when-let [path (sso-settings/saml-keystore-path)]
-    (when-let [password (some-> (sso-settings/saml-keystore-password)
-                                (u.secret/maybe-derive-with identity))]
+    (when-let [password (u.secret/maybe-expose (sso-settings/saml-keystore-password) :disclosure/local-keystore)]
       (when-let [key-name (sso-settings/saml-keystore-alias)]
         {:filename path
          :password password

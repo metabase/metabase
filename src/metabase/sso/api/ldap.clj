@@ -13,14 +13,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- update-password-if-needed
-  "The bind password to test with.
-
-  The client only ever has the mask the API handed out, and echoes it back when the password was not changed. In that
-  case the stored password is handed through sealed: a bound Secret that [[ldap/test-ldap-connection]] opens against
-  the directory it is about to bind to, so pointing the connection somewhere new, or weakening the channel to it,
-  while reusing the stored password is refused inside that sink. A password the client typed passes straight through,
-  and an omitted one clears the stored value rather than reusing it."
+(defn- bind-password-to-test
+  "The bind password to test with: the stored Secret when the client echoed back the mask, otherwise the supplied
+  value (nil clears it)."
   [new-password]
   (if (setting/obfuscated-value? new-password)
     (sso.settings/ldap-password)
@@ -57,7 +52,7 @@
                 [:ldap-group-mappings          {:optional true} [:maybe ::sso.schema/group-mappings]]]]
   (api/check-superuser)
   (let [ldap-settings (-> settings
-                          (update :ldap-password update-password-if-needed)
+                          (update :ldap-password bind-password-to-test)
                           (dissoc :ldap-enabled))
         ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
         results       (ldap/test-ldap-connection ldap-details)]

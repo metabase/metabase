@@ -284,6 +284,7 @@
     (try
       (settings/check-and-update-remote-settings! (dissoc settings :collections))
       (catch Exception e
+        (u.secret/rethrow-if-audience-mismatch! e)
         (throw (ex-info (or (ex-message e) "Invalid settings")
                         {:error       (ex-message e)
                          :status-code 400} e))))

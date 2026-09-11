@@ -778,23 +778,22 @@
   [audience]
   (into [:map] (map (fn [[k schema]] [k {:optional true} schema])) audience))
 
+;; the audience a secret is bound to is read through [[get]], which is what calls [[bind-secret]]: a genuine cycle,
+;; so this one declaration cannot be ordered away
 (declare proposed-audience)
 
 (defn- bind-secret
   "Wrap `value` as a [[metabase.util.secret/secret]] bound to the audience `setting` declares, as that audience is
-  stored right now.
+  stored right now. Returns `value` unchanged for a setting that is not a `:sensitive?` `:string` with an `:audience`,
+  for `nil`, and for a value that is already a Secret.
 
-  Every credential that declares an `:audience` is wrapped, including one declaring `{}`. A `{}` audience binds to no
-  destination, so [[metabase.util.secret/expose]] will not hand it to a network peer; what the wrapper still buys is
-  redaction in logs, a JSON encoder that refuses it, and a [[set!]] that will not write it back. Such a credential is
-  opened with `:disclosure/fixed-endpoint` or, where it never leaves the process, [[metabase.util.secret/derive-with]].
-
-  Restricted to `:string` settings, because a Secret wraps a credential rather than a structure that contains one.
-  `oidc-providers` is `:sensitive?` and holds a list whose members each carry a `client-secret`; those are handled
-  per provider in [[metabase-enterprise.sso.api.oidc]], and wrapping the list would say the list is the credential."
+  A credential declaring `{}` is wrapped too: it opens only to a `:disclosure/` reason or
+  [[metabase.util.secret/derive-with]], and is still redacted, refused by the JSON encoder, and refused by [[set!]]."
   [{:keys [sensitive? audience], setting-type :type, setting-name :name} value]
   (if (and sensitive?
            (some? audience)
+           ;; a Secret wraps one credential, not a structure containing several: a `:json` list of providers each
+           ;; carrying a client secret is bound per member by the code that owns it
            (= :string setting-type)
            (some? value)
            (not (u.secret/secret? value)))
@@ -1141,16 +1140,9 @@
   the write is [[write-visible?]], and the value already in effect where it is not. `proposed` maps setting names to
   new values, as a request body does, and its keys may be strings or keywords.
 
-  Code acting on the state a write leaves behind cannot take a proposed value at face value, because a write to an
-  env-supplied setting changes nothing that will be read.
-
-  What this does **not** do is normalize. The proposed value comes back exactly as given, while the value already in
-  effect comes back through the setting's `:type` parsing and any custom `:getter`. A setting whose `:setter` or
-  `:getter` canonicalizes -- trimming a URL, defaulting a nil -- will therefore hold something slightly different from
-  what is reported here. Simulating that is not available: each [[set-value-of-type!]] method serializes and writes in
-  one step, and a custom `:setter` is arbitrary code that may validate, rewrite, or call out over the network, so
-  running one to learn its result is not something a predicate may do. A caller comparing this against a value read
-  back through [[get]] has to account for that normalization itself."
+  Does not normalize: a proposed value comes back exactly as given, while a value already in effect comes back through
+  the setting's `:type` parsing and custom `:getter`. A caller comparing the result against a value later read back
+  through [[get]] has to allow for whatever the setting's `:setter` canonicalizes."
   [setting-names proposed]
   (let [proposed (update-keys proposed keyword)]
     (into {}
@@ -1178,63 +1170,52 @@
 
 (defn- fresh-secret-supplied?
   "Whether `proposed` supplies a genuinely new value for `secret-key` -- or clears it, which leaves nothing to leak.
-  A client echoing back the mask it was handed is not supplying a new secret."
+  A client echoing back the mask it was handed is not supplying a new secret, and neither is a write the setting
+  will never read because an env var outranks it."
   [secret-key proposed]
   (and (contains? proposed secret-key)
+       (write-visible? secret-key)
        (let [v (core/get proposed secret-key)]
          (or (nil? v)
              (and (string? v) (str/blank? v))
              (not (obfuscated-value? v))))))
 
+(defn- audience-moved?
+  "Whether the write `proposed` leaves `secret-setting-name` bound to a different destination than it is now, both
+  compared under `audience`. Clearing a field is not a move: only a change that introduces or alters a value is."
+  [audience secret-setting-name proposed]
+  (let [schema  (audience->schema audience)
+        stored  (u.secret/canonical-audience schema (proposed-audience secret-setting-name {}))
+        want    (u.secret/canonical-audience schema (proposed-audience secret-setting-name proposed))
+        changed (remove #(= (core/get stored %) (core/get want %))
+                        (distinct (concat (keys stored) (keys want))))]
+    (boolean (some #(some? (core/get want %)) changed))))
+
 (defn- assert-audience-writes-authorized!
-  "Refuse a write that moves a secret's audience while leaving the stored secret in place.
-
-  Metabase hands the client a mask rather than a credential, and substitutes the stored value back on save. Because
-  the audience -- the host, port and transport the credential is sent to -- is editable in the same breath, a caller
-  could otherwise point a connection at a host they control and have Metabase deliver the real credential to it,
-  usually during a connection test that runs before anything is persisted.
-
-  The check is on the *audience field write itself*, not on a mask being echoed: `PUT /api/setting/ldap-host` carries
-  no secret at all and would slip through a mask-shaped check. Because the stored audience is derived rather than
-  recorded, every single-field write differs from it at that field, so there is no sequence of individually
-  innocuous changes.
-
-  Only user-initiated writes are checked. Startup, config-file provisioning and other internal callers have no current
-  user and are the deployment's own configuration, which is trusted -- the same provenance split the network policies
-  use.
-
-  This runs from [[set!]] and [[set-many!]] only. An endpoint that verifies a credential before persisting it needs no
-  call of its own: the stored credential it would reuse is a bound Secret (see [[bind-secret]]), and opening that to
-  the destination the request describes -- [[proposed-audience]] with [[metabase.util.secret/expose]] -- is what
-  refuses a moved audience at the connection test, before anything reaches the network. What this hook adds is the
-  case where nothing is tested at all: a bare write that moves the audience out from under a stored secret."
+  "Throw a 400 with `:error-code :setting-audience-change-requires-secret` when `proposed`, a map of setting names
+  (strings or keywords) to new values, moves the audience of a stored `:sensitive?` setting without supplying that
+  secret afresh. A no-op outside a request: writes with no current user are the deployment's own configuration."
   [proposed]
   (when (some? api/*current-user-id*)
-    (let [proposed (into {} (map (fn [[k v]] [(keyword k) v])) proposed)]
+    (let [proposed (update-keys proposed keyword)]
+      ;; the check is on the audience field write itself, not on a mask being echoed: a bare
+      ;; `PUT /api/setting/ldap-host` carries no secret at all. And because the stored audience is derived rather than
+      ;; recorded, every single-field write differs from it at that field, so there is no sequence of individually
+      ;; innocuous moves.
       (doseq [{:keys [audience], setting-name :name} (vals @registered-settings)
               :when (and audience
-                         ;; nothing being written touches this audience
                          (seq (select-keys proposed (keys audience)))
-                         ;; nothing stored to exfiltrate. A value that only comes from the setting's `:default` is
-                         ;; not a stored credential: a default is public knowledge, and guarding it would make every
-                         ;; first-time setup re-enter it
+                         ;; a value that only comes from `:default` is public knowledge, not a stored credential, and
+                         ;; guarding it would make every first-time setup re-enter it
                          (contains? #{:database :env :user-local :database-local}
-                                    (get-raw-value-source setting-name)))]
-        (let [schema   (audience->schema audience)
-              stored   (u.secret/canonical-audience schema (proposed-audience setting-name {}))
-              want     (u.secret/canonical-audience schema (proposed-audience setting-name proposed))
-              changed  (remove #(= (core/get stored %) (core/get want %))
-                               (distinct (concat (keys stored) (keys want))))
-              ;; clearing where a credential points is not moving it: there is nowhere left to send it, and setting a
-              ;; new value later is itself guarded. Only a change that introduces or alters a value is a move.
-              moved?   (boolean (some #(some? (core/get want %)) changed))]
-          (when-not (or (not moved?)
-                        (fresh-secret-supplied? setting-name proposed))
-            (throw (ex-info (tru "{0} must be provided again when changing where it is sent."
-                                 (name setting-name))
-                            {:status-code 400
-                             :error-code  :setting-audience-change-requires-secret
-                             :setting     setting-name}))))))))
+                                    (get-raw-value-source setting-name))
+                         (audience-moved? audience setting-name proposed)
+                         (not (fresh-secret-supplied? setting-name proposed)))]
+        (throw (ex-info (tru "{0} must be provided again when changing where it is sent."
+                             (name setting-name))
+                        {:status-code 400
+                         :error-code  :setting-audience-change-requires-secret
+                         :setting     setting-name}))))))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
@@ -1248,20 +1229,20 @@
 
   This method will throw an exception if trying to update a read-only setting, unless `:bypass-read-only?` is set."
   [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
-  (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)
-        ;; a Secret would otherwise be stringified to its redaction text and persisted over the real credential
-        _                            (when (u.secret/secret? new-value)
-                                       (throw (ex-info (tru "Refusing to write a Secret to setting {0}: expose it to an audience first."
-                                                            (name (:name setting)))
-                                                       {:setting (:name setting)})))
-        _                            (when-not *audience-checked?*
-                                       (assert-audience-writes-authorized! {(:name setting) new-value}))
-        new-value                    (cond-> new-value
-                                       (and (= (:type setting) :json) (coll? new-value))
-                                       walk/keywordize-keys)]
+  (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)]
+    ;; a Secret would otherwise be stringified to its redaction text and persisted over the real credential
+    (when (u.secret/secret? new-value)
+      (throw (ex-info (format "Refusing to write a Secret to setting %s: expose it to an audience first."
+                              (name (:name setting)))
+                      {:setting (:name setting)})))
+    (when-not *audience-checked?*
+      (assert-audience-writes-authorized! {(:name setting) new-value}))
     (validate-settable! setting bypass-read-only?)
-    (binding [config/*disable-setting-cache* (not cache?)]
-      (set-with-audit-logging! setting new-value bypass-read-only?))))
+    (let [new-value (cond-> new-value
+                      (and (= (:type setting) :json) (coll? new-value))
+                      walk/keywordize-keys)]
+      (binding [config/*disable-setting-cache* (not cache?)]
+        (set-with-audit-logging! setting new-value bypass-read-only?)))))
 
 (defn- extract-encryption-or-default
   "Encryption is turned off or on according to (in order of preference):

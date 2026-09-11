@@ -105,6 +105,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :encryption :when-encryption-key-set
   :default    "changeit"
   :sensitive? true
+  ;; the keystore is a file on local disk, not a network peer; the sink opens this with :disclosure/local-keystore
   :audience   {}
   :feature    :sso-saml
   :audit      :getter)
@@ -332,7 +333,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :export?    false
   :sensitive? true
   ;; validates signatures locally; never presented to a peer
-  :audience {}
+  :audience   {}
   :visibility :internal
   :audit      :no-value)
 
@@ -380,6 +381,9 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :export?     false
   :audit       :no-value
   :sensitive?  true
+  ;; a no-op declaration that satisfies the CI check that every secret declares an audience: bind-secret only wraps
+  ;; :string settings, and this one is :json. Each provider's client-secret is handled in
+  ;; metabase-enterprise.sso.api.oidc.
   :audience    {})
 
 (defn get-oidc-provider

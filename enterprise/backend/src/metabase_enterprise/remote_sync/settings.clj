@@ -206,17 +206,35 @@
   only affect how syncing behaves once the connection works."
   (into connection-keys [:remote-sync-auto-import :remote-sync-transforms]))
 
+(defn- token-to-check
+  "The credential the repository check runs with for a write of `settings`: the stored token when the client echoed
+  the mask back or an env var supplies it, otherwise whatever the request names, nil included."
+  [{:keys [remote-sync-token]}]
+  ;; the stored PAT is a bound Secret, handed through sealed: git-source opens it against the repository it is about
+  ;; to contact, so a moved URL is refused there, before JGit is initialized.
+  ;;
+  ;; Not `value-after-write`, which would also substitute the stored token when the request omits it: a request that
+  ;; names no token is checked without one, which is how a repository that needs no credential is configured.
+  (if (or (setting/obfuscated-value? remote-sync-token)
+          (not (setting/write-visible? :remote-sync-token)))
+    (setting/get :remote-sync-token)
+    remote-sync-token))
+
 (defn check-and-update-remote-settings!
-  "Validates and updates git sync settings in the application database.
+  "Validates and updates the remote sync settings in the application database.
 
-  Takes a settings map containing :remote-sync-url, :remote-sync-token, :remote-sync-type, :remote-sync-branch, and
-  :remote-sync-auto-import keys. If the URL is blank, clears all git sync settings (url, token, and branch).
-  Otherwise, validates the settings by connecting to the repository, then updates the settings in a transaction.
+  Takes a settings map with any of :remote-sync-url, :remote-sync-token, :remote-sync-type, :remote-sync-branch,
+  :remote-sync-auto-import and :remote-sync-transforms. If the URL is present and blank, clears the URL, token and
+  branch. Otherwise, when any connection setting is present, checks that the repository is reachable, then writes the
+  settings with [[metabase.settings.core/set-many!]], skipping any an env var supplies.
 
-  If the token is obfuscated (matches the existing token), preserves the existing token value rather than
-  overwriting it. If no branch is specified, uses the repository's default branch.
+  A token that is the mask ([[metabase.settings.core/obfuscated-value?]]) means the stored token stands and is not
+  written. When the request omits the branch, the repository check runs against the stored one.
 
-  Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
+  Throws ExceptionInfo when a task is running, when the repository check fails, or when the URL moves while the stored
+  token would be reused: with `:error-code :secret-audience-mismatch` when the mask was echoed back (the repository
+  check refuses to open the stored token against the new URL), or `:setting-audience-change-requires-secret` from the
+  settings layer when the token was omitted."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
   (guards/ensure-no-active-task!)
   (let [updating-git-settings? (some connection-keys (keys settings))]
@@ -231,22 +249,13 @@
             settings-after-write (merge settings
                                         (setting/values-after-write [:remote-sync-url :remote-sync-branch] settings))
             ;; the client only ever has the mask, and echoes it back when the token was not changed
-            obfuscated?          (setting/obfuscated-value? remote-sync-token)
-            ;; the stored PAT is a bound Secret, handed through sealed: git-source opens it against the repository it
-            ;; is about to contact, so a moved URL is refused there, before JGit is initialized.
-            ;;
-            ;; Not `value-after-write`, which would also substitute the stored token when the request omits it: a
-            ;; request that names no token is checked without one, which is how a repository that needs no credential
-            ;; is configured.
-            token-to-check       (if (or obfuscated? (not (setting/write-visible? :remote-sync-token)))
-                                   (setting/get :remote-sync-token)
-                                   remote-sync-token)]
+            obfuscated?          (setting/obfuscated-value? remote-sync-token)]
         (when updating-git-settings?
-          (check-git-settings! (assoc settings-after-write :remote-sync-token token-to-check)))
+          (check-git-settings! (assoc settings-after-write :remote-sync-token (token-to-check settings))))
         (setting/set-many!
          (into {}
                ;; a write nothing will read is not worth the row, the audit entry or the on-change handler
-               (remove (fn [[k _]] (not (setting/write-visible? k))))
+               (filter (comp setting/write-visible? key))
                (cond-> (select-keys settings writable-keys)
                  ;; the client echoed the mask back, so the stored token stands and there is nothing to write
                  obfuscated? (dissoc :remote-sync-token))))))))

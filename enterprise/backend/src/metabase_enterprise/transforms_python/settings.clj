@@ -72,6 +72,12 @@
   :encryption :no
   :audit      :getter)
 
+(def ^:private s3-audience
+  "The settings that decide which S3 service, and which bucket in it, the S3 credentials are presented to."
+  {:python-storage-s-3-endpoint :string
+   :python-storage-s-3-region   :string
+   :python-storage-s-3-bucket   :string})
+
 (setting/defsetting python-storage-s-3-access-key
   (deferred-tru "AWS access key ID for S3 authentication.")
   :type       :string
@@ -79,9 +85,7 @@
   :feature    :transforms-python
   :default    (when (not config/is-prod?) "test")
   :sensitive? true
-  :audience   {:python-storage-s-3-endpoint :string
-               :python-storage-s-3-region   :string
-               :python-storage-s-3-bucket   :string}
+  :audience   s3-audience
   :doc        false
   :export?    false
   :encryption :when-encryption-key-set
@@ -92,9 +96,7 @@
   :type       :string
   :visibility :admin
   :sensitive? true
-  :audience   {:python-storage-s-3-endpoint :string
-               :python-storage-s-3-region   :string
-               :python-storage-s-3-bucket   :string}
+  :audience   s3-audience
   :feature    :transforms-python
   :default    (when (not config/is-prod?) "test")
   :doc        false

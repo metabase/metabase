@@ -31,10 +31,10 @@
 (deftest authorization-headers-refuse-a-token-bound-elsewhere-test
   (mt/with-premium-features #{:transforms-python}
     (mt/with-temporary-setting-values [python-runner-url "http://runner.example.com:5001"]
-      (with-redefs [transforms-python.settings/python-runner-api-token
-                    (constantly (bound-elsewhere "runner-secret" {:python-runner-url "http://other.example.com:5001"}))]
-        (is (thrown-with-msg? ExceptionInfo #"not bound to the requested audience"
-                              (#'python-runner/authorization-headers)))))))
+      (let [secret (bound-elsewhere "runner-secret" {:python-runner-url "http://other.example.com:5001"})]
+        (mt/with-dynamic-fn-redefs [transforms-python.settings/python-runner-api-token (constantly secret)]
+          (is (thrown-with-msg? ExceptionInfo #"not bound to the requested audience"
+                                (#'python-runner/authorization-headers))))))))
 
 (deftest s3-credentials-open-the-stored-keys-test
   (mt/with-premium-features #{:transforms-python}
@@ -54,9 +54,9 @@
                                        python-storage-s-3-region     "us-east-1"
                                        python-storage-s-3-bucket     "artifacts"
                                        python-storage-s-3-access-key "AKIAEXAMPLE"]
-      (with-redefs [transforms-python.settings/python-storage-s-3-secret-key
-                    (constantly (bound-elsewhere "s3-secret" {:python-storage-s-3-endpoint "http://s3.example.com:4566"
-                                                              :python-storage-s-3-region   "us-east-1"
-                                                              :python-storage-s-3-bucket   "someone-elses-bucket"}))]
-        (is (thrown-with-msg? ExceptionInfo #"not bound to the requested audience"
-                              (#'s3/maybe-with-credentials* identity)))))))
+      (let [secret (bound-elsewhere "s3-secret" {:python-storage-s-3-endpoint "http://s3.example.com:4566"
+                                                 :python-storage-s-3-region   "us-east-1"
+                                                 :python-storage-s-3-bucket   "someone-elses-bucket"})]
+        (mt/with-dynamic-fn-redefs [transforms-python.settings/python-storage-s-3-secret-key (constantly secret)]
+          (is (thrown-with-msg? ExceptionInfo #"not bound to the requested audience"
+                                (#'s3/maybe-with-credentials* identity))))))))

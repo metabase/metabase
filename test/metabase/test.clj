@@ -250,6 +250,7 @@
   priv-key->base64-uri
   latest-audit-log-entry
   all-entries-for
+  setting-update-audit-event-count
   let-url
   metric-value
   obj->json->obj

@@ -883,13 +883,7 @@
 (def default-audience-schema
   "The connection-detail fields that decide *where* a warehouse credential is sent and *how* the channel is protected,
   and so must not change while a stored credential is reused. Driver-agnostic defaults; a driver whose connection
-  identity is defined differently should override [[audience-schema]].
-
-  Free-text `additional-options` is in here compared as an opaque string rather than parsed: it can carry
-  `sslmode=disable` or `useSSL=false`, and there is no JDBC property allow-list, so comparing the whole thing exactly
-  closes that downgrade route without anyone having to model per-driver option syntax.
-
-  The SSH tunnel is a second destination for a second credential, so its identity is here too."
+  identity is defined differently overrides [[audience-schema]]."
   [:map
    ;; where the connection goes
    [:host          {:optional true} ::u.secret/hostname]
@@ -905,8 +899,11 @@
    [:ssl                {:optional true} :boolean]
    [:sslmode            {:optional true} :string]
    [:ssl-mode           {:optional true} :string]
+   ;; free text, compared as an opaque string rather than parsed: it can carry `sslmode=disable` or `useSSL=false`,
+   ;; and there is no JDBC property allow-list, so comparing the whole thing exactly closes that downgrade route
+   ;; without anyone having to model per-driver option syntax
    [:additional-options {:optional true} :string]
-   ;; the SSH tunnel: a second peer, holding a second credential
+   ;; the SSH tunnel: a second destination for a second credential, so its identity is here too
    [:tunnel-enabled {:optional true} :boolean]
    [:tunnel-host    {:optional true} ::u.secret/hostname]
    [:tunnel-port    {:optional true} :int]

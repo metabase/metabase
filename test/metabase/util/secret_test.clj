@@ -20,7 +20,7 @@
    [:port     {:optional true} :int]
    [:security {:optional true} :string]])
 
-(deftest canonical-audience-selects-declared-fields-test
+(deftest ^:parallel canonical-audience-selects-declared-fields-test
   (testing "the schema picks the audience fields out of a whole record, ignoring the rest"
     (is (= {:host "db.example.com" :port 5432}
            (u.secret/canonical-audience db-schema {:host             "db.example.com"
@@ -29,9 +29,10 @@
                                                    :cache-ttl        60
                                                    :password         "hunter2"})))))
 
-(deftest canonical-audience-normalizes-per-declared-type-test
+(deftest ^:parallel canonical-audience-normalizes-per-declared-type-test
   (testing "::hostname ignores case, because DNS is case-insensitive"
-    (is (= {:host "db.example.com"} (u.secret/canonical-audience [:map [:host ::u.secret/hostname]] {:host "DB.Example.COM"}))))
+    (is (= {:host "db.example.com"}
+           (u.secret/canonical-audience [:map [:host ::u.secret/hostname]] {:host "DB.Example.COM"}))))
   (testing "a plain :string does NOT -- it is the safe default, so a value only relaxes by naming a schema that does"
     (is (= {:account "AcmeCorp"} (u.secret/canonical-audience [:map [:account :string]] {:account "AcmeCorp"})))
     (is (not (u.secret/same-audience? [:map [:account :string]] {:account "AcmeCorp"} {:account "acmecorp"}))))
@@ -56,35 +57,24 @@
            (u.secret/canonical-audience db-schema {:host "h" :port ""}))))
   (testing "::url-path drops a trailing slash"
     (is (= (u.secret/canonical-audience [:map [:path ::u.secret/url-path]] {:path "/v1/"})
-           (u.secret/canonical-audience [:map [:path ::u.secret/url-path]] {:path "/v1"})))))
+           (u.secret/canonical-audience [:map [:path ::u.secret/url-path]] {:path "/v1"}))))
+  (testing "::url-scheme ignores case, because RFC 3986 says schemes are case-insensitive"
+    (is (= (u.secret/canonical-audience [:map [:scheme ::u.secret/url-scheme]] {:scheme "HTTPS"})
+           (u.secret/canonical-audience [:map [:scheme ::u.secret/url-scheme]] {:scheme "https"})))))
 
-(deftest canonical-audience-rejects-unknown-field-schema-test
+(deftest ^:parallel canonical-audience-rejects-unknown-field-schema-test
   (testing "a typo in a schema is a loud error from the registry, not a silently unguarded field"
     (is (thrown? Exception
                  (u.secret/canonical-audience [:map [:host ::u.secret/no-such-schema]] {:host "h"})))))
 
-(deftest canonical-audience-does-not-resolve-defaults-test
+(deftest ^:parallel canonical-audience-does-not-resolve-defaults-test
   (testing "an unset port is NOT equated with the driver's default -- nothing here knows what absent resolves to, so
            this fails closed and asks for the credential rather than guessing"
     (is (not (u.secret/same-audience? db-schema {:host "h"} {:host "h" :port 5432})))))
 
-(deftest url-audience-test
-  (testing "scheme and host are case-insensitive, a trailing slash is dropped"
-    (is (= {:scheme "https" :host "api.example.com" :path "/v1"}
-           (u.secret/canonical-audience ::u.secret/url-audience
-                                        (u.secret/url->audience-fields "HTTPS://API.Example.com/v1/")))))
-  (testing "an absent port stays absent rather than being filled with the scheme default"
-    (is (nil? (:port (u.secret/url->audience-fields "https://api.example.com")))))
-  (testing "an explicit port is preserved"
-    (is (= 8443 (:port (u.secret/url->audience-fields "https://api.example.com:8443")))))
-  (testing "http and https to the same host are different audiences"
-    (is (not (u.secret/same-audience? ::u.secret/url-audience
-                                      (u.secret/url->audience-fields "https://api.example.com")
-                                      (u.secret/url->audience-fields "http://api.example.com"))))))
-
 ;;; --------------------------------------------- audience comparison ------------------------------------------------
 
-(deftest same-audience?-test
+(deftest ^:parallel same-audience?-test
   (let [stored {:host "db.example.com" :port 5432 :ssl true}]
     (testing "the same audience, however spelled"
       (is (true? (u.secret/same-audience? db-schema stored stored)))
@@ -96,7 +86,7 @@
     (testing "fields outside the schema do not affect the comparison"
       (is (true? (u.secret/same-audience? db-schema stored (assoc stored :name "renamed")))))))
 
-(deftest same-audience?-catches-transport-downgrade-test
+(deftest ^:parallel same-audience?-catches-transport-downgrade-test
   (testing "the destination never changed, but the channel protecting the credential did"
     (is (false? (u.secret/same-audience? db-schema
                                          {:host "db" :port 5432 :ssl true}
@@ -116,40 +106,40 @@
 
 ;;; -------------------------------------------------- expose --------------------------------------------------------
 
-(deftest expose-requires-an-audience-test
+(deftest ^:parallel expose-requires-an-audience-test
   (testing "there is no zero-audience arity -- exposing without saying where is unrepresentable"
     (testing "the call is inlined, so a bare (expose s) does not even compile"
-      (is (thrown? Exception
+      (is (thrown? clojure.lang.Compiler$CompilerException
                    (eval '(metabase.util.secret/expose (metabase.util.secret/secret "s"))))))
     (testing "and it is refused dynamically too"
       (is (thrown? clojure.lang.ArityException
                    (apply @(resolve 'metabase.util.secret/expose) [(u.secret/secret "s")]))))))
 
-(deftest expose-to-matching-audience-test
+(deftest ^:parallel expose-to-matching-audience-test
   (let [aud {:host "db.example.com" :port 5432 :ssl true}
         s   (u.secret/secret "hunter2" {:audience-schema db-schema :audience aud})]
     (is (= "hunter2" (u.secret/expose s aud)))
     (testing "the declared schema normalizes both sides the same way"
       (is (= "hunter2" (u.secret/expose s {:host "DB.Example.com" :port "5432" :ssl "true"}))))))
 
-(deftest secret-bound-to-an-audience-must-declare-a-schema-test
+(deftest ^:parallel secret-bound-to-an-audience-must-declare-a-schema-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must declare an :audience-schema"
                         (u.secret/secret "hunter2" {:audience {:host "h"}}))))
 
-(deftest expose-to-different-host-throws-test
+(deftest ^:parallel expose-to-different-host-throws-test
   (let [s (u.secret/secret "hunter2" {:audience-schema db-schema
                                       :audience {:host "db.example.com" :port 5432 :ssl true}})]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound"
                           (u.secret/expose s {:host "evil.example.com" :port 5432 :ssl true})))))
 
-(deftest expose-downgrade-throws-test
+(deftest ^:parallel expose-downgrade-throws-test
   (testing "same host, weaker transport -- the destination never changed"
     (let [s (u.secret/secret "hunter2" {:audience-schema smtp-schema
                                         :audience {:host "smtp.example.com" :port 587 :security "starttls"}})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound"
                             (u.secret/expose s {:host "smtp.example.com" :port 587 :security "none"}))))))
 
-(deftest expose-error-does-not-leak-the-secret-test
+(deftest ^:parallel expose-error-does-not-leak-the-secret-test
   (let [s (u.secret/secret "hunter2" {:audience-schema db-schema :audience {:host "a" :port 1 :ssl true}})]
     (try
       (u.secret/expose s {:host "b" :port 1 :ssl true})
@@ -159,69 +149,100 @@
         (is (not (re-find #"hunter2" (ex-message e))))
         (is (= :secret-audience-mismatch (:error-code (ex-data e))))))))
 
-(deftest expose-disclosure-reason-test
-  (testing "the one non-network reason -- handing a credential to a person -- is accepted"
-    (is (= "mb_abc" (u.secret/expose (u.secret/secret "mb_abc") :disclosure/to-creator))))
+(deftest ^:parallel expose-disclosure-reason-test
+  (testing "each non-network reason is accepted, bound audience or not"
+    (is (= "mb_abc" (u.secret/expose (u.secret/secret "mb_abc") :disclosure/to-creator)))
+    (is (= "xoxb-1" (u.secret/expose (u.secret/secret "xoxb-1") :disclosure/fixed-endpoint)))
+    (is (= "changeit" (u.secret/expose (u.secret/secret "changeit") :disclosure/local-keystore)))
+    (is (= "xoxb-1" (u.secret/expose (u.secret/secret "xoxb-1" {:audience-schema db-schema :audience {:host "h"}})
+                                     :disclosure/fixed-endpoint))))
   (testing "the reason set is closed"
-    (is (= #{:disclosure/to-creator :disclosure/fixed-endpoint} u.secret/disclosure-reasons))
+    (is (= #{:disclosure/to-creator :disclosure/fixed-endpoint :disclosure/local-keystore}
+           u.secret/disclosure-reasons))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown disclosure reason"
                           (u.secret/expose (u.secret/secret "mb_abc") :derive/hash)))))
 
-(deftest expose-network-audience-on-unbound-secret-throws-test
+(deftest ^:parallel expose-network-audience-on-unbound-secret-throws-test
   (testing "a secret with no bound audience cannot be sent to a network peer"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no bound audience"
                           (u.secret/expose (u.secret/secret "s") {:host "h" :port 1 :ssl true})))))
 
+(deftest ^:parallel secret-whose-schema-selects-nothing-is-unbound-test
+  (testing "a record the schema picks no field from binds to no peer, rather than to the empty audience every map
+           would match"
+    (doseq [[schema record] [[[:map]                                    {:host "db.example.com"}]
+                             [[:map [:host {:optional true} :string]] {}]
+                             [[:map [:host {:optional true} :string]] {:host ""}]]]
+      (let [s (u.secret/secret "hunter2" {:audience-schema schema :audience record})]
+        (is (nil? (u.secret/bound-audience s)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no bound audience"
+                              (u.secret/expose s {:host "evil.example.com"})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no bound audience"
+                              (u.secret/expose s {})))))))
+
+(deftest ^:parallel expose-to-something-that-is-not-an-audience-throws-test
+  (testing "an audience is a map or a reason keyword; anything else is refused before the plaintext is touched"
+    (let [s (u.secret/secret "hunter2" {:audience-schema db-schema :audience {:host "h"}})]
+      (doseq [not-an-audience ["h" nil 42 [:host "h"]]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be an audience map or a known disclosure reason"
+                              (u.secret/expose s not-an-audience)))))))
+
+(deftest ^:parallel bound-audience-test
+  (is (nil? (u.secret/bound-audience (u.secret/secret "s"))))
+  (testing "the bound audience is the canonical form of the record the secret was created from"
+    (is (= {:host "db.example.com" :port 5432}
+           (u.secret/bound-audience (u.secret/secret "s" {:audience-schema db-schema
+                                                          :audience        {:host "DB.example.com"
+                                                                            :port "5432"
+                                                                            :name "ignored"}}))))))
+
 ;;; --------------------------------------------------- mask ---------------------------------------------------------
 
-(deftest mask-is-value-independent-by-default-test
+(deftest ^:parallel mask-is-value-independent-by-default-test
   (testing "the default mask leaks neither content nor length"
     (is (= (u.secret/mask (u.secret/secret "a"))
            (u.secret/mask (u.secret/secret "a-much-longer-secret-value"))))
     (testing "and reveals no character of the secret"
       (is (not (re-find #"a-much" (u.secret/mask (u.secret/secret "a-much-longer-secret-value"))))))))
 
-(deftest mask-prefix-strategy-test
+(deftest ^:parallel mask-prefix-strategy-test
   (testing "a kind whose prefix is a non-sensitive lookup identifier can reveal it"
     (is (= (str "mb_ab" u.secret/mask-string)
            (u.secret/mask (u.secret/secret "mb_abcdefgh" {:prefix-length 5}))))))
 
 ;;; --------------------------------------------- derivations, not exposure ------------------------------------------
 
-(deftest prefix-is-a-method-not-an-exposure-test
+(deftest ^:parallel prefix-is-a-method-not-an-exposure-test
   (testing "the revealable prefix is computed by the secret itself; the plaintext is never handed out"
     (is (= "mb_ab" (u.secret/prefix (u.secret/secret "mb_abcdefgh" {:prefix-length 5})))))
   (testing "the length is fixed at construction, so a call site cannot ask for most of the credential"
     (let [s (u.secret/secret "mb_abcdefgh" {:prefix-length 5})]
       (is (= 5 (count (u.secret/prefix s))))))
+  (testing "a value shorter than its kind's prefix length reveals all of itself, not an error"
+    (is (= "mb_" (u.secret/prefix (u.secret/secret "mb_" {:prefix-length 5})))))
   (testing "a kind that declared no revealable prefix has none"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no prefix length"
                           (u.secret/prefix (u.secret/secret "hunter2"))))))
 
-(deftest derive-with-test
+(deftest ^:parallel derive-with-test
   (testing "a one-way derivation gets the plaintext without it becoming a caller-scope binding"
     (is (= "2retnuh" (u.secret/derive-with (u.secret/secret "hunter2") str/reverse))))
   (testing "and needs no unverifiable reason keyword"
     (is (= 7 (u.secret/derive-with (u.secret/secret "hunter2") count)))))
 
-(deftest masked?-recognizes-our-own-mask-test
-  (is (true? (u.secret/masked? (u.secret/mask (u.secret/secret "anything")))))
-  (is (false? (u.secret/masked? "hunter2")))
-  (is (false? (u.secret/masked? nil))))
-
 ;;; ------------------------------------------------ redaction -------------------------------------------------------
 
-(deftest tostring-redacts-test
+(deftest ^:parallel tostring-redacts-test
   (let [s (u.secret/secret "hunter2")]
     (is (not (re-find #"hunter2" (str s))))
     (is (not (re-find #"hunter2" (pr-str s))))
     (is (not (re-find #"hunter2" (format "%s" s))))))
 
-(deftest secret?-test
+(deftest ^:parallel secret?-test
   (is (true? (u.secret/secret? (u.secret/secret "s"))))
   (is (false? (u.secret/secret? "s"))))
 
-(deftest maybe-expose-test
+(deftest ^:parallel maybe-expose-test
   (testing "a plain value passes through untouched"
     (is (= "typed-just-now" (u.secret/maybe-expose "typed-just-now" {:host "anywhere"})))
     (is (nil? (u.secret/maybe-expose nil {:host "anywhere"}))))
@@ -232,7 +253,7 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
                             (u.secret/maybe-expose s {:host "evil.example.com"}))))))
 
-(deftest json-encoding-a-secret-throws-test
+(deftest ^:parallel json-encoding-a-secret-throws-test
   (testing "a Secret that reaches a JSON response is a leak in the making; encoding it fails loudly instead of rendering
            the redaction string"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Refusing to JSON-encode a Secret"
@@ -240,7 +261,7 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Refusing to JSON-encode a Secret"
                           (json/encode {:password (u.secret/secret "hunter2")})))))
 
-(deftest url-schema-test
+(deftest ^:parallel url-schema-test
   (testing "::url ignores surrounding whitespace, which is never part of a URL"
     (is (= {:url "https://embed.example.com"}
            (u.secret/canonical-audience [:map [:url ::u.secret/url]] {:url "  https://embed.example.com  "}))))
@@ -260,29 +281,30 @@
                      {:host "evil.example.com"})
     (catch clojure.lang.ExceptionInfo e e)))
 
-(deftest audience-mismatch?-test
-  (testing "a refusal is recognized directly, and through a wrapper that translated it"
-    (is (true? (u.secret/audience-mismatch? (refusal))))
-    (is (true? (u.secret/audience-mismatch? (ex-info "Could not reach the server" {:status-code 400} (refusal))))))
-  (testing "even when the wrapper carries an :error-code of its own, which a merged view of the chain would hide"
-    (is (true? (u.secret/audience-mismatch?
-                (ex-info "Could not reach the server" {:error-code :connection-failed} (refusal))))))
-  (testing "and an unrelated exception is not one"
-    (is (false? (u.secret/audience-mismatch? (ex-info "Wrong host or port" {:status-code 400}))))
-    (is (false? (u.secret/audience-mismatch? (java.io.IOException. "boom"))))))
+(defn- rethrown!
+  "What [[u.secret/rethrow-if-audience-mismatch!]] throws for `e`, or nil when it returns instead."
+  [e]
+  (try
+    (u.secret/rethrow-if-audience-mismatch! e)
+    (catch Throwable t t)))
 
 (deftest rethrow-if-audience-mismatch!-test
   (testing "the refusal itself is rethrown, not the wrapper: it carries the message and status the client should see"
-    (let [wrapped (ex-info "Could not reach the server" {:status-code 500} (refusal))
-          thrown  (try
-                    (u.secret/rethrow-if-audience-mismatch! wrapped)
-                    (catch clojure.lang.ExceptionInfo e e))]
+    (let [thrown (rethrown! (ex-info "Could not reach the server" {:status-code 500} (refusal)))]
       (is (= "This secret is not bound to the requested audience." (ex-message thrown)))
       (is (= 400 (:status-code (ex-data thrown))))))
+  (testing "a bare refusal is rethrown as-is"
+    (is (= :secret-audience-mismatch (:error-code (ex-data (rethrown! (refusal)))))))
+  (testing "even when the wrapper carries an :error-code of its own, which a merged view of the chain would hide"
+    (is (= :secret-audience-mismatch
+           (:error-code (ex-data (rethrown! (ex-info "Could not reach the server"
+                                                     {:error-code :connection-failed}
+                                                     (refusal))))))))
   (testing "an unrelated exception passes through, so the caller's own handling continues"
-    (is (nil? (u.secret/rethrow-if-audience-mismatch! (ex-info "Wrong host or port" {}))))))
+    (is (nil? (rethrown! (ex-info "Wrong host or port" {:status-code 400}))))
+    (is (nil? (rethrown! (java.io.IOException. "boom"))))))
 
-(deftest maybe-derive-with-test
+(deftest ^:parallel maybe-derive-with-test
   (testing "a Secret is derived from without the plaintext becoming a caller binding"
     (is (= 7 (u.secret/maybe-derive-with (u.secret/secret "hunter2") count))))
   (testing "and a caller already holding the plain value is tolerated, which is what makes it safe at a sink that

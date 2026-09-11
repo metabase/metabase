@@ -136,4 +136,22 @@
               (reset! attempted [])
               (mt/user-http-request :crowberto :put 200 "ee/sso/oidc/test-okta"
                                     {:issuer-uri "https://new.example.com" :client-secret "brand-new"})
-              (is (= "https://new.example.com" (:issuer-uri (first (sso-settings/oidc-providers))))))))))))
+              (is (= "https://new.example.com" (:issuer-uri (first (sso-settings/oidc-providers)))))
+              (testing "and the new issuer was checked with the new secret, not the stored one"
+                (is (= 1 (count @attempted)))
+                (is (= ["https://new.example.com" "test-client-id" "brand-new"]
+                       (take 3 (first @attempted))))))))))))
+
+(deftest issuer-whitespace-change-keeps-the-client-secret-test
+  (testing "surrounding whitespace is never part of the issuer URI, so a change that only adds some is not a move and
+           the stored client secret is still used"
+    (mt/with-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values [oidc-providers [test-provider]]
+        (let [attempted (atom [])]
+          (mt/with-dynamic-fn-redefs [oidc.check/check-oidc-configuration (fn [& args]
+                                                                            (swap! attempted conj args)
+                                                                            successful-check-result)]
+            (mt/user-http-request :crowberto :put 200 "ee/sso/oidc/test-okta"
+                                  {:issuer-uri (str (:issuer-uri test-provider) " ")})
+            (is (= 1 (count @attempted)))
+            (is (= "test-client-secret" (nth (first @attempted) 2)))))))))

@@ -1853,9 +1853,10 @@
            stored token is a bound Secret that git-source opens against the URL it is about to contact, so the refusal
            happens inside the sink, before JGit is even initialized."
     (let [attempted (atom [])]
-      (with-redefs [source.git/get-jgit (fn [_path {:keys [remote-url token]}]
-                                          (swap! attempted conj {:remote-sync-url remote-url :remote-sync-token token})
-                                          nil)]
+      (mt/with-dynamic-fn-redefs [source.git/get-jgit (fn [_path {:keys [remote-url token]}]
+                                                        (swap! attempted conj {:remote-sync-url   remote-url
+                                                                               :remote-sync-token token})
+                                                        nil)]
         (mt/with-temporary-setting-values [remote-sync-url   "https://github.com/test/repo.git"
                                            remote-sync-token "pat-secret"
                                            remote-sync-type  :read-write]
@@ -1863,6 +1864,7 @@
             (let [resp (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                              {:remote-sync-url   "https://evil.example.com/repo.git"
                                               :remote-sync-token (setting/obfuscate-value "pat-secret")})]
+              (is (= "secret-audience-mismatch" (:error-code resp)))
               (is (= "This secret is not bound to the requested audience." (:message resp)))
               (is (= [] @attempted) "the repository was never reached, so the token never left")))
           (testing "with the token simply omitted the stored one is kept, so the move is refused at the write; the
@@ -1885,10 +1887,11 @@
                                          remote-sync-token  "pat-secret"
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (with-redefs [source.git/get-jgit  (fn [_path {:keys [remote-url token]}]
-                                             (swap! attempted conj {:remote-sync-url remote-url :remote-sync-token token})
-                                             nil)
-                      source.git/branches (fn [_] [])]
+        (mt/with-dynamic-fn-redefs [source.git/get-jgit  (fn [_path {:keys [remote-url token]}]
+                                                           (swap! attempted conj {:remote-sync-url   remote-url
+                                                                                  :remote-sync-token token})
+                                                           nil)
+                                    source.git/branches (fn [_] [])]
           (testing "with the token omitted"
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection"
                                              {:remote-sync-url "https://evil.example.com/repo.git"})]
@@ -1911,7 +1914,7 @@
     (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                        remote-sync-branch "main"
                                        remote-sync-token  "pat-secret"]
-      (with-redefs [source.git/get-jgit (constantly nil)]
+      (mt/with-dynamic-fn-redefs [source.git/get-jgit (constantly nil)]
         (is (= {:remote-url "https://github.com/test/repo.git" :branch "main" :token "pat-secret"}
                (select-keys (source/source-from-settings) [:remote-url :branch :token])))))))
 
@@ -1922,7 +1925,7 @@
           token     (u.secret/secret "pat-secret"
                                      {:audience-schema [:map [:remote-sync-url {:optional true} :string]]
                                       :audience        {:remote-sync-url "https://github.com/test/repo.git"}})]
-      (with-redefs [source.git/get-jgit (fn [_path args] (swap! attempted conj args) nil)]
+      (mt/with-dynamic-fn-redefs [source.git/get-jgit (fn [_path args] (swap! attempted conj args) nil)]
         (testing "the URL it was saved for"
           (is (some? (source.git/git-source "https://github.com/test/repo.git" "main" token nil)))
           (is (= ["pat-secret"] (map :token @attempted))))

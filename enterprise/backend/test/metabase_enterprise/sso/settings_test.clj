@@ -365,4 +365,4 @@
         (binding [api/*current-user-id* (mt/user->id :crowberto)]
           (setting/set-many! {:jwt-identity-provider-uri "https://new.example.com/sso"})
           (is (= "https://new.example.com/sso" (sso-settings/jwt-identity-provider-uri)))
-          (is (= "jwt-secret" (mt/plaintext (mt/plaintext (sso-settings/jwt-shared-secret))))))))))
+          (is (= "jwt-secret" (mt/plaintext (sso-settings/jwt-shared-secret)))))))))

@@ -96,9 +96,7 @@
 
 (mu/defn- hash-bcrypt :- ::api-keys.schema/key.hashed
   [k :- ::api-keys.schema/key.unhashed-or-secret]
-  (if (u.secret/secret? k)
-    (u.secret/derive-with k u.password/hash-bcrypt)
-    (u.password/hash-bcrypt k)))
+  (u.secret/maybe-derive-with k u.password/hash-bcrypt))
 
 (mu/defn- add-key
   "Adds the `key` based on the `:metabase.api-keys/unhashed-qkey passed in."

@@ -1068,13 +1068,14 @@
   - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
-                     (cond-> {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
-                              :headers {"x-metabase-instance-token"
-                                        (u.secret/maybe-expose (premium-features/premium-embedding-token) :disclosure/fixed-endpoint)}}
-                       ;; only an environment-supplied URL is deployment-controlled: a superuser can write the
-                       ;; stored setting through the generic settings API, which must not widen the policy
-                       (setting/env-var-value :llm-proxy-base-url)
-                       (assoc :network-policy-floor :allow-private)))]
+                     (let [token (u.secret/maybe-expose (premium-features/premium-embedding-token)
+                                                        :disclosure/fixed-endpoint)]
+                       (cond-> {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
+                                :headers {"x-metabase-instance-token" token}}
+                         ;; only an environment-supplied URL is deployment-controlled: a superuser can write the
+                         ;; stored setting through the generic settings API, which must not widen the policy
+                         (setting/env-var-value :llm-proxy-base-url)
+                         (assoc :network-policy-floor :allow-private))))]
     (if ai-proxy?
       (or proxy-auth
           (throw (ex-info (tru "AI proxy is not configured")

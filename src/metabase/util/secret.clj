@@ -18,9 +18,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [potemkin :as p]
-   [pretty.core :as pretty])
-  (:import
-   (java.net URI)))
+   [pretty.core :as pretty]))
 
 (set! *warn-on-reflection* true)
 
@@ -78,49 +76,22 @@
                    {:name :audience}))
 
 (defn canonical-audience
-  "Select and normalize the audience fields of `m` according to `schema`, an ordinary Malli map schema.
+  "The audience fields of `m` that `schema`, an ordinary Malli map schema, declares, each normalized by the schema it
+  is declared with. `m` may be a whole details or settings map; keys the schema does not name are dropped, and so are
+  fields that normalize to nothing: an absent key, `nil` and `\"\"` all mean unset. Never fills in a default for an
+  absent field.
 
-  The schema does the selecting, so a caller can hand in a whole details or settings map and let the declaration pick
-  out the fields that decide where a credential's bytes go and how they are protected. Fields absent from the schema
-  are not part of the audience and are ignored, as are fields that normalize to nothing -- an absent key, `nil` and
-  `\"\"` all mean unset, which matters because a form submits an untouched field as an empty string where storage
-  holds `nil`.
-
-  Use plain `:string`, `:int` and `:boolean` for most fields; [[::hostname]], [[::url-scheme]] and [[::url-path]] for
-  the three kinds whose spelling has a true equivalence Malli has no built-in for. `:string` is the safe default:
-  compared exactly, case and whitespace and all, so a field only loses strictness by naming a schema that relaxes it.
-  None of the relaxations can make two genuinely different destinations compare equal.
-
-  It deliberately does **not** resolve defaults. Nothing in Metabase records what an absent port resolves to -- every
-  driver connection property carries a `:placeholder`, never a `:default`, and the real default is applied inside the
-  JDBC driver. Filling one in here would duplicate knowledge that lives outside this codebase and can drift, and a
-  drifted default silently releases a secret bound to one destination to a different one. Leaving `nil` distinct from
-  an explicit value fails closed instead. The same reasoning rules out deriving a transport enum from `ssl` plus
-  `sslmode` plus driver behaviour -- declare the raw fields and a weakened channel reads as a changed audience without
-  anyone having to model what the channel means."
+  Plain `:string`, `:int` and `:boolean` compare exactly (a `:string` keeps case and whitespace); [[::hostname]],
+  [[::url-scheme]], [[::url-path]] and [[::url]] relax the comparison for the spellings those kinds treat as
+  equivalent."
   [schema m]
+  ;; nothing in Metabase records what an absent port resolves to (driver connection properties carry a `:placeholder`,
+  ;; never a `:default`, and the JDBC driver applies the real one), so filling a default in here would duplicate
+  ;; knowledge that can drift and silently release a secret to a different destination. `nil` stays distinct instead.
   (let [decode (mr/cached ::audience-decoder schema #(mc/decoder schema audience-transformer))]
     (into {}
           (remove (fn [[_ v]] (or (nil? v) (and (string? v) (str/blank? v)))))
           (decode (or m {})))))
-
-(mr/def ::url-audience
-  "Audience schema for the `{:scheme :host :port :path}` shape produced by [[url->audience-fields]]."
-  [:map
-   [:scheme {:optional true} ::url-scheme]
-   [:host   {:optional true} ::hostname]
-   [:port   {:optional true} :int]
-   [:path   {:optional true} ::url-path]])
-
-(defn url->audience-fields
-  "Decompose a base URL into the raw fields [[::url-audience]] describes. An absent port stays absent rather than being
-  filled in with the scheme's default, for the reason given on [[canonical-audience]]."
-  [url]
-  (let [uri (URI. (str/trim (str url)))]
-    {:scheme (.getScheme uri)
-     :host   (.getHost uri)
-     :port   (let [p (.getPort uri)] (when (pos? p) p))
-     :path   (.getPath uri)}))
 
 (defn same-audience?
   "Whether a secret bound to `stored` may be presented to `incoming`, comparing both under `schema`.
@@ -143,9 +114,12 @@
 
   * `to-creator` -- showing a just-created credential to its creator, once.
   * `fixed-endpoint` -- presenting it to a peer no setting selects, so there is no audience to compare. The Slack API
-    is the example: its address is not configurable, so nothing a caller writes can redirect the credential."
+    is the example: its address is not configurable, so nothing a caller writes can redirect the credential.
+  * `local-keystore` -- unlocking a keystore file on this instance's own disk, which never leaves the process but
+    needs the plaintext as a `char[]` rather than a derivation."
   #{:disclosure/to-creator
-    :disclosure/fixed-endpoint})
+    :disclosure/fixed-endpoint
+    :disclosure/local-keystore})
 
 (def ^:const mask-string
   "The fixed, value-independent portion of a mask. Constant width so it leaks neither the length nor any character of
@@ -166,7 +140,8 @@
     [[disclosure-reasons]]. Throws unless the secret is bound to a matching audience. There is deliberately no arity
     that omits it.")
   (derive-with [this f]
-               "Apply `f` to the plaintext and return its result, without the plaintext ever becoming a binding in caller scope.
+               "Apply `f` to the plaintext and return its result, without the plaintext ever becoming a binding in
+    caller scope.
 
     For one-way derivations that need caller-supplied logic and so cannot be methods here -- hashing a credential for
     storage being the motivating case, since this namespace must not depend on the crypto layer. Weaker than a method
@@ -182,43 +157,44 @@
   (bound-audience [this]
                   "The canonical audience this secret is bound to, or `nil` if it is not bound to a network peer."))
 
+(defn- assert-same-audience!
+  "Throw a 400 with `:error-code :secret-audience-mismatch` unless `requested` names the audience `bound`, comparing
+  both under `schema`. `bound` is `nil` for a secret not bound to any network peer, which is refused outright."
+  [schema bound requested]
+  (when (nil? bound)
+    (throw (ex-info "This secret has no bound audience, so it cannot be presented to a network peer."
+                    {:error-code :secret-unbound})))
+  (when-not (same-audience? schema bound requested)
+    ;; the only way to reach a mismatch is a caller-supplied destination, so this is always a client error
+    (throw (ex-info (tru "This secret is not bound to the requested audience.")
+                    {:status-code 400
+                     :error-code  :secret-audience-mismatch
+                     :bound       bound
+                     :requested   (canonical-audience schema requested)}))))
+
+(defn- assert-disclosure-reason!
+  "Throw unless `reason` is one of [[disclosure-reasons]]."
+  [reason]
+  (when-not (contains? disclosure-reasons reason)
+    (throw (ex-info (format "Unknown disclosure reason %s" (pr-str reason))
+                    {:error-code :secret-unknown-disclosure-reason
+                     :reason     reason}))))
+
 (p/deftype+ Secret [value-fn audience-schema audience prefix-length]
   ISecret
   (expose [_this requested]
     (cond
-      (keyword? requested)
-      (if (contains? disclosure-reasons requested)
-        (value-fn)
-        (throw (ex-info (tru "Unknown disclosure reason {0}" (pr-str requested))
-                        {:error-code :secret-unknown-disclosure-reason
-                         :reason     requested})))
-
-      (map? requested)
-      (cond
-        (nil? audience)
-        (throw (ex-info (tru "This secret has no bound audience, so it cannot be presented to a network peer.")
-                        {:error-code :secret-unbound}))
-
-        (same-audience? audience-schema audience requested)
-        (value-fn)
-
-        :else
-        ;; the only way to reach a mismatch is a caller-supplied destination, so this is always a client error
-        (throw (ex-info (tru "This secret is not bound to the requested audience.")
-                        {:status-code 400
-                         :error-code  :secret-audience-mismatch
-                         :bound       audience
-                         :requested  (canonical-audience audience-schema requested)})))
-
-      :else
-      (throw (ex-info (tru "An audience must be an audience map or a known disclosure reason.")
-                      {:error-code :secret-invalid-audience}))))
+      (keyword? requested) (assert-disclosure-reason! requested)
+      (map? requested)     (assert-same-audience! audience-schema audience requested)
+      :else                (throw (ex-info "An audience must be an audience map or a known disclosure reason."
+                                           {:error-code :secret-invalid-audience})))
+    (value-fn))
 
   (derive-with [_this f] (f (value-fn)))
 
   (prefix [_this]
     (when-not prefix-length
-      (throw (ex-info (tru "This secret declares no prefix length, so no part of it is safe to reveal.")
+      (throw (ex-info "This secret declares no prefix length, so no part of it is safe to reveal."
                       {:error-code :secret-no-declared-prefix})))
     (let [v (str (value-fn))]
       (subs v 0 (min (long prefix-length) (count v)))))
@@ -242,7 +218,7 @@
 ;; the interface so every implementation is covered, and an interface impl wins over the `Object` catch-all.
 (json/add-encoder metabase.util.secret.ISecret
                   (fn [_secret _generator]
-                    (throw (ex-info (trs "Refusing to JSON-encode a Secret: expose it to an audience, or mask it, first.")
+                    (throw (ex-info "Refusing to JSON-encode a Secret: expose it to an audience, or mask it, first."
                                     {:error-code :secret-json-encode}))))
 
 (defn secret
@@ -254,7 +230,8 @@
     [[canonical-audience]] takes. Declare it once per integration. Required alongside `:audience`, and used again to
     normalize the audience a caller later presents to [[expose]], so both sides are compared the same way.
   * `:audience` -- the record the secret lives in, from which the schema selects the audience fields. Nothing is
-    persisted, so changing what counts as an audience never invalidates a stored secret.
+    persisted, so changing what counts as an audience never invalidates a stored secret. When the schema selects
+    nothing from it the secret is unbound: it opens to a disclosure reason, never to a network peer.
   * `:prefix-length` -- how many leading characters this *kind* of secret may reveal, for kinds whose prefix is a
     non-sensitive lookup identifier (an API key's `mb_1234`). Drives both [[prefix]] and [[mask]]. Omit it and the
     secret has no revealable part and masks opaquely."
@@ -262,11 +239,13 @@
    (secret value nil))
   ([value {schema :audience-schema, aud :audience, prefix-length :prefix-length}]
    (when (and aud (not schema))
-     (throw (ex-info (tru "A secret bound to an audience must declare an :audience-schema for comparing it.")
+     (throw (ex-info "A secret bound to an audience must declare an :audience-schema for comparing it."
                      {:error-code :secret-missing-audience-schema})))
    (->Secret (constantly value)
              schema
-             (when aud (canonical-audience schema aud))
+             ;; a record the schema selects nothing from binds to no destination: `{}` would compare equal to every
+             ;; requested map under an empty schema and so open to any peer
+             (when aud (not-empty (canonical-audience schema aud)))
              prefix-length)))
 
 (defn secret?
@@ -299,11 +278,6 @@
             t))
         (take-while some? (iterate ex-cause e))))
 
-(defn audience-mismatch?
-  "Whether `e` is, or was caused by, a refusal to present a secret to an audience it is not bound to."
-  [e]
-  (some? (audience-mismatch e)))
-
 (defn rethrow-if-audience-mismatch!
   "Rethrow the refusal in `e` if there is one; return nil otherwise.
 
@@ -327,16 +301,6 @@
   (if (secret? v)
     (derive-with v f)
     (f v)))
-
-(defn masked?
-  "Whether `v` looks like a value produced by [[mask]] -- i.e. the client echoed back a mask rather than supplying a
-  new secret.
-
-  This answers a *data* question and is deliberately not an authorization primitive: whether a caller may use a stored
-  secret is decided by the audience comparison, never by recognizing a mask. A forged or malformed mask therefore
-  cannot authorize anything; at worst it is treated as a freshly supplied value, which fails safe."
-  [v]
-  (boolean (and (string? v) (str/includes? v mask-string))))
 
 (mr/def ::secret
   "An instance of a metabase.util.secret.ISecret."

@@ -1727,6 +1727,13 @@
                    :where [:and (when topic [:= :topic (name topic)])
                            (when model-id [:= :model_id model-id])]})))
 
+(defn setting-update-audit-event-count
+  "The number of audit-log entries recording a write to the setting named `setting-name` (a string, e.g.
+  `\"ldap-password\"`)."
+  [setting-name]
+  (count (filter #(= setting-name (get-in % [:details :key]))
+                 (t2/select :model/AuditLog :topic :setting-update))))
+
 (defn all-entries-for
   "Return all audit log entries for a particular object. If you omit the topic, will get all audit logs. You must
   provide a model so we can disambiguate dash 4 from card 4."

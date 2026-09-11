@@ -171,12 +171,12 @@
   :export?    false
   :audit      :no-value
   :sensitive? true
-  ;; see [[metabase.channel.settings/slack-app-token]] -- Slack's endpoint is not configurable
+  ;; Slack's endpoint is not configurable, as for metabase.channel.settings/slack-app-token
   :audience   {})
 
 (defn slack-connect-client-secret-for-slack-api
-  "The Slack Connect client secret as plaintext, for presenting to Slack's OIDC endpoint, which is not configurable.
-  See [[metabase.channel.settings/slack-app-token-for-slack-api]]."
+  "The plaintext of [[slack-connect-client-secret]], or nil; opened with `:disclosure/fixed-endpoint` because Slack's
+  OIDC endpoint is not configurable."
   []
   (some-> (slack-connect-client-secret) (u.secret/expose :disclosure/fixed-endpoint)))
 

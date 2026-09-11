@@ -42,7 +42,8 @@
               body default-email-override-settings]
           (doseq [;; test what happens on both a successful and an unsuccessful connection.
                   [success? f] {true  (fn [thunk]
-                                        (mt/with-dynamic-fn-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+                                        (mt/with-dynamic-fn-redefs [email/test-smtp-settings
+                                                                    (constantly {::email/error nil})]
                                           (thunk)))
                                 false (fn [thunk]
                                         (with-redefs [email/retry-delay-ms 0]
@@ -80,7 +81,9 @@
                                              email-smtp-host-override     "www.test.com"
                                              email-smtp-password-override "preexisting"]
             (mt/with-dynamic-fn-redefs [email/test-smtp-connection (fn [settings]
-                                                                     (let [obfuscated? (some-> (:pass settings) mt/plaintext (str/starts-with? "****"))]
+                                                                     (let [obfuscated? (some-> (:pass settings)
+                                                                                               mt/plaintext
+                                                                                               (str/starts-with? "****"))]
                                                                        (is (not obfuscated?) "We received an obfuscated password!")
                                                                        (if obfuscated?
                                                                          {::email/error (ex-info "Sent obfuscated password" {})}
@@ -132,7 +135,7 @@
 (deftest override-host-change-requires-the-password-again-test
   (testing "moving the custom SMTP server while the stored override password would be reused is refused (SEC:
            credential redirection), before test-smtp-connection would have delivered it there"
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (mt/with-premium-features [:cloud-custom-smtp]
         ;; a successful PUT switches the override on; bind it so the test hands it back the way it found it
         (tu/with-temporary-setting-values [smtp-override-enabled        false
@@ -146,12 +149,13 @@
                                                                    (swap! attempted conj settings)
                                                                    {::email/error nil})]
               (testing "a new host with the mask echoed back"
-                (let [resp (mt/user-http-request :crowberto :put 400 "ee/email/override"
+                (let [mask (setting/obfuscate-value "override-secret")
+                      resp (mt/user-http-request :crowberto :put 400 "ee/email/override"
                                                  {:email-smtp-host-override     "evil.example.com"
                                                   :email-smtp-port-override     465
                                                   :email-smtp-security-override "tls"
                                                   :email-smtp-username-override "mb"
-                                                  :email-smtp-password-override (setting/obfuscate-value "override-secret")})]
+                                                  :email-smtp-password-override mask})]
                   (is (= "secret-audience-mismatch" (:error-code resp)))
                   (is (= [] @attempted) "no SMTP connection was attempted, so the password never left")))
               (testing "the stored settings are untouched"
@@ -170,7 +174,7 @@
 
 (deftest smtp-settings-open-the-stored-override-password-test
   (testing "with custom SMTP enabled, the send path opens the stored override Secret against the override destination"
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (mt/with-premium-features [:cloud-custom-smtp]
         ;; the override settings have to exist before the override can be switched on
         (tu/with-temporary-setting-values [email-smtp-host-override     "smtp.override.example.com"

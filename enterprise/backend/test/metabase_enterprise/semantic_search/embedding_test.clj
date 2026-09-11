@@ -734,10 +734,10 @@
               (#'embedding/embedding-service-resolve-config!))))))
 
 (deftest embedding-service-resolve-config-refuses-a-key-bound-elsewhere-test
-  (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"]
-    (with-redefs [semantic.settings/ee-embedding-service-api-key
-                  (constantly (u.secret/secret "embed-secret"
-                                               {:audience-schema [:map [:ee-embedding-service-base-url {:optional true} :string]]
-                                                :audience        {:ee-embedding-service-base-url "https://other.example.com"}}))]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
-                            (#'embedding/embedding-service-resolve-config!))))))
+  (let [secret (u.secret/secret "embed-secret"
+                                {:audience-schema [:map [:ee-embedding-service-base-url {:optional true} :string]]
+                                 :audience        {:ee-embedding-service-base-url "https://other.example.com"}})]
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"]
+      (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-api-key (constantly secret)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
+                              (#'embedding/embedding-service-resolve-config!)))))))

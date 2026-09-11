@@ -2107,9 +2107,13 @@
       (testing "a write that leaves the audience alone goes through, including a differently-spelled equal value"
         (setting/set-many! {:test-audience-host "DB.Example.com" :test-audience-port "5432"})
         (is (= "hunter2" (mt/plaintext (test-audience-password)))))
-      (testing "and so does a bulk write that only touches unrelated settings"
+      (testing "and so does a write that resubmits an audience field with its current value"
         (setting/set-many! {:test-audience-port 5432})
-        (is (= "hunter2" (mt/plaintext (test-audience-password))))))))
+        (is (= "hunter2" (mt/plaintext (test-audience-password)))))
+      (testing "and so does a bulk write that only touches unrelated settings"
+        (mt/with-temporary-setting-values [test-setting-1 "unrelated"]
+          (setting/set-many! {:test-setting-1 "still unrelated"})
+          (is (= "hunter2" (mt/plaintext (test-audience-password)))))))))
 
 (deftest audience-guard-does-not-apply-with-no-stored-secret-test
   (mt/with-temporary-setting-values [test-audience-host     "db.example.com"
@@ -2198,9 +2202,15 @@
         (is (u.secret/secret? s))
         (is (= "env-secret" (u.secret/expose s {:test-audience-host "db.example.com" :test-audience-port 5432})))))))
 
-(deftest unbound-secret-stays-a-string-test
+(deftest unbound-secret-is-wrapped-but-opens-to-no-peer-test
   (mt/with-temporary-setting-values [test-audience-unbound-secret "signing-key"]
-    (is (= "signing-key" (test-audience-unbound-secret)))))
+    (let [s (test-audience-unbound-secret)]
+      (is (u.secret/secret? s))
+      (testing "it can be derived from in-process"
+        (is (= "signing-key" (u.secret/derive-with s identity))))
+      (testing "but there is no network peer it is bound to"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no bound audience"
+                              (u.secret/expose s {:test-audience-host "db.example.com"})))))))
 
 (deftest custom-getter-is-bound-too-test
   (mt/with-temporary-setting-values [test-audience-host                  "db.example.com"
@@ -2297,6 +2307,19 @@
           (is (= "env.example.com" (test-audience-host)))
           (is (= "hunter2" (mt/plaintext (test-audience-password)))))))))
 
+(deftest audience-guard-refuses-a-move-leaning-on-an-env-supplied-secret-test
+  (testing "a secret an env var supplies cannot be re-supplied by a write: the row lands where nothing reads it, so a
+           move that offers a new value alongside is still reusing the stored credential and is refused"
+    (mt/with-temporary-setting-values [test-audience-host "db.example.com"
+                                       test-audience-port 5432]
+      (mt/with-temp-env-var-value! [mb-test-audience-password "env-secret"]
+        (binding [api/*current-user-id* (mt/user->id :crowberto)]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"must be provided again"
+               (setting/set-many! {:test-audience-host     "evil.example.com"
+                                   :test-audience-password "brand-new"})))
+          (is (= "db.example.com" (test-audience-host))))))))
+
 (defsetting test-audience-no-env-host
   "Host for the audience tests, but one an env var is not allowed to supply."
   :encryption         :no
@@ -2330,15 +2353,11 @@
           (is (true? (setting/write-visible? :test-audience-no-env-host))))))))
 
 (deftest audience-schemas-are-named-not-inlined-test
-  (let [definition {:name :test-setting :munged-name "test-setting" :namespace 'x :description "d"
-                    :type :string :default nil :tag 'String :sensitive? false :visibility :admin
-                    :encryption :no :export? false :cache? true :feature nil :database-local :never
-                    :user-local :never :deprecated nil :on-change nil :doc nil :audit :never
-                    :can-read-from-env? true :init nil :enabled? nil :setter nil :getter nil
-                    :deprecated-name nil :base nil}
+  (let [definition (setting/resolve-setting :test-audience-password)
         audience?  (fn [audience]
-                     (mr/validate [:map [:audience [:maybe [:map-of :keyword :keyword]]]]
-                                  (assoc definition :audience audience)))]
+                     (mr/validate @#'setting/SettingDefinition (assoc definition :audience audience)))]
+    (testing "the registered definition itself is what the schema is checked against"
+      (is (true? (mr/validate @#'setting/SettingDefinition definition))))
     (testing "a named schema, registered or built-in, is how an audience field declares its comparison"
       (is (true? (audience? {:test-audience-host :metabase.util.secret/hostname})))
       (is (true? (audience? {:test-audience-port :int})))

@@ -47,9 +47,10 @@
     (do
       (log/warnf "[slackbot] File exceeds size limit: error=%s" size-error)
       {:error size-error :filename name})
-    (let [temp-file (java.io.File/createTempFile "slack-upload-" (str "-" name))]
+    (let [temp-file (java.io.File/createTempFile "slack-upload-" (str "-" name))
+          token     (channel.settings/slack-app-token-for-slack-api)]
       (try
-        (with-open [^java.io.InputStream stream (slackbot.client/download-file-stream {:token (channel.settings/slack-app-token-for-slack-api)} url_private)]
+        (with-open [^java.io.InputStream stream (slackbot.client/download-file-stream {:token token} url_private)]
           (io/copy stream temp-file)
           (let [result (upload/create-csv-upload!
                         {:filename      name

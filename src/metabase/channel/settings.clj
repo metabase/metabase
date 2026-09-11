@@ -20,10 +20,8 @@
   :audience   {})
 
 (defn slack-app-token-for-slack-api
-  "The Slack app token as plaintext, for presenting to the Slack API.
-
-  Slack's endpoint is not configurable, so the token declares `:audience {}` and there is no destination to compare;
-  the disclosure is named rather than checked. Use [[slack-app-token]] wherever only its presence matters."
+  "The plaintext of [[slack-app-token]], or nil; opened with `:disclosure/fixed-endpoint` because Slack's endpoint is
+  not configurable. Use [[slack-app-token]] wherever only its presence matters."
   []
   (some-> (slack-app-token) (u.secret/expose :disclosure/fixed-endpoint)))
 
