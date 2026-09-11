@@ -160,10 +160,10 @@ jobs:
           docker pull ${{ steps.image.outputs.full_image }}
           ```
 
-  verify-docker-pull-amd64: 
+  verify-docker-pull-amd64:
     needs: containerize
-    if: >- 
-      inputs.release && 
+    if: >-
+      inputs.release &&
       inputs.registry != 'ecr'
     name: verify-docker-pull-amd64 (${{ inputs.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -186,8 +186,8 @@ jobs:
   verify-docker-pull-arm:
     needs: containerize
     if: >-
-      inputs.release && 
-      inputs.registry != 'ecr' && 
+      inputs.release &&
+      inputs.registry != 'ecr' &&
       contains(inputs.platforms, 'linux/arm64')
     name: verify-docker-pull-arm (${{ inputs.edition }})
     runs-on: arm-ubuntu-24-2core
