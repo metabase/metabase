@@ -99,5 +99,6 @@ These components are available via the `InteractiveQuestion` namespace (like `<I
 - [Embed the query builder](./query-builder.md)
 - [Dashboard component reference](./dashboard-reference.md)
 - [Modular embedding components](./components.md)
-- [Modular embedding parameters](./parameters.md)
+- [Embedding parameters](./parameters.md)
+- [Parameters reference](./parameters-reference.md)
 - [Appearance](./appearance.md)

@@ -276,6 +276,8 @@ categories:
                 url: "embedding/ai-chat"
           - name: "Filters and parameters"
             url: "embedding/parameters"
+          - name: "Parameters reference"
+            url: "embedding/parameters-reference"
           - name: "Appearance"
             url: "embedding/appearance"
           - name: "Custom visualizations"

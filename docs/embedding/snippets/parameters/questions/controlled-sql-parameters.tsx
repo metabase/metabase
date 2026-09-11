@@ -16,7 +16,7 @@ const ExampleControlled = () => {
   const handleSqlParametersChange = (payload: SqlParameterChangePayload) => {
     // Sync your local state on every applied change. `payload.source` is one of:
     //   "initial-state" — post-load snapshot, fired once per question load
-    //   "manual-change" — user edited a parameter widget
+    //   "manual-change" — someone changed a filter widget
     //   "auto-change"   — your push was normalized; re-sync from `payload.parameters`
     setSqlParameters(payload.parameters);
   };
@@ -31,14 +31,4 @@ const ExampleControlled = () => {
   // [<endsnippet example-controlled>]
 };
 
-const ExampleClear = () => (
-  // [<snippet example-clear>]
-  // Setting a SQL parameter to `null` clears it (ignores the parameter's default).
-  <InteractiveQuestion
-    questionId={questionId}
-    sqlParameters={{ state: null }}
-  />
-  // [<endsnippet example-clear>]
-);
-
-export { ExampleControlled, ExampleClear };
+export { ExampleControlled };
