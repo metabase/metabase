@@ -42,10 +42,6 @@
     [:sequential {:description (str "Limits tables and metrics to library collections. "
                                     "Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`.")}
      CollectionRef]]
-   [:question-collection-refs {:optional true}
-    [:sequential {:description (str "Includes saved questions from collections. "
-                                    "Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`.")}
-     CollectionRef]]
    [:include-data-library? {:optional true}
     [:boolean {:description "Whether to include the root data library."}]]
    [:include-metric-library? {:optional true}
@@ -61,7 +57,6 @@
   Each entry holds entity maps shaped by the `metabase.typed-schemas.schema.*`
   builders; `:key` on each entity seeds the generated object keys."
   [:map {:closed true}
-   [:questions [:sequential :map]]
    [:models    [:sequential :map]]
    [:tables    [:sequential :map]]
    [:metrics   [:sequential :map]]])
@@ -71,13 +66,12 @@
   (throw (ex-info message {:status-code 400})))
 
 (defn- validate-options!
-  [{:keys [database library-collection-refs question-collection-refs
+  [{:keys [database library-collection-refs
            include-data-library? include-metric-library?] :as options}]
   (when-not (mr/validate SemanticSchemaOptions options)
     (invalid-options! "Invalid semantic schema options."))
   (let [include-library-root? (or include-data-library? include-metric-library?)
         collection-scoped?    (or (seq library-collection-refs)
-                                  (seq question-collection-refs)
                                   include-library-root?)]
     (when (and collection-scoped? database)
       (invalid-options!
@@ -114,16 +108,14 @@
   ([options]
    (fetch-items options source/app-db-source))
   ([options source]
-   (let [{:keys [database library-collection-refs question-collection-refs
+   (let [{:keys [database library-collection-refs
                  include-data-library? include-metric-library? include-models?]
           :or {library-collection-refs  []
-               question-collection-refs []
                include-data-library?    false
                include-metric-library?  false
                include-models?          false}} options]
      (validate-options! (assoc options
                                :library-collection-refs library-collection-refs
-                               :question-collection-refs question-collection-refs
                                :include-data-library? include-data-library?
                                :include-metric-library? include-metric-library?
                                :include-models? include-models?))
@@ -132,21 +124,15 @@
                                                           :include-data-library? include-data-library?
                                                           :include-metric-library? include-metric-library?})
            database-ids            (source/database-ids source database)
-           question-collection-ids (source/collection-ids source question-collection-refs)
            models                  (models-for-scope source database-ids include-models?)]
        (if (or library-scope
-               (seq question-collection-refs)
                (and include-models? (nil? database-ids)))
          (let [{:keys [tables metrics]} (when library-scope
                                           (library-items source library-scope))]
-           {:questions (if (seq question-collection-refs)
-                         (source/questions source nil question-collection-ids)
-                         [])
-            :models    (vec models)
+           {:models    (vec models)
             :tables    (vec tables)
             :metrics   (vec metrics)})
-         {:questions (source/questions source database-ids nil)
-          :models    (vec models)
+         {:models    (vec models)
           :tables    (source/tables source database-ids nil)
           :metrics   (source/metrics source database-ids nil)})))))
 
@@ -158,12 +144,11 @@
   to the current time and the configured site URL."
   ([items]
    (create-schema items nil))
-  ([{:keys [questions models tables metrics]} {:keys [generated-at instance-url]}]
+  ([{:keys [models tables metrics]} {:keys [generated-at instance-url]}]
    (array-map
     :schemaVersion 2
     :generatedAt   (str (or generated-at (Instant/now)))
     :metabase      {:instanceUrl (or instance-url (system/site-url))}
-    :questions     (common/keyed-map questions)
     :models        (common/keyed-model-map models)
     :tables        (common/keyed-map tables)
     :metrics       (common/keyed-map metrics))))

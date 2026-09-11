@@ -34,9 +34,15 @@ module.exports = {
       ...RESOLVE_ALIASES,
       ...(embeddingSdkDistPath
         ? {
+            // The package alias below points at a bundle file, so subpath
+            // exports cannot resolve through it and each needs its own entry.
             [`${SDK_PACKAGE_NAME}/data-app-dev`]: path.join(
               embeddingSdkDistPath,
               "data-app-dev.js",
+            ),
+            [`${SDK_PACKAGE_NAME}/data-app`]: path.join(
+              embeddingSdkDistPath,
+              "data-app.js",
             ),
           }
         : null),
