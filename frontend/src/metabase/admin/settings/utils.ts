@@ -31,3 +31,13 @@ export const getExtraFormFieldProps = (setting?: SettingDefinition) => {
     descriptionProps: SETTINGS_FIELD_DESCRIPTION_PROPS,
   };
 };
+
+// an unset field can show its default as the placeholder, while an env-locked one shows the readOnly notice instead
+export const getDefaultPlaceholder = (
+  setting?: SettingDefinition,
+): string | undefined => {
+  if (setting?.is_env_setting || typeof setting?.default !== "string") {
+    return undefined;
+  }
+  return setting.default;
+};

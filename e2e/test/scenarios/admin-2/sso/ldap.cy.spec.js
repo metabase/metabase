@@ -1,10 +1,5 @@
 const { H } = cy;
 
-import {
-  checkGroupConsistencyAfterDeletingMappings,
-  crudGroupMappingsWidget,
-} from "./shared/group-mappings-widget";
-
 describe(
   "scenarios > admin > settings > SSO > LDAP",
   { tags: "@external" },
@@ -12,7 +7,7 @@ describe(
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      cy.intercept("PUT", "/api/setting").as("updateSettings");
+      cy.intercept("PUT", /\/api\/setting$/).as("updateSettings");
       cy.intercept("PUT", "/api/setting/*").as("updateSetting");
       cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
       cy.intercept("POST", "/api/dataset").as("dataset");
@@ -144,24 +139,110 @@ describe(
       });
     });
 
-    describe("Group Mappings Widget", () => {
+    describe("Group mapping", () => {
       beforeEach(() => {
-        cy.intercept("GET", "/api/setting").as("getSettings");
-        cy.intercept("GET", "/api/session/properties").as(
-          "getSessionProperties",
-        );
         cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
         cy.intercept("PUT", "/api/permissions/membership/*/clear").as(
           "clearGroup",
         );
+        cy.visit("/admin/settings/authentication/ldap");
       });
 
       it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
-        crudGroupMappingsWidget("ldap");
+        turnGroupMappingOn();
+
+        cy.log("Every mapping is saved as soon as it is added");
+        addMapping("cn=People1", ["Administrators", "data", "nosql"]);
+        addMapping("cn=People2", ["collection", "readonly"]);
+
+        deleteMapping(
+          "cn=People1",
+          /delete the groups/i,
+          "Remove mapping and delete groups",
+        );
+        cy.wait(["@deleteGroup", "@deleteGroup"]);
+
+        cy.log("Deleted groups are no longer offered for new mappings");
+        newMappingButton().click();
+        groupsPicker().click();
+        cy.findByRole("listbox")
+          .should("contain", "collection")
+          .and("not.contain", "data")
+          .and("not.contain", "nosql");
+        cy.button("Cancel").click();
+
+        cy.log(
+          "Deleting the last mapping clears its groups and keeps group mapping on",
+        );
+        deleteMapping(
+          "cn=People2",
+          /remove all members/i,
+          "Remove mapping and members",
+        );
+        cy.wait(["@clearGroup", "@clearGroup"]);
+        groupMappingSwitch().should("be.checked");
+        groupMappingSection()
+          .findByText("No mappings yet")
+          .should("be.visible");
+
+        cy.log("Deleted groups are gone and cleared groups have no members");
+        cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
+          const names = groups.map((group) => group.name);
+          expect(names).to.include.members(["collection", "readonly"]);
+          expect(names).not.to.include("data");
+          expect(names).not.to.include("nosql");
+          const memberCount = (name) =>
+            groups.find((group) => group.name === name).member_count;
+          expect(memberCount("collection")).to.equal(0);
+          expect(memberCount("readonly")).to.equal(0);
+        });
       });
 
-      it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
-        checkGroupConsistencyAfterDeletingMappings("ldap");
+      it("should drop deleted groups from the remaining mappings and keep the mappings while group mapping is off", () => {
+        turnGroupMappingOn();
+        addMapping("cn=People1", ["Administrators", "data", "nosql"]);
+        addMapping("cn=People2", ["data", "collection"]);
+        addMapping("cn=People3", ["collection", "readonly"]);
+
+        cy.log(
+          "Deleting a mapping's groups removes them from the other mappings too",
+        );
+        deleteMapping(
+          "cn=People2",
+          /delete the groups/i,
+          "Remove mapping and delete groups",
+        );
+        cy.wait(["@deleteGroup", "@deleteGroup"]);
+        mappingRow("cn=People1").should("contain", "Administrators, nosql");
+        mappingRow("cn=People3")
+          .should("contain", "readonly")
+          .and("not.contain", "collection");
+
+        cy.log("The same mappings come back after a reload");
+        // the row assertions retry until the reloaded page has rendered, so there is nothing to wait on
+        cy.reload();
+        mappingRow("cn=People1").should("contain", "Administrators, nosql");
+        mappingRow("cn=People3")
+          .should("contain", "readonly")
+          .and("not.contain", "collection");
+
+        cy.log(
+          "Turning group mapping off hides the mappings without losing them",
+        );
+        groupMappingSwitch().click({ force: true });
+        cy.wait("@updateSetting")
+          .its("request.body")
+          .should("deep.equal", { value: false });
+        groupMappingSection()
+          .findByText("Manual group mappings")
+          .should("not.exist");
+
+        groupMappingSwitch().click({ force: true });
+        cy.wait("@updateSetting")
+          .its("request.body")
+          .should("deep.equal", { value: true });
+        mappingRow("cn=People1").should("contain", "Administrators, nosql");
+        mappingRow("cn=People3").should("contain", "readonly");
       });
     });
   },
@@ -248,6 +329,51 @@ const getLdapCard = () => {
     .findByText("LDAP")
     .parent()
     .parent();
+};
+
+const groupMappingSection = () => cy.findByTestId("ldap-group-mapping-section");
+
+const groupMappingSwitch = () =>
+  cy.findByRole("switch", { name: "Group mapping" });
+
+const mappingRow = (name) =>
+  cy.contains('[data-testid="group-mapping-row"]', name);
+
+const newMappingButton = () =>
+  groupMappingSection().findByRole("button", { name: "New" });
+
+const groupsPicker = () => cy.findByLabelText("Metabase groups");
+
+// the switch saves on its own, so wait for that write before adding mappings
+const turnGroupMappingOn = () => {
+  groupMappingSwitch().should("not.be.checked").click({ force: true });
+  cy.wait("@updateSetting")
+    .its("request.body")
+    .should("deep.equal", { value: true });
+};
+
+// adding a mapping saves it right away, so wait for that write before moving on
+const addMapping = (name, groups) => {
+  newMappingButton().click();
+  cy.findByLabelText("LDAP group name").type(name);
+  groupsPicker().click();
+  groups.forEach((group) => {
+    cy.findByRole("option", { name: group }).click();
+  });
+  cy.button("Add mapping").click();
+  cy.wait("@updateSettings");
+  mappingRow(name).should("contain", groups.join(", "));
+};
+
+const deleteMapping = (name, consequenceLabel, confirmLabel) => {
+  mappingRow(name).findByLabelText("Delete mapping").click();
+  H.modal().within(() => {
+    cy.findByText("Remove this group mapping?").should("be.visible");
+    cy.findByText(consequenceLabel).click();
+    cy.button(confirmLabel).click();
+  });
+  cy.wait("@updateSettings");
+  mappingRow(name).should("not.exist");
 };
 
 const enterLdapPort = (value) => {
