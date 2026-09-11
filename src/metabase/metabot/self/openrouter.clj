@@ -135,7 +135,7 @@
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
   ([] (list-models {}))
   ([opts]
-   (adapter/listing supported-models
+   (adapter/model-listing supported-models
                     (adapter/fetch-catalog provider opts "/v1/models")
                     :name)))
 

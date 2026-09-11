@@ -227,19 +227,19 @@
                  {:id "unlisted" :name "Catalog U"}]]
     (testing "keeps only allow-listed ids, sorted by id"
       (is (= ["a-model" "b-model"]
-             (mapv :id (:models (adapter/listing allow-list entries))))))
+             (mapv :id (:models (adapter/model-listing allow-list entries))))))
     (testing "with no catalog-name-key the allow-list names win, so a catalog that starts carrying names cannot rename a model"
       (is (= ["Allow-list A" "Allow-list B"]
-             (mapv :display_name (:models (adapter/listing allow-list entries))))))
+             (mapv :display_name (:models (adapter/model-listing allow-list entries))))))
     (testing "a provider reads exactly the field it names, and is unaffected by the other being present"
       (is (= ["Catalog A name" "Catalog B name"]
-             (mapv :display_name (:models (adapter/listing allow-list entries :name)))))
+             (mapv :display_name (:models (adapter/model-listing allow-list entries :name)))))
       (is (= ["Catalog A display_name" "Catalog B display_name"]
-             (mapv :display_name (:models (adapter/listing allow-list entries :display_name))))))
+             (mapv :display_name (:models (adapter/model-listing allow-list entries :display_name))))))
     (testing "an entry missing that field falls back to the allow-list rather than the other field"
       (is (= ["Allow-list A"]
              (mapv :display_name
-                   (:models (adapter/listing allow-list
+                   (:models (adapter/model-listing allow-list
                                              [{:id "a-model" :display_name "Catalog A display_name"}]
                                              :name))))))))
 

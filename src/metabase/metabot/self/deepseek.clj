@@ -84,7 +84,7 @@
   `:ai-proxy?` is not supported for DeepSeek and throws when true."
   ([] (list-models {}))
   ([opts]
-   (adapter/listing supported-models (adapter/fetch-catalog provider opts))))
+   (adapter/model-listing supported-models (adapter/fetch-catalog provider opts))))
 
 ;;; --------------------------------------------- The thinking contract ------------------------------------------
 ;;;
