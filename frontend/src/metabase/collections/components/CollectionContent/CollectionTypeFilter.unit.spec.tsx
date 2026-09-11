@@ -4,6 +4,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import type { CollectionItemModel } from "metabase-types/api";
 
 import { CollectionTypeFilter } from "./CollectionTypeFilter";
+import { TYPE_FILTER_MODELS } from "./constants";
 
 type SetupOpts = {
   availableModels?: string[];
@@ -57,7 +58,7 @@ describe("CollectionTypeFilter", () => {
       "Document",
       "Table",
     ];
-    expect(checkboxes).toHaveLength(7);
+    expect(checkboxes).toHaveLength(TYPE_FILTER_MODELS.length);
     expect(checkboxes).toEqual(
       labels.map((label) => screen.getByLabelText(label)),
     );
