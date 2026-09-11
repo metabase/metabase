@@ -160,7 +160,9 @@
                   [:settings           {:optional true} [:maybe ms/VisualizationSettings]]
                   [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
                   [:json_unfolding     {:optional true} [:maybe :boolean]]]]
-  (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
+  (let [field             (-> (warehouse-schema-rest.db/field id)
+                              api/write-check
+                              (t2/hydrate :dimensions))
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
         (cond (not (contains? body :coercion_strategy))
@@ -187,24 +189,19 @@
                (not removed-fk?)
                (not= (:display_name field) display-name))
       (warehouse-schema-rest.db/rename-dimension-for-field! id display-name))
-    ;; everything checks out, now update the field
-    (api/check-500
-     (t2/with-transaction [_conn]
-       (when removed-fk?
-         (clear-dimension-on-fk-change! field))
-       (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-       (let [body (assoc body
-                         :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                         :effective_type effective-type
-                         :coercion_strategy coercion-strategy)]
-         (schema.field-user-settings/upsert-user-settings field body)
-         (warehouse-schema-rest.db/update-field!
-          id
-          (u/select-keys-when body
-                              {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
-                                          :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding
-                                          :data_sensitivity}
-                               :non-nil #{:display_name :visibility_type :settings}})))))
+    ;; everything checks out, now record the user's values -- metabase_field itself is sync-owned and unchanged
+    (t2/with-transaction [_conn]
+      (when removed-fk?
+        (clear-dimension-on-fk-change! field))
+      (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
+      (schema.field-user-settings/upsert-user-settings
+       field
+       (cond-> body
+         (or removed-fk? (contains? body :fk_target_field_id))
+         (assoc :fk_target_field_id (when-not removed-fk? fk-target-field-id))
+
+         (contains? body :coercion_strategy)
+         (assoc :effective_type effective-type :coercion_strategy coercion-strategy))))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
@@ -318,7 +315,7 @@
    _query-params
    {value-pairs :values} :- [:map {:closed true}
                              [:values ms/FieldValuesList]]]
-  (let [field (api/write-check :model/Field id)]
+  (let [field (api/write-check (warehouse-schema-rest.db/field id))]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
@@ -404,8 +401,8 @@
                                 [:remapped-id ms/PositiveInt]]
    {:keys [value]} :- [:map {:closed true}
                        [:value ms/NonBlankString]]]
-  (let [field          (api/read-check :model/Field id)
-        remapped-field (api/read-check :model/Field remapped-id)
+  (let [field          (-> (warehouse-schema-rest.db/field id) api/check-404 api/read-check)
+        remapped-field (-> (warehouse-schema-rest.db/field remapped-id) api/check-404 api/read-check)
         value          (parameters.field/parse-query-param-value-for-field field value)]
     (parameters.field/remapped-value field remapped-field value)))
 

@@ -3,8 +3,8 @@
   [[metabase.analyze.core/infer-data-sensitivity]], writing `:PUBLIC` when no rule matches so each field is scanned
   once. Selects fields whose `data_sensitivity` is `NULL` (or `PUBLIC` too under `force?`) across every active table
   in the database, hidden and cruft tables included. Inert unless [[metabase.sync.settings/data-sensitivity-scan-enabled]]
-  is true, except through [[scan-data-sensitivity!]]. User-set labels are protected by the `FieldUserSettings`
-  overlay applied on every Field update. [[reset-data-sensitivity!]] clears the classifier's own labels so a rule
+  is true, except through [[scan-data-sensitivity!]]. User-set labels live in `FieldUserSettings`, which readers apply
+  over the classifier's label, so the classifier never overwrites them. [[reset-data-sensitivity!]] clears the classifier's own labels so a rule
   change can reach fields that already carry a category."
   (:require
    [metabase.analyze.core :as analyze]
@@ -113,7 +113,7 @@
   With `:force? true` fields already labeled `:PUBLIC` are rescanned too; fields carrying a category are not. With
   `:reset? true` every classifier-written label is cleared first via [[reset-data-sensitivity!]] so the whole scope
   is recomputed under the current rules, and `:fields-reset` is added to the stats. User-set labels survive in
-  every mode because the `FieldUserSettings` overlay is applied on every Field update."
+  every mode because they live in `FieldUserSettings`, not in the Field."
   [database-or-table :- [:or i/DatabaseInstance i/TableInstance]
    & {:keys [force? reset?]} :- [:maybe [:map
                                          [:force? {:optional true} [:maybe :boolean]]

@@ -13,7 +13,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]))
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]))
 
 (defn- normalize-nfc-path
   "Normalize a `nfc-path` to a vector of strings so a driver emitting keywords doesn't churn against the
@@ -84,11 +84,12 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
-        ;; only sync comment if old value was blank so we don't overwrite user-set values
+        ;; only set the Field's semantic_type when it has none; a user override lives in FieldUserSettings
         new-semantic-type?
         (and (nil? old-semantic-type)
              (not= old-semantic-type new-semantic-type))
 
+        ;; only set the Field's description when it has none; a user override lives in FieldUserSettings
         new-comment?
         (and (str/blank? old-field-comment)
              (not (str/blank? new-field-comment)))
@@ -128,22 +129,17 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-base-type
                       new-base-type)
-           (doto
-            {:base_type           new-base-type
-             :effective_type      new-base-type
-             :coercion_strategy   nil
-             ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
-             :fingerprint_version 0
-             :fingerprint         nil
-             ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
-             :semantic_type       nil}
-             ;; we must override user-set values
-             (->> (schema.field-user-settings/upsert-user-settings metabase-field))))
-         ;; GHY-3388 self-heal: a Field with no coercion_strategy must have effective_type=base_type.
-         ;; We've observed customer instances where these drifted apart (likely from older Metabase
-         ;; versions). When base_type didn't change at this sync but the row is in the broken state,
-         ;; repair it. Wipe user-settings's stale effective_type too so sync-user-settings's merge-back
-         ;; doesn't re-introduce drift on the next field update.
+           (field-user-settings/unset-user-settings!
+            metabase-field [:effective_type :coercion_strategy :semantic_type])
+           {:base_type           new-base-type
+            :effective_type      new-base-type
+            :coercion_strategy   nil
+            ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
+            :fingerprint_version 0
+            :fingerprint         nil
+            ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
+            :semantic_type       nil})
+         ;; GHY-3388: a Field with no coercion_strategy must have effective_type=base_type
          (when (and (not new-base-type?)
                     (nil? old-coercion-strategy)
                     (some? old-effective-type)
@@ -152,9 +148,8 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-effective-type
                       new-base-type)
-           (let [et {:effective_type new-base-type}]
-             (schema.field-user-settings/upsert-user-settings metabase-field et)
-             et))
+           (field-user-settings/unset-user-settings! metabase-field [:effective_type :coercion_strategy])
+           {:effective_type new-base-type})
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)

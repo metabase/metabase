@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]
    [toucan2.tools.identity-query :as t2.identity-query]))
 
@@ -82,16 +83,6 @@
                                           [:in filter-column filter-ids])]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
-(mu/defn table-names-reducible
-  "A reducible of the id, name, and display name of every Table."
-  []
-  (t2/reducible-select [:model/Table :id :name :display_name]))
-
-(mu/defn field-names-reducible
-  "A reducible of the id, name, and display name of every Field."
-  []
-  (t2/reducible-select [:model/Field :id :name :display_name]))
-
 (mu/defn update-entity!
   "Apply `changes` to the `model` row with `id`, returning the number updated.
 
@@ -100,18 +91,6 @@
    id      :- [:or :int :string]
    changes :- [:map-of :keyword [:maybe :some]]]
   (t2/update! model id changes))
-
-(mu/defn set-table-display-name!
-  "Set the display name of the Table with `id`, returning the number updated."
-  [id           :- ::lib.schema.id/table
-   display-name :- :string]
-  (t2/update! :model/Table id {:display_name display-name}))
-
-(mu/defn set-field-display-name!
-  "Set the display name of the Field with `id`, returning the number updated."
-  [id           :- ::lib.schema.id/field
-   display-name :- :string]
-  (t2/update! :model/Field id {:display_name display-name}))
 
 (mu/defn insert-entity!
   "Insert the `model` `row` and return the inserted instance.
@@ -184,10 +163,10 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select :model/Field
              {:with-recursive [[[:parents ^:allow-subquery {:columns [:id :name :parent_id :table_id]}]
-                                ^:allow-subquery {:union-all [^:allow-subquery {:from   [[:metabase_field :mf]]
+                                ^:allow-subquery {:union-all [^:allow-subquery {:from   [(warehouse-schema-overlay/field-query {:alias :mf})]
                                                                                 :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
                                                                                 :where  [:= :id field-id]}
-                                                              ^:allow-subquery {:from   [[:metabase_field :pf]]
+                                                              ^:allow-subquery {:from   [(warehouse-schema-overlay/field-query {:alias :pf})]
                                                                                 :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
                                                                                 :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
               :from           [:parents]
@@ -196,7 +175,7 @@
 (mu/defn table-ref-columns
   "The id, Database id, name, and schema of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id))
+  (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn database-name
   "The name of the Database with `database-id`, or nil."
@@ -218,7 +197,7 @@
   [table-name  :- :string
    schema      :- [:maybe :string]
    database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id database-id))
+  (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id database-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn insert-inactive-table!
   "Insert an inactive Table named `table-name` in `schema` of the Database with `database-id` and return its id."
@@ -235,7 +214,7 @@
   [table-id   :- ::lib.schema.id/table
    field-name :- :string
    parent-id  :- [:maybe ms/PositiveInt]]
-  (t2/select-one-pk :model/Field :table_id table-id :name field-name :parent_id parent-id))
+  (t2/select-one-pk :model/Field :table_id table-id :name field-name :parent_id parent-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (defn- field-in-path-query
   [table-id [field & rest]]
@@ -253,7 +232,7 @@
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
   (when (seq field-names)
-    (t2/select-one-pk :model/Field (field-in-path-query table-id field-names))))
+    (t2/select-one-pk :model/Field (assoc (field-in-path-query table-id field-names) :from [(warehouse-schema-overlay/field-query)]))))
 
 (mu/defn field-in-path
   "The Field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
@@ -261,7 +240,7 @@
   [table-id    :- [:maybe ::lib.schema.id/table]
    field-names :- [:sequential :string]]
   (when (seq field-names)
-    (t2/select-one :model/Field (field-in-path-query table-id field-names))))
+    (t2/select-one :model/Field (assoc (field-in-path-query table-id field-names) :from [(warehouse-schema-overlay/field-query)]))))
 
 (mu/defn insert-inactive-field!
   "Insert an inactive, untyped Field named `field-name` under `parent-id` in the Table with `table-id` and return its

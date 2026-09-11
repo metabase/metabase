@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn transform-source
@@ -49,7 +50,7 @@
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field field-id))
+  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn target-table
   "The Table named `table-name` in `schema` of the Database with `database-id` also matching the key-value
@@ -63,12 +64,12 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table table-id))
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-for-transform
   "The Table owned by the Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Table :transform_id transform-id))
+  (t2/select-one :model/Table :transform_id transform-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn update-table!
   "Apply `changes` to the Table with `table-id`."
@@ -106,14 +107,16 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-vec :name [:model/Field :name :position]
                     :table_id table-id :active true
-                    {:order-by [[:position :asc]]}))
+                    {:from [(warehouse-schema-overlay/field-query)]
+                     :order-by [[:position :asc]]}))
 
 (mu/defn table-refs-matching
   "The id, Database id, schema, and name of the Tables matching any of `refs` (each a `[db-id schema table-name]`
   triple; `schema` may be nil)."
   [refs :- [:sequential [:tuple ms/PositiveInt [:maybe :string] :string]]]
   (t2/select [:model/Table :id :db_id :schema :name]
-             {:where (into [:or]
+             {:from [(warehouse-schema-overlay/table-query)]
+              :where (into [:or]
                            (map (fn [[db-id schema table-name]]
                                   [:and
                                    [:= :db_id db-id]
@@ -126,4 +129,4 @@
 (mu/defn table-refs
   "The id, Database id, schema, and name of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :schema :name] :id [:in table-ids]))
+  (t2/select [:model/Table :id :db_id :schema :name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))

@@ -73,6 +73,7 @@
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
+  :metabase/table-or-field-query                             {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -890,7 +891,12 @@
    :name    app-db-namespaces}]
 
  :config-in-ns
- {test-namespaces
+ {metabase.app-db.custom-migrations
+  {:linters
+   ;; a migration reads the rows as they were when it ran; applying today's user settings would make it drift
+   {:metabase/table-or-field-query {:level :off}}}
+
+  test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}

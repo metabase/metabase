@@ -11,9 +11,13 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
-(defn- db->fields [db]
+(defn- db->fields
+  "The name and description sync itself recorded for each Field of `db`, ignoring any description a user set."
+  [db]
   (let [table-ids (t2/select-pks-set :model/Table :db_id (u/the-id db))]
     (set (map (partial into {}) (t2/select ['Field :name :description] :table_id [:in table-ids])))))
 
@@ -47,18 +51,21 @@
     [["foo"]]]])
 
 (deftest comment-should-not-overwrite-custom-description-test
-  (testing (str "test changing the description in metabase db so we can check it is not overwritten by comment in "
-                "source db when resyncing")
+  (testing "a user-set description lives in FieldUserSettings and is never overwritten by resyncing, while the raw
+            Field still picks up the comment from the source db"
     (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       (mt/dataset update-desc
         (mt/with-temp-copy-of-db
-          ;; change the description in metabase while the source table comment remains the same
-          (t2/update! :model/Field {:id (mt/id "update_desc" "updated_desc")}, {:description "updated description"})
-          ;; now sync the DB again, this should NOT overwrite the manually updated description
-          (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
-          (is (= #{{:name (mt/format-name "id"), :description nil}
-                   {:name (mt/format-name "updated_desc"), :description "updated description"}}
-                 (db->fields (mt/db)))))))))
+          (let [field-id (mt/id "update_desc" "updated_desc")]
+            (t2/update! :model/Field field-id {:description nil})
+            (field-user-settings/upsert-user-settings {:id field-id} {:description "updated description"})
+            ;; resyncing writes the source comment onto the raw Field without touching the user's override
+            (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
+            (is (= #{{:name (mt/format-name "id"), :description nil}
+                     {:name (mt/format-name "updated_desc"), :description "original comment"}}
+                   (db->fields (mt/db))))
+            (is (= "updated description"
+                   (:description (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))))))))))
 
 (tx/defdataset ^:private comment-after-sync
   [["comment_after_sync"

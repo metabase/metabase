@@ -4,7 +4,8 @@
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay])
   (:import
    (clojure.lang PersistentVector)))
 
@@ -135,7 +136,7 @@
   {:select [(case select-column
               :id :mt.id
               :db_id :mt.db_id)]
-   :from   [[:metabase_table :mt]]
+   :from   [(warehouse-schema-overlay/table-query {:alias :mt})]
    :where  (if (or is-superuser?
                    (and is-data-analyst?
                         (contains? permission-mapping :perms/manage-table-metadata)))
@@ -227,7 +228,7 @@
                                        ^:allow-subquery
                                        {:select [:mt.id :dp.perm_type :dp.perm_value]
                                         :from   [[:data_permissions :dp]]
-                                        :join   [[:metabase_table :mt] [:= :mt.id :dp.table_id]]
+                                        :join   [(warehouse-schema-overlay/table-query {:alias :mt}) [:= :mt.id :dp.table_id]]
                                         :where  (into [:and
                                                        [:not= :dp.table_id nil]
                                                        user-groups-clause
@@ -237,7 +238,7 @@
                                        ^:allow-subquery
                                        {:select [:mt.id :dp.perm_type :dp.perm_value]
                                         :from   [[:data_permissions :dp]]
-                                        :join   [[:metabase_table :mt] [:= :mt.db_id :dp.db_id]]
+                                        :join   [(warehouse-schema-overlay/table-query {:alias :mt}) [:= :mt.db_id :dp.db_id]]
                                         :where  (into [:and
                                                        [:= :dp.table_id nil]
                                                        user-groups-clause
@@ -262,7 +263,7 @@
    permission-mapping              :- PermissionMapping]
   ^:allow-subquery
   {:select [:mt.id :dp.group_id :dp.perm_type :dp.perm_value]
-   :from   [[:metabase_table :mt]]
+   :from   [(warehouse-schema-overlay/table-query {:alias :mt})]
    :join   [[:data_permissions :dp] [:or
                                      [:and
                                       [:= :mt.db_id :dp.db_id]

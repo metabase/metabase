@@ -18,7 +18,6 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.lib-be.core :as lib-be]
-   [metabase.models.humanization :as humanization]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
@@ -124,7 +123,7 @@
    :check_for_updates                    (version/check-for-updates)
    :report_timezone                      (driver/report-timezone)
    ;; We deprecated advanced humanization but have this here anyways
-   :friendly_names                       (= (humanization/humanization-strategy) "advanced")
+   :friendly_names                       (= (setting/get :humanization-strategy) "advanced")
    :email_configured                     (setting/get :email-configured?)
    :slack_configured                     (setting/get :slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)

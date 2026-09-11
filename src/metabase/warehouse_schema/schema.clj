@@ -143,7 +143,10 @@
    [:nfc_path           [:maybe [:sequential [:or :string :keyword]]]]
    [:json_unfolding     [:maybe :boolean]]
    [:settings           [:maybe ::field-user-settings.settings]]
-   [:data_sensitivity   [:maybe [:or :keyword :string]]]])
+   [:data_sensitivity   [:maybe [:or :keyword :string]]]
+   [:description_set        :boolean]
+   [:semantic_type_set      :boolean]
+   [:fk_target_field_id_set :boolean]])
 
 (mr/def ::field-user-settings.update
   "What an update (or insert) of a FieldUserSettings accepts: every column of `:metabase_field_user_settings` except `id`, all optional."
@@ -164,7 +167,10 @@
    [:nfc_path           {:optional true} [:maybe [:sequential [:or :string :keyword]]]]
    [:json_unfolding     {:optional true} [:maybe :boolean]]
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
-   [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]])
+   [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]
+   [:description_set        {:optional true} :boolean]
+   [:semantic_type_set      {:optional true} :boolean]
+   [:fk_target_field_id_set {:optional true} :boolean]])
 
 (mr/def ::field-values
   "A FieldValues as selected from the app DB: every column of `:metabase_fieldvalues`."

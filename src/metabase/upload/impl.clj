@@ -20,7 +20,6 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
@@ -33,6 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
@@ -370,7 +370,7 @@
   (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver " ")})]
     (mapv generator-fn
           (for [h header]
-            (humanization/name->human-readable-name
+            (warehouse-schema.humanization/name->human-readable-name
              (normalize-display-name h))))))
 
 (defn- derive-column-names [driver header]
@@ -620,7 +620,7 @@
       (let [timer             (u/start-timer)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
                                   filename)
-            humanized-name    (humanization/name->human-readable-name filename-prefix)
+            humanized-name    (warehouse-schema.humanization/name->human-readable-name filename-prefix)
             display-name      (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Table :display_name))
             card-name         (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Card :name))
             driver            (driver.u/database->driver database)
@@ -776,7 +776,7 @@
       (let [card     (upload.db/card-query-and-metadata id)
             ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
             ;; the initial upload.
-            fix-name #(update % :display_name humanization/name->human-readable-name)
+            fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)
             metadata (queries/refresh-metadata card {:update-fn fix-name})]
         (upload.db/set-card-result-metadata! id metadata)))))
 

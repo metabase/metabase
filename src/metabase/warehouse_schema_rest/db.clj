@@ -9,6 +9,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
@@ -18,22 +19,16 @@
    target-field-id :- ::lib.schema.id/field]
   (t2/query {:select [[:source_t.db_id :source_db_id]
                       [:target_t.db_id :target_db_id]]
-             :from   [[(t2/table-name :model/Field) :sf]]
-             :join   [[(t2/table-name :model/Table) :source_t] [:= :sf.table_id :source_t.id]
-                      [(t2/table-name :model/Field) :tf] [:= :tf.id target-field-id]
-                      [(t2/table-name :model/Table) :target_t] [:= :tf.table_id :target_t.id]]
+             :from      [(warehouse-schema-overlay/field-query {:alias :sf})]
+             :join   [(warehouse-schema-overlay/table-query {:alias :source_t}) [:= :sf.table_id :source_t.id]
+                      (warehouse-schema-overlay/field-query {:alias :tf}) [:= :tf.id target-field-id]
+                      (warehouse-schema-overlay/table-query {:alias :target_t}) [:= :tf.table_id :target_t.id]]
              :where  [:= :sf.id source-field-id]}))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id))
-
-(mu/defn update-field!
-  "Apply `changes` to the Field with `field-id`."
-  [field-id :- ::lib.schema.id/field
-   changes  :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field field-id changes))
+  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn set-nested-fields-active!
   "Set the active flag of the Fields of the Table with `table-id` whose NFC path matches the SQL LIKE
@@ -128,17 +123,17 @@
                                                           :where  [:and
                                                                    [:= :d.to_entity_id :metabase_table.id]
                                                                    [:= :d.to_entity_type "table"]]}]))]
-    (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
+    (t2/select :model/Table {:from [(warehouse-schema-overlay/table-query)], :where where, :order-by [[:name :asc]]})))
 
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn update-table!
   "Apply `changes` to the Table with `table-id`."
@@ -164,17 +159,18 @@
 (mu/defn active-unretired-field-ids-for-table
   "The ids of the active, unretired Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field, :table_id table-id, :visibility_type [:not= "retired"], :active true))
+  (t2/select-pks-set :model/Field :table_id table-id :visibility_type [:not= "retired"] :active true
+                     {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-ids-for-table
   "The ids of the Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id))
+  (t2/select-pks-set :model/Field :table_id table-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn active-fields-targeting
-  "The active Fields whose FK target is one of `field-ids`."
+  "The active Fields whose FK target, as users see it, is one of `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true))
+  (t2/select :model/Field :fk_target_field_id [:in field-ids] :active true {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn delete-field-values-for-fields!
   "Delete the FieldValues of the Fields with `field-ids`."

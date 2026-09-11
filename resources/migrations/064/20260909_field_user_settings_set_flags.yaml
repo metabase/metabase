@@ -1,0 +1,99 @@
+## Record that a user set a nullable Field column to NULL on purpose.
+##
+## A NULL in metabase_field_user_settings normally means "not set by a user". description, semantic_type and
+## fk_target_field_id are nullable on metabase_field and also written by sync, so for those a user's NULL must still
+## win over the sync value: these flags say whether the user made the call.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-09T00:00:00
+      author: ranquild
+      comment: Add description_set to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: description_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Whether the user set description, so a NULL description overrides the sync value."
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-09-09T00:00:01
+      author: ranquild
+      comment: Add semantic_type_set to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: semantic_type_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Whether the user set semantic_type, so a NULL semantic_type overrides the sync value."
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-09-09T00:00:02
+      author: ranquild
+      comment: Add fk_target_field_id_set to metabase_field_user_settings
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: fk_target_field_id_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "Whether the user set fk_target_field_id, so a NULL fk_target_field_id overrides the sync value."
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-09-09T00:00:03
+      author: ranquild
+      comment: Mark the description, semantic_type and fk_target_field_id user settings already recorded as set
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field_user_settings
+              SET description_set = (description IS NOT NULL),
+                  semantic_type_set = (semantic_type IS NOT NULL),
+                  fk_target_field_id_set = (fk_target_field_id IS NOT NULL)
+      rollback: # not necessary
+
+  - changeSet:
+      id: v64.2026-09-09T00:00:04
+      author: ranquild
+      comment: Update v_fields to show display_name, description, visibility_type, fk_target_field_id and
+        has_field_values as users see them, overlaying metabase_field_user_settings
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/fields/v3/postgres-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/fields/v3/mysql-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/fields/v3/h2-fields.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/fields/v1/postgres-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/fields/v2/mysql-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/fields/v1/h2-fields.sql
+            relativeToChangelogFile: true

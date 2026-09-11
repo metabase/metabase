@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn user-superuser?
@@ -20,7 +21,7 @@
 (defn- blocked-tables-select
   [user-id tables-expr permissions-blocking permissions-granting]
   {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
-   :from   [[:metabase_table :blocked]]
+   :from   [(warehouse-schema-overlay/table-query {:alias :blocked})]
    :join   [[(perms/select-tables-and-groups-granting-perm
               {:user-id user-id :is-superuser? false}
               permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]

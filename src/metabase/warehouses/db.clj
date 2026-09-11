@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -63,7 +64,7 @@
 (mu/defn fields-exist-for-database?
   "Whether any Field belongs to a Table of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Field :table_id [:in (table-ids-of-database-query database-id)]))
+  (t2/exists? :model/Field :table_id [:in (table-ids-of-database-query database-id)] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn delete-childless-fields-for-database!
   "Delete the childless Fields of the Tables of the Database with `database-id`, returning the number deleted."
@@ -115,7 +116,8 @@
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query)]
+                                                           :order-by [[:%lower.display_name :asc]]}))
 
 (mu/defn active-tables-for-databases
   "The active Tables of the Databases with `database-ids`, in database then display name order."
@@ -123,17 +125,19 @@
   (t2/select :model/Table
              :db_id  [:in database-ids]
              :active true
-             {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
+             {:from [(warehouse-schema-overlay/table-query)]
+              :order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
 
 (mu/defn active-table-ids-for-database
   "The ids of the active Tables of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-pks-set :model/Table, :db_id database-id, :active true))
+  (t2/select-pks-set :model/Table, :db_id database-id, :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field, :table_id [:in table-ids], :semantic_type (mdb/isa :type/PK)))
+  (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)
+             {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn databases-for-serdes-reducible
   "A reducible of the Databases to export via serdes: routing destinations and the sample database are always
@@ -155,4 +159,4 @@
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id))
+  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query)]}))

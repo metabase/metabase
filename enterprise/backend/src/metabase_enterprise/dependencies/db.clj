@@ -16,6 +16,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private VisibleOpts
@@ -587,19 +588,19 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-database-ids
   "The `:id` and `:db_id` of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids]))
+  (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-id-by-name
   "The ID of the Table named `table-name` in `schema` of the Database with `db-id`, or nil."
   [db-id      :- ::lib.schema.id/database
    schema     :- [:maybe :string]
    table-name :- :string]
-  (t2/select-one-fn :id :model/Table :db_id db-id :schema schema :name table-name))
+  (t2/select-one-fn :id :model/Table :db_id db-id :schema schema :name table-name {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn transform-sources
   "The `:id` and `:source` of the Transforms with `transform-ids`."
@@ -857,17 +858,24 @@
                 :limit     batch-size})))
 
 (mu/defn table-ids-with-outdated-findings
-  "The IDs of the Tables of the Database with `db-id` whose dependents were analyzed before the Table or one of
-  its Fields last changed."
+  "The IDs of the Tables of the Database with `db-id` whose dependents were analyzed before the Table, one of its
+  Fields, or one of its Fields' user settings last changed."
   [db-id :- ::lib.schema.id/database]
   (t2/select-fn-set :table_id :model/AnalysisFinding
                     {:select     [:field_updates/table_id]
                      :from       [[^:allow-subquery {:select    [[:table/id :table_id]
                                                                  [:table/updated_at :last_table_update]
-                                                                 [[:max :field/updated_at] :last_field_update]]
-                                                     :from      [[(t2/table-name :model/Table) :table]]
-                                                     :left-join [[(t2/table-name :model/Field) :field]
-                                                                 [:= :field/table_id :table/id]]
+                                                                 [[:max [:case
+                                                                         [:>= :field/updated_at
+                                                                          [:coalesce :field_settings/updated_at :field/updated_at]]
+                                                                         :field/updated_at
+                                                                         :else :field_settings/updated_at]]
+                                                                  :last_field_update]]
+                                                     :from      [(warehouse-schema-overlay/table-query {:alias :table})]
+                                                     :left-join [(warehouse-schema-overlay/field-query {:alias :field})
+                                                                 [:= :field/table_id :table/id]
+                                                                 [(t2/table-name :model/FieldUserSettings) :field_settings]
+                                                                 [:= :field_settings/field_id :field/id]]
                                                      :where     [:= :table/db_id db-id]
                                                      :group-by  [:table/id
                                                                  :table/updated_at]}
