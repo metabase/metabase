@@ -68,8 +68,8 @@ If you can’t solve your problem using the troubleshooting guides:
 [limit-data-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#ask-for-less-data
 [materialize-views-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#materialize-views-create-new-tables-to-store-query-results
 [model-button-image]: ./images/model-icon.png
-[model-docs]: ../data-modeling/models.md
+[model-docs]: ../data-modeling/models/models.md
 [replicate-database-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#replicate-your-database
 [sql-explain-learn]: https://www.metabase.com/learn/sql/working-with-sql/sql-best-practices#explain
 [summary-tables-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#aggregate-data-ahead-of-time-with-summary-tables
-[model-persistence]: ../data-modeling/model-persistence.md
+[model-persistence]: ../data-modeling/models/model-persistence.md

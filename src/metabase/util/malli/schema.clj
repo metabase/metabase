@@ -210,12 +210,6 @@
    [:fn #(isa? (keyword %) :Coercion/*)]
    (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
 
-(def EntityTypeKeywordOrString
-  "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
-  (mu/with-api-error-message
-   [:fn #(isa? (keyword %) :entity/*)]
-   (deferred-tru "value must be a valid entity type (keyword or string).")))
-
 (defn- open-map
   "A map whose keys are deliberately not ours to declare. The marker property is what lets
   [[metabase.api.macros.defendpoint.closed-schemas]] accept it; nothing outside this namespace should set it."
