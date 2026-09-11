@@ -7,6 +7,20 @@
 
   &[data-variant="default"] {
     --tabs-list-border-width: 1px;
+    --tab-active-border-width: 2px;
+    --tab-border-width: 0 0 var(--tab-active-border-width) 0;
+
+    &[data-inverted] {
+      --tab-border-width: var(--tab-active-border-width) 0 0 0;
+    }
+
+    &[data-orientation="vertical"] {
+      --tab-border-width: 0 var(--tab-active-border-width) 0 0;
+
+      &[data-placement="right"] {
+        --tab-border-width: 0 0 0 var(--tab-active-border-width);
+      }
+    }
   }
 
   &[data-size="sm"] {
@@ -24,6 +38,10 @@
   &[data-orientation="vertical"] .tabLabel {
     text-align: left;
   }
+}
+
+.list::before {
+  border-width: var(--tabs-list-border-size);
 }
 
 [data-list-border-hidden] .list::before {
