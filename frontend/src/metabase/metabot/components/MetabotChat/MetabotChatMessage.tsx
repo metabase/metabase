@@ -243,6 +243,7 @@ const AgentPart = ({
         debug={debug}
         readonly={readonly}
         conversationId={conversationId}
+        size={size}
       />
     ))
     .with({ type: "tool_call" }, (p) => (
