@@ -1,6 +1,14 @@
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import {
+  type ModalComponentProps,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
+import { lazyPluginSlot } from "metabase/plugins";
 
-import { UnsubscribeUserModal } from "./containers/UnsubscribeUserModal/UnsubscribeUserModal";
+const UnsubscribeUserModal = lazyPluginSlot<ModalComponentProps>(() =>
+  import("./containers/UnsubscribeUserModal/UnsubscribeUserModal").then(
+    ({ UnsubscribeUserModal }) => UnsubscribeUserModal,
+  ),
+);
 
 export const getUserMenuRoutes = (): React.ReactNode =>
   modalRoute("unsubscribe", UnsubscribeUserModal, { noWrap: true });

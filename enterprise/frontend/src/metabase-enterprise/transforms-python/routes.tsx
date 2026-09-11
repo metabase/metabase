@@ -1,7 +1,9 @@
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import {
+  type ModalComponentProps,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
+import { lazyPluginSlot } from "metabase/plugins";
 import { Route } from "metabase/router";
-
-import { PythonTransformsUpsellModal } from "./upsells/PythonTransformsUpsellModal";
 
 /**
  * Two of these pages are core transform pages, which the core transform routes
@@ -9,9 +11,6 @@ import { PythonTransformsUpsellModal } from "./upsells/PythonTransformsUpsellMod
  * own instead: naming an `import()` into a chunk another site already names
  * merges the two module sets, which copies whatever they shared into every
  * other chunk that needs it.
- *
- * The upsell modal stays eager: `modalRoute` takes a component rather than a
- * loader.
  */
 const pythonLibraryEditorPage = () =>
   import(
@@ -40,6 +39,12 @@ export function getPythonTransformsRoutes() {
     </>
   );
 }
+
+const PythonTransformsUpsellModal = lazyPluginSlot<ModalComponentProps>(() =>
+  import("./upsells/PythonTransformsUpsellModal").then(
+    ({ PythonTransformsUpsellModal }) => PythonTransformsUpsellModal,
+  ),
+);
 
 export function getPythonUpsellRoutes() {
   return (

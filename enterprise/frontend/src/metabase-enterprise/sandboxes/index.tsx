@@ -19,6 +19,7 @@ import {
   PLUGIN_REDUCERS,
   type PermissionOption,
   lazyPluginComponent,
+  lazyPluginSlot,
 } from "metabase/plugins";
 import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -31,8 +32,13 @@ import { DataPermissionValue } from "metabase-types/api";
 
 import sandboxingReducer from "./actions";
 import { getSandboxedTableWarningModal } from "./confirmations";
-import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
+
+const EditSandboxingModal = lazyPluginSlot(() =>
+  import("./containers/EditSandboxingModal").then(
+    ({ default: EditSandboxingModal }) => EditSandboxingModal,
+  ),
+);
 
 const OPTION_SEGMENTED = {
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
