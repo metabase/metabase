@@ -21,9 +21,8 @@ export const DataStudio = {
   breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
   visit: () => {
     cy.visit("/data-studio");
-    // `/data-studio` redirects asynchronously: the nav renders right away, but the
-    // target resolves user preferences request comes back.
-    cy.location("pathname").should("not.eq", "/data-studio");
+    // The target is only known once the `hasSeenGuide` request comes back.
+    cy.location("pathname").should("match", /^\/data-studio\/.+/);
     DataStudio.nav().should("be.visible");
   },
   Transforms: {
