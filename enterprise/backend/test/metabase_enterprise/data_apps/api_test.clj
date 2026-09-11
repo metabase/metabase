@@ -171,6 +171,22 @@
                                            :limit 5}]}}
                 response))))))
 
+(deftest query-definition-resolves-an-aggregation-with-sdk-metadata-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (let [response (mt/user-http-request
+                      :crowberto :post 200 "apps/demo/query"
+                      {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                 :aggregations [{:type "operator"
+                                                 :operator "count"
+                                                 :args []
+                                                 :columns [{:name "count"
+                                                            :displayName "Count"
+                                                            :jsType "number"}]}]}]})]
+        (is (=? {:dataset_query {:stages [{:aggregation [["count" {}]]}]}}
+                response))))))
+
 (deftest query-definition-rejects-unsupported-fields-over-http-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]

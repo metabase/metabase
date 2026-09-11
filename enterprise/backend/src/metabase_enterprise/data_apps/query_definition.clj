@@ -77,7 +77,8 @@
   keyword?)
 
 (mr/def ::operator-expression
-  [:map {:closed true :decode/normalize {:compile query-map-decoder}}
+  [:map {:closed true :decode/normalize {:compile query-map-decoder}
+         ::sdk-metadata [:columns]}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::operator]
    [:args {:default []} [:sequential [:ref ::expression]]]])
