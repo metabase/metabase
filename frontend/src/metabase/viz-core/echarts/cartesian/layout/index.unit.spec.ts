@@ -1,10 +1,9 @@
+import { createMockChartContext } from "__support__/echarts";
 import {
   createMockColumn,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
-import type { RenderingContext } from "../../../types";
 import { CHART_STYLE } from "../constants/style";
 import type { XAxisModel, YAxisModel } from "../model/types";
 
@@ -62,23 +61,16 @@ const currencySettings = createMockVisualizationSettings({
   column: () => ({ number_style: "currency" }),
 });
 
-const getChartContext = (): RenderingContext => {
-  const measureText = jest.fn((text: string) => {
-    if (text === "$720.00") {
-      return WIDEST_MEASURED_TICK_WIDTH;
-    }
+const getChartContext = () =>
+  createMockChartContext({
+    measureText: jest.fn((text: string) => {
+      if (text === "$720.00") {
+        return WIDEST_MEASURED_TICK_WIDTH;
+      }
 
-    return 20;
+      return 20;
+    }),
   });
-
-  return {
-    getColor: (name) => name,
-    measureText,
-    measureTextHeight: () => 0,
-    fontFamily: "",
-    theme: DEFAULT_VISUALIZATION_THEME,
-  };
-};
 
 describe("getChartLayout", () => {
   it("measures actual y-axis tick labels for a zero-pinned axis (#74568)", () => {

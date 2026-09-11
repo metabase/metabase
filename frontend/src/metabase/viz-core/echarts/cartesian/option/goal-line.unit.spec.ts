@@ -1,23 +1,18 @@
-import { createMockCartesianChartModel } from "__support__/echarts";
+import {
+  createMockCartesianChartModel,
+  createMockChartContext,
+} from "__support__/echarts";
 import type { GoalValue } from "metabase-types/api";
 import {
   createMockColumn,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
-import type { RenderingContext } from "../../../types";
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
 
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 
-const renderingContext: RenderingContext = {
-  getColor: (name) => name,
-  measureText: () => 0,
-  measureTextHeight: () => 0,
-  fontFamily: "",
-  theme: DEFAULT_VISUALIZATION_THEME,
-};
+const renderingContext = createMockChartContext();
 
 function getGoalLineData(
   goalValue: GoalValue | null,

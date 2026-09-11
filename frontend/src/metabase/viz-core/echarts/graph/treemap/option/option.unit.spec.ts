@@ -1,7 +1,6 @@
+import { createMockChartContext } from "__support__/echarts";
 import { formatPercent } from "metabase/utils/formatting";
 
-import { DEFAULT_VISUALIZATION_THEME } from "../../../../shared/utils/theme";
-import type { RenderingContext } from "../../../../types";
 import type { TreemapTree } from "../model/types";
 
 import { getTreemapChartOption } from "./option";
@@ -16,13 +15,9 @@ const MOCK_COLORS: Record<string, string> = {
   "core-white": "#ffffff",
 };
 
-const renderingContext: RenderingContext = {
+const renderingContext = createMockChartContext({
   getColor: (name) => MOCK_COLORS[name] ?? name,
-  measureText: () => 0,
-  measureTextHeight: () => 0,
-  fontFamily: "",
-  theme: DEFAULT_VISUALIZATION_THEME,
-};
+});
 
 const TWO_LEVEL_TREE: TreemapTree = [
   {
