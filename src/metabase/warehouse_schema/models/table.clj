@@ -454,7 +454,6 @@
                  (u/the-id table)
                  (:field_order table)))))
 
-
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :field_values]

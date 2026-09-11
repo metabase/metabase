@@ -22,27 +22,27 @@
 (deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
     (is (#'table-user-settings/valid-field-order? (mt/id :venues)
-                                    [(mt/id :venues :name)
-                                     (mt/id :venues :category_id)
-                                     (mt/id :venues :latitude)
-                                     (mt/id :venues :longitude)
-                                     (mt/id :venues :price)
-                                     (mt/id :venues :id)])))
+                                                  [(mt/id :venues :name)
+                                                   (mt/id :venues :category_id)
+                                                   (mt/id :venues :latitude)
+                                                   (mt/id :venues :longitude)
+                                                   (mt/id :venues :price)
+                                                   (mt/id :venues :id)])))
   (testing "Field ordering is invalid if some fields are missing"
     (is (false? (#'table-user-settings/valid-field-order? (mt/id :venues)
-                                            [(mt/id :venues :category_id)
-                                             (mt/id :venues :latitude)
-                                             (mt/id :venues :longitude)
-                                             (mt/id :venues :price)
-                                             (mt/id :venues :id)]))))
+                                                          [(mt/id :venues :category_id)
+                                                           (mt/id :venues :latitude)
+                                                           (mt/id :venues :longitude)
+                                                           (mt/id :venues :price)
+                                                           (mt/id :venues :id)]))))
   (testing "Field ordering is invalid if some fields are from a differnt table"
     (is (false? (#'table-user-settings/valid-field-order? (mt/id :venues)
-                                            [(mt/id :venues :name)
-                                             (mt/id :venues :category_id)
-                                             (mt/id :venues :latitude)
-                                             (mt/id :venues :longitude)
-                                             (mt/id :venues :price)
-                                             (mt/id :checkins :id)]))))
+                                                          [(mt/id :venues :name)
+                                                           (mt/id :venues :category_id)
+                                                           (mt/id :venues :latitude)
+                                                           (mt/id :venues :longitude)
+                                                           (mt/id :venues :price)
+                                                           (mt/id :checkins :id)]))))
   (testing "Only active fields should be considerd when checking field order"
     (one-off-dbs/with-blank-db
       (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
@@ -60,12 +60,12 @@
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
       (is (#'table-user-settings/valid-field-order? (mt/id :birds)
-                                      [(mt/id :birds :species)
-                                       (mt/id :birds :example_name)]))
+                                                    [(mt/id :birds :species)
+                                                     (mt/id :birds :example_name)]))
       (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"BIRDS\" DROP COLUMN \"EXAMPLE_NAME\";"])
       (sync/sync-database! (mt/db))
       (is (#'table-user-settings/valid-field-order? (mt/id :birds)
-                                      [(mt/id :birds :species)])))))
+                                                    [(mt/id :birds :species)])))))
 
 (deftest slashes-in-schema-names-test
   (testing "Schema names should allow forward or back slashes (#8693, #12450)"
