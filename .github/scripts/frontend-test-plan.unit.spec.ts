@@ -11,15 +11,14 @@ import { join, resolve } from "node:path";
 
 import { load } from "js-yaml";
 
+import { prepareUnitTestSelection } from "./prepare-unit-test-selection";
+
 type Step = { name: string; run: string; "continue-on-error"?: boolean };
 // The workflow YAML supplies these step scripts; js-yaml returns an untyped value.
 const workflow = load(
   readFileSync(resolve(__dirname, "../workflows/frontend.yml"), "utf8"),
 ) as { jobs: { "fe-tests-unit": { steps: Step[] } } };
 const steps = workflow.jobs["fe-tests-unit"].steps;
-const selection = steps.find(
-  (step) => step.name === "Prepare unit test selection",
-)!;
 const guard = steps.find(
   (step) => step.name === "Reject unit test runner failures",
 )!;
@@ -33,6 +32,7 @@ describe("frontend test plan handoff", () => {
   let env: NodeJS.ProcessEnv;
 
   beforeEach(() => {
+    jest.spyOn(console, "warn").mockImplementation(() => {});
     dir = mkdtempSync(join(tmpdir(), "frontend-test-plan-"));
     mkdirSync(join(dir, "test-plan"));
     writeFileSync(join(dir, "output"), "");
@@ -48,7 +48,10 @@ describe("frontend test plan handoff", () => {
     };
   });
 
-  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+  afterEach(() => {
+    jest.restoreAllMocks();
+    rmSync(dir, { recursive: true, force: true });
+  });
 
   function runStep(step: Step) {
     return spawnSync(
@@ -77,7 +80,7 @@ describe("frontend test plan handoff", () => {
     "preserves an explicit selection: $files",
     ({ files }) => {
       writePlan(plan(files));
-      expect(runStep(selection).status).toBe(0);
+      prepareUnitTestSelection(env);
       expect(readFileSync(join(dir, "output"), "utf8")).toContain(
         "paths-file=",
       );
@@ -87,9 +90,26 @@ describe("frontend test plan handoff", () => {
     },
   );
 
+  it("writes the selection when invoked through Bun in CI", () => {
+    writePlan(plan(["one.spec.cjs"]));
+    const result = spawnSync(
+      "bun",
+      [resolve(__dirname, "prepare-unit-test-selection.ts")],
+      { env, encoding: "utf8" },
+    );
+    expect(result.status === 0 ? "" : result.stderr).toBe("");
+    expect(result.status).toBe(0);
+    expect(readFileSync(join(dir, "output"), "utf8")).toBe(
+      `paths-file=${join(dir, "unit-specs.json")}\n`,
+    );
+    expect(
+      JSON.parse(readFileSync(join(dir, "unit-specs.json"), "utf8")),
+    ).toEqual(["one.spec.cjs"]);
+  });
+
   it("bypasses the filter for a full selection", () => {
     writePlan(plan(["one.spec.cjs", "two.spec.cjs"]));
-    expect(runStep(selection).status).toBe(0);
+    prepareUnitTestSelection(env);
     expect(readFileSync(join(dir, "output"), "utf8")).toBe("");
   });
 
@@ -102,9 +122,10 @@ describe("frontend test plan handoff", () => {
     plan(["one.spec.cjs"], 0),
   ])("runs in full for an invalid plan: %j", (value) => {
     writePlan(value);
-    const result = runStep(selection);
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain("::warning::");
+    prepareUnitTestSelection(env);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("::warning::"),
+    );
     expect(readFileSync(join(dir, "output"), "utf8")).toBe("");
   });
 
@@ -120,9 +141,10 @@ describe("frontend test plan handoff", () => {
         writePlan(plan([])); // Even a partial download must not be trusted.
         env.PLAN_DOWNLOADED = "failure";
       }
-      const result = runStep(selection);
-      expect(result.status).toBe(0);
-      expect(result.stdout).toContain("::warning::");
+      prepareUnitTestSelection(env);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("::warning::"),
+      );
       expect(readFileSync(join(dir, "output"), "utf8")).toBe("");
     },
   );
@@ -190,7 +212,7 @@ describe("frontend test plan handoff", () => {
     "loads the TypeScript filter natively with an empty selection: %s",
     (empty) => {
       writePlan(plan(empty ? [] : [join(dir, "pass.spec.cjs")]));
-      expect(runStep(selection).status).toBe(0);
+      prepareUnitTestSelection(env);
       env.JEST_TEST_PATHS_FILE = join(dir, "unit-specs.json");
       const result = runJest(
         {

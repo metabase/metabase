@@ -130,23 +130,7 @@ jobs:
         if: ${{ inputs.test-plan-artifact-id != '' }}
         env:
           PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
-        run: |
-          plan="$RUNNER_TEMP/test-plan/test-plan.json"
-          if [ "$PLAN_DOWNLOADED" != success ] || ! jq -e '
-            (.fe_unit_specs_to_run | type == "array" and all(.[]; type == "string" and length > 0)) and
-            (.stats.unit_specs_all | type == "number" and . >= 0 and . == floor) and
-            (.fe_unit_specs_to_run | length) == .stats.unit_specs_to_run_usage and
-            (.fe_unit_specs_to_run | length) <= .stats.unit_specs_all
-          ' "$plan" > /dev/null; then
-            echo "::warning::Test plan unavailable or invalid; running the full unit suite."
-            exit 0
-          fi
-          # Full selections use Jest's normal discovery, without the filter.
-          if jq -e '.stats.unit_specs_to_run_usage == .stats.unit_specs_all' "$plan" > /dev/null; then
-            exit 0
-          fi
-          jq '.fe_unit_specs_to_run' "$plan" > "$RUNNER_TEMP/unit-specs.json"
-          echo "paths-file=$RUNNER_TEMP/unit-specs.json" >> "$GITHUB_OUTPUT"
+        run: bun .github/scripts/prepare-unit-test-selection.ts
       - name: Run frontend unit tests
         id: fe-tests
         env:
