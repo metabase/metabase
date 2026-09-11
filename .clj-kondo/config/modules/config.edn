@@ -3046,6 +3046,7 @@
            query-processor
            segments
            settings
+           types
            util
            warehouse-schema
            warehouse-schema-overlay}

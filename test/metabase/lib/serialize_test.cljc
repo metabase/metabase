@@ -30,6 +30,30 @@
     (testing (str schema " via " f)
       (is (= m (f schema (assoc m :a/b 1)))))))
 
+(deftest ^:parallel strip-undeclared-keys-test
+  (testing "a key a closed map does not declare is dropped on the way in, the way the request decoder drops it"
+    (is (= {:type :text, :name "t", :display-name "T", :id "id1"}
+           (lib.serialize/prepare-after-deserialization
+            ::lib.schema.template-tag/template-tag
+            {:type :text, :name "t", :display-name "T", :id "id1", :bogus 1})))
+    (testing "wherever it is in a query"
+      (is (= {:lib/type :mbql/query
+              :database 1
+              :stages   [{:lib/type      :mbql.stage/native
+                          :native        "SELECT 1"
+                          :template-tags [{:type :text, :name "t", :display-name "T", :id "id1"}]}]}
+             (lib.serialize/prepare-after-deserialization
+              {:lib/type :mbql/query
+               :database 1
+               :stages   [{:lib/type      :mbql.stage/native
+                           :native        "SELECT 1"
+                           :template-tags [{:type :text, :name "t", :display-name "T", :id "id1", :bogus 1}]}]}))))
+    (testing "but not on the way out: serialization does not judge what it did not produce"
+      (is (= {:type :text, :name "t", :display-name "T", :id "id1", :bogus 1}
+             (lib.serialize/prepare-for-serialization
+              ::lib.schema.template-tag/template-tag
+              {:type :text, :name "t", :display-name "T", :id "id1", :bogus 1}))))))
+
 (deftest ^:parallel remove-info-test
   (is (= {:lib/type :mbql/query
           :stages   [{:lib/type     :mbql.stage/mbql
@@ -253,7 +277,8 @@
       (merge query-internal-keys)
       (assoc-in [:stages 0] (merge clean-native-stage
                                    stage-internal-keys
-                                   {:query-permissions/referenced-card-ids #{1}}))
+                                   {:query-permissions/referenced-card-ids #{1}
+                                    :qp/table-name                         "ORDERS"}))
       (assoc-in [:stages 1] (merge clean-mbql-stage stage-internal-keys))
       (assoc-in [:stages 1 :joins 0] (merge clean-join join-internal-keys))
       (assoc-in [:stages 1 :fields 0 1] (merge {:lib/uuid "00000000-0000-0000-0000-000000000001", :base-type :type/Integer}
@@ -304,7 +329,7 @@
       ::lib.schema/query            (keys query-internal-keys)
       ::lib.schema/stage.common     (keys stage-internal-keys)
       ::lib.schema/stage.mbql       (keys stage-internal-keys)
-      ::lib.schema/stage.native     (cons :query-permissions/referenced-card-ids (keys stage-internal-keys))
+      ::lib.schema/stage.native     (list* :query-permissions/referenced-card-ids :qp/table-name (keys stage-internal-keys))
       ::lib.schema.metadata/column  (keys column-internal-keys)
       ::lib.schema.info/info        (keys info-internal-keys))))
 
