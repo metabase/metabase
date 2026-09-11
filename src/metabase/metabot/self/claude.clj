@@ -327,21 +327,21 @@
                      ai-proxy?))
 
 (def ^:private provider
-  "Anthropic is the one provider the Metabase Cloud AI proxy can serve, so `:ai-proxy?` is true here and a
-  proxied request goes through rather than being rejected."
+  "Anthropic is the one provider the Metabase Cloud AI proxy can serve, so `:supports-ai-proxy?` is true
+  here and a proxied request goes through rather than being rejected."
   (adapter/provider
-   {:slug         "anthropic"
-    :display-name "Anthropic"
-    :ai-proxy?    true
-    :auth         anthropic-auth
-    :headers      {"anthropic-version" anthropic-version}
-    :errors       {401 #(tru "Anthropic API key expired or invalid")
-                   403 #(tru "Anthropic API key has insufficient permissions")
-                   404 #(tru "Anthropic API endpoint is unavailable or the model was not found")
-                   413 #(tru "Anthropic API rejected our request because it was too large")
-                   429 #(tru "Anthropic API has rate limited us")
-                   500 #(tru "Anthropic API is not working but not saying why")
-                   529 #(tru "Anthropic API is overloaded and is asking us to wait")}}))
+   {:slug               "anthropic"
+    :display-name       "Anthropic"
+    :supports-ai-proxy? true
+    :auth               anthropic-auth
+    :headers            {"anthropic-version" anthropic-version}
+    :errors             {401 #(tru "Anthropic API key expired or invalid")
+                         403 #(tru "Anthropic API key has insufficient permissions")
+                         404 #(tru "Anthropic API endpoint is unavailable or the model was not found")
+                         413 #(tru "Anthropic API rejected our request because it was too large")
+                         429 #(tru "Anthropic API has rate limited us")
+                         500 #(tru "Anthropic API is not working but not saying why")
+                         529 #(tru "Anthropic API is overloaded and is asking us to wait")}}))
 
 (def supported-models
   "Anthropic chat models offered in the Metabot model picker, keyed by model id.
