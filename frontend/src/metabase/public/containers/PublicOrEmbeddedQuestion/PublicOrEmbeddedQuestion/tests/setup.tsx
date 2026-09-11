@@ -16,7 +16,7 @@ import {
 import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import type { TokenFeatures } from "metabase-types/api";
+import type { PublicCard, TokenFeatures } from "metabase-types/api";
 import {
   createMockEmbedDataset,
   createMockPublicCard,
@@ -64,6 +64,8 @@ jest.mock(
 
 export type SetupOpts = {
   hash?: Record<string, string>;
+  search?: Record<string, string>;
+  card?: Partial<PublicCard>;
   tokenFeatures?: TokenFeatures;
   questionName: string;
   uuid: string;
@@ -73,6 +75,8 @@ export type SetupOpts = {
 export async function setup(
   {
     hash = {},
+    search = {},
+    card,
     tokenFeatures = createMockTokenFeatures(),
     questionName,
     uuid,
@@ -89,7 +93,7 @@ export async function setup(
 
   setupPublicQuestionEndpoints(
     uuid,
-    createMockPublicCard({ name: questionName }),
+    createMockPublicCard({ ...card, name: questionName }),
   );
   setupPublicCardQueryEndpoints(
     uuid,
@@ -118,7 +122,7 @@ export async function setup(
     {
       storeInitialState: createMockState({ settings }),
       withRouter: true,
-      initialRoute: `public/question/${uuid}${_.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`}`,
+      initialRoute: `public/question/${uuid}${_.isEmpty(search) ? "" : `?${new URLSearchParams(search)}`}${_.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`}`,
     },
   );
   expect(await screen.findByText(questionName)).toBeInTheDocument();

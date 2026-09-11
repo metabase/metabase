@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLatest, useMount } from "react-use";
+import { useMount } from "react-use";
 
 import { embedApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -8,9 +8,9 @@ import { fetchDataOrError } from "metabase/dashboard/utils";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import {
-  getMetadata,
   paramFieldsFetched,
-  selectQuestionFromCardBuilder,
+  selectQuestionFromCard,
+  useQuestionFromCard,
 } from "metabase/metadata-store";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
@@ -22,9 +22,7 @@ import { setErrorPage } from "metabase/redux/app";
 import { useLocation, useParams } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { parseSearchQuery } from "metabase/utils/browser";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
   Card,
   Dataset,
@@ -41,9 +39,7 @@ export const PublicOrEmbeddedQuestion = () => {
 
   const dispatch = useDispatch();
   const store = useStore();
-  const metadata = useSelector(getMetadata);
-  // we cannot use `metadata` directly otherwise hooks will re-run on every metadata change
-  const metadataRef = useLatest(metadata);
+  const buildQuestion = useQuestionFromCard();
 
   const [initialized, setInitialized] = useState(false);
 
@@ -85,12 +81,10 @@ export const PublicOrEmbeddedQuestion = () => {
         await dispatch(paramFieldsFetched(card.param_fields));
       }
 
-      const parameters = getCardUiParameters(
+      const parameters = selectQuestionFromCard(
+        store.getState(),
         card,
-        metadataRef.current,
-        {},
-        card.parameters || undefined,
-      );
+      ).parameters();
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
         parseSearchQuery(location.search),
@@ -125,8 +119,10 @@ export const PublicOrEmbeddedQuestion = () => {
       return;
     }
 
-    const parameters =
-      card.parameters || getParametersFromCard(card, metadataRef.current);
+    // Both endpoints return the parameters with the template tags folded in,
+    // and blank the query, so there are no template tags left to derive.
+    const parameters = card.parameters ?? [];
+    const question = selectQuestionFromCard(store.getState(), card);
 
     try {
       setResult(null);
@@ -138,7 +134,7 @@ export const PublicOrEmbeddedQuestion = () => {
         // embeds apply parameter values server-side
         resultPromise = runQuery(
           embedApi.endpoints.getEmbedCardQuery,
-          selectQuestionFromCardBuilder(store.getState())(card),
+          question,
           {
             token,
             parameters: JSON.stringify(
@@ -157,7 +153,7 @@ export const PublicOrEmbeddedQuestion = () => {
         );
         resultPromise = runQuery(
           publicApi.endpoints.getPublicCardQuery,
-          selectQuestionFromCardBuilder(store.getState())(card),
+          question,
           {
             uuid,
             parameters: JSON.stringify(datasetQuery.parameters),
@@ -183,7 +179,7 @@ export const PublicOrEmbeddedQuestion = () => {
       console.error("error", error);
       dispatch(setErrorPage(error));
     }
-  }, [card, metadataRef, store, dispatch, parameterValues, token, uuid]);
+  }, [card, store, dispatch, parameterValues, token, uuid]);
 
   useEffect(() => {
     run();
@@ -194,12 +190,7 @@ export const PublicOrEmbeddedQuestion = () => {
       return [];
     }
 
-    return getCardUiParameters(
-      card,
-      metadataRef.current,
-      {},
-      card.parameters || undefined,
-    );
+    return buildQuestion(card).parameters();
   };
 
   return (
@@ -211,7 +202,6 @@ export const PublicOrEmbeddedQuestion = () => {
         <PublicOrEmbeddedQuestionView
           initialized={initialized}
           card={card}
-          metadata={metadata}
           result={result}
           getParameters={getParameters}
           parameterValues={parameterValues}
