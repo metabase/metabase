@@ -31,8 +31,9 @@
 
 (def Request
   "One HTTP request to a provider, as [[request!]] performs it and a descriptor's `:auth` sees it.
-  `:credentials` and `:ai-proxy?` come from the caller; the rest describe the wire. `:body` is already
-  encoded, so a provider that signs over it can."
+  `:credentials` and `:ai-proxy?` come from the caller — the latter is the caller asking to be proxied,
+  which [[reject-ai-proxy!]] grants only for a provider whose descriptor says `:supports-ai-proxy?`. The
+  rest describe the wire. `:body` is already encoded, so a provider that signs over it can."
   [:map
    [:method                       :keyword]
    [:path                         :string]
@@ -45,12 +46,12 @@
 (def ProviderSpec
   "What an adapter hands [[provider]]; see that fn for what each key means."
   [:map
-   [:slug                         :string]
-   [:display-name                 :string]
-   [:errors      {:optional true} [:maybe [:map-of :int fn?]]]
-   [:headers     {:optional true} [:maybe [:map-of :string :string]]]
-   [:auth        {:optional true} [:maybe fn?]]
-   [:ai-proxy?   {:optional true} [:maybe :boolean]]])
+   [:slug                                :string]
+   [:display-name                        :string]
+   [:errors             {:optional true} [:maybe [:map-of :int fn?]]]
+   [:headers            {:optional true} [:maybe [:map-of :string :string]]]
+   [:auth               {:optional true} [:maybe fn?]]
+   [:supports-ai-proxy? {:optional true} [:maybe :boolean]]])
 
 (def Provider
   "A built descriptor: a [[ProviderSpec]] with `:auth` defaulted and `:span` and `:error-msg` derived.
@@ -105,13 +106,13 @@
 ;;; --------------------------------------------------- Auth -----------------------------------------------------
 
 (mu/defn reject-ai-proxy! :- :nil
-  "Throw when `ai-proxy?` asks for a proxied request to a provider the proxy cannot serve.
+  "Throw when a caller asks for a proxied request to a provider the proxy cannot serve.
 
   [[request!]] applies this, so the check lands on every request to a provider — an adapter's own
   request paths included, since those go through [[request!]] too."
-  [{:keys [display-name ai-proxy?]} :- Provider
-   requested-proxy?                    :- [:maybe :boolean]]
-  (when (and requested-proxy? (not ai-proxy?))
+  [{:keys [display-name supports-ai-proxy?]} :- Provider
+   requested-proxy?                          :- [:maybe :boolean]]
+  (when (and requested-proxy? (not supports-ai-proxy?))
     (throw (ex-info (tru "AI proxy is not supported for {0}" display-name)
                     {:api-error  true
                      :error-code :proxy-unsupported}))))
@@ -155,19 +156,21 @@
 (mu/defn provider :- Provider
   "Build the descriptor the helpers in this namespace take as their first argument.
 
-    :slug         - the `llm-providers` type string. Tags errors and debug logs, and names the request
-                    span `:metabot.{slug}/request`.
-    :display-name - the human name spliced into user-facing messages.
-    :errors       - HTTP status -> thunk returning that status's message (see [[status-error-msg-fn]]).
-    :headers      - headers every request to this provider carries (e.g. an API version).
-    :auth         - how this provider authenticates one request: a fn of the descriptor and the request
-                    (`:credentials`, `:ai-proxy?`, `:method`, `:path`, and the encoded `:body`),
-                    returning the `{:url ... :headers ...}` [[core/request]] takes. Defaults to
-                    [[bearer-auth]]. Everything provider-specific about authenticating lives here — the
-                    header the key travels in, the validation its credentials need, or a signature over
-                    the request itself.
-    :ai-proxy?    - whether the Metabase Cloud AI proxy can serve this provider. Defaults to false,
-                    which makes [[request!]] reject a proxied request."
+    :slug               - the `llm-providers` type string. Tags errors and debug logs, and names the
+                          request span `:metabot.{slug}/request`.
+    :display-name       - the human name spliced into user-facing messages.
+    :errors             - HTTP status -> thunk returning that status's message (see
+                          [[status-error-msg-fn]]).
+    :headers            - headers every request to this provider carries (e.g. an API version).
+    :auth               - how this provider authenticates one request: a fn of the descriptor and the
+                          request (`:credentials`, `:ai-proxy?`, `:method`, `:path`, and the encoded
+                          `:body`), returning the `{:url ... :headers ...}` [[core/request]] takes.
+                          Defaults to [[bearer-auth]]. Everything provider-specific about
+                          authenticating lives here — the header the key travels in, the validation its
+                          credentials need, or a signature over the request itself.
+    :supports-ai-proxy? - whether the Metabase Cloud AI proxy can serve this provider. Defaults to
+                          false, which makes [[request!]] reject a request that asked for the proxy.
+                          Distinct from a request's own `:ai-proxy?`, which is a caller asking for it."
   [{:keys [slug display-name errors auth] :as descriptor} :- ProviderSpec]
   (assoc descriptor
          :error-msg (status-error-msg-fn display-name errors)
