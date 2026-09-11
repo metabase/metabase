@@ -11,6 +11,7 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
@@ -92,20 +93,25 @@
         (is (thrown-with-msg? Exception #"No LLM provider connection named"
                               (#'self/parse-provider-model model-ref)))))))
 
-(deftest ^:parallel resolve-adapter-test
-  (testing "resolves known providers to adapter functions"
-    (is (fn? (#'self/resolve-adapter "anthropic")))
-    (is (fn? (#'self/resolve-adapter "openai")))
-    (is (fn? (#'self/resolve-adapter "openrouter")))
-    (is (fn? (#'self/resolve-adapter "zai")))
-    (is (fn? (#'self/resolve-adapter "mistral")))
-    (is (fn? (#'self/resolve-adapter "moonshot")))
-    (is (fn? (#'self/resolve-adapter "deepseek")))
-    (is (fn? (#'self/resolve-adapter "google")))
-    (is (fn? (#'self/resolve-adapter "vllm"))))
-  (testing "throws for unknown provider"
+(deftest ^:parallel registry-test
+  (testing "every registered provider resolves to an adapter and a listing"
+    (doseq [provider ["anthropic" "azure" "bedrock" "deepseek" "google"
+                      "mistral" "moonshot" "openai" "openrouter" "vllm" "zai"]]
+      (is (ifn? (registry/required provider :stream)) provider)
+      (is (ifn? (registry/required provider :list-models)) provider)))
+  (testing "a capability a provider does not have is absent, not a default"
+    (is (nil? (registry/optional "vllm" :supported-models)))
+    (is (nil? (registry/optional "deepseek" :context-window)))
+    (is (some? (registry/optional "anthropic" :supported-models))))
+  (testing "the registry covers exactly the provider types the platform knows about"
+    (is (= (set (map :type (llm.provider/provider-types)))
+           (set (keys @#'registry/adapters)))))
+  (testing "every row conforms to the schema, so a mistyped capability key cannot read as an absent one"
+    (doseq [[provider row] @#'registry/adapters]
+      (is (nil? (mr/explain registry/AdapterRow row)) provider)))
+  (testing "throws for an unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
-                          (#'self/resolve-adapter "unknown")))))
+                          (registry/required "unknown" :stream)))))
 
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections

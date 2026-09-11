@@ -15,18 +15,8 @@
    [metabase.api.common :as api]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.scope :as scope]
-   [metabase.metabot.self.azure :as azure]
-   [metabase.metabot.self.bedrock :as bedrock]
-   [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.deepseek :as deepseek]
-   [metabase.metabot.self.google :as google]
-   [metabase.metabot.self.mistral :as mistral]
-   [metabase.metabot.self.moonshot :as moonshot]
-   [metabase.metabot.self.openai :as openai]
-   [metabase.metabot.self.openrouter :as openrouter]
-   [metabase.metabot.self.vllm :as vllm]
-   [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
@@ -35,40 +25,6 @@
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
-
-(defn- resolve-adapter [provider]
-  ;; a `case` inside of function instead of a map so that with-redefs work well
-  (case provider
-    "anthropic"  claude/claude
-    "azure"      azure/azure
-    "bedrock"    bedrock/bedrock
-    "deepseek"   deepseek/deepseek
-    "google"     google/google
-    "mistral"    mistral/mistral
-    "moonshot"   moonshot/moonshot
-    "openai"     openai/openai
-    "openrouter" openrouter/openrouter
-    "vllm"       vllm/vllm
-    "zai"        zai/zai
-    (throw (ex-info (str "Unknown LLM provider: " provider)
-                    {:provider provider}))))
-
-(defn- resolve-model-lister [provider]
-  ;; a `case` inside of function instead of a map so that with-redefs work well
-  (case provider
-    "anthropic"  claude/list-models
-    "azure"      azure/list-models
-    "bedrock"    bedrock/list-models
-    "deepseek"   deepseek/list-models
-    "google"     google/list-models
-    "mistral"    mistral/list-models
-    "moonshot"   moonshot/list-models
-    "openai"     openai/list-models
-    "openrouter" openrouter/list-models
-    "vllm"       vllm/list-models
-    "zai"        zai/list-models
-    (throw (ex-info (str "Unknown LLM provider: " provider)
-                    {:provider provider}))))
 
 (defn- normalize-known-model
   "Check one adapter's `supported-models` value carries a `:display-name` (and optionally a
@@ -91,20 +47,7 @@
   no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
   operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
   [provider]
-  ;; a `case` like [[resolve-adapter]], so a new adapter that forgets to register here throws rather than reading as
-  ;; a provider that simply has no models
-  (when-let [models (case provider
-                      "anthropic"  claude/supported-models
-                      "bedrock"    bedrock/supported-models
-                      "deepseek"   deepseek/supported-models
-                      "mistral"    mistral/supported-models
-                      "moonshot"   moonshot/supported-models
-                      "openai"     openai/supported-models
-                      "openrouter" openrouter/supported-models
-                      "zai"        zai/supported-models
-                      ("azure" "google" "metabase" "vllm") nil
-                      (throw (ex-info (str "Unknown LLM provider: " provider)
-                                      {:provider provider})))]
+  (when-let [models (some-> (registry/optional provider :supported-models) deref)]
     (into {}
           (map (fn [[model-id value]] [model-id (normalize-known-model provider model-id value)]))
           models)))
@@ -122,24 +65,10 @@
                              :api-error   true
                              :model-ref   s})))]
     {:provider    type
-     :stream-fn   (resolve-adapter type)
+     :stream-fn   (registry/required type :stream)
      :model       model
      :credentials credentials
      :ai-proxy?   ai-proxy?}))
-
-(defn- resolve-context-window-fn [provider]
-  ;; a `case` inside of function instead of a map so that with-redefs work well
-  (case provider
-    "anthropic"  claude/context-window-tokens
-    "azure"      azure/context-window-tokens
-    "bedrock"    bedrock/context-window-tokens
-    "google"     google/context-window-tokens
-    "mistral"    mistral/context-window-tokens
-    "moonshot"   moonshot/context-window-tokens
-    "openai"     openai/context-window-tokens
-    "openrouter" openrouter/context-window-tokens
-    "zai"        zai/context-window-tokens
-    nil))
 
 (defn context-window-tokens
   "Input context window (tokens) for a `connection-key/model` string, or nil when the
@@ -152,7 +81,10 @@
   against the window itself (Anthropic et al.)."
   [model-ref]
   (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)
-        window-fn            (resolve-context-window-fn type)]
+        ;; an unresolvable ref yields no type at all, and asking about a model we cannot place is a
+        ;; question with a nil answer rather than a mistake
+        window-fn            (when (registry/registered? type)
+                               (registry/optional type :context-window))]
     (when (and window-fn model)
       (window-fn model))))
 
@@ -161,9 +93,9 @@
   The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes
   AWS key material and region (see [[bedrock/list-models]])."
   ([provider]
-   ((resolve-model-lister provider)))
+   ((registry/required provider :list-models)))
   ([provider opts]
-   ((resolve-model-lister provider) opts)))
+   ((registry/required provider :list-models) opts)))
 
 ;;; General LLM calling
 ;; Matches the Python ai-service retry behavior:
