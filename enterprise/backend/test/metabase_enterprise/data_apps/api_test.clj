@@ -150,8 +150,12 @@
       (create-app!)
       (let [response (mt/user-http-request
                       :crowberto :post 200 "apps/demo/query"
-                      {:stages [{:source {:type "table" :id (mt/id :venues)}
+                      {:stages [{:source {:type "table" :id (mt/id :venues) :name "Venues"
+                                          :fields {:price {:type "column" :name "PRICE" :jsType "number"}}
+                                          :segments {} :measures {}}
                                  :orderBys [{:type "column" :name "PRICE" :tableId (mt/id :venues)
+                                             :fieldId (mt/id :venues :price) :baseType "type/Integer"
+                                             :effectiveType "type/Integer" :defaultTemporalBucket nil
                                              :direction "asc" :jsType "number"}]
                                  :filters [{:type "operator" :operator ">"
                                             :args [{:type "column" :name "PRICE"}
@@ -167,23 +171,32 @@
                                            :limit 5}]}}
                 response))))))
 
-(deftest referenced-metrics-excludes-non-metric-cards-test
+(deftest query-definition-rejects-unsupported-fields-over-http-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (doseq [[path expected-errors]
+              [[[:unexpected] {:unexpected ["disallowed key"]}]
+               [[:stages 0 :joins] {:stages [{:joins ["disallowed key"]}]}]
+               [[:stages 0 :expressions] {:stages [{:expressions ["disallowed key"]}]}]
+               [[:stages 0 :source :unexpected] {:stages [{:source {:unexpected ["disallowed key"]}}]}]
+               [[:stages 0 :fields 0 :unexpected] {:stages [{:fields [{:unexpected ["disallowed key"]}]}]}]]]
+        (testing (str "Reject unsupported fields at " path)
+          (let [query {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                 :fields [{:type "column" :name "PRICE"}]}]}
+                response (mt/user-http-request :crowberto :post 400 "apps/demo/query"
+                                               (assoc-in query path []))]
+            (is (= {:errors expected-errors} response))))))))
+
+(deftest query-definition-resolves-a-metric-with-sdk-metadata-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (create-app!)
       (let [metadata-provider (mt/metadata-provider)
-            orders-query      (lib/query metadata-provider
-                                         (lib.metadata/table metadata-provider (mt/id :orders)))
             venue-count-query (-> (lib/query metadata-provider
                                              (lib.metadata/table metadata-provider (mt/id :venues)))
                                   (lib/aggregate (lib/count)))]
-        (mt/with-temp [:model/Card {question-id :id}
-                       {:name          "Orders"
-                        :type          :question
-                        :database_id   (mt/id)
-                        :table_id      (mt/id :orders)
-                        :dataset_query orders-query}
-                       :model/Card {metric-id :id}
+        (mt/with-temp [:model/Card {metric-id :id}
                        {:name          "Venue count"
                         :type          :metric
                         :database_id   (mt/id)
@@ -191,13 +204,12 @@
                         :dataset_query venue-count-query}]
           (let [response (mt/user-http-request
                           :crowberto :post 200 "apps/demo/query"
-                          {:stages [{:source       {:type "table" :id (mt/id :venues)}
-                                     :joins        [{:source     {:type "card" :id question-id}
-                                                     :strategy   "left-join"
-                                                     :conditions [{:operator "="
-                                                                   :left     {:type "column" :name "ID"}
-                                                                   :right    {:type "column" :name "USER_ID"}}]}]
-                                     :aggregations [{:type "metric" :id metric-id}]}]})]
+                          {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                     :aggregations [{:type "metric" :id metric-id :name "Venue count"
+                                                     :databaseId (mt/id) :sourceTableId (mt/id :venues)
+                                                     :sourceCardId nil :mappedTableIds [(mt/id :venues)]
+                                                     :columns {:count {:type "column" :name "count" :jsType "number"}}
+                                                     :dimensions {}}]}]})]
             (is (= [metric-id] (mapv :id (:metrics response))))))))))
 
 (deftest rejects-metrics-whose-definition-reads-another-card-test
