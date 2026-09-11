@@ -1,5 +1,6 @@
 import { PLUGIN_NOTIFICATIONS_SDK } from "metabase/plugins";
 import { Center, Divider } from "metabase/ui";
+import { isAdhocDashboardId } from "metabase/utils/dashboard";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
 import { ExtraEditButtonsMenu } from "../../ExtraEditButtonsMenu";
@@ -18,6 +19,7 @@ import {
   ExportAsPdfButton,
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
+  SaveAdhocDashboardButton,
 } from "../buttons";
 import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
 import { RefreshIndicator } from "../buttons/RefreshIndicator";
@@ -30,6 +32,10 @@ export const dashboardActionButtons: Record<
   DashboardActionKey,
   DashboardActionButton
 > = {
+  [DASHBOARD_ACTION.SAVE_ADHOC_DASHBOARD]: {
+    component: SaveAdhocDashboardButton,
+    enabled: ({ dashboard }) => isAdhocDashboardId(dashboard?.id),
+  },
   // ACTIONS WHEN EDITING DASHBOARD
   [DASHBOARD_ACTION.ADD_QUESTION]: {
     component: AddQuestionButton,

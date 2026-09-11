@@ -17,11 +17,17 @@ import type {
   MetabotSourceFeedback,
   MetabotStateContext,
   RegenerateSuggestedMetabotPromptsResponse,
+  SaveMetabotDashboardRequest,
+  SaveMetabotDashboardResponse,
   SaveMetabotEntityRequest,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
+
+export type SavedEntity =
+  | { type: "card"; chart_id: string | null; card_id: number }
+  | { type: "dashboard"; generated_dashboard_id: string; dashboard_id: number };
 
 export type MetabotConversationDetail = {
   conversation_id: string;
@@ -30,6 +36,7 @@ export type MetabotConversationDetail = {
   user_id: number | null;
   forked_from_conversation_id: string | null;
   state?: MetabotStateContext;
+  saved_entities?: SavedEntity[];
   messages: MetabotMessage[];
   context_window_tokens?: number;
 };
@@ -157,6 +164,18 @@ export const metabotApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
+    saveMetabotDashboard: builder.mutation<
+      SaveMetabotDashboardResponse,
+      SaveMetabotDashboardRequest
+    >({
+      query: ({ conversation_id, ...body }) => ({
+        method: "POST",
+        url: `/api/metabot/conversations/${conversation_id}/saved-dashboard`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("dashboard"), listTag("card")]),
+    }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
         method: "POST",
@@ -206,6 +225,7 @@ export const {
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
   useSaveMetabotEntityMutation,
+  useSaveMetabotDashboardMutation,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,

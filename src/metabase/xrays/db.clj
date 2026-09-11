@@ -252,7 +252,7 @@
 
 (mu/defn other-card-ids-on-dashboards
   "The Card ids other than `card-id` of the DashboardCards of the Dashboards with `dashboard-ids`."
-  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
+  [dashboard-ids :- [:set ::lib.schema.id/dashboard]
    card-id       :- ::lib.schema.id/card]
   (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:in dashboard-ids] :card_id [:not= card-id]))
 

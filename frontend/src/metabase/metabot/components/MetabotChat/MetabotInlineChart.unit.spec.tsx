@@ -19,7 +19,7 @@ import {
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { parseChartClipboard } from "metabase/common/utils/chart-clipboard";
-import { markChartSaved } from "metabase/metabot/state";
+import { markEntitySaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
@@ -281,7 +281,7 @@ describe("MetabotInlineChart", () => {
       );
 
       act(() => {
-        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
+        store.dispatch(markEntitySaved({ entityId: "card-1", savedId: 99 }));
       });
 
       await waitFor(() => {
@@ -297,7 +297,7 @@ describe("MetabotInlineChart", () => {
       const { store } = setup();
 
       act(() => {
-        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
+        store.dispatch(markEntitySaved({ entityId: "card-1", savedId: 99 }));
       });
 
       expect(
@@ -311,7 +311,7 @@ describe("MetabotInlineChart", () => {
       const { store } = setup();
 
       act(() => {
-        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
+        store.dispatch(markEntitySaved({ entityId: "card-1", savedId: 99 }));
       });
 
       expect(
@@ -329,7 +329,7 @@ describe("MetabotInlineChart", () => {
       const { store } = setup();
 
       act(() => {
-        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
+        store.dispatch(markEntitySaved({ entityId: "card-1", savedId: 99 }));
       });
 
       await waitFor(() => {
@@ -349,7 +349,7 @@ describe("MetabotInlineChart", () => {
       const { store } = setup();
 
       act(() => {
-        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
+        store.dispatch(markEntitySaved({ entityId: "card-1", savedId: 99 }));
       });
 
       expect(await screen.findByText("Saved")).toBeInTheDocument();

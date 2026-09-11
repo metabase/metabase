@@ -4,10 +4,13 @@ import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
 import type { Location } from "metabase/router";
+import type { AdhocDashboardDefinition } from "metabase/urls";
 import {
+  getAdhocDashboardEncodedDefinition,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
+import { b64url_to_utf8 } from "metabase/utils/encoding";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
@@ -81,6 +84,97 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
       series: ((dashcard as any).series || []).map((card: Card) =>
         expandInlineCard(card),
       ),
+    })),
+  };
+}
+
+// An "adhoc" dashboard id is a `/dashboard#<base64 JSON>` url carrying its whole
+// definition, mirroring `/question#<hash>` urls. It expands into the same
+// placeholder-id shape as inline dashboards, so the inline/transient machinery
+// (adhoc query execution, normalizr) applies unchanged. Ids are derived from the
+// tile index so re-expanding the same url yields identical entities.
+export function getAdhocDashboardDefinition(
+  dashId: string,
+): AdhocDashboardDefinition {
+  const encodedDefinition = getAdhocDashboardEncodedDefinition(
+    dashId.slice(dashId.indexOf("#")),
+  );
+  return JSON.parse(b64url_to_utf8(String(encodedDefinition)));
+}
+
+export type AdhocDashboardCard = Pick<
+  Card,
+  "name" | "display" | "dataset_query" | "visualization_settings"
+> & {
+  id: CardId | string;
+};
+
+export type AdhocDashCard = Pick<
+  QuestionDashboardCard,
+  | "col"
+  | "row"
+  | "size_x"
+  | "size_y"
+  | "visualization_settings"
+  | "parameter_mappings"
+  | "series"
+> & {
+  id: string;
+  dashboard_id: string;
+  card_id: CardId | null;
+  card: AdhocDashboardCard;
+};
+
+export type AdhocDashboard = Pick<
+  Dashboard,
+  "name" | "description" | "parameters" | "width"
+> & {
+  id: string;
+  dashcards: AdhocDashCard[];
+};
+
+function getAdhocDashboardKey(
+  dashId: string,
+  definition: AdhocDashboardDefinition,
+) {
+  if (definition.metabot != null) {
+    return definition.metabot.dashboard_id;
+  }
+  const encodedDefinition = dashId.slice(dashId.indexOf("#") + 1);
+  let hash = 2166136261;
+  for (let index = 0; index < encodedDefinition.length; index++) {
+    hash = Math.imul(hash ^ encodedDefinition.charCodeAt(index), 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+export function expandAdhocDashboard(dashId: string): AdhocDashboard {
+  const definition = getAdhocDashboardDefinition(dashId);
+  const key = getAdhocDashboardKey(dashId, definition);
+  return {
+    id: dashId,
+    name: definition.name,
+    description: definition.description ?? null,
+    parameters: [],
+    width: "fixed",
+    dashcards: definition.tiles.map((tile, index) => ({
+      id: `adhoc-${key}-dashcard-${index}`,
+      dashboard_id: dashId,
+      card_id: tile.card_id ?? null,
+      col: tile.col,
+      row: tile.row,
+      size_x: tile.size_x,
+      size_y: tile.size_y,
+      visualization_settings: {},
+      parameter_mappings: [],
+      series: [],
+      card: {
+        id: tile.card_id ?? `adhoc-${key}-card-${index}`,
+        name: tile.title,
+        display: tile.display,
+        dataset_query: tile.dataset_query,
+        visualization_settings: tile.visualization_settings ?? {},
+      },
     })),
   };
 }
@@ -229,7 +323,9 @@ export function hasDatabaseActionsEnabled(database: Database) {
   return database.settings?.["database-enable-actions"] ?? false;
 }
 
-export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
+export async function fetchDataOrError<T>(
+  dataPromise: Promise<T>,
+): Promise<T | { error: unknown }> {
   try {
     return await dataPromise;
   } catch (error) {
@@ -246,8 +342,9 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
       "data" in error &&
       typeof error.data === "object"
     ) {
-      // Return the error data as if it were a successful response
-      return error.data;
+      // Return the error data as if it were a successful response: a 4xx body
+      // from a query endpoint is the dataset-shaped error the caller renders
+      return error.data as T;
     }
     // For 5xx errors or other errors, maintain the original behavior
     return { error };

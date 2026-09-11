@@ -133,6 +133,10 @@ export const TOOL_MESSAGES = {
     active: () => t`Creating a query`,
     done: () => t`Created a query`,
   },
+  create_dashboard: {
+    active: () => t`Creating a dashboard`,
+    done: () => t`Created a dashboard`,
+  },
   get_field_values: {
     active: () => t`Retrieving table metadata`,
     done: () => t`Retrieved table metadata`,

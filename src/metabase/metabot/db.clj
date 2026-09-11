@@ -805,6 +805,41 @@
   (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
                                                    :metabot_chart_id        chart-id}))
 
+(defn saved-dashboards-for-conversation
+  "The ID and generated dashboard ID of the unarchived Dashboards saved from the MetabotConversation with
+  `conversation-id`, in ID order."
+  [conversation-id]
+  (t2/select [:model/Dashboard :id :metabot_dashboard_id]
+             :metabot_conversation_id conversation-id
+             :archived false
+             {:order-by [[:id :asc]]}))
+
+(defn saved-dashboard-for-conversation
+  "The unarchived Dashboard already saved from the MetabotConversation with `conversation-id` as the generated
+  dashboard `generated-id`, or nil."
+  [conversation-id generated-id]
+  (t2/select-one :model/Dashboard
+                 :metabot_conversation_id conversation-id
+                 :metabot_dashboard_id    generated-id
+                 :archived                false))
+
+(defn link-dashboard-to-conversation!
+  "Record that the Dashboard with `dashboard-id` was saved from the MetabotConversation with `conversation-id` as
+  the generated dashboard `generated-id`."
+  [dashboard-id conversation-id generated-id]
+  (t2/update! (t2/table-name :model/Dashboard) dashboard-id {:metabot_conversation_id conversation-id
+                                                             :metabot_dashboard_id    generated-id}))
+
+(defn insert-dashboard!
+  "Insert `dashboard` and return the created Dashboard row."
+  [dashboard]
+  (first (t2/insert-returning-instances! :model/Dashboard dashboard)))
+
+(defn insert-dashcard!
+  "Insert the DashboardCard `dashcard`."
+  [dashcard]
+  (t2/insert! :model/DashboardCard dashcard))
+
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
 (mu/defn collection

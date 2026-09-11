@@ -738,9 +738,10 @@
 (defn conversation-detail
   "Conversation-with-chat-messages snapshot. Nil if not found.
 
-  `:saved_entities` lists the live (non-archived) cards saved out of this
-  conversation (origin columns on `report_card`), keyed by the generated chart id
-  so a reloaded conversation can mark its inline charts as saved. Deliberately ids
+  `:saved_entities` lists the live (non-archived) cards and dashboards saved out of
+  this conversation (origin columns on `report_card` / `report_dashboard`), each
+  keyed by the id the agent generated for it (`chart_id` / `generated_dashboard_id`)
+  so a reloaded conversation can mark its inline entities as saved. Deliberately ids
   only — including display fields like the card name would leak content that other
   conversation participants may not be able to read; readers resolve names through
   the permission-checked card API."
@@ -753,10 +754,16 @@
        :user_id                     (:user_id conv)
        :forked_from_conversation_id (:forked_from_conversation_id conv)
        :state                       (conversation-state messages)
-       :saved_entities              (mapv (fn [{:keys [id metabot_chart_id]}]
-                                            {:card_id  id
-                                             :chart_id metabot_chart_id})
-                                          (metabot.db/saved-cards-for-conversation conversation-id))
+       :saved_entities              (into (mapv (fn [{:keys [id metabot_chart_id]}]
+                                                  {:type     "card"
+                                                   :card_id  id
+                                                   :chart_id metabot_chart_id})
+                                                (metabot.db/saved-cards-for-conversation conversation-id))
+                                          (map (fn [{:keys [id metabot_dashboard_id]}]
+                                                 {:type                   "dashboard"
+                                                  :dashboard_id           id
+                                                  :generated_dashboard_id metabot_dashboard_id}))
+                                          (metabot.db/saved-dashboards-for-conversation conversation-id))
        :messages                    (messages->client-messages messages)})))
 
 ;;; ---------------------------------------- Forking ----------------------------------------

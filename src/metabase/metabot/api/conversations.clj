@@ -14,6 +14,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.generated-dashboard :as generated-dashboard]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
@@ -50,6 +51,18 @@
    [:limit  ms/IntGreaterThanOrEqualToZero]
    [:offset ms/IntGreaterThanOrEqualToZero]])
 
+(def ^:private SavedCard
+  [:map {:closed true}
+   [:type     [:= "card"]]
+   [:chart_id [:maybe :string]]
+   [:card_id  ms/PositiveInt]])
+
+(def ^:private SavedDashboard
+  [:map {:closed true}
+   [:type                   [:= "dashboard"]]
+   [:generated_dashboard_id :string]
+   [:dashboard_id           ms/PositiveInt]])
+
 (def ^:private ConversationDetail
   [:map
    [:conversation_id             ms/UUIDString]
@@ -58,10 +71,7 @@
    [:user_id                     [:maybe ms/PositiveInt]]
    [:forked_from_conversation_id [:maybe ms/UUIDString]]
    [:state                       {:optional true} [:maybe ::metabot.schema/state]]
-   [:saved_entities              [:sequential
-                                  [:map
-                                   [:card_id  ms/PositiveInt]
-                                   [:chart_id [:maybe :string]]]]]
+   [:saved_entities              [:sequential [:or SavedCard SavedDashboard]]]
    [:messages                    [:sequential ::metabot.schema/client-message]]
    [:context_window_tokens       {:optional true} :int]])
 
@@ -113,6 +123,35 @@
    [:dashboard_tab_id        {:optional true} [:maybe ms/PositiveInt]]
    [:metabot_conversation_id ms/UUIDString]
    [:metabot_chart_id        ms/NonBlankString]])
+
+(def ^:private SaveDashboardTile
+  [:map {:closed true}
+   [:title         ms/NonBlankString]
+   [:display       ms/NonBlankString]
+   [:dataset_query ::lib-be.schema/maybe-legacy-query]
+   [:row           ms/IntGreaterThanOrEqualToZero]
+   [:col           ms/IntGreaterThanOrEqualToZero]
+   [:size_x        ms/PositiveInt]
+   [:size_y        ms/PositiveInt]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:chart_id      {:optional true} [:maybe [:and ms/NonBlankString [:string {:max 36}]]]]
+   [:card_id       {:optional true} [:maybe ms/PositiveInt]]])
+
+(def ^:private SaveDashboardBody
+  [:map {:closed true}
+   [:dashboard_id [:and ms/NonBlankString [:string {:max 36}]]]
+   [:dashboard    [:map {:closed true}
+                   [:name          ms/NonBlankString]
+                   [:description   {:optional true} [:maybe :string]]
+                   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                   [:tiles         [:sequential SaveDashboardTile]]]]])
+
+(def ^:private SaveDashboardResponse
+  [:map
+   [:id            ms/PositiveInt]
+   [:name          ms/NonBlankString]
+   [:description   {:optional true} [:maybe :string]]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
 ;;; ---------------------------------------- Queries ----------------------------------------
 
@@ -238,6 +277,37 @@
     (assoc created
            :metabot_conversation_id id
            :metabot_chart_id        chart_id)))
+
+(api.macros/defendpoint :post "/:id/saved-dashboard" :- SaveDashboardResponse
+  "Save a Metabot-generated dashboard from this conversation as a real dashboard
+  with one dashboard question per tile — used by the inline dashboard's manual
+  Save button, which runs outside any agent turn. The tiles arrive resolved
+  (query, display, grid position) so no agent state is needed; chart-backed tiles
+  get their card origin stamped like the agent's own `save_entity` path.
+
+  Accessible to any participant in the conversation or to any superuser."
+  [{:keys [id]} :- ConversationIdParams
+   _query-params
+   {:keys [dashboard_id dashboard]} :- SaveDashboardBody]
+  (api/read-check :model/MetabotConversation id)
+  (let [{dash :dashboard} (generated-dashboard/materialize!
+                           {:name            (:name dashboard)
+                            :description     (:description dashboard)
+                            :collection-id   (:collection_id dashboard)
+                            :conversation-id id
+                            :generated-id    dashboard_id
+                            :tiles           (for [tile (:tiles dashboard)]
+                                               {:name                   (:title tile)
+                                                :dataset-query          (:dataset_query tile)
+                                                :display                (keyword (:display tile))
+                                                :visualization-settings (:visualization_settings tile)
+                                                :row                    (:row tile)
+                                                :col                    (:col tile)
+                                                :size-x                 (:size_x tile)
+                                                :size-y                 (:size_y tile)
+                                                :chart-id               (:chart_id tile)
+                                                :card-id                (:card_id tile)})})]
+    (select-keys dash [:id :name :description :collection_id])))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/conversations` routes."

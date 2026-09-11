@@ -430,6 +430,8 @@
                :view_count :last_viewed_at
                ;; this is deprecated
                :cache_ttl
+               ;; instance-specific Metabot origin (which conversation/generated dashboard it was saved from)
+               :metabot_conversation_id :metabot_dashboard_id
                ;; always re-derived from public_uuid on import
                :public_uuid_prefix]
    :transform {:created_at             (serdes/date)

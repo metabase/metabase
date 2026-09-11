@@ -2,17 +2,37 @@ import slugg from "slugg";
 
 import { isTransientCardId } from "metabase/common/utils/card";
 import { stringifyHashOptions } from "metabase/utils/browser";
+import { getAdhocDashboardId } from "metabase/utils/dashboard";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  AdhocDashboardTile,
   DashCardId,
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
+
+export type AdhocDashboardMetabotOrigin = {
+  conversation_id: string;
+  dashboard_id: string;
+};
+
+export type AdhocDashboardDefinition = {
+  name: string;
+  description?: string;
+  tiles: AdhocDashboardTile[];
+  metabot?: AdhocDashboardMetabotOrigin;
+};
+
+export function adhocDashboard(definition: AdhocDashboardDefinition) {
+  return getAdhocDashboardId(
+    utf8_to_b64url(JSON.stringify(definition)).replace(/=+$/, ""),
+  );
+}
 
 type DashboardUrlBuilderOpts = {
   addCardWithId?: number;

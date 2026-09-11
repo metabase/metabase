@@ -47,6 +47,29 @@ export function isTransientId(id: unknown) {
   return typeof id === "string" && /\/auto\/dashboard/.test(id);
 }
 
+export const ADHOC_DASHBOARD_PATH = "/dashboard";
+
+// An ad-hoc dashboard id is its own url, `/dashboard#<encoded definition>`, like
+// `/question#<hash>`. The definition is the first hash segment; DashboardApp's
+// display options (`fullscreen`, `refresh`, …) append after `&` and round-trip
+// through the hash-option helpers as a bare key.
+export function getAdhocDashboardId(encodedDefinition: string) {
+  return `${ADHOC_DASHBOARD_PATH}#${encodedDefinition}`;
+}
+
+export function getAdhocDashboardEncodedDefinition(hash: string) {
+  const [encodedDefinition] = hash.replace(/^#/, "").split("&");
+  return encodedDefinition || undefined;
+}
+
+export function isAdhocDashboardPath(pathname: string) {
+  return pathname === ADHOC_DASHBOARD_PATH;
+}
+
+export function isAdhocDashboardId(id: unknown): id is string {
+  return typeof id === "string" && id.startsWith(`${ADHOC_DASHBOARD_PATH}#`);
+}
+
 export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
@@ -57,6 +80,8 @@ export function getDashboardType(id: unknown) {
     return "embed";
   } else if (isTransientId(id)) {
     return "transient";
+  } else if (isAdhocDashboardId(id)) {
+    return "adhoc";
   } else {
     return "normal";
   }
