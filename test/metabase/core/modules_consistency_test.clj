@@ -154,12 +154,12 @@
                    {"metabase.lib.schema" 'lib.schema}
                    ["test/metabase/lib/schema_test.cljc"])))))))
 
-(deftest ^:parallel log-team-attribution-agrees-with-deps-graph-test
-  (testing "logging and dev tooling assign the same team to every module"
+(deftest ^:parallel log-team-attribution-agrees-with-hook-test
+  (testing "logging and the shared resolver assign the same team to every module"
     (let [config (dev.deps-graph/kondo-config)]
       (is (< 100 (count config)) "expected the full module config")
       (doseq [module (sort (keys config))
               :let   [ns-symb (symbol (modules/module-ns-prefix config module))]]
         (testing (str "\n" ns-symb)
-          (is (= (dev.deps-graph/module-team config module)
+          (is (= (modules/module-team config module)
                  (log/ns->team* ns-symb))))))))

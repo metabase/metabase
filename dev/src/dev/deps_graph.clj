@@ -436,12 +436,6 @@
       ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
       (dissoc 'connection-pool)))
 
-(defn module-team
-  "Team owning `module`: its own `:team`, else its nearest ancestor's."
-  [config module]
-  (some #(get-in config [% :team])
-        (take-while some? (iterate #(modules/parent-module config %) module))))
-
 (defn- kondo-config-diff-ignore-any
   "Ignore entries in the config that use `:any`."
   [diff]

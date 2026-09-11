@@ -87,7 +87,8 @@ Run all repository-level checks, or one named suite:
 ### Nested modules
 
 Module names form a tree: `lib.schema` is a child of `lib`. When OSS module `search` exists,
-`enterprise/search` is its child. Run `./bin/mage modules-tree` to inspect the hierarchy.
+`enterprise/search` is its child. Run `./bin/mage modules-tree` to inspect the hierarchy, or add `--html` for an
+interactive explorer with a dependency graph.
 
 - Namespace ownership uses the most specific matching prefix. Declaring `lib.schema` assigns
   `metabase.lib.schema.*` to it without moving files. Use `:ns-prefix` when namespaces do not match the
