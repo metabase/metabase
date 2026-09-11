@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockLocation } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockLocation } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
 import { Route } from "metabase/router";
 import { openSaveDialog } from "metabase/utils/dom";

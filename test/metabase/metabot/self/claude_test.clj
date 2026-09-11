@@ -628,7 +628,10 @@
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4-8"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-5"})))
         (testing "bedrock vendor prefix is stripped"
-          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"})))))
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"}))))
+        (testing "the dotted display-name spelling of the minor version parses the same
+                 (Azure admins name deployments freely)"
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4.8"})))))
       (testing "4.6 models also get an explicit display param, not just the (currently matching) default"
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4-6"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-4-6"}))))

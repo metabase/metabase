@@ -1,26 +1,34 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useDocsUrl } from "metabase/common/hooks";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { CustomGeoJSONWidget } from "../widgets/CustomGeoJSONWidget";
 
 export function MapsSettingsPage() {
+  const { url: tileServerDocsUrl } = useDocsUrl(
+    "configuring-metabase/custom-maps",
+    { anchor: "map-tile-server" },
+  );
+
   return (
     <SettingsPageWrapper title={t`Maps`}>
       <SettingsSection>
         <AdminSettingInput
           name="map-tile-server-url"
-          title={t`Map tile server URL`}
+          title={t`Map tile server public URL`}
           description={
             <>
-              <div>
-                {t`URL of the map tile server to use for rendering maps. If you're using a custom map tile server, you can set it here.`}
-              </div>
-              <div>{t`Metabase uses OpenStreetMaps by default.`}</div>
+              {jt`Public URL of the tile server to use when rendering maps. Defaults to OpenStreetMaps, but you can set a custom URL. This URL is visible to clients, so do not include private keys. ${(
+                <ExternalLink key="tile-server-docs" href={tileServerDocsUrl}>
+                  {t`Learn more`}
+                </ExternalLink>
+              )}`}
             </>
           }
           inputType="text"

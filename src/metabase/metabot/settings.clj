@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.google :as google]
+   [metabase.metabot.self.registry :as registry]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))

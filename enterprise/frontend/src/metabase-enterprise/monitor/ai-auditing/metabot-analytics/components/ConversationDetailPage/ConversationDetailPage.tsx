@@ -12,13 +12,13 @@ import {
 } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
 import { useBranchableMessages } from "metabase/metabot/hooks";
+import { isTextPart } from "metabase/metabot/state";
 import type {
-  MetabotAgentTextChatMessage,
-  MetabotChatMessage,
   MetabotDebugToolCallMessage,
+  MetabotMessage,
 } from "metabase/metabot/state/types";
-import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
-import { getMetadata } from "metabase/metadata-store";
+import { convertSlackMessage } from "metabase/metabot/utils/slack-mrkdwn";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -45,15 +45,28 @@ import { checkNotNull } from "metabase/utils/types";
 import { getUserName } from "metabase/utils/user";
 import { useGetMetabotAnalyticsConversationQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
 import type {
+  ConversationDetail,
   ConversationFeedback,
   GeneratedQuery,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
-import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
 import { ConversationHeader } from "./ConversationHeader";
 import { ForkBoundary } from "./ForkBoundary";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
+
+const SLACK_PROFILE_IDS = ["slackbot", "slack"];
+
+function normalizeMessages(conversation: ConversationDetail | undefined) {
+  const messages = conversation?.messages ?? [];
+  if (!SLACK_PROFILE_IDS.includes(conversation?.profile_id ?? "")) {
+    return messages;
+  }
+  return messages.map((message) => ({
+    ...convertSlackMessage(message),
+    parent_message_id: message.parent_message_id,
+  }));
+}
 
 export function ConversationDetailPage() {
   const params = useParams();
@@ -91,24 +104,13 @@ export function ConversationDetailPage() {
     refetchOnMountOrArgChange: true,
   });
 
-  const isSlack =
-    conversation?.profile_id === "slackbot" ||
-    conversation?.profile_id === "slack";
-
   const conversationMessages = useMemo(
-    () => conversation?.messages ?? [],
-    [conversation?.messages],
+    () => normalizeMessages(conversation),
+    [conversation],
   );
 
-  const { messages, getExtraActions } = useBranchableMessages(
-    conversationMessages,
-    { isSlack },
-  );
-
-  const feedbackChatMessages = normalizeFetchedChatMessages(
-    conversationMessages,
-    { isSlack },
-  );
+  const { messages, getExtraActions } =
+    useBranchableMessages(conversationMessages);
 
   if (isLoading || error) {
     return (
@@ -139,9 +141,7 @@ export function ConversationDetailPage() {
 
   const forkBoundaryMessage = fork_boundary_message_id
     ? messages.findLast(
-        (message) =>
-          "externalId" in message &&
-          message.externalId === fork_boundary_message_id,
+        (message) => message.externalId === fork_boundary_message_id,
       )
     : undefined;
 
@@ -179,7 +179,7 @@ export function ConversationDetailPage() {
                     <FeedbackCard
                       key={item.id}
                       feedback={item}
-                      chatMessages={feedbackChatMessages}
+                      messages={conversationMessages}
                       conversationId={convoId}
                     />
                   ))}
@@ -257,21 +257,21 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 function FeedbackCard({
   feedback,
-  chatMessages,
+  messages,
   conversationId,
 }: {
   feedback: ConversationFeedback;
-  chatMessages: MetabotChatMessage[];
+  messages: MetabotMessage[];
   conversationId: string;
 }) {
-  const agentResponse = feedback.external_id
-    ? chatMessages.find(
-        (message): message is MetabotAgentTextChatMessage =>
-          message.role === "agent" &&
-          message.type === "text" &&
-          message.externalId === feedback.external_id,
-      )
-    : undefined;
+  const agentResponse = useMemo(() => {
+    const message = feedback.external_id
+      ? messages.find(({ externalId }) => externalId === feedback.external_id)
+      : undefined;
+    return message
+      ? { ...message, parts: message.parts.filter(isTextPart) }
+      : undefined;
+  }, [feedback.external_id, messages]);
 
   const submitterName = feedback.user
     ? getUserName(feedback.user) || null
@@ -301,11 +301,10 @@ function FeedbackCard({
         {agentResponse && (
           <AgentMessage
             message={agentResponse}
-            debug
+            debug={false}
             readonly
-            conversationId={conversationId}
             hideActions
-            getCopyText={noopGetCopyText}
+            conversationId={conversationId}
             submittedFeedback={undefined}
             bg="background_page-secondary"
             p="lg"
@@ -332,7 +331,7 @@ export function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
 }
 
 function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
 
   const runUrl = useMemo(() => {
     if (query.database_id == null || !query.sql) {
@@ -343,17 +342,13 @@ function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
       database: query.database_id,
       native: { query: query.sql, "template-tags": {} },
     };
-    const question = new Question(
-      {
-        name: null,
-        display: "table",
-        visualization_settings: {},
-        dataset_query: datasetQuery,
-      },
-      metadata,
-    ).setType("question");
+    const question = buildQuestion({
+      display: "table",
+      visualization_settings: {},
+      dataset_query: datasetQuery,
+    }).setType("question");
     return ML_getUrl(question);
-  }, [metadata, query.database_id, query.sql]);
+  }, [buildQuestion, query.database_id, query.sql]);
 
   return (
     <Card withBorder shadow="none" p="lg">
@@ -406,23 +401,19 @@ function NotebookGeneratedQueryCard({
   const { isLoading, isError } = useGetAdhocQueryMetadataQuery(
     mbql.database != null ? mbql : skipToken,
   );
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );
 
   const question = useMemo(() => {
-    const q = new Question(
-      {
-        name: null,
-        display: display ?? "table",
-        visualization_settings: {},
-        dataset_query: mbql,
-      },
-      metadata,
-    ).setType("question");
+    const q = buildQuestion({
+      display: display ?? "table",
+      visualization_settings: {},
+      dataset_query: mbql,
+    }).setType("question");
     return display ? q.lockDisplay() : q;
-  }, [mbql, metadata, display]);
+  }, [buildQuestion, mbql, display]);
 
   if (isLoading) {
     return (
@@ -497,8 +488,4 @@ function NotebookGeneratedQueryCard({
 
 function noopUpdateQuestion(): Promise<void> {
   return Promise.resolve();
-}
-
-function noopGetCopyText() {
-  return "";
 }

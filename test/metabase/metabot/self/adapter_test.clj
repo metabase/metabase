@@ -8,6 +8,8 @@
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
@@ -15,8 +17,6 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
-   [metabase.metabot.self.core :as self.core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.util.log.capture :as log.capture]))
 
 (set! *warn-on-reflection* true)
@@ -94,7 +94,7 @@
    :schema    [:=> [:cat [:map {:closed true} [:x :string]]] :any]
    :fn        (fn [_] "ok")})
 
-(defn- streamed-request
+(defn- streamed-request!
   "Run `thunk` with streaming stubbed to the identity chain, so the adapter's `stream!` hands back the
   clj-http request map it would have sent."
   [thunk]
@@ -104,7 +104,7 @@
                 http/request                        (fn [req] {:body req})]
     (thunk)))
 
-(defn- captured-counts
+(defn- captured-counts!
   "Run a Claude request with HTTP and streaming stubbed out, and return the `:msg-count` / `:tool-count`
   [[adapter/stream!]] reported for it.
 
@@ -113,7 +113,7 @@
   these counts never reach a span. That is true on master too and is not this namespace's to fix."
   [opts]
   (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.adapter :debug]]
-               (streamed-request
+               (streamed-request!
                 #(claude/claude-raw (merge {:model       "claude-haiku-4-5"
                                             :credentials {:api-key  "sk-ant-test"
                                                           :base-url "https://api.anthropic.com"}}
@@ -130,13 +130,13 @@
     ;; a structured-output request replaces the whole tool array with one synthetic `structured_output`
     ;; tool, so counting the composed body reported 1 however many tools the caller passed
     (is (= {:msg-count 1 :tool-count 15}
-           (captured-counts {:input  [{:role :user :content "hi"}]
+           (captured-counts! {:input  [{:role :user :content "hi"}]
                              :tools  (mapv tool (range 15))
                              :schema {:type "object" :properties {}}}))))
   (testing "msg-count is the caller's AISDK parts, not the messages the dialect merged them into"
     ;; `parts->claude-messages` collapses consecutive assistant parts into one wire message
     (is (= {:msg-count 3 :tool-count 0}
-           (captured-counts {:input [{:role :user :content "hi"}
+           (captured-counts! {:input [{:role :user :content "hi"}
                                      {:type :text :text "one"}
                                      {:type :text :text "two"}]})))))
 
@@ -151,7 +151,7 @@
                :url     "https://api.anthropic.com/v1/messages"
                :headers {"anthropic-version" "2023-06-01"
                          "Content-Type"      "application/json"}}
-              (streamed-request
+              (streamed-request!
                #(claude/claude-raw {:model       "claude-haiku-4-5"
                                     :input       [{:role :user :content "hi"}]
                                     :credentials {:api-key  "sk-ant-test"
@@ -162,7 +162,7 @@
                :headers {"HTTP-Referer" "https://metabase.com"
                          "X-Title"      "Metabase"
                          "Content-Type" "application/json"}}
-              (streamed-request
+              (streamed-request!
                #(openrouter/openrouter-raw {:model       "anthropic/claude-haiku-4.5"
                                             :input       [{:role :user :content "hi"}]
                                             :credentials {:api-key  "sk-or-test"
@@ -173,7 +173,7 @@
     ;; Claude's fast mode adds `anthropic-beta`; dropping `anthropic-version` alongside it would 400
     (is (=? {:headers {"anthropic-version" "2023-06-01"
                        "anthropic-beta"    string?}}
-            (streamed-request
+            (streamed-request!
              #(claude/claude-raw {:model       "claude-opus-4-8"
                                   :input       [{:role :user :content "hi"}]
                                   :fast?       true

@@ -80,11 +80,13 @@
                  :fast-mode?       #'claude/supports-fast-mode?}
    "azure"      {:stream           #'azure/azure
                  :list-models      #'azure/list-models
-                 :context-window   #'azure/context-window-tokens}
+                 :context-window   #'azure/context-window-tokens
+                 :reasoning?       #'azure/streams-reasoning?}
    "bedrock"    {:stream           #'bedrock/bedrock
                  :list-models      #'bedrock/list-models
                  :supported-models #'bedrock/supported-models
-                 :context-window   #'bedrock/context-window-tokens}
+                 :context-window   #'bedrock/context-window-tokens
+                 :reasoning?       #'bedrock/streams-reasoning?}
    "deepseek"   {:stream           #'deepseek/deepseek
                  :list-models      #'deepseek/list-models
                  :supported-models #'deepseek/supported-models
@@ -96,11 +98,13 @@
    "mistral"    {:stream           #'mistral/mistral
                  :list-models      #'mistral/list-models
                  :supported-models #'mistral/supported-models
-                 :context-window   #'mistral/context-window-tokens}
+                 :context-window   #'mistral/context-window-tokens
+                 :reasoning?       #'mistral/streams-reasoning?}
    "moonshot"   {:stream           #'moonshot/moonshot
                  :list-models      #'moonshot/list-models
                  :supported-models #'moonshot/supported-models
-                 :context-window   #'moonshot/context-window-tokens}
+                 :context-window   #'moonshot/context-window-tokens
+                 :reasoning?       #'moonshot/streams-reasoning?}
    "openai"     {:stream           #'openai/openai
                  :list-models      #'openai/list-models
                  :supported-models #'openai/supported-models
@@ -109,14 +113,16 @@
    "openrouter" {:stream           #'openrouter/openrouter
                  :list-models      #'openrouter/list-models
                  :supported-models #'openrouter/supported-models
-                 :context-window   #'openrouter/context-window-tokens}
+                 :context-window   #'openrouter/context-window-tokens
+                 :reasoning?       #'openrouter/streams-reasoning?}
    "vllm"       {:stream           #'vllm/vllm
                  :list-models      #'vllm/list-models
                  :reasoning?       #'vllm/streams-reasoning?}
    "zai"        {:stream           #'zai/zai
                  :list-models      #'zai/list-models
                  :supported-models #'zai/supported-models
-                 :context-window   #'zai/context-window-tokens}
+                 :context-window   #'zai/context-window-tokens
+                 :reasoning?       #'zai/streams-reasoning?}
    ;; the managed connection is served by the wire family its model names, so it has no adapter of its own
    "metabase"   {}})
 

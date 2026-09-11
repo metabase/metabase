@@ -20,7 +20,7 @@
    "Cache-Control"                "no-store"})
 
 (def ^:private TypedSchemaQueryParams
-  [:map
+  [:map {:closed true}
    [:database {:optional true}
     [:maybe {:description "Scopes the schema to a database by numeric id or name."}
      ms/NonBlankString]]

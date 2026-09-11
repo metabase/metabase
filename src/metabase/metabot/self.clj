@@ -15,8 +15,8 @@
    [metabase.api.common :as api]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.scope :as scope]
-   [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.registry :as registry]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
@@ -63,6 +63,7 @@
                                  (pr-str (llm.provider/model-ref->connection-key s)))
                             {:status-code 400
                              :api-error   true
+                             :error-code  :llm-not-configured
                              :model-ref   s})))]
     {:provider    type
      :stream-fn   (registry/required type :stream)
@@ -91,7 +92,7 @@
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
   The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes
-  AWS key material and region (see [[bedrock/list-models]])."
+  optional AWS key material and region (see [[bedrock/list-models]])."
   ([provider]
    ((registry/required provider :list-models)))
   ([provider opts]

@@ -44,13 +44,17 @@
 (mr/def ::ScheduleMap
   (mu/with-api-error-message
    [:map
-    {:error/message "Expanded schedule map"}
+    {:closed true :error/message "Expanded schedule map"}
     [:schedule_type                    [:enum "hourly" "daily" "weekly" "monthly"]]
     [:schedule_day    {:optional true} [:maybe [:enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"]]]
     [:schedule_frame  {:optional true} [:maybe [:enum "first" "mid" "last"]]]
     [:schedule_hour   {:optional true} [:maybe ::CronHour]]
     [:schedule_minute {:optional true} [:maybe ::CronMinute]]]
    (i18n/deferred-tru "value must be a valid schedule map. See schema in metabase.util.cron for details.")))
+
+(def schedule-keys
+  "The keys of a [[ScheduleMap]]."
+  [:schedule_type :schedule_day :schedule_frame :schedule_hour :schedule_minute])
 
 (def ScheduleMap
   "Schema for a frontend-parsable schedule map. Used for Pulses and DB scheduling."
