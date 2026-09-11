@@ -83,6 +83,7 @@
    [:headers    {:optional true} [:maybe [:map-of :string :string]]]
    [:request    {:optional true} [:maybe :map]]
    [:span-attrs {:optional true} [:maybe :map]]
+   [:error-msg  {:optional true} [:maybe fn?]]
    [:wrap       {:optional true} [:maybe fn?]]
    [:on-error   {:optional true} [:maybe fn?]]])
 
@@ -253,12 +254,14 @@
     :headers    - extra request headers, beyond the descriptor's own and `Content-Type`.
     :request    - extra [[core/request]] opts, e.g. per-provider timeouts.
     :span-attrs - extra attributes for the span.
+    :error-msg  - replaces the descriptor's own `res->message`, for a provider whose message depends on
+                  the connection rather than only on the response.
     :wrap       - applied to the reducible before error translation, for an adapter with its own
                   translation to do first.
     :on-error   - replaces the default [[rethrow!]] catch, for an adapter that retries."
   [{:keys [slug display-name span] :as p}            :- Provider
    {:keys [model input tools credentials ai-proxy?]} :- core/LLMRequestOpts
-   {:keys [path body headers request span-attrs wrap on-error]
+   {:keys [path body headers request span-attrs wrap on-error error-msg]
     :or   {wrap identity}}                           :- StreamOpts]
   (let [msg-count  (count input)
         tool-count (count tools)]
@@ -285,7 +288,7 @@
                                    :url      path
                                    :request  body})
             wrap
-            (core/reducible-with-api-errors slug (:error-msg p)))
+            (core/reducible-with-api-errors slug (or error-msg (:error-msg p))))
         (catch Exception e
           (if on-error
             (on-error e)
