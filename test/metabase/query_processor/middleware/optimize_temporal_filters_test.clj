@@ -620,6 +620,69 @@
         (let [clause [:> [:expression "date" opts] [:absolute-datetime #t "2025-06-01" :day]]]
           (is (= clause (optimize-filters clause)) (pr-str opts)))))))
 
+(deftest ^:parallel expression-ref-hoisted-bucket-needs-an-aligned-literal-test
+  (testing (str "This middleware truncates BOTH sides of a comparison, so a literal sitting in the "
+                "middle of its bucket costs a `field` ref nothing. It never fires on an `expression` "
+                "ref, where only the column is truncated - so agent-lib repair's Pass 2.95 truncates "
+                "the literal itself when it hoists a bucket onto a ref. Without that the hoisted "
+                "clause asks a different question and answers it silently (BOT-2095).")
+    (mt/dataset test-data
+      (let [mp         (mt/metadata-provider)
+            created-at (lib.metadata/field mp (mt/id :people :created_at))
+            ;; `Ship` is `created_at` shifted by zero days, so the field-ref answer is the right one
+            base       (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                           (lib/expression "Ship" (lib/datetime-add created-at 0 :day)))
+            cnt        (fn [filter-clause]
+                         (-> base
+                             (lib/filter filter-clause)
+                             (lib/aggregate (lib/count))
+                             qp/process-query
+                             mt/rows
+                             ffirst))
+            fld        (fn [unit] (lib/with-temporal-bucket (lib/ref created-at) unit))
+            expr       (fn [unit] (lib/with-temporal-bucket (lib/expression-ref base "Ship") unit))]
+        (doseq [[label ground-clause unaligned-clause aligned-clause]
+                [["="
+                  (lib/= (fld :month) "2018-06-15")
+                  (lib/= (expr :month) "2018-06-15")
+                  (lib/= (expr :month) "2018-06-01")]
+                 ["<"
+                  (lib/< (fld :month) "2018-06-15")
+                  (lib/< (expr :month) "2018-06-15")
+                  (lib/< (expr :month) "2018-06-01")]
+                 [">="
+                  (lib/>= (fld :month) "2018-06-15")
+                  (lib/>= (expr :month) "2018-06-15")
+                  (lib/>= (expr :month) "2018-06-01")]
+                 ["between"
+                  (lib/between (fld :month) "2018-06-15" "2018-09-20")
+                  (lib/between (expr :month) "2018-06-15" "2018-09-20")
+                  (lib/between (expr :month) "2018-06-01" "2018-09-01")]]]
+          (testing label
+            (let [ground (cnt ground-clause)]
+              (is (pos? ground)
+                  "the field-ref clause has to match some rows, or the comparison below is vacuous")
+              (is (= ground (cnt aligned-clause))
+                  "the aligned literal reproduces the field-ref answer")
+              (is (not= ground (cnt unaligned-clause))
+                  "the unaligned literal does not - this is the defect Pass 2.95 aligns away"))))
+        ;; This is what licenses Pass 2.95 applying the alignment unconditionally instead of only
+        ;; when the ref is an `expression` - the middleware truncates the literal for a `field` ref
+        ;; anyway, so pre-truncating it cannot move the answer.
+        (testing "aligning the literal is a no-op for a field ref"
+          (doseq [[label aligned unaligned]
+                  [["="       (lib/= (fld :month) "2018-06-01")        (lib/= (fld :month) "2018-06-15")]
+                   ["!="      (lib/!= (fld :month) "2018-06-01")       (lib/!= (fld :month) "2018-06-15")]
+                   ["<"       (lib/< (fld :month) "2018-06-01")        (lib/< (fld :month) "2018-06-15")]
+                   ["<="      (lib/<= (fld :month) "2018-06-01")       (lib/<= (fld :month) "2018-06-15")]
+                   [">"       (lib/> (fld :month) "2018-06-01")        (lib/> (fld :month) "2018-06-15")]
+                   [">="      (lib/>= (fld :month) "2018-06-01")       (lib/>= (fld :month) "2018-06-15")]
+                   ["quarter" (lib/= (fld :quarter) "2018-04-01")      (lib/= (fld :quarter) "2018-06-15")]
+                   ["between" (lib/between (fld :month) "2018-06-01" "2018-09-01")
+                    (lib/between (fld :month) "2018-06-15" "2018-09-20")]]]
+            (testing label
+              (is (= (cnt unaligned) (cnt aligned))))))))))
+
 (deftest ^:parallel do-not-change-unit-of-relative-datetime-to-default-test
   (testing "Never change the unit of a relative datetime to :default. That would not make any sense."
     (is (= {:database (meta/id)

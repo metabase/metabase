@@ -7,7 +7,8 @@
    [clojure.test.check.properties :as prop]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repair]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
 
@@ -719,6 +720,15 @@
 (defn- abs-dt [literal unit]
   ["absolute-datetime" {} literal unit])
 
+(defn- week-start
+  "`literal` truncated to the start of its week - what the hoist aligns a `week`-bucketed literal to.
+
+  Computed rather than written out: `u.date/truncate` reads the site `start-of-week` setting, other
+  namespaces mutate it, and the tests below are `^:parallel`. Under the default Sunday `2025-01-01`
+  gives `2024-12-29`."
+  [literal]
+  (str (u.date/truncate (u.date/parse literal) :week)))
+
 (defn- repair-in-stage
   "Run `repair` on a query carrying `stage-kvs`, returning the repaired first stage. The hoist pass
   is scoped to a stage's `filters` and `expressions`, so its inputs have to be given in one of those
@@ -755,14 +765,25 @@
           op))))
 
 (deftest ^:parallel hoist-temporal-bucket-units-test
-  (testing "every date unit moves onto the field ref"
-    (doseq [unit ["default" "day" "week" "month" "quarter" "year"]]
-      (is (= ["=" {} (created-at-bucketed unit) "2025-01-01"]
+  (testing "every date unit moves onto the field ref, and the literal aligns to the unit it gave up"
+    ;; `week` is the only date unit `2025-01-01` is not already aligned to - it is a Wednesday
+    (doseq [[unit literal] {"default" "2025-01-01"
+                            "day"     "2025-01-01"
+                            "week"    (week-start "2025-01-01")
+                            "month"   "2025-01-01"
+                            "quarter" "2025-01-01"
+                            "year"    "2025-01-01"}]
+      (is (= ["=" {} (created-at-bucketed unit) literal]
              (repair-filter ["=" {} created-at (abs-dt "2025-01-01" unit)]))
           unit)))
   (testing "a datetime literal also takes the sub-day units"
-    (doseq [unit ["default" "second" "minute" "hour" "day" "month"]]
-      (is (= ["=" {} (created-at-bucketed unit) "2025-01-01T10:30:00"]
+    (doseq [[unit literal] {"default" "2025-01-01T10:30:00"
+                            "second"  "2025-01-01T10:30:00"
+                            "minute"  "2025-01-01T10:30:00"
+                            "hour"    "2025-01-01T10:00"
+                            "day"     "2025-01-01T00:00"
+                            "month"   "2025-01-01T00:00"}]
+      (is (= ["=" {} (created-at-bucketed unit) literal]
              (repair-filter ["=" {} created-at (abs-dt "2025-01-01T10:30:00" unit)]))
           unit))))
 
@@ -791,6 +812,68 @@
     (is (= ["=" {} ["expression" {"temporal-unit" "month"} "Ship Date"] "2025-01-01"]
            (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-01-01" "month")])))))
 
+;; The hoisted clause truncates the column, so the literal has to be truncated too or the clause
+;; asks a different question - `date_trunc(month, col) = "2025-06-15"` is never true, and the
+;; ordered heads land up to one bucket out. `optimize-temporal-filters` does this for a `field` ref
+;; and never for an `expression` ref, so the pass does it itself. These are shape assertions; the
+;; row-level proof that alignment reproduces the field-ref answer lives next to that middleware, in
+;; `expression-ref-hoisted-bucket-needs-an-aligned-literal-test`.
+(deftest ^:parallel hoist-temporal-bucket-aligns-literal-test
+  (testing "the hoisted literal is truncated to the unit it gave up"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-06-01"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-15" "month")])))
+    (is (= ["=" {} (created-at-bucketed "quarter") "2025-04-01"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-15" "quarter")])))
+    (is (= ["=" {} ["expression" {"temporal-unit" "month"} "Ship Date"] "2025-06-01"]
+           (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-15" "month")]))))
+  (testing "`during` names the unit containing its literal, so this is its mainline case"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-06-01"]
+           (repair-filter ["during" {} created-at "2025-06-15" "month"]))))
+  (testing "both `between` bounds align"
+    (is (= ["between" {} (created-at-bucketed "month") "2025-06-01" "2025-09-01"]
+           (repair-filter ["between" {} created-at (abs-dt "2025-06-15" "month") (abs-dt "2025-09-20" "month")]))))
+  (testing "so does every literal of a variadic comparison"
+    (is (= ["in" {} (created-at-bucketed "month") "2025-06-01" "2025-09-01"]
+           (repair-filter ["in" {} created-at (abs-dt "2025-06-15" "month") (abs-dt "2025-09-20" "month")]))))
+  (testing "a literal already aligned comes back as written, not reformatted"
+    (doseq [[literal unit] [["2025-06-01" "month"] ["2025-06-15" "day"]
+                            ["2025-01-01T10:30:00" "minute"] ["2025-01-01T10:30:00" "second"]]]
+      (is (= ["=" {} (created-at-bucketed unit) literal]
+             (repair-filter ["=" {} created-at (abs-dt literal unit)]))
+          (str literal " " unit))))
+  (testing "`default` names no unit, so its literal is never truncated"
+    (is (= ["=" {} (created-at-bucketed "default") "2025-06-15"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-15" "default")]))))
+  (testing "a `Z`-suffixed literal truncates to `2025-06-01T00:00Z[UTC]`, which is not ISO, so it is kept as written"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-06-15T10:00:00Z"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-15T10:00:00Z" "month")]))))
+  (testing "an offset literal does truncate to an ISO string, so it aligns"
+    (is (= ["=" {} (created-at-bucketed "month") "2025-06-01T00:00+02:00"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-15T10:00:00+02:00" "month")])))))
+
+(deftest ^:parallel hoist-temporal-bucket-year-on-expression-ref-test
+  (testing "`year` is left on the literal when the ref is an `expression`"
+    ;; `year` is both a truncation and an extraction unit, so `lib/type-of` calls a `year`-bucketed
+    ;; ref with no type `:type/Integer` - which is exactly an `expression` ref - and the QP fails
+    ;; trying to read the date literal as an integer. Declining leaves it to Pass 6.
+    (doseq [input [["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-01" "year")]
+                   ["between" {} ["expression" {} "Ship Date"] (abs-dt "2025-01-01" "year") (abs-dt "2026-01-01" "year")]
+                   ["during" {} ["expression" {} "Ship Date"] "2025-06-01" "year"]]]
+      (is (= input (hoist-filter input)) (pr-str input))))
+  (testing "a `field` ref carries a type, so the same bucket still moves onto it"
+    (is (= ["=" {} (created-at-bucketed "year") "2025-01-01"]
+           (repair-filter ["=" {} created-at (abs-dt "2025-06-01" "year")])))
+    (is (= ["=" {} (created-at-bucketed "year") "2025-01-01"]
+           (repair-filter ["during" {} created-at "2025-06-01" "year"]))))
+  (testing "every other unit still moves onto an `expression` ref"
+    (doseq [[unit literal] {"day"     "2025-06-15"
+                            "week"    (week-start "2025-06-15")
+                            "month"   "2025-06-01"
+                            "quarter" "2025-04-01"}]
+      (is (= ["=" {} ["expression" {"temporal-unit" unit} "Ship Date"] literal]
+             (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-15" unit)]))
+          unit))))
+
 (deftest ^:parallel hoist-temporal-bucket-between-test
   (testing "both bounds bucketed by the same unit: hoisted, bounds become plain strings"
     (is (= ["between" {} (created-at-bucketed "month") "2025-01-01" "2025-06-01"]
@@ -812,12 +895,16 @@
 
 (deftest ^:parallel hoist-temporal-bucket-during-test
   (testing "`during` becomes `=` against the bucketed field - what the clause already means"
-    (doseq [unit ["day" "week" "month" "quarter" "year"]]
-      (is (= ["=" {} (created-at-bucketed unit) "2025-01-01"]
+    (doseq [[unit literal] {"day"     "2025-01-01"
+                            "week"    (week-start "2025-01-01")
+                            "month"   "2025-01-01"
+                            "quarter" "2025-01-01"
+                            "year"    "2025-01-01"}]
+      (is (= ["=" {} (created-at-bucketed unit) literal]
              (repair-filter ["during" {} created-at "2025-01-01" unit]))
           unit)))
   (testing "a datetime literal with a sub-day unit is rewritten the same way"
-    (is (= ["=" {} (created-at-bucketed "hour") "2025-01-01T10:30:00"]
+    (is (= ["=" {} (created-at-bucketed "hour") "2025-01-01T10:00"]
            (repair-filter ["during" {} created-at "2025-01-01T10:30:00" "hour"]))))
   (testing "a sub-day unit on a date-only literal is left alone, like the comparison arm"
     (doseq [[literal unit] [["2025-01-01" "hour"] ["2025-01-01" "minute"] ["2025-01-01" "second"]

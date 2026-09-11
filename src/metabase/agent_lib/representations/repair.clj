@@ -34,6 +34,8 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.walk :as lib.walk]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
@@ -939,13 +941,17 @@
 
 ;;; ============================================================
 ;;; Pass 2.95 -- hoist a temporal bucket: move it off an `absolute-datetime` literal and onto the
-;;; ref it is compared to. Sideways, within one clause; nothing moves up a level.
+;;; ref it is compared to, aligning the literal to the unit it gives up. Sideways, within one
+;;; clause; nothing moves up a level.
 ;;;
 ;;;   ["=", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "month"]]
 ;;;   => ["=", {}, ["field", {"temporal-unit": "month"}, <col>], "2025-01-01"]
 ;;;
-;;;   ["during", {}, ["field", {}, <col>], "2025-01-01T10:00:00", "hour"]
-;;;   => ["=", {}, ["field", {"temporal-unit": "hour"}, <col>], "2025-01-01T10:00:00"]
+;;;   ["during", {}, ["field", {}, <col>], "2025-06-15", "month"]
+;;;   => ["=", {}, ["field", {"temporal-unit": "month"}, <col>], "2025-06-01"]
+;;;
+;;;   ["during", {}, ["field", {}, <col>], "2025-01-01T10:30:00", "hour"]
+;;;   => ["=", {}, ["field", {"temporal-unit": "hour"}, <col>], "2025-01-01T10:00"]
 ;;;
 ;;;   ["between", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "day"], ["now", {}]]
 ;;;   => ["between", {}, ["field", {}, <col>], "2025-01-01", ["now", {}]]
@@ -968,10 +974,11 @@
 ;;;     hoisted:    SUM(CASE WHEN date_trunc(month, created_at) > date_trunc(month, ...) ...)
 ;;;
 ;;; -- a different answer. Also left as written: a unit the literal cannot carry (`hour` on a date,
-;;; `month-of-year`), a ref that already has a `temporal-unit`, `between` bounds with different
-;;; buckets, and an unparseable literal (resolve's `:invalid-temporal-literal` check still needs to
-;;; see it). The third example drops the wrapper anyway: `day` on a date adds nothing, and the bound
-;;; ends up as the query builder writes it.
+;;; `month-of-year`), `year` on an `expression` ref ([[unit-hoistable-onto-ref?]] says why), a ref
+;;; that already has a `temporal-unit`, `between` bounds with different buckets, and an unparseable
+;;; literal (resolve's `:invalid-temporal-literal` check still needs to see it). The `between`
+;;; example drops the wrapper anyway: `day` on a date adds nothing, and the bound ends up as the
+;;; query builder writes it.
 ;;;
 ;;; `::query` / `::stage` are `:closed false`, so a stray `filters:` on the query root or a join map
 ;;; sits in no stage: E7 names the clause, never the stray key, and the model's fix is dropped again.
@@ -1007,12 +1014,32 @@
 ;;; (`temporal-ref?` should consult `lib/type-of`; `wrap-value-literals` should read a unit off any
 ;;; ref); worth their own issue. Pinned by `optimize-untyped-expression-ref-not-optimized-test`.
 ;;;
-;;; Column types are unknown here, so a bucket can land on a text column;
-;;; [[assert-temporal-buckets-on-temporal-columns!]] rejects that after resolve -- but only on a
-;;; `field` ref. On an `expression` ref nothing catches it, because resolve stamps no type there at
-;;; all; a text or numeric custom column bucketed this way compiles to nonsense or fails
-;;; preprocessing outright. That is the same exposure `filters` already has; walking `expressions`
-;;; opens a second position onto it, which makes closing it matter more, not less.
+;;; That is also why the pass aligns the literal itself ([[align-literal-to-unit]]). The middleware
+;;; truncates *both* sides of a comparison, so on a `field` ref a literal sitting in the middle of
+;;; its bucket costs nothing. On a hoisted `expression` ref it fires only when the literal carries a
+;;; time component, which `wrap-value-literals` types for it; a date-only literal is left alone, so
+;;; only the column is truncated and the comparison asks a different question --
+;;;
+;;;   ["=", {}, ["expression", {"temporal-unit": "month"}, "Ship"], "2025-06-15"]
+;;;     date-only:          WHERE date_trunc(month, <Ship>) = '2025-06-15'   -- never true
+;;;     "…T10:00:00" or "Z": WHERE <Ship> >= '2025-06-01' AND <Ship> < '2025-07-01'
+;;;
+;;; -- and the ordered heads land up to one bucket out. `during` makes that the mainline case, since
+;;; it names the unit *containing* its literal. Aligning reproduces what the middleware would have
+;;; done, and is a no-op on a `field` ref.
+;;;
+;;; The one unit alignment cannot rescue is `year`, which is both a truncation and an extraction
+;;; unit: `lib/type-of` calls a `year`-bucketed untyped ref `:type/Integer`, and the QP's
+;;; `auto-parse-filter-values` then fails on the date literal. [[unit-hoistable-onto-ref?]] declines
+;;; that hoist on an `expression` ref, leaving the clause to Pass 6; a model writing the bucketed ref
+;;; itself still reaches the QP, so the hole belongs with the two gaps above.
+;;;
+;;; Column types are unknown here, so a bucket can land on a text or numeric column;
+;;; [[assert-temporal-buckets-on-temporal-columns!]] rejects that after resolve, on an `expression`
+;;; ref as well as a `field` one. It matters more on the former: the QP drops the bucket silently on
+;;; a `field` ref, but keeps it on an `expression` ref, where it compiles to nonsense on a text
+;;; column and fails preprocessing outright on a numeric one. That is the same exposure `filters`
+;;; already has; walking `expressions` opens a second position onto it.
 ;;;
 ;;; Runs after Pass 2.9, which creates new `filters`. Idempotent: the output matches neither
 ;;; predicate.
@@ -1052,6 +1079,32 @@
     (re-matches year-pattern s)       (str s "-01-01")
     :else                             s))
 
+(defn- align-literal-to-unit
+  "Truncate `literal` to the start of the `unit` that contains it.
+
+    [\"2025-06-15\" \"month\"] => \"2025-06-01\"
+    [\"2025-06-15\" \"day\"]   => \"2025-06-15\"   ; already aligned, returned as written
+
+  The generalisation of [[widen-partial-date]], which already does this for `yyyy-MM` / `yyyy`. On a
+  `field` ref it changes no answer - the QP truncates both sides of such a comparison itself - and on
+  an `expression` ref it is what keeps the hoisted clause meaning what the literal-side one did; the
+  pass header says why the QP cannot do it there.
+
+  `literal` comes back as written unless truncation both moves the instant and leaves an ISO string.
+  `default` names no unit, so it is skipped."
+  [literal unit]
+  (if (= "default" unit)
+    literal
+    (let [parsed  (u.date/parse literal)
+          t       (u.date/truncate parsed (keyword unit))
+          ;; a `Z`-suffixed literal parses to a `ZonedDateTime`, which renders back as
+          ;; `2025-06-01T00:00Z[UTC]` - that would reach the `/question#` hash and the LLM-facing
+          ;; export verbatim, so a rewrite that is not ISO is dropped rather than emitted
+          aligned (str t)]
+      (if (and (not= parsed t) (iso-date-string? aligned))
+        aligned
+        literal))))
+
 (defn- parseable-temporal-literal? [s]
   (try
     (some? (u.date/parse s))
@@ -1070,11 +1123,13 @@
 (defn- hoistable-bucket
   "Return `[literal unit]` for an `absolute-datetime` literal whose bucket the compared ref can take.
 
-    [\"absolute-datetime\" {} \"2025-03\" \"MONTH\"]   => [\"2025-03-01\" \"month\"]
-    [\"absolute-datetime\" {} \"2025-01-01\" \"hour\"] => nil   ; a date cannot carry `hour`
+    [\"absolute-datetime\" {} \"2025-03\" \"MONTH\"]    => [\"2025-03-01\" \"month\"]
+    [\"absolute-datetime\" {} \"2025-06-15\" \"month\"] => [\"2025-06-01\" \"month\"]
+    [\"absolute-datetime\" {} \"2025-01-01\" \"hour\"]  => nil   ; a date cannot carry `hour`
 
   Both values come back normalised: trimmed, lower-cased, `yyyy-MM` / `yyyy` widened to the first day
-  they name. `nil` for anything that is not such a literal."
+  they name, and the literal aligned to its unit ([[align-literal-to-unit]]) so the hoisted clause
+  means what the literal-side one did. `nil` for anything that is not such a literal."
   [v]
   (when (and (vector? v)
              (= 4 (count v))
@@ -1092,7 +1147,7 @@
       (when (and (iso-date-string? literal)
                  (or (= "default" unit) (contains? units unit))
                  (parseable-temporal-literal? literal))
-        [literal unit]))))
+        [(align-literal-to-unit literal unit) unit]))))
 
 (defn- during-clause? [v]
   (and (vector? v)
@@ -1125,6 +1180,19 @@
 (defn- with-temporal-unit [ref-clause unit]
   (assoc-in ref-clause [1 "temporal-unit"] unit))
 
+(defn- unit-hoistable-onto-ref?
+  "Whether `unit` may move onto `ref-clause`. False only for `year` on an `expression` ref.
+
+  `year` is both a truncation and an extraction unit, so `lib/type-of` answers `:type/Integer` for a
+  `year`-bucketed ref that carries no `effective-type` - which is exactly an `expression` ref, since
+  resolve stamps no type on one - and the QP's `auto-parse-filter-values` then fails outright trying
+  to read the date literal as an integer. A `field` ref carries a type, so the same bucket is fine
+  there. Declining leaves the literal standing for [[unencodable-temporal-clause-error!]] to turn
+  into a retryable error."
+  [ref-clause unit]
+  (not (and (= "expression" (nth ref-clause 0))
+            (= "year" unit))))
+
 (defn- hoist-bucket-in-comparison
   "When every literal of a comparison carries the same hoistable bucket, put it on the ref.
 
@@ -1132,10 +1200,12 @@
                                   [\"absolute-datetime\" {} \"2025-03-01\" \"month\"]]
     => [\"in\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\" \"2025-03-01\"]"
   [[head opts ref & literals :as node]]
-  (let [buckets (map hoistable-bucket literals)]
+  (let [buckets (map hoistable-bucket literals)
+        unit    (second (first buckets))]
     (if (and (every? some? buckets)
-             (apply = (map second buckets)))
-      (into [head opts (with-temporal-unit ref (second (first buckets)))] (map first buckets))
+             (apply = (map second buckets))
+             (unit-hoistable-onto-ref? ref unit))
+      (into [head opts (with-temporal-unit ref unit)] (map first buckets))
       node)))
 
 (defn- redundant-bucket-literal
@@ -1159,7 +1229,7 @@
   [[head opts ref lo hi]]
   (let [[lo' lo-unit] (hoistable-bucket lo)
         [hi' hi-unit] (hoistable-bucket hi)]
-    (if (and lo' hi' (= lo-unit hi-unit))
+    (if (and lo' hi' (= lo-unit hi-unit) (unit-hoistable-onto-ref? ref lo-unit))
       [head opts (with-temporal-unit ref lo-unit) lo' hi']
       [head opts ref (or (redundant-bucket-literal lo) lo) (or (redundant-bucket-literal hi) hi)])))
 
@@ -1169,10 +1239,15 @@
     [\"during\" {} [\"field\" {} <col>] \"2025-01-01\" \"month\"]
     => [\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\"]
 
+    [\"during\" {} [\"field\" {} <col>] \"2025-06-15\" \"month\"]
+    => [\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-06-01\"]
+
     [\"during\" {} [\"field\" {} <col>] \"2025-01-01\" \"hour\"] => unchanged
 
   The unit set follows the literal's shape, as it does for a comparison ([[hoistable-bucket]]):
-  rewriting `hour` on a date would narrow the filter to one hour.
+  rewriting `hour` on a date would narrow the filter to one hour. `during` names the unit
+  *containing* the literal, so a literal in the middle of its bucket is its normal input and is
+  [[align-literal-to-unit]]'s mainline case - the second example above.
   [[unencodable-temporal-clause-error!]] reports what is left standing."
   [[_ opts ref literal unit :as node]]
   (let [literal (when (string? literal) (widen-partial-date (str/trim literal)))
@@ -1180,8 +1255,9 @@
     (if (and literal
              (iso-date-string? literal)
              (contains? (truncation-units-for literal) unit)
+             (unit-hoistable-onto-ref? ref unit)
              (parseable-temporal-literal? literal))
-      ["=" opts (with-temporal-unit ref unit) literal]
+      ["=" opts (with-temporal-unit ref unit) (align-literal-to-unit literal unit)]
       node)))
 
 (defn- hoist-bucket-in-clause [node]
@@ -3003,37 +3079,108 @@
                  :clause       clause})))))
   pmbql-query)
 
-(defn assert-temporal-buckets-on-temporal-columns!
-  "Throw a retryable `:agent-error?` when a resolved `field` ref carries a `temporal-unit` but its
-  column is not temporal. Returns `pmbql-query`.
+(defn- unbucketed-ref
+  "`clause` with its `temporal-unit`, and the type the bucket stamped on it, taken off.
 
-  lib accepts that shape - its unit check only knows Date / Time / DateTime columns - and the QP then
-  drops the bucket silently, so the saved question would filter on something other than what the
-  model asked for. Pass 2.95 can produce it, since it moves a bucket onto a ref without knowing the
-  column's type; a model writing the bucket itself lands here too. Runs after resolve, like
-  [[assert-editor-accepts-expressions!]]."
+  A *coercion's* `:effective-type` is the column's own type rather than a bucket artifact, and stays.
+
+    [:expression {:temporal-unit :day-of-week, :effective-type :type/Integer,
+                  :base-type :type/DateTime} \"Ship\"]
+    => [:expression {:base-type :type/DateTime} \"Ship\"]
+
+    ;; field 105 is ISO-8601 text an admin coerced to a timestamp
+    [:field {:temporal-unit :year, :effective-type :type/DateTime,
+             :base-type :type/Text} 105]
+    => [:field {:effective-type :type/DateTime, :base-type :type/Text} 105]
+
+  `with-temporal-bucket` alone restores `:effective-type` from `:lib/original-effective-type`, which
+  is only there on a ref lib or [[metabase.agent-lib.representations.resolve/export-query]] produced.
+  On a ref resolve typed, an *extraction* unit leaves `:effective-type` describing the bucket rather
+  than the column - `:type/Integer` for `day-of-week` on a datetime column - and
+  [[metabase.lib.core/type-of]] reads that key first, so it has to go too. What is left resolves to
+  `:base-type`, or to the expression's own type when the ref carries none."
+  [clause]
+  (let [{:keys [effective-type temporal-unit] :lib/keys [original-effective-type]} (nth clause 1)]
+    (cond-> (lib/with-temporal-bucket clause nil)
+      (and (nil? original-effective-type)
+           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
+           ;; A bucket's own type is never temporal, so a temporal stamp has to be the column's:
+           ;; resolve copies `:effective-type` straight off a coerced column, where it is the
+           ;; post-coercion type and `:base-type` is the storage type. Dropping it there would leave
+           ;; `:type/Text` on an ISO-8601 column and make the gate reject a bucket lib itself offers.
+           (not (isa? effective-type :type/Temporal)))
+      (update 1 dissoc :effective-type))))
+
+(defn- assert-bucketed-ref-is-temporal!
+  "Throw when the bucketed ref `clause` names a column that is not temporal.
+
+  Call only on a `field` / `expression` ref that carries a `temporal-unit`: the walk in
+  [[assert-temporal-buckets-on-temporal-columns!]] tests that itself, before resolving a stage."
+  [query stage-number clause]
+  (let [temporal-unit (:temporal-unit (nth clause 1))
+        bare-ref      (unbucketed-ref clause)
+        column-type   (lib/type-of query stage-number bare-ref)]
+    (when (and column-type
+               (not= column-type :type/*)
+               (not (isa? column-type :type/Temporal)))
+      (let [column-name (lib/display-name query stage-number bare-ref)
+            type-name   (name column-type)
+            unit-name   (name temporal-unit)]
+        (throw (ex-info (if (= :expression (nth clause 0))
+                          (tru "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+                               column-name type-name unit-name)
+                          (tru "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+                               column-name type-name unit-name))
+                        {:agent-error?  true
+                         :error         :temporal-unit-on-non-temporal-column
+                         :status-code   400
+                         :column-type   column-type
+                         :temporal-unit temporal-unit
+                         :clause        clause}))))))
+
+(defn assert-temporal-buckets-on-temporal-columns!
+  "Throw a retryable `:agent-error?` when a resolved `field` or `expression` ref carries a
+  `temporal-unit` but its column is not temporal. Returns `pmbql-query`.
+
+  lib accepts that shape - its unit check only knows Date / Time / DateTime columns. The QP then
+  drops the bucket silently on a `field` ref; on an `expression` ref it keeps it and applies it to a
+  non-temporal value, which compiles to nonsense on a text column and fails preprocessing outright
+  on a numeric one. Pass 2.95 can produce either, in `filters` and in `expressions`, since it moves a
+  bucket onto a ref without knowing the column's type; a model writing the bucket itself lands here
+  too, and Pass 6's [[unencodable-temporal-clause-error!]] sees neither, because the hoist has
+  already consumed the literal.
+
+  Walks with [[metabase.lib.walk/walk-clauses]] rather than `clojure.walk`: an `expression` ref
+  carries no type in its options, so the column type has to come from [[metabase.lib.core/type-of]],
+  which needs the ref's stage. A join condition's refs do not all live in the same stage - one
+  carrying `:join-alias` belongs to the join, one without it to the parent stage - so the path is
+  chosen per ref. A ref whose type cannot be resolved is skipped rather than reported: this gate must
+  never reject a query it merely failed to understand.
+
+  Must run after the `::lib.schema/query` gate ([[metabase.metabot.tools.construct]]'s `_runnable`):
+  a dangling expression ref makes `type-of` throw rather than resolve, and while `walk-clauses`
+  rejects the query first under `mu/defn` instrumentation, that is compiled out of a production JAR."
   [pmbql-query]
-  (walk/postwalk
-   (fn [node]
-     (when (and (vector? node)
-                (= :field (nth node 0 nil))
-                (map? (nth node 1 nil)))
-       (let [{:keys [temporal-unit base-type effective-type]} (nth node 1)
-             column-type (or effective-type base-type)]
-         (when (and temporal-unit
-                    column-type
-                    (not= column-type :type/*)
-                    (not (isa? column-type :type/Temporal)))
-           (throw (ex-info (tru "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
-                                (lib/display-name pmbql-query (lib/with-temporal-bucket node nil))
-                                (name column-type)
-                                (name temporal-unit))
-                           {:agent-error?  true
-                            :error         :temporal-unit-on-non-temporal-column
-                            :status-code   400
-                            :column-type   column-type
-                            :temporal-unit temporal-unit
-                            :clause        node})))))
-     node)
-   pmbql-query)
+  (lib.walk/walk-clauses
+   pmbql-query
+   (fn [query path-type path clause]
+     ;; `walk-clauses` calls this on non-clause arguments too - the bare `2` in `[:= {} <ref> 2]`.
+     ;; Everything a bucketed ref is not falls out here, before a stage is resolved for it: that is
+     ;; the expensive half, and all but a handful of nodes skip it.
+     (let [opts (when (vector? clause) (nth clause 1 nil))]
+       (when (and (map? opts)
+                  (:temporal-unit opts)
+                  (contains? #{:field :expression} (nth clause 0 nil)))
+         (let [stage-path (if (and (= path-type :lib.walk/join) (not (:join-alias opts)))
+                            (lib.walk/join-parent-stage-path path)
+                            path)]
+           (try
+             (lib.walk/apply-f-for-stage-at-path assert-bucketed-ref-is-temporal! query stage-path clause)
+             ;; `Throwable`, not `ExceptionInfo`: the contract is that an unresolvable ref is skipped,
+             ;; and anything narrower leaks past `execute-representations-query`'s relay as a 500
+             (catch Throwable e
+               ;; re-throw our own complaint; swallow lib's failure to resolve the ref
+               (when (:agent-error? (ex-data e))
+                 (throw e)))))))
+     nil))
   pmbql-query)
