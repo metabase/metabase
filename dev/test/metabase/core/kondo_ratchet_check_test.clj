@@ -24,8 +24,12 @@
   ([ratchets occurrences config-actual text]
    (report-lines ratchets occurrences config-actual {} text))
   ([ratchets occurrences config-actual module-actual text]
-   (vec (kondo-ratchet/check-report (merge {:config-counts {}, :module-counts {}, :comment-exempt #{}} ratchets)
-                                    occurrences config-actual module-actual text))))
+   (let [module-ratchets (:module-counts ratchets {})]
+     (vec (kondo-ratchet/check-report (-> {:config-counts {}, :comment-exempt #{}}
+                                          (merge ratchets)
+                                          (dissoc :module-counts))
+                                      module-ratchets occurrences config-actual module-actual text
+                                      (kondo-ratchet/render-module-ratchets module-ratchets))))))
 
 (deftest ^:parallel clean-test
   (let [ratchets {:ignore-counts {:a 2, :b 1}}]
@@ -92,9 +96,13 @@
                           "kondo-ratchet-check-test"
                           (make-array java.nio.file.attribute.FileAttribute 0)))
         budgets (doto (io/file dir "ratchets.edn")
-                  (spit (kondo-ratchet/render (merge {:config-counts {}, :comment-exempt #{}} ratchets))))
+                  (spit (kondo-ratchet/render (merge {:config-counts {}, :comment-exempt #{}}
+                                                     (dissoc ratchets :module-counts)))))
+        modules (doto (io/file dir "module-ratchets.edn")
+                  (spit (kondo-ratchet/render-module-ratchets (:module-counts ratchets {}))))
         thrown? (atom false)]
-    (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)]
       (with-redefs [kondo-ratchet/known-linters (constantly (set (keys (:ignore-counts ratchets))))
                     kondo-ratchet/config-suppressions (constantly {})
                     kondo-ratchet/module-escape-hatches (constantly {})
