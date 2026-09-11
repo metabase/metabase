@@ -210,6 +210,7 @@ export interface AlertUpgradeVersion {
   min: string;
   fixed: string;
   message: string;
+  id?: string;
 }
 
 export interface VersionInfo {
