@@ -68,7 +68,7 @@
                     [:display-name                   :string]
                     [:context-window {:optional true} [:maybe :int]]]])
 
-(def Listing
+(def ModelListing
   "The model-listing response the admin picker consumes."
   [:map
    [:models [:sequential [:map
@@ -210,7 +210,7 @@
      (catch Exception e
        (rethrow! p e)))))
 
-(mu/defn listing :- Listing
+(mu/defn model-listing :- ModelListing
   "Shape a provider's catalog `entries` into the `{:models [{:id ... :display_name ...}]}` listing response.
 
   Keeps only the entries `supported-models` allows and sorts by id, so the admin picker is stable across
@@ -222,7 +222,7 @@
   start rendering a different one. Omit it for a catalog that carries no name and the allow-list's name
   is used, which is also what happens when an entry is missing the field."
   ([supported-models entries]
-   (listing supported-models entries nil))
+   (model-listing supported-models entries nil))
   ([supported-models  :- SupportedModels
     entries           :- [:maybe [:sequential :map]]
     catalog-name-key  :- [:maybe :keyword]]

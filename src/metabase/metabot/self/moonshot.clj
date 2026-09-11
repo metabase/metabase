@@ -78,7 +78,7 @@
   `:ai-proxy?` is not supported for Moonshot and throws when true."
   ([] (list-models {}))
   ([opts]
-   (adapter/listing supported-models (adapter/fetch-catalog provider opts))))
+   (adapter/model-listing supported-models (adapter/fetch-catalog provider opts))))
 
 (def ^:private forced-tool-call-token-floor
   "Smallest `max_tokens` a forced tool call on a thinking-only model may be capped at.

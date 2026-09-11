@@ -270,7 +270,7 @@
   `:ai-proxy?` is not supported for OpenAI and throws when true."
   ([] (list-models {}))
   ([opts]
-   (adapter/listing supported-models
+   (adapter/model-listing supported-models
                     (adapter/fetch-catalog provider opts "/v1/models"))))
 
 (defn- strip-vendor-prefix

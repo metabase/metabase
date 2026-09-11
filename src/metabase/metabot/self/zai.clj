@@ -70,7 +70,7 @@
   `:ai-proxy?` is not supported for Z.AI and throws when true."
   ([] (list-models {}))
   ([opts]
-   (adapter/listing supported-models (adapter/fetch-catalog provider opts) :name)))
+   (adapter/model-listing supported-models (adapter/fetch-catalog provider opts) :name)))
 
 (def ^:private forced-tool-call-token-floor
   "Smallest `max_tokens` a forced tool call on a thinking-only model may be capped at.

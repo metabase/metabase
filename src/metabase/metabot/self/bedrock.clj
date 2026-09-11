@@ -254,7 +254,7 @@
   credentials chain resolves; Metabase Cloud requires the pair."
   ([] (list-models {}))
   ([opts]
-   (adapter/listing supported-models
+   (adapter/model-listing supported-models
                     (filter available-model? (adapter/fetch-catalog provider opts "/v1/models")))))
 
 ;;; --------------------------------------------- API family dispatch -------------------------------------------
