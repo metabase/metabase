@@ -641,6 +641,12 @@ const isSchema = (
   return item.model === "schema";
 };
 
+const isDatabase = (
+  item: MiniPickerPickableItem,
+): item is MiniPickerDatabaseItem => {
+  return item.model === "database";
+};
+
 const useLocationDetails = (item: MiniPickerPickableItem) => {
   const getIcon = useGetIcon();
 
@@ -663,6 +669,9 @@ const useLocationDetails = (item: MiniPickerPickableItem) => {
       itemText: String(item.database_id),
       iconProps: { name: "database" as const },
     };
+  }
+  if (isDatabase(item)) {
+    return { itemText: null, iconProps: null };
   }
   return {
     itemText: item?.collection?.name ?? t`Our analytics`,
