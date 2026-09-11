@@ -431,21 +431,35 @@
         false))))
 
 (mu/defn can-run-query?
-  "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise."
+  "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise.
+
+  With `throw-non-permission-errors?`, anything that is not a permission denial throws rather than
+  being answered as one: a failure to work out which permissions `query` needs (otherwise logged at
+  error and folded into the answer), and any other error the checks raise, such as a missing Card in
+  [[check-card-read-perms]]. A denial still returns `false`."
   ([query]
    (can-run-query? query false))
 
+  ([query :- :map
+    already-preprocessed? :- :boolean]
+   (can-run-query? query already-preprocessed? false))
+
   ([{database-id :database :as query} :- :map
-    already-preprocessed?             :- :boolean]
+    already-preprocessed?                :- :boolean
+    throw-non-permission-errors?         :- :boolean]
    (try
-     (let [required-perms (required-perms-for-query query :already-preprocessed? already-preprocessed?)]
+     (let [required-perms (required-perms-for-query query
+                                                    :already-preprocessed? already-preprocessed?
+                                                    :throw-exceptions? throw-non-permission-errors?)]
        (check-data-perms query required-perms)
        ;; Check card read permissions for any cards referenced in subqueries!
        (doseq [card-id (:card-ids required-perms)]
          (check-card-read-perms database-id card-id))
        true)
-     (catch clojure.lang.ExceptionInfo _e
-       false))))
+     (catch clojure.lang.ExceptionInfo e
+       (if (and throw-non-permission-errors? (not (:permissions-error? (ex-data e))))
+         (throw e)
+         false)))))
 
 (mu/defn can-query-table?
   "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"
