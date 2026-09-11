@@ -138,6 +138,7 @@
      sso.auth-identity
      auth-provider
      batch-processing
+     bookmarks
      channel
      util.classloader
      collections
