@@ -587,27 +587,28 @@
 
 (deftest ^:parallel render-resolves-dynamic-goal-on-dashcard-test
   (testing "a card ref in the dashcard's own viz settings is substituted too"
-    (let [captured (atom nil)
-          card     {:id                     1
-                    :name                   "bar with dynamic goal"
-                    :display                :bar
-                    :visualization_settings {:graph.dimensions ["x"]
-                                             :graph.metrics    ["y"]}}
-          dashcard {:id                     2
-                    :dashboard_id           3
-                    :visualization_settings {:graph.dimensions ["x"]
-                                             :graph.metrics    ["y"]
-                                             :graph.show_goal  true
-                                             :graph.goal_value goal-ref}}
-          data     {:cols                [{:name "x" :base_type :type/Text}
-                                          {:name "y" :base_type :type/Integer :source :aggregation}]
-                    :rows                [["a" 1] ["b" 2]]
-                    :referenced_entities goal-referenced-entities}]
-      (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
-                                                    (reset! captured viz-settings)
-                                                    {:type :svg :content "<svg></svg>"})]
-        (channel.render/render-pulse-card :inline nil card dashcard {:data data}))
-      (is (= 80 (:graph.goal_value @captured))))))
+    ;; rendering a dashcard looks up its series in the app DB, so the dashcard has to exist there
+    (mt/with-temp [:model/Card          card      {:name                   "bar with dynamic goal"
+                                                   :display                :bar
+                                                   :visualization_settings {:graph.dimensions ["x"]
+                                                                            :graph.metrics    ["y"]}}
+                   :model/Dashboard     dashboard {}
+                   :model/DashboardCard dashcard  {:dashboard_id           (:id dashboard)
+                                                   :card_id                (:id card)
+                                                   :visualization_settings {:graph.dimensions ["x"]
+                                                                            :graph.metrics    ["y"]
+                                                                            :graph.show_goal  true
+                                                                            :graph.goal_value goal-ref}}]
+      (let [captured (atom nil)
+            data     {:cols                [{:name "x" :base_type :type/Text}
+                                            {:name "y" :base_type :type/Integer :source :aggregation}]
+                      :rows                [["a" 1] ["b" 2]]
+                      :referenced_entities goal-referenced-entities}]
+        (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                      (reset! captured viz-settings)
+                                                      {:type :svg :content "<svg></svg>"})]
+          (channel.render/render-pulse-card :inline nil card dashcard {:data data}))
+        (is (= 80 (:graph.goal_value @captured)))))))
 
 (deftest render-resolves-dynamic-gauge-segments-test
   (testing "gauge segment entity refs are substituted before the card reaches the JS renderer"
