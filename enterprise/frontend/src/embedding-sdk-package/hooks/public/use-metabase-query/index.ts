@@ -14,10 +14,11 @@ export { useMetabaseQueryObject } from "./use-metabase-query-object";
 export type {
   LocalFieldReference,
   MetabaseBreakout,
+  MetabaseDynamicColumn,
+  MetabaseDynamicQuery,
   MetabaseOrderBy,
   MetabaseQueryOptions,
   OrderByDirection,
-  QuestionColumnReference,
   UseMetabaseQueryResult,
 } from "./types";
 export type { UseMetabaseQueryObjectResult } from "./use-metabase-query-object";

@@ -1,9 +1,8 @@
-import type {
-  LocalFieldReference,
-  QuestionColumnReference,
-} from "@metabase/embedding-sdk-react/data-app";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import type { DataAppTestEnv } from "e2e/support/helpers";
 
 // These live here (co-located with the specs) rather than in
@@ -14,41 +13,21 @@ import type { DataAppTestEnv } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-/**
- * A numeric field dimension for the query-builder combinators, hand-built the way
- * an app without a generated `metabase.data.ts` schema would build one.
- */
-export const dataAppNumericField = (
-  fieldId: number,
-  name: string,
-): LocalFieldReference => ({
-  type: "column",
-  fieldId,
-  tableId: ORDERS_ID,
-  name,
-  jsType: "number",
-});
-
-/**
- * The same dimension as it is addressed on a saved-question source: a card stage
- * exposes the question's result columns, which are matched by name and carry no
- * table-scoped identity.
- */
-export const dataAppNumericResultColumn = (
-  name: string,
-): QuestionColumnReference => ({
-  type: "column",
-  name,
-  jsType: "number",
-});
-
 const source = { type: "table" as const, id: ORDERS_ID };
 
-/** The `testEnv` the fixture's Overview page reads (Orders count + question). */
+/**
+ * The `testEnv` the fixture's Overview page reads (Orders count + question).
+ *
+ * Both carry a `savedQuestionSourceId`, because a deployed app runs the card its
+ * query was published as — a bare table source is refused. Each id names a
+ * snapshot question equivalent to the authored query, since the swap drops the
+ * static clauses the card already contains.
+ */
 export const DATA_APP_TEST_ENV: DataAppTestEnv = {
   scalarQuery: {
     source,
     aggregations: [{ type: "operator", operator: "count", args: [] }],
+    savedQuestionSourceId: ORDERS_COUNT_QUESTION_ID,
   },
-  questionQuery: { source },
+  questionQuery: { source, savedQuestionSourceId: ORDERS_QUESTION_ID },
 };
