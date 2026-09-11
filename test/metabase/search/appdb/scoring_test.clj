@@ -413,7 +413,7 @@
                   (map second)))))))
 
 (deftest metabot-weights-test
-  (testing "under :metabot, metrics outrank saved questions, which outrank models, even a freshly viewed model"
+  (testing "under :metabot, metrics outrank questions, which outrank models, even a freshly viewed one"
     (let [now      (Instant/now)
           long-ago (.minus now 365 ChronoUnit/DAYS)]
       (with-index-contents
@@ -425,5 +425,10 @@
     (mt/with-temp [:model/Collection lib {:name "lib" :type "library" :location "/"}]
       (with-index-contents
         [{:model "metric"  :id 1 :name "foo metric"}
-         {:model "dataset" :id 2 :name "foo model" :collection_id (:id lib) :collection_location (:location lib) :collection_type "library"}]
+         {:model               "dataset"
+          :id                  2
+          :name                "foo model"
+          :collection_id       (:id lib)
+          :collection_location (:location lib)
+          :collection_type     "library"}]
         (is (= [2 1] (map second (search-results* "foo" :context :metabot))))))))
