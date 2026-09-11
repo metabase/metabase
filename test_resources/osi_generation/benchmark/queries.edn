@@ -1,0 +1,187 @@
+;; OSI-generation benchmark queries + relevance judgments.
+;;
+;; Written second (after entities), role-playing an analyst who knows the business and not the schema —
+;; phrased as Metabot users phrase things (the tool's own parameter description asks for
+;; natural-language descriptions of the data, not keywords).
+;;
+;; Judgments were made third, from the entity list only — name, type, contents — and NEVER from any
+;; ai_context. Grades: 2 = the entity a competent curator would call *the* answer; 1 = defensible; 0 =
+;; wrong (omitted). Out-of-domain queries carry an empty :judged set on purpose, so the weak-flag arm of
+;; the report has a denominator.
+;;
+;; Growing the corpus re-runs the judgment pass over every prompt, not just the new ones: an entity
+;; added later can be a defensible answer to a query written earlier, and leaving it ungraded would
+;; score a correct retrieval as wrong. The prompts themselves stay frozen.
+;;
+;; :holdout true|false — holdout queries are excluded from any PR-6 prompt iteration and reported as a
+;; separate column; if the visible and holdout columns diverge, the prompt is being tuned to the
+;; visible half. Frozen: no query is edited to suit the baseline.
+
+{:queries
+ [;; ------------------------------------ visible, in-domain ------------------------------------
+  {:id      :q-mrr-trend
+   :prompt  "how is our monthly recurring revenue trending"
+   :holdout false
+   :judged  {:mrr-ledger 2, :net-revenue-retention 1, :net-change 1}}
+
+  {:id      :q-canceled-customers
+   :prompt  "customers who canceled their subscription recently"
+   :holdout false
+   :judged  {:subscriptions 2, :subscription-events 1}}
+
+  {:id      :q-upgrade-history
+   :prompt  "history of plan upgrades and downgrades for a subscription"
+   :holdout false
+   :judged  {:subscription-events 2, :subscriptions 1}}
+
+  {:id      :q-billed-last-month
+   :prompt  "what did we bill customers last month"
+   :holdout false
+   :judged  {:invoices 2, :invoice-revenue 1}}
+
+  {:id      :q-invoiced-total
+   :prompt  "total invoiced revenue so far this year"
+   :holdout false
+   :judged  {:invoice-revenue 2, :invoices 1}}
+
+  ;; deliberately avoids the words "net revenue retention" — the business-term breaker.
+  {:id      :q-expansion
+   :prompt  "are existing customers spending more with us over time"
+   :holdout false
+   :judged  {:net-revenue-retention 2, :mrr-ledger 1}}
+
+  {:id      :q-paying-subscribers
+   :prompt  "how many paying subscribers do we have right now"
+   :holdout false
+   :judged  {:active-subscribers 2, :subscriptions 1}}
+
+  {:id      :q-signups-by-country
+   :prompt  "new account signups broken down by country"
+   :holdout false
+   :judged  {:customers 2}}
+
+  ;; the empty-description breaker: nothing but the name "coupons" is indexed under :none.
+  {:id      :q-discount-codes
+   :prompt  "which discount codes are customers redeeming"
+   :holdout false
+   :judged  {:coupons 2, :campaign-offers 1}}
+
+  {:id      :q-customer-overview
+   :prompt  "a single view of each customer with their plan and open tickets"
+   :holdout false
+   :judged  {:customer-health 2, :customers 1}}
+
+  {:id      :q-ticket-volume
+   :prompt  "how many support requests came in this week"
+   :holdout false
+   :judged  {:support-tickets 2}}
+
+  {:id      :q-large-invoices
+   :prompt  "show me our unusually large invoices"
+   :holdout false
+   :judged  {:big-invoices 2, :invoices 1}}
+
+  {:id      :q-plan-mix
+   :prompt  "breakdown of current subscriptions by plan"
+   :holdout false
+   :judged  {:subscriptions 2}}
+
+  ;; the table's own text never says dunning — only the segment hanging off it does, so the table is
+  ;; reachable here only once its prompt can see its children.
+  {:id      :q-dunning
+   :prompt  "how many customers are sitting in dunning right now"
+   :holdout false
+   :judged  {:dunning-queue 2, :payment-attempts 1}}
+
+  {:id      :q-payment-recovery
+   :prompt  "are we winning back revenue after a card gets declined"
+   :holdout false
+   :judged  {:recovered-revenue 2, :payment-attempts 1}}
+
+  {:id      :q-charge-attempts
+   :prompt  "every attempt we made to charge an invoice and what the processor said"
+   :holdout false
+   :judged  {:payment-attempts 2}}
+
+  ;; coupons has no description of its own; the campaign framing exists only on its segment.
+  {:id      :q-promotions
+   :prompt  "how well are the promo campaigns we are running doing"
+   :holdout false
+   :judged  {:campaign-offers 2, :coupons 1}}
+
+  ;; "Net Change" names no domain of its own — its parent table supplies the one it belongs to.
+  {:id      :q-mrr-net-change
+   :prompt  "did recurring revenue end last month up or down"
+   :holdout false
+   :judged  {:net-change 2, :mrr-ledger 1}}
+
+  ;; likewise "Escalated", which reads as incident management without the helpdesk parent.
+  {:id      :q-repeat-tickets
+   :prompt  "tickets a customer had to chase us about more than once"
+   :holdout false
+   :judged  {:escalated 2, :support-tickets 1}}
+
+  ;; the control's own query. The invoiced-revenue queries above judge tax-collected 0, so a measure
+  ;; that borrowed its parent's billing vocabulary is punished there and gains nothing here.
+  {:id      :q-sales-tax
+   :prompt  "how much sales tax did we charge over the year"
+   :holdout false
+   :judged  {:tax-collected 2, :invoices 1}}
+
+  ;; ------------------------------------ visible, out-of-domain --------------------------------
+  {:id      :q-ood-weather
+   :prompt  "weather forecast for the warehouse loading dock"
+   :holdout false
+   :judged  {}}
+
+  {:id      :q-ood-vacation
+   :prompt  "employee vacation balances for the HR team"
+   :holdout false
+   :judged  {}}
+
+  {:id      :q-ood-web-traffic
+   :prompt  "web traffic to the marketing site by campaign"
+   :holdout false
+   :judged  {}}
+
+  ;; adjacent to payment_attempts and invoices — we charge customers, we do not track what we owe
+  ;; suppliers — so metadata that generalized "payments" past its parent answers this one wrongly.
+  {:id      :q-ood-vendor-payments
+   :prompt  "which suppliers are we behind on paying"
+   :holdout false
+   :judged  {}}
+
+  ;; adjacent to Campaign Offers, whose campaign vocabulary belongs to coupons and nothing else.
+  {:id      :q-ood-email-engagement
+   :prompt  "open and click rates on last week's email blast"
+   :holdout false
+   :judged  {}}
+
+  ;; ------------------------------------ holdout, in-domain ------------------------------------
+  {:id      :q-hold-unpaid
+   :prompt  "revenue we invoiced but customers have not paid yet"
+   :holdout true
+   :judged  {:invoices 2, :payment-attempts 1}}
+
+  {:id      :q-hold-growth-source
+   :prompt  "where did our recurring revenue growth come from last quarter"
+   :holdout true
+   :judged  {:mrr-ledger 2, :net-revenue-retention 1, :net-change 1}}
+
+  {:id      :q-hold-cancel-lead-up
+   :prompt  "what happened on subscriptions in the weeks before they canceled"
+   :holdout true
+   :judged  {:subscription-events 2, :subscriptions 1}}
+
+  ;; sealed half of the child-vocabulary breaker: the failed-payment framing reaches the table only
+  ;; through its children.
+  {:id      :q-hold-involuntary-churn
+   :prompt  "customers we lost because their payment never went through"
+   :holdout true
+   :judged  {:payment-attempts 2, :dunning-queue 1, :subscription-events 1}}
+
+  ;; sealed half of the parent-context breaker.
+  {:id      :q-hold-repeat-contacts
+   :prompt  "cases where a customer came back to us after we thought it was solved"
+   :holdout true
+   :judged  {:escalated 2, :support-tickets 1}}]}
