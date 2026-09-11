@@ -5,14 +5,15 @@
    [clojure.test :refer :all]
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]))
 
-(defn- lint-query-call [form ns-sym & [filename]]
+(defn- lint-query-call [form ns-sym & [filename modules]]
   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}}}
                                         :ignores    (atom nil)
                                         :findings   (atom [])
                                         :namespaces (atom {})}]
     (let [input  {:node     (hooks/parse-string (pr-str form))
                   :ns       ns-sym
-                  :filename (or filename "src/metabase/foo/bar.clj")}
+                  :filename (or filename "src/metabase/foo/bar.clj")
+                  :config   {:metabase/modules modules}}
           output (toucan.db-ns/lint-query-call input)]
       (is (identical? (:node input) (:node output))
           "the hook must return the node unchanged so Kondo's normal analysis still runs")
@@ -48,3 +49,25 @@
     (is (=? [{:type    :metabase/t2-query-namespace
               :message #".*`toucan2.core/insert!`.*"}]
             (lint-query-call '(toucan2.core/insert! :model/Card {}) 'metabase.queries.models.card)))))
+
+(deftest ^:parallel t2-query-namespace-follows-the-module-tree-test
+  (let [modules '{queries            {}
+                  metabot            {}
+                  metabot.llm        {}
+                  lib.be             {:ns-prefix "metabase.lib-be"}
+                  enterprise/sandbox {}}]
+    (testing "a nested module owns its own db namespace"
+      (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase.metabot.llm.db nil modules))))
+    (testing "the parent's db namespace stays its own"
+      (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase.metabot.db nil modules))))
+    (testing "a module with an explicit :ns-prefix is resolved through it, not its dotted name"
+      (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase.lib-be.db nil modules)))
+      (is (=? [{:type :metabase/t2-query-namespace}]
+              (lint-query-call '(t2/select :model/Card) 'metabase.lib.be.db nil modules))))
+    (testing "a db namespace under a directory naming no module is still a finding"
+      (is (=? [{:type :metabase/t2-query-namespace}]
+              (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.db nil modules)))
+      (is (=? [{:type :metabase/t2-query-namespace}]
+              (lint-query-call '(t2/query {:select [:*]}) 'metabase.metabot.llm.models.db nil modules))))
+    (testing "enterprise modules resolve through the metabase-enterprise root"
+      (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase-enterprise.sandbox.db nil modules))))))
