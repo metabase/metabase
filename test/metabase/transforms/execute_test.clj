@@ -131,21 +131,22 @@
 
 (deftest create-table-from-schema!-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (let [driver       driver/*driver*
-          db-id        (mt/id)
-          table-name   (mt/random-name)
-          schema-name  (sql.tx/session-schema driver)
-          table-schema {:name    (if schema-name
-                                   (keyword schema-name table-name)
-                                   (keyword table-name))
-                        :columns [{:name "id" :type :type/Integer :nullable? false}
-                                  {:name "name" :type :type/Text :nullable? true}]}]
-      (mt/as-admin
-        (testing "create-table-from-schema! should create the table successfully"
-          (transforms-base.u/create-table-from-schema! driver db-id table-schema)
-          (let [table-exists? (driver/table-exists? driver (mt/db) {:schema schema-name :name table-name})]
-            (is (true? table-exists?) "Table should exist in the database schema")
-            (driver/drop-table! driver db-id (:name table-schema))))))))
+    (mt/dataset transforms-dataset/transforms-test
+      (let [driver       driver/*driver*
+            db-id        (mt/id)
+            table-name   (mt/random-name)
+            schema-name  (sql.tx/session-schema driver)
+            table-schema {:name    (if schema-name
+                                     (keyword schema-name table-name)
+                                     (keyword table-name))
+                          :columns [{:name "id" :type :type/Integer :nullable? false}
+                                    {:name "name" :type :type/Text :nullable? true}]}]
+        (mt/as-admin
+          (testing "create-table-from-schema! should create the table successfully"
+            (transforms-base.u/create-table-from-schema! driver db-id table-schema)
+            (let [table-exists? (driver/table-exists? driver (mt/db) {:schema schema-name :name table-name})]
+              (is (true? table-exists?) "Table should exist in the database schema")
+              (driver/drop-table! driver db-id (:name table-schema)))))))))
 
 (deftest transform-schema-created-if-needed-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas

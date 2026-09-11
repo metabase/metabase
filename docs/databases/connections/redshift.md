@@ -110,7 +110,7 @@ Choose whether to enable features related to Metabase models. These will often r
 
 You can enable model persistence to allow Metabase to create tables with model data and refresh them on a schedule. This requires write permissions to a designated schema.
 
-Check out [Model persistence](../../data-modeling/model-persistence.md).
+Check out [Model persistence](../../data-modeling/models/model-persistence.md).
 
 ## Database routing
 
@@ -125,6 +125,6 @@ See [Danger zone](../danger-zone.md).
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)

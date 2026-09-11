@@ -235,6 +235,10 @@
       (cond-> creator (assoc :creator (assoc creator :is_active creator_is_active)))
       (dissoc :creator_is_active)))
 
+(def ^:private admin-list-keys
+  "What the admin list adds to a notification row on top of the notification itself."
+  [:last_check :last_send :creator_is_active :creator_name :card_name])
+
 (defn- list-notifications
   "Single SQL query for the page; one extra query for failed-run error messages on that page."
   [{:keys [limit offset recipient_email] :as filters}]
@@ -243,10 +247,12 @@
                        (assoc :recipient_notification_ids (notification-ids-with-recipient-email recipient_email)))
         page-rows    (notification.db/admin-notifications-page base-filters limit offset)
         total        (or (notification.db/admin-notifications-count base-filters) 0)
-        decorated    (-> page-rows
-                         decorate-runs
-                         models.notification/hydrate-notification)]
-    {:data    (mapv splice-creator-active decorated)
+        decorated    (decorate-runs page-rows)
+        hydrated     (models.notification/hydrate-notification (mapv #(apply dissoc % admin-list-keys) decorated))]
+    {:data    (mapv (fn [notification row]
+                      (splice-creator-active (merge notification (select-keys row admin-list-keys))))
+                    hydrated
+                    decorated)
      :total   total
      :limit   limit
      :offset  offset}))
@@ -275,7 +281,7 @@
   [_route
    {:keys [active creator_id creator_active creatorless card_id recipient_email channel last_send_status
            last_check_status query sort_column sort_direction]} :-
-   [:map
+   [:map {:closed true}
     [:active            {:optional true} [:maybe ms/BooleanValue]]
     [:creator_id        {:optional true} ms/PositiveInt]
     [:creator_active    {:optional true} [:maybe ms/BooleanValue]]
@@ -370,8 +376,9 @@
   for a missing or non-card notification."
   [id]
   (when-let [row (notification.db/admin-notification-detail-row id)]
-    (let [decorated     (-> (models.notification/hydrate-notification [row])
+    (let [decorated     (-> (models.notification/hydrate-notification [(apply dissoc row admin-list-keys)])
                             first
+                            (merge (select-keys row admin-list-keys))
                             splice-creator-active)
           check-history (check-history-for-notification id)
           send-history  (send-history-for-notification id)]
@@ -385,7 +392,7 @@
   "Get a single card-type notification with last_check, last_send, check_history (up to 10
   most-recent terminal alert-type TaskRuns) and send_history (up to 10 most-recent channel-send
   delivery attempts). 404 if the notification doesn't exist or isn't a card-type notification."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (get-notification-detail id)))
@@ -424,7 +431,7 @@
   endpoint's side-effect contract can't drift from `PUT /api/notification/:id`."
   [_route _query
    {:keys [notification_ids action creator_id]} :-
-   [:map
+   [:map {:closed true}
     [:notification_ids [:sequential {:min 1} ms/PositiveInt]]
     [:action           [:enum "archive" "change-creator"]]
     [:creator_id       {:optional true} ms/PositiveInt]]]

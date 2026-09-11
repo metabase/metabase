@@ -1,6 +1,5 @@
+import { definePluginSlot } from "metabase/plugin-slots";
 import type { EmbedResourceDownloadOptions } from "metabase-types/api";
-
-import { definePluginSlot } from "../slot";
 
 const getDefaultPluginResourceDownloads = () => ({
   areDownloadsEnabled: (_args: {

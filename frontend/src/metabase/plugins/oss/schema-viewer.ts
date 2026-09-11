@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { definePluginSlot } from "../slot";
+import { definePluginSlot } from "metabase/plugin-slots";
 
 type SchemaViewerPlugin = {
   isEnabled: boolean;

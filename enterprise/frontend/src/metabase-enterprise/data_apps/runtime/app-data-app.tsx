@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 
 import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
+import { enterSdkMode } from "metabase/embedding-sdk/lib/enter-sdk-mode";
 
 import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp";
 
@@ -12,6 +13,8 @@ import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp
  * bundle, instantiates it inside a Near Membrane sandbox bound to *this*
  * window, and renders the resulting component.
  */
+
+enterSdkMode();
 
 // Register the full SDK bundle surface in-process (no separately-loaded
 // `main.bundle.js` request) so everything the data-app sandbox endows resolves

@@ -44,6 +44,7 @@ const elements = [
     name: "types",
     pattern: "frontend/src/metabase-types/*/**",
   }),
+  createElement({ type: "lib", name: "plugin-slots", enforcePublicApi: true }),
   createElement({ type: "lib", name: "utils" }),
 
   // mlv1 (basic) and mlv2 (lib) must stay in this order: mlv1's pattern is a
@@ -245,11 +246,7 @@ const elements = [
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "static-viz" }),
   createElement({ type: "shared", name: "status" }),
-  createElement({
-    type: "shared",
-    name: "styled-components",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "styled-components" }),
   createElement({ type: "shared", name: "timelines" }),
   createElement({ type: "shared", name: "transforms" }),
   createElement({
