@@ -19,7 +19,7 @@
             resp (mt/user-http-request :crowberto :post 200 "api-key"
                                        {:group_id group-id
                                         :name     name})]
-        (is (= #{:name :group :unmasked_key :masked_key :id :created_at :updated_at :updated_by}
+        (is (= #{:name :group :unmasked_key :masked_key :id :created_at :updated_at :updated_by :last_used_at}
                (-> resp keys set)))
         (is (= (select-keys (mt/fetch-user :crowberto) [:id :common_name])
                (:updated_by resp)))
@@ -31,7 +31,7 @@
     (testing "Trying to create another API key with the same name fails"
       (let [key-name (str (random-uuid))]
         ;; works once...
-        (is (= #{:unmasked_key :masked_key :group :name :id :created_at :updated_at :updated_by}
+        (is (= #{:unmasked_key :masked_key :group :name :id :created_at :updated_at :updated_by :last_used_at}
                (set (keys (mt/user-http-request :crowberto :post 200 "api-key"
                                                 {:group_id group-id
                                                  :name     key-name})))))
@@ -204,7 +204,7 @@
                                 {:name name-2})
           (is (= name-2 (:common_name (t2/select-one :model/User api-user-id)))))
         (testing "the shape of the response is correct"
-          (is (= #{:created_at :updated_at :updated_by :id :group :name :masked_key}
+          (is (= #{:created_at :updated_at :updated_by :id :group :name :masked_key :last_used_at}
                  (set (keys (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
                                                   {:name name-1}))))))))))
 
