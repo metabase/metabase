@@ -252,18 +252,11 @@ export const ParameterSidebar = (): JSX.Element | null => {
       }
       data-testid="dashboard-parameter-sidebar"
     >
-      <Tabs radius={0} value={tab} onChange={handleTabChange}>
+      <Tabs value={tab} onChange={handleTabChange}>
         {tabs.length > 1 && (
           <Tabs.List grow>
             {tabs.map((tab) => (
-              <Tabs.Tab
-                pl={0}
-                pr={0}
-                pt="lg"
-                pb="lg"
-                value={tab.value}
-                key={tab.value}
-              >
+              <Tabs.Tab value={tab.value} key={tab.value}>
                 {tab.name}
               </Tabs.Tab>
             ))}
