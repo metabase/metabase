@@ -10,7 +10,7 @@
    [metabase.queries.models.query]
    [metabase.queries.models.stored-result]
    [metabase.queries.models.stored-result-use]
-   [metabase.queries.template-tags]
+   [metabase.query-processor.card]
    [potemkin :as p]))
 
 (comment metabase.queries.cached-result/keep-me
@@ -23,7 +23,7 @@
          metabase.queries.models.query/keep-me
          metabase.queries.models.stored-result/keep-me
          metabase.queries.models.stored-result-use/keep-me
-         metabase.queries.template-tags/keep-me)
+         metabase.query-processor.card/keep-me)
 
 (p/import-vars
  [metabase.queries.card
@@ -75,7 +75,7 @@
  [metabase.queries.models.stored-result-use
   assert-can-view-card-snapshots!
   carry-pairings-for-document!]
- [metabase.queries.template-tags
+ [metabase.query-processor.card
   parameter-template-tag?])
 
 ;; the re-exported var carries the docstring; kondo can't see through import-def
@@ -84,7 +84,7 @@
 
 ;; the re-exported var carries the docstring; kondo can't see through import-def
 #_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.queries.template-tags/template-tag-parameters card-template-tag-parameters)
+(p/import-def metabase.query-processor.card/template-tag-parameters card-template-tag-parameters)
 
 ;; the re-exported var carries the docstring; kondo can't see through import-def
 #_{:clj-kondo/ignore [:missing-docstring]}

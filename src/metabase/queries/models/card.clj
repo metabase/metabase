@@ -334,8 +334,6 @@
             (when database-id
               {:database_id database-id})))))))))
 
-;;; TODO -- move this to [[metabase.query-processor.card]] or Lib so the logic can be shared between the backend and
-;;; frontend (?)
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
   against. This is done when saving a Card. The goal here is to prevent people from saving Cards with invalid queries

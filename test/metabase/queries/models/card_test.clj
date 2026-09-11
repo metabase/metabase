@@ -16,7 +16,7 @@
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
-   [metabase.queries.template-tags :as queries.template-tags]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.search.ingestion :as search.ingestion]
@@ -352,7 +352,7 @@
                :slug "date"
                :default nil
                :required false}]
-             (queries.template-tags/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-test-2
   (testing "Card with a non-Field-filter parameter"
@@ -364,7 +364,7 @@
                :slug "id"
                :default "1"
                :required true}]
-             (queries.template-tags/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-test-3
   (testing "Should ignore native query snippets and source card IDs"
@@ -376,7 +376,7 @@
                :slug "id"
                :default "1"
                :required true}]
-             (queries.template-tags/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (defn- native-query-card
   "Build a card map with a native query containing the given template tags.
@@ -403,7 +403,7 @@
                :slug     "name"
                :default  "Alice"
                :required false}]
-             (queries.template-tags/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-boolean-tag-test
   (testing ":boolean template tag without widget-type produces :boolean/= parameter type (QUE2-326)"
@@ -421,7 +421,7 @@
                :slug     "active"
                :default  nil
                :required false}]
-             (queries.template-tags/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-dimension-category-widget-test
   (testing ":dimension template tag with :category widget-type passes through widget-type (QUE2-326)"
@@ -441,7 +441,7 @@
                :slug     "cat"
                :default  nil
                :required false}]
-             (queries.template-tags/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest validate-template-tag-field-ids-test
   (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"

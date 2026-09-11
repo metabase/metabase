@@ -9,7 +9,7 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
-   [metabase.queries.template-tags :as queries.template-tags]
+   [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -21,7 +21,7 @@
   (u/prog1 (m/find-first #(= (:id %) param-key)
                          (or (seq (:parameters card))
                              ;; some older cards or cards in e2e just use the template tags on native queries
-                             (queries.template-tags/template-tag-parameters card)))
+                             (qp.card/template-tag-parameters card)))
     (when-not <>
       (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
                       {:status-code 400})))))
@@ -46,7 +46,7 @@
         slug->param (into {}
                           (map (juxt (comp keyword :slug) identity))
                           (or (seq (:parameters card))
-                              (queries.template-tags/template-tag-parameters card)))]
+                              (qp.card/template-tag-parameters card)))]
     (vec (for [[slug value] slug->value
                ;; an empty collection means "no value", as it does in `validate-and-merge-params`, and a parameter
                ;; with no value constrains nothing whether or not it still exists

@@ -10,7 +10,6 @@
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
-   [metabase.dashboards.params :as dashboards.params]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
@@ -372,7 +371,7 @@
 
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :resolved-params]
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
-   (dashboards.params/dashboard->resolved-params (t2/select-one Dashboard :id 62))
+   (params/dashboard->resolved-params (t2/select-one Dashboard :id 62))
    ;; ->
    {\"ee876336\" {:name     \"Category Name\"
                   :slug     \"category_name\"
@@ -392,7 +391,7 @@
                                :target       [:dimension [:field-id 264]]}}}}"
   [_model k dashboards]
   (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card :series])]
-    (map #(assoc %1 k %2) dashboards (map dashboards.params/dashboard->resolved-params dashboards-with-cards))))
+    (map #(assoc %1 k %2) dashboards (map params/dashboard->resolved-params dashboards-with-cards))))
 
 (defmethod mi/exclude-internal-content-hsql :model/Dashboard
   [_model & {:keys [table-alias]}]

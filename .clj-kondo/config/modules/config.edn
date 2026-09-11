@@ -342,7 +342,6 @@
   app-db
   {:team "UX West"
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
-           metabase.app-db.connection
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setting
@@ -724,7 +723,6 @@
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
-           metabase.dashboards.params
            metabase.dashboards.schema
            metabase.dashboards.settings
            metabase.dashboards.write}
@@ -1957,8 +1955,7 @@
    :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema
-           metabase.queries.template-tags}
+           metabase.queries.schema}
    :uses #{analytics
            analytics.interface
            api

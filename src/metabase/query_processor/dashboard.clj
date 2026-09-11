@@ -5,12 +5,12 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.dashboards.params :as dashboards.params]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.permissions.metric :as permissions.metric]
    [metabase.query-processor.card :as qp.card]
@@ -142,7 +142,7 @@
 
 (defn- dashboard-param-defaults
   "Construct parameter entries for any parameters with default values in `dashboard-param-id->param` as returned
-  by [[dashboards.params/dashboard->resolved-params]]."
+  by [[params/dashboard->resolved-params]]."
   [dashboard-param-id->param card-id]
   (into
    {}
@@ -173,7 +173,7 @@
         dashcard-id               (:id dashcard)
         _                         (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
         request-params            (some-> request-params not-empty (->> (lib/normalize ::dashboards.schema/parameters)))
-        resolved-params           (dashboards.params/dashboard->resolved-params (assoc dashboard :dashcards [dashcard]))
+        resolved-params           (params/dashboard->resolved-params (assoc dashboard :dashcards [dashcard]))
         dashboard-param-id->param (into {}
                                         ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to
                                         ;; use these values ourselves -- the expectation is that the frontend will pass
