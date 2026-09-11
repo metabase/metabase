@@ -1,11 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import {
-  collectionApi,
-  snippetApi,
-  useUpdateCollectionMutation,
-} from "metabase/api";
+import { Api, useUpdateCollectionMutation } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { isRootCollection } from "metabase/common/collections/utils";
 import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
@@ -17,7 +13,6 @@ import {
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { transformApi } from "metabase/transforms";
 import {
   ActionIcon,
   Box,
@@ -68,11 +63,11 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
 
   const invalidateTags = () => {
     if (collection.namespace === "snippets") {
-      dispatch(snippetApi.util.invalidateTags([listTag("snippet")]));
+      dispatch(Api.util.invalidateTags([listTag("snippet")]));
     } else if (collection.namespace === "transforms") {
-      dispatch(transformApi.util.invalidateTags([listTag("transform")]));
+      dispatch(Api.util.invalidateTags([listTag("transform")]));
     } else {
-      dispatch(collectionApi.util.invalidateTags([listTag("collection")]));
+      dispatch(Api.util.invalidateTags([listTag("collection")]));
     }
   };
 
