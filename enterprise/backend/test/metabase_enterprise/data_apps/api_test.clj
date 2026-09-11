@@ -152,13 +152,14 @@
                       :crowberto :post 200 "apps/demo/query"
                       {:stages [{:source {:type "table" :id (mt/id :venues) :name "Venues"
                                           :fields {:price {:type "column" :name "PRICE" :jsType "number"}}
-                                          :segments {} :measures {}}
+                                          :segments {} :measures {}
+                                          :columns [{:name "PRICE" :jsType "number"}]}
                                  :orderBys [{:type "column" :name "PRICE" :tableId (mt/id :venues)
                                              :fieldId (mt/id :venues :price) :baseType "type/Integer"
                                              :effectiveType "type/Integer" :defaultTemporalBucket nil
-                                             :direction "asc" :jsType "number"}]
+                                             :direction "asc" :jsType "number" :description "Price tier"}]
                                  :filters [{:type "operator" :operator ">"
-                                            :args [{:type "column" :name "PRICE"}
+                                            :args [{:type "column" :name "PRICE" :description "Price tier"}
                                                    {:type "literal" :value 2}]}]
                                  :limit 5}]})]
         (is (= (mt/id) (:database_id response)))
@@ -170,6 +171,37 @@
                                            :order-by [["asc" {} ["field" {} (mt/id :venues :price)]]]
                                            :limit 5}]}}
                 response))))))
+
+(deftest query-definition-normalizes-nested-binning-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (doseq [[field-name field-id binning]
+              [["PRICE" (mt/id :venues :price) {:strategy "num-bins" :num-bins 10}]
+               ["LATITUDE" (mt/id :venues :latitude) {:strategy "bin-width" :bin-width 20.0}]]]
+        (let [column {:type "column" :name field-name :description "A numeric field" :binning binning}
+              response (mt/user-http-request
+                        :crowberto :post 200 "apps/demo/query"
+                        {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                   :aggregations [{:type "operator" :operator "count" :args []}]
+                                   :breakouts [column]
+                                   :orderBys [(assoc column :direction "asc")]}]})]
+          (is (=? {:dataset_query
+                   {:stages [{:breakout [["field" {:binning binning} field-id]]
+                              :order-by [["asc" {} ["field" {:binning binning} field-id]]]}]}}
+                  response)))))))
+
+(deftest query-definition-rejects-unknown-nested-binning-options-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (let [response (mt/user-http-request
+                      :crowberto :post 400 "apps/demo/query"
+                      {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                 :breakouts [{:type "column" :name "PRICE"
+                                              :binning {:strategy "num-bins" :num-bins 10 :unexpected true}}]}]})]
+        (is (= {:errors {:stages [{:breakouts [{:binning {:unexpected ["disallowed key"]}}]}]}}
+               response))))))
 
 (deftest query-definition-resolves-an-aggregation-with-sdk-metadata-test
   (mt/with-premium-features #{:data-apps-preview}

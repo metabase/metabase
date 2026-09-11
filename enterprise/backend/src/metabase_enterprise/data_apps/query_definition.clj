@@ -13,22 +13,35 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
+(defn- normalize-binning [column]
+  (let [{:keys [strategy num-bins bin-width] :as binning} (:binning column)]
+    ;; Keep invalid options for validation instead of silently dropping them.
+    (if (and binning (mr/validate ::binning binning))
+      (cond-> (dissoc column :binning)
+        (not (or (:bins column) (:bin-width column)))
+        (merge (case strategy
+                 :default {:bins :auto}
+                 :num-bins {:bins num-bins}
+                 :bin-width {:bin-width bin-width})))
+      column)))
+
 (defn- query-map-decoder [schema _options]
   (let [metadata-keys (::sdk-metadata (mc/properties schema))]
-    (fn [value]
-      (when (map? value)
-        ;; drop data apps specific metadata fields such as `js-type`
-        (apply dissoc (update-keys value (comp keyword u/->kebab-case-en)) metadata-keys)))))
+    {:enter (fn [value]
+              (when (map? value)
+                ;; drop data apps specific metadata fields such as `js-type`
+                (apply dissoc (update-keys value (comp keyword u/->kebab-case-en)) metadata-keys)))
+     :leave (when (::normalize-binning (mc/properties schema)) normalize-binning)}))
 
 (mr/def ::table-source
   [:map {:closed true :decode/normalize {:compile query-map-decoder}
-         ::sdk-metadata [:name :fields :segments :measures]}
+         ::sdk-metadata [:name :columns :fields :segments :measures]}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :table]]
    [:id [:ref ::lib.schema.id/table]]])
 
 (mr/def ::column
   [:map {:closed true :decode/normalize {:compile query-map-decoder}
-         ::sdk-metadata [:js-type :field-id :base-type :effective-type :default-temporal-bucket :id :metric-id]}
+         ::sdk-metadata [:description :js-type :field-id :base-type :effective-type :default-temporal-bucket :id :metric-id]}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
    [:name string?]
    [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
@@ -52,12 +65,27 @@
   [:map {:closed true :decode/normalize {:compile query-map-decoder}}
    [:bin-width {:optional true} [:maybe [:or ::lib.schema.common/positive-number ::auto-bin]]]])
 
+(mr/def ::binning
+  [:multi {:decode/normalize lib.schema.common/normalize-map
+           :dispatch (comp keyword :strategy)}
+   [:default [:map {:closed true}
+              [:strategy [:= {:decode/normalize lib.schema.common/normalize-keyword} :default]]]]
+   [:num-bins [:map {:closed true}
+               [:strategy [:= {:decode/normalize lib.schema.common/normalize-keyword} :num-bins]]
+               [:num-bins pos-int?]]]
+   [:bin-width [:map {:closed true}
+                [:strategy [:= {:decode/normalize lib.schema.common/normalize-keyword} :bin-width]]
+                [:bin-width ::lib.schema.common/positive-number]]]])
+
 (mr/def ::column-with-binning
   [:merge
    ::column
    ::temporal-bucket
    ::bin-count-bucket
-   ::bin-width-bucket])
+   ::bin-width-bucket
+   [:map {:closed true :decode/normalize {:compile query-map-decoder}
+          ::normalize-binning true}
+    [:binning {:optional true} ::binning]]])
 
 (mr/def ::breakout
   [:ref ::column-with-binning])
