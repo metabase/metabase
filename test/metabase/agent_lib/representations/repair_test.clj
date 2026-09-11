@@ -721,7 +721,8 @@
 
 (defn- repair-in-stage
   "Run `repair` on a query carrying `stage-kvs`, returning the repaired first stage. The hoist pass
-  is scoped to a stage's `filters`, so its inputs have to be given in that position."
+  is scoped to a stage's `filters` and `expressions`, so its inputs have to be given in one of those
+  positions."
   [stage-kvs]
   (-> (repair/repair trivial-mp
                      {"lib/type" "mbql/query"
@@ -837,12 +838,15 @@
         (is (= input (hoist-filter input)) head)))))
 
 (deftest ^:parallel hoist-temporal-bucket-scope-test
-  (testing "only a stage's filters are rewritten; the same comparison elsewhere in the stage is not"
+  (testing "a stage's filters and expressions are rewritten; the same comparison elsewhere is not"
     ;; Pass 2.95 alone, not `repair`: Pass 6 rejects the shapes this pass declines.
     (let [cmp   [">" {} created-at (abs-dt "2025-01-01" "month")]
+          cmp'  [">" {} (created-at-bucketed "month") "2025-01-01"]
           agg   ["count-where" {} cmp]
           expr  ["case" {"lib/expression-name" "E"} [[cmp 1]] 0]
           ob    ["asc" {} ["sum-where" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] cmp]]
+          brk   ["case" {} [[cmp 1]] 0]
+          fld   ["case" {} [[cmp 2]] 0]
           stage (-> (#'repair/hoist-temporal-buckets*
                      {"lib/type" "mbql/query"
                       "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -850,13 +854,53 @@
                                    "filters"      [cmp]
                                    "aggregation"  [agg]
                                    "expressions"  [expr]
-                                   "order-by"     [ob]}]})
+                                   "order-by"     [ob]
+                                   "breakout"     [brk]
+                                   "fields"       [fld]}]})
                     (get "stages")
                     first)]
-      (is (= [[">" {} (created-at-bucketed "month") "2025-01-01"]] (get stage "filters")))
+      (is (= [cmp'] (get stage "filters")))
       (is (= [agg] (get stage "aggregation")))
-      (is (= [expr] (get stage "expressions")))
-      (is (= [ob] (get stage "order-by"))))))
+      (is (= [["case" {"lib/expression-name" "E"} [[cmp' 1]] 0]] (get stage "expressions")))
+      (is (= [ob] (get stage "order-by")))
+      (is (= [brk] (get stage "breakout")))
+      (is (= [fld] (get stage "fields"))))))
+
+(deftest ^:parallel hoist-temporal-bucket-join-scope-test
+  ;; Pass 2.95 alone, not `repair`: Pass 6 rejects the conditions shape.
+  (let [cmp   [">" {} created-at (abs-dt "2025-01-01" "month")]
+        cmp'  [">" {} (created-at-bucketed "month") "2025-01-01"]
+        stage (-> (#'repair/hoist-temporal-buckets*
+                   {"lib/type" "mbql/query"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "joins"        [{"lib/type"   "mbql/join"
+                                                  "alias"      "J"
+                                                  "conditions" [cmp]
+                                                  "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                                 "filters"      [cmp]}]}]}]})
+                  (get "stages")
+                  first)]
+    (testing "a join's own `conditions:` are not a stage key the optimizer rewrites: left as written"
+      (is (= [cmp] (get-in stage ["joins" 0 "conditions"]))))
+    (testing "a join's inner stage is a stage, and the optimizer covers it: hoisted"
+      (is (= [cmp'] (get-in stage ["joins" 0 "stages" 0 "filters"]))))))
+
+(deftest ^:parallel hoist-temporal-bucket-stage-marker-drift-test
+  ;; The gate is `stage-like-map?` and not a `lib/type` match on purpose: Pass 2 only fills a
+  ;; *missing* marker, so a stage the model mis-marked would drop out of a marker gate entirely.
+  (testing "a stage the model mis-marked is still recognised structurally, so the marker complaint
+           reaches the model instead of a misleading temporal one"
+    (doseq [marker ["mbql/stage" "mbql.stage/mbql5"]]
+      (let [stage (-> (#'repair/hoist-temporal-buckets*
+                       {"lib/type" "mbql/query"
+                        "stages"   [{"lib/type"     marker
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "filters"      [[">" {} created-at (abs-dt "2025-01-01" "month")]]}]})
+                      (get "stages")
+                      first)]
+        (is (= [[">" {} (created-at-bucketed "month") "2025-01-01"]] (get stage "filters")) marker)))))
 
 (deftest ^:parallel hoist-temporal-bucket-nested-in-filter-test
   (testing "hoisting reaches comparisons nested under boolean combinators"
@@ -865,6 +909,12 @@
            (repair-filter ["and" {}
                            ["=" {} created-at (abs-dt "2025-01-01" "month")]
                            ["not" {} ["=" {} created-at (abs-dt "2024-01-01" "year")]]])))))
+
+(deftest ^:parallel hoist-temporal-bucket-inside-case-test
+  (testing "a comparison nested in a `case` inside a filter is hoisted - the QP optimizer walks
+           filters to the same depth, so the two forms compile alike"
+    (is (= [">" {} ["case" {} [[[">" {} (created-at-bucketed "month") "2025-01-01"] 1]] 0] 0]
+           (repair-filter [">" {} ["case" {} [[[">" {} created-at (abs-dt "2025-01-01" "month")] 1]] 0] 0])))))
 
 (deftest ^:parallel hoist-temporal-bucket-cross-stage-ref-test
   (testing "a cross-stage string-named ref is bucketed the same way as a portable-FK ref"
@@ -944,10 +994,10 @@
              ;; a `value` clause keeps its raw string keys and still passes validation (BOT-2095)
              "a `value` clause carrying a unit"
              {"filters" [["=" {} created-at ["value" {"base-type" "type/DateTime" "unit" "day"} "2025-01-01"]]]}
-             ;; q5 will widen the pass to `expressions:`; when it does, move this row rather than delete it
-             "in a `case` under `expressions:`"
+             ;; E7 still reaches `expressions:` - Pass 2.95 declines an extraction unit everywhere
+             "with an extraction unit in a `case` under `expressions:`"
              {"expressions" [["case" {"lib/expression-name" "E"}
-                              [[[">" {} created-at (abs-dt "2025-01-01" "month")] 1]] 0]]}}]
+                              [[[">" {} created-at (abs-dt "2025-01-01" "month-of-year")] 1]] 0]]}}]
       (testing label
         (try
           (repair-in-stage stage-kvs)
@@ -963,7 +1013,14 @@
       (doseq [opts [{"base-type" "type/DateTime"}
                     {"base-type" "type/DateTime" "unit" nil}]]
         (let [input ["=" {} created-at ["value" opts "2025-01-01"]]]
-          (is (= input (repair-filter input)) (pr-str opts))))))
+          (is (= input (repair-filter input)) (pr-str opts)))))
+    (testing "a hoistable bucket in a `case` under `expressions:` is rewritten, not flagged"
+      (is (= [["case" {"lib/expression-name" "E"}
+               [[[">" {} (created-at-bucketed "month") "2025-01-01"] 1]] 0]]
+             (get (repair-in-stage
+                   {"expressions" [["case" {"lib/expression-name" "E"}
+                                    [[[">" {} created-at (abs-dt "2025-01-01" "month")] 1]] 0]]})
+                  "expressions")))))
   (testing "an unparseable literal is left for resolve's `:invalid-temporal-literal` to name"
     (let [input ["=" {} created-at (abs-dt "2024-13-45" "month")]]
       (is (= input (repair-filter input))))))
@@ -1097,7 +1154,7 @@
       (is (= input (repair/repair trivial-mp input))))))
 
 (deftest ^:parallel swap-between-bounds-absolute-datetime-test
-  ;; A bare clause outside a stage's `filters`, so Pass 2.95 does not apply and the bounds stay
+  ;; A bare clause outside a stage, so Pass 2.95 does not apply and the bounds stay
   ;; wrapped - the subject here is `between-bound-comparable`'s absolute-datetime arm, not hoisting.
   (testing "out-of-order absolute-datetime clauses: swap by inner ISO string"
     (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]

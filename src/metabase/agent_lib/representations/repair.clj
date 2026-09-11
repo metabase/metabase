@@ -312,7 +312,7 @@
 ;;; ============================================================
 ;;; Pass 1.87 -- rewrite known misspelled `lib/type` markers to their canonical value.
 ;;;
-;;; Pass 2's `infer-*` helpers only FILL a missing marker; they never rewrite a present one.
+;;; Pass 2's `ensure-lib-types*` only FILLS a missing marker; it never rewrites a present one.
 ;;; This pass handles the present-but-wrong case via a small alias table, exactly like the
 ;;; `rewrite-operator-name-aliases*` / `rewrite-temporal-bucket-aliases*` passes.
 ;;; ============================================================
@@ -901,6 +901,43 @@
    form))
 
 ;;; ============================================================
+;;; Structural predicates -- what a bare map looks like, with no `lib/type` marker to go on.
+;;;
+;;; Shared by Pass 2.95, which hoists only inside a stage, and Pass 2, which stamps a missing
+;;; marker on one. One definition, so the hoist's notion of a stage is the one that stamps the
+;;; marker -- a marker the model wrote can be wrong, a derivation cannot disagree with itself.
+;;; ============================================================
+
+(defn- top-level-query-map?
+  [m]
+  (match/matches? m {"database" _, "stages" _}))
+
+(defn- join-like-map?
+  "A map that looks like an explicit join: it carries join-only keys (`conditions`, or
+  `alias`+`stages`) that never appear on a stage or top-level query. We key on these rather
+  than on `\"fields\"` (which a join shares with a stage) so a join is not mistaken for a
+  stage by [[stage-like-map?]]."
+  [m]
+  (and (map? m)
+       (or (contains? m "conditions")
+           (and (contains? m "alias")
+                (contains? m "stages")))))
+
+(defn- stage-like-map?
+  "A map that looks like an MBQL stage: has `\"source-table\"`, `\"source-card\"`, or any of the
+  stage-body keys (`filters`, `aggregation`, `breakout`, `order-by`, `fields`, `joins`,
+  `expressions`, `limit`). Not a top-level query and not an explicit join (a join can carry
+  `\"fields\"`, so we exclude it explicitly)."
+  [m]
+  (and (map? m)
+       (not (top-level-query-map? m))
+       (not (join-like-map? m))
+       (boolean
+        (some #(contains? m %)
+              ["source-table" "source-card" "filters" "aggregation"
+               "breakout" "order-by" "fields" "joins" "expressions" "limit"]))))
+
+;;; ============================================================
 ;;; Pass 2.95 -- hoist a temporal bucket: move it off an `absolute-datetime` literal and onto the
 ;;; ref it is compared to. Sideways, within one clause; nothing moves up a level.
 ;;;
@@ -919,25 +956,29 @@
 ;;; hop -- the last paragraph below says what that costs, which depends on where the clause sits. A
 ;;; `temporal-unit` on a ref decodes fine (`legacy-json-round-trip-temporal-filters-test`).
 ;;;
-;;; Only inside a stage's `filters`, where `optimize-temporal-filters` reads the unit from either
-;;; side. Not in `aggregation:` (`count-where`, `sum-where`, `share`) or a join's `conditions:`: that
-;;; middleware walks `:filters` and `:expressions` and nothing else, so there the bucket really would
-;;; truncate the column --
+;;; Only inside a stage's `filters` and `expressions`, at every nesting level of the two -- a
+;;; comparison inside a `case` included -- and in every stage of the query, a join's inner stages
+;;; among them, where `optimize-temporal-filters` reads the unit from either side. Not in
+;;; `aggregation:` (`count-where`, `sum-where`, `share`), `order-by:` or a join's own `conditions:`:
+;;; that middleware walks `:filters` and `:expressions` and nothing else, so there the bucket really
+;;; would truncate the column --
 ;;;
 ;;;   ["count-where", {}, [">", {}, <col>, ["absolute-datetime", {}, "2027-06-15", "month"]]]
 ;;;     as written: SUM(CASE WHEN created_at                    > date_trunc(month, ...) ...)
 ;;;     hoisted:    SUM(CASE WHEN date_trunc(month, created_at) > date_trunc(month, ...) ...)
 ;;;
-;;; -- a different answer. Stage-level `expressions:` is out of scope only because this pass keys off
-;;; `filters`; the middleware does cover `expressions`, and a `case` nested inside a filter is
-;;; already rewritten. Also left as written: a unit the literal cannot carry (`hour` on a date,
+;;; -- a different answer. Also left as written: a unit the literal cannot carry (`hour` on a date,
 ;;; `month-of-year`), a ref that already has a `temporal-unit`, `between` bounds with different
 ;;; buckets, and an unparseable literal (resolve's `:invalid-temporal-literal` check still needs to
 ;;; see it). The third example drops the wrapper anyway: `day` on a date adds nothing, and the bound
 ;;; ends up as the query builder writes it.
 ;;;
-;;; Both forms then select the same rows wherever `optimize-temporal-filters` can read the unit off
-;;; either side -- a `field` ref, or an `expression` ref that carries a type. Two exceptions.
+;;; `::query` / `::stage` are `:closed false`, so a stray `filters:` on the query root or a join map
+;;; sits in no stage: E7 names the clause, never the stray key, and the model's fix is dropped again.
+;;;
+;;; Both forms then select the same rows -- or compute the same value, inside `expressions` --
+;;; wherever `optimize-temporal-filters` can read the unit off either side: a `field` ref, or an
+;;; `expression` ref that carries a type. Two exceptions.
 ;;;
 ;;; (1) `!=` / `not-in` on a `:type/Date` column bucketed by `day`. Only the hoisted form reaches
 ;;; `date-field-with-day-bucketing?`, so the literal-side form becomes a negated range
@@ -945,9 +986,9 @@
 ;;; `IS NULL` disjunct `sql.qp` adds to every other `!=` (`correct-null-behaviour`). Hoisting is the
 ;;; only option here, not just the better one: every `!=` shape that survives the JSON hop compiles
 ;;; to `<> ... OR ... IS NULL`, and the one shape that does not is the broken one above. Pinned by
-;;; `optimize-date-not-equals-null-semantics-test`. Note this divergence is about *which rows*, so
-;;; inside a `case` it changes a computed value rather than a filter -- worth knowing before widening
-;;; the pass past `filters`.
+;;; `optimize-date-not-equals-null-semantics-test`. The divergence is about *which rows*; inside a
+;;; `case` under `expressions` that becomes a difference in a computed value rather than in the
+;;; filter.
 ;;;
 ;;; (2) An `expression` ref. The middleware optimises neither form, for two unrelated reasons: as
 ;;; written, resolve stamps no `base-type` on the ref and `temporal-ref?` reads the type from the
@@ -961,14 +1002,20 @@
 ;;;     hoisted:    WHERE date_trunc(month, <Ship>) > '2025-06-01'                      -- 18709 rows
 ;;;
 ;;; The hoisted count is what both forms give once the ref is typed, so the rewrite makes an untyped
-;;; `expression` ref behave like a typed one -- a real change, and the right one. `=` and `<=`
-;;; diverge the same way; `<` and `>=` happen to agree. Both asymmetries are QP gaps (`temporal-ref?`
-;;; should consult `lib/type-of`; `wrap-value-literals` should read a unit off any ref); worth their
-;;; own issue. Pinned by `optimize-untyped-expression-ref-not-optimized-test`.
+;;; *temporal* `expression` ref behave like a typed one -- a real change, and the right one. `=` and
+;;; `<=` diverge the same way; `<` and `>=` happen to agree. Both asymmetries are QP gaps
+;;; (`temporal-ref?` should consult `lib/type-of`; `wrap-value-literals` should read a unit off any
+;;; ref); worth their own issue. Pinned by `optimize-untyped-expression-ref-not-optimized-test`.
 ;;;
 ;;; Column types are unknown here, so a bucket can land on a text column;
-;;; [[assert-temporal-buckets-on-temporal-columns!]] rejects that after resolve. Runs after Pass 2.9,
-;;; which creates new `filters`. Idempotent: the output matches neither predicate.
+;;; [[assert-temporal-buckets-on-temporal-columns!]] rejects that after resolve -- but only on a
+;;; `field` ref. On an `expression` ref nothing catches it, because resolve stamps no type there at
+;;; all; a text or numeric custom column bucketed this way compiles to nonsense or fails
+;;; preprocessing outright. That is the same exposure `filters` already has; walking `expressions`
+;;; opens a second position onto it, which makes closing it matter more, not less.
+;;;
+;;; Runs after Pass 2.9, which creates new `filters`. Idempotent: the output matches neither
+;;; predicate.
 ;;;
 ;;; None of the survivors above is merely unrewritten -- each is broken. The legacy unit enums have no
 ;;; `:decode/normalize`, so after the JSON hop the clause never normalizes back. What that costs
@@ -1034,7 +1081,8 @@
              (string? (nth v 0))
              (= "absolute-datetime" (u/lower-case-en (nth v 0)))
              (map? (nth v 1))
-             ;; a named literal lives in `expressions:`, never here; a type hint is safe to drop
+             ;; a named literal is only ever an expression's top-level clause, never a comparison
+             ;; operand; a type hint is safe to drop
              (empty? (dissoc (nth v 1) "base-type" "effective-type"))
              (string? (nth v 2))
              (string? (nth v 3)))
@@ -1142,21 +1190,37 @@
     (between-clause? node) (hoist-bucket-in-between node)
     :else                  (hoist-bucket-in-comparison node)))
 
+(def ^:private bucket-hoist-stage-keys
+  "The stage keys the QP's `optimize-temporal-filters` rewrites, and so the only ones a bucket may
+  move inside."
+  ["filters" "expressions"])
+
+(defn- hoist-buckets-in-clauses
+  "Rewrite every hoistable comparison at any depth of one stage key's clause vector."
+  [clauses]
+  (walk/postwalk (fn [n] (if (hoistable-comparison-node? n) (hoist-bucket-in-clause n) n)) clauses))
+
 (defn- hoist-temporal-buckets*
-  "Hoist each `absolute-datetime` bucket in a stage's `filters` onto the ref it is compared to.
+  "Hoist each `absolute-datetime` bucket in a stage's `filters` / `expressions` onto the compared ref.
 
     {\"filters\" [[\"=\" {} [\"field\" {} <col>] [\"absolute-datetime\" {} \"2025-01-01\" \"month\"]]]}
     => {\"filters\" [[\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\"]]}
 
-  Only `filters` vectors are walked; the pass header says why."
+  Only those two keys, and only on a map [[stage-like-map?]] recognises -- the same predicate Pass 2
+  uses to decide what a stage is, so the hoist's notion of a stage is the one that stamps the marker.
+  The pass header says why the scope is those two keys."
   [form]
   (walk/postwalk
    (fn [node]
-     (if (and (map? node) (vector? (get node "filters")))
-       ;; scoped to `filters` deliberately -- see the pass header
-       (update node "filters"
-               #(walk/postwalk (fn [n] (if (hoistable-comparison-node? n) (hoist-bucket-in-clause n) n))
-                               %))
+     (if (stage-like-map? node)
+       (reduce (fn [stage k]
+                 (cond-> stage
+                   ;; belt and braces: Pass 1.5 `normalize-expressions-shape*` has already turned a
+                   ;; map-form `expressions:` into the sequential form, and a stage carrying neither
+                   ;; key falls through untouched
+                   (vector? (get stage k)) (update k hoist-buckets-in-clauses)))
+               node
+               bucket-hoist-stage-keys)
        node))
    form))
 
@@ -1366,36 +1430,10 @@
 
 ;;; ============================================================
 ;;; Pass 2 -- fill in missing `lib/type` markers
+;;;
+;;; The structural predicates `needs-lib-type-marker?` keys on live in the shared section above Pass
+;;; 2.95, which gates on the same notion of a stage.
 ;;; ============================================================
-
-(defn- top-level-query-map?
-  [m]
-  (match/matches? m {"database" _, "stages" _}))
-
-(defn- join-like-map?
-  "A map that looks like an explicit join: it carries join-only keys (`conditions`, or
-  `alias`+`stages`) that never appear on a stage or top-level query. We key on these rather
-  than on `\"fields\"` (which a join shares with a stage) so a join is not mistaken for a
-  stage by [[stage-like-map?]]."
-  [m]
-  (and (map? m)
-       (or (contains? m "conditions")
-           (and (contains? m "alias")
-                (contains? m "stages")))))
-
-(defn- stage-like-map?
-  "A map that looks like an MBQL stage: has `\"source-table\"`, `\"source-card\"`, or any of the
-  stage-body keys (`filters`, `aggregation`, `breakout`, `order-by`, `fields`, `joins`,
-  `expressions`, `limit`). Not a top-level query and not an explicit join (a join can carry
-  `\"fields\"`, so we exclude it explicitly)."
-  [m]
-  (and (map? m)
-       (not (top-level-query-map? m))
-       (not (join-like-map? m))
-       (boolean
-        (some #(contains? m %)
-              ["source-table" "source-card" "filters" "aggregation"
-               "breakout" "order-by" "fields" "joins" "expressions" "limit"]))))
 
 (defn- needs-lib-type-marker? [m]
   (and (map? m)
@@ -2847,9 +2885,9 @@
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
-    2.95. inside a stage's `filters` only, hoist a temporal bucket off an `absolute-datetime`
-       literal and onto the ref it is compared to, for the same reason (examples in the pass
-       header; runs after Pass 2.9, which creates new `filters`);
+    2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
+       `absolute-datetime` literal and onto the ref it is compared to, for the same reason
+       (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);
