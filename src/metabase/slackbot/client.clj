@@ -5,6 +5,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
@@ -21,6 +22,10 @@
 (def ^:private streaming-socket-timeout-ms
   "Socket (read) timeout for streaming API calls (start/append/stop)."
   5000)
+
+(def ^:private download-timeout-ms
+  "Socket and connection timeout for a Slack file download."
+  10000)
 
 (def SlackClient
   "Malli schema for a Slack client."
@@ -196,14 +201,17 @@
   (:body (slack-post-json client "/views.open" {:trigger_id trigger_id
                                                 :view       view})))
 
-(defn- slack-host?
-  "Whether `url` points at Slack, and so may be sent the bot token. Any `slack.com` host is allowed rather than
-  `files.slack.com` alone, so that a new Slack file host does not break uploads."
+(defn- slack-file-url?
+  "Whether `url` is safe to fetch with the bot token attached: it clears the generic SSRF pre-check
+  ([[metabase.util.http/safe-url?]]: https, no userinfo, a real external hostname) and its host is Slack's. Any
+  `slack.com` host is allowed rather than `files.slack.com` alone, so that a new Slack file host does not break
+  uploads."
   [url]
-  (boolean
-   (when-let [host (some-> (u.http/->hostname url) u/lower-case-en)]
-     (or (= host "slack.com")
-         (str/ends-with? host ".slack.com")))))
+  (and (u.http/safe-url? url)
+       (boolean
+        (when-let [host (some-> (u.http/->hostname url) u/lower-case-en)]
+          (or (= host "slack.com")
+              (str/ends-with? host ".slack.com"))))))
 
 (defn download-file-stream
   "Download a file from Slack, returning an InputStream instead of buffering in memory.
@@ -213,14 +221,28 @@
    whatever address the app that registered the file picked."
   ^InputStream
   [client url]
-  (when-not (slack-host? url)
+  (when-not (slack-file-url? url)
     (throw (ex-info (tru "Refusing to download a file from a non-Slack host.")
                     {:status-code 400, :host (u.http/->hostname url)})))
-  (-> (http/get url {:headers           {"Authorization" (str "Bearer " (:token client))}
-                     :as                :stream
-                     :redirect-strategy :none
-                     :dns-resolver      (u.http/network-policy-dns-resolver :external-only)})
-      :body))
+  (let [resp              (http/get url (m/assoc-some
+                                         {:headers            {"Authorization" (str "Bearer " (:token client))}
+                                          :as                 :stream
+                                          :redirect-strategy  :none
+                                          :socket-timeout     download-timeout-ms
+                                          :connection-timeout download-timeout-ms
+                                          :throw-exceptions   false}
+                                         ;; Under a JVM proxy clj-http resolves the proxy, not the target, so the
+                                         ;; policy resolver would judge the wrong host; omit it and rely on the
+                                         ;; Slack host allowlist above.
+                                         :dns-resolver (when-not (u.http/jvm-proxied-url? url)
+                                                         (u.http/network-policy-dns-resolver :external-only))))
+        status            (:status resp)
+        ^InputStream body (:body resp)]
+    (if (<= 200 status 299)
+      body
+      (do (some-> body .close)
+          (throw (ex-info (tru "Unexpected response downloading file from Slack (status {0})." status)
+                          {:status-code 502, :upstream-status status}))))))
 
 ;; -------------------- SLACK STREAMING API --------------------
 ;; These functions implement Slack's chat streaming API for progressive AI responses.
