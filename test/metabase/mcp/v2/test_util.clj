@@ -1,8 +1,5 @@
 (ns metabase.mcp.v2.test-util
-  "Test-only tools for the v2 MCP registry. Loading this namespace registers `test_echo`, a dependency-free
-  tool the registry, transport, and usage tests drive to assert the `tools/list` / `tools/call` contract
-  (scope gating, argument validation, error redaction, usage logging) without touching content. It is never
-  loaded by the production surface, so it never reaches a real client's tool list."
+  "Test-only v2 MCP tools. Never loaded by the production surface."
   (:require
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]

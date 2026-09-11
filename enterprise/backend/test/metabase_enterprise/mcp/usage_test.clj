@@ -7,7 +7,6 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.mcp.usage :as usage]
    [metabase.mcp.v2.registry :as v2.registry]
-   ;; Registers the test-only `test_echo` tool the tools/call test below drives.
    [metabase.mcp.v2.test-util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]

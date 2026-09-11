@@ -11,7 +11,6 @@
    [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
-   ;; Registers the test-only `test_echo` tool the call tests below drive.
    [metabase.mcp.v2.test-util]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]

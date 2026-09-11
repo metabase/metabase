@@ -8,13 +8,10 @@
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
-   ;; Registers the test-only `test_echo` tool the assertions below drive.
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
-
-(comment v2.tu/keep-me)
 
 ;; not ^:parallel: the kondo deftest lint treats the `!` suffix of `register-tool!` as destructive
 (deftest registration-requires-scope-test

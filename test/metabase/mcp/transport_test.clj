@@ -8,7 +8,6 @@
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.transport :as mcp.transport]
    [metabase.mcp.v2.common :as v2.common]
-   ;; Registers the test-only `test_echo` tool the call tests below drive.
    [metabase.mcp.v2.test-util]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.streaming-response :as streaming-response]
