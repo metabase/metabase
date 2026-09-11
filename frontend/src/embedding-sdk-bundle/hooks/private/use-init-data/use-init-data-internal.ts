@@ -110,8 +110,8 @@ export const useInitDataInternal = ({
 }: InitDataLoaderParameters) => {
   const dispatch = reduxStore.dispatch;
 
-  // An initialized store lets children render immediately. Install their hooks
-  // before that render, including after a plugin reset between provider mounts.
+  // Children render in the same pass when the store is already initialized,
+  // so the hooks are installed here rather than in a mount effect.
   registerTransformQueryHooks();
 
   const isDataUninitialized = () =>

@@ -25,7 +25,7 @@ const SIDE_EFFECT_PATHS = [
   "frontend/src/metabase/ui/components/overlays/Popover/register-popover-dropdown.ts",
   // Registers its endpoints on the shared Api at import, so a bundle that only reaches them by name still has to evaluate it.
   "frontend/src/metabase/query_builder/api/model-index.ts",
-  // The transforms barrel exposes hooks, but their endpoints must still register at import.
+  // Registers the transform endpoints on the shared Api at import.
   "frontend/src/metabase/transforms/api/",
 ].map((file) => path.join(REPO_ROOT, file));
 

@@ -11,8 +11,7 @@ const useLazyTransformQuery: TransformsPlugin["useLazyGetTransformQuery"] =
     return [trigger, result];
   };
 
-// SmartLink and the metabot suggestion message call these hooks unconditionally,
-// so the registration must run before the app renders.
+// The default hooks report a skipped query, so this must run before anything renders.
 export function registerTransformQueryHooks() {
   PLUGIN_TRANSFORMS.useGetTransformQuery = useGetTransformQuery;
   PLUGIN_TRANSFORMS.useLazyGetTransformQuery = useLazyTransformQuery;
