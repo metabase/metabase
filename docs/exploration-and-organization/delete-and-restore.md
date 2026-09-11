@@ -132,11 +132,11 @@ Snippets can be archived and unarchived. See [Archiving snippets](../questions/n
 
 ## Deleting segments
 
-Segments can be retired. See [Retiring Segments](../data-modeling/segments.md#editing-and-retiring-segments). Retiring segments is permanent.
+See [Delete segments](../data-modeling/semantic-layer/segments.md#delete-segments). Deleting segments is permanent, but it won't break questions that use the segment.
 
 ## Deleting measures
 
-See [Delete measures](../data-studio/measures.md#delete-measures). Deleting measures is permanent.
+See [Delete measures](../data-modeling/semantic-layer/measures.md#delete-measures). Deleting measures is permanent.
 
 ## Deleting subscriptions and alerts
 

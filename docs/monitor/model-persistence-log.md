@@ -5,7 +5,7 @@ summary: View the status of persisted models and refresh their cached results.
  
 # Model persistence log
  
-The Model persistence log lists your [persisted models](../data-modeling/model-persistence.md) and the status of their refreshes.
+The Model persistence log lists your [persisted models](../data-modeling/models/model-persistence.md) and the status of their refreshes.
  
 To open the Model persistence log:
  
@@ -14,7 +14,7 @@ To open the Model persistence log:
 
 For each persisted model, Metabase shows the:
 
-- **Model**: The [model](../data-modeling/models.md) being persisted
+- **Model**: The [model](../data-modeling/models/models.md) being persisted
 - **Collection**: The collection that contains the model
 - **Status**: The status of the last refresh
 - **Last run at**: When the model's results were last refreshed

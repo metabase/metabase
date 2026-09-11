@@ -7,7 +7,8 @@
   "Multimethod to use to diff two things with `=?`."
   {:arglists '([expected actual])}
   (fn [expected actual]
-    [(u/dispatch-type-keyword expected) (u/dispatch-type-keyword actual)]))
+    [(u/dispatch-type-keyword expected) (u/dispatch-type-keyword actual)])
+  :hierarchy #'u/dispatch-type-hierarchy)
 
 ;;;; Default method impls
 

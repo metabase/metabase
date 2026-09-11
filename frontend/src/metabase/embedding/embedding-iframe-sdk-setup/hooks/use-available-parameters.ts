@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
+import {
+  paramFieldsFetched,
+  useQuestionFromCard,
+} from "metabase/metadata-store";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { useDispatch, useSelector } from "metabase/redux";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { useDispatch } from "metabase/redux";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 type UseParameterListProps = {
@@ -18,7 +20,7 @@ export const useAvailableParameters = ({
   resource,
 }: UseParameterListProps) => {
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
 
   // We need initial available parameters to display the `discard changes` button
   // and reset user selected parameters back to initial parameters
@@ -42,11 +44,11 @@ export const useAvailableParameters = ({
     } else if (experience === "chart") {
       // Unjustified type cast. FIXME
       const card = resource as Card;
-      return getCardUiParameters(card, metadata) || [];
+      return buildQuestion(card).parameters();
     }
 
     return [];
-  }, [resource, experience, metadata]);
+  }, [resource, experience, buildQuestion]);
 
   // Reset initial parameters when the resource changes
   if (resource?.id !== prevResourceId) {

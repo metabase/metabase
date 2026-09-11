@@ -1655,10 +1655,18 @@
        goal-value))))
 
 (defn- export-viz-dynamic-goals [settings]
-  (some-> settings (update-viz-dynamic-goals (fn [id model] (fk-elide (*export-fk* id model))))))
+  ;; guards keep this idempotent: an already-exported (or malformed) id is left alone rather than
+  ;; blowing up *export-fk*'s schema and taking the whole export with it
+  (some-> settings (update-viz-dynamic-goals (fn [id model]
+                                               (if (pos-int? id)
+                                                 (fk-elide (*export-fk* id model))
+                                                 id)))))
 
 (defn- import-viz-dynamic-goals [settings]
-  (some-> settings (update-viz-dynamic-goals *import-fk*)))
+  (some-> settings (update-viz-dynamic-goals (fn [id model]
+                                               (if (portable-id? id)
+                                                 (*import-fk* id model)
+                                                 id)))))
 
 (defn- export-pivot-table [settings]
   (some-> settings
