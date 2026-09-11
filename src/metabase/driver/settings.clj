@@ -6,7 +6,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,12 +30,9 @@
                     (if (premium-features/is-hosted?)
                       :external-only
                       :allow-all)))
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru (str "Invalid warehouse-allowed-networks! Only values of `external-only`, "
-                                    "`allow-private`,` and `allow-all` are allowed."))))
-                (setting/set-value-of-type! :keyword :warehouse-allowed-networks new-value)))
+  ;; network-level: this policy defends the host against the people who administer Metabase, so only the
+  ;; environment sets it. An unrecognized value fails closed at the point of use (see `metabase.util.http`).
+  :sysadmin-only? true)
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")

@@ -280,12 +280,12 @@
 (defsetting oidc-allowed-networks
   (deferred-tru "What networks are OIDC requests allowed to? Possible values: ''allow-all'' (default), ''allow-private'', or ''external-only''.")
   :type :keyword
+  :visibility :internal
   :default :allow-all
   :export? false
-  :setter (fn [new-value]
-            (when (some? new-value)
-              (assert (#{:allow-all :allow-private :external-only} (keyword new-value))))
-            (setting/set-value-of-type! :keyword :oidc-allowed-networks new-value)))
+  ;; network-level: this policy defends the host against the people who administer Metabase, so only the
+  ;; environment sets it. An unrecognized value fails closed at the point of use (see `metabase.util.http`).
+  :sysadmin-only? true)
 
 (defn- ee-sso-configured? []
   (when config/ee-available?

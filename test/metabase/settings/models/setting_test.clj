@@ -10,6 +10,7 @@
    [metabase.app-db.setting :as mdb.setting]
    [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.config.core :as config]
+   [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
@@ -150,6 +151,27 @@
   "Setting to test that a setting can marked as excluded from API list operations"
   :encryption :no
   :include-in-list? false)
+
+(defsetting test-sysadmin-only-setting
+  "Setting to test the :sysadmin-only? option. This only shows up in dev."
+  :visibility :internal
+  :type :string
+  :default "server-default"
+  :sysadmin-only? true)
+
+(defsetting test-sysadmin-only-keyword-setting
+  "Setting to test keyword round-tripping for sysadmin-only settings. This only shows up in dev."
+  :visibility :internal
+  :type :keyword
+  :default :alpha
+  :sysadmin-only? true)
+
+(defsetting test-sysadmin-only-renamed-setting
+  "Setting to test that a sysadmin-only setting still honors a deprecated env var name. This only shows up in dev."
+  :visibility :internal
+  :type :string
+  :deprecated-name :test-sysadmin-only-old-name
+  :sysadmin-only? true)
 
 ;; ## HELPER FUNCTIONS
 
@@ -2024,3 +2046,206 @@
     (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
       (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
         (is (= :env (setting/get-raw-value-source :test-setting-1)))))))
+
+;;; ------------------------------------------------ sysadmin-only ------------------------------------------------
+
+(deftest sysadmin-only-registration-test
+  (testing "settings default to :sysadmin-only? false"
+    (is (false? (:sysadmin-only? (setting/resolve-setting :test-setting-1))))
+    (is (false? (setting/sysadmin-only? :test-setting-1))))
+  (testing "a sysadmin-only setting resolves with :sysadmin-only? true and is read-only"
+    (is (true? (setting/sysadmin-only? :test-sysadmin-only-setting)))
+    (is (= :none (:setter (setting/resolve-setting :test-sysadmin-only-setting))))
+    (is (not (resolve `test-sysadmin-only-setting!)) "no setter fn is interned"))
+  (testing "nothing is ever stored, so it need not state :encryption"
+    (is (= :no (:encryption (setting/resolve-setting :test-sysadmin-only-setting))))))
+
+(deftest sysadmin-only-cannot-be-local-test
+  (testing "sysadmin-only settings cannot be user-local or database-local"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting :test-sysadmin-only-user-local cannot be sysadmin-only and user-local or database-local"
+         (defsetting test-sysadmin-only-user-local
+           "Invalid sysadmin-only setting"
+           :visibility :internal
+           :type :string
+           :user-local :allowed
+           :sysadmin-only? true)))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting :test-sysadmin-only-database-local cannot be sysadmin-only and user-local or database-local"
+         (defsetting test-sysadmin-only-database-local
+           "Invalid sysadmin-only setting"
+           :visibility :internal
+           :type :string
+           :database-local :only
+           :sysadmin-only? true)))))
+
+(deftest sysadmin-only-must-allow-env-test
+  (testing "sysadmin-only settings must allow reading from env vars"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting :test-sysadmin-only-no-env is sysadmin-only; it must allow reading from env vars"
+         (defsetting test-sysadmin-only-no-env
+           "Invalid sysadmin-only setting"
+           :visibility :internal
+           :type :string
+           :can-read-from-env? false
+           :sysadmin-only? true)))))
+
+(deftest sysadmin-only-must-use-default-setter-test
+  (testing "sysadmin-only settings cannot have a custom setter fn"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting :test-sysadmin-only-custom-setter is sysadmin-only and must not have a :setter \(it is always :none\)"
+         (defsetting test-sysadmin-only-custom-setter
+           "Invalid sysadmin-only setting"
+           :visibility :internal
+           :type :string
+           :setter (fn [_] nil)
+           :sysadmin-only? true))))
+  (testing "but stating :setter :none is allowed"
+    (defsetting test-sysadmin-only-setter-none-registration
+      "Valid sysadmin-only read-only setting"
+      :visibility :internal
+      :type :string
+      :setter :none
+      :sysadmin-only? true)
+    (is (true? (setting/sysadmin-only? :test-sysadmin-only-setter-none-registration)))))
+
+(deftest sysadmin-only-cannot-init-test
+  (testing "sysadmin-only settings cannot use :init (nothing may write them)"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting :test-sysadmin-only-init is sysadmin-only and cannot use :init"
+         (defsetting test-sysadmin-only-init
+           "Invalid sysadmin-only setting"
+           :visibility :internal
+           :type :string
+           :init (constantly "x")
+           :sysadmin-only? true)))))
+
+(deftest sysadmin-only-cannot-be-exported-test
+  (testing "sysadmin-only settings cannot be exported by serialization"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting :test-sysadmin-only-export cannot be sysadmin-only and exported by serialization"
+         (defsetting test-sysadmin-only-export
+           "Invalid sysadmin-only setting"
+           :visibility :internal
+           :type :string
+           :export? true
+           :sysadmin-only? true)))))
+
+(deftest sysadmin-only-read-resolution-test
+  (testing "default returned when nothing is set"
+    (is (= "server-default" (test-sysadmin-only-setting))))
+  (testing "a row in the application database is never read"
+    (with-setting-row-in-db [:test-sysadmin-only-setting "stale-db-value"]
+      (is (= "server-default" (test-sysadmin-only-setting)))
+      (is (nil? (setting/db-stored-value :test-sysadmin-only-setting)))
+      (testing "env var wins"
+        (mt/with-temp-env-var-value! [mb-test-sysadmin-only-setting "from-env"]
+          (is (= "from-env" (test-sysadmin-only-setting)))))))
+  (testing "the deprecated env var name is honored"
+    (mt/with-temp-env-var-value! [mb-test-sysadmin-only-old-name "from-old-env"]
+      (is (= "from-old-env" (test-sysadmin-only-renamed-setting))))))
+
+(deftest sysadmin-only-get-raw-value-source-test
+  (testing "source is :default when nothing is set"
+    (is (= :default (setting/get-raw-value-source :test-sysadmin-only-setting))))
+  (testing "source is :env when the env var is set"
+    (mt/with-temp-env-var-value! [mb-test-sysadmin-only-setting "from-env"]
+      (is (= :env (setting/get-raw-value-source :test-sysadmin-only-setting)))))
+  (testing "a row in the application database is never the source"
+    (with-setting-row-in-db [:test-sysadmin-only-setting "stale-db-value"]
+      (is (= :default (setting/get-raw-value-source :test-sysadmin-only-setting))))))
+
+(deftest sysadmin-only-write-rejection-test
+  (testing "setting a sysadmin-only setting throws a 400 with useful ex-data"
+    (is (= {:status-code 400
+            :setting     "test-sysadmin-only-setting"
+            :env-name    "MB_TEST_SYSADMIN_ONLY_SETTING"}
+           (try (setting/set! :test-sysadmin-only-setting "nope")
+                (catch ExceptionInfo e (ex-data e)))))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Setting test-sysadmin-only-setting can only be set by the MB_TEST_SYSADMIN_ONLY_SETTING environment variable\.$"
+         (setting/set! :test-sysadmin-only-setting "nope"))))
+  (testing ":bypass-read-only? does not bypass the sysadmin-only rejection"
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"can only be set by the"
+         (setting/set! :test-sysadmin-only-setting "nope" :bypass-read-only? true))))
+  (testing "a failed set-many! leaves other settings unchanged"
+    (mt/with-temporary-setting-values [test-setting-1 "initial"]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"can only be set by the"
+           (setting/set-many! {:test-setting-1             "rollback-check"
+                               :test-sysadmin-only-setting "nope"})))
+      (is (= "initial" (test-setting-1)))))
+  (testing "nil is rejected as well; a leftover row is not the admin's to clear"
+    (with-setting-row-in-db [:test-sysadmin-only-setting "stale-db-value"]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"can only be set by the"
+           (setting/set! :test-sysadmin-only-setting nil)))
+      (is (= "stale-db-value" (t2/select-one-fn :value :model/Setting :key "test-sysadmin-only-setting"))))))
+
+(deftest sysadmin-only-serdes-import-skip-test
+  (testing "serdes import skips sysadmin-only settings with a warning instead of writing to the DB"
+    (mt/with-log-messages-for-level [messages :warn]
+      (serdes/load-one! {:serdes/meta [{:model "Setting" :id "test-sysadmin-only-setting"}]
+                         :key         :test-sysadmin-only-setting
+                         :value       "imported-value"}
+                        nil)
+      (is (nil? (t2/select-one-fn :value :model/Setting :key "test-sysadmin-only-setting")))
+      (is (some #(str/includes? % "Skipping import of sysadmin-only setting test-sysadmin-only-setting")
+                (mapv :message (messages))))))
+  (testing "non-sysadmin-only settings still import normally"
+    (mt/with-temporary-setting-values [test-setting-1 nil]
+      (serdes/load-one! {:serdes/meta [{:model "Setting" :id "test-setting-1"}]
+                         :key         :test-setting-1
+                         :value       "imported-value"}
+                        nil)
+      (is (= "imported-value" (setting/db-stored-value :test-setting-1))))))
+
+(deftest sysadmin-only-with-temporary-setting-values-test
+  (testing "with-temporary-setting-values routes sysadmin-only settings through their env var instead of throwing"
+    (mt/with-temporary-setting-values [test-sysadmin-only-setting "from-test"]
+      (is (= "from-test" (test-sysadmin-only-setting)))
+      (is (= :env (setting/get-raw-value-source :test-sysadmin-only-setting))))
+    (testing "and restores the original value afterwards"
+      (is (= "server-default" (test-sysadmin-only-setting)))))
+  (testing "no application-database row is written"
+    (mt/with-temporary-setting-values [test-sysadmin-only-setting "from-test"]
+      (is (nil? (t2/select-one :model/Setting :key "test-sysadmin-only-setting")))))
+  (testing "a keyword value survives the env-var round trip, and so does its string spelling"
+    (mt/with-temporary-setting-values [test-sysadmin-only-keyword-setting :beta]
+      (is (= :beta (test-sysadmin-only-keyword-setting))))
+    (mt/with-temporary-setting-values [test-sysadmin-only-keyword-setting "beta"]
+      (is (= :beta (test-sysadmin-only-keyword-setting))))))
+
+(deftest log-ignored-sysadmin-db-values!-test
+  (testing "a sysadmin-only setting with a row in the application database and no env var is warned about at startup"
+    (with-setting-row-in-db [:test-sysadmin-only-setting "stale-db-value"]
+      (mt/with-log-messages-for-level [messages :warn]
+        (setting/log-ignored-sysadmin-db-values!)
+        (is (=? [{:level :warn
+                  :message #"(?s).*test-sysadmin-only-setting.*application database.*ignored.*MB_TEST_SYSADMIN_ONLY_SETTING.*"}]
+                (filter #(str/includes? (:message %) "test-sysadmin-only-setting") (messages)))))
+      (testing "but not when the env var is set: the sysadmin has already moved it"
+        (mt/with-temp-env-var-value! [mb-test-sysadmin-only-setting "from-env"]
+          (mt/with-log-messages-for-level [messages :warn]
+            (setting/log-ignored-sysadmin-db-values!)
+            (is (empty? (filter #(str/includes? (:message %) "test-sysadmin-only-setting") (messages)))))))))
+  (testing "a row under the deprecated name is warned about too"
+    (with-setting-row-in-db [:test-sysadmin-only-old-name "stale-db-value"]
+      (mt/with-log-messages-for-level [messages :warn]
+        (setting/log-ignored-sysadmin-db-values!)
+        (is (some #(str/includes? % "test-sysadmin-only-renamed-setting") (map :message (messages)))))))
+  (testing "nothing is logged when no row exists"
+    (mt/with-log-messages-for-level [messages :warn]
+      (setting/log-ignored-sysadmin-db-values!)
+      (is (empty? (filter #(str/includes? (:message %) "test-sysadmin-only") (messages)))))))

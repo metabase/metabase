@@ -41,11 +41,9 @@
                     (if (premium-features/is-hosted?)
                       :external-only
                       :allow-private)))
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed.")))
-                (setting/set-value-of-type! :keyword :map-tile-server-allowed-networks new-value)))
+  ;; network-level: this is the SSRF allowlist the map-tile-server-url setter checks against, so a Metabase admin must
+  ;; not be able to widen it. An unrecognized value fails closed at the point of use (see `metabase.util.http`).
+  :sysadmin-only? true)
 
 (defn- valid-map-tile-server-url?
   "Whether `template` is safe to store. It must be http(s) and its host must be allowed

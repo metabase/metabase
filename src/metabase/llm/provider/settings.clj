@@ -88,7 +88,7 @@
   ;; loosening it would be reaching for our own infrastructure, so nobody sets it through the API, and a value
   ;; that reached the app DB some other way is ignored rather than trusted.
   :visibility :internal
-  :setter     :none
+  :sysadmin-only? true
   :default    :external-only
   :export?    false
   :doc        (str "Set this when a self-hosted vLLM server is on your private network (allow-private) or on this "
@@ -98,9 +98,8 @@
                    "its outbound connections. Proxy-only DNS is supported. Metabase enforces destination addresses "
                    "at connection time for direct requests.")
   :getter     (fn []
-                (let [value (some-> (setting/env-var-value :llm-allowed-networks) keyword)]
+                (let [value (setting/get-value-of-type :keyword :llm-allowed-networks)]
                   (cond
-                    (nil? value)                          :external-only
                     (contains? network-policy-rank value) value
                     ;; fail closed on a typo, and say so once rather than on every request
                     :else

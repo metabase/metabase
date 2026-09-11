@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -100,3 +101,20 @@
                (channel.settings/find-cached-slack-channel-or-username "U001"))))
       (testing "returns nil when not found"
         (is (nil? (channel.settings/find-cached-slack-channel-or-username "no-such-channel")))))))
+
+(deftest http-channel-allowed-networks-is-sysadmin-only-test
+  (testing "the network policy defends the host against Metabase admins, so only the environment sets it"
+    (is (setting/sysadmin-only? :http-channel-allowed-networks))
+    (is (thrown-with-msg? ExceptionInfo
+                          #"can only be set by the MB_HTTP_CHANNEL_ALLOWED_NETWORKS environment variable"
+                          (setting/set! :http-channel-allowed-networks :allow-all))))
+  (testing "a value that reached the application database some other way -- an older version's admin API -- is ignored"
+    (mt/with-temporary-raw-setting-values [http-channel-allowed-networks "allow-all"
+                                           http-channel-host-strategy    "allow-all"]
+      (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks nil]
+        (is (= :external-only (channel.settings/http-channel-allowed-networks))))))
+  (testing "the environment sets it, under the current name or the deprecated one"
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-private"]
+      (is (= :allow-private (channel.settings/http-channel-allowed-networks))))
+    (mt/with-temp-env-var-value! [mb-http-channel-host-strategy "allow-all"]
+      (is (= :allow-all (channel.settings/http-channel-allowed-networks))))))
