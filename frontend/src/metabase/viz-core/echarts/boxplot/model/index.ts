@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
 import {
@@ -235,7 +235,7 @@ const createXAxisFormatter = (
 
   return (value: RowValue) => {
     if (value == null || value === ECHARTS_CATEGORY_AXIS_NULL_VALUE) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
     return String(

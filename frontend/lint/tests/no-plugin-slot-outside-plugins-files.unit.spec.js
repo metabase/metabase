@@ -16,7 +16,7 @@ const MODULE_PLUGINS_FILE = "/repo/frontend/src/metabase/search/plugins.ts";
 
 const SLOT_EXPORT = `export const PLUGIN_SEARCH = { isEnabled: () => false };`;
 const SLOT_FROM_FACTORY = `
-  import { definePluginSlot } from "metabase/plugins";
+  import { definePluginSlot } from "metabase/plugin-slots";
   export const PLUGIN_SEARCH = definePluginSlot(() => ({}));
 `;
 
@@ -29,8 +29,16 @@ const VALID_CASES = [
     name: "slot under metabase/plugins/",
     filename: "/repo/frontend/src/metabase/plugins/oss/search.ts",
     code: `
-      import { definePluginSlot } from "../slot";
+      import { definePluginSlot } from "metabase/plugin-slots";
       export const PLUGIN_SEARCH = definePluginSlot(() => ({}));
+    `,
+  },
+  {
+    name: "the factory used in its own module",
+    filename: "/repo/frontend/src/metabase/plugin-slots/slot.unit.spec.ts",
+    code: `
+      import { definePluginSlot } from "./slot";
+      const slot = definePluginSlot(() => ({}));
     `,
   },
   {
@@ -213,26 +221,26 @@ const INVALID_CASES = [
   {
     name: "definePluginSlot imported",
     filename: MODULE_FILE,
-    code: `import { definePluginSlot } from "metabase/plugins";`,
+    code: `import { definePluginSlot } from "metabase/plugin-slots";`,
     errors: [slotFactory],
   },
   {
     name: "definePluginSlot imported under an alias",
     filename: MODULE_FILE,
-    code: `import { definePluginSlot as defineSlot } from "metabase/plugins";`,
+    code: `import { definePluginSlot as defineSlot } from "metabase/plugin-slots";`,
     errors: [slotFactory],
   },
   {
     name: "definePluginSlot imported by string name",
     filename: MODULE_FILE,
-    code: `import { "definePluginSlot" as defineSlot } from "metabase/plugins";`,
+    code: `import { "definePluginSlot" as defineSlot } from "metabase/plugin-slots";`,
     errors: [slotFactory],
   },
   {
     name: "definePluginSlot reached through a namespace import",
     filename: MODULE_FILE,
     code: `
-      import * as plugins from "metabase/plugins";
+      import * as plugins from "metabase/plugin-slots";
       const slot = plugins.definePluginSlot(() => ({}));
     `,
     errors: [slotFactory],

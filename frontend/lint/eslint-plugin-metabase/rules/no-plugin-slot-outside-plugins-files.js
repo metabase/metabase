@@ -23,7 +23,11 @@ module.exports = {
   },
   create(context) {
     const filename = context.filename.replaceAll("\\", "/");
-    if (isPluginsFile(filename) || isUnderPluginsDirectory(filename)) {
+    if (
+      isPluginsFile(filename) ||
+      isUnderPluginsDirectory(filename) ||
+      isSlotFactoryModule(filename)
+    ) {
       return {};
     }
 
@@ -94,6 +98,10 @@ function isPluginsFile(filename) {
 // Covers metabase/plugins/ itself as well as a module's plugins/ directory.
 function isUnderPluginsDirectory(filename) {
   return path.posix.dirname(filename).split("/").includes("plugins");
+}
+
+function isSlotFactoryModule(filename) {
+  return filename.includes("/frontend/src/metabase/plugin-slots/");
 }
 
 // `export const PLUGIN_X = ...`, whatever the value is.

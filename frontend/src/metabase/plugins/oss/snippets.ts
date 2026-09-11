@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { definePluginSlot } from "metabase/plugin-slots";
 import type { Dispatch } from "metabase/redux/store";
 import type {
   Collection,
@@ -9,7 +10,6 @@ import type {
 } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
-import { definePluginSlot } from "../slot";
 
 export type SnippetSidebarMenuOption = {
   icon: IconName;

@@ -1,4 +1,4 @@
-import { definePluginSlot } from "metabase/plugins/slot";
+import { definePluginSlot } from "metabase/plugin-slots";
 
 import { noop, setEmbeddedHeader } from "./client/request-handlers";
 
