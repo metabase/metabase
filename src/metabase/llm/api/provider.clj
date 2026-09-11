@@ -590,7 +590,7 @@
   there is no position to save for them."
   [_route-params
    _query-params
-   {:keys [order]} :- [:map [:order [:sequential connection-key-schema]]]]
+   {:keys [order]} :- [:map {:closed true} [:order [:sequential connection-key-schema]]]]
   (perms/check-has-application-permission :setting)
   (refresh-settings!)
   (check-connections-not-env-managed!)
