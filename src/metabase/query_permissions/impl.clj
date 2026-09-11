@@ -28,6 +28,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -496,3 +497,21 @@
                          :actual-perms   @api/*current-user-permissions-set*}
                         (when (instance? Throwable required-perms)
                           required-perms)))))))
+
+(def ^:private goal-reference-models
+  "The entity types a dynamic goal can reference, and the model each resolves to."
+  {"card" :model/Card, "measure" :model/Measure})
+
+(mu/defn check-goal-reference-permissions
+  "Make sure the Current User can read every entity a dynamic goal in `viz-settings` references. A goal reference
+  picks a query the server will run, exactly as `:dataset_query` does, so saving one has to be gated the same way
+  [[check-run-permissions-for-query]] gates a query. Without this, an editor can point a goal at an entity they
+  cannot read and have a public or embedded page resolve it for them under its root-permissions binding."
+  [viz-settings :- [:maybe :map]]
+  (doseq [{:keys [id type]} (keep dynamic-goals/goal-source (dynamic-goals/goal-values viz-settings))
+          :let  [model (goal-reference-models type)]
+          :when (and model (pos-int? id))]
+    (when-not (mi/can-read? (api/check-404 (t2/select-one model :id id)))
+      (throw (ex-info (tru "You cannot save this because its goal references {0} {1}, which you do not have permission to read."
+                           type id)
+                      {:status-code 403, :entity-type type, :entity-id id})))))
