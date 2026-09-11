@@ -39,7 +39,7 @@ const save = async () => {
 
 describe("DatabaseForm scheduling", () => {
   it("submits auto_run_queries=false when 'Rerun queries' is turned off (metabase#13187)", async () => {
-    const { onSubmit } = setup();
+    const { onSubmit } = await setup();
     await fillConnection();
     await openAdvancedOptions();
 
@@ -56,7 +56,7 @@ describe("DatabaseForm scheduling", () => {
   });
 
   it("submits is_full_sync=false when the user takes control of scheduling", async () => {
-    const { onSubmit } = setup();
+    const { onSubmit } = await setup();
     await fillConnection();
     await openAdvancedOptions();
 
@@ -71,7 +71,7 @@ describe("DatabaseForm scheduling", () => {
   });
 
   it("submits is_on_demand=true for 'Only when adding a new filter widget' (metabase#57198)", async () => {
-    const { onSubmit } = setup();
+    const { onSubmit } = await setup();
     await fillConnection();
     await openAdvancedOptions();
     await enableScheduling();
@@ -90,7 +90,7 @@ describe("DatabaseForm scheduling", () => {
   });
 
   it("submits a daily cache schedule for 'Regularly, on a schedule' (metabase#57198)", async () => {
-    const { onSubmit } = setup();
+    const { onSubmit } = await setup();
     await fillConnection();
     await openAdvancedOptions();
     await enableScheduling();
@@ -117,7 +117,7 @@ describe("DatabaseForm scheduling", () => {
   });
 
   it("renders the saved cache schedule mode for an existing database (round-trip)", async () => {
-    setup({
+    await setup({
       initialValues: {
         id: 1,
         name: "My DB",
