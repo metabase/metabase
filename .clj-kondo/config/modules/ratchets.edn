@@ -3,4 +3,5 @@
 {:api-any              1
  :friend-edges         22
  :model-imports-bypass 2
+ :ns-prefixes          81
  :uses-any             4}

@@ -1,5 +1,5 @@
 (ns metabase.core.kondo-ratchet-check-test
-  "The Babashka check on the ignore budgets."
+  "Tests for the Babashka ratchet check."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
