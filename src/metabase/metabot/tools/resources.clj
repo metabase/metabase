@@ -759,7 +759,10 @@
   [chart-id]
   (if-let [chart (get (shared/current-charts-state) chart-id)]
     (let [[query-id query] (if-let [q (first (:queries chart))]
-                             [chart-id q]
+                             ;; create_chart mints a new chart id for a client-supplied query and
+                             ;; keeps the original under :query_id, so the audit polarity has to
+                             ;; follow the query rather than the chart
+                             [(or (:query_id chart) chart-id) q]
                              [(:query_id chart) (get (shared/current-queries-state) (:query_id chart))])
           query-text (when query (export-state-query query-id query))]
       (entity-result

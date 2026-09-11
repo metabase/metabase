@@ -2,15 +2,16 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -593,30 +594,42 @@
                         (assoc source :transform-source-type :native))]
             (is (not (str/includes? (str text) "SELECT secret")))))))))
 
-(deftest adhoc-viewing-context-denied-source-card-is-audited-test
-  (testing "a denied client-supplied :source-card goes through the audited read-check, and the query is left out"
-    (mt/with-temp [:model/Card {card-id :id}
-                   {:database_id   (mt/id)
-                    :dataset_query (lib/query (mt/metadata-provider)
-                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
-      ;; Let the database gate through and refuse only the Card, or the gate alone satisfies the
-      ;; counter and the test passes even if this path regresses to the unaudited store.
-      (let [calls (atom 0)]
-        (mt/with-dynamic-fn-redefs [api/read-check (fn [model-or-row & _]
-                                                     (if (= model-or-row :model/Database)
-                                                       model-or-row
-                                                       (do (swap! calls inc)
-                                                           (throw (ex-info "Forbidden" {:status-code 403})))))]
-          (mt/with-test-user :rasta
-            (let [out (user-context/format-viewing-context
-                       {:user_is_viewing [{:type  "adhoc"
-                                           :query {:lib/type :mbql/query
-                                                   :database (mt/id)
-                                                   :stages   [{:lib/type    :mbql.stage/mbql
-                                                               :source-card card-id}]}}]})]
-              (is (pos? @calls))
-              (is (str/includes? out "notebook editor"))
-              (is (not (str/includes? out "Query"))))))))))
+(defn- refusing-store
+  "A ContentStore that records `tag` and refuses, the way the real stores do for a row the
+  current user cannot read. Swapped in for both so a test can tell which one a caller picked."
+  [tag recorded]
+  (let [refuse (fn [] (swap! recorded conj tag) (throw (ex-info "Forbidden" {:status-code 403})))]
+    (reify resolve.mp/ContentStore
+      (card-by-entity-id    [_ _] (refuse))
+      (measure-by-entity-id [_ _] (refuse))
+      (segment-by-entity-id [_ _] (refuse))
+      (card-by-id           [_ _] (refuse))
+      (measure-by-id        [_ _] (refuse))
+      (segment-by-id        [_ _] (refuse)))))
+
+(deftest adhoc-viewing-context-exports-through-the-audited-store-test
+  (testing "a client-supplied query is exported through the audited store, and a refusal inside it withholds the query"
+    (let [mp         (mt/metadata-provider)
+          definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                      :definition definition}]
+        ;; The gate never looks at segments, so the query clears it and the segment ref is
+        ;; resolved by whichever store the caller handed the export - the choice under test.
+        ;; A source-card query would be refused by the gate first, whichever store was passed.
+        (let [used (atom [])]
+          (with-redefs [shared.content-store/audited-store (refusing-store :audited used)
+                        shared.content-store/default-store (refusing-store :default used)]
+            (mt/with-test-user :rasta
+              (let [out (user-context/format-viewing-context
+                         {:user_is_viewing [{:type  "adhoc"
+                                             :query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :venues)
+                                                                :filter       [:segment segment-id]}}}]})]
+                (is (= [:audited] (distinct @used)))
+                (is (str/includes? out "notebook editor"))
+                (is (not (str/includes? out "Query")))))))))))
 
 (deftest ^:parallel enrich-context-omits-research-plan-test
   (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not

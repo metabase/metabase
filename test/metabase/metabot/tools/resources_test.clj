@@ -4,15 +4,16 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared :as tools.shared]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
@@ -340,47 +341,58 @@
           (is (=? {:resources [{:error #"No chart or query with id 'nope'.*"}]}
                   (read-resource/read-resource {:uris ["metabase://chart/nope"]}))))))))
 
+(defn- refusing-store
+  "A ContentStore that records `tag` and refuses, the way the real stores do for a row the
+  current user cannot read. Swapped in for both so a test can tell which one a caller picked."
+  [tag recorded]
+  (let [refuse (fn [] (swap! recorded conj tag) (throw (ex-info "Forbidden" {:status-code 403})))]
+    (reify resolve.mp/ContentStore
+      (card-by-entity-id    [_ _] (refuse))
+      (measure-by-entity-id [_ _] (refuse))
+      (segment-by-entity-id [_ _] (refuse))
+      (card-by-id           [_ _] (refuse))
+      (measure-by-id        [_ _] (refuse))
+      (segment-by-id        [_ _] (refuse)))))
+
 (deftest read-conversation-chart-provenance-picks-audit-test
-  (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Card {card-id :id} {:collection_id coll-id
-                                              :dataset_query {:database (mt/id)
-                                                              :type     :query
-                                                              :query    {:source-table (mt/id :venues)}}}]
+  (let [mp         (mt/metadata-provider)
+        definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
+    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                    :definition definition}]
       (let [query (fn [] {:database (mt/id)
                           :type     "query"
-                          :query    {:source-table (str "card__" card-id)}})
-            chart (fn [id] {:chart_id id
-                            :queries  [(query)]
-                            :visualization_settings {:chart_type "line"}})
-            ;; The database check is recorded but let through, so the refusal comes from the card check.
-            audited-checks (fn [uri]
-                             (let [checked (atom [])]
-                               (mt/with-dynamic-fn-redefs
-                                 [api/read-check (fn [model-or-row & _]
-                                                   (swap! checked conj (if (keyword? model-or-row)
-                                                                         model-or-row
-                                                                         (t2/model model-or-row)))
-                                                   (if (= model-or-row :model/Database)
-                                                     model-or-row
-                                                     (throw (ex-info "Forbidden" {:status-code 403}))))]
-                                 (let [result (read-resource/read-resource {:uris [uri]})]
-                                   (is (str/includes? (:output result)
-                                                      "references content the user cannot read"))
-                                   @checked))))]
+                          :query    {:source-table (mt/id :venues)
+                                     :filter       [:segment segment-id]}})
+            chart (fn [chart-id query-id] {:chart_id chart-id
+                                           :query_id query-id
+                                           :queries  [(query)]
+                                           :visualization_settings {:chart_type "line"}})
+            ;; The gate never looks at segments, so the query clears it and the segment ref is
+            ;; resolved by whichever store the caller handed the export - the choice under test.
+            ;; A source-card query would be refused by the gate first, whichever store was passed.
+            store-used (fn [uri]
+                         (let [used (atom [])]
+                           (with-redefs [shared.content-store/audited-store (refusing-store :audited used)
+                                         shared.content-store/default-store (refusing-store :default used)]
+                             (let [result (read-resource/read-resource {:uris [uri]})]
+                               (is (str/includes? (:output result)
+                                                  "references content the user cannot read"))
+                               (distinct @used)))))]
         (binding [tools.shared/*memory-atom*
-                  (atom {:state {:queries    {"seeded-q" (query)}
-                                 :charts     {"seeded-chart" (chart "seeded-chart")
-                                              "tool-chart"   (chart "tool-chart")}
-                                 :client-ids #{"seeded-chart" "seeded-q"}}})]
+                  (atom {:client-ids #{"seeded-chart" "seeded-q"}
+                         :state {:queries {"seeded-q" (query)}
+                                 :charts  {"seeded-chart"  (chart "seeded-chart" "seeded-chart")
+                                           "tool-chart"    (chart "tool-chart" "tool-q")
+                                           "created-chart" (chart "created-chart" "seeded-q")}}})]
           (mt/with-test-user :rasta
-            (testing "a client-seeded chart or query audits both the database check and the card refusal"
-              (doseq [uri ["metabase://chart/seeded-chart" "metabase://query/seeded-q"]
-                      :let [checked (audited-checks uri)]]
-                (is (some #{:model/Database} checked))
-                (is (some #{:model/Card} checked))))
-            (testing "a tool-written chart refuses the card without an audit trail"
-              (is (empty? (audited-checks "metabase://chart/tool-chart"))))))))))
+            (testing "a client-seeded chart or query audits the refusal"
+              (doseq [uri ["metabase://chart/seeded-chart" "metabase://query/seeded-q"]]
+                (is (= [:audited] (store-used uri)) uri)))
+            (testing "so does a chart create_chart minted for a client-supplied query, whose own id was never seeded"
+              (is (= [:audited] (store-used "metabase://chart/created-chart"))))
+            (testing "a tool-written chart refuses without an audit trail"
+              (is (= [:default] (store-used "metabase://chart/tool-chart"))))))))))
 
 (deftest read-conversation-query-deleted-database-still-renders-test
   (testing "a state query whose database no longer exists renders its fallback instead of claiming a permission problem"
