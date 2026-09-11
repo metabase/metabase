@@ -26,6 +26,9 @@ import "sdk-iframe-embedding-ee-plugins";
 // Must be imported after the EE plugins are loaded
 // eslint-disable-next-line import/order
 import { SdkIframeEmbedRoute } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute";
+import { registerTransformQueryHooks } from "metabase/transforms";
+
+registerTransformQueryHooks();
 
 function _init() {
   document.body.style.margin = "0";

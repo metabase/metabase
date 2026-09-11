@@ -15,6 +15,7 @@ import { PLUGIN_API } from "metabase/api/client";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { reinitialize } from "metabase/plugins";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-entity-data";
+import { registerTransformQueryHooks } from "metabase/transforms";
 import { createMockTransform } from "metabase-types/api/mocks";
 
 import { useInitData, useInitDataInternal } from "./use-init-data-internal";
@@ -114,11 +115,13 @@ describe("useInitDataInternal with an initialized store", () => {
 
   beforeEach(() => {
     reinitialize();
+    registerTransformQueryHooks();
     fetchMock.get("path:/api/transform/42", transform);
   });
 
   afterEach(() => {
     reinitialize();
+    registerTransformQueryHooks();
   });
 
   it("loads a child's transform on the first render with an initialized store", async () => {
@@ -133,6 +136,7 @@ describe("useInitDataInternal with an initialized store", () => {
     unmountFirst();
 
     reinitialize();
+    registerTransformQueryHooks();
 
     const { unmount: unmountSecond } = setup();
     expect(await screen.findByText(transform.name)).toBeInTheDocument();

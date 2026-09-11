@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 
 import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
+import { registerTransformQueryHooks } from "metabase/transforms";
 
 import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp";
 
@@ -18,6 +19,7 @@ import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp
 // against it — the query primitives the package hooks dereference and the
 // implementations the package component facades look up at render time.
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
+registerTransformQueryHooks();
 
 const init = () => {
   document.body.style.margin = "0";

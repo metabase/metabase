@@ -27,7 +27,6 @@ import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
-import { registerTransformQueryHooks } from "metabase/transforms";
 import { setBasename } from "metabase/utils/basename";
 import { registerVisualizations } from "metabase/visualizations/register";
 
@@ -109,10 +108,6 @@ export const useInitDataInternal = ({
   isLocalHost,
 }: InitDataLoaderParameters) => {
   const dispatch = reduxStore.dispatch;
-
-  // Children render in the same pass when the store is already initialized,
-  // so the hooks are installed here rather than in a mount effect.
-  registerTransformQueryHooks();
 
   const isDataUninitialized = () =>
     reduxStore.getState().sdk.initStatus.status === "uninitialized";
