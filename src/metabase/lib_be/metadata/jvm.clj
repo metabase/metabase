@@ -114,7 +114,8 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]}))
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]
+          :from   [(warehouse-schema-overlay/table-query)]}))
 
 (t2/define-after-select :metadata/table
   [table]
