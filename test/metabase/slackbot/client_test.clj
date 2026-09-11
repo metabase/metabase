@@ -13,6 +13,11 @@
   []
   {:status 200 :body (io/input-stream (.getBytes "a,b"))})
 
+(defn- redirect-to
+  "A clj-http redirect response pointing at `location`."
+  [location]
+  {:status 302 :headers {"location" location} :body (io/input-stream (.getBytes ""))})
+
 (deftest download-file-stream-test
   (let [client {:token "xoxb-secret"}]
     (testing "an unsafe, non-Slack or non-file-host URL is refused before any request is made"
@@ -43,9 +48,38 @@
         (with-open [stream (slackbot.client/download-file-stream client "https://files-origin.slack.com/files-pri/T1-F1/data.csv")]
           (is (= "a,b" (slurp stream))))))
     (testing "a non-2xx response throws instead of streaming the body"
-      (with-redefs [http/get (fn [_url _options] {:status 302 :body (io/input-stream (.getBytes "<html>"))})]
+      (with-redefs [http/get (fn [_url _options] {:status 500 :body (io/input-stream (.getBytes "<html>"))})]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)unexpected response"
                               (slackbot.client/download-file-stream client "https://files.slack.com/files-pri/T1-F1/data.csv")))))
+    (testing "a redirect to another Slack file host is followed once, with the token reattached"
+      (let [calls (atom [])]
+        (with-redefs [http/get (fn [url options]
+                                 (swap! calls conj [url (get-in options [:headers "Authorization"])])
+                                 (if (= url "https://files.slack.com/files-pri/T1-F1/data.csv")
+                                   (redirect-to "https://files-origin.slack.com/files-pri/T1-F1/data.csv")
+                                   (ok-stream)))]
+          (with-open [stream (slackbot.client/download-file-stream client "https://files.slack.com/files-pri/T1-F1/data.csv")]
+            (is (= "a,b" (slurp stream))))
+          (is (= ["https://files.slack.com/files-pri/T1-F1/data.csv"
+                  "https://files-origin.slack.com/files-pri/T1-F1/data.csv"]
+                 (mapv first @calls)))
+          (is (every? (fn [[_ auth]] (= "Bearer xoxb-secret" auth)) @calls)))))
+    (testing "a redirect off Slack is refused rather than followed"
+      (let [calls (atom 0)]
+        (with-redefs [http/get (fn [_url _options]
+                                 (swap! calls inc)
+                                 (redirect-to "https://evil.test/x.csv"))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-Slack host"
+                                (slackbot.client/download-file-stream client "https://files.slack.com/files-pri/T1-F1/data.csv")))
+          (is (= 1 @calls) "the redirect target is never requested"))))
+    (testing "a second redirect is refused instead of followed"
+      (let [calls (atom 0)]
+        (with-redefs [http/get (fn [_url _options]
+                                 (swap! calls inc)
+                                 (redirect-to "https://files-origin.slack.com/files-pri/T1-F1/data.csv"))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)unexpected response"
+                                (slackbot.client/download-file-stream client "https://files.slack.com/files-pri/T1-F1/data.csv")))
+          (is (= 2 @calls) "one hop only"))))
     (testing "behind a JVM proxy the dns-resolver is omitted, leaving the target to the proxy"
       (let [opts (atom nil)]
         (with-redefs [u.http/jvm-proxied-url? (constantly true)

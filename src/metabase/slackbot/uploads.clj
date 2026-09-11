@@ -21,11 +21,15 @@
   #{"csv" "tsv"})
 
 (defn- csv-file?
-  "Whether a Slack file is a CSV/TSV Metabase should ingest. A remote file is refused whatever it claims to be:
-  its URL and size are supplied by the app that registered it rather than by Slack."
-  [{:keys [filetype mode]}]
-  (and (contains? allowed-csv-filetypes filetype)
-       (not= "external" mode)))
+  "Check if a Slack file is a CSV/TSV based on filetype."
+  [{:keys [filetype]}]
+  (contains? allowed-csv-filetypes filetype))
+
+(defn- remote-file?
+  "Whether a Slack file is stored outside Slack, so its URL and size come from the app that registered it rather
+  than from Slack. Those are never downloaded, whatever filetype they claim."
+  [{:keys [mode]}]
+  (= "external" mode))
 
 (defn- size-limit-message
   "The user-facing message for a file over [[max-file-size-bytes]]."
@@ -95,18 +99,24 @@
 (defn- process-file-uploads
   "Process all files from a Slack event. Returns a map with:
    :results - seq of individual file results
-   :skipped - seq of non-CSV filenames that were skipped"
+   :skipped - seq of non-CSV filenames that were skipped
+   :remote  - seq of filenames refused for being stored outside Slack"
   [settings files]
-  (let [{csv-files true other-files false} (group-by csv-file? files)
-        skipped (mapv :name other-files)]
+  (let [{remote-files true local-files false} (group-by remote-file? files)
+        {csv-files true other-files false}    (group-by csv-file? local-files)
+        skipped (mapv :name other-files)
+        remote  (mapv :name remote-files)]
     (when (seq skipped)
       (log/debugf "[slackbot] Skipping %d non-CSV files" (count skipped)))
+    (when (seq remote)
+      (log/debugf "[slackbot] Refusing %d files stored outside Slack" (count remote)))
     {:results (mapv (partial process-csv-file settings) csv-files)
-     :skipped skipped}))
+     :skipped skipped
+     :remote  remote}))
 
 (defn- build-upload-system-messages
   "Build system messages to inject into AI request about uploads."
-  [{:keys [results skipped]}]
+  [{:keys [results skipped remote]}]
   (let [successes (filter :model-id results)
         failures (filter :error results)]
     (cond-> []
@@ -129,7 +139,12 @@
       (seq skipped)
       (conj {:role :assistant
              :content (format "The following message included 1 or more non-CSV files which are not supported: %s. Let them know only CSV files can be uploaded."
-                              (str/join ", " skipped))}))))
+                              (str/join ", " skipped))})
+
+      (seq remote)
+      (conj {:role :assistant
+             :content (format "The following message included 1 or more files stored outside Slack, which Metabase cannot upload: %s. Let them know the file has to be uploaded to Slack itself."
+                              (str/join ", " remote))}))))
 
 (defn handle-file-uploads
   "Handle file uploads if present. Returns nil if no files, otherwise

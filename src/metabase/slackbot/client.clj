@@ -1,7 +1,8 @@
 (ns metabase.slackbot.client
   "Slack API client functions for Metabot slackbot."
   (:import
-   (java.io InputStream))
+   (java.io InputStream)
+   (java.net URI))
   (:require
    [clj-http.client :as http]
    [medley.core :as m]
@@ -215,36 +216,60 @@
         (when-let [host (some-> (u.http/->hostname url) u/lower-case-en)]
           (contains? slack-file-hosts host)))))
 
+(defn- slack-file-request!
+  "GET `url` with the bot token attached, leaving any redirect for the caller to vet."
+  [client url]
+  (http/get url (m/assoc-some
+                 {:headers            {"Authorization" (str "Bearer " (:token client))}
+                  :as                 :stream
+                  :redirect-strategy  :none
+                  :socket-timeout     download-timeout-ms
+                  :connection-timeout download-timeout-ms
+                  :throw-exceptions   false}
+                 ;; Under a JVM proxy clj-http resolves the proxy, not the target, so the
+                 ;; policy resolver would judge the wrong host; omit it and rely on the
+                 ;; Slack host allowlist above.
+                 :dns-resolver (when-not (u.http/jvm-proxied-url? url)
+                                 (u.http/network-policy-dns-resolver :external-only)))))
+
+(def ^:private redirect-statuses
+  "Statuses whose `Location` is worth following."
+  #{301 302 303 307 308})
+
+(defn- redirect-target
+  "The absolute URL `resp` redirects to, resolved against the `url` that produced it, or nil if it is not a redirect."
+  [url resp]
+  (when (contains? redirect-statuses (:status resp))
+    (when-let [location (or (get-in resp [:headers "location"])
+                            (get-in resp [:headers "Location"]))]
+      (str (.resolve (URI. (str url)) (str location))))))
+
 (defn download-file-stream
   "Download a file from Slack, returning an InputStream instead of buffering in memory.
    Caller is responsible for closing the stream (e.g. via `with-open`).
 
-   Refuses a URL that is not Slack's: `url` arrives on a `file_share` event, and on a Slack remote file it is
-   whatever address the app that registered the file picked."
+   Refuses a URL that is not one of Slack's file hosts: `url` arrives on a `file_share` event, and on a Slack
+   remote file it is whatever address the app that registered the file picked. Slack may answer with a redirect
+   to another of its file hosts, so one hop is followed, checked the same way before the token goes out again."
   ^InputStream
   [client url]
-  (when-not (slack-file-url? url)
-    (throw (ex-info (tru "Refusing to download a file from a non-Slack host.")
-                    {:status-code 400, :host (u.http/->hostname url)})))
-  (let [resp              (http/get url (m/assoc-some
-                                         {:headers            {"Authorization" (str "Bearer " (:token client))}
-                                          :as                 :stream
-                                          :redirect-strategy  :none
-                                          :socket-timeout     download-timeout-ms
-                                          :connection-timeout download-timeout-ms
-                                          :throw-exceptions   false}
-                                         ;; Under a JVM proxy clj-http resolves the proxy, not the target, so the
-                                         ;; policy resolver would judge the wrong host; omit it and rely on the
-                                         ;; Slack host allowlist above.
-                                         :dns-resolver (when-not (u.http/jvm-proxied-url? url)
-                                                         (u.http/network-policy-dns-resolver :external-only))))
-        status            (:status resp)
-        ^InputStream body (:body resp)]
-    (if (<= 200 status 299)
-      body
-      (do (some-> body .close)
-          (throw (ex-info (tru "Unexpected response downloading file from Slack (status {0})." status)
-                          {:status-code 502, :upstream-status status}))))))
+  (loop [url url, hops-left 1]
+    (when-not (slack-file-url? url)
+      (throw (ex-info (tru "Refusing to download a file from a non-Slack host.")
+                      {:status-code 400, :host (u.http/->hostname url)})))
+    (let [resp              (slack-file-request! client url)
+          status            (:status resp)
+          ^InputStream body (:body resp)
+          target            (when (pos? hops-left) (redirect-target url resp))]
+      (cond
+        (<= 200 status 299) body
+
+        target              (do (some-> body .close)
+                                (recur target (dec hops-left)))
+
+        :else               (do (some-> body .close)
+                                (throw (ex-info (tru "Unexpected response downloading file from Slack (status {0})." status)
+                                                {:status-code 502, :upstream-status status})))))))
 
 ;; -------------------- SLACK STREAMING API --------------------
 ;; These functions implement Slack's chat streaming API for progressive AI responses.
