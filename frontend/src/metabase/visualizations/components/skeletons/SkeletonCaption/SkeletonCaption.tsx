@@ -5,7 +5,7 @@ import { Tooltip } from "metabase/ui";
 import {
   LegendDescriptionIcon,
   LegendRightContent,
-} from "metabase/visualizations/components/legend/LegendCaption";
+} from "metabase/visualizations/components/legend/LegendCaption/LegendCaption.styled";
 import type { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 
 import {
