@@ -5,6 +5,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase-enterprise.content-diagnostics.test-util :as cd.test-util]
@@ -88,7 +89,8 @@
     ;; so deriving the set from it fails here the moment a fourth app DB lands. `:default` is dropped
     ;; because a catch-all spec method is not itself a dispatch value the trimmer can be asked for.
     (doseq [db-type (remove #{:default} (keys (methods mdb/spec)))]
-      (is (map? (#'finding/delete-batch-query db-type (t/offset-date-time)))
+      (is (map? (#'cd.db/delete-batch-query db-type (t/offset-date-time)
+                                            @#'finding/delete-batch-size))
           (str "no batch-delete arm for app db " db-type)))))
 
 (def ^:private long-ago

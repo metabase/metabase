@@ -20,9 +20,9 @@
    [clojure.string :as str]
    [metabase-enterprise.content-diagnostics.checkers.imbalanced.common :as shared]
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase.documents.prose-mirror :as prose-mirror]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,30 +30,10 @@
   "`{card-id -> started_at}` for every non-archived card in an eligible container whose latest clean run
   returned 0 rows. Clean means unparameterized, unsandboxed, not a cache hit, and error-free - anything
   else is not instance-wide evidence of emptiness (a sandbox filters rows per user, and an errored run
-  means broken, not empty). One windowed query picks each card's most recent run, then keeps it only if
-  its row count was 0. `parameterized` is matched strictly against `false`, so legacy rows predating
-  these columns (NULL) fall out; a NULL `is_sandboxed` is treated as not sandboxed."
+  means broken, not empty)."
   []
   (u/index-by :card_id :started_at
-              (t2/query {:select [:card_id :started_at]
-                         :from   [[^:allow-subquery
-                                   {:select [:qe.card_id :qe.started_at :qe.result_rows
-                                             [[:over [[:row_number] ^:allow-subquery
-                                                      {:partition-by :qe.card_id
-                                                       :order-by     [[:qe.started_at :desc]
-                                                                      [:qe.id :desc]]}]]
-                                              :rn]]
-                                    :from   [[:query_execution :qe]]
-                                    :join   [[:report_card :c] [:= :c.id :qe.card_id]]
-                                    :where  [:and
-                                             [:= :c.archived false]
-                                             [:= :qe.parameterized false]
-                                             [:= [:coalesce :qe.is_sandboxed false] false]
-                                             [:not= :qe.cache_hit true]
-                                             [:= :qe.error nil]
-                                             (common/eligible-container-clause :c.collection_id)]}
-                                   :ranked]]
-                         :where  [:and [:= :rn 1] [:= :result_rows 0]]})))
+              (cd.db/cards-with-empty-latest-run (common/eligible-container-clause :c.collection_id))))
 
 (def ^:private structural-node-types
   "Prose-mirror node types that are pure structure or layout - a document built only from these, with no

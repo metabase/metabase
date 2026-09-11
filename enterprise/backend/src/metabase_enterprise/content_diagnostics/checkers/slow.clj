@@ -20,10 +20,10 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase.documents.prose-mirror :as prose-mirror]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,34 +44,12 @@
   container whose median over its last [[lookback-days]] days of non-cache-hit executions exceeds
   `threshold-ms`. One grouped query, no per-card loop."
   [threshold-ms]
-  ;; The app dbs share no median/percentile aggregate (H2 has MEDIAN, Postgres percentile_cont, MySQL
-  ;; neither), so compute it portably with window functions: rank each card's executions by
-  ;; running_time, keep the middle row (odd count) or middle two (even), and AVG them.
   (into {}
         ;; AVG comes back as BigDecimal - round to a Long for the native bigint column.
         (map (juxt :card_id #(Math/round (double (:median_ms %)))))
-        (t2/query {:select   [:card_id [[:avg :running_time] :median_ms]]
-                   :from     [[^:allow-subquery
-                               {:select [:qe.card_id :qe.running_time
-                                         [[:over [[:row_number] ^:allow-subquery
-                                                  {:partition-by :qe.card_id
-                                                   :order-by     [[:qe.running_time :asc]]}]]
-                                          :rn]
-                                         [[:over [[:count :*] ^:allow-subquery {:partition-by :qe.card_id}]] :cnt]]
-                                :from   [[:query_execution :qe]]
-                                :join   [[:report_card :c] [:= :c.id :qe.card_id]]
-                                :where  [:and
-                                         [:not= :qe.running_time nil]
-                                         [:not= :qe.cache_hit true]
-                                         [:= :c.archived false]
-                                         [:>= :qe.started_at (lookback-cutoff)]
-                                         (common/eligible-container-clause :c.collection_id)]}
-                               :ranked]]
-                   :where    [:and
-                              [:>= :rn [:/ :cnt 2.0]]
-                              [:<= :rn [:+ [:/ :cnt 2.0] 1]]]
-                   :group-by [:card_id]
-                   :having   [:> [:avg :running_time] threshold-ms]})))
+        (cd.db/card-run-medians threshold-ms
+                                (lookback-cutoff)
+                                (common/eligible-container-clause :c.collection_id))))
 
 (defn- card-findings
   "Leaf card findings - one per slow card, carrying the measured median (`:duration-ms`) and freezing the
@@ -124,16 +102,9 @@
                   (common/eligible-container-clause :d.collection_id)]]
     (concat
      ;; primary dashcard cards (a card can appear on several tabs — deduped by the caller)
-     (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:dc.card_id :card_id]]
-                :from   [[:report_dashboardcard :dc]]
-                :join   [[:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-                :where  [:and eligible [:in :dc.card_id slow-card-ids]]})
+     (cd.db/dashboard-primary-card-pairs eligible slow-card-ids)
      ;; combined-series cards (extra cards layered onto one dashcard's visualization)
-     (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:s.card_id :card_id]]
-                :from   [[:dashboardcard_series :s]]
-                :join   [[:report_dashboardcard :dc] [:= :dc.id :s.dashboardcard_id]
-                         [:report_dashboard :d]      [:= :d.id :dc.dashboard_id]]
-                :where  [:and eligible [:in :s.card_id slow-card-ids]]}))))
+     (cd.db/dashboard-series-card-pairs eligible slow-card-ids))))
 
 (defn- dashboard-findings
   "Container findings for **non-archived** dashboards that render ≥1 of `slow-card-ids`. `slow_entity_ids`
@@ -153,13 +124,10 @@
   [card->median-ms slow-card-ids]
   (when (seq slow-card-ids)
     (let [slow? (set slow-card-ids)]
-      (for [doc   (t2/select [:model/Document :id :document :content_type]
-                             {:where [:and
-                                      [:= :archived false]
-                                      [:= :content_type prose-mirror/prose-mirror-content-type]
-                                      ;; re-applied to the document itself - a slow (eligible) card can
-                                      ;; be embedded by a document living in an ineligible container
-                                      (common/eligible-container-clause :collection_id)]})
+      ;; the container clause is re-applied to the document itself - a slow (eligible) card can be
+      ;; embedded by a document living in an ineligible container
+      (for [doc   (cd.db/documents-of-content-type prose-mirror/prose-mirror-content-type
+                                                   (common/eligible-container-clause :collection_id))
             :let  [culprits (filterv slow? (distinct (prose-mirror/card-ids doc)))]
             :when (seq culprits)]
         (container-finding :document (:id doc) card->median-ms culprits)))))
@@ -177,18 +145,8 @@
   duration measures when someone hit cancel, not the transform. Only runs started within the last
   [[lookback-days]] days are considered."
   [threshold-ms]
-  ;; Runs per transform are serialized (`idx_unique_active_transform_run` allows one active run at a
-  ;; time), so among a transform's finished runs MAX(start_time) and MAX(end_time) belong to the same
-  ;; (latest) row - one grouped query, one row per transform, no fetch of the full run history.
   (for [{:keys [transform_id start_time end_time]}
-        (t2/query {:select   [:transform_id
-                              [[:max :start_time] :start_time]
-                              [[:max :end_time] :end_time]]
-                   :from     [:transform_run]
-                   :where    [:and
-                              [:in :status ["succeeded" "failed" "timeout"]]
-                              [:>= :start_time (lookback-cutoff)]]
-                   :group-by [:transform_id]})
+        (cd.db/finished-transform-run-spans (lookback-cutoff))
         :when (and start_time end_time)
         :let  [duration-ms (run-duration-ms start_time end_time)]
         :when (> duration-ms threshold-ms)]

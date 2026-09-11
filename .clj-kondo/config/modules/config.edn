@@ -3185,6 +3185,7 @@
            collections
            documents
            events
+           lib
            models
            permissions
            premium-features

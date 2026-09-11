@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.queries.schema :as queries.schema]
@@ -75,11 +76,10 @@
   "Live set of collection ids that are, or are nested under, a personal collection - a `personal_owner_id`
   root plus any `location` descendant. Empty when there are none."
   []
-  (if-let [roots (not-empty (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil]))]
-    (t2/select-pks-set :model/Collection
-                       {:where (into [:or [:in :id roots]]
-                                     (map (fn [pid] [:like :location (str "/" pid "/%")]))
-                                     roots)})
+  (if-let [roots (not-empty (cd.db/personal-collection-root-ids))]
+    (cd.db/collection-ids (into [:or [:in :id roots]]
+                                (map (fn [pid] [:like :location (str "/" pid "/%")]))
+                                roots))
     #{}))
 
 (defn name-search-clause
@@ -160,9 +160,9 @@
   `get-in`, so nil is fine)."
   [entity-type ids]
   (when (seq ids)
-    (->> (t2/select (into [(common/entity-type->model entity-type) :id :collection_id]
-                          (common/context-cols entity-type))
-                    :id [:in (set ids)])
+    (->> (cd.db/entity-context-rows (common/entity-type->model entity-type)
+                                    (common/context-cols entity-type)
+                                    (set ids))
          (hydrate-owner entity-type)
          (m/index-by :id))))
 
@@ -188,12 +188,9 @@
   degenerate `IN ()`; callers use `get-in`, so nil is fine)."
   [ids]
   (when (seq ids)
-    (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id :namespace]
-                            :id [:in (set ids)])
+    (let [rows   (cd.db/collection-context-rows (set ids))
           owners (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
-                   (t2/select-pk->fn #(select-keys % [:id :common_name :email])
-                                     [:model/User :id :email :first_name :last_name]
-                                     :id [:in owner-ids]))]
+                   (cd.db/user-contacts-by-id owner-ids))]
       (m/index-by :id
                   (for [{:keys [location personal_owner_id] :as row} rows]
                     (assoc row
@@ -220,11 +217,10 @@
   up here names a folder the caller may read."
   [coll-ids]
   (when (seq coll-ids)
-    (let [colls (t2/hydrate (t2/select :model/Collection
-                                       {:where [:and
+    (let [colls (t2/hydrate (cd.db/collections [:and
                                                 [:in :id (set coll-ids)]
                                                 (collection/visible-collection-filter-clause
-                                                 :id archived-inclusive-visibility)]})
+                                                 :id archived-inclusive-visibility)])
                             :effective_ancestors)]
       (into {}
             (map (fn [c]
@@ -290,11 +286,7 @@
   exactly like a deleted one."
   [card-ids excluded-personal-ids]
   (when (seq card-ids)
-    ;; `:card_schema` is required on any Card select - its after-select schema-upgrade hook reads it.
-    (t2/select-pk->fn (fn [c] {:id (:id c) :name (:name c) :entity_type :card :card_type (:type c)
-                               :view_count (:view_count c)})
-                      [:model/Card :id :name :type :view_count :card_schema]
-                      {:where (readable-entities-where (set card-ids) excluded-personal-ids)})))
+    (cd.db/card-summaries-by-id (readable-entities-where (set card-ids) excluded-personal-ids))))
 
 (defmulti ^:private read-entity-rows
   "Permission-filtered rows for hydrating a type's duplicate ids, read-gated by [[readable-entities-where]].
@@ -307,19 +299,19 @@
 
 (defmethod read-entity-rows ::common/collection-item
   [entity-type ids excluded-personal-ids]
-  ;; :card_schema (a peer-select-col for cards) is required on any Card select - its after-select hook reads it.
-  (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/peer-select-cols entity-type))
-             {:where (readable-entities-where ids excluded-personal-ids)}))
+  (cd.db/name-rows (common/entity-type->model entity-type)
+                   (common/peer-select-cols entity-type)
+                   (readable-entities-where ids excluded-personal-ids)))
 
 (defmethod read-entity-rows :collection
   [_ ids excluded-personal-ids]
   ;; a `:collection` subject *is* the read-permission unit, so it gates on its own `:id` rather than a
   ;; parent `:collection_id`, and has no root row to preserve.
-  (t2/select [:model/Collection :id :name]
-             {:where [:and
-                      [:in :id ids]
-                      (collection/visible-collection-filter-clause :id)
-                      (when excluded-personal-ids [:not [:in :id excluded-personal-ids]])]}))
+  (cd.db/name-rows :model/Collection nil
+                   [:and
+                    [:in :id ids]
+                    (collection/visible-collection-filter-clause :id)
+                    (when excluded-personal-ids [:not [:in :id excluded-personal-ids]])]))
 
 (defmethod read-entity-rows :transform
   [_ ids excluded-personal-ids]
@@ -327,9 +319,8 @@
   ;; source tables) - the collection clause alone would leak transform names to collection-granted
   ;; non-analysts. It reads :source, so select full rows; peer sets are page-bounded, so the per-row check
   ;; is cheap.
-  (filter mi/can-read? (t2/select :model/Transform
-                                  {:where (readable-entities-where ids excluded-personal-ids
-                                                                   archived-inclusive-visibility)})))
+  (filter mi/can-read? (cd.db/transforms (readable-entities-where ids excluded-personal-ids
+                                                                  archived-inclusive-visibility))))
 
 (defn- hydrate-duplicate-entities
   "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>
@@ -431,7 +422,7 @@
                                   :else
                                   model)]
               :when (and model (seq ids))
-              row   (t2/hydrate (t2/select selectable :id [:in ids]) :can_write)]
+              row   (t2/hydrate (cd.db/entity-rows selectable ids) :can_write)]
           [[etype (:id row)] (boolean (:can_write row))])))
 
 (defn hydrate-findings
@@ -505,7 +496,7 @@
 (defn last-scan-at
   "`detected_at` of the most recent finding overall (≈ the latest scan's time), or nil if none."
   []
-  (t2/select-one-fn :detected_at :model/ContentDiagnosticsFinding {:order-by [[:detected_at :desc]]}))
+  (cd.db/last-detected-at))
 
 ;;; ---------------------------------------------- sort config -----------------------------------------
 

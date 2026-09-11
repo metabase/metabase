@@ -15,10 +15,10 @@
   (:require
    [metabase-enterprise.content-diagnostics.checkers.imbalanced.common :as shared]
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase.documents.prose-mirror :as prose-mirror]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,15 +31,8 @@
         crowded-dashcards-per-tab (cd.settings/content-diagnostics-crowded-dashboard-threshold-dashcards-per-tab)
         crowded-tabs              (cd.settings/content-diagnostics-crowded-dashboard-threshold-tabs)
         crowded-document-cards    (cd.settings/content-diagnostics-crowded-document-threshold-cards)
-        dashcard-groups           (group-by :dashboard_id
-                                            (t2/query {:select   [:dashboard_id :dashboard_tab_id
-                                                                  [[:count :*] :cnt]]
-                                                       :from     [:report_dashboardcard]
-                                                       :group-by [:dashboard_id :dashboard_tab_id]}))
-        tab-counts                (u/index-by :dashboard_id :cnt
-                                              (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
-                                                         :from     [:dashboard_tab]
-                                                         :group-by [:dashboard_id]}))]
+        dashcard-groups           (group-by :dashboard_id (cd.db/dashboard-tab-dashcard-counts))
+        tab-counts                (u/index-by :dashboard_id :cnt (cd.db/dashboard-tab-counts))]
     (common/attach-entity-attrs
      (concat
       (let [collections (shared/eligible-collections)
