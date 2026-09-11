@@ -2,13 +2,16 @@
   "Google Gemini Enterprise Agent Platform (formerly Vertex AI) provider.
 
   This namespace handles credentials, endpoint URLs, HTTP calls, error translation, and connect-time model validation.
-  Wire-format translation is in [[metabase.metabot.self.google.stream-generate-content]]
-  and [[metabase.metabot.self.google.raw-predict]].
+  Wire-format translation is in [[metabase.metabot.self.google.stream-generate-content]],
+  [[metabase.metabot.self.google.raw-predict]] and, for Model Garden endpoints, [[metabase.metabot.self.vllm]].
 
   Like openrouter and azure, models for this provider must specify the sub-provider in the `llm-metabot-provider`
   setting. For example `MB_LLM_METABOT_PROVIDER=google/google/gemini-3.6-flash`. Gemini models are served by
   `streamGenerateContent`; Anthropic partner models (e.g. `google/anthropic/claude-sonnet-4-6`) are served by
-  `streamRawPredict`, whose payload is Anthropic's Messages API.
+  `streamRawPredict`, whose payload is Anthropic's Messages API. An open model deployed from Model Garden is named by
+  the endpoint the deployment created (e.g. `google/endpoints/1234567890123456789`) and served by that endpoint's
+  `chat/completions` route, whose payload is the OpenAI-compatible Chat Completions API of the vLLM or SGLang server
+  behind it.
 
   Credentials can be supplied via either a service account key JSON or an OAuth access token.
 
@@ -34,6 +37,7 @@
    [metabase.metabot.self.google.models :as models]
    [metabase.metabot.self.google.raw-predict :as raw-predict]
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
+   [metabase.metabot.self.vllm :as vllm]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -275,9 +279,12 @@
   (llm.provider/model-ref->model model))
 
 (def ^:private model-families
-  "Map from supported model publishers to their API format."
+  "Map from supported model publishers to their API format.
+  `endpoints` is not a publisher but the resource collection a Model Garden deployment lands in, so a model reads as
+  the tail of its endpoint's resource name."
   {"google"    :google
-   "anthropic" :anthropic})
+   "anthropic" :anthropic
+   "endpoints" :chat-completions})
 
 (def model-publishers
   "The publishers whose models this adapter serves."
@@ -299,7 +306,7 @@
   (or (model-families (model-publisher model))
       (throw (if (str/blank? (model-id model))
                (unqualified-model-ex model)
-               (ex-info (tru "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
+               (ex-info (tru "Unsupported Google model {0}. Only google/*, anthropic/* and endpoints/* models are supported."
                              (pr-str model))
                         {:api-error   true
                          :status-code 400
@@ -314,33 +321,42 @@
   "The verb that serves Gemini models, asking for its stream as SSE rather than a JSON array."
   ":streamGenerateContent?alt=sse")
 
+(def ^:private chat-completions-method
+  "The route that serves a Model Garden endpoint, whose payload is the Chat Completions API."
+  "/chat/completions")
+
 (defn reasoning-model?
   "Whether a publisher-qualified `model` streams its reasoning back to us.
 
+  A Model Garden endpoint serves whatever the admin deployed on it, which its name does not say, so it answers false.
   Answers false for a model this adapter cannot serve rather than throwing the way [[model->family]] does: the
   `llm-metabot-supports-reasoning?` setting reads this, and a provider setting Metabot cannot use must not take the
   public settings endpoint down with it. The request path rejects the same model soon enough."
   [model]
   (case (model-families (model-publisher model))
-    :anthropic (raw-predict/reasoning-model? (model-id model))
-    :google    (stream-generate-content/reasoning-model? model)
+    :anthropic        (raw-predict/reasoning-model? (model-id model))
+    :google           (stream-generate-content/reasoning-model? model)
+    :chat-completions false
     false))
 
 (defn context-window-tokens
   "The input context window for a publisher-qualified `model`, or nil when it isn't one we know.
 
-  Gemini windows come from the [[models/catalog]], the same rows that drive the reasoning gate.
+  Gemini windows come from the [[models/catalog]], the same rows that drive the reasoning gate. A Model Garden
+  endpoint's window is whatever the admin deployed with, so it is not known here.
   Answers nil for a model this adapter cannot serve rather than throwing the way [[model->family]] does, for the
   same reason [[reasoning-model?]] does."
   [model]
   (case (model-families (model-publisher model))
-    :anthropic (raw-predict/context-window-tokens (model-id model))
-    :google    (get-in models/catalog [model :context-window])
+    :anthropic        (raw-predict/context-window-tokens (model-id model))
+    :google           (get-in models/catalog [model :context-window])
+    :chat-completions nil
     nil))
 
 (defn- model-resource-path
-  "Returns the URL path to a publisher model resource, without the `:method` verb at the end.
-  The `model` must include its `{publisher}/{model}` qualifier, e.g. `google/gemini-3.5-flash`.
+  "Returns the URL path to a publisher model or endpoint resource, without the `:method` verb at the end.
+  The `model` must include its `{publisher}/{model}` qualifier, e.g. `google/gemini-3.5-flash` or
+  `endpoints/1234567890123456789`.
 
   Both segments become path segments of the request URL, so a character that does not belong in one is rejected here.
   [[model->family]] has already settled the publisher by this point; the model ID is still free text."
@@ -357,7 +373,49 @@
                       {:api-error   true
                        :status-code 400
                        :error-code  :invalid-model})))
-    (format "%s/publishers/%s/models/%s" (location-path credentials) publisher model-id)))
+    (if (= :chat-completions (model-families publisher))
+      (format "%s/endpoints/%s" (location-path credentials) model-id)
+      (format "%s/publishers/%s/models/%s" (location-path credentials) publisher model-id))))
+
+(defn- fetch-endpoint
+  "Returns the Endpoint resource at `endpoint-path`.
+  https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/projects.locations.endpoints/get"
+  [auth endpoint-path]
+  (:body (core/request auth {:method :get
+                             :url    endpoint-path
+                             :as     :json})))
+
+(defn- admin-base-url
+  "Returns the base URL the admin set outright, say a proxy, or nil when the connection uses Google's own hosts."
+  [{:keys [base-url]}]
+  (when-let [configured (not-empty base-url)]
+    (when (not= configured llm/google-global-api-base-url)
+      configured)))
+
+(defn- endpoint-host
+  "Returns the host that serves requests to the endpoint whose resource is `endpoint`.
+
+  A dedicated endpoint answers only on the DNS name its resource reports; the shared regional host refuses it.
+  Google's reference spells that name with a scheme and its samples without one, so either is accepted. A base URL
+  the admin set outright is kept, as it is for every other route: only Google's own hosts are looked past. A shared
+  endpoint is served by the location's host."
+  [credentials endpoint]
+  (let [dns (not-empty (:dedicatedEndpointDns endpoint))]
+    (or (admin-base-url credentials)
+        (when dns (str "https://" (str/replace-first dns #"^https://" "")))
+        (api-base-url credentials))))
+
+(defn- lookup-endpoint-host
+  "Reads the endpoint at `endpoint-path` with `credentials` and returns its [[endpoint-host]]."
+  [credentials endpoint-path]
+  (let [{:keys [auth]} (resolve-google-auth credentials false)]
+    (endpoint-host credentials (fetch-endpoint auth endpoint-path))))
+
+(def ^:private cached-endpoint-host
+  "Bounded memoization of [[lookup-endpoint-host]].
+  Cached so that the endpoint resource is read once per connection and endpoint, and not once per request. The
+  connection's credentials are the key, which a refreshed access token does not change."
+  (u.memoize/bounded #'lookup-endpoint-host :bounded/threshold 8))
 
 (defn- google-error-msg
   "Returns the Google API error message for the status of `res`."
@@ -478,12 +536,42 @@
         (when-not (and (= 400 status) (anthropic-error-body? body))
           (throw e))))))
 
+(def ^:private endpoint-probe-body
+  "The smallest Chat Completions request for the connect-time check of an endpoint: one token, no stream."
+  {:messages   [{:role "user" :content "hi"}]
+   :max_tokens 1})
+
+(defn- validate-endpoint-surface!
+  "Validate `credentials` and `model` for a Model Garden endpoint.
+
+  Read the endpoint resource, which is free and names the endpoint in the URL, so a 2xx proves the credential, the
+  project, the location and the endpoint all resolve. An endpoint still resolves after its model is undeployed, which
+  is how its compute is stopped, so that is checked as well.
+
+  Reading the resource takes only `aiplatform.endpoints.get`, which a viewer role carries without
+  `aiplatform.endpoints.predict`, so a one-token completion on the route conversations use, on the host they use, is
+  what proves the credential can run one."
+  [auth credentials model]
+  (let [path     (model-resource-path credentials model)
+        endpoint (fetch-endpoint auth path)]
+    (when (empty? (:deployedModels endpoint))
+      (throw (ex-info (tru "Nothing is deployed on Google endpoint {0}" (pr-str (model-id model)))
+                      {:api-error   true
+                       :status-code 400
+                       :error-code  :endpoint-has-no-model})))
+    (core/request (assoc auth :url (endpoint-host credentials endpoint))
+                  {:method  :post
+                   :url     (str path chat-completions-method)
+                   :headers {"Content-Type" "application/json"}
+                   :body    (json/encode endpoint-probe-body)})))
+
 (defn- validate-model!
   "Validates `model` against the surface that serves it, and discards the response."
   [auth credentials model]
   (case (model->family model)
-    :anthropic (validate-anthropic-surface! auth credentials model)
-    :google    (validate-google-surface! auth credentials model))
+    :anthropic        (validate-anthropic-surface! auth credentials model)
+    :google           (validate-google-surface! auth credentials model)
+    :chat-completions (validate-endpoint-surface! auth credentials model))
   nil)
 
 (defn list-models
@@ -511,18 +599,22 @@
 
 (mu/defn google-raw
   "Makes a streaming request to the Gemini Enterprise Agent Platform.
-  Gemini models stream through `streamGenerateContent`; Anthropic partner models through `streamRawPredict`.
+  Gemini models stream through `streamGenerateContent`; Anthropic partner models through `streamRawPredict`; Model
+  Garden endpoints through their `chat/completions` route.
   `:ai-proxy?` is not supported and throws when it is true."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (let [family   (model->family model)
         req      (case family
-                   :anthropic (raw-predict/request-body (model-id model) opts)
+                   :anthropic        (raw-predict/request-body (model-id model) opts)
                    ;; pass the defaulted model down: the thinking directive keys off it
-                   :google    (stream-generate-content/request-body (assoc opts :model model)))
+                   :google           (stream-generate-content/request-body (assoc opts :model model))
+                   ;; the endpoint serves one model and Google's own samples name none in the body
+                   :chat-completions (dissoc (vllm/vllm-request-body opts) :model))
         method   (case family
-                   :anthropic raw-predict-method
-                   :google    generate-content-method)
+                   :anthropic        raw-predict-method
+                   :google           generate-content-method
+                   :chat-completions chat-completions-method)
         res->msg (google-res->msg credentials)]
     (with-span :info {:name       :metabot.google/request
                       :model      model
@@ -530,7 +622,10 @@
                       :tool-count (count tools)}
       (try
         (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)
-              url      (str (model-resource-path credentials model) method)
+              path     (model-resource-path credentials model)
+              auth     (cond-> auth
+                         (= family :chat-completions) (assoc :url (cached-endpoint-host credentials path)))
+              url      (str path method)
               response (core/request auth
                                      {:method  :post
                                       :url     url
@@ -554,6 +649,7 @@
     ;; Keep this dispatch in sync with `google-raw`, which independently uses
     ;; `model->family` to select the request protocol.
     (eduction (case (model->family model)
-                :anthropic (raw-predict/->aisdk-chunks-xf)
-                :google    (stream-generate-content/->aisdk-chunks-xf))
+                :anthropic        (raw-predict/->aisdk-chunks-xf)
+                :google           (stream-generate-content/->aisdk-chunks-xf)
+                :chat-completions (vllm/vllm->aisdk-chunks-xf))
               raw)))
