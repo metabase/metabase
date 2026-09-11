@@ -18,6 +18,8 @@ export const EmbeddingSecretKeyWidget = () => {
   const { value, updateSetting, settingDetails } = useAdminSetting(
     "embedding-secret-key",
   );
+  // Avoid turning controlled input into uncontrolled because value could be `null`
+  const embeddingSecretKey = value ?? "";
   const [generateRandomToken] = useLazyGenerateRandomTokenQuery();
 
   const handleChange = async (newToken: string) => {
@@ -46,12 +48,14 @@ export const EmbeddingSecretKeyWidget = () => {
       >
         <Flex gap="lg" w="100%">
           <TextInputBlurChange
-            value={value}
+            value={embeddingSecretKey}
             onBlurChange={(e) => handleChange(e.target.value)}
-            rightSection={value && <CopyButton value={value} />}
+            rightSection={
+              embeddingSecretKey && <CopyButton value={embeddingSecretKey} />
+            }
             w="100%"
           />
-          {value ? (
+          {embeddingSecretKey ? (
             <>
               <Button
                 variant="outline"
