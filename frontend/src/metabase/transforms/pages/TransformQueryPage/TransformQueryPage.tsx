@@ -3,11 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetTransformQuery,
-  useUpdateTransformMutation,
-} from "metabase/api";
+import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
@@ -20,8 +16,6 @@ import { loadQueryEditorWithParameters } from "metabase/parameters/components/Qu
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useLocation, useNavigate, useParams } from "metabase/router";
-import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
-import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -33,6 +27,10 @@ import type {
 } from "metabase-types/api";
 
 import {
+  useGetTransformQuery,
+  useUpdateTransformMutation,
+} from "../../api/transform";
+import {
   buildIncrementalSource,
   buildIncrementalTarget,
   getInitialValues,
@@ -43,7 +41,9 @@ import {
   type TransformEditorProps,
 } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
+import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
+import { useTransformPermissions } from "../../hooks/use-transform-permissions";
 import { isCompleteSource } from "../../utils";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";

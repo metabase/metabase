@@ -5,8 +5,10 @@ import {
 } from "metabase/api";
 import { hasFeature } from "metabase/databases";
 import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
-import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
-import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
+import {
+  EditDefinitionButton,
+  doesDatabaseSupportTransforms,
+} from "metabase/transforms";
 import { Flex } from "metabase/ui";
 import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
 import type { Database, DatabaseId, Transform } from "metabase-types/api";

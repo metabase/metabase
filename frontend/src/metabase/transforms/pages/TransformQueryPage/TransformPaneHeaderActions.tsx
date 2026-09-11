@@ -3,10 +3,11 @@ import { useMemo } from "react";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
-import { getValidationResult } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import type { DraftTransformSource, Transform } from "metabase-types/api";
+
+import { EditDefinitionButton } from "../../components/TransformEditor/EditDefinitionButton";
+import { getValidationResult } from "../../utils";
 
 type Props = {
   handleCancel: VoidFunction;

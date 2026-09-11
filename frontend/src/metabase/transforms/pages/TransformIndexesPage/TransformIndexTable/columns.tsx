@@ -1,10 +1,11 @@
 import { c, t } from "ttag";
 
-import { parseTimestampWithTimezone } from "metabase/transforms/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Ellipsified, FixedSizeIcon, Flex, Group, Tooltip } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { TableIndexEntry } from "metabase-types/api";
+
+import { parseTimestampWithTimezone } from "../../../utils";
 
 import { IndexRowMenu } from "./IndexRowMenu";
 import type { IndexRow } from "./types";

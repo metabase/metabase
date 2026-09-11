@@ -1,10 +1,11 @@
-import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import type {
   DatabaseId,
   DraftTransformSource,
   Transform,
 } from "metabase-types/api";
+
+import { getLibQuery } from "../../utils";
 
 /**
  * True when saving `source` would leave an existing incremental (table-incremental)

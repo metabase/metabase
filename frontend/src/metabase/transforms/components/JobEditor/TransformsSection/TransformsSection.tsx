@@ -2,7 +2,6 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListTransformJobTransformsQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
@@ -15,6 +14,8 @@ import type {
   TransformJobId,
   TransformRun,
 } from "metabase-types/api";
+
+import { useListTransformJobTransformsQuery } from "../../../api/transform-job";
 
 import type { TransformRunByTransformId } from "./types";
 import { useJobRunTransformRuns } from "./use-job-run-transform-runs";

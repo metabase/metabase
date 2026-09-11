@@ -17,7 +17,7 @@ import {
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
+import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms";
 import * as Urls from "metabase/urls";
 
 import { getCurrentTab } from "./utils";

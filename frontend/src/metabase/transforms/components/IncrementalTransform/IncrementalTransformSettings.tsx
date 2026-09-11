@@ -5,8 +5,6 @@ import { TitleSection } from "metabase/common/data-studio/components/TitleSectio
 import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
 import { useMetadataProviderFactory } from "metabase/metadata-store";
-import { SOURCE_STRATEGY_OPTIONS } from "metabase/transforms/constants";
-import { getLibQuery } from "metabase/transforms/utils";
 import {
   Anchor,
   Box,
@@ -20,6 +18,9 @@ import {
 import * as Lib from "metabase-lib";
 import type { TableId, TransformSource } from "metabase-types/api";
 import type { TransformType } from "metabase-types/api/transform";
+
+import { SOURCE_STRATEGY_OPTIONS } from "../../constants";
+import { getLibQuery } from "../../utils";
 
 import {
   MBQLKeysetColumnSelect,

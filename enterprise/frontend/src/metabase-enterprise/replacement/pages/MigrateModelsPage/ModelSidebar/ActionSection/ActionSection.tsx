@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { validateDatabase } from "metabase/transforms/utils";
+import { validateDatabase } from "metabase/transforms";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import type { Card, Database } from "metabase-types/api";
 

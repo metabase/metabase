@@ -247,7 +247,7 @@ const elements = [
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
   createElement({ type: "shared", name: "timelines" }),
-  createElement({ type: "shared", name: "transforms" }),
+  createElement({ type: "shared", name: "transforms", enforcePublicApi: true }),
   createElement({
     type: "shared",
     name: "types",

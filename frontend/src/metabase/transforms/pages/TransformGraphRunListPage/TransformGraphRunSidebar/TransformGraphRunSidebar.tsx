@@ -3,23 +3,13 @@ import { memo, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useCancelCurrentTransformRunMutation,
-  useCancelDagRunMutation,
-  useCancelJobRunMutation,
-  useListDagRunTransformRunsQuery,
-  useListJobRunTransformRunsQuery,
-} from "metabase/api";
+import { skipToken } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
-import { POLLING_INTERVAL } from "metabase/transforms/constants";
-import { isActiveRunStatus } from "metabase/transforms/utils";
 import {
   ActionIcon,
   Badge,
@@ -40,6 +30,16 @@ import type {
   TransformRunForJobRun,
 } from "metabase-types/api";
 
+import {
+  useCancelCurrentTransformRunMutation,
+  useCancelDagRunMutation,
+  useCancelJobRunMutation,
+  useListDagRunTransformRunsQuery,
+} from "../../../api/transform";
+import { useListJobRunTransformRunsQuery } from "../../../api/transform-job";
+import { SidebarResizableBox } from "../../../components/SidebarResizableBox";
+import { POLLING_INTERVAL } from "../../../constants";
+import { isActiveRunStatus } from "../../../utils";
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
 import { RunName, isDeletedRun } from "../TransformGraphRunTable";
 

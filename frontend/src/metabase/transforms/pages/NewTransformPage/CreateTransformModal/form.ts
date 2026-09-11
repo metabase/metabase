@@ -14,19 +14,20 @@ import {
   getInitialValues as incrementalTransformGetInitialValues,
 } from "../../../components/IncrementalTransform";
 
-export const VALIDATION_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  targetName: Yup.string().required(Errors.required),
-  // `$supportsSchemas` is threaded in via `FormProvider`'s `validationContext`; see `LoginForm.tsx`.
-  targetSchema: Yup.string()
-    .nullable()
-    .defined()
-    .when("$supportsSchemas", {
-      is: true,
-      then: (schema) => schema.required(Errors.required),
-    }),
-  collection_id: Yup.number().nullable().defined(),
-}).concat(INCREMENTAL_TRANSFORM_VALIDATION_SCHEMA);
+export const VALIDATION_SCHEMA = /* #__PURE__ */ (() =>
+  Yup.object({
+    name: Yup.string().required(Errors.required),
+    targetName: Yup.string().required(Errors.required),
+    // `$supportsSchemas` is threaded in via `FormProvider`'s `validationContext`; see `LoginForm.tsx`.
+    targetSchema: Yup.string()
+      .nullable()
+      .defined()
+      .when("$supportsSchemas", {
+        is: true,
+        then: (schema) => schema.required(Errors.required),
+      }),
+    collection_id: Yup.number().nullable().defined(),
+  }).concat(INCREMENTAL_TRANSFORM_VALIDATION_SCHEMA))();
 
 export type NewTransformValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
 

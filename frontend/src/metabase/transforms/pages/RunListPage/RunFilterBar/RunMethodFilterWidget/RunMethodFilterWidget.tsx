@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 
-import { formatRunMethod } from "metabase/transforms/utils";
 import {
   Box,
   Button,
@@ -15,6 +14,7 @@ import {
 import type { TransformRunMethod } from "metabase-types/api";
 
 import { FILTER_WIDGET_MIN_WIDTH } from "../../../../constants";
+import { formatRunMethod } from "../../../../utils";
 import { FilterFieldSet } from "../FilterFieldSet";
 
 const RUN_METHODS: TransformRunMethod[] = ["manual", "cron"];
