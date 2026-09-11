@@ -9,6 +9,7 @@ import { useArePluginsReady } from "embedding-sdk-bundle/hooks/private/use-are-p
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
 import { useSdkCustomLoader } from "embedding-sdk-bundle/hooks/private/use-sdk-custom-loader";
+import { PLUGIN_SDK_INITIALIZATION } from "embedding-sdk-bundle/plugins/initialization";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
@@ -43,8 +44,6 @@ export type ComponentProviderInternalProps = ComponentProviderProps & {
   isLocalHost?: boolean;
 };
 
-let hasInitializedPlugins = false;
-
 /**
  * Initializes EE plugins synchronously during render
  * to avoid an extra frame where children render without plugins.
@@ -59,8 +58,8 @@ function useInitPlugins(reduxStore: SdkStore) {
   // some of plugins needed by EAJS
   const shouldInitialize = !isEmbeddingEajs() && !!tokenFeatures;
 
-  if (shouldInitialize && !hasInitializedPlugins) {
-    hasInitializedPlugins = true;
+  if (shouldInitialize && !PLUGIN_SDK_INITIALIZATION.initialized) {
+    PLUGIN_SDK_INITIALIZATION.initialized = true;
 
     initializePlugins();
   }

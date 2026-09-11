@@ -1,10 +1,10 @@
 import type { ComponentType, ReactElement, ReactNode } from "react";
 
+import { definePluginSlot } from "metabase/plugin-slots";
 import type { State } from "metabase/redux/store";
 import type { SourceReplacementEntry } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
-import { definePluginSlot } from "../slot";
 
 export type SourceReplacementTriggeredFrom = "table_list" | "dependency_graph";
 

@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 
 import type { ToastArgs } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
+import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { Dispatch } from "metabase/redux/store";
 import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
@@ -12,8 +13,6 @@ import type {
   WidgetMount,
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
-
-import { definePluginSlot } from "../slot";
 
 export type LoadCustomVizPluginForDisplayResult =
   | { status: "loaded"; display: VisualizationDisplay }

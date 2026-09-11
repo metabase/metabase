@@ -6,6 +6,7 @@ const REPO_ROOT = path.resolve(__dirname, "../../../..");
 // This is unrelated to route splitting (the `import()` calls in metabase/routes.tsx).
 const SIDE_EFFECT_FREE_PATHS = [
   "frontend/src/metabase/router",
+  "frontend/src/metabase/plugin-slots",
   "frontend/src/metabase/querying/expressions",
   "frontend/src/metabase/ui",
   "frontend/src/metabase/query_builder",

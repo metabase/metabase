@@ -1,10 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { setupBasename } from "__support__/basename";
+import { resetPluginSlots } from "metabase/plugin-slots";
 import { setBasename } from "metabase/utils/basename";
 
+import { PLUGIN_API } from "../plugins";
+
 import { ApiClient } from "./client";
-import { PLUGIN_API, reinitializeRequestHandlers } from "./request-handlers";
 
 describe("api", () => {
   describe("request (RTK entry point)", () => {
@@ -17,7 +19,7 @@ describe("api", () => {
     afterEach(() => {
       fetchMock.removeRoutes().clearHistory();
       // Reset any plugin request handlers installed by a test.
-      reinitializeRequestHandlers();
+      resetPluginSlots();
     });
 
     it("substitutes :tag URL placeholders from `params`", async () => {

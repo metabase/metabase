@@ -1,5 +1,5 @@
 import type { SearchFilterComponent } from "metabase/common/search/types";
-import { definePluginSlot } from "metabase/plugins";
+import { definePluginSlot } from "metabase/plugin-slots";
 
 const getDefaultSearchFilters = () => ({
   // Leaving type unset hides the filter.

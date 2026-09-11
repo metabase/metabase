@@ -10,10 +10,8 @@ import {
   validateSession,
 } from "embedding/auth-common";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
-import {
-  PLUGIN_EMBEDDING_SDK_AUTH,
-  refreshTokenAsync as refreshTokenAsyncAction,
-} from "embedding-sdk-bundle/store/auth";
+import { PLUGIN_EMBEDDING_SDK_AUTH } from "embedding-sdk-bundle/plugins/auth";
+import { refreshTokenAsync as refreshTokenAsyncAction } from "embedding-sdk-bundle/store/auth";
 import {
   getFetchRefreshTokenFn,
   getSessionTokenState,
@@ -54,8 +52,7 @@ let refreshTokenPromise: ReturnType<
   AsyncThunkAction<MetabaseEmbeddingSessionToken | null, unknown, any>
 > | null = null;
 
-// Side effect happening here.
-PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
+const initAuth = async (
   authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
   { dispatch }: { dispatch: SdkDispatch },
 ) => {
@@ -220,8 +217,10 @@ const refreshTokenAsync = createAsyncThunk(
   refreshTokenImpl,
 );
 
-// implementation used by the OSS thunk wrapper
-PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync = refreshTokenImpl;
+export function initializeSdkAuthPlugin() {
+  PLUGIN_EMBEDDING_SDK_AUTH.initAuth = initAuth;
+  PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync = refreshTokenImpl;
+}
 
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
