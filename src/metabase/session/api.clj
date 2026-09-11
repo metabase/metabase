@@ -563,11 +563,23 @@
     (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor (:id mfa-auth-identity))
                       request)))
 
-;; No response schema: the success path returns a full ring response (session cookies must be set),
-;; which the response-schema machinery would validate as the body. Same constraint as
-;; `POST /api/session`. Body shape: `{:id <session-key>}`.
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/mfa/enroll"
+;; The response here is a combo of a plain login (with two cookies and the `:id` in the body) and successful MFA
+;; enrollment, which sends a seq of 10 `:recovery_codes` for display to the user.
+(api.macros/defendpoint :post "/mfa/enroll" :- [:map {:closed true}
+                                                [:status [:= 200]]
+                                                [:cookies
+                                                 [:map-of
+                                                  [:enum "metabase.SESSION" "metabase.TIMEOUT"]
+                                                  [:map {:closed true}
+                                                   [:value                      ms/NonBlankString]
+                                                   [:path                       ms/NonBlankString]
+                                                   [:max-age                    :int]
+                                                   [:same-site {:optional true} [:enum :strict :lax :none]]
+                                                   [:http-only {:optional true} :boolean]]]]
+                                                [:body
+                                                 [:map {:closed true}
+                                                  [:id ms/NonBlankString]
+                                                  [:recovery_codes [:sequential ms/NonBlankString]]]]]
   "Complete a two-step login by *enrolling* a second factor for the first time. This happens when a user without
   MFA enrolled logs in for the first time after the instance starts *requiring* MFA.
 
