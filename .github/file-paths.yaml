@@ -115,10 +115,10 @@ backend_sources: &backend_sources
   - "src/**"
   - "modules/drivers/{*,*/{*,!(test)/**}}"
   - "resources/**"
-  # Ratchet files drive project_ratchet_checks alone, so automation PRs that lower budgets
-  # run the Project tests job by themselves. Patterns are OR-ed, so a separate "!..." entry would match
-  # every other path instead of excluding this one.
-  - ".clj-kondo/**/!(ratchets.edn)"
+  # Ratchet files drive project_ratchet_checks alone and the cycle clusters file project_backend_checks, so
+  # automation PRs that update them run the Project tests job by themselves. Patterns are OR-ed, so a separate
+  # "!..." entry would match every other path instead of excluding these.
+  - ".clj-kondo/**/!(ratchets.edn|cycle-clusters.edn)"
 
 backend_specs: &backend_specs
   - *shared_specs
@@ -163,6 +163,8 @@ project_backend_checks:
   - "{resources,test_resources,test_config}/**/*.{clj,cljc,cljs}"
   - ".clj-kondo/config.edn"
   - ".clj-kondo/config/modules/config.edn"
+  # The cycle test reads this record, so the automation PR that updates it still runs the test.
+  - ".clj-kondo/config/modules/cycle-clusters.edn"
   - ".github/team.json"
   - "dev/resources/dev/modules_config_test/**"
 
@@ -170,6 +172,11 @@ project_backend_checks:
 project_ratchet_checks:
   - ".clj-kondo/ratchets.edn"
   - ".clj-kondo/config/modules/ratchets.edn"
+
+# The cycle record is data no build reads, so a change to it alone needs the backend project checks it
+# already triggers, and no uberjar. The automation PR reaches this when master's graph moved but no budget fell.
+project_cycle_record:
+  - ".clj-kondo/config/modules/cycle-clusters.edn"
 
 project_migration_checks:
   - *project_tests_infra

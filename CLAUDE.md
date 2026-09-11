@@ -107,6 +107,18 @@ Explain budget increases in the PR. Do not record reductions in feature PRs: pos
 a `Tighten ratchets` PR for them. Use `./bin/mage kondo-ratchets-shrink --seed :linter` only when adding an
 inline-ignore budget. If either ratchet file conflicts, run `./bin/merge-kondo-ratchets`.
 
+`.clj-kondo/config/modules/cycle-clusters.edn` names each cyclic strongly connected component of the module
+graph, in the require graph and in the graph with model imports added, and records which modules are in it. A
+cluster keeps its name while it shrinks and splits, so it can be followed over time; the big one is
+`galactic-center`.
+
+Membership is a ceiling. `metabase.core.module-cycle-ratchet-test` fails when a cluster gains a module, when two
+clusters merge, and when a new cycle appears. Shrinking, splitting and dissolving pass, and the shrink workflow
+records them on master with `./bin/mage fix-module-cycles`, so feature branches never edit the file. Tangling
+another module in is a hand edit to the file, explained in the PR that makes it. Only membership is recorded:
+the edges inside a cluster move whenever anyone adds a require between two modules already in it, which says
+nothing about whether the tangle got worse.
+
 ## Tool Preferences
 
 If `clojure-mcp` tools are available, prefer them over shell-based alternatives for Clojure development.

@@ -320,6 +320,14 @@
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
 
+  fix-module-cycles
+  {:doc "Record the cyclic module clusters in .clj-kondo/config/modules/cycle-clusters.edn."
+   :examples [["./bin/mage fix-module-cycles" "Record the clusters that shrank, split or dissolved; never widens one"]
+              ["./bin/mage fix-module-cycles --seed" "Create the file, naming the clusters as they stand"]]
+   :options [["-s" "--seed" "Create the file; only when there is none yet"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-fix-module-cycles parsed))}
+
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
    :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]
@@ -454,6 +462,20 @@
                                     (slurp ours-path)
                                     (dev.kondo-ratchet/render merged)))))
             (println (str "merged ratchets into " output-path))))}
+
+  -module-cycles-pr-body
+  {:doc "Render the module-cycle section of an automated ratchet-shrink PR, or nothing when the record did not change."
+   :arg-schema [:tuple
+                [:string {:name "before" :description "Cycle clusters file before the fixer ran"}]
+                [:string {:name "after" :description "Cycle clusters file after the fixer ran"}]]
+   :requires [[dev.module-cycle-ratchet]]
+   :task (task!
+          (let [[before-path after-path] (:arguments parsed)
+                read-stage               (fn [path]
+                                           (binding [dev.module-cycle-ratchet/*clusters-file* path]
+                                             (dev.module-cycle-ratchet/read-snapshot)))]
+            (some-> (dev.module-cycle-ratchet/pr-summary (read-stage before-path) (read-stage after-path))
+                    print)))}
 
   -kondo-ratchets-pr-body
   {:doc "Render the body for an automated ratchet-shrink PR."
