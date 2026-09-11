@@ -40,6 +40,14 @@
       <AppenderRef ref="File"/>
     </Logger>
 
+    <!-- Pivot parity check emits per-flow timing + failure cause at WARN so a Presto (or other driver) CI
+         failure surfaces which flow was slow and what root exception hit each flow, without needing the
+         JSON log file (which CI doesn't publish). Diagnostic; safe to drop once UA is stable. -->
+    <Logger name="metabase.query-processor.pivot" level="WARN" additivity="false">
+      <AppenderRef ref="WarnConsole"/>
+      <AppenderRef ref="File"/>
+    </Logger>
+
     <Root level="INFO">
       <AppenderRef ref="Console"/>
       <AppenderRef ref="File"/>
