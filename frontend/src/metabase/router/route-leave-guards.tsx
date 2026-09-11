@@ -3,7 +3,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -181,7 +181,10 @@ export function useGuardedBlocker(
   const context = useContext(RouteLeaveGuardsContext);
   const registerGuard = context?.registerGuard;
 
-  useEffect(
+  // Unregister in a layout effect: a mount navigation from the next page
+  // (e.g. the admin index redirect) must not meet a stale guard, which would
+  // hold it with no prompt to let it through (metabase#82316).
+  useLayoutEffect(
     () => registerGuard?.(id, { shouldBlock, basePath }),
     [registerGuard, id, shouldBlock, basePath],
   );
