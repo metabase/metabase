@@ -29,7 +29,7 @@ describe("security-center cache invalidation", () => {
     );
   });
 
-  it("refreshes the subscribed list after acknowledging an advisory", async () => {
+  it("should refresh the subscribed list after acknowledging an advisory", async () => {
     fetchMock.post("path:/api/ee/security-center/SA-001/acknowledge", advisory);
     const { result } = renderHookWithProviders(() => {
       const query = useListSecurityAdvisoriesQuery();
@@ -52,7 +52,7 @@ describe("security-center cache invalidation", () => {
     expect(fetchMock.callHistory.calls(LIST_URL)).toHaveLength(2);
   });
 
-  it("refreshes the subscribed list after acknowledging advisories in bulk", async () => {
+  it("should refresh the subscribed list after acknowledging advisories in bulk", async () => {
     fetchMock.post("path:/api/ee/security-center/acknowledge", [advisory]);
     const { result } = renderHookWithProviders(() => {
       const query = useListSecurityAdvisoriesQuery();
@@ -75,7 +75,7 @@ describe("security-center cache invalidation", () => {
     expect(fetchMock.callHistory.calls(LIST_URL)).toHaveLength(2);
   });
 
-  it("refreshes the subscribed list after syncing advisories", async () => {
+  it("should refresh the subscribed list after syncing advisories", async () => {
     fetchMock.post("path:/api/ee/security-center/sync", 200);
     const { result } = renderHookWithProviders(() => {
       const query = useListSecurityAdvisoriesQuery();
