@@ -36,6 +36,7 @@ interface Series {
   runs: number;
   scripts: number;
   scriptKb: number;
+  totalKb: number;
   median: Timings;
   secondLoad: Timings | null;
   steady: Timings | null;
@@ -189,6 +190,7 @@ function spreadPercent(values: number[]) {
         warmPageReadyMs: required(warm.secondLoad, "secondLoad").pageReadyMs,
         scripts: cold.scripts,
         scriptKb: cold.scriptKb,
+        totalKb: cold.totalKb,
         runs: cold.runs,
       });
 
