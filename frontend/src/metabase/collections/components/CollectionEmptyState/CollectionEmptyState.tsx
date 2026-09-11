@@ -10,7 +10,7 @@ import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
+import { Box, Button, Icon, Stack, Text, Title } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 import { trackCollectionNewButtonClicked } from "./analytics";
@@ -121,36 +121,17 @@ export const CollectionEmptyIcon = (): JSX.Element => {
   );
 };
 
-export const EmptyStateTitle = ({ children }: PropsWithChildren) => {
-  const theme = useMantineTheme();
-  return (
-    <Box
-      c="text-primary"
-      fz={theme.other.collectionBrowser.emptyContent.title.fontSize}
-      fw="bold"
-      lh="2rem"
-      mt="2.5rem"
-      mb="0.75rem"
-    >
-      {children}
-    </Box>
-  );
-};
+export const EmptyStateTitle = ({ children }: PropsWithChildren) => (
+  <Title order={2} c="text-primary" mt="2.5rem" mb="0.75rem">
+    {children}
+  </Title>
+);
 
-export const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
-  const theme = useMantineTheme();
-  return (
-    <Text
-      fz={theme.other.collectionBrowser.emptyContent.subtitle.fontSize}
-      c="text-secondary"
-      ta="center"
-      mb="1.5rem"
-      maw="25rem"
-    >
-      {children}
-    </Text>
-  );
-};
+export const EmptyStateSubtitle = ({ children }: PropsWithChildren) => (
+  <Text c="text-secondary" ta="center" mb="1.5rem" maw="25rem">
+    {children}
+  </Text>
+);
 
 export const EmptyStateWrapper = ({
   children,
