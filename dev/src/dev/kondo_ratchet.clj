@@ -763,8 +763,7 @@
           linter)))
 
 (defn unexercised-unlimited-warning
-  "One informational line naming the [[unexercised-unlimited]] linters, or nil when there are none.
-  The policies stay in place; the line only makes a stale one visible."
+  "Warning for [[unexercised-unlimited]] linters, or nil. Does not remove their policies."
   [ignore-counts actual]
   (let [linters (unexercised-unlimited ignore-counts actual)]
     (when (seq linters)
@@ -772,8 +771,7 @@
            " -- delete an entry by hand once its linter no longer needs one"))))
 
 (defn stale-exemptions-warning
-  "An informational warning naming linters whose `:comment-exempt` entries are stale, or nil when there
-  are none. Does not modify the exemptions."
+  "Warning for stale `:comment-exempt` entries, or nil. Does not remove them."
   [exempt occurrences]
   (let [linters (stale-exemptions exempt occurrences)]
     (when (seq linters)
