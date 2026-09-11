@@ -937,9 +937,12 @@
   (into (set (keys graph)) (mapcat val) graph))
 
 (defn strongly-connected-components
-  "Tarjan strongly connected components of `graph`, including acyclic nodes as singleton sets.
-  Recursive; intended for the small module graph."
+  "Return the strongly connected components of `graph` as a vector of sets.
+  A node outside every cycle comes back as a singleton set."
   [graph]
+  ;; Tarjan's algorithm, kept recursive because that reads better than an explicit stack of frames.
+  ;; Each node on the search path costs a level of recursion, so the worst case is one level per node.
+  ;; As of 2026-09-11 the 206-module graph peaks at 40 levels; the default 2 MB thread stack fits about 2,600.
   (letfn [(pop-component [state root]
             (loop [state state, component #{}]
               (let [node      (peek (:stack state))
