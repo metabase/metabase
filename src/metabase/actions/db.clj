@@ -4,6 +4,7 @@
   (:require
    [metabase.actions.schema :as actions.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -217,9 +218,9 @@
              :where  [:in :action.id action-ids]}))
 
 (mu/defn card-scope-columns
-  "The query, Collection id, Database id, and display of the Card with `card-id`, or nil."
+  "The query-relevant columns of the Card with `card-id`, plus its Collection id and display, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id))
+  (queries/card-query-info card-id :include [:collection_id :display]))
 
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."

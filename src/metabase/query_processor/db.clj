@@ -19,11 +19,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn source-card-metadata
-  "The entity id, result metadata, and type of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id card-id))
-
 (mu/defn dashcard-series-exists?
   "Whether the Card with `card-id` is a series of the DashboardCard with `dashcard-id`."
   [card-id     :- [:maybe ::lib.schema.id/card]
