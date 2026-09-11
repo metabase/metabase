@@ -356,8 +356,8 @@
   {:in  encryption/maybe-encrypt
    :out (decrypt-error-context source encryption/maybe-decrypt)})
 
-;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
-;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
+;;; TODO (Cam 10/27/25) -- this stuff belongs in the `visualization-settings` module alongside
+;;; [[metabase.visualization-settings.core]], not in the general models interface.
 (mr/def ::viz-settings-ref
   "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
 
@@ -376,9 +376,8 @@
    [:= {:decode/normalize keyword} :name]
    :string])
 
-;;; TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
-;;; `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
-;;; also [[metabase.models.visualization-settings]].
+;;; TODO (Cam 2026-02-18) move this out of the `models` module into the `visualization-settings` module, next
+;;; to [[metabase.visualization-settings.core]].
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to MBQL 4 clauses so things work correctly."

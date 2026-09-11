@@ -34,7 +34,7 @@ import type {
   ColumnSettings,
   VisualizationSettings,
 } from "./card";
-import type { Dataset } from "./dataset";
+import type { Dataset, ReferencedEntity } from "./dataset";
 import type { ModerationReview } from "./moderation";
 import type { SearchModel } from "./search";
 
@@ -361,6 +361,7 @@ export type DashboardCardQueryRequest = {
   collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
+  referenced_entities?: ReferencedEntity[];
   // Sent in the request body (in addition to the path params above) when
   // querying a saved dashcard, for query provenance/telemetry.
   dashboard_id?: DashboardId;

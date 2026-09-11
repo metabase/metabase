@@ -3,12 +3,12 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.util.date-2 :as u.date]
    [metabase.util.formatting.constants :as constants]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.visualization-settings.core :as mb.viz])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
    (java.util Locale)))

@@ -32,7 +32,10 @@ import type { TimelineEventId, TimelineId } from "./timeline";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type {
+  GoalSegment,
+  GoalValue,
   PieRow,
+  ScalarSegment,
   SmartScalarComparison,
   TreemapRow,
 } from "./visualization-settings";
@@ -377,8 +380,8 @@ export type VisualizationSettings = {
   /** Fixed y-axis maximum when auto range is disabled. */
   "graph.y_axis.max"?: number;
 
-  /** Numeric value for the goal line. */
-  "graph.goal_value"?: number;
+  /** Goal line value: a static number or a column reference, see `GoalValue`. */
+  "graph.goal_value"?: GoalValue | null;
 
   /** Draw a goal line on supported cartesian charts. */
   "graph.show_goal"?: boolean;
@@ -458,6 +461,9 @@ export type VisualizationSettings = {
 
   /** Segment configuration for scalar visualizations. */
   "scalar.segments"?: ScalarSegment[];
+
+  /** Colored ranges of the gauge; bounds may reference another column or entity. */
+  "gauge.segments"?: GoalSegment[];
 
   /** Result column name, or names, used as pie slice dimensions. */
   "pie.dimension"?: string | string[];
@@ -723,11 +729,4 @@ export type ListViewColumns = {
   left: string[];
   right: string[];
   image?: string;
-};
-
-export type ScalarSegment = {
-  min: number | null;
-  max: number | null;
-  color: string;
-  label?: string;
 };

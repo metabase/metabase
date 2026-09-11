@@ -5,6 +5,7 @@ import type { VisualizationSettings } from "metabase-types/api";
 import { getDefaultGoalLabel } from "../../shared/settings/cartesian-chart";
 import type { ChartGoal } from "../../shared/types/settings";
 import type { VisualizationSettingsDefinitions } from "../../types";
+import { getNumericGoalValue, isDynamicGoalSetting } from "../dynamic-goals";
 
 import { getStackOffset } from "./stacking";
 
@@ -17,10 +18,19 @@ export const getChartGoal = (
   if (!settings["graph.show_goal"]) {
     return null;
   }
+
+  // an unset goal has always drawn the line at 0
+  const goalValue =
+    settings["graph.goal_value"] == null ? 0 : getNumericGoalValue(settings);
+
+  if (goalValue === null) {
+    return null;
+  }
+
   const isPercent = getStackOffset(settings) === "expand";
 
   return {
-    value: getGoalValue(settings["graph.goal_value"] ?? 0, isPercent),
+    value: getGoalValue(goalValue, isPercent),
     label: settings["graph.goal_label"] ?? getDefaultGoalLabel(),
   };
 };
@@ -43,11 +53,18 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     get title() {
       return t`Goal value`;
     },
-    widget: "number",
+    widget: "goalValue",
     getDefault: () => 0,
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
+    useRawSeries: true, // see getRawSeries
+    getProps: ([{ card, data }]) => ({
+      data,
+      datasetQuery: card.dataset_query,
+      isDynamic: isDynamicGoalSetting(card.display, "graph.goal_value"),
+      showSelfColumns: false,
+    }),
   },
   "graph.goal_label": {
     getSection: () => t`Display`,

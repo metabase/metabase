@@ -10,8 +10,18 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import {
+  GOAL_SETTINGS,
+  getDynamicGoalSettingKeys,
+} from "../dynamic-goal-settings";
+import {
+  getGoalValues,
+  getUnresolvedGoalMessage,
+  hasFailedGoalValues,
+} from "../dynamic-goals";
 import { ChartSettingsError, MinRowsError } from "../errors";
 import { getCartesianChartColumns } from "../graph/columns";
+import { getRawSeries } from "../series";
 import { MAX_SERIES } from "../utils";
 
 export const validateDatasetRows = (series: Series) => {
@@ -94,4 +104,17 @@ export const validateBreakoutSeriesCount = (
       t`This chart type doesn't support more than ${MAX_SERIES} series of data.`,
     );
   }
+};
+
+export const validateGoalReferences = (
+  series: Series,
+  settings: VisualizationSettings,
+) => {
+  const [{ card, data }] = getRawSeries(series);
+
+  getDynamicGoalSettingKeys(card.display).forEach((key) => {
+    if (hasFailedGoalValues(data, getGoalValues(settings, [key]))) {
+      throw new Error(getUnresolvedGoalMessage(GOAL_SETTINGS[key]));
+    }
+  });
 };

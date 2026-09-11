@@ -688,6 +688,17 @@
   `metabase.query-processor.middleware.process-userland-query` and sent back by clients re-downloading pivot query
   results."}
      [:maybe :boolean]]
+    [:referenced-entities
+     {:optional true
+      :description
+      "Entities whose values `POST /api/dataset` should run alongside the query and return under
+  `data.referenced_entities`. Sent by clients for dynamic goals; read off the raw body and stripped from the
+  query by the endpoint, so it never reaches the query processor."}
+     [:maybe [:sequential [:map {:closed true}
+                           [:type     :string]
+                           [:id       :int]
+                           [:columns  {:optional true} [:maybe [:sequential :string]]]
+                           [:max_rows {:optional true} [:maybe :int]]]]]]
     [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
     [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
     [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]

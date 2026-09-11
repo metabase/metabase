@@ -1,4 +1,4 @@
-(ns metabase.models.visualization-settings
+(ns metabase.visualization-settings.core
   "Utility code for dealing with visualization settings, from cards, dashboard cards, etc.
 
   There are two ways of representing the same data, DB form and normalized form.  DB form is the \"legacy\" form, which
@@ -19,9 +19,7 @@
   In general, conversion functions in this namespace (i.e. those that convert various pieces from one form to the other)
   will be prefixed with either `db->norm` or `norm->db`, depending on which direction they implement.
 
-  TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
-  `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
-  also [[metabase.models.interface/normalize-visualization-settings]]."
+  TODO (Cam 2026-02-18) [[metabase.models.interface/normalize-visualization-settings]] belongs in this module too."
   (:require
    #?@(:clj [[metabase.util.json :as json]])
    [clojure.set :as set]

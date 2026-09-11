@@ -2,9 +2,12 @@ import type { AccentColorOptions } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DatasetColumn,
+  DatasetData,
+  DatasetQuery,
+  GoalSegment,
+  GoalValue,
   IconName,
   RawSeries,
-  ScalarSegment,
   Series,
   SmartScalarComparison,
   SmartScalarComparisonType,
@@ -50,6 +53,18 @@ export type ChartSettingGoalInputProps = {
   valueField?: string;
 };
 
+export type ChartSettingGoalValueProps = {
+  data: DatasetData;
+  datasetQuery?: DatasetQuery;
+  id: string;
+  // false for visualizations that don't support dynamic goals yet
+  isDynamic?: boolean;
+  placeholder?: string;
+  showSelfColumns?: boolean;
+  value: GoalValue | null | undefined;
+  onChange: (value: GoalValue | undefined) => void;
+};
+
 export type AggregationFunction = Exclude<
   VisualizationSettings["graph.other_category_aggregation_fn"],
   undefined
@@ -61,9 +76,11 @@ export type ChartSettingMaxCategoriesProps = ChartSettingWidgetProps<number> & {
 };
 
 export type ChartSettingSegmentsEditorProps = {
-  value: ScalarSegment[];
-  onChange: (value: ScalarSegment[]) => void;
   canRemoveAll?: boolean;
+  data?: DatasetData;
+  datasetQuery?: DatasetQuery;
+  value: GoalSegment[];
+  onChange: (value: GoalSegment[]) => void;
 };
 
 // The fields ChartSettingOrderedItems reads off every row it renders.

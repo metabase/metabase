@@ -71,7 +71,6 @@
    [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -80,6 +79,8 @@
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
+   [metabase.visualization-settings.core :as mb.viz]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.realize :as t2.realize]))
@@ -1635,6 +1636,38 @@
           (m/update-existing    :click_behavior import-viz-click-behavior-link)
           (m/update-existing-in [:click_behavior :parameterMapping] import-viz-click-behavior-mappings)))
 
+(def ^:private goal-entity-models
+  "Toucan model for each dynamic-goal entity `:type`. Mirrors
+  [[metabase.query-processor.referenced-entities]]'s type table."
+  {"card"    :model/Card
+   "measure" :model/Measure})
+
+(defn- update-viz-dynamic-goals
+  "Rewrite the `:id` of every entity-referencing goal value in `settings` with `(f id model)`. Drops the goal
+  when `:type` maps to no model or `f` yields nil, so an id can never outlive the entity it named."
+  [settings f]
+  (dynamic-goals/update-goal-values
+   settings
+   (fn [goal-value]
+     (if-let [{:keys [type id]} (dynamic-goals/goal-source goal-value)]
+       (when-let [model (goal-entity-models type)]
+         (some->> (f id model) (assoc goal-value :id)))
+       goal-value))))
+
+(defn- export-viz-dynamic-goals [settings]
+  ;; guards keep this idempotent: an already-exported (or malformed) id is left alone rather than
+  ;; blowing up *export-fk*'s schema and taking the whole export with it
+  (some-> settings (update-viz-dynamic-goals (fn [id model]
+                                               (if (pos-int? id)
+                                                 (fk-elide (*export-fk* id model))
+                                                 id)))))
+
+(defn- import-viz-dynamic-goals [settings]
+  (some-> settings (update-viz-dynamic-goals (fn [id model]
+                                               (if (portable-id? id)
+                                                 (*import-fk* id model)
+                                                 id)))))
+
 (defn- export-pivot-table [settings]
   (some-> settings
           (m/update-existing-in [:pivot_table.column_split :rows] export-mbql)
@@ -1696,6 +1729,7 @@
         export-mbql
         export-viz-link-card
         export-viz-click-behavior
+        export-viz-dynamic-goals
         export-visualizer-settings
         export-pivot-table
         (update :column_settings export-column-settings))))
@@ -1787,6 +1821,7 @@
         import-visualizations
         import-viz-link-card
         import-viz-click-behavior
+        import-viz-dynamic-goals
         import-visualizer-settings
         import-pivot-table
         (update :column_settings import-column-settings))))
@@ -1815,6 +1850,16 @@
       ;; that to actually attach to a filter to check what it looks like.
       nil)))
 
+(defn- viz-dynamic-goals-deps
+  [allow-int-ids? settings]
+  (into #{}
+        (keep (fn [goal-value]
+                (let [{:keys [type id]} (dynamic-goals/goal-source goal-value)]
+                  (when-let [model (goal-entity-models type)]
+                    (when (or (portable-id? id) (raw-ref-id? allow-int-ids? id))
+                      [{:model (name model) :id id}])))))
+        (dynamic-goals/goal-values settings)))
+
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
   Always returns an empty set even if the input is nil. For `allow-int-ids?` see [[mbql-deps]]."
@@ -1828,10 +1873,11 @@
                                            vals
                                            (map viz-click-behavior-deps))
         link-card-deps            (viz-link-card-deps allow-int-ids? viz)
-        click-behavior-deps       (viz-click-behavior-deps viz)]
+        click-behavior-deps       (viz-click-behavior-deps viz)
+        dynamic-goals-deps        (viz-dynamic-goals-deps allow-int-ids? viz)]
     (->> (concat column-settings-keys-deps
                  column-settings-vals-deps
-                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps])
+                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps dynamic-goals-deps])
          (filter some?)
          (reduce set/union #{}))))
 
@@ -1852,12 +1898,22 @@
          (mapcat #(viz-click-behavior-descendants % src))
          set)))
 
+(defn- viz-dynamic-goals-descendants [viz src]
+  (into {}
+        (keep (fn [goal-value]
+                (let [{:keys [type id]} (dynamic-goals/goal-source goal-value)]
+                  ;; Measure is a data model, synced separately rather than bundled, so only cards come along.
+                  (when (and (= "card" type) (fk-elide (*export-fk* id :model/Card)))
+                    [["Card" id] src]))))
+        (dynamic-goals/goal-values viz)))
+
 (defn visualization-settings-descendants
   "Given the :visualization_settings (possibly nil) for an entity, return anything that should be considered a
   descendant. Always returns an empty set even if the input is nil."
   [viz src]
   (set/union (viz-click-behavior-descendants  viz src)
-             (viz-column-settings-descendants viz src)))
+             (viz-column-settings-descendants viz src)
+             (viz-dynamic-goals-descendants   viz src)))
 
 ;;; Common transformers
 

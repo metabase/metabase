@@ -1,0 +1,9 @@
+.trigger {
+  visibility: hidden;
+}
+
+.root:hover .trigger,
+.root:focus-within .trigger,
+.trigger[data-open="true"] {
+  visibility: visible;
+}
