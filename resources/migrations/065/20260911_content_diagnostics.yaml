@@ -1,9 +1,20 @@
 ## Content Diagnostics — detected findings snapshot (scan-snapshot, latest-wins).
 ## Persisted table: `content_diagnostics_finding`.
+##
+## Squash of the seven unreleased 064 migrations the feature accumulated while it was targeting v64:
+## every `addColumn` is folded into the `createTable` below, and the card-type index that was created and
+## later dropped is simply never created. Indexes were re-derived from the query shapes in
+## `metabase-enterprise.content-diagnostics.{db,api,api.common,models.finding}`, so two of the original
+## thirteen objects are gone: `idx_cd_finding_ftype_name` (both uses of `entity_name` are wrapped in
+## `lower()`, and the name search is a leading-wildcard LIKE, so a plain B-tree can serve neither) and
+## `idx_cd_finding_scan` (the only `scan_id` predicate is a `!=`, and it duplicates the leading-column
+## prefix of `idx_uniq_cd_finding`). `idx_cd_finding_detected` is new: `last-detected-at` runs an
+## unfiltered `ORDER BY detected_at DESC LIMIT 1` on every list request, and `detected-at` is the default
+## sort column.
 
 databaseChangeLog:
   - changeSet:
-      id: v64.ryvrr3
+      id: v65.scnt3k
       author: yb
       comment: Content Diagnostics — content_diagnostics_finding (scan snapshot)
       changes:
@@ -81,9 +92,33 @@ databaseChangeLog:
                   name: entity_creator_name
                   type: varchar(254)
                   remarks: Creator's common_name at scan time (resolved from creator_id). Sort key for created-by + served in details.creator; display prefers this over live hydration.
+              - column:
+                  name: duration_ms
+                  type: bigint
+                  remarks: Verdict magnitude for slow findings - avg query ms (card) / last-run ms (transform) / slowest-child ms (dashboard/document roll-up); null on all other finding types (per-type named magnitude column). bigint, not int - a pathological run duration can exceed 2^31-1 ms.
+              - column:
+                  name: content_count
+                  type: bigint
+                  remarks: Verdict magnitude for imbalanced (empty/sparse/crowded) findings - items (collection) / dashcards or tabs (dashboard) / cards (document) / rows (card, transform); 0 on every empty finding, null on all other finding types (per-type named magnitude column). bigint - house choice for magnitude columns.
+              - column:
+                  name: duplicate_count
+                  type: bigint
+                  remarks: Verdict magnitude for duplicated findings - the number of other same-type entities sharing the normalized name (cluster size minus 1); null on all other finding types (per-type named magnitude column).
+              - column:
+                  name: card_type
+                  type: varchar(32)
+                  remarks: report_card.type (question/model/metric) at scan time, card findings only; null on all other entity types. Denormalized filter key for the card sub-kind values of the entity-types param (mutable upstream - drift until the next scan, like entity_name).
+              - column:
+                  name: entity_collection_name
+                  type: ${text.type}
+                  remarks: Scan-time name of the scope_collection_id collection (root rows store the root label); sort/display value for the collection column.
+              - column:
+                  name: entity_kind
+                  type: varchar(32)
+                  remarks: Flat entity kind at scan time - card_type for cards, else entity_type; serves the entity-types filter and entity-type sort.
 
   - changeSet:
-      id: v64.zncpq7
+      id: v65.npdmkx
       author: yb
       comment: Content Diagnostics — unique finding per scan (dedup)
       changes:
@@ -93,21 +128,7 @@ databaseChangeLog:
             constraintName: idx_uniq_cd_finding
 
   - changeSet:
-      id: v64.k0fbrf
-      author: yb
-      comment: Content Diagnostics — index findings by scan + finding_type
-      changes:
-        - createIndex:
-            tableName: content_diagnostics_finding
-            indexName: idx_cd_finding_scan
-            columns:
-              - column:
-                  name: scan_id
-              - column:
-                  name: finding_type
-
-  - changeSet:
-      id: v64.dc6ryp
+      id: v65.26tmoa
       author: yb
       comment: Content Diagnostics — index findings by entity
       changes:
@@ -121,21 +142,19 @@ databaseChangeLog:
                   name: entity_id
 
   - changeSet:
-      id: v64.wvauho
+      id: v65.sl8bnu
       author: yb
-      comment: Content Diagnostics — index findings by finding_type + entity_name
+      comment: Content Diagnostics — index findings by detected_at
       changes:
         - createIndex:
             tableName: content_diagnostics_finding
-            indexName: idx_cd_finding_ftype_name
+            indexName: idx_cd_finding_detected
             columns:
               - column:
-                  name: finding_type
-              - column:
-                  name: entity_name
+                  name: detected_at
 
   - changeSet:
-      id: v64.4g0zeg
+      id: v65.tkjy23
       author: yb
       comment: Content Diagnostics — index findings by finding_type + entity_created_at
       changes:
@@ -149,7 +168,7 @@ databaseChangeLog:
                   name: entity_created_at
 
   - changeSet:
-      id: v64.w9kr30
+      id: v65.qxmpmd
       author: yb
       comment: Content Diagnostics — index findings by finding_type + last_active_at
       changes:
@@ -163,7 +182,7 @@ databaseChangeLog:
                   name: last_active_at
 
   - changeSet:
-      id: v64.s23vc8
+      id: v65.fql5u8
       author: yb
       comment: Content Diagnostics — index findings by finding_type + entity_creator_name
       changes:
@@ -175,3 +194,71 @@ databaseChangeLog:
                   name: finding_type
               - column:
                   name: entity_creator_name
+
+  - changeSet:
+      id: v65.nv29zr
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + duration_ms
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_duration
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: duration_ms
+
+  - changeSet:
+      id: v65.o416px
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + content_count
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_content_count
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: content_count
+
+  - changeSet:
+      id: v65.7s0awm
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + duplicate_count
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_duplicate_count
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: duplicate_count
+
+  - changeSet:
+      id: v65.5pab0l
+      author: yb
+      comment: Content Diagnostics — index for the entity-types filter and entity-type sort
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_entity_kind
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_kind
+
+  - changeSet:
+      id: v65.sp9nyx
+      author: yb
+      comment: Content Diagnostics — index findings by invalidated_at
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_invalidated
+            columns:
+              - column:
+                  name: invalidated_at
