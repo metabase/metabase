@@ -57,8 +57,8 @@ describe("useResolvedGoalSettings", () => {
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
-  describe("for a line chart", () => {
-    const card = createMockCard({ display: "line" });
+  describe.each(["line", "bar"] as const)("for a %s chart", (display) => {
+    const card = createMockCard({ display });
 
     it("leaves a hidden goal line alone", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };

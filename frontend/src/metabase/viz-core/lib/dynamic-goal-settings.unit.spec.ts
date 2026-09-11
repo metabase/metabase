@@ -7,6 +7,7 @@ import {
 
 describe("getDynamicGoalSettingKeys", () => {
   it("lists the goal settings a display resolves", () => {
+    expect(getDynamicGoalSettingKeys("bar")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("gauge")).toEqual(["gauge.segments"]);
     expect(getDynamicGoalSettingKeys("line")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("scalar")).toEqual(["scalar.segments"]);

@@ -5,10 +5,12 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { delay } from "__support__/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import type {
   DatasetData,
   RawSeries,
   ReferencedEntitiesResults,
+  VisualizationDisplay,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -18,6 +20,12 @@ import {
 } from "metabase-types/api/mocks";
 
 registerVisualizations();
+
+const DISPLAYS = ["line", "bar"] as const;
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents([...DISPLAYS]));
 
 const COLS = [
   createMockColumn({ name: "month", base_type: "type/Text" }),
@@ -46,13 +54,14 @@ const FAILED: ReferencedEntitiesResults = {
   card: { 9: { status: "failed", error: "boom" } },
 };
 
-function createLineSeries(
+function createSeries(
+  display: VisualizationDisplay,
   referenced_entities?: DatasetData["referenced_entities"],
 ): RawSeries {
   return [
     {
       card: createMockCard({
-        display: "line",
+        display,
         visualization_settings: {
           "graph.dimensions": ["month"],
           "graph.metrics": ["count"],
@@ -80,9 +89,9 @@ function getGoalLineLabel() {
   return screen.getByText(GOAL_LABEL);
 }
 
-describe("LineChart dynamic goal", () => {
+describe.each(DISPLAYS)("%s chart dynamic goal", (display) => {
   it("draws the goal line at the value answered by the dataset", async () => {
-    await setup(createLineSeries(ANSWERED));
+    await setup(createSeries(display, ANSWERED));
 
     expect(getGoalLineLabel()).toBeInTheDocument();
     // the goal is far above every data point, so it stretches the y-axis up to it
@@ -102,7 +111,7 @@ describe("LineChart dynamic goal", () => {
       },
     );
 
-    await setup(createLineSeries());
+    await setup(createSeries(display));
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
@@ -120,14 +129,14 @@ describe("LineChart dynamic goal", () => {
   it("shows the failed message when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
 
-    await setup(createLineSeries());
+    await setup(createSeries(display));
 
     expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
     expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
   });
 
   it("refuses to render when the dataset reports the reference as failed", async () => {
-    await setup(createLineSeries(FAILED));
+    await setup(createSeries(display, FAILED));
 
     expect(screen.getByText(GOAL_ERROR)).toBeInTheDocument();
     expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();

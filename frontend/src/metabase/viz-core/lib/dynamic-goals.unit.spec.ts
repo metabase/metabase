@@ -946,6 +946,8 @@ describe("hasUnresolvedGoalReferences", () => {
 
 describe("dynamic goal settings per display", () => {
   it("knows which settings a display resolves", () => {
+    expect(isDynamicGoalSetting("bar", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("bar", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("gauge", "gauge.segments")).toBe(true);
     expect(isDynamicGoalSetting("gauge", "graph.goal_value")).toBe(false);
     expect(isDynamicGoalSetting("line", "graph.goal_value")).toBe(true);
@@ -969,9 +971,9 @@ describe("dynamic goal settings per display", () => {
   });
 });
 
-describe("line chart goal value", () => {
-  const line: GoalCard = {
-    display: "line",
+describe.each(["line", "bar"] as const)("%s chart goal value", (display) => {
+  const card: GoalCard = {
+    display,
     visualization_settings: {
       "graph.show_goal": true,
       "graph.goal_value": { type: "card", id: 9, column: "goal" },
@@ -1000,7 +1002,7 @@ describe("line chart goal value", () => {
   });
 
   it("asks the query for the entity a foreign goal value references", () => {
-    expect(getReferencedEntities(line)).toEqual([
+    expect(getReferencedEntities(card)).toEqual([
       { type: "card", id: 9, columns: ["goal"] },
     ]);
   });
@@ -1008,30 +1010,30 @@ describe("line chart goal value", () => {
   it("asks for nothing when the goal value is static or a self column", () => {
     expect(
       getReferencedEntities({
-        ...line,
+        ...card,
         visualization_settings: { "graph.goal_value": 100 },
       }),
     ).toEqual([]);
     expect(
       getReferencedEntities({
-        ...line,
+        ...card,
         visualization_settings: { "graph.goal_value": "count" },
       }),
     ).toEqual([]);
   });
 
   it("has unanswered references until the data answers them", () => {
-    expect(hasUnansweredGoalReferences(line, undefined)).toBe(true);
-    expect(hasUnansweredGoalReferences(line, baseData)).toBe(true);
-    expect(hasUnansweredGoalReferences(line, answeredData)).toBe(false);
-    expect(hasUnansweredGoalReferences(line, failedData)).toBe(false);
+    expect(hasUnansweredGoalReferences(card, undefined)).toBe(true);
+    expect(hasUnansweredGoalReferences(card, baseData)).toBe(true);
+    expect(hasUnansweredGoalReferences(card, answeredData)).toBe(false);
+    expect(hasUnansweredGoalReferences(card, failedData)).toBe(false);
   });
 
   it("has unresolved references until the data answers them successfully", () => {
-    expect(hasUnresolvedGoalReferences(line, undefined)).toBe(true);
-    expect(hasUnresolvedGoalReferences(line, baseData)).toBe(true);
-    expect(hasUnresolvedGoalReferences(line, answeredData)).toBe(false);
-    expect(hasUnresolvedGoalReferences(line, failedData)).toBe(true);
+    expect(hasUnresolvedGoalReferences(card, undefined)).toBe(true);
+    expect(hasUnresolvedGoalReferences(card, baseData)).toBe(true);
+    expect(hasUnresolvedGoalReferences(card, answeredData)).toBe(false);
+    expect(hasUnresolvedGoalReferences(card, failedData)).toBe(true);
   });
 });
 
@@ -1051,26 +1053,26 @@ describe("needsGraphGoalResolution", () => {
     expect(needsGraphGoalResolution(undefined, shownGoal(ref))).toBe(false);
   });
 
-  describe("for a line chart", () => {
+  describe.each(["line", "bar"] as const)("for a %s chart", (display) => {
     it("is true for a shown reference", () => {
-      expect(needsGraphGoalResolution("line", shownGoal(ref))).toBe(true);
-      expect(needsGraphGoalResolution("line", shownGoal("count"))).toBe(true);
+      expect(needsGraphGoalResolution(display, shownGoal(ref))).toBe(true);
+      expect(needsGraphGoalResolution(display, shownGoal("count"))).toBe(true);
     });
 
     it("is false for unset and static goals", () => {
-      expect(needsGraphGoalResolution("line", shownGoal(null))).toBe(false);
-      expect(needsGraphGoalResolution("line", shownGoal(undefined))).toBe(
+      expect(needsGraphGoalResolution(display, shownGoal(null))).toBe(false);
+      expect(needsGraphGoalResolution(display, shownGoal(undefined))).toBe(
         false,
       );
-      expect(needsGraphGoalResolution("line", shownGoal(10))).toBe(false);
+      expect(needsGraphGoalResolution(display, shownGoal(10))).toBe(false);
     });
 
     it("is false when the goal line is hidden", () => {
       expect(
-        needsGraphGoalResolution("line", { "graph.goal_value": ref }),
+        needsGraphGoalResolution(display, { "graph.goal_value": ref }),
       ).toBe(false);
       expect(
-        needsGraphGoalResolution("line", {
+        needsGraphGoalResolution(display, {
           "graph.show_goal": false,
           "graph.goal_value": ref,
         }),

@@ -74,10 +74,10 @@ describe("validateGoalReferences", () => {
     });
   });
 
-  describe("for a line chart", () => {
+  describe.each(["line", "bar"] as const)("for a %s chart", (display) => {
     it("ignores a failed reference when the goal line is hidden", () => {
       expect(() =>
-        validateGoalReferences(createSeries(), {
+        validateGoalReferences(createSeries(FAILED_DATA, display), {
           ...REFERENCED_SETTINGS,
           "graph.show_goal": false,
         }),
@@ -91,13 +91,19 @@ describe("validateGoalReferences", () => {
       });
 
       expect(() =>
-        validateGoalReferences(createSeries(data), REFERENCED_SETTINGS),
+        validateGoalReferences(
+          createSeries(data, display),
+          REFERENCED_SETTINGS,
+        ),
       ).not.toThrow();
     });
 
     it("rejects a reference the data reports as failed", () => {
       expect(() =>
-        validateGoalReferences(createSeries(), REFERENCED_SETTINGS),
+        validateGoalReferences(
+          createSeries(FAILED_DATA, display),
+          REFERENCED_SETTINGS,
+        ),
       ).toThrow("Couldn't load the value this chart's goal depends on.");
     });
 
@@ -106,9 +112,10 @@ describe("validateGoalReferences", () => {
         ...FAILED_DATA,
         referenced_entities: undefined,
       });
-      const transformed = Object.assign(createSeries(transformedData), {
-        _raw: createSeries(),
-      });
+      const transformed = Object.assign(
+        createSeries(transformedData, display),
+        { _raw: createSeries(FAILED_DATA, display) },
+      );
 
       expect(() =>
         validateGoalReferences(transformed, REFERENCED_SETTINGS),
