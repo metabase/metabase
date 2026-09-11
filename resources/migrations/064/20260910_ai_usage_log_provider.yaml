@@ -1,0 +1,40 @@
+# Record which provider served each call, and the model as that provider names it
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-10T12:00:00
+      author: andreis
+      comment: Add provider to ai_usage_log
+      changes:
+        - addColumn:
+            tableName: ai_usage_log
+            columns:
+              - column:
+                  name: provider
+                  remarks: 'Provider type that served the call, e.g. openrouter. A managed-proxy call records the wire family it was served as, so it reads anthropic and is told apart by ai_proxied'
+                  type: varchar(100)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: ai_usage_log
+            columnName: provider
+
+  - changeSet:
+      id: v64.2026-09-10T12:00:01
+      author: andreis
+      comment: Add model_name to ai_usage_log
+      changes:
+        - addColumn:
+            tableName: ai_usage_log
+            columns:
+              - column:
+                  name: model_name
+                  remarks: 'Model as the provider names it, without the connection key, e.g. anthropic/claude-haiku-4.5'
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: ai_usage_log
+            columnName: model_name
