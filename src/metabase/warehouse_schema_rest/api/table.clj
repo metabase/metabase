@@ -22,6 +22,7 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
+   [metabase.types.core :as types]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -46,6 +47,12 @@
 (def ^:private FieldOrder
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
+
+(def ^:private EntityType
+  "Schema for a valid table entity type, as either a keyword or a string."
+  (mu/with-api-error-message
+   [:fn #(isa? types/entity-hierarchy (keyword %) :entity/*)]
+   (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (mr/def ::data-authority-write
   "Schema for writing a valid table data authority."
@@ -246,7 +253,7 @@
    _query-params
    body :- [:map {:closed true}
             [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-            [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
+            [:entity_type             {:optional true} [:maybe EntityType]]
             [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
             [:description             {:optional true} [:maybe :string]]
             [:caveats                 {:optional true} [:maybe :string]]
@@ -274,7 +281,7 @@
    {:keys [ids], :as body} :- [:map {:closed true}
                                [:ids                                      [:sequential ms/PositiveInt]]
                                [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-                               [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
+                               [:entity_type             {:optional true} [:maybe EntityType]]
                                [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
                                [:description             {:optional true} [:maybe :string]]
                                [:caveats                 {:optional true} [:maybe :string]]

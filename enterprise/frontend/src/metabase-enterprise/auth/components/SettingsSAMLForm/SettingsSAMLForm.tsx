@@ -29,23 +29,20 @@ import {
   useSetting,
 } from "metabase/settings";
 import {
-  AdminSettingInput,
   CollapsibleSettingsSection,
   SETTINGS_CARD_DESCRIPTION_PROPS,
   SETTINGS_CARD_STACK_PROPS,
   SETTINGS_CARD_TITLE_PROPS,
-  SettingHeader,
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export type SAMLFormSettings = Pick<
   EnterpriseSettings,
-  | "saml-user-provisioning-enabled?"
   | "saml-attribute-email"
   | "saml-attribute-firstname"
   | "saml-attribute-lastname"
@@ -88,6 +85,7 @@ export function SettingsSAMLForm() {
   );
 
   const siteUrl = useSetting("site-url");
+  const scimEnabled = useSetting("scim-enabled");
 
   if (isLoadingDetails || isLoadingValues) {
     return <LoadingAndErrorWrapper loading />;
@@ -105,6 +103,14 @@ export function SettingsSAMLForm() {
     settingValues["saml-keystore-path"] || settingValues["saml-keystore-alias"],
   );
 
+  // the backend keeps SAML provisioning off while SCIM owns provisioning
+  const scimNote = scimEnabled && (
+    <Markdown>
+      {t`You cannot enable SAML user provisioning while user provisioning is [managed by SCIM]` +
+        "(/admin/settings/authentication/user-provisioning)."}
+    </Markdown>
+  );
+
   return (
     <SettingsPageWrapper
       title={t`SAML`}
@@ -115,7 +121,6 @@ export function SettingsSAMLForm() {
         >{t`documentation`}</ExternalLink>
       )}.`}
     >
-      {isEnabled && <SamlUserProvisioning />}
       <FormProvider
         initialValues={getFormValues(settingValues ?? {})}
         onSubmit={handleSubmit}
@@ -227,6 +232,13 @@ export function SettingsSAMLForm() {
                 </Stack>
               </SettingsSection>
 
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <UserProvisioningSection
+                settingKey="saml-user-provisioning-enabled?"
+                providerName="SAML"
+                lockedNote={scimNote}
+              />
+
               <CollapsibleSettingsSection
                 title={t`Sign SSO requests (optional)`}
                 defaultOpened={hasKeystoreSettings}
@@ -311,7 +323,6 @@ const getFormValues = (
   allSettings: Partial<EnterpriseSettings>,
 ): SAMLFormSettings => {
   const samlSettings = _.pick(allSettings, [
-    "saml-user-provisioning-enabled?",
     "saml-attribute-email",
     "saml-attribute-firstname",
     "saml-attribute-lastname",
@@ -327,42 +338,6 @@ const getFormValues = (
     "saml-group-sync",
   ]);
 
-  if (samlSettings["saml-user-provisioning-enabled?"] == null) {
-    // cast empty to false
-    samlSettings["saml-user-provisioning-enabled?"] = false;
-  }
   // cast undefined to null
   return _.mapObject(samlSettings, (val) => val ?? null) as SAMLFormSettings;
 };
-
-function SamlUserProvisioning() {
-  const scimEnabled = useSetting("scim-enabled");
-
-  if (scimEnabled) {
-    return (
-      <SettingsSection>
-        <SettingHeader
-          id="saml-user-provisioning-enabled?"
-          title={t`User provisioning`}
-          description={
-            <Markdown>
-              {t`You cannot enable SAML user provisioning while user provisioning is [managed by SCIM]` +
-                "(/admin/settings/authentication/user-provisioning)."}
-            </Markdown>
-          }
-        />
-      </SettingsSection>
-    );
-  }
-
-  return (
-    <SettingsSection>
-      <AdminSettingInput
-        name="saml-user-provisioning-enabled?"
-        title={t`User provisioning`}
-        inputType="radio"
-        options={provisioningOptions("SAML")}
-      />
-    </SettingsSection>
-  );
-}

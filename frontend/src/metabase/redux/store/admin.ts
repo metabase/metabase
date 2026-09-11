@@ -22,7 +22,7 @@ export type AdminPathKey =
 
 export type AdminPath = {
   key: AdminPathKey;
-  name: string;
+  getName: () => string;
   path: string;
 };
 

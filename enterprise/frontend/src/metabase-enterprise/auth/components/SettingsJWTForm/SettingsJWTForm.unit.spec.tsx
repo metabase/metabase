@@ -15,6 +15,7 @@ import {
   within,
 } from "__support__/ui";
 import { settingsApi } from "metabase/settings";
+import { PROVISIONING_WRITE_DEBOUNCE_MS } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type { SettingDefinition } from "metabase-types/api";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
@@ -42,8 +43,12 @@ const setup = async ({
   groupMappings,
   groupSyncEnvConfigured,
   groupMappingsEnvConfigured,
+  userProvisioning,
+  userProvisioningEnvConfigured,
   saveStatus,
   saveDelayMs,
+  provisioningSaveStatus,
+  provisioningSaveDelayMs,
   cascadeStatus,
   cascadeDelayMs,
 }: {
@@ -57,14 +62,32 @@ const setup = async ({
   groupMappings?: Record<string, number[]>;
   groupSyncEnvConfigured?: boolean;
   groupMappingsEnvConfigured?: boolean;
+  userProvisioning?: boolean;
+  userProvisioningEnvConfigured?: boolean;
   saveStatus?: number;
   saveDelayMs?: number;
+  provisioningSaveStatus?: number;
+  provisioningSaveDelayMs?: number;
   cascadeStatus?: number;
   cascadeDelayMs?: number;
 } = {}) => {
   const settingDefinitions: SettingDefinition[] = [
     { key: "use-tenants", value: useTenants ?? false },
     { key: "jwt-enabled", value: jwtEnabled ?? false },
+    ...(userProvisioningEnvConfigured
+      ? ([
+          {
+            key: "jwt-user-provisioning-enabled?",
+            is_env_setting: true,
+            env_name: "MB_JWT_USER_PROVISIONING_ENABLED",
+          },
+        ] as const)
+      : ([
+          {
+            key: "jwt-user-provisioning-enabled?",
+            value: userProvisioning ?? true,
+          },
+        ] as const)),
     ...(groupSyncEnvConfigured
       ? ([
           {
@@ -109,6 +132,7 @@ const setup = async ({
   const sessionSettings = createMockSettings({
     "use-tenants": useTenants,
     "jwt-enabled": jwtEnabled,
+    "jwt-user-provisioning-enabled?": userProvisioning ?? true,
     "jwt-group-sync": groupSync ?? false,
     "jwt-group-mappings": groupMappings ?? {},
   });
@@ -154,6 +178,22 @@ const setup = async ({
       { name: "update-settings", delay: saveDelayMs },
     );
   }
+  if (provisioningSaveStatus != null || provisioningSaveDelayMs != null) {
+    // the single-key write behaves the same way for the provisioning switch
+    const status = provisioningSaveStatus ?? 204;
+    fetchMock.removeRoute("update-setting");
+    fetchMock.put(
+      new RegExp("/api/setting/(.+)"),
+      ({ url, options }) => {
+        if (status < 300) {
+          const key = decodeURIComponent(url.split("/api/setting/")[1]);
+          settingsStore[key] = JSON.parse(String(options.body)).value;
+        }
+        return { status };
+      },
+      { name: "update-setting", delay: provisioningSaveDelayMs },
+    );
+  }
   setupGenerateRandomTokenEndpoint(GENERATED_TOKEN);
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
@@ -166,7 +206,7 @@ const setup = async ({
     delay: cascadeDelayMs,
   });
 
-  const { store } = renderWithProviders(<SettingsJWTForm />, {
+  const { store, unmount } = renderWithProviders(<SettingsJWTForm />, {
     withUndos: true,
     storeInitialState: createMockState({
       settings: createMockSettingsState(sessionSettings),
@@ -174,7 +214,7 @@ const setup = async ({
   });
 
   await screen.findByText("Server settings");
-  return { store, settingsStore };
+  return { store, settingsStore, unmount };
 };
 
 const expandUserAttributeSection = async () => {
@@ -229,7 +269,11 @@ describe("SettingsJWTForm", () => {
     const attributeHeader = screen.getByRole("button", {
       name: /User attribute configuration/,
     });
+    const provisioningToggle = screen.getByRole("switch", {
+      name: "User provisioning",
+    });
     expect(attributeHeader).toBeDisabled();
+    expect(provisioningToggle).toBeDisabled();
 
     await fillServerSettings();
     await userEvent.click(
@@ -250,6 +294,7 @@ describe("SettingsJWTForm", () => {
       "jwt-group-mappings": {},
     });
     await waitFor(() => expect(attributeHeader).toBeEnabled());
+    expect(provisioningToggle).toBeEnabled();
     expect(screen.getByRole("radio", { name: "Automatic" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Automatic" })).toBeEnabled();
     expect(
@@ -379,26 +424,222 @@ describe("SettingsJWTForm", () => {
     expect(body).toHaveProperty("jwt-attribute-tenant", "Cat");
   });
 
-  it("User provisioning should not appear if JWT has not been enabled", async () => {
-    await setup({ jwtEnabled: false });
-
-    const saveButton = await screen.findByRole("button", {
-      name: "Save and enable",
+  describe("user provisioning", () => {
+    afterEach(() => {
+      jest.useRealTimers();
     });
-    expect(saveButton).toBeDisabled();
 
-    expect(screen.queryByText(/user provisioning/i)).not.toBeInTheDocument();
-  });
+    it("sits right below the server settings", async () => {
+      await setup();
 
-  it("User provisioning should appear if JWT has been enabled", async () => {
-    await setup({ jwtEnabled: true });
-
-    const saveButton = await screen.findByRole("button", {
-      name: "Save changes",
+      const cardTitles = screen
+        .getAllByRole("heading", { level: 2 })
+        .map((heading) => heading.textContent);
+      expect(cardTitles).toEqual([
+        "Server settings",
+        "User provisioning",
+        "User attribute configuration",
+        "Group mapping",
+      ]);
     });
-    expect(saveButton).toBeDisabled();
 
-    expect(screen.getByText(/user provisioning/i)).toBeInTheDocument();
+    it("stays editable while JWT is paused but configured", async () => {
+      await setup({ jwtEnabled: false, configured: true });
+
+      expect(
+        screen.getByRole("switch", { name: "User provisioning" }),
+      ).toBeEnabled();
+    });
+
+    it("saves right away without touching the page form", async () => {
+      await setup({ jwtEnabled: true, configured: true });
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toBeChecked();
+
+      // the title is the switch's label, so clicking it toggles too
+      await userEvent.click(
+        screen.getByText("User provisioning", { selector: "label" }),
+      );
+
+      expect(toggle).not.toBeChecked();
+      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      expect(puts[0].url).toMatch(
+        /\/api\/setting\/jwt-user-provisioning-enabled%3F$/,
+      );
+      expect(puts[0].body).toEqual({ value: false });
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toBeDisabled();
+    });
+
+    it("reverts the switch and reports the error when the save fails", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        provisioningSaveStatus: 500,
+        provisioningSaveDelayMs: 100,
+      });
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+
+      await userEvent.click(toggle);
+
+      // the switch flips right away and only comes back once the write fails
+      expect(toggle).not.toBeChecked();
+      expect(await screen.findByText(/error saving/i)).toBeInTheDocument();
+      expect(toggle).toBeChecked();
+      expect(toggle).toBeEnabled();
+    });
+
+    it("keeps Enter on the switch from submitting the page form", async () => {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await setup({ jwtEnabled: true, configured: true });
+      await user.type(
+        screen.getByRole("textbox", { name: /JWT Identity Provider URI/ }),
+        "-edited",
+      );
+      const submitButton = screen.getByRole("button", { name: "Save changes" });
+      expect(submitButton).toBeEnabled();
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+
+      toggle.focus();
+      await user.keyboard("{Enter}");
+
+      // give a submission time to reach the network before ruling it out
+      await act(() => jest.advanceTimersByTimeAsync(1000));
+      expect(await findRequests("PUT")).toHaveLength(0);
+      expect(toggle).toBeChecked();
+      expect(submitButton).toBeEnabled();
+    });
+
+    it("sends one write for a burst of clicks", async () => {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await setup({ jwtEnabled: true, configured: true });
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+
+      await user.click(toggle);
+      await user.click(toggle);
+      await user.click(toggle);
+
+      expect(toggle).not.toBeChecked();
+      await act(() =>
+        jest.advanceTimersByTimeAsync(PROVISIONING_WRITE_DEBOUNCE_MS),
+      );
+      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      expect(puts[0].body).toEqual({ value: false });
+    });
+
+    it("writes a pending toggle when the page is left before the debounce fires", async () => {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const { unmount } = await setup({ jwtEnabled: true, configured: true });
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+
+      await user.click(toggle);
+      unmount();
+
+      await waitFor(async () => {
+        expect(await findRequests("PUT")).toHaveLength(1);
+      });
+      const puts = await findRequests("PUT");
+      expect(puts[0].body).toEqual({ value: false });
+    });
+
+    it("keeps the switch focused and enabled while the write is in flight", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        provisioningSaveDelayMs: 100,
+      });
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+
+      toggle.focus();
+      await userEvent.keyboard(" ");
+
+      expect(toggle).not.toBeChecked();
+      expect(toggle).toBeEnabled();
+      expect(toggle).toHaveFocus();
+      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+      expect(toggle).toHaveFocus();
+    });
+
+    it("keeps the written value while an older properties refetch lands", async () => {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const { store, settingsStore } = await setup({
+        jwtEnabled: true,
+        configured: true,
+      });
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      const loadRequests = fetchMock.callHistory.calls(
+        "get-session-properties",
+      ).length;
+      // a refetch that started before the click answers after the write has gone out
+      const staleSnapshot = { ...settingsStore };
+      fetchMock.removeRoute("get-session-properties");
+      fetchMock.get("path:/api/session/properties", staleSnapshot, {
+        name: "stale-session-properties",
+        delay: PROVISIONING_WRITE_DEBOUNCE_MS + 100,
+        repeat: 1,
+      });
+      fetchMock.get(
+        "path:/api/session/properties",
+        () => ({ ...settingsStore }),
+        { name: "get-session-properties", delay: 200 },
+      );
+      act(() => {
+        store.dispatch(settingsApi.util.invalidateTags(["session-properties"]));
+      });
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("stale-session-properties"),
+        ).toHaveLength(1),
+      );
+      // a click in the same millisecond would look like it came after the refetch
+      act(() => {
+        jest.advanceTimersByTime(5);
+      });
+
+      await user.click(toggle);
+
+      expect(toggle).not.toBeChecked();
+      // the write goes out, then the stale answer lands while the write's own refetch is still pending
+      await act(() =>
+        jest.advanceTimersByTimeAsync(PROVISIONING_WRITE_DEBOUNCE_MS + 100),
+      );
+      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+      expect(toggle).not.toBeChecked();
+      // the refetch after the write is the only one left to land
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("get-session-properties"),
+        ).toHaveLength(loadRequests + 1),
+      );
+      await act(() => jest.advanceTimersByTimeAsync(200));
+      expect(toggle).not.toBeChecked();
+    });
+
+    it("locks the switch to the value set through an env var", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        userProvisioning: true,
+        userProvisioningEnvConfigured: true,
+      });
+
+      // the effective value comes from the session properties, the admin list nils it
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toBeDisabled();
+      expect(toggle).toBeChecked();
+      expect(toggle).toHaveAccessibleDescription(
+        /Using MB_JWT_USER_PROVISIONING_ENABLED/,
+      );
+    });
   });
 
   describe("group mapping", () => {

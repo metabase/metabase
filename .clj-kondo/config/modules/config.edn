@@ -3024,6 +3024,7 @@
            query-processor
            segments
            settings
+           types
            util
            warehouse-schema}
    :model-imports #{:model/Card

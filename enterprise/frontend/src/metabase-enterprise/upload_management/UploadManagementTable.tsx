@@ -29,13 +29,10 @@ import type { Table } from "metabase-types/api";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { getDateDisplay } from "./utils";
 
-const columns = [
+const getColumns = () => [
   { key: "checkbox", name: "", sortable: false },
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   { key: "name", name: t`Table name` },
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   { key: "created_at", name: t`Created at` },
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   { key: "schema", name: t`Schema` },
   { key: "actions", name: "", sortable: false },
 ];
@@ -158,7 +155,7 @@ export function UploadManagementTable() {
       </Text>
       <ClientSortableTable
         data-testid="upload-tables-table"
-        columns={columns}
+        columns={getColumns()}
         rows={uploadTables}
         rowRenderer={(row) => renderRow(row)}
       />

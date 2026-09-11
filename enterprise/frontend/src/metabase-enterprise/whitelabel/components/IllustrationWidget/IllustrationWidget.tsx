@@ -56,24 +56,18 @@ const getIllustrationType = (
   }
 };
 
-const SELECT_OPTIONS: Record<IllustrationType, SelectOption[]> = {
+const getSelectOptions = (): Record<IllustrationType, SelectOption[]> => ({
   background: [
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Lighthouse`, value: "default" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`No illustration`, value: "none" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Custom`, value: "custom" },
   ],
   icon: [
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Sailboat`, value: "default" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`No illustration`, value: "none" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Custom`, value: "custom" },
   ],
-} as const;
+});
 
 export function IllustrationWidget({
   name,
@@ -90,7 +84,7 @@ export function IllustrationWidget({
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const type = getIllustrationType(name);
-  const options = SELECT_OPTIONS[type];
+  const options = getSelectOptions()[type];
   const customIllustrationSettingName =
     // Unjustified type cast. FIXME
     `${name}-custom` as EnterpriseSettingKey;

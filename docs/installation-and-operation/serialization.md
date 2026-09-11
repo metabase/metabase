@@ -307,7 +307,7 @@ Type: Boolean.
 
 Default: Data model is included.
 
-Excludes [table metadata](../data-studio/managing-tables.md) settings, which admins define in **Data Studio > Data structure**. Excluding the data model is useful for subsequent exports where you only want content changes.
+Excludes [table metadata](../data-modeling/metadata/managing-tables.md) settings, which admins define in **Data Studio > Data structure**. Excluding the data model is useful for subsequent exports where you only want content changes.
 
 ### Include field values
 
@@ -335,7 +335,7 @@ Sets the name of the directory that holds the exported YAML files.
 
 > Just like the CLI serialization commands, these endpoints are only available for [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
-You can import and export serialized Metabase data via Metabase's API, which makes serialization possible for [Metabase Cloud](https://www.metabase.com/cloud/) deployments.
+You can import and export serialized Metabase data via Metabase's API, which makes serialization possible for [Metabase Cloud](https://www.metabase.com/cloud) deployments.
 
 There are two endpoints:
 
