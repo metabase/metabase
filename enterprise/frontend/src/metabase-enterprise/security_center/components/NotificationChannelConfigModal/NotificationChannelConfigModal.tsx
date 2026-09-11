@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useSendTestNotificationMutation } from "metabase/api/security-center";
 import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useSetting } from "metabase/settings";
 import { Button, Flex, Group, Icon, Modal, Stack } from "metabase/ui";
 
+import { useSendTestNotificationMutation } from "../../api";
 import {
   serializeNotificationConfig,
   useNotificationConfig,
