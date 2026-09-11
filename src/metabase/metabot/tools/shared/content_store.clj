@@ -156,8 +156,10 @@
   refuses them without a trail. Measure / segment refs are not checked here; the stores gate
   those with the caller's audit polarity.
 
-  Nil when they may not. Normalizing is the first thing the check does, so the result comes back
-  rather than leaving the export to repeat it."
+  Nil when they may not, and `::unchecked` when the check could not be made at all - a query that
+  will not normalize, permissions that will not calculate. That is not a denial, so the caller
+  still renders the query, just without resolving anything in it. Normalizing is the first thing
+  the check does, so the result comes back rather than leaving the export to repeat it."
   [audited? resolved]
   (try
     (let [normalized                 (lib-be/normalize-query resolved)
@@ -165,7 +167,8 @@
           {:keys [table card field]} (exported-entity-ids normalized)]
       (when (and (pos-int? database-id)
                  (every? #(readable? audited? :model/Card %) card)
-                 ;; throw on a calculation failure so only a denial reads as false
+                 ;; throw on a calculation failure, so it lands in the catch below as a check we
+                 ;; could not make rather than reading as a denial
                  (query-perms/can-run-query? normalized false true))
         (let [field-table (metabot.perms/field-id->table-id field)
               table-ids   (into (set table) (vals field-table))]
@@ -173,8 +176,9 @@
                      (sandbox-visible-fields? field-table))
             normalized))))
     (catch Exception e
-      (log/debugf "Omitting a query that could not be permission-checked: %s" (ex-message e))
-      nil)))
+      (log/debugf "Rendering a query unresolved, since it could not be permission-checked: %s"
+                  (ex-message e))
+      ::unchecked)))
 
 (defn- cached-pass
   "Memoize an allowed gate result on the agent's memory for the rest of the turn: the check
@@ -197,16 +201,24 @@
   since it only ever pprints. With `audited?` the saved-question refusals are audited; for
   client-supplied queries, where the ids are the caller's own. Run permission is the whole rule:
   reading the database is not enough, and a saved question the user can read authorizes a query
-  over a database they cannot. A database that no longer exists passes, since there is no
-  metadata behind it to leak; one we can't resolve does not."
+  over a database they cannot.
+
+  A nil `mp` comes back wherever there is no check to fail rather than a check that failed: a
+  database that no longer exists, one we cannot resolve, a query that will not normalize. Those
+  still reach the model, since rendering them resolves no ids to names, and only a refusal is
+  worth hiding a query over."
   [query audited?]
   (if-not (and (map? query) (:database query))
     [query nil]
     (cached-pass
      [query audited?]
      (fn []
-       (when-let [resolved (resolve-effective-database query)]
+       (if-let [resolved (resolve-effective-database query)]
          (if (metabot.db/database-exists? (:database resolved))
-           (when-let [normalized (runnable-normalized-query audited? resolved)]
-             [normalized (lib-be/application-database-metadata-provider (:database normalized))])
-           [resolved nil]))))))
+           (let [normalized (runnable-normalized-query audited? resolved)]
+             (cond
+               (= ::unchecked normalized) [resolved nil]
+               (some? normalized)         [normalized (lib-be/application-database-metadata-provider
+                                                       (:database normalized))]))
+           [resolved nil])
+         [query nil])))))

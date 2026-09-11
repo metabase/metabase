@@ -254,7 +254,7 @@
   reason the query's card ids get the audited store: the id is the caller's own."
   [query]
   (when-let [[gated mp] (shared.content-store/query-for-export query true)]
-    (llm-shape/export-query-for-llm gated mp shared.content-store/audited-store)))
+    (llm-shape/export-gated-query-for-llm gated mp shared.content-store/audited-store)))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
