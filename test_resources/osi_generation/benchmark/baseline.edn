@@ -53,6 +53,11 @@
    :examples     ["ticket volume per week" "open tickets by subject"]
    :instructions "status in open/pending/solved; opened_at is the intake time."}
 
+  :payment-attempts
+  {:synonyms     ["charge attempts" "card charges" "payment failures" "dunning history"]
+   :examples     ["failed charges by response code" "retries per invoice"]
+   :instructions "One row per processor attempt; response_code is the processor's verdict and retry_number counts from zero on the first try."}
+
   :net-revenue-retention
   {:synonyms     ["nrr" "net dollar retention" "expansion revenue"]
    :examples     ["nrr by month" "is expansion outpacing churn"]
@@ -76,4 +81,34 @@
   :big-invoices
   {:synonyms     ["large invoices" "high value bills"]
    :examples     ["count of big invoices per month"]
-   :instructions "Invoices with amount over $500 (50000 cents)."}}}
+   :instructions "Invoices with amount over $500 (50000 cents)."}
+
+  :recovered-revenue
+  {:synonyms     ["dunning recovery" "recovered payments" "revenue won back"]
+   :examples     ["recovered amount by month"]
+   :instructions "Sums attempts that succeeded after an earlier failure on the same invoice; amounts in cents."}
+
+  :tax-collected
+  {:synonyms     ["sales tax" "tax charged"]
+   :examples     ["tax charged per quarter"]
+   :instructions "Sums invoice tax_cents. Tax is not revenue — leave it out of billed and recognised revenue figures."}
+
+  :net-change
+  {:synonyms     ["net mrr movement" "recurring revenue change" "mrr up or down"]
+   :examples     ["net mrr movement by month"]
+   :instructions "Signed sum of the monthly movements; positive when expansion outweighs contraction and churn."}
+
+  :dunning-queue
+  {:synonyms     ["failed payments awaiting retry" "dunning backlog"]
+   :examples     ["invoices in dunning this week"]
+   :instructions "Attempts that failed with retries left; a row leaves once a retry succeeds or the window closes."}
+
+  :campaign-offers
+  {:synonyms     ["promo campaigns" "campaign discounts" "marketing offers"]
+   :examples     ["redemptions per campaign"]
+   :instructions "Coupons pushed through a marketing campaign, discounting more than 25%."}
+
+  :escalated
+  {:synonyms     ["reopened tickets" "repeat contacts"]
+   :examples     ["reopened tickets by month"]
+   :instructions "Tickets reopened more than once after being closed."}}}
