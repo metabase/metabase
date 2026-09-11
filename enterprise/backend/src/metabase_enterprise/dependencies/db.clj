@@ -278,7 +278,8 @@
                            nil))]
     {:table-name (case entity-type
                    :card :report_card
-                   :table :metabase_table
+                   ;; the list shows the Table's display_name, a user value, so read the merged source
+                   :table (first (warehouse-schema-overlay/table-query))
                    :transform :transform
                    :snippet :native_query_snippet
                    :dashboard :report_dashboard
@@ -428,7 +429,8 @@
     (:collection joins) (conj :collection [:= :entity.collection_id :collection.id])
     (:dashboard joins) (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
     (:document joins) (conj :document [:= :entity.document_id :document.id])
-    (:table joins) (conj [:metabase_table :table] [:= :entity.table_id :table.id])))
+    ;; joined for its display_name, a user value
+    (:table joins) (conj (warehouse-schema-overlay/table-query {:alias :table}) [:= :entity.table_id :table.id])))
 
 (defn- dependency-item-select
   "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together, matching
@@ -550,19 +552,30 @@
    ids         :- [:set ::deps.dependency-types/entity-id]]
   (t2/select (deps.dependency-types/dependency-type->model entity-type) :id [:in ids]))
 
+(defn- entity-source
+  "What a read of `entity-type` selects from. A Table's `display_name` and `description` are user values kept in a
+  side-car, so its own row shows what sync wrote rather than what anyone reading this would expect. The model here is
+  resolved at runtime, so the `table-or-field-query` linter cannot see the read."
+  [entity-type]
+  (if (= entity-type :table)
+    {:from [(warehouse-schema-overlay/table-query)]}
+    {}))
+
 (mu/defn instances-with-columns
   "The `columns` of the instances of the entity type `entity-type` with `ids`."
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
-  (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns) :id [:in ids]))
+  (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
+             :id [:in ids] (entity-source entity-type)))
 
 (mu/defn instance-with-columns
   "The `columns` of the instance of the entity type `entity-type` with `id`, or nil."
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    id          :- ::deps.dependency-types/entity-id]
-  (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns) :id id))
+  (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
+                 :id id (entity-source entity-type)))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -593,14 +606,14 @@
 (mu/defn table-database-ids
   "The `:id` and `:db_id` of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-id-by-name
   "The ID of the Table named `table-name` in `schema` of the Database with `db-id`, or nil."
   [db-id      :- ::lib.schema.id/database
    schema     :- [:maybe :string]
    table-name :- :string]
-  (t2/select-one-fn :id :model/Table :db_id db-id :schema schema :name table-name {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one-fn :id :model/Table :db_id db-id :schema schema :name table-name {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn transform-sources
   "The `:id` and `:source` of the Transforms with `transform-ids`."

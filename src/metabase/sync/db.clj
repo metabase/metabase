@@ -324,7 +324,7 @@
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-fields-metadata-for-table
   "The sync metadata columns of the active Fields of the Table with `table-id`, in field order, as sync wrote them.
@@ -420,7 +420,7 @@
 (mu/defn indexed-field-ids-for-table
   "The IDs of the Fields of the Table with `table-id` marked as indexed."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :database_indexed true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-pks-set :model/Field :table_id table-id :database_indexed true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn indexed-top-level-field-ids-for-database
   "The IDs of the top-level Fields of the Database with `database-id` marked as indexed."

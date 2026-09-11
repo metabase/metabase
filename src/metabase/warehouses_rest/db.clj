@@ -217,7 +217,7 @@
 (mu/defn table-ids-for-database
   "The ids of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-set :id :model/Table, :db_id database-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-fn-set :id :model/Table, :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn non-sensitive-fields-for-tables
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."

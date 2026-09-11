@@ -30,6 +30,26 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(defn- with-set-flags
+  "Record a `_set` flag for every user-settable column `effective` writes, unless the writer set that flag itself --
+  which is how [[unset-user-settings!]] takes a value back. The flag is what makes a user's NULL beat the synced
+  value, so a write that left it alone would store a value no reader would show."
+  [settings effective]
+  (reduce-kv (fn [m column flag]
+               (cond-> m
+                 (and (contains? effective column) (not (contains? effective flag)))
+                 (assoc flag true)))
+             settings
+             warehouse-schema-overlay/field-user-settings-flags))
+
+(t2/define-before-insert :model/FieldUserSettings
+  [settings]
+  (with-set-flags settings settings))
+
+(t2/define-before-update :model/FieldUserSettings
+  [settings]
+  (with-set-flags settings (t2/changes settings)))
+
 (methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
 (mu/defn upsert-user-settings
@@ -37,12 +57,13 @@
   [[warehouse-schema-overlay/field-user-settings-flags]] among them as set."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/field]]
    settings     :- ::warehouse-schema.schema/field.update]
-  (let [settings (u/select-keys-when settings :present field/field-user-settings)
-        flags    (into {} (keep (fn [[k flag]] (when (contains? settings k) [flag true]))) warehouse-schema-overlay/field-user-settings-flags)]
+  (let [settings (u/select-keys-when settings :present field/field-user-settings)]
     (when (seq settings)
       (when-not (warehouse-schema.db/field-user-settings-exist? id)
         (warehouse-schema.db/insert-field-user-settings! {:field_id id}))
-      (warehouse-schema.db/update-field-user-settings! id (merge settings flags)))))
+      ;; the flags are stated here rather than left to the model hook: setting a column to the NULL it already holds
+      ;; is not a change the hook can see, and recording that the user chose it is the whole point of the flag
+      (warehouse-schema.db/update-field-user-settings! id (with-set-flags settings settings)))))
 
 (mu/defn unset-user-settings!
   "Drop the user values of the Field columns `ks` for `field`, so its sync values show again. Used when sync
@@ -56,6 +77,11 @@
                         (cond-> [[k nil]]
                           (warehouse-schema-overlay/field-user-settings-flags k) (conj [(warehouse-schema-overlay/field-user-settings-flags k) false]))))
            ks))))
+
+(defmethod serdes/extract-query "FieldUserSettings" [_model-name {:keys [filter-column filter-ids]}]
+  ;; only rows that record something: one whose values are all NULL and whose flags are all false says nothing about
+  ;; the Field, and would serialize as an empty file
+  (warehouse-schema.db/field-user-settings-recording-something filter-column filter-ids))
 
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
 

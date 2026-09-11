@@ -11,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -39,7 +40,11 @@
       (mt/with-temp [:model/User       {user-id :id}       {}
                      :model/Collection {collection-id :id} {:type "library-data"}]
         (try
-          (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id})
+          ;; publish the way the API does -- into the user settings, not onto the Table itself, so these cases
+          ;; exercise the merged read every permission check has to do
+          (schema.table-user-settings/upsert-user-settings (t2/select-one :model/Table (mt/id :venues))
+                                                           {:is_published  true
+                                                            :collection_id collection-id})
           (let [all-users (perms/all-users-group)]
             (perms/set-database-permission! all-users (mt/id) :perms/view-data      db-view-data)
             (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
@@ -50,7 +55,8 @@
             (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no))
           (f user-id collection-id)
           (finally
-            (t2/update! :model/Table (mt/id :venues) {:is_published false :collection_id nil})))))))
+            (schema.table-user-settings/unset-user-settings! (t2/select-one :model/Table (mt/id :venues))
+                                                             [:is_published :collection_id])))))))
 
 (deftest published-table-test
   (testing "Published tables grant query access via collection permissions only with library enabled\n"

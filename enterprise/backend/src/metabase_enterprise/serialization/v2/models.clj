@@ -9,13 +9,15 @@
    "Measure"
    "Segment"
    "Table"
+   "TableUserSettings"
    "Channel"])
 
 (def data-model-in-collection
   "Data model types that can be found in collections (via published tables).
    These are extracted by ID when discovered via descendants, even if no-data-model is set.
-   Includes both Field (full serdes) and FieldUserSettings (user-edits-only / git sync)."
+   Includes both Field/Table (full serdes) and their user settings (user-edits-only / git sync)."
   ["Table"
+   "TableUserSettings"
    "Field"
    "FieldUserSettings"
    "Segment"])

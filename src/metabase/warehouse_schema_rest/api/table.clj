@@ -33,6 +33,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -139,7 +140,10 @@
   (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
-    (-> (api-perm-check-fn :model/Table id)
+    ;; read the Table as users see it, then permission-check that instance: `api/read-check` on a model and id would
+    ;; fetch `metabase_table` itself, which holds sync's values
+    (-> (api/check-404 (warehouse-schema-rest.db/table id))
+        api-perm-check-fn
         (t2/hydrate :db :pk_field :collection)
         schema.table/present-table)))
 
@@ -180,6 +184,7 @@
   if field positions have changed."
   [{:keys [id] :as existing-table} :- [:map [:id ::lib.schema.id/table]]
    body]
+  ;; record the user's values -- metabase_table itself is sync-owned and left alone
   (when-let [changes (-> body
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
@@ -188,7 +193,7 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (warehouse-schema-rest.db/update-table! id changes))
+    (schema.table-user-settings/upsert-user-settings existing-table changes))
   (let [updated-table        (warehouse-schema-rest.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
@@ -435,7 +440,7 @@
             [:sequential ms/PositiveInt]
             [:map {:closed true} [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
-    (-> (warehouse-schema-rest.db/table id) api/write-check (table/custom-order-fields! field-order)))
+    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order)))
   {:success true})
 
 (mu/defn- update-csv!

@@ -216,14 +216,14 @@
                          [:table.name :table-name]
                          [:table.db_id :field-db-id]]
              :from      [[:metabase_field :field]]
-             :left-join [(warehouse-schema-overlay/table-query {:alias :table})
+             :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
 (mu/defn field-table-ids
   "The set of Table IDs of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-fn-set :table_id :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."

@@ -8,6 +8,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private Conditions
@@ -134,11 +135,18 @@
   (t2/select-one model :id id))
 
 (mu/defn instance-with-columns
-  "The `columns` of the instance of `model` with `id`, or nil."
+  "The `columns` of the instance of `model` with `id`, or nil.
+
+  A Table is read through the user-settings overlay: remote sync tracks a Table's `collection_id`, which is a user
+  value, and the model here is a runtime argument the `table-or-field-query` linter cannot see."
   [model   :- :keyword
    columns :- [:sequential :keyword]
    id      :- ms/PositiveInt]
-  (t2/select-one (into [model] columns) :id id))
+  (t2/select-one (into [model] columns)
+                 :id id
+                 (if (= model :model/Table)
+                   {:from [(warehouse-schema-overlay/table-query)]}
+                   {})))
 
 (mu/defn instance-names
   "The `:id` and `:name` of the instances of `model` with `ids`."
@@ -268,6 +276,16 @@
   "The `:id`, `:type`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :card_schema] :id [:in card-ids]))
+
+(mu/defn table-user-settings-recorded?
+  "Whether the Table with `table-id` has TableUserSettings recording something -- the same thing git sync exports; a
+  row whose values are all NULL and whose flags are all false is not a user edit."
+  [table-id :- ::lib.schema.id/table]
+  (t2/exists? :model/TableUserSettings
+              {:from  [[(t2/table-name :model/TableUserSettings) :u]]
+               :where [:and
+                       [:= :u.table_id table-id]
+                       (warehouse-schema-overlay/table-user-settings-recorded-clause :u)]}))
 
 (mu/defn field-user-settings-exist?
   "Whether the Field with `field-id` has FieldUserSettings."

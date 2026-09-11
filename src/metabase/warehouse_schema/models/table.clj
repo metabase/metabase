@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.table
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
@@ -13,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [methodical.core :as methodical]
@@ -38,7 +40,7 @@
   :hidden    - low quality, hidden, not synced"
   #{:final :internal :hidden})
 
-(defn- visibility-type->data-layer
+(defn visibility-type->data-layer
   "Convert legacy visibility_type to data_layer.
   Used when updating via the legacy field."
   [visibility-type]
@@ -46,7 +48,7 @@
     :hidden
     :internal))
 
-(defn- data-layer->visibility-type
+(defn data-layer->visibility-type
   "Convert data_layer back to legacy visibility_type.
   Used for rollback compatibility to v56."
   [data-layer]
@@ -95,23 +97,27 @@
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
 
-(def ^:private transform-data-authority
+(def transform-data-authority
+  "Transform for a `data_authority` column. NULL passes through: the column is NOT NULL on `metabase_table`, but
+  nullable in `metabase_table_user_settings`, where NULL means the user set nothing."
   {:out (fn [value]
-          (let [kw (some-> value keyword)]
-            (if (contains? writable-data-authority-types kw)
-              kw
-              (do (log/warnf "Unknown data_authority value from database: %s, converting to :unknown" value)
-                  :unknown))))
+          (when (some? value)
+            (let [kw (keyword value)]
+              (if (contains? writable-data-authority-types kw)
+                kw
+                (do (log/warnf "Unknown data_authority value from database: %s, converting to :unknown" value)
+                    :unknown)))))
    :in  (fn [value]
-          (let [kw (some-> value keyword)]
-            (when-not (contains? writable-data-authority-types kw)
-              (throw (ex-info (str "Illegal value for data_authority: " kw)
-                              {:field       :data_authority
-                               :value       value
-                               :status-code 400}))))
-          (some-> value name))})
+          (when (some? value)
+            (let [kw (keyword value)]
+              (when-not (contains? writable-data-authority-types kw)
+                (throw (ex-info (str "Illegal value for data_authority: " kw)
+                                {:field       :data_authority
+                                 :value       value
+                                 :status-code 400})))
+              (name kw))))})
 
-(def ^:private legacy-data-layer->current
+(def legacy-data-layer->current
   "Map old medallion data_layer values to current values.
    Used to handle values from pre-v59 databases or serialization exports."
   {:copper :hidden
@@ -119,28 +125,83 @@
    :silver :final
    :gold   :final})
 
-(t2/deftransforms :model/Table
-  {:entity_type     mi/transform-keyword
-   :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum data-layers)
-                     (some-fn legacy-data-layer->current identity))
-   :field_order     mi/transform-keyword
-   :data_source     (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum data-sources)
-                     (some-fn keyword identity))
-   ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority  transform-data-authority})
+(def ^:private transform-table-boolean
+  "Boolean column transform; a boolean computed in SQL (the merge in `table-query`) comes back as a number from MySQL
+  and MariaDB, which have no boolean type of their own."
+  {:in  identity
+   :out (fn [v] (if (number? v) (pos? v) v))})
 
-(methodical/defmethod t2/model-for-automagic-hydration [:default :table]
-  [_original-model _k]
-  :model/Table)
+(t2/deftransforms :model/Table
+  {:entity_type             mi/transform-keyword
+   :is_published            transform-table-boolean
+   :show_in_getting_started transform-table-boolean
+   :visibility_type         mi/transform-keyword
+   :data_layer              (mi/transform-validator-with-fixes
+                             mi/transform-keyword
+                             (partial mi/assert-optional-enum data-layers)
+                             (some-fn legacy-data-layer->current identity))
+   :field_order             mi/transform-keyword
+   :data_source             (mi/transform-validator-with-fixes
+                             mi/transform-keyword
+                             (partial mi/assert-optional-enum data-sources)
+                             (some-fn keyword identity))
+   ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
+   :data_authority          transform-data-authority})
+
+(mi/define-batched-hydration-method with-table
+  :table
+  "Hydrate the Table of each of `instances` from its `table_id`.
+
+  Batched rather than automagic because automagic hydration selects the model's own row, which shows what sync wrote:
+  `mi/can-read?`/`can-query?` read `is_published` and `collection_id` off the hydrated Table to decide access through
+  a published collection, and those are user values."
+  [instances]
+  (let [table-ids (into #{} (keep :table_id) instances)
+        id->table (when (seq table-ids)
+                    (m/index-by :id (warehouse-schema.db/tables table-ids)))]
+    (for [instance instances]
+      (m/assoc-some instance :table (get id->table (:table_id instance))))))
 
 (t2/define-after-select :model/Table
   [table]
   (dissoc table :is_defective_duplicate :unique_table_helper))
+
+(defn validate-user-changes!
+  "Throw a 400 for a Table change a user is not allowed to make, given the Table as it stands. Both the model's own
+  update path and the user-settings write path run this: a user's values no longer pass through `t2/update!` on the
+  Table, so the model hook alone would stop seeing them."
+  [changes original-table]
+  ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
+  ;; Tables can be moved out of any collection, however.
+  (when (:collection_id changes)
+    (collection/check-allowed-content :table (:collection_id changes)))
+  ;; Prevent setting data_authority back to unconfigured once configured
+  (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
+             (= (keyword (:data_authority changes)) :unconfigured))
+    (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
+                    {:status-code 400})))
+  ;; Prevent changing data_source to/from metabase-transform.
+  ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
+  ;; can be migrated to a transform-managed table via serdes.
+  (when (contains? changes :data_source)
+    (let [original-data-source (some-> (:data_source original-table) keyword)
+          new-data-source      (some-> (:data_source changes) keyword)]
+      (when (and (= original-data-source :metabase-transform)
+                 (not= new-data-source :metabase-transform))
+        (throw (ex-info "Cannot change data_source from metabase-transform"
+                        {:status-code 400})))
+      (when (and (not mi/*deserializing?*)
+                 (not= original-data-source :metabase-transform)
+                 (= new-data-source :metabase-transform))
+        (throw (ex-info "Cannot set data_source to metabase-transform"
+                        {:status-code 400})))))
+  ;; visibility_type and data_layer are one choice spelled two ways, so a caller may send only one of them
+  (when (and (contains? changes :visibility_type)
+             (contains? changes :data_layer)
+             (not= (keyword (:visibility_type changes)) (keyword (:visibility_type original-table)))
+             (not= (keyword (:data_layer changes)) (keyword (:data_layer original-table))))
+    (throw (ex-info "Cannot update both visibility_type and data_layer"
+                    {:status-code 400}))))
 
 (defn- sync-visibility-fields
   "Sync visibility_type and data_layer fields, ensuring only one is updated at a time.
@@ -194,30 +255,7 @@
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
-    ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
-    ;; Tables can be moved out of any collection, however.
-    (when (:collection_id changes)
-      (collection/check-allowed-content :table (:collection_id changes)))
-    ;; Prevent setting data_authority back to unconfigured once configured
-    (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
-               (= (keyword (:data_authority changes)) :unconfigured))
-      (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
-                      {:status-code 400})))
-    ;; Prevent changing data_source to/from metabase-transform.
-    ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
-    ;; can be migrated to a transform-managed table via serdes.
-    (when (contains? changes :data_source)
-      (let [original-data-source (some-> (:data_source original-table) keyword)
-            new-data-source      (some-> (:data_source changes) keyword)]
-        (when (and (= original-data-source :metabase-transform)
-                   (not= new-data-source :metabase-transform))
-          (throw (ex-info "Cannot change data_source from metabase-transform"
-                          {:status-code 400})))
-        (when (and (not mi/*deserializing?*)
-                   (not= original-data-source :metabase-transform)
-                   (= new-data-source :metabase-transform))
-          (throw (ex-info "Cannot set data_source to metabase-transform"
-                          {:status-code 400})))))
+    (validate-user-changes! changes original-table)
     ;; Sync visibility_type and data_layer fields
     (let [changes (sync-visibility-fields changes original-table)]
       (cond
@@ -439,24 +477,6 @@
                  (u/the-id table)
                  (:field_order table)))))
 
-(defn- valid-field-order?
-  "Field ordering is valid if all the fields from a given table are present and only from that table."
-  [table field-ordering]
-  (= (warehouse-schema.db/active-field-ids-for-table (u/the-id table))
-     (set field-ordering)))
-
-(defn custom-order-fields!
-  "Set field order to `field-order`."
-  [table field-order]
-  {:pre [(valid-field-order? table field-order)]}
-  (t2/with-transaction [_]
-    (warehouse-schema.db/update-table! (u/the-id table) {:field_order :custom})
-    (dorun
-     (map-indexed (fn [position field-id]
-                    (warehouse-schema.db/update-field! field-id {:position        position
-                                                                 :custom_position position}))
-                  field-order))))
-
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :field_values]
@@ -553,20 +573,21 @@
     collection_id (conj [{:model "Collection" :id collection_id}])
     transform_id  (conj [{:model "Transform" :id transform_id}])))
 
-(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived user-edits-only]}]
-  (let [;; When user-edits-only, emit only fields that have user-authored metadata (FieldUserSettings rows).
-        ;; On import the parent Field row is synthesized if missing, so FieldUserSettings is self-sufficient.
-        ;; Otherwise emit all Field ids for a full serdes backup/restore.
-        fields   (if user-edits-only
-                   (into {} (for [fus-field-id (warehouse-schema.db/user-edited-field-ids-for-table id)]
-                              [["FieldUserSettings" fus-field-id] {"Table" id}]))
-                   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
-                              [["Field" field-id] {"Table" id}])))
+(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
+  (let [fields   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
+                            [["Field" field-id] {"Table" id}]))
+        ;; a Table's user settings, and its Fields', are models like any other, written beside it whenever they
+        ;; exist. They hang off the Table rather than off each Field so that Field stays a leaf in the descendants
+        ;; graph -- giving Field descendants of its own would make every full export walk every Field.
+        settings (cond-> (into {} (for [field-id (warehouse-schema.db/user-edited-field-ids-for-table id)]
+                                    [["FieldUserSettings" field-id] {"Table" id}]))
+                   (warehouse-schema.db/table-user-settings-recorded? id)
+                   (assoc ["TableUserSettings" id] {"Table" id}))
         segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
                             [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]
                             [["Measure" measure-id] {"Table" id}]))]
-    (merge fields segments measures)))
+    (merge fields settings segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (warehouse-schema.db/database-name (:db_id table))]
@@ -613,6 +634,8 @@
 
 (search.spec/define-spec "table"
   {:model        :model/Table
+   ;; read the values users see, not the ones sync wrote: both live in `metabase_table_user_settings`
+   :source       #(warehouse-schema-overlay/table-query {:alias :this})
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived        false
@@ -622,7 +645,9 @@
                   :database-id     :db_id
                   :view-count      true
                   :created-at      true
-                  :updated-at      true
+                  ;; a user edit touches only their settings row, so that is where the Table last changed
+                  :updated-at      [:case [:> :settings.updated_at :this.updated_at] :settings.updated_at
+                                    :else :this.updated_at]
                   :is-published        :is_published
                   :collection-type     :collection.type
                   :collection-location :collection.location
@@ -645,10 +670,13 @@
                                                 [:and :this.is_published
                                                  [:= :this.collection_id nil]] "Our analytics"
                                                 :else nil]]}
+   ;; qualified: the settings join carries columns of the same names
    :where        [:and
-                  :active
-                  [:= :visibility_type nil]
+                  :this.active
+                  [:= :this.visibility_type nil]
                   [:= :db.router_database_id nil]
-                  [:not= :db_id [:inline audit/audit-db-id]]]
+                  [:not= :this.db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
+                  ;; joined for its `updated_at` above, which also makes a settings change reindex the Table
+                  :settings   [:model/TableUserSettings [:= :settings.table_id :this.id]]
                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})

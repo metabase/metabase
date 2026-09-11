@@ -637,6 +637,7 @@
                     :model/Permissions
                     :model/Pulse
                     :model/Table
+                    :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
                     :model/User}}
@@ -662,7 +663,8 @@
            tracing
            transforms
            upload
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -2890,6 +2892,7 @@
            metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
+           metabase.warehouse-schema.models.table-user-settings
            metabase.warehouse-schema.schema
            metabase.warehouse-schema.table}
    :uses #{analyze
@@ -2915,7 +2918,8 @@
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
-                    :model/Table}
+                    :model/Table
+                    :model/TableUserSettings}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -2930,7 +2934,8 @@
    :uses #{util}
    :model-imports #{:model/Field
                     :model/FieldUserSettings
-                    :model/Table}}
+                    :model/Table
+                    :model/TableUserSettings}}
 
   warehouse-schema-rest
   {:team "UX West"
@@ -3388,6 +3393,7 @@
            permissions
            premium-features
            util
+           warehouse-schema
            warehouse-schema-overlay}
    :model-imports #{:model/AuditLog
                     :model/Collection
@@ -3730,6 +3736,7 @@
            task
            task-history
            util
+           warehouse-schema-overlay
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
@@ -3745,6 +3752,7 @@
                     :model/PythonLibrary
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag

@@ -10,6 +10,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn other-users-personal-collection-ids
@@ -137,20 +138,20 @@
   "The distinct `:collection_id`s of the published, unarchived Tables."
   []
   (t2/query {:select-distinct [:collection_id]
-             :from :metabase_table
-             :where [:and
-                     [:= :is_published true]
-                     [:= :archived_at nil]]}))
+             :from   [(warehouse-schema-overlay/table-query)]
+             :where  [:and
+                      [:= :is_published true]
+                      [:= :archived_at nil]]}))
 
 (mu/defn published-table-collection-ids-in
   "The distinct `:collection_id`s of the published, unarchived Tables in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/query {:select-distinct [:collection_id]
-             :from :metabase_table
-             :where [:and
-                     [:= :is_published true]
-                     [:= :archived_at nil]
-                     [:in :collection_id collection-ids]]}))
+             :from   [(warehouse-schema-overlay/table-query)]
+             :where  [:and
+                      [:= :is_published true]
+                      [:= :archived_at nil]
+                      [:in :collection_id collection-ids]]}))
 
 (mu/defn transform-collection-ids-in
   "The distinct `:collection_id`s of the Transforms with one of `source-types` in the Collections with

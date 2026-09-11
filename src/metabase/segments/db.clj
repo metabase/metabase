@@ -36,7 +36,7 @@
 (mu/defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-fn-set :db_id :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn update-segment!
   "Apply `changes` to the Segment with `id`."
@@ -52,12 +52,12 @@
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :db_id :schema :id] :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one [:model/Table :db_id :schema :id] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn collections
   "The Collections with `collection-ids`."

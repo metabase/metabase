@@ -1137,13 +1137,17 @@
 (defmethod query-export-roots :default [_] nil)
 
 (def ^:private git-sync-extract-opts
-  "Serdes extraction opts for git sync. :user-edits-only restricts field-level export to
-   FieldUserSettings (user-curated metadata only), omitting the full Field YAML for every column."
+  "Serdes extraction opts for git sync."
   {:include-field-values     false
    :include-database-secrets false
    :continue-on-error        false
-   :skip-archived            true
-   :user-edits-only          true})
+   :skip-archived            true})
+
+(def ^:private models-traversed-but-not-stored
+  "Models git sync walks through to reach what it stores, but never writes itself. A Table and its Fields are sync's,
+  and sync runs on each instance against its own warehouse; only what a user changed about them travels between
+  instances, as TableUserSettings and FieldUserSettings."
+  #{"Table" "Field"})
 
 (defn exportable-entities
   "What a full export would serialize: a map of {model-name [id ...]} — the export roots plus their transitive
@@ -1155,12 +1159,16 @@
         targets (-> #{}
                     (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) git-sync-extract-opts))))
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
-    (u/group-by first second targets)))
+    (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)))
 
 (defn pk-col
-  "Returns the PK column keyword for `model`. FieldUserSettings uses :field_id; all others use :id."
+  "Returns the PK column keyword for `model`. The user-settings models are keyed by the row they describe; all others
+  use :id."
   [model]
-  (if (= model "FieldUserSettings") :field_id :id))
+  (case model
+    "FieldUserSettings" :field_id
+    "TableUserSettings" :table_id
+    :id))
 
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.

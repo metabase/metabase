@@ -623,3 +623,24 @@
             "the warning covers only the unsynced subset (the potential data loss)")
         (is (set/subset? flagged would-delete)
             "everything the warning flags would indeed be removed")))))
+
+(deftest git-sync-exports-only-user-settings-test
+  (testing "git sync stores what users changed about a Table and its Fields, never the Table or Fields themselves --
+            those belong to sync, which runs against each instance's own warehouse"
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
+                     :model/Database   {db-id :id}    {:name "DB"}
+                     :model/Table      {table-id :id} {:name "T" :db_id db-id
+                                                       :is_published true :collection_id coll-id}
+                     :model/Field      {f1 :id}       {:name "F1" :table_id table-id}
+                     :model/Field      {f2 :id}       {:name "F2" :table_id table-id}]
+        (t2/insert! :model/FieldUserSettings {:field_id f2 :description "curated" :description_set true})
+        (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed" :display_name_set true})
+        (testing "a settings row that records nothing is not a user edit and is not exported"
+          (t2/insert! :model/FieldUserSettings {:field_id f1}))
+        (let [exportable (spec/exportable-entities)]
+          (is (= [f2] (filter #{f1 f2} (get exportable "FieldUserSettings")))
+              "the edited Field's settings, and not the row that records nothing")
+          (is (contains? (set (get exportable "TableUserSettings")) table-id))
+          (is (not (contains? (set (get exportable "Table")) table-id)))
+          (is (empty? (filter #{f1 f2} (get exportable "Field")))))))))

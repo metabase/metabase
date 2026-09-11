@@ -11,11 +11,28 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- user-table
+  "The Table with `table-id` as users see it. A bare `t2/select :model/Table` shows what sync wrote."
+  [table-id]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+
+(defn- user-tables
+  "The Tables with `table-ids` as users see it, ordered by `order-by`."
+  [table-ids order-by]
+  (t2/select :model/Table :id [:in table-ids] {:from     [(warehouse-schema-overlay/table-query)]
+                                               :order-by [order-by]}))
+
+(defn- user-table-fn
+  "The value of `column` on the Table with `table-id` as users see it."
+  [column table-id]
+  (get (user-table table-id) column))
 
 (deftest table-metadata-survives-deleted-transform-test
   (testing "a table whose creating transform has since been deleted (metabase#69904)"
@@ -24,7 +41,7 @@
                      :model/Table     {table-id :id} {:transform_id (:id transform)}]
         (t2/delete! :model/Transform (:id transform))
         (testing "metabase_table.transform_id -> transform.id is ON DELETE SET NULL, not left dangling"
-          (is (nil? (t2/select-one-fn :transform_id :model/Table :id table-id))))
+          (is (nil? (user-table-fn :transform_id table-id))))
         (testing "GET /api/table/:id does not crash"
           (is (=? {:id table-id} (mt/user-http-request :crowberto :get 200 (str "table/" table-id)))))
         (testing "GET /api/table (list, which hydrates :transform when transforms are enabled) does not crash"
@@ -52,7 +69,7 @@
                         {:display_name "Venues"
                          :collection_id collection-id
                          :is_published true}]
-                       (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
+                       (user-tables [(mt/id :users) (mt/id :venues)] :display_name))))
              (testing "audit log entries are created for publish"
                (is (=? {:topic :table-publish, :model "Table", :model_id (mt/id :users)}
                        (mt/latest-audit-log-entry "table-publish" (mt/id :users))))
@@ -67,7 +84,7 @@
                (is (=? {:display_name "Venues"
                         :collection_id nil
                         :is_published false}
-                       (t2/select-one :model/Table (mt/id :venues))))
+                       (user-table (mt/id :venues))))
                (testing "audit log entry is created for unpublish"
                  (is (=? {:topic :table-unpublish, :model "Table", :model_id (mt/id :venues)}
                          (mt/latest-audit-log-entry "table-unpublish" (mt/id :venues)))))))))
@@ -75,7 +92,7 @@
          (is (=? {:display_name "Users"
                   :collection_id nil
                   :is_published false}
-                 (t2/select-one :model/Table (mt/id :users))))))
+                 (user-table (mt/id :users))))))
      (testing "returns 404 when no library-data collection exists"
        (is (= "Not found."
               (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
@@ -99,7 +116,7 @@
                                 :collection_id subcollection-id})
          (is (=? {:collection_id subcollection-id
                   :is_published  true}
-                 (t2/select-one :model/Table (mt/id :users)))))))))
+                 (user-table (mt/id :users)))))))))
 
 (deftest publishing-info-test
   (mt/with-premium-features #{:library :audit-app}
@@ -151,13 +168,19 @@
       (without-library
        (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
          ;; a bumped updated_at proves the write went through the Toucan pipeline (:hook/timestamped?),
-         ;; the same pipeline that fires :hook/search-index; a raw UPDATE would leave it unchanged
+         ;; the same pipeline that fires :hook/search-index; a raw UPDATE would leave it unchanged.
+         ;; Publishing is a user value, so it is the user settings row that moves, not `metabase_table`.
          (let [baseline   (t/offset-date-time 2020)
                ;; raw update, precisely to keep the timestamped hook from overwriting the backdate
-               backdate!  #(t2/query {:update (t2/table-name :model/Table)
-                                      :set    {:updated_at baseline}
-                                      :where  [:= :id (mt/id :venues)]})
-               updated-at #(t2/select-one-fn :updated_at :model/Table (mt/id :venues))]
+               backdate!  #(do (t2/query {:update (t2/table-name :model/TableUserSettings)
+                                          :set    {:updated_at baseline}
+                                          :where  [:= :table_id (mt/id :venues)]})
+                               (t2/query {:update (t2/table-name :model/Table)
+                                          :set    {:updated_at baseline}
+                                          :where  [:= :id (mt/id :venues)]}))
+               updated-at #(or (t2/select-one-fn :updated_at :model/TableUserSettings
+                                                 :table_id (mt/id :venues))
+                               (user-table-fn :updated_at (mt/id :venues)))]
            (backdate!)
            (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
                                  {:table_ids     [(mt/id :venues)]
@@ -245,7 +268,7 @@
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
                                 {:table_ids     [orders-id]
                                  :collection_id collection-id})
-          (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
+          (are [table-id] (true? (user-table-fn :is_published table-id))
             orders-id products-id))))))
 
 (deftest publish-tables-does-not-move-already-published-upstream-test
@@ -275,10 +298,10 @@
                                :collection_id coll-y})
         (testing "the selected table is published into the target collection"
           (is (=? {:is_published true :collection_id coll-y}
-                  (t2/select-one [:model/Table :is_published :collection_id] orders-id))))
+                  (user-table orders-id))))
         (testing "the already-published upstream table stays in its original collection"
           (is (=? {:is_published true :collection_id coll-x}
-                  (t2/select-one [:model/Table :is_published :collection_id] products-id))))))))
+                  (user-table products-id))))))))
 
 (deftest publish-tables-recursive-upstream-test
   (mt/with-premium-features #{:library}
@@ -316,7 +339,7 @@
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
                                 {:table_ids     [items-id]
                                  :collection_id collection-id})
-          (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
+          (are [table-id] (true? (user-table-fn :is_published table-id))
             items-id orders-id purchasers-id))))))
 
 (deftest unpublish-tables-with-downstream-dependents-test
@@ -345,7 +368,7 @@
         (testing "unpublishing products also unpublishes orders (downstream dependent)"
           (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
                                 {:table_ids [products-id]})
-          (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
+          (are [table-id] (false? (user-table-fn :is_published table-id))
             products-id orders-id))))))
 
 (deftest unpublish-tables-recursive-downstream-test
@@ -386,7 +409,7 @@
         (testing "unpublishing customers also unpublishes orders and order_items (recursive downstream)"
           (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
                                 {:table_ids [purchasers-id]})
-          (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
+          (are [table-id] (false? (user-table-fn :is_published table-id))
             purchasers-id orders-id items-id))))))
 
 (defn- with-fk-linked-published-tables
@@ -418,9 +441,9 @@
         (fn [{:keys [coll-a x-id y-id]}]
           (t2/delete! :model/Collection :id coll-a)
           (testing "Table X (in the deleted collection) is unpublished"
-            (is (=? {:is_published false :collection_id nil} (t2/select-one :model/Table x-id))))
+            (is (=? {:is_published false :collection_id nil} (user-table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"
-            (is (=? {:is_published false :collection_id nil} (t2/select-one :model/Table y-id)))))))))
+            (is (=? {:is_published false :collection_id nil} (user-table y-id)))))))))
 
 (deftest unpublish-fk-linked-tables-on-collection-archive-test
   (mt/with-premium-features #{:library}
@@ -431,9 +454,9 @@
             (collection/archive-or-unarchive-collection!
              (t2/select-one :model/Collection :id coll-a) {:archived true}))
           (testing "Table X (in the archived collection) is unpublished"
-            (is (=? {:is_published false :collection_id nil} (t2/select-one :model/Table x-id))))
+            (is (=? {:is_published false :collection_id nil} (user-table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"
-            (is (=? {:is_published false :collection_id nil} (t2/select-one :model/Table y-id)))))))))
+            (is (=? {:is_published false :collection_id nil} (user-table y-id)))))))))
 
 ;;; ------------------------------------------ Publish/Unpublish requires write and query perms ------------------------------------------
 
