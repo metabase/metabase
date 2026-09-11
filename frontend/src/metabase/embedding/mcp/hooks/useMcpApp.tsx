@@ -28,11 +28,6 @@ export interface McpAppState {
    */
   prompt: string | null;
 
-  /**
-   * Why the query could not be resolved, when it could not be. The route has no
-   * other signal to render — without one it would sit on the loading indicator
-   * forever.
-   */
   queryError: string | null;
 
   hostContext: McpUiHostContext | null;
@@ -142,11 +137,9 @@ export function useMcpApp(): McpAppState {
 
       pendingQueryHandleRef.current = queryHandle;
 
-      const { instanceUrl = "" } =
-        // Unjustified type cast. FIXME
-        (window.metabaseConfig as { instanceUrl?: string } | undefined) ?? {};
+      const { instanceUrl = "" } = window.metabaseConfig ?? {};
 
-      void (async () => {
+      (async () => {
         try {
           const resolved = await fetchQueryByHandle({
             instanceUrl,
