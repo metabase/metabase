@@ -89,7 +89,7 @@ describe("GAUGE_CHART_DEFINITION", () => {
             },
           ],
         }),
-      ).toThrow("Couldn't load a value one of this gauge's ranges depends on.");
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
     it("refuses to render a range bound to a column the question no longer has", () => {
@@ -97,7 +97,7 @@ describe("GAUGE_CHART_DEFINITION", () => {
         checkRenderable(createSeries(), {
           "gauge.segments": [{ min: 0, max: "missing", color: "red" }],
         }),
-      ).toThrow("Couldn't load a value one of this gauge's ranges depends on.");
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
     it("refuses to render when a range's bound will never resolve", () => {
@@ -118,7 +118,7 @@ describe("GAUGE_CHART_DEFINITION", () => {
             },
           ],
         }),
-      ).toThrow("Couldn't load a value one of this gauge's ranges depends on.");
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
     it("tolerates malformed persisted segments", () => {

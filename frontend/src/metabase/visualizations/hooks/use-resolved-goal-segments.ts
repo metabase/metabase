@@ -1,10 +1,8 @@
-import { useMemo } from "react";
-
-import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
 import {
   type ResolvedGoalSegment,
+  getGoalSegmentBounds,
   getUnansweredGoalEntities,
-  hasFailedGoalReferences,
+  hasUnresolvedGoalValues,
   resolveGoalSegments,
 } from "metabase/viz-core";
 import type {
@@ -13,79 +11,33 @@ import type {
   GoalSegment,
 } from "metabase-types/api";
 
-export type GoalSegmentsState =
-  | { status: "resolving" }
-  | { status: "failed" }
-  | { status: "resolved"; segments: ResolvedGoalSegment[] };
+import {
+  type GoalResolution,
+  useAnsweredGoalData,
+} from "./use-answered-goal-data";
 
 export function useResolvedGoalSegments(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-): GoalSegmentsState {
-  const unansweredEntities = getUnansweredGoalEntities(data, segments);
-
-  const { currentData: freshDataset, isError } = useReferencedEntitiesQuery(
+): GoalResolution<{ segments: ResolvedGoalSegment[] }> {
+  const bounds = getGoalSegmentBounds(segments);
+  const answered = useAnsweredGoalData(
     datasetQuery,
-    unansweredEntities,
+    data,
+    getUnansweredGoalEntities(data, bounds),
   );
 
-  const answeredData = useMemo(() => {
-    const freshData = freshDataset?.data;
-
-    if (freshData?.referenced_entities == null) {
-      return null;
-    }
-
-    return {
-      ...data,
-      referenced_entities: {
-        card: {
-          ...data.referenced_entities?.card,
-          ...freshData.referenced_entities.card,
-        },
-        measure: {
-          ...data.referenced_entities?.measure,
-          ...freshData.referenced_entities.measure,
-        },
-      },
-    };
-  }, [data, freshDataset]);
-
-  if (unansweredEntities.length === 0) {
-    return getGoalSegmentsState(data, segments);
+  if (answered.status !== "resolved") {
+    return answered;
   }
 
-  if (isError || freshDataset?.error != null) {
-    return { status: "failed" };
-  }
-
-  if (freshDataset?.data == null) {
-    return { status: "resolving" };
-  }
-
-  // completed, but the response has no answer
-  if (answeredData == null) {
-    return { status: "failed" };
-  }
-
-  return getGoalSegmentsState(answeredData, segments);
-}
-
-// No further fetch happens past this point, so an unanswered reference counts as failed.
-function getGoalSegmentsState(
-  data: DatasetData,
-  segments: GoalSegment[] | undefined,
-): GoalSegmentsState {
-  if (
-    getUnansweredGoalEntities(data, segments).length > 0 ||
-    hasFailedGoalReferences(data, segments)
-  ) {
+  if (hasUnresolvedGoalValues(answered.data, bounds)) {
     return { status: "failed" };
   }
 
   return {
     status: "resolved",
-    segments: resolveGoalSegments(data, segments),
+    segments: resolveGoalSegments(answered.data, segments),
   };
 }

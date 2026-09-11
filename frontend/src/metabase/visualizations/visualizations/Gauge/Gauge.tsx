@@ -2,11 +2,10 @@ import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";
 import { useCallback, useEffect, useRef } from "react";
-import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Center, Loader, Text } from "metabase/ui";
 import { formatValue } from "metabase/value-formatting";
+import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
 import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
@@ -145,21 +144,13 @@ function GaugeComponent({
     updateLabelSize();
   });
 
-  if (goalSegments.status === "resolving") {
+  if (goalSegments.status !== "resolved") {
     return (
-      <Center className={className} h={heightProp}>
-        <Loader />
-      </Center>
-    );
-  }
-
-  if (goalSegments.status === "failed") {
-    return (
-      <Center className={className} h={heightProp} px="md">
-        <Text c="text-secondary" ta="center">
-          {t`Couldn't load a value one of this gauge's ranges depends on.`}
-        </Text>
-      </Center>
+      <GoalResolutionState
+        className={className}
+        kind="segments"
+        status={goalSegments.status}
+      />
     );
   }
 

@@ -5,6 +5,7 @@ import type {
   DatasetData,
   DatasetQuery,
   GoalSegment,
+  GoalValue,
   IconName,
   RawSeries,
   Series,
@@ -50,6 +51,18 @@ export type ChartSettingGoalInputProps = {
   onChange: (value: number | string) => void;
   columns?: DatasetColumn[];
   valueField?: string;
+};
+
+export type ChartSettingGoalValueProps = {
+  data: DatasetData;
+  datasetQuery?: DatasetQuery;
+  id: string;
+  // false for visualizations that don't support dynamic goals yet
+  isDynamic?: boolean;
+  placeholder?: string;
+  showSelfColumns?: boolean;
+  value: GoalValue | null | undefined;
+  onChange: (value: GoalValue | undefined) => void;
 };
 
 export type AggregationFunction = Exclude<

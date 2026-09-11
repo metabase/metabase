@@ -5,8 +5,10 @@ import { useSet } from "react-use";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
+import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -65,7 +67,7 @@ function BoxPlotInner({
     [rawSeries],
   );
 
-  const settings = useMemo(
+  const adjustedSettings = useMemo(
     () =>
       autoAdjustSettings
         ? getDashboardAdjustedSettings({
@@ -75,6 +77,12 @@ function BoxPlotInner({
           })
         : originalSettings,
     [originalSettings, height, width, autoAdjustSettings],
+  );
+
+  const { status: goalStatus, settings } = useResolvedGoalSettings(
+    card,
+    rawSeries[0].data,
+    adjustedSettings,
   );
 
   const renderingContext = useBrowserRenderingContext({ fontFamily });
@@ -207,28 +215,32 @@ function BoxPlotInner({
           titleMenuItems={titleMenuItems}
         />
       )}
-      <CartesianChartLegendLayout
-        isReversed={settings["legend.is_reversed"]}
-        hasLegend={hasLegend}
-        items={legendItems}
-        actionButtons={!showTitle ? actionButtons : undefined}
-        hovered={hovered}
-        isFullscreen={isFullscreen}
-        isQueryBuilder={isQueryBuilder}
-        onToggleSeriesVisibility={handleToggleSeriesVisibility}
-        onHoverChange={onHoverChange}
-        width={width}
-        height={height}
-      >
-        <ResponsiveEChartsRenderer
-          key={hasValidOption ? "chart" : "measuring"}
-          ref={containerRef}
-          option={option ?? {}}
-          eventHandlers={hasValidOption ? eventHandlers : undefined}
-          onInit={handleInit}
-          onResize={handleResize}
-        />
-      </CartesianChartLegendLayout>
+      {goalStatus !== "resolved" ? (
+        <GoalResolutionState kind="value" status={goalStatus} />
+      ) : (
+        <CartesianChartLegendLayout
+          isReversed={settings["legend.is_reversed"]}
+          hasLegend={hasLegend}
+          items={legendItems}
+          actionButtons={!showTitle ? actionButtons : undefined}
+          hovered={hovered}
+          isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
+          onToggleSeriesVisibility={handleToggleSeriesVisibility}
+          onHoverChange={onHoverChange}
+          width={width}
+          height={height}
+        >
+          <ResponsiveEChartsRenderer
+            key={hasValidOption ? "chart" : "measuring"}
+            ref={containerRef}
+            option={option ?? {}}
+            eventHandlers={hasValidOption ? eventHandlers : undefined}
+            onInit={handleInit}
+            onResize={handleResize}
+          />
+        </CartesianChartLegendLayout>
+      )}
     </CartesianChartRoot>
   );
 }

@@ -2,8 +2,9 @@ import type { ReactNode, Ref } from "react";
 
 import { NumberInput } from "metabase/ui";
 import type { GoalValue } from "metabase-types/api";
+import { isGoalStaticValue } from "metabase-types/guards";
 
-import { RIGHT_SECTION_WIDTH } from "./constants";
+import { RIGHT_SECTION_WIDTH } from "../constants";
 
 type Props = {
   "aria-label"?: string;
@@ -24,7 +25,7 @@ export function StaticGoalValueInput({
   value,
   onChange,
 }: Props) {
-  const numericValue = typeof value === "number" ? value : null;
+  const numericValue = isGoalStaticValue(value) ? value : null;
 
   return (
     <NumberInput

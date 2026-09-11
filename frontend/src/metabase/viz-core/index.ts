@@ -225,24 +225,30 @@ export {
 } from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
-  getReferencedEntitiesFromVizSettings,
+  getGoalSegmentBounds,
+  getNumericGoalValue,
+  getReferencedEntities,
   getSegmentColor,
   getUnansweredGoalEntities,
-  hasFailedGoalReferences,
+  getUnresolvedGoalMessage,
+  hasFailedGoalValues,
   hasUnansweredGoalReferences,
   hasUnresolvedGoalReferences,
+  hasUnresolvedGoalValues,
+  isDynamicGoalSetting,
   needsAnswer,
+  needsGraphGoalResolution,
   resolveGoalSegments,
   resolveGoalValue,
-  supportsDynamicGoals,
   toReferencedEntity,
 } from "./lib/dynamic-goals";
 export type {
   GoalData,
   GoalRefError,
+  GoalValueResult,
   ResolvedGoalSegment,
-  ResolvedGoalValue,
 } from "./lib/dynamic-goals";
+export type { GoalSettingKind } from "./lib/dynamic-goal-settings";
 export {
   ChartSettingsError,
   getDatasetError,
@@ -375,6 +381,7 @@ export {
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
+  validateGoalReferences,
   validateStacking,
 } from "./lib/settings/validation";
 export {
@@ -514,6 +521,7 @@ export type {
   ChartSettingColorRangeProps,
   ChartSettingEnumToggleProps,
   ChartSettingGoalInputProps,
+  ChartSettingGoalValueProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingOrderedItem,
   ChartSettingSegmentedControlProps,

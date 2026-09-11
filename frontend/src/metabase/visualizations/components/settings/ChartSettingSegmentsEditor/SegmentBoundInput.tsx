@@ -6,8 +6,7 @@ import type {
   ReferencedEntity,
 } from "metabase-types/api";
 
-import { GoalValueInput } from "./GoalValueInput";
-import { StaticGoalValueInput } from "./StaticGoalValueInput";
+import { GoalValueInput, StaticGoalValueInput } from "../GoalValueInput";
 
 type Props = {
   "aria-label"?: string;

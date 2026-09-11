@@ -165,7 +165,7 @@ describe("GaugeContainer", () => {
             },
           ],
         }),
-      ).toThrow("Couldn't resolve one of this gauge's ranges");
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
     it("throws for a reference whose query failed", () => {
@@ -185,7 +185,7 @@ describe("GaugeContainer", () => {
             },
           ],
         }),
-      ).toThrow("Couldn't resolve one of this gauge's ranges");
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
     it("throws for a referenced column that does not exist", () => {
@@ -210,13 +210,13 @@ describe("GaugeContainer", () => {
             },
           ],
         }),
-      ).toThrow("Couldn't resolve one of this gauge's ranges");
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
     it("throws for a self-column reference that does not exist", () => {
       expect(() =>
         setup({ segments: [{ min: 0, max: "missing", color: GREEN }] }),
-      ).toThrow("Couldn't resolve one of this gauge's ranges");
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
 
     it("throws for a self-column reference that is not a number", () => {
@@ -225,7 +225,7 @@ describe("GaugeContainer", () => {
           data: { cols: [COUNT_COL, GOAL_COL], rows: [[10, null]] },
           segments: [{ min: 0, max: "goal", color: GREEN }],
         }),
-      ).toThrow("Couldn't resolve one of this gauge's ranges");
+      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
     });
   });
 });

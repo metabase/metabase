@@ -11,6 +11,7 @@ import {
   getDefaultSize,
   getMinSize,
   validateChartDataSettings,
+  validateGoalReferences,
 } from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
@@ -38,10 +39,11 @@ export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   },
 
   checkRenderable: (
-    _series: RawSeries,
+    series: RawSeries,
     settings: ComputedVisualizationSettings,
   ) => {
     validateChartDataSettings(settings);
+    validateGoalReferences(series, settings);
   },
 
   settings: {

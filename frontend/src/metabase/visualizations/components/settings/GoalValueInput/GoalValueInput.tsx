@@ -15,6 +15,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered-goal-value";
 import { type GoalRefError, resolveGoalValue } from "metabase/viz-core";
 import type {
   CardId,
@@ -32,14 +33,13 @@ import {
   isGoalSelfColumnRef,
 } from "metabase-types/guards";
 
-import { StaticGoalValueInput } from "../StaticGoalValueInput";
 import { ICON_BUTTON_SIZE } from "../constants";
-import { useResolvedGoalValue } from "../use-resolved-goal-value";
 
 import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
 import { GoalEntityPickers } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
 import { GoalValuePill } from "./GoalValuePill";
+import { StaticGoalValueInput } from "./StaticGoalValueInput";
 import type { ColumnOption, PickedItem } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
@@ -58,7 +58,8 @@ export type GoalValueInputProps = {
   datasetQuery: DatasetQuery | undefined;
   id: string;
   placeholder?: string;
-  referencedEntities: ReferencedEntity[];
+  referencedEntities?: ReferencedEntity[];
+  showSelfColumns?: boolean;
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
 };
@@ -70,6 +71,7 @@ export const GoalValueInput = ({
   id,
   placeholder,
   referencedEntities,
+  showSelfColumns = true,
   value,
   onChange,
 }: GoalValueInputProps) => {
@@ -83,7 +85,7 @@ export const GoalValueInput = ({
   const numberInputRef = useRef<HTMLInputElement>(null);
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
-  const selfColumns = getNumericColumnOptions(data.cols);
+  const selfColumns = showSelfColumns ? getNumericColumnOptions(data.cols) : [];
   const isSelfRef =
     isGoalSelfColumnRef(value) &&
     selfColumns.some((column) => column.name === value);
@@ -101,12 +103,12 @@ export const GoalValueInput = ({
     },
   );
 
-  const resolved = useResolvedGoalValue(
-    datasetQuery,
+  const resolved = useAnsweredGoalValue({
     data,
-    value,
+    datasetQuery,
     referencedEntities,
-  );
+    value,
+  });
   const selfColumnLabel = isSelfRef
     ? (selfColumns.find((column) => column.name === value)?.label ??
       String(value))

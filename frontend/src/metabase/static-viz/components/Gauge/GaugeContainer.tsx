@@ -9,8 +9,9 @@ import {
 } from "metabase/visualizations/visualizations/Gauge/utils";
 import {
   type GoalData,
-  getUnansweredGoalEntities,
-  hasFailedGoalReferences,
+  getGoalSegmentBounds,
+  getUnresolvedGoalMessage,
+  hasUnresolvedGoalValues,
   resolveGoalSegments,
 } from "metabase/viz-core";
 import { truncateText } from "metabase/viz-core";
@@ -57,12 +58,8 @@ export default function GaugeContainer({
     settings.column_settings &&
     populateDefaultColumnSettings(Object.values(settings.column_settings)[0]);
   const goalSegments = settings["gauge.segments"];
-  const isUnresolvable =
-    getUnansweredGoalEntities(data, goalSegments).length > 0 ||
-    hasFailedGoalReferences(data, goalSegments);
-
-  if (isUnresolvable) {
-    throw new Error("Couldn't resolve one of this gauge's ranges");
+  if (hasUnresolvedGoalValues(data, getGoalSegmentBounds(goalSegments))) {
+    throw new Error(getUnresolvedGoalMessage("segments"));
   }
 
   const segments = resolveGoalSegments(data, goalSegments, getColor)
