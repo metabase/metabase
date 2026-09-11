@@ -169,6 +169,23 @@
 (def ^:private no-values
   {:values [] :has_more_values false})
 
+(def ^:private date-accepts
+  "The grammar a date parameter's value is written in. Templates rather than sample dates: the
+   concrete dates of the column are `min` and `max`, and a caller that confuses an example for a
+   bound filters on the wrong day. One list covers every date subtype — the QP runs the whole
+   decoder set no matter which one the parameter declares, so the subtype narrows the widget
+   rather than what the API accepts."
+  ["YYYY-MM-DD" "YYYY-MM-DD~YYYY-MM-DD" "past30days" "thisyear"])
+
+(defn- range-shaped-date-param?
+  "Whether this parameter's values should come back as a range rather than a list. True for a date
+   parameter drawing values from a column, where the distinct dates are pages of noise and the
+   useful answer is the span they cover. A date parameter with a static-list or card source is
+   excluded: those dates are a curated set to pick from, and a range would throw the set away."
+  [param]
+  (and (nil? (:values_source_type param))
+       (some-> (:type param) keyword params.dates/date-type?)))
+
 (defn- valueless-dashboard-param?
   "True when a dashboard filter has nothing behind it to fetch values from: no values source, and no
    dashcard mapping to supply a field. Chain filtering has nothing to query in that case."
@@ -183,33 +200,59 @@
   (and (nil? (:values_source_type param))
        (nil? (params/param-target->field-id (:target param) card))))
 
+(defn- check-no-query-for-range!
+  "A range has nothing to search: `query` narrows a list of values by text, and the answer here is two
+   dates and a grammar. Silently ignoring it would hand back the column's whole span as though it had
+   been narrowed."
+  [query]
+  (when query
+    (common/throw-teaching-error
+     "This is a date parameter, so it answers with its column's range rather than a list of values — there is no list for `query` to search. Drop `query` and filter within the `min`/`max` it returns, using the forms in `accepts`.")))
+
+(defn- fetch-dashboard-values
+  "The value list for a dashboard parameter. `*param-values-query*` is what lets a caller who can read
+   the dashboard look up its filter values without query permission on the underlying table. The
+   search path additionally pins remapping to the field actually being filtered (#59020)."
+  [dash parameter-id query constraints]
+  (binding [qp.perms/*param-values-query* true]
+    (if query
+      (binding [chain-filter/*allow-implicit-uuid-field-remapping* false]
+        (parameters.dashboard/param-values dash parameter-id constraints query))
+      (parameters.dashboard/param-values dash parameter-id constraints))))
+
 (defn- dashboard-values
   [id-or-eid parameter-id query constraints]
   (let [dash            (-> (v2.resolve/resolve-and-read :model/Dashboard id-or-eid)
                             (t2/hydrate :resolved-params))
         resolved-params (:resolved-params dash)
-        constraints     (update-keys constraints u/qualified-name)]
+        constraints     (update-keys constraints u/qualified-name)
+        param           (get resolved-params parameter-id)]
     (check-parameter-id! "dashboard" parameter-id (vals resolved-params))
     ;; A static-list or card values source never consults the chain-filter constraints, so applying
     ;; them would silently do nothing — reject rather than hand back a list the caller thinks was
     ;; narrowed.
-    (when (and (seq constraints)
-               (some? (:values_source_type (get resolved-params parameter-id))))
+    (when (and (seq constraints) (some? (:values_source_type param)))
       (common/throw-teaching-error
        "This parameter's values come from a fixed list or a card, not a chain-filterable field, so constraints can't narrow it — fetch without constraints."))
-    (check-constraints! (get resolved-params parameter-id) resolved-params constraints)
-    ;; Chain filtering raises on an unmapped parameter; an empty value list is the honest answer,
-    ;; and the one target "question" gives for the same shape of parameter.
-    (if (valueless-dashboard-param? (get resolved-params parameter-id))
+    (check-constraints! param resolved-params constraints)
+    (cond
+      ;; Chain filtering raises on an unmapped parameter; an empty value list is the honest answer,
+      ;; and the one target "question" gives for the same shape of parameter.
+      (valueless-dashboard-param? param)
       no-values
-      ;; `*param-values-query*` is what lets a caller who can read the dashboard look up its filter
-      ;; values without query permission on the underlying table. The search path additionally pins
-      ;; remapping to the field actually being filtered (#59020).
-      (binding [qp.perms/*param-values-query* true]
-        (if query
-          (binding [chain-filter/*allow-implicit-uuid-field-remapping* false]
-            (parameters.dashboard/param-values dash parameter-id constraints query))
-          (parameters.dashboard/param-values dash parameter-id constraints))))))
+
+      (range-shaped-date-param? param)
+      (do
+        (check-no-query-for-range! query)
+        ;; `param-range` answers nil for a parameter mapped only by field-ref, which has no column to
+        ;; aggregate — listing its values is then the only answer available.
+        (or (some-> (binding [qp.perms/*param-values-query* true]
+                      (parameters.dashboard/param-range dash parameter-id constraints))
+                    (assoc ::date-range true))
+            (fetch-dashboard-values dash parameter-id query constraints)))
+
+      :else
+      (fetch-dashboard-values dash parameter-id query constraints))))
 
 (defn- question-values
   [id-or-eid parameter-id query]
@@ -231,9 +274,15 @@
         ;; an isError, matching the dashboard path. Static-list and card sources already report
         ;; `has_more_values` truthfully, so they keep the normal path.
         (nil? (:values_source_type param))
-        (binding [qp.perms/*param-values-query* true]
-          (parameters.field/search-values-from-field-id-strict
-           (params/param-target->field-id (:target param) card) query))
+        (let [field-id (params/param-target->field-id (:target param) card)]
+          (if (range-shaped-date-param? param)
+            (do
+              (check-no-query-for-range! query)
+              (-> (binding [qp.perms/*param-values-query* true]
+                    (chain-filter/chain-filter-range field-id nil))
+                  (assoc ::date-range true)))
+            (binding [qp.perms/*param-values-query* true]
+              (parameters.field/search-values-from-field-id-strict field-id query))))
 
         :else
         (binding [qp.perms/*param-values-query* true]
@@ -286,6 +335,32 @@
     (common/success-content (cond-> (json/encode payload)
                               line (str "\n" line)))))
 
+(defn- ->day
+  "The `YYYY-MM-DD` day of one fetched value, or nil when it isn't date-shaped. A timestamp column
+   yields its values with a time part (`2013-01-03T00:00:00Z`), and handing those back would
+   contradict the `YYYY-MM-DD` grammar in the same response. Truncating is safe at both ends
+   because a day bound is inclusive: the day holding the earliest value is still a floor under it,
+   and the day holding the latest is still a ceiling over it."
+  [value]
+  (some->> value str not-empty (re-find #"^\d{4}-\d{2}-\d{2}")))
+
+(defn- date-range-content
+  "Render a date parameter as the span its column covers plus the grammar to write a value in. The
+   span comes from an aggregation over the whole column, so `max` is the column's last date rather
+   than the last of a capped page — the reason this path doesn't reuse the value list."
+  [{:keys [distinct-count] lo :min hi :max}]
+  (let [payload (cond-> {:kind    "date"
+                         :min     (->day lo)
+                         :max     (->day hi)
+                         :accepts date-accepts}
+                  ;; Absent for a parameter mapped to several columns, whose distinct values only a
+                  ;; union could count. Omitted rather than guessed at.
+                  distinct-count (assoc :distinct_dates distinct-count))
+        line    (when-not (->day lo)
+                  "No dates available for this parameter — its column may be empty, or filtered to nothing for you.")]
+    (common/success-content (cond-> (json/encode payload)
+                              line (str "\n" line)))))
+
 ;;; --------------------------------------------------- The tool ---------------------------------------------------
 
 (mr/def ::constraint-scalar
@@ -330,7 +405,7 @@
     [:maybe [:int {:min 0 :description "Index of the first value to return (default 0) — continue a truncated response. Each page refetches from the source, which returns at most 1000 values, so narrow with `query` rather than paging to reach anything past that."}]]]])
 
 (registry/deftool get-parameter-values
-  "Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. Pass target (\"dashboard\" or \"question\" — the latter accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id from get_content's `parameters` (each lists id, name, type). Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. query searches a large list rather than paging it; constraints (dashboards only) chain-filters — pass the other filters' current selections keyed by parameter id to get only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it (e.g. a free-text template tag) returns no values; a date parameter returns the column's distinct dates, rarely what you want — build date ranges yourself. Pair with run_saved_question, which takes these values as its `parameters`."
+  "Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. Pass target (\"dashboard\" or \"question\" — the latter accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id from get_content's `parameters` (each lists id, name, type). Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. query searches a large list rather than paging it; constraints (dashboards only) chain-filters — pass the other filters' current selections keyed by parameter id to get only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it (e.g. a free-text template tag) returns no values. A column-backed date parameter answers with its range instead of a value list — {kind: \"date\", min, max, distinct_dates, accepts} — where accepts is the grammar to write a value in (\"YYYY-MM-DD\", \"YYYY-MM-DD~YYYY-MM-DD\", \"past30days\", \"thisyear\") and min/max are the column's real first and last dates to write between. constraints narrow the range as they narrow a list; query, limit and offset don't apply to it. Pair with run_saved_question, which takes these values as its `parameters`."
   {:name        "get_parameter_values"
    :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}
@@ -344,10 +419,15 @@
      "`constraints` chain-filters a dashboard's filters against each other, so it needs target: \"dashboard\" — a question's parameters are independent and take none."))
   (let [result (if (= target "dashboard")
                  (dashboard-values id parameter_id query constraints)
-                 (question-values id parameter_id query))]
-    ;; The card path still answers nil when a parameter's source card was archived and its target
-    ;; has no field to fall back to; an empty value list is the honest answer there too.
-    (values-content (or result no-values)
-                    (or limit default-limit)
-                    (or offset 0)
-                    query)))
+                 (question-values id parameter_id query))
+        ;; The card path still answers nil when a parameter's source card was archived and its target
+        ;; has no field to fall back to; an empty value list is the honest answer there too.
+        result (or result no-values)]
+    (if (::date-range result)
+      ;; `limit`/`offset` are dropped rather than applied: the range is one object, not a page of a
+      ;; list, and `kind` is what tells the caller its paging arguments had nothing to page.
+      (date-range-content result)
+      (values-content result
+                      (or limit default-limit)
+                      (or offset 0)
+                      query))))
