@@ -1,8 +1,6 @@
-import { PLUGIN_DATA_APPS } from "metabase/plugins";
+import { PLUGIN_DATA_APPS, lazyPluginComponent } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { ManageDataAppsPage } from "./admin/ManageDataAppsPage";
-import { DataAppsNavbarSection } from "./navbar/DataAppsNavbarSection";
 import { getRoutes } from "./routes";
 
 /**
@@ -16,7 +14,15 @@ export function initializePlugin() {
   if (hasPremiumFeature("data-apps")) {
     PLUGIN_DATA_APPS.isEnabled = true;
     PLUGIN_DATA_APPS.getRoutes = getRoutes;
-    PLUGIN_DATA_APPS.ManageDataAppsPage = ManageDataAppsPage;
-    PLUGIN_DATA_APPS.MainNavbarSection = DataAppsNavbarSection;
+    PLUGIN_DATA_APPS.ManageDataAppsPage = lazyPluginComponent(() =>
+      import("./admin/ManageDataAppsPage").then(
+        ({ ManageDataAppsPage }) => ManageDataAppsPage,
+      ),
+    );
+    PLUGIN_DATA_APPS.MainNavbarSection = lazyPluginComponent(() =>
+      import("./navbar/DataAppsNavbarSection").then(
+        ({ DataAppsNavbarSection }) => DataAppsNavbarSection,
+      ),
+    );
   }
 }

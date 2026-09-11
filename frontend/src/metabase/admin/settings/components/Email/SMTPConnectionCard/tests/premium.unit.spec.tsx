@@ -15,7 +15,7 @@ describe("SMTPConnectionCard (EE with token)", () => {
     });
 
     expect(
-      screen.getByTestId("cloud-smtp-connection-card"),
+      await screen.findByTestId("cloud-smtp-connection-card"),
     ).toBeInTheDocument();
     expect(
       screen.queryByTestId("self-hosted-smtp-connection-card"),
