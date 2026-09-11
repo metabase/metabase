@@ -88,7 +88,8 @@
     (is (false? (:additionalProperties llm/response-schema)))))
 
 (deftest max-tokens-test
-  (is (= 592 (llm/max-tokens 1)))
+  (is (= 632 (llm/max-tokens 1)))
+  (is (= 7712 (llm/max-tokens llm/default-chunk-size)))
   (is (= 8192 (llm/max-tokens 500))))
 
 (deftest parse-response-test

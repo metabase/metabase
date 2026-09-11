@@ -254,9 +254,9 @@
         names         (mapv :name tables)
         [ok failing]  names
         skipped-names (drop 2 names)]
-    (testing "a fatal failure stops the run after its batch; earlier successes are kept and later tables are skipped"
+    (testing "a fatal failure stops the run; earlier successes are kept and tables not yet started are skipped"
       (let [result   (do-with-llm! (failing-llm #{failing} provider-rejection)
-                                   #(core/classify-database! (mt/db) :include-values? false :parallelism 2))
+                                   #(core/classify-database! (mt/db) :include-values? false :parallelism 1))
             by-name  (into {} (map (juxt :table_name identity)) (:tables result))]
         (is (= names (map :table_name (:tables result))) "every table is reported, in order")
         (is (nil? (:error (get by-name ok))))
@@ -273,7 +273,7 @@
                (get-in result [:counts :fields])))))
     (testing "a non-fatal failure in the same position does not stop the run"
       (let [result (do-with-llm! (failing-llm #{failing} (ex-info "later" {:api-error true :status 429}))
-                                 #(core/classify-database! (mt/db) :include-values? false :parallelism 2))]
+                                 #(core/classify-database! (mt/db) :include-values? false :parallelism 1))]
         (is (= 1 (:failed result)))
         (is (= (dec (count tables)) (:requests result)))))
     (testing "when no table succeeded the fatal exception is rethrown"
@@ -285,3 +285,29 @@
                                  #(core/classify-database! (mt/db) :include-values? false :parallelism 2))]
         (is (= (count tables) (:failed result)))
         (is (every? #(= "later" (:error %)) (:tables result)))))))
+
+(deftest classify-database-worker-pool-test
+  (let [tables       (active-tables nil)
+        [slow _ next] (map :name tables)
+        next-started (promise)
+        in-flight    (atom 0)
+        peak         (atom 0)
+        table-of     (fn [messages]
+                       (some #(when (str/includes? (:content (last messages)) (str "name: " % "\n")) %)
+                             (map :name tables)))
+        llm          (fn [& [_model messages :as args]]
+                       (let [table (table-of messages)]
+                         (swap! peak max (swap! in-flight inc))
+                         (try
+                           (when (= table next) (deliver next-started true))
+                           (when (= table slow)
+                             (is (true? (deref next-started 5000 :timeout))
+                                 "the third table starts while the first is still running"))
+                           (apply (canned-llm (constantly {})) args)
+                           (finally (swap! in-flight dec)))))
+        result       (do-with-llm! llm #(core/classify-database! (mt/db) :include-values? false :parallelism 2))]
+    (testing "a free worker takes the next table without waiting for the slowest one"
+      (is (= 0 (:failed result)))
+      (is (= (count tables) (:requests result))))
+    (testing "no more than parallelism tables are in flight"
+      (is (<= @peak 2)))))
