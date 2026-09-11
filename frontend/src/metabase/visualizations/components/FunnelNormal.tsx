@@ -21,19 +21,18 @@ import {
   Subtitle,
   Title,
 } from "metabase/visualizations/components/FunnelNormal.styled";
-import {
-  calculateFunnelSteps,
-  calculateStepOpacity,
-} from "metabase/visualizations/lib/funnel/utils";
 import type {
   ClickObject,
-  HoveredObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import {
+  type HoveredObject,
+  calculateFunnelSteps,
+  calculateStepOpacity,
+  computeChange,
+} from "metabase/viz-core";
 import type { RowValue, RowValues } from "metabase-types/api";
 import { getRowsForStableKeys } from "metabase-types/api";
-
-import { computeChange } from "../lib/numeric";
 
 type FunnelStepInfo = {
   value: number;

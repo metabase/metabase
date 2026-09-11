@@ -10,6 +10,18 @@ on:
         description: Run the full suite regardless of the diff (master / release branches).
         type: boolean
         default: false
+      run-project-backend-checks:
+        description: Run project-level backend checks.
+        type: boolean
+        default: false
+      run-project-migration-checks:
+        description: Run project-level migration checks.
+        type: boolean
+        default: false
+      run-project-ratchet-checks:
+        description: Run the ratchet check for a diff that touches nothing but the ratchets file.
+        type: boolean
+        default: false
 
   # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
@@ -46,6 +58,95 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  project-checks:
+    name: 'Project tests: Suites'
+    if: >-
+      ${{ inputs.force-run ||
+      inputs.run-project-backend-checks ||
+      inputs.run-project-migration-checks ||
+      inputs.run-project-ratchet-checks }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      # Bootstrap the shared Mage runtime before concurrent commands try to install it themselves.
+      - name: Prepare Mage
+        run: ./bin/mage
+      - parallel:
+        - name: Run backend checks
+          if: ${{ inputs.force-run || inputs.run-project-backend-checks }}
+          run: ./bin/mage project-tests backend
+        - name: Run migration checks
+          if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
+          run: ./bin/mage project-tests migrations
+        # Babashka, not a JVM test run, so it is cheap enough to run alongside the backend checks.
+        # It still needs the JDK prepare-backend installs, to resolve clj-kondo on a cold cache.
+        - name: Run ratchet checks
+          if: ${{ inputs.force-run || inputs.run-project-backend-checks || inputs.run-project-ratchet-checks }}
+          run: ./bin/mage kondo-ratchets
+
+  project-tests:
+    name: Project tests
+    needs: project-checks
+    if: ${{ always() && !cancelled() }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Check Project tests status
+        uses: actions/github-script@v9
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            if (jobs.every(job => job.result === 'skipped' || job.result === 'success')) {
+              console.log('');
+              console.log('          |>>>             |>>>             |>>>');
+              console.log('          |                |                |');
+              console.log('      _  _|_  _        _  _|_  _        _  _|_  _');
+              console.log('     | |_| |_| |______| |_| |_| |______| |_| |_| |');
+              console.log('     |         |      |         |      |         |');
+              console.log('     | []   [] |      | []   [] |      | []   [] |');
+              console.log('     |         |______|         |______|         |');
+              console.log('     |                    ___                    |');
+              console.log('     |___________________|   |___________________|');
+              console.log('                         |___|');
+              console.log('');
+              console.log('Everything is up to code and structurally sound.');
+              process.exit(0);
+            }
+
+            console.log('');
+            console.log('              .-===========-.____');
+            console.log('             /_______________\\   \\____');
+            console.log('            |  .-----------.  |        \\___');
+            console.log('            |  |  x     x  |  |            \\__');
+            console.log('            |  |     ~     |  |              _\\_');
+            console.log("            |  `-----------'  |             /___\\");
+            console.log('            |    o     o      |');
+            console.log("            `-----------------'");
+            console.log('              /=============\\');
+            console.log('             / O O O O O O O \\');
+            console.log('             \\_______________/');
+            console.log('');
+            console.log('One or more project checks are off the blueprint. Hard hats required.');
+
+            jobs.forEach((job) => {
+              if (job.result !== 'success' && job.result !== 'skipped') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+
+            process.exit(1);
+
   be-linter-clj-kondo:
     if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -80,7 +181,7 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+      - run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
         name: Run Eastwood linter on our backend tests
 
   be-linter-eastwood-test-changed:
@@ -108,13 +209,14 @@ jobs:
           # last synced don't widen our scope. Falls back to BASE_SHA if older than fetched depth.
           git fetch --no-tags --depth=200 origin "$BASE_SHA"
           DIFF_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
-          # Test roots we lint: core, EE, and each driver module's test tree.
+          # Test roots we lint: core, EE, dev/test, and each driver module's test tree.
           # :eastwood/test derives matching :source-paths from the classpath, so any
           # namespace we name here is reachable. Include renames (R) so a test that
           # was just renamed still gets linted under its new name.
           FILES=$(git diff --name-only --diff-filter=AMR "$DIFF_BASE" "$HEAD_SHA" \
                     -- 'test/**/*.clj' 'test/**/*.cljc' \
                        'enterprise/backend/test/**/*.clj' 'enterprise/backend/test/**/*.cljc' \
+                       'dev/test/**/*.clj' 'dev/test/**/*.cljc' \
                        'modules/drivers/**/test/**/*.clj' 'modules/drivers/**/test/**/*.cljc')
 
           if [ -z "$FILES" ]; then
@@ -130,7 +232,14 @@ jobs:
             exit 1
           fi
 
-          NS=$(sed -E 's#^(test/|enterprise/backend/test/|modules/drivers/[^/]+/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' <<<"$FILES" \
+          # Convert each test path to a Clojure namespace: strip its known test root and
+          # extension, then translate path separators and underscores. Keep these roots
+          # aligned with FILES above and the Eastwood classpath aliases below.
+          NS=$(sed -E \
+                 -e 's#^(test/|enterprise/backend/test/|dev/test/|modules/drivers/[^/]+/test/)##' \
+                 -e 's#\.cljc?$##' \
+                 -e 's#/#.#g' \
+                 -e 's#_#-#g' <<<"$FILES" \
                  | sort -u \
                  | paste -sd' ' -)
           echo "Changed test namespaces: $NS"
@@ -139,7 +248,7 @@ jobs:
         if: steps.changed.outputs.namespaces != ''
         env:
           NAMESPACES: ${{ steps.changed.outputs.namespaces }}
-        run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
+        run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
 
   be-tests:
     if: ${{ !inputs.skip }}
@@ -368,6 +477,7 @@ jobs:
 
   be-tests-result:
     needs:
+      - project-tests
       - be-linter-eastwood
       - be-linter-eastwood-test
       - be-linter-eastwood-test-changed

@@ -1,6 +1,6 @@
 import type { Feature } from "geojson";
 
-import { sumMetric } from "metabase/visualizations/lib/dataset";
+import { sumMetric } from "metabase/viz-core";
 import type {
   CardId,
   DatasetColumn,
@@ -15,7 +15,7 @@ export type FeatureClickContext = {
   settings: VisualizationSettings;
   getFeatureName: (feature: Feature) => string;
   getFeatureKey: (feature: Feature, opts?: { lowerCase?: boolean }) => string;
-  cardId: CardId;
+  cardId: CardId | undefined;
 };
 
 export function buildFeatureClickObject(

@@ -5,10 +5,29 @@ import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import { allCollectionModels } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
-import { getRootCollectionItem as getTransformsRootCollectionItem } from "metabase/transforms/utils";
+import { mergeLazily } from "metabase/utils/merge-lazily";
 import type { CollectionNamespace } from "metabase-types/api";
 
 import type { OmniPickerCollectionItem } from "../types";
+
+const getTransformsRootCollectionItem = ({
+  namespace,
+}: {
+  namespace: CollectionNamespace;
+}): OmniPickerCollectionItem | null => {
+  if (namespace === "transforms") {
+    return {
+      model: "collection",
+      id: "root",
+      namespace: "transforms",
+      location: "/",
+      name: t`Transforms`,
+      here: ["collection"],
+      below: ["table", "metric"],
+    };
+  }
+  return null;
+};
 
 export const getOurAnalytics = (): OmniPickerCollectionItem => ({
   model: "collection",
@@ -20,14 +39,16 @@ export const getOurAnalytics = (): OmniPickerCollectionItem => ({
   namespace: null,
 });
 
-export const personalCollectionsRoot: OmniPickerCollectionItem = {
-  ...PERSONAL_COLLECTIONS,
-  can_write: false,
-  model: "collection",
-  location: "/",
-  here: ["collection"],
-  below: allCollectionModels,
-};
+export const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
+  PERSONAL_COLLECTIONS,
+  {
+    can_write: false,
+    model: "collection" as const,
+    location: "/",
+    here: ["collection" as const],
+    below: allCollectionModels,
+  },
+);
 
 export const getRootCollectionItem = async ({
   namespace,

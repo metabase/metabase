@@ -139,7 +139,7 @@ export const TaskRunDatePicker = ({
           }}
           onClick={() => setOpened((open) => !open)}
           rightSection={
-            <Group gap="xs" wrap="nowrap">
+            <Group gap="xxs" wrap="nowrap">
               {value !== null && (
                 <Input.ClearButton
                   size="sm"
@@ -165,7 +165,7 @@ export const TaskRunDatePicker = ({
       </Popover.Target>
 
       <Popover.Dropdown p="md">
-        <Stack gap="md" w={PICKER_WIDTH}>
+        <Stack gap="lg" w={PICKER_WIDTH}>
           <Select
             data={options}
             value={value}

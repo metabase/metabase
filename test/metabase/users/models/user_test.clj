@@ -17,7 +17,10 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.users.models.user :as user]
+   [metabase.users.settings :as users.settings]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -479,7 +482,7 @@
   (testing "add-attributes should add :attributes key with merged login attributes"
     (let [user {:login_attributes {"user_attr" "user_value"}
                 :jwt_attributes {"jwt_attr" "jwt_value"}
-                :email "test@example.com"}
+                :email "test@example.com", :type :personal}
           result (user/add-attributes user)]
       (is (= {"jwt_attr" "jwt_value"
               "user_attr" "user_value"}
@@ -488,7 +491,7 @@
 
 (deftest add-attributes-handles-nil-login-attributes-test
   (testing "add-attributes should handle nil login_attributes"
-    (let [user {:email "test@example.com"
+    (let [user {:email "test@example.com", :type :personal
                 :jwt_attributes {"jwt_attr" "jwt_value"}}
           result (user/add-attributes user)]
       (is (= {"jwt_attr" "jwt_value"}
@@ -498,7 +501,7 @@
   (testing "add-attributes should handle empty login_attributes"
     (let [user {:login_attributes {}
                 :jwt_attributes {"jwt_attr" "jwt_value"}
-                :email "test@example.com"}
+                :email "test@example.com", :type :personal}
           result (user/add-attributes user)]
       (is (= {"jwt_attr" "jwt_value"}
              (:attributes result))))))
@@ -509,7 +512,7 @@
                                    "user_only" "user_val"}
                 :jwt_attributes   {"shared_key" "jwt_value"
                                    "jwt_only" "jwt_val"}
-                :email "test@example.com"}
+                :email "test@example.com", :type :personal}
           result (user/add-attributes user)]
       (is (= {"shared_key" "user_value"
               "jwt_only" "jwt_val"
@@ -519,7 +522,7 @@
 (deftest add-attributes-preserves-user-fields-test
   (testing "add-attributes should preserve all other user fields"
     (let [user {:id 123
-                :email "test@example.com"
+                :email "test@example.com", :type :personal
                 :first_name "John"
                 :last_name "Doe"
                 :jwt_attributes {"jwt_attr" "jwt_value"}
@@ -538,7 +541,7 @@
   (testing "add-attributes should merge tenant attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {"user_attr" "user_value"}
-                  :email "test@example.com"}
+                  :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"
                 "user_attr" "user_value"}
@@ -548,7 +551,7 @@
 (deftest add-attributes-tenant-handles-nil-login-attributes-test
   (testing "add-attributes with tenant attributes should handle nil login_attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
-      (let [user {:email "test@example.com"}
+      (let [user {:email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"}
                (:attributes result)))))))
@@ -557,7 +560,7 @@
   (testing "add-attributes with tenant attributes should handle empty login_attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {}
-                  :email "test@example.com"}
+                  :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"}
                (:attributes result)))))))
@@ -566,7 +569,7 @@
   (testing "add-attributes should handle nil tenant attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly nil)]
       (let [user {:login_attributes {"user_attr" "user_value"}
-                  :email "test@example.com"}
+                  :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"user_attr" "user_value"}
                (:attributes result)))))))
@@ -574,10 +577,26 @@
 (deftest add-attributes-handles-both-nil-tenant-and-user-attributes-test
   (testing "add-attributes should handle both nil tenant and user attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly nil)]
-      (let [user {:email "test@example.com"}
+      (let [user {:email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {}
                (:attributes result)))))))
+
+(deftest add-attributes-only-personal-users-test
+  (testing "add-attributes gives non-personal users NO attributes, even with stored login_attributes (UXW-4240)"
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+      (doseq [user-type [:api-key :internal]]
+        (testing user-type
+          (is (= {}
+                 (:attributes (user/add-attributes {:email "test@example.com"
+                                                    :type user-type
+                                                    :login_attributes {"user_attr" "user_value"}
+                                                    :jwt_attributes {"jwt_attr" "jwt_value"}}))))))
+      (testing "throws (in dev) when :type is missing from the user map, so callers can't forget to select it"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid input"
+                              (user/add-attributes {:email "test@example.com"
+                                                    :login_attributes {"user_attr" "user_value"}})))))))
 
 (deftest add-attributes-user-overrides-tenant-test
   (testing "add-attributes: user attributes should override tenant attributes with same keys"
@@ -585,7 +604,7 @@
                                                                       "tenant_only" "tenant_val"})]
       (let [user {:login_attributes {"shared_key" "user_value"
                                      "user_only" "user_val"}
-                  :email "test@example.com"}
+                  :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"shared_key" "user_value"
                 "tenant_only" "tenant_val"
@@ -596,7 +615,7 @@
   (testing "add-attributes with tenant attributes should preserve all other user fields"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:id 123
-                  :email "test@example.com"
+                  :email "test@example.com", :type :personal
                   :first_name "John"
                   :last_name "Doe"
                   :login_attributes {"user_attr" "user_value"}}
@@ -609,3 +628,63 @@
         (is (= {"tenant_attr" "tenant_value"
                 "user_attr" "user_value"}
                (:attributes result)))))))
+
+;;; ------------------------------------------- Unparseable settings column --------------------------------------------
+
+(def ^:private unparseable-settings-plaintext "not-json")
+
+(defn- corrupt-settings-column!
+  "Write a value straight into `core_user.settings` that [[metabase.models.interface/encrypted-json-out]] hands back
+  un-parsed. The value is run through [[encryption/maybe-encrypt]] so it is encrypted exactly the way the column
+  expects: since #80785 the encrypted read is strict and a plaintext value would throw inside `t2/select` when
+  `MB_ENCRYPTION_SECRET_KEY` is set, never reaching the code under test. What is left after decryption is not JSON, so
+  the transform falls back to returning the raw column value (a String) instead of a map."
+  [user-id]
+  (t2/query {:update :core_user
+             :set    {:settings (encryption/maybe-encrypt unparseable-settings-plaintext)}
+             :where  [:= :id user-id]}))
+
+(deftest user-local-settings-unparseable-column-test
+  (testing "a `settings` column that can't be decrypted or parsed is treated as empty (#76900)"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (corrupt-settings-column! user-id)
+      (testing "looked up by user id"
+        (is (= {} (user/user-local-settings user-id))))
+      (testing "looked up from an already-selected user"
+        (is (= {} (user/user-local-settings (t2/select-one [:model/User :settings] :id user-id))))))))
+
+(deftest user-local-settings-unparseable-column-read-write-test
+  (testing "user-local Settings still work for a user whose `settings` column can't be decrypted or parsed (#76900)"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (corrupt-settings-column! user-id)
+      (testing "reads fall back to the Setting's default instead of throwing"
+        (request/with-current-user user-id
+          (is (nil? (users.settings/last-acknowledged-version)))))
+      (testing "writes replace the unusable value instead of throwing"
+        (request/with-current-user user-id
+          (users.settings/last-acknowledged-version! "v0.99.0")
+          (is (= "v0.99.0" (users.settings/last-acknowledged-version))))
+        (is (= {:last-acknowledged-version "v0.99.0"}
+               (user/user-local-settings user-id)))))))
+
+(deftest user-local-settings-unparseable-column-warns-on-overwrite-test
+  (testing "discarding an unreadable `settings` column is logged, because the write destroys it permanently (#76900)"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (corrupt-settings-column! user-id)
+      (testing "reading user-local settings does not warn -- nothing is destroyed, and this runs on every request"
+        (log.capture/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
+          (request/with-current-user user-id
+            (users.settings/last-acknowledged-version))
+          (is (empty? (messages)))))
+      (testing "the write that overwrites it warns, naming the user"
+        (log.capture/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
+          (request/with-current-user user-id
+            (users.settings/last-acknowledged-version! "v0.99.0")
+            (users.settings/dismissed-browse-models-banner! true))
+          (let [msgs (mapv :message (messages))]
+            (testing "only once, no matter how many Settings are written in the same request"
+              (is (= 1 (count msgs))))
+            (is (str/includes? (str (first msgs))
+                               (str "Discarding unreadable settings for user " user-id)))
+            (testing "without leaking the unreadable column contents, which are user data"
+              (is (not (str/includes? (str (first msgs)) unparseable-settings-plaintext))))))))))

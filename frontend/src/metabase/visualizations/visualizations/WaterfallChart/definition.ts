@@ -2,21 +2,18 @@ import Color from "color";
 import { t } from "ttag";
 
 import { color, staticVizOverrides } from "metabase/ui/colors";
-import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import {
+  type ComputedVisualizationSettings,
   GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
+  GRAPH_GOAL_SETTINGS,
+  TIMELINE_EVENTS_SETTINGS,
   TOOLTIP_SETTINGS,
-} from "metabase/visualizations/lib/settings/graph";
-import {
+  type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { getCartesianChartDefinition } from "../CartesianChart/definition";
@@ -37,8 +34,9 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
       metricCount > 0
     );
   },
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`waterfall chart`,
+  get noun() {
+    return t`waterfall chart`;
+  },
   minSize: getMinSize("waterfall"),
   defaultSize: getDefaultSize("waterfall"),
   maxMetricsSupported: 1,
@@ -61,8 +59,9 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
     },
     "waterfall.show_total": {
       getSection: () => t`Display`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Show total`,
+      get title() {
+        return t`Show total`;
+      },
       widget: "toggle",
       getDefault: () => true,
       inline: true,
@@ -80,6 +79,7 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   },
 };
 

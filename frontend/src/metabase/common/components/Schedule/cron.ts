@@ -1,5 +1,3 @@
-import { memoize } from "underscore";
-
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -7,16 +5,16 @@ import type {
 } from "metabase-types/api";
 
 import { PM } from "./constants";
-import { Cron, getScheduleStrings } from "./strings";
 import type {
-  AmPm,
   CronString,
+  NormalizedScheduleValue,
   ScheduleBuilderType,
   ScheduleBuilderValue,
   ScheduleValue,
-} from "./types";
-import { isScheduleCronValue } from "./types";
-import { clearUnusedScheduleFields } from "./utils";
+} from "./domain";
+import { isScheduleCronValue } from "./domain";
+import { Cron, getScheduleStrings } from "./strings";
+import type { AmPm } from "./types";
 
 const everyToCronSyntax = (every: number | string) =>
   `${Cron.EveryPrefix}${every}`;
@@ -24,6 +22,11 @@ export const isRepeatingEvery = (every: string) =>
   every.startsWith(Cron.EveryPrefix);
 export const cronUnitToNumber = (unit: string) =>
   parseInt(unit.replace(Cron.EveryPrefix, ""));
+
+const cronUnitToNumberOrNull = (unit: string) => {
+  const number = cronUnitToNumber(unit);
+  return Number.isNaN(number) ? null : number;
+};
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   const { weekdays } = getScheduleStrings();
@@ -94,18 +97,17 @@ const defaultSchedule: ScheduleBuilderValue = {
 };
 export const defaultCron = formatCron(defaultSchedule);
 
-export const toCronString = (schedule: ScheduleBuilderValue): CronString =>
-  formatCron(clearUnusedScheduleFields(schedule));
-
-export const scheduleValueToCron = (value: ScheduleValue): CronString => {
+export const scheduleValueToCron = (
+  value: NormalizedScheduleValue,
+): CronString => {
   if (isScheduleCronValue(value)) {
     return value.cron;
   }
 
-  return toCronString(value);
+  return formatCron(value);
 };
 
-export const cronToBuilderValue_unmemoized = (
+export const cronToBuilderValue = (
   cron: string | null | undefined,
 ): ScheduleBuilderValue | null => {
   if (!cron) {
@@ -179,8 +181,9 @@ export const cronToBuilderValue_unmemoized = (
   }
 
   const scheduleMinute =
-    minute === Cron.AllValues ? null : cronUnitToNumber(minute);
-  const scheduleHour = hour === Cron.AllValues ? null : cronUnitToNumber(hour);
+    minute === Cron.AllValues ? null : cronUnitToNumberOrNull(minute);
+  const scheduleHour =
+    hour === Cron.AllValues ? null : cronUnitToNumberOrNull(hour);
   return {
     schedule_type,
     schedule_minute: scheduleMinute,
@@ -189,7 +192,6 @@ export const cronToBuilderValue_unmemoized = (
     schedule_frame,
   };
 };
-export const cronToBuilderValue = memoize(cronToBuilderValue_unmemoized);
 
 export const toScheduleBuilderValue = (
   value: ScheduleValue,

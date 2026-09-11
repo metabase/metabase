@@ -67,6 +67,24 @@ export type MovableItem =
 
 export type MovableModel = MovableItem["model"];
 
+type MovedEntity<T extends MovableItem> = T extends {
+  model: "card" | "dataset" | "metric";
+}
+  ? Card
+  : T extends { model: "dashboard" }
+    ? Dashboard
+    : T extends { model: "collection" | "snippet-collection" }
+      ? Collection
+      : T extends { model: "snippet" }
+        ? NativeQuerySnippet
+        : T extends { model: "document" }
+          ? Document
+          : T extends { model: "exploration" }
+            ? Exploration
+            : T extends { model: "table" }
+              ? Table
+              : Timeline;
+
 const MOVABLE_MODELS = new Set<MovableModel>([
   "card",
   "dataset",
@@ -130,12 +148,15 @@ export function useSetCollection() {
   const [updateTimeline] = useUpdateTimelineMutation();
 
   const setCollection = useCallback(
-    (item: MovableItem, destination: SetCollectionDestination) => {
+    <T extends MovableItem>(
+      item: T,
+      destination: SetCollectionDestination,
+    ): Promise<MovedEntity<T>> => {
       const archived =
         isCollectionDestination(destination) &&
         isRootTrashCollection(destination);
 
-      return match(item)
+      const moved = match<MovableItem>(item)
         .with(
           { model: "card" },
           { model: "dataset" },
@@ -238,6 +259,8 @@ export function useSetCollection() {
           }).unwrap();
         })
         .exhaustive();
+      // Each branch resolves to the entity its model names, which is what MovedEntity spells out per model.
+      return moved as Promise<MovedEntity<T>>;
     },
     [
       updateCard,
@@ -367,11 +390,11 @@ export function useSetCollection() {
   );
 
   return useCallback(
-    async (
-      item: MovableItem,
+    async <T extends MovableItem>(
+      item: T,
       destination: SetCollectionDestination,
       { notify = true, message }: SetCollectionOptions = {},
-    ) => {
+    ): Promise<MovedEntity<T>> => {
       const undoAction = notify ? await captureUndoAction(item) : null;
 
       const result = await setCollection(item, destination);

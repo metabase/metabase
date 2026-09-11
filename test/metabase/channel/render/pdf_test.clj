@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.pdf :as pdf]
    [metabase.channel.render.pdf.font :as font]
@@ -887,6 +888,20 @@
                 ppi                (/ w (/ drawn-w-pt 72.0))]
             (is (<= 290.0 ppi 310.0)
                 (format "%s body is %dx%d, drawn %.1fpt wide => %.0f PPI" display w h drawn-w-pt ppi))))))))
+(deftest ^:synchronized table-body-png-dispatches-on-chart-type-test
+  (testing "table-body-png renders each table-like card with its own renderer, not always the flat table"
+    (let [data     {:cols [{:name "n" :display_name "N" :base_type :type/Integer}]
+                    :rows [[1]]}
+          part     {:card {} :dashcard nil :result {:data data}}
+          rendered (atom [])
+          orig     body/render]
+      (with-redefs [body/render (fn [chart-type & args]
+                                  (swap! rendered conj chart-type)
+                                  (apply orig chart-type args))]
+        (doseq [chart-type [:table :pivot :object]]
+          (#'pdf/table-body-png nil part chart-type 400 300)))
+      ;; :pivot's own renderer degrades to :table internally, hence the trailing :table
+      (is (= [:table :pivot :table :object] @rendered)))))
 
 (deftest ^:parallel table-like-chart-types-test
   (testing "native table, pivot, and object-detail cards all classify into the framed table path"

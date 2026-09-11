@@ -4,20 +4,22 @@ import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { datasetApi } from "metabase/api/dataset";
+import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import { useQuestionFromCard } from "metabase/metadata-store";
+import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import Visualization from "metabase/visualizations/components/Visualization";
 import NoResultsView from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView";
-import { createRawSeries } from "metabase/visualizations/lib/series";
+import { createRawSeries } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
 
@@ -59,9 +61,10 @@ const getErrorMessage = (
   queryError: unknown,
 ): string => {
   if (failedDataset?.error) {
-    return typeof failedDataset.error === "string"
-      ? failedDataset.error
-      : failedDataset.error?.data || t`Query execution failed`;
+    return getResponseErrorMessage(
+      failedDataset.error,
+      t`Query execution failed`,
+    );
   }
   if (typeof queryError === "object" && queryError && "message" in queryError) {
     return String(queryError.message);
@@ -107,7 +110,7 @@ export const NativeQueryModal = ({
 }: NativeQueryModalProps) => {
   const dispatch = useDispatch();
   const host = useEditorHost();
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
 
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
@@ -146,16 +149,16 @@ export const NativeQueryModal = ({
   }, [isOpen, card, dispatch, host.actions]);
 
   const question = useMemo(() => {
-    if (!card || !metadata || !isOpen) {
+    if (!card || !isOpen) {
       return null;
     }
 
-    const baseQuestion = new Question(card, metadata);
+    const baseQuestion = buildQuestion(card);
     if (!modifiedQuestion) {
       setModifiedQuestion(baseQuestion);
     }
     return baseQuestion;
-  }, [card, metadata, isOpen, modifiedQuestion]);
+  }, [card, buildQuestion, isOpen, modifiedQuestion]);
 
   const canSave =
     modifiedQuestion &&
@@ -313,7 +316,7 @@ export const NativeQueryModal = ({
       onClose={onClose}
       size="95%"
       title={t`Edit SQL Query`}
-      padding="lg"
+      padding="xl"
       classNames={{
         content: S.modalContent,
         body: S.modalBody,
@@ -415,7 +418,7 @@ export const NativeQueryModal = ({
                 <Box flex={1} mih="300px">
                   <Visualization
                     rawSeries={rawSeries}
-                    metadata={metadata}
+                    mode={defaultClickActionMode}
                     onChangeCardAndRun={() => {}}
                     getExtraDataForClick={() => ({})}
                     isEditing={false}

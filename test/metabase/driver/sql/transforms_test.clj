@@ -10,6 +10,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -352,17 +353,18 @@
 (deftest rename-table-special-characters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :rename)
     (mt/with-premium-features #{:transforms-basic}
-      ;; the dash is the case a user actually hits: an unquoted identifier silently becomes
-      ;; `rnq_a_b`, so the rename lands on a different table instead of failing
-      (doseq [dst ["rnq_a`b\\" "rnq-a-b"]]
-        (testing (str "renaming a table to " (pr-str dst) " keeps it as a single queryable table")
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :venues))
-                src    (str "rnq_src_" (subs (str (random-uuid)) 0 8))]
-            (try
-              (driver/create-table! driver/*driver* (mt/id) (keyword schema src)
-                                    {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})
-              (driver/rename-table! driver/*driver* (mt/id) (keyword schema src) (keyword schema dst))
-              (is (= 0 (warehouse-row-count schema dst)))
-              (finally
-                (transforms.tu/drop-target! {:type :table :schema schema :name dst})
-                (transforms.tu/drop-target! {:type :table :schema schema :name src})))))))))
+      (mt/dataset transforms-dataset/transforms-test
+        ;; the dash is the case a user actually hits: an unquoted identifier silently becomes
+        ;; `rnq_a_b`, so the rename lands on a different table instead of failing
+        (doseq [dst ["rnq_a`b\\" "rnq-a-b"]]
+          (testing (str "renaming a table to " (pr-str dst) " keeps it as a single queryable table")
+            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                  src    (str "rnq_src_" (subs (str (random-uuid)) 0 8))]
+              (try
+                (driver/create-table! driver/*driver* (mt/id) (keyword schema src)
+                                      {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})
+                (driver/rename-table! driver/*driver* (mt/id) (keyword schema src) (keyword schema dst))
+                (is (= 0 (warehouse-row-count schema dst)))
+                (finally
+                  (transforms.tu/drop-target! {:type :table :schema schema :name dst})
+                  (transforms.tu/drop-target! {:type :table :schema schema :name src}))))))))))

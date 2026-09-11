@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import { getUserCanWriteToCollections } from "metabase/current-user";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useSelector } from "metabase/redux";
@@ -18,6 +17,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+import { canExploreResults } from "../../utils";
 import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
@@ -240,7 +240,7 @@ export function ViewTitleHeaderRightSide({
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
-            px="md"
+            px="lg"
             py="sm"
             variant="subtle"
             aria-disabled={isSaveDisabled || undefined}

@@ -32,7 +32,7 @@ export const UserProvisioningFirstEnabledModal = ({
       onClose={onClose}
       title={t`Here's what you'll need to set SCIM up`}
     >
-      <Stack gap="lg">
+      <Stack gap="xl">
         <Text c="text-secondary">
           {t`To set up SCIM-based provisioning, you'll need to share this endpoint URL and token with your identity provider.`}
         </Text>
@@ -115,7 +115,7 @@ export const UserProvisioningRegenerateTokenModal = ({
       onClose={onClose}
       title={t`Copy and save the SCIM token`}
     >
-      <Stack gap="lg" mt="0.5rem">
+      <Stack gap="xl" mt="0.5rem">
         <LoadingAndErrorWrapper
           error={regenerateTokenReq.error}
           loading={regenerateTokenReq.isLoading}

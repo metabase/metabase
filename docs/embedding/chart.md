@@ -277,9 +277,9 @@ For both the SDK props (`initialSqlParameters`, `sqlParameters`, and `onSqlParam
 
 To hide a parameter from the question's UI, use the [`hidden-parameters`](./question-reference.md#web-component-metabase-question-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both work in any modular embed, on any plan.
 
-In practice you'll reach for them on [SSO embeds](./introduction.md#components-with-sso-authentication), where every parameter on the question shows up by default. On a [guest embed](./guest-embedding.md), a parameter that you haven't set to **Editable** or **Locked** is already hidden.
+In practice you'll reach for them on an [SSO embed](./introduction.md#components-with-sso-authentication), where every parameter on the question shows up by default. On a [guest embed](./guest-embedding.md#configuring-parameters), a parameter that you haven't set to **Editable** or **Locked** is already hidden, so the embed wizard won't generate `hidden-parameters` for you. You can still add the attribute by hand to hide a parameter you've made editable.
 
-Hiding a parameter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-sql-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser. To restrict the data itself, see [Show people only their own data](#show-people-only-their-own-data).
+Hiding a parameter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-sql-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser. Instead, see [Show people only their own data](#show-people-only-their-own-data), or set [data permissions](../permissions/embedding.md).
 
 ## Let people set up alerts on a question
 
@@ -346,4 +346,5 @@ On the OSS and Starter plans, Metabase adds a "Powered by Metabase" banner to gu
 - [Guest embeds](./guest-embedding.md)
 - [Authentication](./authentication.md)
 - [Modular embedding SDK](./sdk/introduction.md)
-- [AI chat](./sdk/ai-chat.md)
+- [Modular embedding components](./components.md)
+- [Embed an AI chat](./ai-chat.md)

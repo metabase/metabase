@@ -25,7 +25,7 @@ const NodeListTitle = ({ children, ...rest }: FlexProps) => {
 
 const NodeListContainer = ({ children, ...rest }: BoxPropsWithChildren) => {
   return (
-    <Box component="ul" pt="md" {...rest}>
+    <Box component="ul" pt="lg" {...rest}>
       {children}
     </Box>
   );
@@ -44,7 +44,7 @@ const NodeListItemId = ({ children, ...rest }: BoxPropsWithChildren) => {
     <Box
       component="span"
       fz="0.75em"
-      ml="xs"
+      ml="xxs"
       className={S.NodeListItemId}
       {...rest}
     >
@@ -61,7 +61,7 @@ const NodeListItemName = ({ children, ...rest }: BoxPropsWithChildren) => {
   );
 };
 
-const NodeListIcon = (props: IconProps) => <Icon mt="1px" w="md" {...props} />;
+const NodeListIcon = (props: IconProps) => <Icon mt="1px" w="lg" {...props} />;
 
 const NodeListItemIcon = (props: IconProps & { disabled?: boolean }) => {
   const { disabled, ...rest } = props;

@@ -10,13 +10,13 @@ import {
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import ModelActionsView from "metabase/models/components/ModelActions";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { connect, useSelector } from "metabase/redux";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { fetchTableForeignKeys } from "metabase/redux/tables";
 import { Outlet, useNavigate, useParams } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -113,11 +113,15 @@ function ModelActions({
 function ModelActionsLoader(dispatchProps: DispatchProps) {
   const params = useParams<ModelActionsParams>();
   const modelId = Urls.extractEntityId(params.slug);
-  const { isLoading, error } = useGetCardQuery(
-    modelId != null ? { id: modelId } : skipToken,
-  );
-  const model = useSelector((state) =>
-    modelId != null ? getMetadata(state).question(modelId) : undefined,
+  const {
+    data: card,
+    isLoading,
+    error,
+  } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
+  const buildQuestion = useQuestionFromCard();
+  const model = useMemo(
+    () => (card != null ? buildQuestion(card) : undefined),
+    [card, buildQuestion],
   );
 
   if (!model) {

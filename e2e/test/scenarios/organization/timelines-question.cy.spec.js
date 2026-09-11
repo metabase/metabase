@@ -514,6 +514,78 @@ describe("scenarios > organization > timelines > question", () => {
         .should("be.visible");
     });
 
+    it("should stack close events from different data points and spread the stack on hover", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          {
+            name: "Jan release",
+            timestamp: "2027-01-30T00:00:00Z",
+            icon: "star",
+          },
+          {
+            name: "Feb fix",
+            timestamp: "2027-02-02T00:00:00Z",
+            icon: "warning",
+          },
+          {
+            name: "Summer party",
+            timestamp: "2028-07-04T00:00:00Z",
+            icon: "cake",
+          },
+        ],
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.log("adjacent-month events collapse into an overlapped stack");
+      cy.findByTestId("timeline-event-stack").should(
+        "have.attr",
+        "data-expanded",
+        "false",
+      );
+      H.timelineEventChip("Summer party").should("be.visible");
+
+      cy.log("hovering the stack spreads it and hides unrelated chips");
+      H.timelineEventChip("Feb fix").realHover({ position: "right" });
+      cy.findByTestId("timeline-event-stack").should(
+        "have.attr",
+        "data-expanded",
+        "true",
+      );
+      H.timelineEventChip("Summer party").should("not.be.visible");
+      H.timelineEventMarkerLine().should("exist");
+
+      cy.log("a spread member behaves like a regular chip");
+      H.timelineEventChip("Jan release").realHover();
+      cy.findByTestId("timeline-event-popover")
+        .findByText("Jan release")
+        .should("be.visible");
+      H.timelineEventMarkerLine().should("exist");
+
+      cy.log("moving away collapses the stack and restores other chips");
+      cy.findByTestId("qb-header").realHover();
+      cy.findByTestId("timeline-event-stack").should(
+        "have.attr",
+        "data-expanded",
+        "false",
+      );
+      H.timelineEventChip("Summer party").should("be.visible");
+    });
+
     it("should collapse close events into a count chip and focus the sidebar on the group from 'See all'", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },

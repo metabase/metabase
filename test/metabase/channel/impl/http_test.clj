@@ -67,6 +67,7 @@
   (let [handler        (as-> route+handlers routes+handlers
                          (mapv :route routes+handlers)
                          (conj routes+handlers (compojure.route/not-found {:status-code 404 :body "Not found."}))
+                         ;; throwaway Jetty test handler; no OpenAPI spec needed
                          (apply #_{:clj-kondo/ignore [:discouraged-var]} compojure/routes routes+handlers))
         ^Server server (jetty/run-jetty (apply-middleware handler middlewares) {:port 0 :join? false})]
     (try
@@ -154,7 +155,7 @@
        (ex-data e#))))
 
 (deftest can-connect-no-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [get-favicon get-200 get-302-redirect-200 get-400 get-302-redirect-400 get-500]]
       (let [can-connect?* (fn [route]
                             (can-connect? {:url         (str url (:path route))
@@ -177,7 +178,7 @@
                 (exception-data (can-connect?* get-500))))))))
 
 (deftest can-connect-header-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [(make-route :get "/user"
                                    (fn [x]
                                      (if (= "SECRET" (get-in x [:headers "x-api-key"]))
@@ -189,17 +190,17 @@
         (is (true? (can-connect? {:url         (str url "/user")
                                   :method      "get"
                                   :auth-method "header"
-                                  :auth-info   {:x-api-key "SECRET"}}))))
+                                  :auth-info   {"x-api-key" "SECRET"}}))))
       (testing "fail to connect with header auth"
         (is (= {:request-status 401
                 :request-body   "Unauthorized"}
                (exception-data (can-connect? {:url         (str url "/user")
                                               :method      "get"
                                               :auth-method "header"
-                                              :auth-info   {:x-api-key "WRONG"}}))))))))
+                                              :auth-info   {"x-api-key" "WRONG"}}))))))))
 
 (deftest can-connect-query-param-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [(make-route :get "/user"
                                    (fn [x]
                                      (if (= ["qnkhuat" "secretpassword"]
@@ -212,19 +213,19 @@
         (is (true? (can-connect? {:url         (str url "/user")
                                   :method      "get"
                                   :auth-method "query-param"
-                                  :auth-info   {:username "qnkhuat"
-                                                :password "secretpassword"}}))))
+                                  :auth-info   {"username" "qnkhuat"
+                                                "password" "secretpassword"}}))))
       (testing "fail to connect with query-param auth"
         (is (= {:request-status 401
                 :request-body   "Unauthorized"}
                (exception-data (can-connect? {:url         (str url "/user")
                                               :method      "get"
                                               :auth-method "query-param"
-                                              :auth-info   {:username "qnkhuat"
-                                                            :password "wrongpassword"}}))))))))
+                                              :auth-info   {"username" "qnkhuat"
+                                                            "password" "wrongpassword"}}))))))))
 
 (deftest can-connect-request-body-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [(make-route :post "/user"
                                    (fn [x]
                                      (if (= "SECRET_TOKEN" (get-in x [:body :token]))
@@ -236,14 +237,14 @@
         (is (true? (can-connect? {:url         (str url "/user")
                                   :method      "post"
                                   :auth-method "request-body"
-                                  :auth-info   {:token "SECRET_TOKEN"}}))))
+                                  :auth-info   {"token" "SECRET_TOKEN"}}))))
       (testing "fail to connect with request-body auth"
         (is (= {:request-status 401
                 :request-body   "Unauthorized"}
                (exception-data (can-connect? {:url         (str url "/user")
                                               :method      "post"
                                               :auth-method "request-body"
-                                              :auth-info   {:token "WRONG_TOKEN"}}))))))))
+                                              :auth-info   {"token" "WRONG_TOKEN"}}))))))))
 
 (deftest can-connect?-errors-test
   (testing "throws an appriopriate errors if details are invalid"
@@ -257,7 +258,7 @@
     (testing "include undefined key"
       (is (=? {:errors {:xyz ["disallowed key"]}}
               (exception-data (can-connect? {:xyz "hello world"})))))
-    (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+    (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
       (with-server [url [get-400]]
         (is (= {:request-body   "Bad request"
                 :request-status 400}
@@ -276,7 +277,7 @@
                                                 :auth-method "none"})))))))))
 
 (deftest send!-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (testing "basic send"
       (with-captured-http-requests [requests]
         (channel/send! {:type        :channel/http
@@ -303,28 +304,28 @@
         (channel/send! {:type    :channel/http
                         :details {:url         "https://www.secret_service.xyz"
                                   :auth-method "header"
-                                  :auth-info   {:Authorization "Bearer 123"}
+                                  :auth-info   {"Authorization" "Bearer 123"}
                                   :method      "get"}}
                        {:headers     {:X-Request-Id "123"}})
         (is (= (merge default-request
                       {:method  :get
                        :url          "https://www.secret_service.xyz"
-                       :headers      {:Authorization "Bearer 123"
-                                      :X-Request-Id "123"}})
+                       :headers      {"Authorization" "Bearer 123"
+                                      :X-Request-Id  "123"}})
                (first @requests)))))
     (testing "preserves req query-params when use auth-method=:query-param"
       (with-captured-http-requests [requests]
         (channel/send! {:type    :channel/http
                         :details {:url         "https://www.secret_service.xyz"
                                   :auth-method "query-param"
-                                  :auth-info   {:token "123"}
+                                  :auth-info   {"token" "123"}
                                   :method      "get"}}
                        {:query-params {:page 1}})
         (is (= (merge default-request
                       {:method       :get
                        :url          "https://www.secret_service.xyz"
-                       :query-params {:token "123"
-                                      :page 1}})
+                       :query-params {"token" "123"
+                                      :page   1}})
                (first @requests)))))))
 
 (deftest send!-humanized-invalid-url-test
@@ -337,7 +338,7 @@
                               #"No URL is configured for this webhook"
                               (channel/send! channel nil)))))
     (testing "an unparseable webhook URL throws a human-readable error (#76802)"
-      (mt/with-temporary-setting-values [http-channel-host-strategy :external-only]
+      (mt/with-temporary-setting-values [http-channel-allowed-networks :external-only]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Invalid webhook URL"
                               (channel/send! {:type    :channel/http
@@ -347,7 +348,7 @@
 (deftest send!-rejects-any-local-ula-cgnat-test
   (testing "under :external-only, hosts the old valid-host? let through -- any-local (0.0.0.0 / [::]),
            IPv6 ULA, IPv4 CGNAT -- are rejected up front"
-    (mt/with-temporary-setting-values [http-channel-host-strategy :external-only]
+    (mt/with-temporary-setting-values [http-channel-allowed-networks :external-only]
       (doseq [host ["0.0.0.0" "[::]" "[fc00::1]" "100.64.0.1"]]
         (testing host
           (is (thrown-with-msg?
@@ -363,7 +364,7 @@
                                   [:allow-private true]
                                   [:external-only true]]]
       (with-captured-http-requests [requests]
-        (mt/with-temporary-setting-values [http-channel-host-strategy strategy]
+        (mt/with-temporary-setting-values [http-channel-allowed-networks strategy]
           (channel/send! {:type :channel/http
                           :details {:url         "https://8.8.8.8"
                                     :auth-method "none"
@@ -380,7 +381,7 @@
               "the rendered request cannot override the policy DNS resolver"))))))
 
 (deftest alert-http-channel-e2e-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (let [received-message (atom nil)
           receive-route    (make-route :post "/test_http_channel"
                                        (fn [res]

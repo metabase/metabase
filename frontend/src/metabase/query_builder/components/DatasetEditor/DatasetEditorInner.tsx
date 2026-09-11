@@ -21,40 +21,21 @@ import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
-import {
-  setDatasetEditorTab,
-  setTemplateTagConfig,
-  updateQuestion as updateQuestionAction,
-} from "metabase/query_builder/actions";
-import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
-import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
-import type { FieldWithMaybeIndex } from "metabase/query_builder/model-indexes/actions";
-import {
-  getDatasetEditorTab,
-  getIsListViewConfigurationShown,
-  getIsResultDirty,
-  getMetadataDiff,
-  getOriginalQuestion,
-  getResultsMetadata,
-  getVisualizationSettings,
-  isResultsMetadataDirty,
-} from "metabase/query_builder/selectors";
-import { getWritableColumnProperties } from "metabase/query_builder/utils";
+import { getShallowFields } from "metabase/metadata-store";
+import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
+import { TagEditorSidebar } from "metabase/parameters/components/TagEditor/TagEditorSidebar";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { getInitialEditorHeight } from "metabase/querying/components/NativeQueryEditor/utils";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
-import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { connect, useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   checkCanBeModel,
   getSortedModelFields,
@@ -67,6 +48,7 @@ import type {
   Field,
   FieldId,
   NativeQuerySnippet,
+  NormalizedField,
   RawSeries,
   ResultsMetadata,
   VisualizationDisplay,
@@ -74,7 +56,26 @@ import type {
 } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 
+import {
+  setDatasetEditorTab,
+  setTemplateTagConfig,
+  updateQuestion as updateQuestionAction,
+} from "../../actions";
 import { useListModelIndexesQuery } from "../../api/model-index";
+import { useVisualizationResultQBProps } from "../../hooks";
+import type { FieldWithMaybeIndex } from "../../model-indexes/actions";
+import {
+  getDatasetEditorTab,
+  getIsListViewConfigurationShown,
+  getIsResultDirty,
+  getMetadataDiff,
+  getOriginalQuestion,
+  getResultsMetadata,
+  getVisualizationSettings,
+  isResultsMetadataDirty,
+} from "../../store/selectors";
+import { getWritableColumnProperties } from "../../utils";
+import { ViewSidebar } from "../view/ViewSidebar";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {
@@ -96,7 +97,7 @@ export type DatasetEditorInnerProps = {
   rawSeries: RawSeries | null;
   visualizationSettings?: VisualizationSettings | null;
   datasetEditorTab: DatasetEditorTab;
-  metadata?: Metadata;
+  storeFields: Record<string, NormalizedField>;
   metadataDiff: MetadataDiff;
   resultsMetadata?: ResultsMetadata | null;
   isMetadataDirty: boolean;
@@ -150,7 +151,7 @@ const TABLE_HEADER_HEIGHT = 45;
 
 function mapStateToProps(state: any) {
   return {
-    metadata: getMetadata(state),
+    storeFields: getShallowFields(state),
     metadataDiff: getMetadataDiff(state),
     visualizationSettings: getVisualizationSettings(state),
     datasetEditorTab: getDatasetEditorTab(state),
@@ -307,7 +308,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
     datasetEditorTab,
     result,
     resultsMetadata,
-    metadata,
+    storeFields,
     metadataDiff,
     isMetadataDirty,
     height,
@@ -433,12 +434,13 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
 
   const inheritMappedFieldProperties = useCallback(
     (changes: { id: FieldId | null } & Partial<Omit<DatasetColumn, "id">>) => {
-      const mappedField = metadata?.field?.(changes.id)?.getPlainObject();
+      const mappedField =
+        changes.id != null ? storeFields[changes.id] : undefined;
       const inheritedProperties =
         mappedField && getWritableColumnProperties(mappedField, isNative);
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
-    [metadata, isNative],
+    [storeFields, isNative],
   );
 
   const onFieldMetadataChange = useCallback(
@@ -768,6 +770,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                   className={CS.spread}
                   noHeader
                   queryBuilderMode="dataset"
+                  hasColumnReordering
                   onHeaderColumnReorder={handleHeaderColumnReorder}
                   isShowingDetailsOnlyColumns={datasetEditorTab !== "metadata"}
                   hasMetadataPopovers={false}
@@ -778,6 +781,11 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                   renderTableHeader={renderTableHeader}
                   scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
                   renderEmptyMessage={isEditingColumns}
+                  noResultsAction={
+                    !isModelQueryDirty && (
+                      <HasResultsAlertPrompt question={question} />
+                    )
+                  }
                 />
               )}
             </DebouncedFrame>

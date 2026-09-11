@@ -18,6 +18,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -157,7 +158,7 @@
                              "  `avg` ASC,"
                              "  `v4_test_data.venues`.`price` ASC"]
                 :params     nil
-                :table-name "venues"
+                :qp/table-name "venues"
                 :mbql?      true})
              (-> (mt/mbql-query venues
                    {:aggregation [[:avg $category_id]]
@@ -1100,7 +1101,7 @@
                                  "LIMIT"
                                  "  1"]
                     :params     nil
-                    :table-name "checkins"
+                    :qp/table-name "checkins"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %)))))))))))
@@ -1170,7 +1171,7 @@
                                  "LIMIT"
                                  "  2"]
                     :params     nil
-                    :table-name "__mb_source"
+                    :qp/table-name "__mb_source"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
@@ -1184,7 +1185,7 @@
       (testing "Arguments to custom aggregation expression functions have backticks applied properly"
         (is (= {:mbql?      true
                 :params     nil
-                :table-name "orders"
+                :qp/table-name "orders"
                 :query      (for [line ["SELECT"
                                         "  APPROX_QUANTILES("
                                         "    `v4_sample_dataset.orders`.`quantity`,"
@@ -1224,13 +1225,21 @@
                              "ORDER BY"
                              "  `source` ASC"]
                 :params     nil
-                :table-name "__mb_source"
+                :qp/table-name "__mb_source"
                 :mbql?      true}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
         (mt/with-native-query-testing-context query
           (is (= [["2" 1]]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel inline-value-string-test
+  (testing "inlined string literals escape the backslash before the quote"
+    (are [s expected] (= expected (sql.qp/inline-value :bigquery-cloud-sdk s))
+      "Tito's Tacos"     "'Tito\\'s Tacos'"
+      "back\\slash"      "'back\\\\slash'"
+      "' OR 1 = 1 --"    "'\\' OR 1 = 1 --'"
+      "a\\' OR 1 = 1 --" "'a\\\\\\' OR 1 = 1 --'")))
 
 (deftest ^:parallel cast-timestamp-to-datetime-if-needed-for-temporal-arithmetic-test
   (testing "cast timestamps to datetimes so we can use DATETIME_ADD() if needed for units like month (#21969)"

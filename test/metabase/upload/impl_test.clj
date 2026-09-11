@@ -39,6 +39,14 @@
   (:import
    (java.io ByteArrayInputStream File FileOutputStream)))
 
+(use-fixtures :once (fn [f]
+                      (mt/dataset (mt/dataset-definition
+                                   "upload_impl" [["venues"
+                                                   [{:field-name "name"
+                                                     :base-type :type/Text}]
+                                                   [["something"]]]])
+                        (f))))
+
 (set! *warn-on-reflection* true)
 
 (def ^:private bool-type      ::upload-types/boolean)
@@ -636,6 +644,7 @@
   "Because life is too short for zillions of temp files."
   [^String s]
   (let [bytes (.getBytes s "UTF-8")]
+    ;; only the input side is exercised; the writer methods would throw if hit
     #_{:clj-kondo/ignore [:missing-protocol-method]}
     (reify
       io/IOFactory

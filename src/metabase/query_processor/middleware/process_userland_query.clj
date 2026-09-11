@@ -17,6 +17,7 @@
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
@@ -25,9 +26,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? empty? get-in not-empty]]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.performance :refer [every? empty? get-in not-empty]]))
 
 (set! *warn-on-reflection* true)
 
@@ -64,7 +63,7 @@
         (when (seq no-context)
           (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
         (when (seq with-context)
-          (t2/insert! :model/QueryExecution (map #(dissoc % :json_query) with-context))))
+          (query-processor.db/insert-query-executions! (map #(dissoc % :json_query) with-context))))
       (catch Throwable e
         (log/errorf "Error saving query execution info: %s" (ex-message e))))))
 
@@ -88,6 +87,12 @@
     (if qp.util/*execute-async?*
       (grouper/submit! @save-execution-metadata-queue execution-info')
       (save-execution-metadata!* [execution-info']))))
+
+(defn flush-execution-metadata!
+  "Block until every `QueryExecution` submitted by [[save-execution-metadata!]] so far has been written. Needed by
+  anything that reads the `query_execution` table back and cannot tolerate the batching lag."
+  []
+  (grouper/flush! @save-execution-metadata-queue))
 
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution

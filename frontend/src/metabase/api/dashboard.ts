@@ -1,4 +1,3 @@
-import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
@@ -16,7 +15,6 @@ import type {
   GetPublicDashboard,
   GetRemappedDashboardParameterValueRequest,
   GetValidDashboardFilterFieldsRequest,
-  ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListDashboardsRequest,
   ListDashboardsResponse,
@@ -40,7 +38,6 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
-import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -97,7 +94,6 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
-        onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
       }),
       getDashboardCardQuery: builder.query<
         Dataset,
@@ -165,10 +161,7 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
-        Omit<
-          ListCollectionItemsRequest,
-          "id" | "q" | "include_available_models"
-        > & { id: DashboardId }
+        { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({
           method: "GET",

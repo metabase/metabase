@@ -25,7 +25,7 @@ export const SelfHostedSMTPConnectionCard = () => {
                 c={"core-brand"}
                 bg="background_surface-brand-subtle"
                 p={"0.25rem 0.375rem"}
-                radius="xs"
+                radius="xxs"
               >{t`Active`}</Paper>
             )}
           </Flex>

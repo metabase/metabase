@@ -4,7 +4,8 @@ import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
-import { screen, waitFor } from "__support__/ui";
+import { fireEvent, screen, waitFor } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {
   createMockCard,
@@ -197,6 +198,29 @@ describe("Embed flow > Get Code Snippet", () => {
     // fields like `useExistingUserSession` should not exist
     expect(JSON.parse(config)).toStrictEqual({
       instanceUrl: window.location.origin,
+    });
+  });
+
+  it("tracks embed_wizard_code_copied when the snippet is copied without the button (EMB-2309)", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+
+    setup({
+      simpleEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { useExistingUserSession: true },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+
+    // A keyboard or context-menu copy never reaches the Copy code button, so
+    // the card tracks the snippet's own `copy` event too.
+    fireEvent.copy(await screen.findByTestId("embed-code-snippet"));
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "embed_wizard_code_copied",
+      event_detail:
+        "experience=dashboard,snippetType=frontend,authSubType=user-session",
     });
   });
 });

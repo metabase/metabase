@@ -7,43 +7,25 @@
    page's display name are computed here — they're not persisted."
   (:require
    [clojure.string :as str]
-   [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.variants :as variants]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
+(defn page-url
+  "Relative URL of a page in the exploration detail view. Used by the summary-append
+  endpoint to deep-link a static `cardEmbed`'s title back to its page."
+  [exploration-id page-id]
+  (str "/question/research/" exploration-id "/page/" page-id))
+
 ;;; ------------------------------------------- names -------------------------------------------
 
-(defn- dimension-anchored?
-  "Whether `block` is anchored on its dimension (one dimension crossed with several metrics)
-   rather than its metric. Reads the FE-supplied `:type`; legacy rows (no `:type`) are inferred
-   — a dimension block is the only shape with more than one metric."
-  [block]
-  (case (:type block)
-    "dimension" true
-    "metric"    false
-    (> (count (:metrics block)) 1)))
-
-(defn- anchor-dimension
-  "The dimension a dimension-anchored block is built around (its first/only dimension)."
-  [block]
-  (first (:dimensions block)))
-
-(defn- by-dimension
-  "Render a `By <dimension>` label."
-  [label]
-  (tru "By {0}" label))
-
 (defn block-display-name
-  "Sidebar heading for a block: `By <dimension>` for a dimension-anchored block (using the
-   dim's curated [[block/dimension-label]]), otherwise the metric's name. `card-name-by-id`
-   maps a metric Card id to its name. Public so the LLM planner context can label a block
-   the same way the read tree does."
+  "Sidebar heading for a block: its metric's name. `card-name-by-id` maps a metric Card id to
+   its name. Public so the LLM planner context can label a block the same way the read tree
+   does."
   [block card-name-by-id]
-  (if (dimension-anchored? block)
-    (by-dimension (or (block/dimension-label (anchor-dimension block)) ""))
-    (or (get card-name-by-id (:card_id (first (:metrics block)))) "")))
+  (or (get card-name-by-id (:card_id (first (:metrics block)))) ""))
 
 (defn- page-metric-name
   "The metric (Card) name for `page` — present even on an empty (comment-retained) page."
@@ -78,21 +60,14 @@
       (tru "{0} by {1}" metric dim))))
 
 (defn- page-short-name
-  "A page's name with the axis its block heading already shows removed: for a metric-anchored
-   block (heading = the metric) the pages vary by dimension, so `<dimension> <variant>`; for
-   a dimension-anchored block (heading = `By <dimension>`) they vary by metric, so `<metric>
-   <variant>`."
-  [block page queries card-name-by-id]
-  (let [qualifier (page-qualifier page)]
-    (if (dimension-anchored? block)
-      (let [metric (page-metric-name page card-name-by-id)]
-        (if qualifier
-          (str metric " " qualifier)
-          metric))
-      (let [dim (page-dimension-label page queries)]
-        (if qualifier
-          (str dim " " qualifier)
-          dim)))))
+  "A page's name with the axis its block heading already shows removed: the heading is the
+   metric, and the pages vary by dimension, so `<dimension> <variant>`."
+  [page queries]
+  (let [qualifier (page-qualifier page)
+        dim       (page-dimension-label page queries)]
+    (if qualifier
+      (str dim " " qualifier)
+      dim)))
 
 ;;; ------------------------------------------ scoring ------------------------------------------
 
@@ -117,9 +92,9 @@
 ;;; -------------------------------------------- tree -------------------------------------------
 
 (defn- page-node
-  [block page queries card-name-by-id]
+  [page queries card-name-by-id]
   {:id          (:id page)
-   :name        (page-short-name block page queries card-name-by-id)
+   :name        (page-short-name page queries)
    :long_name   (page-long-name page queries card-name-by-id)
    :query_ids   (mapv :id queries)
    :starred     (:starred page)
@@ -131,7 +106,6 @@
    rows, and its hydrated query rows, return the nested vector the FE renders:
 
        [{:id       <block-pk>
-         :type     \"metric\" | \"dimension\"
          :name     <computed heading>
          :position <0-indexed slot among blocks>
          :pages    [{:id        <page-pk>
@@ -145,14 +119,14 @@
    Pages are sorted by interestingness desc within their block. Pages whose block isn't in
    `blocks` are dropped; queries are matched to their page via `page_id`."
   [blocks pages card-name-by-id queries]
-  (let [queries-by-page  (group-by :page_id queries)
-        pages-by-block   (group-by :exploration_block_id pages)]
+  (let [queries-by-page (group-by :page_id queries)
+        pages-by-block  (group-by :exploration_block_id pages)]
     (into []
           (map-indexed
            (fn [block-pos block]
              (let [block-pages (->> (get pages-by-block (:id block) [])
                                     (map (fn [page]
-                                           (page-node block page
+                                           (page-node page
                                                       (get queries-by-page (:id page) [])
                                                       card-name-by-id)))
                                     (sort-by page-sort-key)
@@ -162,7 +136,6 @@
                                                        (dissoc ::max-score))))
                                     vec)]
                {:id              (:id block)
-                :type            (if (dimension-anchored? block) "dimension" "metric")
                 :name            (block-display-name block card-name-by-id)
                 :position        block-pos
                 :explore_filters (:explore_filters (first (:metrics block)))

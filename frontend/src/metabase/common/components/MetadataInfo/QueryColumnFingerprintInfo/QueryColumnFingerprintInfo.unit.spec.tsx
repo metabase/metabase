@@ -4,10 +4,10 @@ import {
   setupFieldValuesEndpoint,
   setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/metadata-store";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";

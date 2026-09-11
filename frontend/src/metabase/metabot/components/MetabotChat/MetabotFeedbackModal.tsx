@@ -13,7 +13,7 @@ import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { MetabotFeedback, MetabotIssueType } from "metabase-types/api";
 
-import { issueTypeOptions } from "./feedback-issue-types";
+import { getIssueTypeOptions } from "./feedback-issue-types";
 
 // Issue types that require free text feedback
 const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
@@ -104,18 +104,18 @@ export const MetabotFeedbackModal = ({
         onSubmit={handleSubmit}
       >
         <Form>
-          <Stack gap="md">
+          <Stack gap="lg">
             {!positive && (
-              <Stack gap="xs">
+              <Stack gap="xxs">
                 <Text>{t`What kind of issue are you reporting? (optional)`}</Text>
                 <FormSelect
                   name="issue_type"
                   placeholder={t`Select issue type`}
-                  data={issueTypeOptions}
+                  data={getIssueTypeOptions()}
                 />
               </Stack>
             )}
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <FeedbackTextLabel positive={positive} />
               <FormTextarea
                 name="freeform_feedback"
@@ -137,7 +137,7 @@ export const MetabotFeedbackModal = ({
                 .t`Please submit this report to ${applicationName}. Note that it may contain sensitive data from your conversation.`}
             </Text>
 
-            <Group justify="flex-end" gap="md" mt="md">
+            <Group justify="flex-end" gap="lg" mt="lg">
               <Button variant="subtle" onClick={onClose}>
                 {t`Cancel`}
               </Button>

@@ -53,9 +53,24 @@
 ;;; |                                     Default SQL JDBC metabase.driver impls                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private disallowed-additional-opts
+  "JDBC connection properties that are not needed to connect to a warehouse and are rejected for every
+  SQL-JDBC driver. Matched case-insensitively against the raw `additional-options` string."
+  #"(?i)(?:socketFactory|sslfactory|sslhostnameverifier|sslpasswordcallback|xmlFactoryFactory|loggerFile)")
+
+(defmethod driver/validate-db-details! :sql-jdbc
+  [_driver details]
+  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
+    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
+
 (defmethod driver/can-connect? :sql-jdbc
   [driver details]
+  (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
+
+(defmethod driver/validate-impersonated-query :sql-jdbc
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))
 
 (defmethod driver/table-rows-seq :sql-jdbc
   [driver database table]
@@ -294,6 +309,7 @@
   [driver db-id table-name column-definitions]
   (driver-api/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
+;; back-compat: honors driver overrides of the old alter-columns! method until drivers migrate
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-table-columns! :sql-jdbc
   [driver db-id table-name column-definitions & opts]

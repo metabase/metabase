@@ -25,6 +25,7 @@
 
 (defsetting password-complexity
   "Current password complexity requirements"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     u.password/active-password-complexity)

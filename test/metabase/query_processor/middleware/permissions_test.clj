@@ -9,6 +9,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.serialize :as lib.serialize]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -16,6 +17,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.tu]
    [metabase.query-processor.setup :as qp.setup]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -747,28 +749,35 @@
                #"You do not have permissions to run this query"
                (qp/process-query (mt/mbql-query venues {:limit 1})))))
         (testing "Query carrying a :query-permissions/perms value is still rejected"
+          ;; the value is dropped by the `:decode/api` decoder every incoming query goes through, so by the time the
+          ;; permissions middleware looks at the query there is nothing there to trust
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"
-               (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                        :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
-                                                                          :perms/create-queries {(mt/id :venues) :query-builder}}})))))))))
+               (-> (lib/query (mt/metadata-provider) (mt/mbql-query venues {:limit 1}))
+                   (assoc :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
+                                                            :perms/create-queries {(mt/id :venues) :query-builder}}})
+                   lib.serialize/prepare-after-deserialization
+                   qp/process-query))))))))
 
 (deftest e2e-ignore-user-supplied-sandboxed-tables-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"
     (mt/with-no-data-perms-for-all-users!
       (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
       (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
-      (let [bad-query {:database (mt/id), :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT 1"
-                                                                               :query-permissions/sandboxed-table (mt/id :venues)}}
-                       :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
-                                                         :perms/create-queries :query-builder-and-native}}}]
-        (mt/with-test-user :rasta
+      (mt/with-test-user :rasta
+        (let [bad-query (-> (lib/query (mt/metadata-provider)
+                                       {:database (mt/id), :type :query
+                                        :query    {:source-query {:native "SELECT * FROM VENUES LIMIT 1"}}})
+                            (assoc-in [:stages 0 :query-permissions/sandboxed-table] (mt/id :venues))
+                            (assoc :query-permissions/perms {:gtaps {:perms/view-data      :unrestricted
+                                                                     :perms/create-queries :query-builder-and-native}}))]
           (testing "Query carrying :query-permissions/sandboxed-table and perms keys is still rejected"
+            ;; both keys are dropped by the `:decode/api` decoder every incoming query goes through
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"You do not have permissions to run this query"
-                 (qp/process-query bad-query)))))))))
+                 (qp/process-query (lib.serialize/prepare-after-deserialization bad-query))))))))))
 
 (deftest e2e-ignore-user-supplied-compiled-from-mbql-key
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms even if you try to include an MBQL :query"

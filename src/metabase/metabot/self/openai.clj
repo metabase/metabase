@@ -250,7 +250,7 @@
       500 (tru "OpenAI API is not working but not saying why")
       (tru "OpenAI API error (HTTP {0})" status))))
 
-(def ^:private supported-models
+(def supported-models
   "OpenAI chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
   {"gpt-5.6-sol"   {:display-name "GPT-5.6 Sol"   :context-window 922000}
@@ -305,12 +305,19 @@
                  (mapv (fn [{:keys [id]}]
                          {:id id :display_name (get-in supported-models [id :display-name])})))}))
 
+(defn- strip-vendor-prefix
+  "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `openai.`).
+
+  Lowercasing lets the model-derived predicates hold for Azure's admin-cased deployment names."
+  [model]
+  (str/replace-first (u/lower-case-en (str model)) #"^openai\." ""))
+
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
 
   The GPT-5 family and the o-series reasoning models only support the default temperature."
   [model]
-  (let [model (str/replace-first (str model) #"^openai\." "")]
+  (let [model (strip-vendor-prefix model)]
     (not (or (str/starts-with? model "gpt-5")
              (re-find #"^o\d" model)))))
 

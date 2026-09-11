@@ -5,13 +5,15 @@ import { isUuid } from "metabase/utils/uuid";
 import type {
   ActionDashboardCard,
   BaseDashboardCard,
-  Card,
   QuestionDashboardCard,
+  SeriesCard,
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
 
-export function isQuestionCard(card: Card | VirtualCard) {
+export function isQuestionCard(
+  card: SeriesCard | VirtualCard,
+): card is SeriesCard {
   // Some old virtual cards have dataset_query equal to {} so we need to check for null and empty object
   return (
     card.dataset_query != null && Object.keys(card.dataset_query).length > 0

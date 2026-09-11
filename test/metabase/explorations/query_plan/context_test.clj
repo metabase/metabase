@@ -134,6 +134,57 @@
         (is (= [] (:segments m)))
         (is (= #{"d1"} (set (keys (:applicability m)))))))))
 
+(deftest metric-context-default-time-dimension-summary-test
+  (testing ":default-temporal-breakout-summary reflects the curated default dimension —
+            its display name and :default-temporal-unit"
+    (let [dim-id (str (random-uuid))]
+      (mt/with-temp [:model/Card metric {:type               :metric
+                                         :name               "Orders"
+                                         :dataset_query      (orders-count-metric-query)
+                                         :dimensions         [{:id             dim-id
+                                                               :display-name   "Order Date"
+                                                               :effective-type :type/DateTimeWithLocalTZ
+                                                               :status         :status/active
+                                                               :default        true
+                                                               :default-temporal-unit :week}]
+                                         :dimension_mappings [{:type         :table
+                                                               :table-id     (mt/id :orders)
+                                                               :dimension-id dim-id
+                                                               :target       [:field {} (mt/id :orders :created_at)]}]}]
+        (let [m (-> (qp.context/metric-and-dim-context
+                     [{:id 1 :metrics [{:card_id (:id metric)}] :dimensions []}])
+                    :blocks first :metrics first)]
+          (is (= {:column "Order Date" :unit "week"}
+                 (:default-temporal-breakout-summary m))))))))
+
+(deftest metric-context-no-fallback-to-query-breakout-test
+  (testing "a curated non-temporal default dimension yields no temporal summary,
+            even when the metric's dataset_query still carries a temporal breakout"
+    (let [mp     (mt/metadata-provider)
+          query  (lib/->legacy-MBQL
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib/with-temporal-bucket
+                                      (lib.metadata/field mp (mt/id :orders :created_at))
+                                      :month))))
+          dim-id (str (random-uuid))]
+      (mt/with-temp [:model/Card metric {:type               :metric
+                                         :name               "Orders"
+                                         :dataset_query      query
+                                         :dimensions         [{:id             dim-id
+                                                               :display-name   "Quantity"
+                                                               :effective-type :type/Integer
+                                                               :status         :status/active
+                                                               :default        true}]
+                                         :dimension_mappings [{:type         :table
+                                                               :table-id     (mt/id :orders)
+                                                               :dimension-id dim-id
+                                                               :target       [:field {} (mt/id :orders :quantity)]}]}]
+        (let [m (-> (qp.context/metric-and-dim-context
+                     [{:id 1 :metrics [{:card_id (:id metric)}] :dimensions []}])
+                    :blocks first :metrics first)]
+          (is (nil? (:default-temporal-breakout-summary m))))))))
+
 (deftest build-row-context-resolves-from-block-test
   (testing "build-row-context resolves the dim target + snapshot from the row's page's block (not per-thread tables)"
     (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}

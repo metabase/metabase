@@ -43,9 +43,13 @@ const deprecatedColors = {
   filter: baseColors.octopus[40],
   focus: baseColors.blue[70],
   "icon-brand": baseColors.brand[40], // Matches text-brand
+  "icon-brand-inverse": baseColors.brand[50],
   "icon-primary": baseColors.orionAlphaInverse[80], // Matches text-primary
+  "icon-primary-inverse": baseColors.orionAlpha[80], // Matches text-primary-inverse
   "icon-disabled": baseColors.orionAlphaInverse[40], // Matches text-disabled
+  "icon-disabled-inverse": baseColors.orionAlpha[40], // Matches text-disabled-inverse
   "icon-secondary": baseColors.orionAlphaInverse[60], // Matches text-secondary
+  "icon-secondary-inverse": baseColors.orionAlpha[60], // Matches text-secondary-inverse
   "illustration-brand-secondary": baseColors.brand[80],
   "illustration-brand-tertiary": baseColors.brand[90],
   "metabase-brand": baseColors.blue[40],
@@ -163,13 +167,17 @@ const actualColors = {
   "feedback-warning-strong": baseColors.dubloon[20],
   "illustration-secondary-brand": baseColors.brand[80],
   "illustration-tertiary-brand": baseColors.brand[90],
+  "input-background": baseColors.orionAlphaInverse[10],
   "input-focus": baseColors.blue[70],
   "modal-overlay": baseColors.orionAlpha[70],
   "navbar-admin": baseColors.octopus[80],
   "navbar-admin-inverse": baseColors.octopus[60],
   "navbar-admin-secondary": baseColors.octopus[60],
   "shadow-default": ORION_110_ALPHA_20,
-  "switch-off": baseColors.orionAlphaInverse[20],
+  "switch-checked": baseColors.brand[30],
+  "switch-disabled": baseColors.orionAlphaInverse[20],
+  "switch-unchecked": baseColors.orionAlphaInverse[40],
+  "switch_thumb-disabled": baseColors.orionAlphaInverse[40],
   "text-brand": baseColors.brand[40],
   "text-brand-hover": baseColors.brand[30],
   "text-brand-strong": baseColors.brand[20],

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useLatest, usePrevious } from "react-use";
+import { usePrevious } from "react-use";
 
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import {
+  paramFieldsFetched,
+  useQuestionFromCard,
+} from "metabase/metadata-store";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { useDispatch, useSelector } from "metabase/redux";
-import { updateMetadata } from "metabase/redux/metadata";
-import { FieldSchema } from "metabase/schema";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { useDispatch } from "metabase/redux";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 type UseParameterListProps = {
@@ -20,17 +20,12 @@ export const useAvailableParameters = ({
   resource,
 }: UseParameterListProps) => {
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
 
   // We need initial available parameters to display the `discard changes` button
   // and reset user selected parameters back to initial parameters
   const initialAvailableParametersRef = useRef<Parameter[] | null>(null);
   const prevResourceId = usePrevious(resource?.id);
-
-  // This prevents `availableParameters` from being updated on every metadata change,
-  // which would cause unnecessary re-renders in the component using this hook.
-  // See [PublicOrEmbeddedQuestion.tsx] for reference.
-  const metadataRef = useLatest(metadata);
 
   // Extract parameters from the loaded dashboard/card
   const availableParameters = useMemo((): Parameter[] => {
@@ -45,16 +40,15 @@ export const useAvailableParameters = ({
         dashboard.dashcards,
         dashboard.parameters,
         dashboard.param_fields,
-        metadata,
       );
     } else if (experience === "chart") {
       // Unjustified type cast. FIXME
       const card = resource as Card;
-      return getCardUiParameters(card, metadataRef.current) || [];
+      return buildQuestion(card).parameters();
     }
 
     return [];
-  }, [resource, experience, metadata, metadataRef]);
+  }, [resource, experience, buildQuestion]);
 
   // Reset initial parameters when the resource changes
   if (resource?.id !== prevResourceId) {
@@ -69,11 +63,7 @@ export const useAvailableParameters = ({
     if (resource && "param_fields" in resource && resource.param_fields) {
       // This is needed to make some parameter widget populate the dropdown list
       // otherwise they will use a normal text input
-      dispatch(
-        updateMetadata(Object.values(resource.param_fields).flat(), [
-          FieldSchema,
-        ]),
-      );
+      dispatch(paramFieldsFetched(resource.param_fields));
     }
   }, [resource, dispatch]);
 

@@ -4,13 +4,18 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import {
+  CollapsibleSettingsSection,
+  SETTINGS_CARD_DESCRIPTION_PROPS,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
-import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
+import {
+  SETTINGS_FIELD_DESCRIPTION_PROPS,
+  getExtraFormFieldProps,
+} from "metabase/admin/settings/utils";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -20,11 +25,12 @@ import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormSection,
   FormSubmitButton,
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
@@ -32,12 +38,11 @@ import {
 } from "metabase/settings";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export type SAMLFormSettings = Pick<
   EnterpriseSettings,
-  | "saml-user-provisioning-enabled?"
   | "saml-attribute-email"
   | "saml-attribute-firstname"
   | "saml-attribute-lastname"
@@ -63,6 +68,7 @@ export function SettingsSAMLForm() {
   const { data: settingValues, isLoading: isLoadingValues } =
     useGetSettingsQuery();
   const [updateSamlSettings] = useUpdateSamlMutation();
+  const applicationName = useSelector(getApplicationName);
 
   const isEnabled = Boolean(settingValues?.["saml-enabled"]);
 
@@ -79,6 +85,7 @@ export function SettingsSAMLForm() {
   );
 
   const siteUrl = useSetting("site-url");
+  const scimEnabled = useSetting("scim-enabled");
 
   if (isLoadingDetails || isLoadingValues) {
     return <LoadingAndErrorWrapper loading />;
@@ -90,46 +97,60 @@ export function SettingsSAMLForm() {
     );
   }
 
-  return (
-    <SettingsPageWrapper title={t`SAML`}>
-      {isEnabled && <SamlUserProvisioning />}
-      <SettingsSection>
-        <FormProvider
-          initialValues={getFormValues(settingValues ?? {})}
-          onSubmit={handleSubmit}
-          validationSchema={SAML_FORM_SCHEMA}
-          enableReinitialize
-        >
-          {({ dirty }) => (
-            <Form>
-              <Title order={2}>{t`Set up SAML-based SSO`}</Title>
-              <Text c="text-secondary" mb="xl">
-                {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
-                  <ExternalLink
-                    key="link"
-                    href={docsUrl}
-                  >{t`documentation`}</ExternalLink>
-                )}.`}
-              </Text>
-              <FormSection title={t`Configure your identity provider (IdP)`}>
-                <Text c="text-secondary" mb="xl">
-                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
-                  {t`Your identity provider will need the following info about Metabase.`}
-                </Text>
+  // saml-keystore-password is sensitive, so session properties never
+  // include it; path and alias are the detectable signals
+  const hasKeystoreSettings = Boolean(
+    settingValues["saml-keystore-path"] || settingValues["saml-keystore-alias"],
+  );
 
+  // the backend keeps SAML provisioning off while SCIM owns provisioning
+  const scimNote = scimEnabled && (
+    <Markdown>
+      {t`You cannot enable SAML user provisioning while user provisioning is [managed by SCIM]` +
+        "(/admin/settings/authentication/user-provisioning)."}
+    </Markdown>
+  );
+
+  return (
+    <SettingsPageWrapper
+      title={t`SAML`}
+      description={jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
+        <ExternalLink
+          key="link"
+          href={docsUrl}
+        >{t`documentation`}</ExternalLink>
+      )}.`}
+    >
+      <FormProvider
+        initialValues={getFormValues(settingValues ?? {})}
+        onSubmit={handleSubmit}
+        validationSchema={SAML_FORM_SCHEMA}
+        enableReinitialize
+      >
+        {({ dirty }) => (
+          <Form>
+            <Stack gap="lg">
+              <SettingsSection
+                title={t`Configure your identity provider (IdP)`}
+                titleProps={SETTINGS_CARD_TITLE_PROPS}
+                description={t`Your identity provider will need the following info about ${applicationName}.`}
+                descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
+                stackProps={SETTINGS_CARD_STACK_PROPS}
+              >
                 <CopyTextInput
                   value={`${siteUrl}/auth/sso`}
                   label={t`URL the IdP should redirect back to`}
                   description={t`This is called the Single Sign On URL in Okta, the Application Callback URL in Auth0, and the ACS (Consumer) URL in OneLogin. `}
+                  descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                   readOnly
                 />
 
-                <Title order={4} mt="xl">{t`SAML attributes`}</Title>
-                <Text c="text-secondary" mb="md">
+                <Title order={3} size="h5" mt="xxl">{t`SAML attributes`}</Title>
+                <Text c="text-secondary" mb="lg">
                   {t`In most IdPs, you'll need to put each of these in an input box labeled "Name" in the attribute statements section.`}
                 </Text>
 
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="saml-attribute-email"
                     label={t`User's email attribute`}
@@ -165,17 +186,16 @@ export function SettingsSAMLForm() {
                     />
                   )}
                 </Stack>
-              </FormSection>
+              </SettingsSection>
 
-              <FormSection
-                // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
-                title={t`Tell Metabase about your identity provider`}
+              <SettingsSection
+                title={t`Tell ${applicationName} about your identity provider`}
+                titleProps={SETTINGS_CARD_TITLE_PROPS}
+                description={t`${applicationName} will need the following info about your provider.`}
+                descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
+                stackProps={SETTINGS_CARD_STACK_PROPS}
               >
-                <Text mb="xl" mt="sm" c="text-secondary">
-                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
-                  {t`Metabase will need the following info about your provider.`}
-                </Text>
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="saml-identity-provider-uri"
                     label={t`SAML identity provider URL`}
@@ -210,10 +230,20 @@ export function SettingsSAMLForm() {
                     )}
                   />
                 </Stack>
-              </FormSection>
+              </SettingsSection>
 
-              <FormSection title={t`Sign SSO requests (optional)`} collapsible>
-                <Stack gap="md">
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <UserProvisioningSection
+                settingKey="saml-user-provisioning-enabled?"
+                providerName="SAML"
+                lockedNote={scimNote}
+              />
+
+              <CollapsibleSettingsSection
+                title={t`Sign SSO requests (optional)`}
+                defaultOpened={hasKeystoreSettings}
+              >
+                <Stack gap="lg">
                   <FormTextInput
                     name="saml-keystore-path"
                     label={t`SAML keystore path`}
@@ -241,17 +271,16 @@ export function SettingsSAMLForm() {
                     )}
                   />
                 </Stack>
-              </FormSection>
+              </CollapsibleSettingsSection>
 
-              <FormSection
-                title={t`Synchronize group membership with your SSO`}
+              <SettingsSection
+                title={t`Group mapping`}
+                titleProps={SETTINGS_CARD_TITLE_PROPS}
+                description={t`To enable this, you'll need to create mappings to tell ${applicationName} which group(s) your users should be added to based on the SSO group they're in.`}
+                descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
+                stackProps={SETTINGS_CARD_STACK_PROPS}
               >
-                <Text c="text-secondary" mb="lg">
-                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
-                  {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
-                be added to based on the SSO group they're in.`}
-                </Text>
-                <Stack gap="md">
+                <Stack gap="lg">
                   <GroupMappingsWidget
                     isFormik
                     // map to legacy setting props
@@ -272,7 +301,7 @@ export function SettingsSAMLForm() {
                     )}
                   />
                 </Stack>
-              </FormSection>
+              </SettingsSection>
 
               <FormErrorMessage />
               <Flex justify="end">
@@ -282,10 +311,10 @@ export function SettingsSAMLForm() {
                   variant="filled"
                 />
               </Flex>
-            </Form>
-          )}
-        </FormProvider>
-      </SettingsSection>
+            </Stack>
+          </Form>
+        )}
+      </FormProvider>
     </SettingsPageWrapper>
   );
 }
@@ -294,7 +323,6 @@ const getFormValues = (
   allSettings: Partial<EnterpriseSettings>,
 ): SAMLFormSettings => {
   const samlSettings = _.pick(allSettings, [
-    "saml-user-provisioning-enabled?",
     "saml-attribute-email",
     "saml-attribute-firstname",
     "saml-attribute-lastname",
@@ -310,42 +338,6 @@ const getFormValues = (
     "saml-group-sync",
   ]);
 
-  if (samlSettings["saml-user-provisioning-enabled?"] == null) {
-    // cast empty to false
-    samlSettings["saml-user-provisioning-enabled?"] = false;
-  }
   // cast undefined to null
   return _.mapObject(samlSettings, (val) => val ?? null) as SAMLFormSettings;
 };
-
-function SamlUserProvisioning() {
-  const scimEnabled = useSetting("scim-enabled");
-
-  if (scimEnabled) {
-    return (
-      <SettingsSection>
-        <SettingHeader
-          id="saml-user-provisioning-enabled?"
-          title={t`User provisioning`}
-          description={
-            <Markdown>
-              {t`You cannot enable SAML user provisioning while user provisioning is [managed by SCIM]` +
-                "(/admin/settings/authentication/user-provisioning)."}
-            </Markdown>
-          }
-        />
-      </SettingsSection>
-    );
-  }
-
-  return (
-    <SettingsSection>
-      <AdminSettingInput
-        name="saml-user-provisioning-enabled?"
-        title={t`User provisioning`}
-        inputType="radio"
-        options={provisioningOptions("SAML")}
-      />
-    </SettingsSection>
-  );
-}

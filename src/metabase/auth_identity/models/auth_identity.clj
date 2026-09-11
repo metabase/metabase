@@ -3,6 +3,7 @@
   for a User - a User can have multiple AuthIdentities (e.g., password + SSO)."
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -38,8 +39,7 @@
 ;; `credentials` is encrypted at rest (whole column) so secrets stored in it — e.g. the TOTP
 ;; shared secret — survive `rotate-encryption-key`, which re-encrypts whole columns and cannot
 ;; reach fields nested inside JSON. The column is listed in
-;; `metabase.app-db.encryption/encrypted-json-columns`. Rows written before encryption was
-;; introduced are plaintext JSON; `maybe-decrypt` passes them through unchanged.
+;; `metabase.app-db.encryption/encrypted-string-columns`.
 (t2/deftransforms :model/AuthIdentity
   {:credentials {:in mi/encrypted-json-in
                  :out (comp parse-credentials-timestamps-out mi/encrypted-json-out)}
@@ -120,16 +120,16 @@
    (t2/with-transaction [_]
      (let [attrs {:credentials {:plaintext_password password}
                   :expires_at  (:expires-at opts)}]
-       (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
-         (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
-         (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs))))
-     (t2/delete! :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")
-     (t2/delete! :model/Session :user_id user-id))))
+       (if-let [pw-auth-identity (auth-identity.db/auth-identity user-id "password")]
+         (auth-identity.db/update-auth-identity! (u/the-id pw-auth-identity) attrs)
+         (auth-identity.db/insert-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
+     (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset")
+     (auth-identity.db/delete-sessions-for-user! user-id))))
 
 (mu/defn reset-token-hash :- [:maybe :string]
   "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`
   AuthIdentity (the authoritative store), or nil if they have none. Lets callers include the token in audit events
   without reading the legacy `core_user.reset_token` column."
   [user-id :- ms/PositiveInt]
-  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")
+  (get-in (auth-identity.db/auth-identity user-id "emailed-secret-password-reset")
           [:credentials :token_hash]))

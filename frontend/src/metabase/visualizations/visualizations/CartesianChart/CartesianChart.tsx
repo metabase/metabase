@@ -1,12 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import {
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
 
@@ -15,31 +8,34 @@ import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import {
-  useCartesianChartSeriesColorsClasses,
-  useCloseTooltipOnScroll,
-} from "metabase/visualizations/echarts/tooltip";
+import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
-} from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
+} from "metabase/visualizations/visualizations/CartesianChart/CartesianChartLayout";
 import type { CartesianHoveredObject } from "metabase/visualizations/visualizations/CartesianChart/types";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
+import {
+  type TimelineEventGroup,
+  getLegendItems,
+  useCartesianChartSeriesColorsClasses,
+  useCloseTooltipOnScroll,
+} from "metabase/viz-core";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
+import { useCartesianSizeTier } from "./use-cartesian-size-tier";
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
+import { useTimelineEventsHover } from "./use-timeline-events-hover";
 import {
-  getClosestDatumIndex,
   getDashboardAdjustedSettings,
-  getDataSeriesEChartsIndices,
   getHoveredFromHighlighted,
 } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
+  const { timelineEvents } = useTimelineEvents(props);
+
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
@@ -60,6 +56,7 @@ function CartesianChartInner(props: VisualizationProps) {
     showTitle,
     headerIcon,
     actionButtons,
+    dashcard,
     isDashboard,
     isEditing,
     isVisualizer,
@@ -92,11 +89,6 @@ function CartesianChartInner(props: VisualizationProps) {
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);
 
-  const hoveredTimelineEventIds = useMemo(
-    () => hoveredTimelineEventGroup?.events.map((event) => event.id),
-    [hoveredTimelineEventGroup],
-  );
-
   const {
     chartModel,
     chartLayout,
@@ -110,9 +102,9 @@ function CartesianChartInner(props: VisualizationProps) {
       height: chartSize.height,
       hiddenSeries,
       settings,
+      timelineEvents,
     },
     containerRef,
-    hoveredTimelineEventIds,
   );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
@@ -195,42 +187,17 @@ function CartesianChartInner(props: VisualizationProps) {
       ? chartModel.seriesModels.filter((series) => series.visible).length - 1
       : 0;
 
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (chart == null || hoveredTimelineEventGroup == null) {
-      return;
-    }
-
-    const dataIndex = getClosestDatumIndex(
-      chartModel.transformedDataset,
-      hoveredTimelineEventGroup.date,
-    );
-    const seriesIndices = getDataSeriesEChartsIndices(
-      chartModel.seriesModels,
-      option,
-    );
-    if (dataIndex < 0 || seriesIndices.length === 0) {
-      return;
-    }
-
-    seriesIndices.forEach((seriesIndex) => {
-      chart.dispatchAction({
-        type: "highlight",
-        seriesIndex,
-        dataIndex: [dataIndex],
-      });
-    });
-
-    return () => {
-      seriesIndices.forEach((seriesIndex) => {
-        chart.dispatchAction({
-          type: "downplay",
-          seriesIndex,
-          dataIndex: [dataIndex],
-        });
-      });
-    };
-  }, [hoveredTimelineEventGroup, chartModel, option]);
+  useTimelineEventsHover({
+    chartRef,
+    hoveredTimelineEventGroup,
+    chartModel,
+    chartLayout,
+    option,
+    timelineEventsModel,
+    renderingContext,
+    display: card.display,
+    selectedTimelineEventIds,
+  });
 
   // We can't navigate a user to a particular card from a visualizer viz,
   // so title selection is disabled in this case
@@ -245,9 +212,18 @@ function CartesianChartInner(props: VisualizationProps) {
 
   useCloseTooltipOnScroll(chartRef);
 
+  const sizeTier = useCartesianSizeTier({
+    width: outerWidth,
+    height: outerHeight,
+    isDashboard,
+    isQueryBuilder,
+    dashcard,
+  });
+
   return (
     <CartesianChartRoot
       isQueryBuilder={isQueryBuilder}
+      sizeTier={sizeTier}
       className="CardVisualization"
     >
       {showTitle && (
@@ -263,6 +239,7 @@ function CartesianChartInner(props: VisualizationProps) {
           }
           width={outerWidth}
           titleMenuItems={titleMenuItems}
+          titleSize={sizeTier?.titleFontSize}
         />
       )}
       <CartesianChartLegendLayout

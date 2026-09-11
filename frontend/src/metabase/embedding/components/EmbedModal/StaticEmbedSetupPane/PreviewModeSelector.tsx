@@ -12,21 +12,19 @@ const ControlOptionItem = ({
   label: string;
   iconName: IconName;
 }) => (
-  <Group wrap="nowrap" px="sm" gap="xs">
+  <Group wrap="nowrap" px="sm" gap="xxs">
     <Icon name={iconName} />
     <Box>{label}</Box>
   </Group>
 );
 
-const CODE_PREVIEW_CONTROL_OPTIONS = [
+const getCodePreviewControlOptions = () => [
   {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: <ControlOptionItem label={t`Code`} iconName="embed" />,
     // Unjustified type cast. FIXME
     value: "code" as ActivePreviewPane,
   },
   {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: <ControlOptionItem label={t`Preview`} iconName="eye_filled" />,
     // Unjustified type cast. FIXME
     value: "preview" as ActivePreviewPane,
@@ -44,7 +42,7 @@ export const PreviewModeSelector = ({
 }: PreviewModeSelectorProps): JSX.Element => (
   <SegmentedControl
     value={value}
-    data={CODE_PREVIEW_CONTROL_OPTIONS}
+    data={getCodePreviewControlOptions()}
     onChange={onChange}
   />
 );

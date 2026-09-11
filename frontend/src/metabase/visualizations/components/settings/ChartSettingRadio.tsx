@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 
 import { Radio, Stack, Text } from "metabase/ui";
-import {
-  decodeWidgetValue,
-  encodeWidgetValue,
-} from "metabase/visualizations/lib/settings/widgets";
+import { decodeWidgetValue, encodeWidgetValue } from "metabase/viz-core";
 
 interface ChartSettingRadioProps {
   options: { name: string; value: string | null }[];
@@ -32,7 +29,7 @@ export const ChartSettingRadio = ({
       className={className}
       onChange={(value) => onChange(decodeWidgetValue(value))}
     >
-      <Stack gap="xs">
+      <Stack gap="xxs">
         {options.map(({ name, value: optionValue }) => (
           <Radio
             key={optionValue}

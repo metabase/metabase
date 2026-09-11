@@ -182,11 +182,14 @@ describe(
       H.setupLdap();
       cy.visit("/admin/settings/authentication/ldap");
 
-      cy.findByTestId("ldap-user-provisioning-enabled?-setting")
-        .findByText(/^Disabled/)
-        .click();
+      cy.findByRole("switch", { name: "User provisioning" })
+        .should("be.checked")
+        .click({ force: true });
 
       H.undoToast().findByText("Changes saved").should("be.visible");
+      cy.findByRole("switch", { name: "User provisioning" }).should(
+        "not.be.checked",
+      );
     });
 
     it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
@@ -203,6 +206,10 @@ describe(
 
     it("should allow user login on EE when LDAP is enabled", () => {
       H.setupLdap();
+      // Only allowlisted directory attributes are synced, so name the ones this test checks.
+      cy.request("PUT", "/api/setting/ldap-sync-user-attributes-allowlist", {
+        value: "uid,homedirectory",
+      });
       cy.signOut();
       cy.visit("/auth/login");
       cy.findByLabelText("Username or email address").type(
