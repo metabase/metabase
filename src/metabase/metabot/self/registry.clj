@@ -7,11 +7,12 @@
   defaulted to nil silently, so a provider missing from it read as \"no context window\" rather than
   failing.
 
-  The two capability lookups in [[metabase.metabot.self.catalog]] cannot read this table yet:
-  `metabase.metabot.self.azure` requires `metabase.metabot.settings`, which requires that namespace, so a
-  table requiring every adapter cannot also sit below it. Breaking that one upward dependency would let the
-  two merge into a single registry."
+  This is the whole of it: the four dispatches [[metabase.metabot.self]] carried and the two capability
+  dispatches that used to live in a `metabase.metabot.self.catalog` namespace of their own. That namespace
+  could not read this table while `metabase.metabot.self.azure` still required `metabase.metabot.settings`,
+  which required it back; with that dependency gone the two merge."
   (:require
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
@@ -34,7 +35,7 @@
 (def Capability
   "What a registry row can answer about a provider. Closed, so a lookup for a capability that does not
   exist is a compile-time-checkable mistake rather than a nil that reads as \"this provider has none\"."
-  [:enum :stream :list-models :supported-models :context-window :ai-proxy?])
+  [:enum :stream :list-models :supported-models :context-window :ai-proxy? :reasoning? :fast-mode?])
 
 (def AdapterRow
   "One provider's row. Closed for the same reason [[Capability]] is: a mistyped key in the table below would
@@ -44,7 +45,9 @@
    [:list-models      {:optional true} [:maybe ifn?]]
    [:supported-models {:optional true} [:maybe ifn?]]
    [:context-window   {:optional true} [:maybe ifn?]]
-   [:ai-proxy?        {:optional true} [:maybe :boolean]]])
+   [:ai-proxy?        {:optional true} [:maybe :boolean]]
+   [:reasoning?       {:optional true} [:maybe ifn?]]
+   [:fast-mode?       {:optional true} [:maybe ifn?]]])
 
 (def ^:private adapters
   "Every provider Metabot serves, by `llm-providers` type.
@@ -60,12 +63,16 @@
                         catalog fixed in `metabase.llm.provider` (Google, and the managed connection).
     :context-window   - model -> its input context window in tokens.
     :ai-proxy?        - whether the Metabase Cloud AI proxy can serve this provider. Anthropic only, which
-                        the managed connection's own fixed catalog independently agrees with."
+                        the managed connection's own fixed catalog independently agrees with.
+    :reasoning?       - resolved model ref -> whether it streams its reasoning back to us.
+    :fast-mode?       - resolved model ref -> whether it can be served in Anthropic fast mode."
   {"anthropic"  {:stream           #'claude/claude
                  :list-models      #'claude/list-models
                  :supported-models #'claude/supported-models
                  :context-window   #'claude/context-window-tokens
-                 :ai-proxy?        true}
+                 :ai-proxy?        true
+                 :reasoning?       #'claude/streams-reasoning?
+                 :fast-mode?       #'claude/supports-fast-mode?}
    "azure"      {:stream           #'azure/azure
                  :list-models      #'azure/list-models
                  :context-window   #'azure/context-window-tokens}
@@ -75,10 +82,12 @@
                  :context-window   #'bedrock/context-window-tokens}
    "deepseek"   {:stream           #'deepseek/deepseek
                  :list-models      #'deepseek/list-models
-                 :supported-models #'deepseek/supported-models}
+                 :supported-models #'deepseek/supported-models
+                 :reasoning?       #'deepseek/streams-reasoning?}
    "google"     {:stream           #'google/google
                  :list-models      #'google/list-models
-                 :context-window   #'google/context-window-tokens}
+                 :context-window   #'google/context-window-tokens
+                 :reasoning?       #'google/streams-reasoning?}
    "mistral"    {:stream           #'mistral/mistral
                  :list-models      #'mistral/list-models
                  :supported-models #'mistral/supported-models
@@ -90,13 +99,15 @@
    "openai"     {:stream           #'openai/openai
                  :list-models      #'openai/list-models
                  :supported-models #'openai/supported-models
-                 :context-window   #'openai/context-window-tokens}
+                 :context-window   #'openai/context-window-tokens
+                 :reasoning?       #'openai/streams-reasoning?}
    "openrouter" {:stream           #'openrouter/openrouter
                  :list-models      #'openrouter/list-models
                  :supported-models #'openrouter/supported-models
                  :context-window   #'openrouter/context-window-tokens}
    "vllm"       {:stream           #'vllm/vllm
-                 :list-models      #'vllm/list-models}
+                 :list-models      #'vllm/list-models
+                 :reasoning?       #'vllm/streams-reasoning?}
    "zai"        {:stream           #'zai/zai
                  :list-models      #'zai/list-models
                  :supported-models #'zai/supported-models
@@ -136,3 +147,17 @@
   than one asserting that it does — hence the `:maybe`, since an unresolvable model ref yields no type."
   [provider :- [:maybe ProviderType]]
   (contains? adapters provider))
+
+(mu/defn streams-reasoning? :- :boolean
+  "Whether a model reference names a model that streams its reasoning back to us."
+  [model-ref :- [:maybe :string]]
+  (let [{:keys [type] :as resolved} (llm.provider/resolve-model-ref model-ref)]
+    (boolean (when-let [capable? (and (registered? type) (optional type :reasoning?))]
+               (capable? resolved)))))
+
+(mu/defn supports-fast-mode? :- :boolean
+  "Whether a model reference names a model we can serve in Anthropic fast mode."
+  [model-ref :- [:maybe :string]]
+  (let [{:keys [type] :as resolved} (llm.provider/resolve-model-ref model-ref)]
+    (boolean (when-let [capable? (and (registered? type) (optional type :fast-mode?))]
+               (capable? resolved)))))

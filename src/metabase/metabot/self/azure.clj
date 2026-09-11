@@ -21,7 +21,6 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
@@ -156,13 +155,6 @@
       (when-not (= 400 (:status (ex-data e)))
         (throw e)))))
 
-(defn- configured-azure-model
-  "The saved `{family}/{deployment}` model string when the connection Metabot is pointed at is an Azure one."
-  []
-  (let [{:keys [type model]} (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider))]
-    (when (= type "azure")
-      model)))
-
 (defn list-models
   "Validate Azure credentials with a model-free round trip and return an empty model list.
 
@@ -173,11 +165,16 @@
   chat time with `DeploymentNotFound`.
 
   Opts: `:credentials` (`{:api-key ... :base-url ...}`), `:model` (the `{family}/{deployment}`
-  string selecting which surface family to validate; defaults to the saved Azure model), and
-  `:ai-proxy?`, which is not supported for Azure and throws when true."
+  string selecting which surface family to validate) and `:ai-proxy?`, which is not supported for
+  Azure and throws when true.
+
+  With no model there is no family to pick a surface for, so the round trip is skipped. The caller
+  supplies one: `metabase.llm.api.provider` resolves it from the connection's own `:model-fields`, and
+  falls back to what `llm-metabot-provider` names for *that* connection — which this namespace used to
+  re-derive for any Azure connection, reaching up to the setting to do it."
   ([] (list-models {}))
   ([{:keys [credentials model ai-proxy?]}]
-   (when-let [model (or (not-empty model) (configured-azure-model))]
+   (when-let [model (not-empty model)]
      (try
        (case (model->family model)
          :anthropic (validate-anthropic-surface! credentials ai-proxy?)

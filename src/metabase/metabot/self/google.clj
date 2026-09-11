@@ -328,6 +328,12 @@
     :google    (stream-generate-content/reasoning-model? (model-id model))
     false))
 
+
+(defn streams-reasoning?
+  "Registry capability. Google answers from the model name, per wire family."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
 (defn context-window-tokens
   "The input context window for a publisher-qualified `model`, or nil when it isn't one we know.
 

@@ -288,6 +288,12 @@
   [model]
   (not (model-supports-temperature? model)))
 
+
+(defn streams-reasoning?
+  "Registry capability. OpenAI answers from the model name."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
 (mu/defn openai-request-body
   "Build the OpenAI Responses API request body for an LLM request."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]

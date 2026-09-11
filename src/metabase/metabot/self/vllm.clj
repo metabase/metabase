@@ -75,6 +75,13 @@
   (let [recorded (get credentials reasoning-config-key)]
     (or (true? recorded) (= "true" recorded))))
 
+
+(defn streams-reasoning?
+  "Registry capability. vLLM answers from what its connect-time probe recorded on the connection: the flag
+  depends on the operator's `--reasoning-parser` as well as on the model, so the name cannot settle it."
+  [{:keys [credentials]}]
+  (reasoning-connection? credentials))
+
 (defn- inference-timeouts
   "Timeouts for a generation request."
   []

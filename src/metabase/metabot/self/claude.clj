@@ -438,6 +438,12 @@
   [model]
   (some? (model-thinking-config model)))
 
+
+(defn streams-reasoning?
+  "Registry capability. Anthropic answers from the model name: thinking is requested in the request body."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
 (def ^:private fast-mode-models
   "The models Anthropic documents fast mode for: https://code.claude.com/docs/en/fast-mode"
   #{"claude-opus-4-8" "claude-opus-5"})
@@ -448,6 +454,12 @@
   [model ai-proxy?]
   (and (not ai-proxy?)
        (contains? fast-mode-models (strip-vendor-prefix model))))
+
+
+(defn supports-fast-mode?
+  "Registry capability. Fast mode depends on the model and on whether the call is proxied."
+  [{:keys [model ai-proxy?]}]
+  (fast-mode-model? model ai-proxy?))
 
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request.
