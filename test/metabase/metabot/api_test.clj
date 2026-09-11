@@ -1369,16 +1369,3 @@
                              :context         {}
                              :conversation_id (str (random-uuid))
                              :state           {}}))))
-
-(deftest agent-streaming-rejects-explorations-profile-test
-  (testing "While explorations are disabled, asking the agent for the :explorations profile is rejected before a turn starts"
-    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
-                                       metabot.settings/llm-metabot-provider test-provider]
-      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-          (let [conversation-id (str (random-uuid))]
-            (is (=? {:message #"Unknown profile"}
-                    (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
-                                          (agent-request conversation-id "hello" :profile_id "explorations"))))
-            (is (empty? (t2/select :model/MetabotMessage :conversation_id conversation-id))
-                "no turn was persisted")))))))

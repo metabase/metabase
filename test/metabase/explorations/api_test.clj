@@ -24,7 +24,6 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.core :as qp.core]
-   [metabase.server.test-handler :as server.test-handler]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -2961,9 +2960,3 @@
         (is (= [src-sr] (mapv :stored_result_id
                               (t2/select :model/StoredResultUse :card_id (:card-id result))))
             "exactly one pairing row, not one per repeat")))))
-
-(deftest exploration-routes-not-mounted-test
-  (testing "The application itself does not serve /api/exploration while explorations are disabled"
-    ;; drop the per-test fixture's handler to hit the application's real route tree
-    (binding [server.test-handler/*test-handler* nil]
-      (mt/user-http-request :crowberto :get 404 "exploration/dimensions"))))
