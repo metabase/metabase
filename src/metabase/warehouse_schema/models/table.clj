@@ -120,20 +120,28 @@
    :silver :final
    :gold   :final})
 
+(def ^:private transform-table-boolean
+  "Boolean column transform; a boolean computed in SQL (the merge in `table-query`) comes back as a number from MySQL
+  and MariaDB, which have no boolean type of their own."
+  {:in  identity
+   :out (fn [v] (if (number? v) (pos? v) v))})
+
 (t2/deftransforms :model/Table
-  {:entity_type     mi/transform-keyword
-   :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum data-layers)
-                     (some-fn legacy-data-layer->current identity))
-   :field_order     mi/transform-keyword
-   :data_source     (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum data-sources)
-                     (some-fn keyword identity))
+  {:entity_type             mi/transform-keyword
+   :is_published            transform-table-boolean
+   :show_in_getting_started transform-table-boolean
+   :visibility_type         mi/transform-keyword
+   :data_layer              (mi/transform-validator-with-fixes
+                             mi/transform-keyword
+                             (partial mi/assert-optional-enum data-layers)
+                             (some-fn legacy-data-layer->current identity))
+   :field_order             mi/transform-keyword
+   :data_source             (mi/transform-validator-with-fixes
+                             mi/transform-keyword
+                             (partial mi/assert-optional-enum data-sources)
+                             (some-fn keyword identity))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority  transform-data-authority})
+   :data_authority          transform-data-authority})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
