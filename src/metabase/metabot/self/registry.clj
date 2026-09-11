@@ -62,11 +62,11 @@
                         catalog fixed in `metabase.llm.provider` (Google, and the managed connection).
     :context-window   - model -> its input context window in tokens.
     :reasoning?       - resolved model ref -> whether it streams its reasoning back to us.
+    :fast-mode?       - resolved model ref -> whether it can be served in Anthropic fast mode.
 
   Whether the Metabase Cloud AI proxy can serve a provider is deliberately not a row here: it is declared on
   the provider's own descriptor, which is what [[metabase.metabot.self.adapter/reject-ai-proxy!]] enforces on
   every request. A second copy in this table would read as authoritative while changing nothing.
-    :fast-mode?       - resolved model ref -> whether it can be served in Anthropic fast mode.
 
   The two capability fns take the whole resolved ref rather than a model string because they do not all
   answer from the model: vLLM answers from what its connect-time probe recorded on the *connection*, and
