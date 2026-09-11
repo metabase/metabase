@@ -41,12 +41,6 @@ import type { ModelFilterSettings, ModelResult } from "./types";
 import { useFetchModels } from "./use-fetch-models";
 import { getMaxRecentModelCount, isRecentModel } from "./utils";
 
-const {
-  contentVerificationEnabled,
-  ModelFilterControls,
-  getDefaultModelFilters,
-} = PLUGIN_CONTENT_VERIFICATION;
-
 export const BrowseModels = () => {
   const [modelFilters, setModelFilters] = useModelFilterSettings();
   const { isLoading, error, models, recentModels, hasVerifiedModels } =
@@ -109,7 +103,7 @@ export const BrowseModels = () => {
                 </Tooltip>
               )}
               {hasVerifiedModels && (
-                <ModelFilterControls
+                <PLUGIN_CONTENT_VERIFICATION.ModelFilterControls
                   modelFilters={modelFilters}
                   setModelFilters={setModelFilters}
                 />
@@ -170,13 +164,15 @@ export const BrowseModels = () => {
 };
 
 function useModelFilterSettings() {
-  const defaultModelFilters = useSelector(getDefaultModelFilters);
+  const defaultModelFilters = useSelector(
+    PLUGIN_CONTENT_VERIFICATION.getDefaultModelFilters,
+  );
   return useState(defaultModelFilters);
 }
 
 function useHasVerifiedModels() {
   const result = useFetchModels(
-    contentVerificationEnabled
+    PLUGIN_CONTENT_VERIFICATION.contentVerificationEnabled
       ? {
           filter_items_in_personal_collection: "exclude",
           model_ancestors: false,
@@ -186,7 +182,7 @@ function useHasVerifiedModels() {
       : skipToken,
   );
 
-  if (!contentVerificationEnabled) {
+  if (!PLUGIN_CONTENT_VERIFICATION.contentVerificationEnabled) {
     return {
       isLoading: false,
       error: null,
