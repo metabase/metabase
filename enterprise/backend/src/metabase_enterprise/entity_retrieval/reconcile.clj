@@ -406,6 +406,22 @@
     (fn [conn embedding-model _emptied?]
       (reconcile-against-appdb! conn embedding-model))))
 
+(defn clear-index!
+  "Delete every document from the Library entity index under the same cluster-wide lock as reconciliation.
+  Source Library entities and their stored AI context are untouched. Returns `{:deleted n}`; the next full
+  reconcile repopulates the index from those authoritative records. Intended for maintenance and dev tooling."
+  [pgvector]
+  (with-index-write-lock
+    pgvector
+    (fn [conn]
+      (if-not (index-table/vectors-table-exists? conn)
+        {:deleted 0}
+        (let [{deleted ::jdbc/update-count}
+              (jdbc/execute-one! conn [(format "DELETE FROM %s" (index-table/vectors-table-sql))])]
+          (jdbc/execute! conn [(format "UPDATE %s SET reconciled_at = NULL WHERE id = 1"
+                                       (index-table/meta-table-sql))])
+          {:deleted deleted})))))
+
 (defn reconcile-entity!
   "Targeted reconcile of one entity's doc slice, blocking until it completes; returns
   {:inserted n :deleted n :unchanged n :rebuilt? bool}.

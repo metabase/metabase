@@ -30,6 +30,7 @@ jobs:
   deploy_pr:
     needs: [build]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
     name: PR Review ENV
     permissions:
       id-token: write
@@ -53,6 +54,11 @@ jobs:
           aws-region: us-east-1
       - name: Setup psql client
         run: |
+          # The hosted runner's Chrome repository can be mid-publication and fail
+          # apt with a hash mismatch. It is unrelated to the psql package.
+          if [[ -f /etc/apt/sources.list.d/google-chrome.list ]]; then
+            sudo sed -i '/dl.google.com/d' /etc/apt/sources.list.d/google-chrome.list
+          fi
           sudo apt-get update
           sudo apt-get install -y postgresql-client
       - name: Create app database if not exists
@@ -73,6 +79,18 @@ jobs:
           PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
           PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
           PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
+      - name: Prepare app database for semantic search
+        run: |
+          PGPASSWORD="${PR_ENV_DB_PASSWORD}" psql \
+            -v ON_ERROR_STOP=1 \
+            -h "${PR_ENV_DB_HOST}" \
+            -U "${PR_ENV_DB_USER}" \
+            -d "hosting_pr${{ github.event.number }}" \
+            --command='CREATE EXTENSION IF NOT EXISTS vector; CREATE SCHEMA IF NOT EXISTS semantic_search; CREATE SCHEMA IF NOT EXISTS library_retrieval;'
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
       - name: Verify stats dump load status
         id: verify_stats_dump
         if: ${{ inputs.stats_dump }}
@@ -199,6 +217,15 @@ jobs:
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
+      - name: Configure OSI generation demo for this PR environment
+        if: ${{ !inputs.self_hosting }}
+        run: |
+          # Let the token saved in the app DB win over the PR environment's
+          # default license, which does not include the Library features.
+          yq -i 'select(.kind == "Metabase").spec.configuration.envVars |=
+                   (map(select(.name != "MB_PREMIUM_EMBEDDING_TOKEN")) + [
+                     {"name": "MB_ENABLE_OSI_GENERATION_DEMO", "value": "true"}
+                   ])' ./metabase.yml
       - name: Inject stats-dump env vars into Deployment YAML
         if: ${{ !inputs.self_hosting && inputs.stats_dump }}
         env:

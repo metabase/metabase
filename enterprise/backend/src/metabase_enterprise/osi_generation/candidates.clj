@@ -112,6 +112,13 @@
     :else
     3))
 
+(defn- already-approved?
+  "Whether a member's human-owned context is final for automatic generation. A later rewrite request
+  makes the row eligible again, so it is not counted as already approved for this run."
+  [row]
+  (boolean (and (= :human (:data_source row))
+                (not (after? (:rewrite_requested_at row) (:generated_at row))))))
+
 (defn- candidate
   "Assemble the full candidate map for one hydrated member `entity` — the expensive step, called
   lazily so a capped run does not sweep the whole library. nil when a tier-3 row's recomputed basis
@@ -163,8 +170,12 @@
              (into result (keep first) remaining))
       result)))
 
-(defn candidates
-  "The ordered generation candidates, at most `limit` of them (nil = unbounded).
+(defn selection
+  "The ordered generation candidates and exclusion accounting for one run.
+
+  Returns `{:candidates [...] :already-approved n}`. The candidate vector contains at most `limit`
+  entries (nil = unbounded); `:already-approved` counts all current Library members whose human-owned
+  context has no pending rewrite request, independent of that processing limit.
 
   Each candidate is `{:entity <hydrated source entity> :llm-input <:osi-context projection output>
   :basis <fresh basis> :diff <basis-diff stored->fresh | nil> :existing-context <stored row | nil>
@@ -179,7 +190,7 @@
   and advancing the offset by the positions examined cannot cycle over fixed per-tier slices or let a
   failing prefix occupy every run forever."
   ([limit]
-   (candidates limit 0))
+   (selection limit 0))
   ([limit offset]
    ;; TODO (Chris 2026-07-24) -- Selection is O(library): member-entities + hydrate load and group the whole
    ;; library before `limit` applies, and tier-3 `take` may scan every converged entity. The expensive
@@ -188,6 +199,11 @@
    ;; tier-ordered cursor and check the run deadline mid-scan if a real measurement shows it hurts.
    (let [entities (spec/hydrate :osi-context (spec/member-entities :osi-context))
          rows     (rows-by-class entities)
+         already-approved (count (filter (fn [entity]
+                                           (some-> (get rows (spec/hydration-key entity))
+                                                   :row
+                                                   already-approved?))
+                                         entities))
          tiered   (keep (fn [entity]
                           (let [{:keys [row row-error]} (get rows (spec/hydration-key entity))]
                             (when-let [n (tier row)]
@@ -222,6 +238,16 @@
                                                   (candidate-or-error entity row tier-n))]
                              (some-> candidate (assoc :cursor-advance cursor-advance))))
                          ordered)]
-     (vec (if limit
-            (take limit selected)
-            selected)))))
+     {:already-approved already-approved
+      :candidates       (vec (if limit
+                               (take limit selected)
+                               selected))})))
+
+(defn candidates
+  "The ordered generation candidates, at most `limit` of them (nil = unbounded).
+
+  Compatibility wrapper around [[selection]] for callers that only need candidate rows."
+  ([limit]
+   (candidates limit 0))
+  ([limit offset]
+   (:candidates (selection limit offset))))
