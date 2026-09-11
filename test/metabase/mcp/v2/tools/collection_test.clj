@@ -122,6 +122,22 @@
                   default into"
           (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id payload)))))))))
 
+(deftest create-accepts-transforms-namespace-test
+  (mt/with-model-cleanup [:model/Collection]
+    (testing "GHY-4516: transform folders are creatable — browse_collection browses the transforms
+              namespace and transform_write files a transform into a `collection_id`, so without this
+              the folders those two tools talk about could not be made through MCP at all"
+      (let [payload (create! :crowberto {:name "Rollups" :namespace "transforms"})]
+        (is (= "transforms" (name (t2/select-one-fn :namespace :model/Collection :id (:id payload)))))
+        (is (= "transforms" (:namespace payload)))
+        (testing "and lands at the root of the transforms tree, not in a personal collection"
+          (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id payload)))))
+        (testing "a child nests under it and inherits the namespace from the parent"
+          (let [child (create! :crowberto {:name "Daily" :parent_id (:id payload)})]
+            (is (= (str "/" (:id payload) "/")
+                   (t2/select-one-fn :location :model/Collection :id (:id child))))
+            (is (= "transforms" (:namespace child)))))))))
+
 (deftest create-rejects-unknown-namespace-test
   (mt/with-model-cleanup [:model/Collection]
     (testing "GHY-4148: a mistyped namespace is rejected by the args schema rather than landing a
@@ -276,6 +292,34 @@
 (deftest update-requires-id-test
   (is (re-find #"`id` is required when method is \"update\""
                (tool-error (call-tool! :crowberto {:method "update" :name "nope"})))))
+
+(deftest update-transforms-namespace-collection-test
+  (testing "GHY-4516: a transform folder renames and moves like any other collection — `namespace` is
+            create-only, so the row's own namespace is what decides which hierarchy the move happens in"
+    (mt/with-temp [:model/Collection parent {:name "Rollups" :namespace "transforms"}
+                   :model/Collection coll   {:name "Before" :namespace "transforms"}]
+      (let [payload (tool-result (call-tool! :crowberto {:method "update" :id (:id coll)
+                                                         :name "After" :parent_id (:id parent)}))]
+        (is (= "After" (:name payload)))
+        (is (= "transforms" (:namespace payload)))
+        (is (= (str "/" (:id parent) "/")
+               (t2/select-one-fn :location :model/Collection :id (:id coll)))))
+      (testing "parent_id \"root\" moves it back to the root of the transforms tree, leaving the
+                namespace alone rather than dropping it into the content root"
+        (tool-result (call-tool! :crowberto {:method "update" :id (:id coll) :parent_id "root"}))
+        (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id coll))))
+        (is (= :transforms (t2/select-one-fn :namespace :model/Collection :id (:id coll))))))))
+
+(deftest update-rejects-cross-namespace-move-test
+  (testing "GHY-4516: a transform folder cannot be moved into the content tree — namespaces are
+            independent hierarchies, and the model refuses rather than producing a folder whose
+            namespace disagrees with its parent's"
+    (mt/with-temp [:model/Collection content {:name "Content shelf"}
+                   :model/Collection coll    {:name "Transform folder" :namespace "transforms"}]
+      (is (re-find #"same namespace as its parent"
+                   (tool-error (call-tool! :crowberto {:method "update" :id (:id coll)
+                                                       :parent_id (:id content)}))))
+      (is (= "/" (t2/select-one-fn :location :model/Collection :id (:id coll)))))))
 
 (deftest update-rejects-namespace-test
   (mt/with-temp [:model/Collection coll {:name "Fixed namespace"}]

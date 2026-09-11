@@ -42,6 +42,7 @@ Two shapes are rejected outright, because rewriting them would silently change h
 ## Folders, tags, permissions
 
 - `collection_id` files it in a transform folder; omit for the top of the transforms tree.
+- Transform folders are their own hierarchy — make one with `collection_write(method: "create", namespace: "transforms")`, and browse them with `browse_collection(namespace: "transforms")`.
 - `tag_ids` — **jobs select transforms by tag**, so tags are how a transform gets scheduled. Replaced wholesale: pass the full set, or `[]` to clear.
 - Needs transforms permission on the source database plus the transforms feature, enforced exactly as the REST API and UI enforce them.
 
