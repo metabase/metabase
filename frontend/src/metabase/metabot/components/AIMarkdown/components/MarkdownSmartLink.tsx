@@ -1,67 +1,60 @@
 import type { ComponentProps } from "react";
-import { match } from "ts-pattern";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { MetabotHoverCard } from "metabase/metabot/components/MetabotHoverCard";
 import { getConversationChart } from "metabase/metabot/state";
 import { useSelector } from "metabase/redux";
-import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-entity-data";
-import { entityToUrlableModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
+import { EntitySmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/EntitySmartLink";
 import {
-  type MetabaseProtocolEntityModel,
-  type ParsedMetabaseProtocolLink,
-  conversationChartUrl,
-  modelToUrl,
-} from "metabase/urls";
+  type SmartLinkEntityRef,
+  useSmartLinkEntity,
+} from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-smart-link-entity";
+import { conversationChartUrl } from "metabase/urls";
 
 import S from "../AIMarkdown.module.css";
 
 import { InternalLink } from "./InternalLink";
 
+export type MarkdownSmartLinkTarget =
+  | (SmartLinkEntityRef & { href?: string })
+  | { id: string; model: "chart" };
+
 type MarkdownSmartLinkProps = {
   onInternalLinkClick?: (href: string) => void;
   name: string;
-} & ParsedMetabaseProtocolLink;
+} & MarkdownSmartLinkTarget;
 
 export const MarkdownSmartLink = (props: MarkdownSmartLinkProps) =>
   props.model === "chart" ? (
     <ChartSmartLink {...props} />
   ) : (
-    <EntitySmartLink {...props} />
+    <EntityMention {...props} />
   );
 
-const EntitySmartLink = ({
+const EntityMention = ({
   onInternalLinkClick,
   id,
   name,
   model,
-}: {
+  href,
+}: SmartLinkEntityRef & {
   onInternalLinkClick?: (href: string) => void;
-  id: number;
   name: string;
-  model: MetabaseProtocolEntityModel;
+  href?: string;
 }) => {
-  const getIcon = useGetIcon();
-  const entityModel = match(model)
-    .with("model", () => "dataset" as const)
-    .with("question", () => "card" as const)
-    .otherwise((x) => x);
-  const icon = getIcon({ model: entityModel });
-
-  const { entity, isLoading, error } = useEntityData(id, entityModel);
-
-  const entityUrl =
-    !isLoading && !error && entity
-      ? (modelToUrl(entityToUrlableModel(entity, entityModel)) ?? "")
-      : ""; // fallback to linking to nothing
+  const { libraryEntity } = useSmartLinkEntity({ id, model, href });
 
   return (
-    <SmartLinkChip
-      onInternalLinkClick={onInternalLinkClick}
-      href={entityUrl}
-      icon={icon}
-      name={name}
-    />
+    <MetabotHoverCard entity={libraryEntity}>
+      <EntitySmartLink
+        id={id}
+        model={model}
+        name={name}
+        href={href}
+        onNavigate={onInternalLinkClick}
+      />
+    </MetabotHoverCard>
   );
 };
 

@@ -232,7 +232,7 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("Searched for sales data")).toBeInTheDocument();
   });
 
-  it("renders a metabase:// link title as a clickable entity link with an icon", async () => {
+  it("renders a metabase:// link title as a clickable entity link", async () => {
     setup(
       chain({
         steps: [
@@ -252,10 +252,10 @@ describe("MetabotChainOfThought", () => {
     await userEvent.click(screen.getByRole("button"));
     // the row reads past tense with the entity inline ("Read Orders")
     expect(await screen.findByText("Read")).toHaveTextContent("Read Orders");
-    expect(await screen.findByText("Orders")).toBeInTheDocument();
-    expect(
-      await screen.findByRole("img", { name: /dashboard icon/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Orders" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/dashboard/123"),
+    );
   });
 
   it("labels a settled save_entity step with a clickable Saved link", async () => {

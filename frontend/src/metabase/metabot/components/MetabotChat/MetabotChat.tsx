@@ -22,6 +22,7 @@ import { useGetSuggestedMetabotPromptsQuery } from "../../api";
 import { useMetabotConversation, useUserMetabotPermissions } from "../../hooks";
 import type { MetabotAgentId } from "../../state";
 import type { MetabotChatConfig } from "../Metabot";
+import { METABOT_HOVER_CARD_BOUNDARY_ATTR } from "../MetabotHoverCard";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
@@ -128,6 +129,7 @@ export const MetabotChat = ({
           ref={scrollContainerRef}
           className={Styles.messagesContainer}
           data-testid="metabot-chat-messages"
+          {...{ [METABOT_HOVER_CARD_BOUNDARY_ATTR]: "" }}
         >
           {!hasMessages && !metabot.isDoingScience && (
             <>

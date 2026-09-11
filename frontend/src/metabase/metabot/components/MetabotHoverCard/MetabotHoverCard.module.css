@@ -1,0 +1,21 @@
+.clip {
+  overflow: hidden;
+}
+
+.text {
+  overflow-wrap: anywhere;
+}
+
+.crumb {
+  color: inherit;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--mb-color-text-brand-hover);
+    text-decoration: underline;
+  }
+}
+
+.crumbs {
+  justify-content: flex-end;
+}

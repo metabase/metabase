@@ -1,14 +1,24 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupCardEndpoints,
+  setupLibraryEndpoints,
+  setupTableEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockField,
+  createMockTable,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { AIMarkdown } from "./AIMarkdown";
@@ -25,11 +35,34 @@ const setup = (
   { conversationCharts }: { conversationCharts?: Record<string, unknown> } = {},
 ) => {
   setupEnterprisePlugins();
-  const settings = mockSettings({ "site-url": "http://localhost:3000" });
+  const settings = mockSettings({
+    "site-url": "http://localhost:3000",
+    "token-features": createMockTokenFeatures({ library: true }),
+  });
 
-  fetchMock.get(
-    "path:/api/card/123",
-    createMockCard({ id: 123, name: "Test Question" }),
+  setupLibraryEndpoints(true);
+  setupCardEndpoints(createMockCard({ id: 123, name: "Test Question" }));
+  setupCardEndpoints(
+    createMockCard({
+      id: 456,
+      name: "ARR",
+      type: "metric",
+      collection: createMockCollection({ type: "library-metrics" }),
+    }),
+  );
+  setupTableEndpoints(
+    createMockTable({
+      id: 5,
+      display_name: "Orders",
+      description: "Confirmed orders",
+      is_published: true,
+      collection: createMockCollection({
+        id: 10,
+        name: "Data",
+        type: "library-data",
+      }),
+      fields: [createMockField({ id: 1 }), createMockField({ id: 2 })],
+    }),
   );
 
   const metabot = conversationCharts
@@ -62,20 +95,70 @@ const countElements = (container: HTMLElement, selector: string) =>
   container.querySelectorAll(selector).length;
 /* eslint-enable testing-library/no-node-access */
 
+const findSmartLink = async (kind: string) => {
+  const link = await screen.findByTestId("smart-link");
+  await waitFor(() => expect(link).toHaveAttribute("data-smart-link", kind));
+  return link;
+};
+
 describe("AIMarkdown", () => {
   beforeEach(() => {
     jest.mocked(navigator.clipboard.writeText).mockClear();
   });
 
-  it("should render internal links for Metabase protocol links", async () => {
+  it.each([
+    {
+      href: "metabase://question/123",
+      kind: "link",
+      resolvedHref: "/question/123-test-question",
+    },
+    {
+      href: "metabase://metric/456",
+      kind: "token",
+      resolvedHref: "/metric/456",
+    },
+    { href: "/table/5", kind: "token", resolvedHref: "/table/5-orders" },
+  ])("renders $href as a smart $kind", async ({ href, kind, resolvedHref }) => {
+    setup({ children: `See [Name](${href})` });
+
+    const link = await findSmartLink(kind);
+    expect(link).toHaveAttribute("href", resolvedHref);
+  });
+
+  it("should render other internal links unchanged", async () => {
+    setup({ children: "See [Settings](/admin/settings)" });
+
+    const link = await screen.findByRole("link", { name: "Settings" });
+    expect(link).toHaveAttribute("href", "/admin/settings");
+    expect(screen.queryByTestId("smart-link")).not.toBeInTheDocument();
+  });
+
+  it("shows a hover card with the entity details for a Library token", async () => {
+    setup({ children: "[Orders](/table/5)" });
+
+    await userEvent.hover(await findSmartLink("token"));
+
+    const card = await screen.findByTestId("metabot-hover-card");
+    expect(card).toHaveTextContent("Table");
+    expect(card).toHaveTextContent("Orders");
+    expect(card).toHaveTextContent("Confirmed orders");
+    expect(await within(card).findByText("2")).toBeInTheDocument();
+    expect(card).toHaveTextContent("fields");
+    expect(
+      await within(card).findByRole("link", { name: "Library" }),
+    ).toHaveAttribute("href", "/collection/6464-library");
+    expect(within(card).getByRole("link", { name: "Data" })).toHaveAttribute(
+      "href",
+      "/collection/10-data",
+    );
+  });
+
+  it("does not show a hover card for a plain link", async () => {
     setup({ children: "[My Question](metabase://question/123)" });
 
-    // Wait for the component to render
-    const link = await screen.findByText("My Question");
-    expect(link).toBeInTheDocument();
+    await userEvent.hover(await findSmartLink("link"));
 
-    // Verify it's rendered as a smart link by checking for the icon
-    expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-hover-card")).not.toBeInTheDocument();
   });
 
   it("should render a generated-chart mention as a smart link chip", async () => {

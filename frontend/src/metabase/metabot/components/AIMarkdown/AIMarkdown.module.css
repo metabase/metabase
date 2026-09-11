@@ -186,3 +186,7 @@
   margin-bottom: -0.125rem;
   margin-right: 0.25rem;
 }
+
+.large :global([data-smart-link="token"]) {
+  padding-inline: 0.375rem;
+}
