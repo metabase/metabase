@@ -717,6 +717,16 @@
                   :dashboard #{}}
                  (calculation/calculate-deps :dashboard dashboard))))))))
 
+(deftest ^:parallel upstream-deps-hidden-dynamic-goal-test
+  (testing "a goal the chart doesn't show is still a dependency, same as serdes"
+    (is (= {:card #{7777}}
+           (select-keys (calculation/calculate-deps*
+                         :dashboard
+                         {:dashcards [{:visualization_settings
+                                       {:graph.show_goal  false
+                                        :graph.goal_value {:id 7777 :type "card" :column "count"}}}]})
+                        [:card])))))
+
 (deftest upstream-deps-card-with-measure-dynamic-goal-test
   (let [mp (mt/metadata-provider)
         orders-id (mt/id :orders)
