@@ -18,7 +18,7 @@
   (perms/native-download-permission-for-user user-id database-id))
 
 (mu/defmethod download-perms-level* :mbql.stage/mbql
-  [{db-id :database, :as query} :- ::lib.schema/query user-id]
+  [{db-id :database, :as query} :- ::lib.schema/query user-id] ; <- locked-query violation
   (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)
         perms (if (or native? (lib/any-native-stage-not-introduced-by-sandbox? query))
                 ;; If we detect any native subqueries/joins, even with source-card IDs, require full native

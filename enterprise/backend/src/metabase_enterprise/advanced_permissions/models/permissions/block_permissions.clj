@@ -24,7 +24,7 @@
   ;; run this even when the feature is not enabled - throwing here is better than silently ignoring the configured
   ;; block.
   :feature :none
-  [{database-id :database :as query}]
+  [{database-id :database :as query}] ; <- locked query violation; not always mbql5 so can't use lib/database-id
   (or
    (not= :blocked (perms/full-database-permission-for-user api/*current-user-id* :perms/view-data database-id))
    (let [{:keys [table-ids]} (query-perms/query->source-ids query)]
