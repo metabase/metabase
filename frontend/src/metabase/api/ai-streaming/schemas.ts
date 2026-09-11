@@ -42,6 +42,7 @@ export const knownDataPartTypes = [
   "data-code_edit",
   "data-transform_suggestion",
   "data-generated_entity",
+  "data-shown_entity",
   "data-entity_saved",
   "data-adhoc_viz",
   "data-static_viz",
@@ -104,6 +105,13 @@ export type GeneratedDashboard = {
 
 export type GeneratedEntity = GeneratedCard | GeneratedDashboard;
 
+export type ShownEntity = {
+  type: "question" | "model" | "metric" | "dashboard" | "document" | "table";
+  id: number;
+  title: string;
+  url: string;
+};
+
 export type SavedEntityDestination =
   | { type: "collection"; id: number | null }
   | { type: "dashboard"; id: number }
@@ -136,6 +144,7 @@ export type KnownDataPart =
   | { type: "data-transform_suggestion"; data: SuggestedTransform }
   | { type: "data-code_edit"; data: MetabotCodeEdit }
   | { type: "data-generated_entity"; data: GeneratedEntity }
+  | { type: "data-shown_entity"; data: ShownEntity }
   | { type: "data-entity_saved"; data: EntitySavedValue }
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
   | { type: "data-static_viz"; data: StaticVizValue }

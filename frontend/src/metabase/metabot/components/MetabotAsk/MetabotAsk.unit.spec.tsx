@@ -1,10 +1,16 @@
 import userEvent from "@testing-library/user-event";
 import { assocIn } from "icepick";
 
-import { createMockMetabotTextMessage } from "__support__/server-mocks";
+import {
+  createMockMetabotTextMessage,
+  setupCardEndpoints,
+  setupCardQueryEndpoints,
+} from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import { getMetabotVisible } from "metabase/metabot/state";
 import {
+  createMockCard,
+  createMockDataset,
   createMockMetabotConversation,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -13,6 +19,7 @@ import {
   conversationIdForAgent,
   createTestMetabotState,
   enterChatMessage,
+  lastReqBody,
   mockAgentEndpoint,
   setup,
   testConversationId,
@@ -20,6 +27,11 @@ import {
 } from "../../tests/utils";
 
 import { MetabotAsk } from "./MetabotAsk";
+
+jest.mock("metabase/visualizations/components/Visualization", () => ({
+  __esModule: true,
+  default: () => <div data-testid="saved-chart-preview" />,
+}));
 
 const greetingTitle =
   /What would you like to know\?|What do you want to explore\?|What are you looking to learn\?/;
@@ -39,6 +51,75 @@ const askConversation = (field: string, value: unknown) =>
   );
 
 describe("MetabotAsk", () => {
+  it("shows a found question inline in fullscreen without navigating to the question", async () => {
+    const card = createMockCard({ id: 42, name: "Bird sightings" });
+    setupCardEndpoints(card);
+    setupCardQueryEndpoints(card, createMockDataset());
+    const { router, store } = setupMetabotAsk({
+      withRouter: true,
+      initialRoute: "/question/ask",
+      routePath: "*",
+    });
+    const agentSpy = mockAgentEndpoint({
+      events: [
+        {
+          type: "data-shown_entity",
+          data: {
+            type: "question",
+            id: card.id,
+            title: card.name,
+            url: "/question/42",
+          },
+        },
+      ],
+    });
+
+    await enterChatMessage("Find the Bird sightings question");
+
+    expect(
+      await screen.findByTestId("saved-chart-preview"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: card.name })).toHaveAttribute(
+      "href",
+      "/question/42",
+    );
+    const requestBody: unknown = await lastReqBody(agentSpy);
+    expect(requestBody).toMatchObject({ profile_id: "nlq" });
+    expect(router?.location.pathname).toBe(
+      `/metabot/conversation/${conversationIdForAgent(store, "ask")}`,
+    );
+  });
+
+  it("shows a found dashboard inline in fullscreen", async () => {
+    const { router, store } = setupMetabotAsk({
+      withRouter: true,
+      initialRoute: "/question/ask",
+      routePath: "*",
+    });
+    mockAgentEndpoint({
+      events: [
+        {
+          type: "data-shown_entity",
+          data: {
+            type: "dashboard",
+            id: 42,
+            title: "Bird dashboard",
+            url: "/dashboard/42",
+          },
+        },
+      ],
+    });
+
+    await enterChatMessage("Find the Bird dashboard");
+
+    expect(
+      await screen.findByRole("link", { name: "Bird dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/42");
+    expect(router?.location.pathname).toBe(
+      `/metabot/conversation/${conversationIdForAgent(store, "ask")}`,
+    );
+  });
+
   it("shows the greeting and closes the global Metabot sidebar", async () => {
     const { store } = setupMetabotAsk({
       promptSuggestions: [{ prompt: "Show me all orders" }],
