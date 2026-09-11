@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { getParameterValuesForQuestion } from "metabase/query_builder";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { utf8_to_b64 } from "metabase/utils/encoding";
 import Question from "metabase-lib/v1/Question";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
@@ -107,9 +107,14 @@ describe("getMcpDeserializedQuery", () => {
   });
 
   // The load-bearing one. The two above only prove the payload was split; this proves the split
-  // halves rejoin, by driving the same helpers `loadQuestionSdk` uses: the card's own parameters
-  // are derived from its template tags, and `initialSqlParameters` is matched against them by slug.
-  // If the value doesn't land here, the embed runs `{{cat}}` unbound no matter how clean the split.
+  // halves rejoin: the card's own parameters are derived from its template tags, and
+  // `initialSqlParameters` is matched against them by slug. If the value doesn't land here, the
+  // embed runs `{{cat}}` unbound no matter how clean the split.
+  //
+  // Matches against `question.parameters()` through `getParameterValuesByIdFromQueryParams`
+  // directly, rather than through `getParameterValuesForQuestion`, which is what that helper
+  // delegates to — it keeps the test off a signature that is currently in flux upstream while
+  // exercising the same semantics.
   it("binds the value to the card's template-tag parameter", () => {
     const deserialized = getMcpDeserializedQuery(
       utf8_to_b64(
@@ -122,11 +127,10 @@ describe("getMcpDeserializedQuery", () => {
     const uiParameters = getCardUiParameters(card, metadata);
     expect(uiParameters.map((parameter) => parameter.slug)).toEqual(["cat"]);
 
-    const parameterValues = getParameterValuesForQuestion({
-      card,
-      metadata,
-      queryParams: deserialized!.initialSqlParameters,
-    });
+    const parameterValues = getParameterValuesByIdFromQueryParams(
+      new Question(card, metadata).parameters(),
+      deserialized!.initialSqlParameters,
+    );
     // Array-wrapped by widget normalization: `normalizeParameterValue` wraps every string- and
     // number-typed parameter the same way on the path to the request, so this is the shape a
     // filter widget produces too, not an MCP quirk.
@@ -148,11 +152,10 @@ describe("getMcpDeserializedQuery", () => {
 
     let question = new Question(card, metadata).applyTemplateTagParameters();
     question = question.setParameterValues(
-      getParameterValuesForQuestion({
-        card,
-        metadata,
-        queryParams: deserialized!.initialSqlParameters,
-      }),
+      getParameterValuesByIdFromQueryParams(
+        question.parameters(),
+        deserialized!.initialSqlParameters,
+      ),
     );
 
     const requestParameters = normalizeParameters(question.parameters());
