@@ -8,9 +8,7 @@ import {
   AreaNavButton,
   AreaTab,
 } from "metabase/nav/components/AreaLayout";
-import { useDispatch } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
-import { Outlet, useLocation } from "metabase/router";
+import { Outlet, useLocation, useNavigate } from "metabase/router";
 import { FixedSizeIcon, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
@@ -130,7 +128,12 @@ export function EmbeddingHubLayout() {
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
       upperNav={upperNav}
-      lowerNav={<NewEmbedNavButton showLabel={isNavbarOpened} />}
+      lowerNav={
+        <NewEmbedNavButton
+          showLabel={isNavbarOpened}
+          tabUrl={currentTab?.to ?? Urls.embeddingHubGetStarted()}
+        />
+      }
     >
       <EmbeddingHubContent
         fullWidth={
@@ -155,24 +158,22 @@ export function isUnder(pathname: string, base: string) {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
-/**
- * Pinned to the bottom of the nav, per the design. It dispatches into the same
- * `id: "embed"` modal the admin button uses, which is why the embedding hub's routes
- * mount inside AppComponent -- NewModals lives there.
- */
-function NewEmbedNavButton({ showLabel }: { showLabel: boolean }) {
-  const dispatch = useDispatch();
+/** Pinned to the bottom of the nav, per the design. */
+function NewEmbedNavButton({
+  showLabel,
+  tabUrl,
+}: {
+  showLabel: boolean;
+  tabUrl: string;
+}) {
+  const navigate = useNavigate();
 
   return (
     <AreaNavButton
       label={t`New embed`}
       icon="add"
       showLabel={showLabel}
-      onClick={() =>
-        dispatch(
-          setOpenModalWithProps({ id: "embed", props: { initialState: {} } }),
-        )
-      }
+      onClick={() => navigate(Urls.embeddingHubNewEmbed(tabUrl))}
     />
   );
 }

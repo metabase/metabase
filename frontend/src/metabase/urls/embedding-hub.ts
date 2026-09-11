@@ -33,3 +33,31 @@ export function embeddingHubAppearance() {
 export function embeddingHubLocalization() {
   return `${ROOT_URL}/localization`;
 }
+
+/**
+ * The wizard hangs off whichever hub tab opened it, so its own tab stays
+ * selected while it is open and closing it returns there (EMB-2362).
+ */
+type NewEmbedParams = {
+  resourceType?: string | null;
+  resourceId?: string | number | null;
+  isGuest?: boolean;
+  useExistingUserSession?: boolean;
+};
+
+export function embeddingHubNewEmbed(
+  tabUrl: string,
+  params: NewEmbedParams = {},
+) {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null) {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  const search = searchParams.toString();
+
+  return search ? `${tabUrl}/new-embed?${search}` : `${tabUrl}/new-embed`;
+}

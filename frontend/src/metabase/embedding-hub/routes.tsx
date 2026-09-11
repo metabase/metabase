@@ -44,6 +44,13 @@ const embeddingHubAppearancePage = () =>
     Component: EmbeddingHubAppearancePage,
   }));
 
+const embeddingHubNewEmbedPage = () =>
+  import("metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupPage").then(
+    ({ SdkIframeEmbedSetupPage }) => ({
+      Component: SdkIframeEmbedSetupPage,
+    }),
+  );
+
 const embeddingHubThemeEditorPage = () =>
   import("./pages/EmbeddingHubThemeEditorPage").then(
     ({ EmbeddingHubThemeEditorPage }) => ({
@@ -85,27 +92,41 @@ export function getEmbeddingHubRoutes() {
           element={<Navigate to={Urls.embeddingHubGetStarted()} replace />}
         />
 
+        {/* Each tab reaches the wizard at its own path, so the tab stays
+            selected while it is open and an unknown tab still 404s. The routes
+            spec fails if a tab is added without one. */}
         <Route path="get-started">
           <Route index lazy={embeddingHubGetStartedPage} />
+          <Route path="new-embed" lazy={embeddingHubNewEmbedPage} />
           <Route path="permissions" lazy={setupPermissionsAndTenantsPage} />
           <Route path="sso" lazy={setupSsoPage} />
         </Route>
 
-        <Route path="security" lazy={embeddingHubSecurityPage} />
+        <Route path="security">
+          <Route index lazy={embeddingHubSecurityPage} />
+          <Route path="new-embed" lazy={embeddingHubNewEmbedPage} />
+        </Route>
 
-        <Route path="authentication" lazy={embeddingHubAuthenticationPage} />
+        <Route path="authentication">
+          <Route index lazy={embeddingHubAuthenticationPage} />
+          <Route path="new-embed" lazy={embeddingHubNewEmbedPage} />
+        </Route>
 
         <Route path="permissions" lazy={embeddingHubPermissionsPage}>
           {getAdminPermissionsRoutes()}
+          <Route path="new-embed" lazy={embeddingHubNewEmbedPage} />
         </Route>
 
         {/* Null on OSS, and on EE assigned during plugin init. With no child
             routes the page still renders its own upsell. */}
         <Route path="tenancy" lazy={embeddingHubTenancyPage}>
           {PLUGIN_TENANTS.tenantsRoutes}
+          <Route path="new-embed" lazy={embeddingHubNewEmbedPage} />
         </Route>
+
         <Route path="appearance">
           <Route index lazy={embeddingHubAppearancePage} />
+          <Route path="new-embed" lazy={embeddingHubNewEmbedPage} />
           <Route path="theme">
             <Route
               index
@@ -114,7 +135,11 @@ export function getEmbeddingHubRoutes() {
             <Route path=":themeId" lazy={embeddingHubThemeEditorPage} />
           </Route>
         </Route>
-        <Route path="localization" lazy={embeddingHubLocalizationPage} />
+
+        <Route path="localization">
+          <Route index lazy={embeddingHubLocalizationPage} />
+          <Route path="new-embed" lazy={embeddingHubNewEmbedPage} />
+        </Route>
       </Route>
     </Route>
   );

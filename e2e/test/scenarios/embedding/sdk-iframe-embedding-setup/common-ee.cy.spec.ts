@@ -92,8 +92,11 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     cy.go("back");
 
     H.modal().should("not.exist");
-    cy.findAllByTestId("settings-sidebar-link")
-      .contains("General")
+
+    // Back pops the entry the wizard pushed, returning to the page it was
+    // opened from rather than leaving the hub (EMB-2362).
+    cy.findByTestId("embedding-hub-main")
+      .findByRole("heading", { name: "Security" })
       .should("be.visible");
   });
 
