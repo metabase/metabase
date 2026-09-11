@@ -13,6 +13,7 @@ export const METABASE_PROTOCOL_ENTITY_MODELS = [
   "collection",
   "document",
   "model",
+  "metric",
   "database",
   "table",
   "transform",
