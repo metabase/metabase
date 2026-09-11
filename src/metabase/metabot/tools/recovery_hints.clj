@@ -25,7 +25,9 @@
     "metric"
     ;; `{0}` and `{1}` are both the entity id: `tru` rejects a repeated index, because
     ;; MessageFormat counts placeholder occurrences and distinct indices separately.
-    (str (tru "Metrics are aggregations, not sources. To use metric {0}, put its base table into `source-table:` — combine the `database_name` and `base_table_fully_qualified_name` attributes from its search result or `read_resource metabase://metric/{1}` — and reference the metric as:"
+    ;; Naming the base table unconditionally breaks metrics defined on a saved question: keep in step with
+    ;; construct_notebook_query.md and the construct-notebook-query-* skills.
+    (str (tru "Metrics are aggregations, not sources. To use metric {0}, build the stage on the metric''s own source — its `base_table_fully_qualified_name` (with `database_name`) in `source-table:`, or its `source_card_portable_entity_id` in `source-card:`, whichever its `<metric>` tag carries (see its search result or `read_resource metabase://metric/{1}`) — and reference the metric as:"
               (str entity-id) (str entity-id))
          " `aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
 
