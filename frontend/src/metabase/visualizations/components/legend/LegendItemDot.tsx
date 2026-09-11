@@ -1,17 +1,13 @@
-import { type Ref, forwardRef } from "react";
+import cx from "classnames";
+import { type CSSProperties, type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
-import {
-  InnerCircle,
-  OuterCircle,
-  Root,
-  RootButton,
-} from "./LegendItemDot.styled";
+import S from "./LegendItemDot.module.css";
 
 interface LegendItemDotProps {
   isVisible: boolean;
   color: string;
-  size?: string; // px
+  size?: string;
   onClick?: (event: React.MouseEvent) => void;
 }
 
@@ -19,7 +15,7 @@ export const LegendItemDot = forwardRef<
   HTMLButtonElement | HTMLDivElement,
   LegendItemDotProps
 >(function LegendItemDot(
-  { isVisible = true, color, size = "8px", onClick },
+  { isVisible = true, color, size = "0.5rem", onClick },
   ref,
 ) {
   const sizeStyle = {
@@ -27,31 +23,45 @@ export const LegendItemDot = forwardRef<
     width: size,
     height: size,
   };
+  const rootStyle: CSSProperties & { "--legend-dot-color": string } = {
+    ...sizeStyle,
+    "--legend-dot-color": color,
+  };
+
+  const circles = (
+    <>
+      <span className={cx(S.circle, S.outerCircle)} style={sizeStyle} />
+      <span
+        className={cx(S.circle, S.innerCircle, { [S.visible]: isVisible })}
+        style={sizeStyle}
+      />
+    </>
+  );
 
   if (onClick) {
     return (
-      <RootButton
+      <button
+        className={S.rootButton}
         aria-label={isVisible ? t`Hide series` : t`Show series`}
         onClick={onClick}
-        style={sizeStyle}
-        // Unjustified type cast. FIXME
+        style={rootStyle}
+        // the forwarded ref matches the rendered element: a button when clickable
         ref={ref as Ref<HTMLButtonElement>}
       >
-        <OuterCircle style={sizeStyle} />
-        <InnerCircle color={color} isVisible={isVisible} style={sizeStyle} />
-      </RootButton>
+        {circles}
+      </button>
     );
   }
 
   return (
-    <Root
+    <div
+      className={S.root}
       data-testid="legend-item-dot"
-      style={sizeStyle}
-      // Unjustified type cast. FIXME
+      style={rootStyle}
+      // the forwarded ref matches the rendered element: a div when not clickable
       ref={ref as Ref<HTMLDivElement>}
     >
-      <OuterCircle style={sizeStyle} />
-      <InnerCircle color={color} isVisible={isVisible} style={sizeStyle} />
-    </Root>
+      {circles}
+    </div>
   );
 });
