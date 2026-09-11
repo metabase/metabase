@@ -27,6 +27,7 @@ module.exports = {
     "^Components/Ask Before Using/Chip Overview",
     "^Components/Data display/Badge Sizes and variants",
     "^Components/Navigation/NavLink Overview",
+    "^Components/Navigation/Tabs/Overview",
     "^Components/Data display/KeyboardShortcut Overview",
     "^Components/Table",
     "^Components/Inputs/PasswordInput Overview",

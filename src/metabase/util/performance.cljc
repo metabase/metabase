@@ -349,6 +349,15 @@
        (mapv (fn [_] (mapv #(.next ^Iterator %) its))
              (first coll-of-colls)))))
 
+(defn dropv
+  "Like `clojure.core/drop`, but always returns a vector, and calls `clojure.core/subvec` when invoked on vectors (so,
+  it is very cheap, but shares the structure with original vector, see its docstring)."
+  ([n] (drop n))
+  ([n coll]
+   (cond (vector? coll) (if (> (count coll) n) (subvec coll n) [])
+         (nil? coll)    []
+         :else          (into [] (drop n) coll))))
+
 (defn select-keys
   "Drop-in replacement for `clojure.walk/select-keys`, but much more efficient."
   [m keyseq]

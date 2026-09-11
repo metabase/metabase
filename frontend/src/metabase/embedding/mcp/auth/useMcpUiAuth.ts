@@ -11,7 +11,10 @@ import { installMcpUiCredential, refreshMcpUiAuth } from "./mcpUiAuth";
 type UseMcpUiAuthOptions = {
   app: App | null;
   refreshKey: number;
-  onAuthenticated: () => void;
+  onAuthenticated: (auth: {
+    uiCredential: string;
+    mcpSessionId: string;
+  }) => void;
 };
 
 export function useMcpUiAuth({
@@ -90,7 +93,12 @@ export function useMcpUiAuth({
         setError(null);
 
         authenticatedUntilRef.current = expiresAt;
-        onAuthenticated();
+        // Passed through rather than read from state: the consumer resolves a
+        // query handle here, and the state setters above have not committed yet.
+        onAuthenticated({
+          uiCredential: auth.credential,
+          mcpSessionId: auth.sessionId,
+        });
 
         scheduleCredentialExpiry();
         scheduleRefresh(UI_CREDENTIAL_REFRESH_INTERVAL_MS);

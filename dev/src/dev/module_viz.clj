@@ -50,6 +50,9 @@
       :else
       (str "src/" path ".clj"))))
 
+;; TODO (Chris 2026-09-11) -- Not aware of nested modules: paths come from the module name rather than its
+;; `:ns-prefix`, a parent's LOC includes its children's files, and teams ignore inheritance. Consolidate with
+;; `hooks.common.modules/module-ns-prefix` and `dev.deps-graph/module-team`.
 (defn- module->github-path
   "Best-effort repo-relative source path for a module symbol."
   [module-symb]

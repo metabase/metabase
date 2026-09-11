@@ -3,6 +3,8 @@
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [hooks.common.modules :as modules]
+   [mage.color]
    [mage.modules]))
 
 ;; Referenced by core_test.clj to ensure namespace is loaded
@@ -198,7 +200,7 @@
 
 (deftest modules-can-trigger-cloud-drivers
   (doseq [module '#{query-processor transforms
-                    enterprise/transforms enterprise/transforms-python}
+                    enterprise/transforms enterprise/transforms.python}
           driver [:athena :bigquery :databricks :redshift :snowflake]]
     (testing (format "Cloud driver runs when %s module is updated" module)
       (let [result (mage.modules/driver-decision driver
@@ -305,7 +307,9 @@
           ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
           ;; 2026-06-04 Bumped to 42 due to run-tracking addition (Zombie transform reaper #75194)
           ;; 2026-06-24 Bumped to 44 for indexes + indexes-rest (Index manager #75848)
-          max-allowed-count 44]
+          ;; 2026-09-11 Bumped to 47: lib.schema, lib.metadata and query-processor.cache-backend are carved out of
+          ;;            lib and query-processor, which already trigger driver tests
+          max-allowed-count 47]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
@@ -320,8 +324,60 @@
     ;; note in the future, this won't be all dependent modules see
     ;; https://linear.app/metabase/issue/DEV-1487/treat-changed-test-namespaces-as-module-only-changes
     (let [changed-file "enterprise/backend/test/metabase_enterprise/transforms_python/api_test.clj"]
-      (is (= '#{enterprise/transforms-python}
+      (is (= '#{enterprise/transforms.python}
              (mage.modules/updated-files->updated-modules [changed-file])))
       (is (-> [changed-file]
               mage.modules/updated-files->updated-modules
               mage.modules/driver-deps-affected?)))))
+
+(deftest module-tree-lines-test
+  (let [config '{lib                          {}
+                 lib.be                       {:ns-prefix "metabase.lib-be"}
+                 transforms                   {}
+                 transforms.base              {:ns-prefix "metabase.transforms-base"}
+                 transforms.base.deep         {}
+                 transforms.python            {:ns-prefix "metabase.transforms-python"}
+                 enterprise-tools             {}
+                 enterprise/transforms        {}
+                 enterprise/transforms.python {:ns-prefix "metabase-enterprise.transforms-python"}
+                 enterprise/billing           {}}
+        lines  (binding [mage.color/*disable-colors* true]
+                 (into []
+                       (mapcat (fn [[segment node]]
+                                 (#'mage.modules/tree-node-lines config false [segment] node)))
+                       (#'mage.modules/sorted-children (#'mage.modules/module-display-tree config))))]
+    (testing "the tree sorts and marks modules with custom prefixes"
+      (is (= ["enterprise-tools"
+              "lib"
+              "- lib.be *"
+              "transforms"
+              "- transforms.base *"
+              "-- transforms.base.deep"
+              "- transforms.python *"
+              "- transforms.enterprise"
+              "-- transforms.enterprise.python *"
+              "enterprise/billing"]
+             lines)))))
+
+(deftest module-tree-enterprise-default-prefix-not-starred-test
+  (testing "default enterprise prefixes are not marked as custom"
+    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {}} 'enterprise/billing)))
+    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {:ns-prefix "metabase-enterprise.billing"}}
+                                                 'enterprise/billing)))
+    (is (= "metabase.lib-be"
+           (#'mage.modules/explicit-ns-prefix '{lib.be {:ns-prefix "metabase.lib-be"}} 'lib.be)))))
+
+(deftest dotted-module-files-mark-correct-module-changes
+  (testing "dotted module files resolve to the dotted module when its prefix exists"
+    (let [prefix->module (modules/build-prefix->module {'lib.schema {}})]
+      (is (= 'lib.schema
+             (#'mage.modules/file->module prefix->module "test/metabase/lib/schema_test.cljc")))
+      (is (= 'lib.schema
+             (#'mage.modules/file->module prefix->module "src/metabase/lib/schema/config.edn"))))))
+
+(deftest top-level-files-belong-only-to-declared-modules-test
+  (testing "a file directly under metabase/ belongs to a module only when a declared prefix owns its namespace"
+    (let [prefix->module (modules/build-prefix->module '{driver {}})]
+      (is (= 'driver (#'mage.modules/file->module prefix->module "src/metabase/driver.clj")))
+      (is (nil? (#'mage.modules/file->module prefix->module "test/metabase/test_runner.clj")))
+      (is (nil? (#'mage.modules/file->module prefix->module "src/metabase/DO_NOT_ADD_NEW_FILES_HERE.txt"))))))

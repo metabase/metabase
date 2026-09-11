@@ -7,6 +7,8 @@
    [clojure.test :refer :all]
    [dev.deps-graph]
    [dev.model-boundary-config]
+   [hooks.common.modules :as modules]
+   [metabase.test-runner]
    [metabase.util.json :as json]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
@@ -37,12 +39,26 @@
 
 (deftest all-modules-have-teams-test
   (testing "All modules should have a valid :team owner"
-    (let [teams (teams)]
-      (doseq [[module config] (modules-config)]
+    (let [teams  (teams)
+          config (modules-config)]
+      (doseq [module (keys config)
+              :let   [team (dev.deps-graph/module-team config module)]]
         (testing (format "\n'%s' module" module)
-          (is (or (contains? teams (:team config))
-                  (contains? teams-to-reassign (:team config)))
+          (is (or (contains? teams team)
+                  (contains? teams-to-reassign team))
               "Should have a valid :team key"))))))
+
+(deftest ^:parallel module-team-test
+  (let [config '{parent                {:team "Parent"}
+                 parent.child          {}
+                 parent.child.leaf     {:team "Leaf"}
+                 enterprise/parent     {}
+                 enterprise/standalone {:team "Enterprise"}}]
+    (are [module team] (= team (dev.deps-graph/module-team config module))
+      'parent.child          "Parent"      ; inherited from the nearest configured ancestor
+      'parent.child.leaf     "Leaf"        ; an explicit team overrides its ancestors
+      'enterprise/parent     "Parent"      ; an EE companion inherits from its OSS parent
+      'enterprise/standalone "Enterprise")))
 
 (defn- modules-config-zipper
   "Return a zipper pointing to the modules config map node (the value of the `:metabase/modules` key)."
@@ -173,8 +189,75 @@
         (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
           (is (empty? extraneous)))))))
 
+(deftest ^:parallel uses-references-must-be-namable-test
+  (testing "every module named in :uses is visible to the caller"
+    (let [config (dev.deps-graph/kondo-config)]
+      (doseq [[caller {:keys [uses]}] config
+              :when                   (set? uses)
+              target                  uses
+              ;; The staleness test reports undeclared targets.
+              :when                   (contains? config target)]
+        (testing (format "\n[%s :uses %s]" caller target)
+          (is (nil? (modules/namability-error config caller target))))))))
+
+(deftest ^:parallel ns-prefixes-test
+  (let [config (dev.deps-graph/kondo-config)]
+    (testing "explicit prefixes are strings under a Metabase namespace root"
+      (doseq [[module {:keys [ns-prefix]}] config
+              :when                          (some? ns-prefix)]
+        (is (and (string? ns-prefix)
+                 (re-find #"^metabase(?:-enterprise)?\." ns-prefix))
+            (format "Module %s has :ns-prefix %s." module (pr-str ns-prefix)))))
+    (testing "effective prefixes are unique"
+      (doseq [[prefix claimants] (group-by #(modules/module-ns-prefix config %) (keys config))
+              :when              (> (count claimants) 1)]
+        (is (= 1 (count claimants))
+            (format "Modules %s share :ns-prefix %s." (pr-str (sort claimants)) (pr-str prefix)))))))
+
+(deftest ^:parallel nested-modules-have-declared-parents-test
+  (testing "every nested module has a declared direct parent"
+    (let [config (dev.deps-graph/kondo-config)]
+      (doseq [module (keys config)
+              :let   [parent (modules/parent-module config module)]
+              :when  parent]
+        (testing (format "\n%s is nested under %s" module parent)
+          (is (contains? config parent)
+              (format "Declare parent module %s before declaring nested module %s."
+                      parent
+                      module)))))))
+
+(deftest ^:parallel module-exports-are-declared-direct-children-test
+  (testing "every :module-exports entry names a declared direct child"
+    (let [config (dev.deps-graph/kondo-config)]
+      (doseq [[parent module-config] config
+              child                  (:module-exports module-config)]
+        (testing (format "\n[%s :module-exports %s]" parent child)
+          (is (contains? config child)
+              (format "Exported child %s is not a declared module." child))
+          (is (= parent (modules/parent-module config child))
+              (format "%s may only export direct children; %s has parent %s."
+                      parent
+                      child
+                      (modules/parent-module config child))))))))
+
 (defn- rest-module? [module]
-  (str/ends-with? module "-rest"))
+  (re-find #"[.-]rest$" (str module)))
+
+(deftest ^:parallel rest-modules-are-nested-test
+  (testing "every REST module uses the `.rest` child convention that makes it implicitly exported"
+    (let [modules (sort (filter rest-module? (keys (dev.deps-graph/kondo-config))))]
+      (is (seq modules) "no REST modules, so the check below would hold vacuously")
+      (doseq [module modules]
+        (testing (str "\n" module)
+          (is (str/ends-with? (name module) ".rest")
+              (format "Rename REST module %s as a `.rest` child of the module it serves." module)))))))
+
+(deftest ^:parallel test-runner-module-folders-test
+  (testing "`:module` resolves through each module's :ns-prefix, so dotted and renamed modules find their tests"
+    (is (= ["test/metabase/lib/schema"
+            "test/metabase/actions_rest"
+            "enterprise/backend/test/metabase_enterprise/transforms_python"]
+           (metabase.test-runner/module-folders '[lib.schema actions.rest enterprise/transforms.python])))))
 
 (deftest do-not-use-rest-modules-in-other-modules-test
   (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)
@@ -186,7 +269,7 @@
                 used-module
                 module
                 used-module
-                (symbol (str/replace used-module #"-rest$" ""))))))
+                (symbol (str/replace used-module #"[.-]rest$" ""))))))
 
 ;;;; Model boundary tests
 
@@ -263,3 +346,34 @@
          (testing (format "\n'%s' module :model-imports" module)
            (is (= (sort imports)
                   imports))))))))
+
+;;;; Module boundary analysis
+
+(deftest ^:parallel strongly-connected-components-test
+  (let [graph {:a #{:b}
+               :b #{:a :c}
+               :c #{}
+               :d #{:e}
+               :e #{:f}
+               :f #{:d}
+               :g #{:h}}]
+    (is (= #{#{:a :b} #{:c} #{:d :e :f} #{:g} #{:h}}
+           (set (dev.deps-graph/strongly-connected-components graph))))
+    (is (= [#{:d :e :f} #{:a :b}]
+           (dev.deps-graph/cyclic-components graph)))))
+
+(deftest ^:parallel module-boundary-config-values-have-valid-types-test
+  (testing "Module boundary keys have the shapes the ratchet counts expect"
+    (doseq [[module config] (dev.deps-graph/kondo-config)]
+      (testing (format "\n%s" module)
+        (is (or (nil? (:api config))
+                (set? (:api config))
+                (= :any (:api config)))
+            ":api must be omitted, a set, or :any")
+        (is (or (nil? (:uses config))
+                (set? (:uses config))
+                (= :any (:uses config)))
+            ":uses must be omitted, a set, or :any")
+        (is (or (nil? (:friends config))
+                (set? (:friends config)))
+            ":friends must be a set when present")))))
