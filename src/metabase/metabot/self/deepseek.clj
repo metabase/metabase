@@ -69,6 +69,12 @@
   [model]
   (contains? supported-models model))
 
+
+(defn streams-reasoning?
+  "Registry capability. DeepSeek answers from the model name."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
 (defn list-models
   "List the DeepSeek models supported by this adapter (see [[supported-models]]).
 

@@ -109,6 +109,11 @@
 (defn reasoning-model?
   "Whether `model` streams renderable reasoning back to us through OpenRouter.
 
+(defn streams-reasoning?
+  "Registry capability. OpenRouter answers from the model name."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
   True for the `:renderable` and `:renderable-default` classes (see [[supported-models]]).
   Excluded: the budget-only Claudes, which silently ignore the unified enable
   (https://openrouter.ai/docs/use-cases/reasoning-tokens)."

@@ -57,6 +57,11 @@
 (defn reasoning-model?
   "Whether the deployment behind a `{family}/{deployment}` model string streams reasoning.
 
+(defn streams-reasoning?
+  "Registry capability. Azure answers from the deployment name, delegating to the family's adapter."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
   Deployment names are admin-chosen free text, so this is best-effort by name — and symmetric
   with the request body, which derives its thinking config from the same string. A deployment
   whose name resembles a reasoning model while serving a different one gets reasoning request
@@ -183,8 +188,13 @@
   chat time with `DeploymentNotFound`.
 
   Opts: `:credentials` (`{:api-key ... :base-url ...}`), `:model` (the `{family}/{deployment}`
-  string selecting which surface family to validate; without it validation is skipped), and
-  `:ai-proxy?`, which is not supported for Azure and throws when true."
+  string selecting which surface family to validate) and `:ai-proxy?`, which is not supported for
+  Azure and throws when true.
+
+  With no model there is no family to pick a surface for, so the round trip is skipped. The caller
+  supplies one: `metabase.llm.api.provider` resolves it from the connection's own `:model-fields`, and
+  falls back to what `llm-metabot-provider` names for *that* connection — which this namespace used to
+  re-derive for any Azure connection, reaching up to the setting to do it."
   ([] (list-models {}))
   ([{:keys [credentials model ai-proxy?]}]
    (when-let [model (not-empty model)]

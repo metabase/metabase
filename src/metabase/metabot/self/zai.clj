@@ -41,6 +41,11 @@
 (defn reasoning-model?
   "Whether `model` streams reasoning back to us.
 
+(defn streams-reasoning?
+  "Registry capability. Z.AI answers from the model name."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
   True only for the whitelisted GLM models, which think by default — thinking defaults to enabled
   server-side (https://docs.z.ai/api-reference/llm/chat-completion)."
   [model]

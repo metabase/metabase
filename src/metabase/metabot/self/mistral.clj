@@ -38,6 +38,11 @@
 (defn reasoning-model?
   "Whether `model` streams thinking that our chain-of-thought UI renders.
 
+(defn streams-reasoning?
+  "Registry capability. Mistral answers from the model name."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
   True exactly for the [[supported-models]] whitelist. Off-catalog models — including
   catalog aliases like `mistral-medium-latest`, which are not resolved, as with
   [[context-window-tokens]] — get no reasoning directive and the settings gate answers

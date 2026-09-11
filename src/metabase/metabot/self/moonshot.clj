@@ -59,6 +59,11 @@
 (defn reasoning-model?
   "Whether `model` streams thinking that our chain-of-thought UI renders.
 
+(defn streams-reasoning?
+  "Registry capability. Moonshot answers from the model name."
+  [{:keys [model]}]
+  (reasoning-model? model))
+
   True exactly for the [[reasoning-models]] whitelist; off-whitelist models get thinking disabled in the request,
   so the settings gate and the stream agree by construction."
   [model]
