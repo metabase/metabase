@@ -20,6 +20,7 @@ import type {
 } from "../../model/types";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
+import { applyDashboardYAxisTicks } from "../../option/dashboard-axis";
 import {
   getGoalLineParams,
   getGoalLineSeriesOption,
@@ -79,8 +80,9 @@ const getLabelLayoutFn = (
 
 const computeWaterfallBarWidth = (
   chartModel: WaterfallChartModel,
-  boundaryWidth: number,
+  chartLayout: ChartLayout,
 ) => {
+  const { boundaryWidth } = chartLayout;
   if (isCategoryAxis(chartModel.xAxisModel)) {
     return (
       (boundaryWidth / chartModel.dataset.length + 2) *
@@ -92,6 +94,8 @@ const computeWaterfallBarWidth = (
     boundaryWidth,
     1,
     true,
+    undefined,
+    chartLayout,
   );
 };
 
@@ -105,10 +109,7 @@ export const buildEChartsWaterfallSeries = (
 ) => {
   const { seriesModels, transformedDataset: dataset } = chartModel;
   const [seriesModel] = seriesModels;
-  const barWidth = computeWaterfallBarWidth(
-    chartModel,
-    chartLayout.boundaryWidth,
-  );
+  const barWidth = computeWaterfallBarWidth(chartModel, chartLayout);
 
   const buildLabelOption = () => ({
     ...buildEChartsLabelOptions(
@@ -249,6 +250,13 @@ export const getWaterfallChartOption = (
   ].flatMap((option) => option ?? []);
 
   const echartsDataset = [{ source: chartModel.transformedDataset }];
+  const axes = buildAxes(
+    chartModel,
+    chartLayout,
+    settings,
+    hasTimelineEvents,
+    renderingContext,
+  );
 
   return {
     ...getSharedEChartsOptions(isAnimated, renderingContext),
@@ -258,12 +266,12 @@ export const getWaterfallChartOption = (
     },
     dataset: echartsDataset,
     series: seriesOption,
-    ...buildAxes(
+    ...axes,
+    yAxis: applyDashboardYAxisTicks(
+      axes.yAxis,
       chartModel,
       chartLayout,
       settings,
-      hasTimelineEvents,
-      renderingContext,
     ),
   };
 };

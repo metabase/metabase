@@ -1,5 +1,7 @@
 import type { LineSize } from "metabase-types/api";
 
+export const HORIZONTAL_TICKS_GAP = 6;
+
 export const LINE_SIZE: Record<LineSize, number> = {
   S: 1,
   M: 2,
@@ -34,8 +36,8 @@ export const CHART_STYLE = {
     barWidth: 0.8,
     histogramBarWidth: 0.995,
   },
-  axisTicksMarginX: 5,
-  axisTicksMarginY: 10,
+  axisTicksMarginX: 8,
+  axisTicksMarginY: 12,
   axisTicks: {
     weight: 400,
   },

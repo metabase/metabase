@@ -143,6 +143,7 @@ const actualColors = {
   "button-on_dark-secondary-default": baseColors.orionAlphaInverse[10],
   "button-on_dark-secondary-hover": baseColors.orionAlphaInverse[20],
   "button-on_dark-secondary-pressed": baseColors.orionAlphaInverse[10],
+  "chart-axis": baseColors.orionAlpha[20],
   "core-blue-saturated": baseColors.ocean[60],
   "core-brand-hover": baseColors.brand[50],
   "core-gold": baseColors.gold,

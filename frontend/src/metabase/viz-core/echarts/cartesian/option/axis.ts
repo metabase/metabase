@@ -24,6 +24,12 @@ import type {
 
 import { getTicksOptions } from "./ticks";
 import { getPaddedAxisLabel } from "./utils";
+import {
+  getCategoricalAxisLabelPadding,
+  getContinuousAxisPadding,
+  getXAxisLabelPadding,
+  getXAxisWidth,
+} from "./x-axis-padding";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -162,7 +168,6 @@ const getCommonDimensionAxisOptions = (
 ) => {
   const nameGap = getAxisNameGap(chartLayout.ticksDimensions.xTicksHeight);
   const { getColor } = renderingContext;
-  const isSplitPanels = chartLayout.panelHeight != null;
   return {
     ...getAxisNameDefaultOption(
       renderingContext,
@@ -182,9 +187,7 @@ const getCommonDimensionAxisOptions = (
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
       lineStyle: {
-        color: getColor(
-          isSplitPanels ? "border-neutral-strong" : "border-neutral",
-        ),
+        color: getColor("chart-axis"),
       },
     },
   };
@@ -246,7 +249,30 @@ export const buildNumericDimensionAxis = (
   } = xAxisModel;
 
   const [min, max] = extent;
-  const axisPadding = interval / 2;
+  const axisPadding = getContinuousAxisPadding(
+    interval / 2,
+    max - min,
+    chartLayout,
+  );
+  const alignEndpoints =
+    !isPadded &&
+    (chartLayout.axisEnabledSetting === true ||
+      chartLayout.axisEnabledSetting === "compact");
+  const axisWidth = getXAxisWidth(chartLayout);
+  const labelPadding = getXAxisLabelPadding(axisWidth);
+  const ticksFit =
+    !alignEndpoints ||
+    (ticksMaxInterval !== undefined &&
+      (axisWidth * ticksMaxInterval) / (max - min) >=
+        labelPadding +
+          1.5 *
+            Math.max(
+              ...extent.map((value) =>
+                chartLayout.ticksDimensions.getXTickWidth(
+                  getPaddedAxisLabel(formatter(fromEChartsAxisValue(value))),
+                ),
+              ),
+            ));
 
   return {
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
@@ -255,6 +281,13 @@ export const buildNumericDimensionAxis = (
     axisLabel: {
       margin: CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
+      ...(alignEndpoints
+        ? {
+            alignMinLabel: "left" as const,
+            alignMaxLabel: "right" as const,
+            padding: [0, labelPadding],
+          }
+        : {}),
       formatter: (rawValue: number) => {
         if (isPadded && (rawValue < min || rawValue > max)) {
           return "";
@@ -269,7 +302,7 @@ export const buildNumericDimensionAxis = (
         }
       : {}),
     minInterval: interval,
-    maxInterval: ticksMaxInterval,
+    maxInterval: alignEndpoints && !ticksFit ? undefined : ticksMaxInterval,
   };
 };
 
@@ -325,6 +358,13 @@ export const buildCategoricalDimensionAxis = (
     ...originalSettings,
     "graph.x_axis.axis_enabled": autoAxisEnabled,
   };
+  const formatLabel = (value: string) => {
+    const numberValue = parseNumberValue(value);
+    if (column && isNumericBaseType(column) && numberValue !== null) {
+      return getPaddedAxisLabel(formatter(numberValue));
+    }
+    return getPaddedAxisLabel(formatter(value));
+  };
 
   return {
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
@@ -332,21 +372,21 @@ export const buildCategoricalDimensionAxis = (
     axisLabel: {
       margin: CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
+      interval: () => true,
+      ...(settings["graph.x_axis.scale"] !== "histogram"
+        ? getCategoricalAxisLabelPadding(
+            datasetLength,
+            chartLayout,
+            formatLabel,
+          )
+        : {}),
       ...getHistogramTicksOptions(
         datasetLength,
         settings,
         chartLayout,
         renderingContext,
       ),
-      interval: () => true,
-      formatter: (value: string) => {
-        const numberValue = parseNumberValue(value);
-        if (column && isNumericBaseType(column) && numberValue !== null) {
-          return getPaddedAxisLabel(formatter(numberValue));
-        }
-
-        return getPaddedAxisLabel(formatter(value));
-      },
+      formatter: formatLabel,
       ...(chartLayout.ticksDimensions.xTickWidthCap < Infinity
         ? {
             width: chartLayout.ticksDimensions.xTickWidthCap,
@@ -370,6 +410,11 @@ export const buildMetricAxis = (
   const nameGap = getAxisNameGap(ticksWidth);
 
   const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
+  const lineStyle = {
+    type: "solid" as const,
+    opacity: hasSplitLine ? 1 : 0,
+    ...renderingContext.theme.cartesian.splitLine.lineStyle,
+  };
 
   const {
     type: _omitType,
@@ -391,13 +436,7 @@ export const buildMetricAxis = (
     ...range,
     ...axisNameOptions,
     splitLine: settings["graph.y_axis.axis_enabled"]
-      ? {
-          lineStyle: {
-            type: "solid",
-            opacity: hasSplitLine ? 1 : 0,
-            ...renderingContext.theme.cartesian.splitLine.lineStyle,
-          },
-        }
+      ? { lineStyle }
       : undefined,
     position,
     axisLine: {

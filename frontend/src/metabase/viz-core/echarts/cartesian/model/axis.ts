@@ -554,12 +554,11 @@ export function getYAxisModel(
     formatter,
     formatGoal,
     isNormalized: stackType === "normalized",
+    isDashboard: gridSize != null,
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
-        : gridSize?.height && gridSize.height <= 5
-          ? 2 // Use fewer ticks for small dashboard charts
-          : 5, // Default to 5 ticks for consistent behavior between single and multiple series
+        : 5, // Default to 5 ticks for consistent behavior between single and multiple series
   };
 }
 

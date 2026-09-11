@@ -4,7 +4,7 @@ import {
   DEFAULT_METABASE_COMPONENT_THEME,
   type MantineThemeOther,
 } from "metabase/ui";
-import { color } from "metabase/ui/colors";
+import { color, staticVizOverrides } from "metabase/ui/colors";
 
 import type { VisualizationTheme } from "../../types";
 
@@ -58,7 +58,7 @@ export function getVisualizationTheme({
       splitLine: {
         lineStyle: {
           color: isStaticViz
-            ? Color(color("border-neutral")).hex()
+            ? Color(staticVizOverrides["chart-axis"]).hex()
             : cartesian.splitLine.lineStyle.color,
         },
       },

@@ -163,6 +163,7 @@ describe("scenarios > visualizations > legend", () => {
       ],
     });
 
+    H.getDashboardCard(0).scrollIntoView();
     H.getDashboardCard(0).within(() => {
       H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
@@ -176,9 +177,8 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("Created At: Year").should("exist"); // x-axis label
 
         // some y-axis values
-        cy.findByText("1,800").should("exist");
-        cy.findByText("1,500").should("exist");
-        cy.findByText("1,200").should("exist");
+        cy.findByText("1.8k").should("be.visible");
+        cy.findByText("0").should("be.visible");
       });
 
       hideSeries(1); // Gadget
@@ -236,9 +236,9 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("Created At: Year").should("exist"); // x-axis label
 
         // Ensure y-axis adjusts to visible series range
-        cy.findByText("1,800").should("not.exist");
-        cy.findByText("1,500").should("exist");
-        cy.findByText("1,200").should("exist");
+        cy.findByText("1.5k").should("be.visible");
+        cy.findByText("0").should("be.visible");
+        cy.findByText("1.8k").should("not.exist");
       });
 
       showSeries(1);
@@ -253,9 +253,8 @@ describe("scenarios > visualizations > legend", () => {
       H.echartsContainer().within(() => {
         cy.findByText("Count").should("exist"); // y-axis label
         cy.findByText("Created At: Year").should("exist"); // x-axis label
-        cy.findByText("1,800").should("exist");
-        cy.findByText("1,500").should("exist");
-        cy.findByText("1,200").should("exist");
+        cy.findByText("1.8k").should("be.visible");
+        cy.findByText("0").should("be.visible");
       });
 
       showSeries(2);
@@ -272,15 +271,16 @@ describe("scenarios > visualizations > legend", () => {
       H.echartsContainer().findByText("500").should("not.exist"),
     );
 
+    H.getDashboardCard(2).scrollIntoView();
     H.getDashboardCard(2).within(() => {
       H.echartsContainer().within(() => {
         // left axis
         cy.findByText("Sum of Total").should("exist");
-        cy.findByText("600,000").should("exist");
+        cy.findByText("600.0k").should("be.visible");
 
         // right axis
         cy.findByText("Sum of Quantity").should("exist");
-        cy.findByText("30,000").should("exist");
+        cy.findByText("30.0k").should("be.visible");
       });
       H.trendLine().should("have.length", 2);
 
@@ -289,11 +289,11 @@ describe("scenarios > visualizations > legend", () => {
       H.echartsContainer().within(() => {
         // left axis
         cy.findByText("Sum of Total").should("not.exist");
-        cy.findByText("600,000").should("not.exist");
+        cy.findByText("600.0k").should("not.exist");
 
         // right axis
         cy.findByText("Sum of Quantity").should("exist");
-        cy.findByText("30,000").should("exist");
+        cy.findByText("30.0k").should("be.visible");
       });
       H.trendLine().should("have.length", 1);
 
@@ -303,11 +303,11 @@ describe("scenarios > visualizations > legend", () => {
       H.echartsContainer().within(() => {
         // left axis
         cy.findByText("Sum of Total").should("exist");
-        cy.findByText("600,000").should("exist");
+        cy.findByText("600.0k").should("be.visible");
 
         // right axis
         cy.findByText("Sum of Quantity").should("not.exist");
-        cy.findByText("30,000").should("not.exist");
+        cy.findByText("30.0k").should("not.exist");
       });
       H.trendLine().should("have.length", 1);
     });
@@ -415,9 +415,8 @@ describe("scenarios > visualizations > legend", () => {
       cy.findByText("Created At: Year").should("exist"); // x-axis label
 
       // some y-axis values
-      cy.findByText("1,800").should("exist");
-      cy.findByText("1,500").should("exist");
-      cy.findByText("1,200").should("exist");
+      cy.findByText("1.8k").should("be.visible");
+      cy.findByText("0").should("be.visible");
     });
 
     hideSeries(1); // Gadget
