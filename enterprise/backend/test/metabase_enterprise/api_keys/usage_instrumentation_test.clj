@@ -79,6 +79,19 @@
          (testing "client_name stays the User-Agent classification — unaffected by the header"
            (is (= "metabase-cli" (:client_name row)))))))))
 
+(deftest api-key-request-records-embedding-hostname-test
+  (testing "the embed referrer header, when present, is parsed into embedding_hostname alongside embedding_client"
+    (do-with-api-key!
+     (fn [unmasked-key api-key-id]
+       (client/client :get 200 "user/current"
+                      (update (api-key-headers unmasked-key) :request-options
+                              update :headers assoc
+                              "x-metabase-client" "embedding-sdk-react"
+                              "x-metabase-embed-referrer" "https://example.com/app"))
+       (let [[row] (rows-for api-key-id)]
+         (is (= "embedding-sdk-react" (:embedding_client row)))
+         (is (= "example.com" (:embedding_hostname row))))))))
+
 (deftest api-key-request-records-the-template-not-the-uri-test
   (testing "a route with a path param records the template, never the concrete id"
     (do-with-api-key!

@@ -3,6 +3,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [metabase.analytics.sdk :as analytics.sdk]
    [metabase.api-keys.usage :as api-keys.usage]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -224,7 +225,11 @@
   deliberately never passed on — see `metabase.api-keys.usage`.
 
   `embedding-client` is the raw `X-Metabase-Client` header, supplementary to `client_name` (classified
-  from `user-agent` by the recorder itself, not here) — see `metabase.api-keys.usage`."
+  from `user-agent` by the recorder itself, not here) — see `metabase.api-keys.usage`.
+
+  `embedding-hostname` is parsed from the embed referrer header via the same
+  `metabase.analytics.sdk/extract-hostname` helper `view_log`/`query_execution` use, so it is only
+  ever set alongside `embedding-client`."
   [{:keys [request response start-time route-template-carrier] :as info}]
   (when (api-key-request? request)
     (try
@@ -247,7 +252,8 @@
           ;; carrier needed like route-template, since it's already on the pre-routing request we closed
           ;; over. Almost always nil for API-key traffic: the SDK/embed.js clients that set it
           ;; authenticate via JWT/SSO, not API keys.
-          :embedding-client (get-in request [:headers "x-metabase-client"])}))
+          :embedding-client   (get-in request [:headers "x-metabase-client"])
+          :embedding-hostname (analytics.sdk/extract-hostname (get-in request [:headers "x-metabase-embed-referrer"]))}))
       (catch Throwable e
         (log/warn e "Error recording API key usage"))))
   info)

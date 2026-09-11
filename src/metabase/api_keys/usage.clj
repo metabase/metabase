@@ -33,7 +33,12 @@
   `embedding_client` is the raw `X-Metabase-Client` header, when present — non-PII (same status as
   `view_log`/`query_execution.embedding_client`), passed through unclassified. It's supplementary:
   `client_name` stays the primary classification axis, since almost no API-key traffic sets this
-  header (the SDK/embed.js clients that do authenticate via JWT/SSO, not API keys)."
+  header (the SDK/embed.js clients that do authenticate via JWT/SSO, not API keys).
+
+  `embedding_hostname` is the hostname parsed from the embed referrer header, when present — non-PII
+  (same status as `view_log`/`query_execution`/`metabot_conversation.embedding_hostname`), always
+  recorded. Only meaningful alongside `embedding_client`: the SDK sends an API key only on localhost,
+  so a non-localhost hostname on embedding traffic is worth flagging."
   (:require
    [clojure.string :as str]
    [metabase.premium-features.core :refer [defenterprise]]
