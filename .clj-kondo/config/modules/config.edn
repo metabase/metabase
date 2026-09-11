@@ -3864,11 +3864,13 @@
   {:team "UX West"
    :api  #{metabase-enterprise.session-management.api}
    :uses #{api
+           events
            lib
            request
            session
            users
-           util}}
+           util}
+   :model-imports #{:model/Session :model/User}}
 
   enterprise/snippet-collections
   {:team "Graphy"

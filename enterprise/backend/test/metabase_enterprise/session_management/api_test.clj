@@ -4,11 +4,16 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.session-management.db :as sm.db]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.app-db.core :as mdb]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
@@ -51,7 +56,8 @@
     (mt/with-premium-features #{}
       (let [message (str "Session management is a paid feature not currently available to your instance. "
                          "Please upgrade to use it. Learn more at metabase.com/upgrade/")]
-        (doseq [[method path body] [[:get "ee/session-management"]]
+        (doseq [[method path body] [[:get "ee/session-management"]
+                                    [:post "ee/session-management/revoke" {}]]
                 user               [:crowberto :rasta]]
           (testing (str method " " path " as " user)
             (is (=? {:message message}
@@ -283,3 +289,194 @@
            (testing "a session belonging to a deactivated tenant is not live at all"
              (t2/update! :model/Tenant tenant-id {:is_active false})
              (is (= #{int-session} (listed))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        POST /api/ee/session-management/revoke                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- insert-session-with-key!
+  "Insert a `core_session` row for `user-id` the way a login would, returning `[session-id session-key]`. The key is
+  the plaintext credential a client sends in the `X-Metabase-Session` header; only its hash is stored."
+  [user-id & {:as extra-cols}]
+  (let [session-key (session/generate-session-key)
+        session-id  (apply insert-session! user-id
+                           (mapcat identity (merge {:key_hashed (session/hash-session-key session-key)}
+                                                   extra-cols)))]
+    [session-id session-key]))
+
+(defn- session-exists? [session-id]
+  (t2/exists? (t2/table-name :model/Session) :id session-id))
+
+(deftest revoke-by-criteria-permissions-test
+  (testing "POST /api/ee/session-management/revoke is superuser-only"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [session-id (insert-session! user-id)]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "ee/session-management/revoke" {:ids [session-id]})))
+        (is (session-exists? session-id)
+            "a rejected request revokes nothing")))))
+
+(deftest revoke-everything-test
+  (testing "an empty filter map means every live session — except the caller's, which `exclude-current` holds back"
+    (mt/with-temp [:model/User {admin-id :id} {:is_superuser true}
+                   :model/User {user-id :id}  {}]
+      (let [[caller session-key] (insert-session-with-key! admin-id)
+            other                (insert-session! user-id)]
+        (try
+          (let [response (mt/client session-key :post 200 "ee/session-management/revoke" {})]
+            (is (zero? (:remaining response))
+                "nothing live still matches, so the caller's own session was excluded from the count too")
+            (is (<= 2 (:revoked response)))
+            (is (contains? (set (:user_ids response)) user-id))
+            (is (not (session-exists? other)))
+            (is (session-exists? caller)
+                "the caller stays logged in"))
+          (finally
+            ;; the sweep took the cached test-user sessions with it; the next request has to log in again
+            (test.users/clear-cached-session-tokens!)))))))
+
+(deftest revoke-including-current-test
+  (testing "`exclude-current` false revokes the caller's own session too, and clears their session cookie"
+    (mt/with-temp [:model/User {admin-id :id} {:is_superuser true}]
+      (let [[caller session-key] (insert-session-with-key! admin-id)
+            response             (mt/client-full-response session-key :post 200 "ee/session-management/revoke"
+                                                          {:user-id admin-id :exclude-current false})
+            cookies              (str/join " " (u/one-or-many (get-in response [:headers "Set-Cookie"])))]
+        (is (= 1 (:revoked (:body response))))
+        (is (zero? (:remaining (:body response))))
+        (is (not (session-exists? caller)))
+        (is (str/includes? cookies "metabase.SESSION=;")
+            "the session cookie is cleared, as it is on logout")))))
+
+(deftest revoke-by-ids-test
+  (testing "`ids` revokes exactly those sessions; one that is no longer live is left for the cleanup task"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [live-a    (insert-session! user-id)
+            live-b    (insert-session! user-id)
+            expired   (insert-session! user-id :expires_at (ago 1 :second))
+            untouched (insert-session! user-id)
+            response  (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke"
+                                            {:ids [live-a live-b expired]})]
+        (is (= 2 (:revoked response)))
+        (is (zero? (:remaining response)))
+        (is (= [user-id] (:user_ids response)))
+        (is (not (session-exists? live-a)))
+        (is (not (session-exists? live-b)))
+        (is (session-exists? expired)
+            "an expired row is not live, so the revoke leaves it to the nightly sweep")
+        (is (session-exists? untouched)
+            "a live session outside the id list is untouched")))))
+
+(deftest revoke-by-ids-and-provider-test
+  (testing "every criterion has to hold: `ids` narrows to a set, `provider` narrows within it"
+    (mt/with-temp [:model/User         {user-id :id} {}
+                   :model/AuthIdentity {saml-id :id} {:user_id user-id :provider "saml"}
+                   :model/AuthIdentity {pw-id :id}   {:user_id     user-id :provider "password"
+                                                      :credentials {:plaintext_password "sM30-p4ssw0rd!"}}]
+      (let [saml-in  (insert-session! user-id :auth_identity_id saml-id)
+            saml-out (insert-session! user-id :auth_identity_id saml-id)
+            password (insert-session! user-id :auth_identity_id pw-id)
+            response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke"
+                                           {:ids [saml-in password] :provider "saml"})]
+        (is (= 1 (:revoked response)))
+        (is (not (session-exists? saml-in)))
+        (is (session-exists? password)
+            "in the id list, but not a SAML session")
+        (is (session-exists? saml-out)
+            "a SAML session, but not in the id list")))))
+
+(deftest revoke-batches-the-delete-test
+  (testing "a revoke bigger than one statement can name is still revoked in full, and counted in full"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [session-ids (vec (repeatedly 5 #(insert-session! user-id)))]
+        ;; a real revoke batches at 1000 ids because every id is a bind parameter; two and a half batches of two
+        ;; exercises the same code, including the short final batch, without inserting thousands of rows
+        (with-bindings {#'sm.db/*delete-batch-size* 2}
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
+            (is (= 5 (:revoked response))
+                "every batch is counted, not just the last one")
+            (is (zero? (:remaining response)))
+            (is (not-any? session-exists? session-ids)
+                "including the rows in the short final batch")))))))
+
+(deftest revoke-race-test
+  (testing "a login that lands between the select and the delete is reported as `remaining`, not silently revoked"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [_matched (insert-session! user-id)
+            raced    (atom nil)
+            delete!  (mt/original-fn #'sm.db/delete-sessions-by-ids!)]
+        (mt/with-dynamic-fn-redefs [sm.db/delete-sessions-by-ids! (fn [ids]
+                                                                    (reset! raced (insert-session! user-id))
+                                                                    (delete! ids))]
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
+            (is (= 1 (:revoked response)))
+            (is (= 1 (:remaining response))
+                "the session created after the select is still live and still matches")
+            (is (session-exists? @raced)
+                "and it was not revoked")))))))
+
+(deftest revoke-audit-test
+  (testing "a revoke writes one summary row plus one row per affected user, and never touches an MCP session"
+    (mt/with-additional-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/AuditLog]
+        (mt/with-temp [:model/User         {user-a :id} {}
+                       :model/User         {user-b :id} {}
+                       :model/AuthIdentity {mcp-id :id} {:user_id user-a :provider "mcp"}]
+          (let [a1       (insert-session! user-a)
+                a2       (insert-session! user-a)
+                b1       (insert-session! user-b)
+                mcp      (insert-session! user-a :auth_identity_id mcp-id)
+                response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke"
+                                               {:ids [a1 a2 b1 mcp]})]
+            (is (= 3 (:revoked response)))
+            (is (= #{user-a user-b} (set (:user_ids response))))
+            (is (session-exists? mcp)
+                "an MCP-backed session is never live, so it is never matched")
+            (testing "the summary row carries the criteria, the count, and what is left"
+              (let [{:keys [topic user_id model model_id details]} (mt/latest-audit-log-entry "sessions-revoked")]
+                (is (= :sessions-revoked topic))
+                (is (= (mt/user->id :crowberto) user_id))
+                (is (nil? model))
+                (is (nil? model_id))
+                (is (= 3 (:count details)))
+                (is (= 0 (:remaining details)))
+                (is (= #{a1 a2 b1 mcp} (set (get-in details [:criteria :ids]))))
+                (testing "and never a session key or its hash"
+                  (is (not (str/includes? (str details) "key_hashed"))))))
+            (testing "one row per affected user, naming that user"
+              (doseq [[user-id revoked] {user-a 2, user-b 1}]
+                (let [{:keys [topic user_id model model_id details]}
+                      (mt/latest-audit-log-entry "session-revoked" user-id)]
+                  (is (= :session-revoked topic))
+                  (is (= (mt/user->id :crowberto) user_id) "the actor, not the affected user")
+                  (is (= "User" model))
+                  (is (= user-id model_id))
+                  (is (= revoked (:count details))))))))))))
+
+(deftest revoke-logs-without-audit-feature-test
+  (testing "the revoke is logged even when the audit log is not being written"
+    (mt/with-premium-features #{:session-management}
+      (mt/with-temp [:model/User {user-id :id} {}]
+        (let [session-id (insert-session! user-id)]
+          (mt/with-log-messages-for-level [messages [metabase-enterprise.session-management.api :info]]
+            (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:ids [session-id]})
+            (let [line   (some #(when (str/includes? (:message %) "revoked") (:message %)) (messages))
+                  hashes (t2/select-fn-set :key_hashed (t2/table-name :model/Session)
+                                           :user_id (mt/user->id :crowberto))]
+              (is (some? line) "an info line is written whatever the token allows")
+              (is (str/includes? line (format "User %d revoked 1 session" (mt/user->id :crowberto)))
+                  "the actor and the count, not just some digits")
+              (is (str/includes? line session-id) "the criteria")
+              (testing "and never the hash of a live session key"
+                (is (seq hashes) "sanity check: crowberto has a session whose hash could have leaked")
+                (is (not-any? #(str/includes? line %) hashes))))))))))
+
+;; The endpoint has to return a Ring response to set cookie headers, and must not let that transport detail become
+;; the documented response body.
+(deftest ^:parallel revoke-openapi-response-test
+  (let [paths  (:paths (open-api/open-api-spec (api.macros/ns-handler 'metabase-enterprise.session-management.api) "/api/ee/session-management"))
+        schema (fn [path method]
+                 (get-in paths [path method :responses "2XX" :content "application/json" :schema]))]
+    (testing "POST /revoke documents the result map, not the cookie-clearing alternative alongside it"
+      (is (= {:$ref "#/components/schemas/metabase-enterprise.session-management.api.RevokeByCriteriaResult"}
+             (schema "/api/ee/session-management/revoke" :post))))))
