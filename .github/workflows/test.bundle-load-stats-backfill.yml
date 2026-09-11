@@ -4,9 +4,9 @@ name: Bundle Load Stats Backfill
 # with the current benchmark, one after another on one runner. Load times are
 # relative to the machine, so one runner keeps the points comparable.
 #
-# Uberjars are kept for 30 days, so this only reaches commits that recent. It
-# only measures: each result is kept as an artifact, and nothing is written to
-# Stats.
+# Uberjars are kept for 30 days. A listed commit older than that is built first,
+# EE only, since that is all the benchmark boots. It only measures: each result
+# is kept as an artifact, and nothing is written to Stats.
 #
 # It runs on a push to its own branch, so it never needs to merge.
 
@@ -23,10 +23,67 @@ permissions:
   contents: read
 
 jobs:
-  backfill:
+  plan:
     if: ${{ github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      missing: ${{ steps.plan.outputs.missing }}
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v6
+      - name: Find the commits with no uberjar
+        id: plan
+        run: |
+          missing=$(cut -f1 .github/backfill-load-times-commits.tsv | while read -r sha; do
+            found=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=metabase-ee-${sha}-uberjar&per_page=1" \
+              --jq '[.artifacts[] | select(.expired == false)] | length')
+            if [ "$found" = 0 ]; then echo "$sha"; fi
+          done | jq -Rsc 'split("\n") | map(select(. != ""))')
+          echo "missing=${missing}" >> "$GITHUB_OUTPUT"
+          echo "To build: ${missing}"
+
+  build:
+    needs: [plan]
+    if: ${{ needs.plan.outputs.missing != '[]' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 120
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        sha: ${{ fromJson(needs.plan.outputs.missing) }}
+    env:
+      MB_EDITION: ee
+      INTERACTIVE: false
+      SKIP_LICENSES: true
+    steps:
+      - name: Check out the commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.sha }}
+      # The commit's own actions, with their own defaults: the JDK moved from 21
+      # to 25 in July, and each action still names the one its commit needs.
+      - uses: ./.github/actions/prepare-frontend
+      - uses: ./.github/actions/prepare-backend
+      - name: Build
+        run: ./bin/build.sh
+      - name: Keep the uberjar
+        uses: actions/upload-artifact@v7
+        with:
+          # The name the lookups below and in the per-merge job search for.
+          name: metabase-ee-${{ matrix.sha }}-uberjar
+          path: ./target/uberjar/metabase.jar
+          retention-days: 30
+
+  backfill:
+    needs: [build]
+    # A commit whose build failed has no jar, and the loop skips it with a warning.
+    if: ${{ !cancelled() && github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 300
     env:
       MB_JETTY_PORT: "4000"
       SITE: http://localhost:4000
@@ -50,7 +107,7 @@ jobs:
         env:
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
-          mkdir -p artifacts baseline-jar
+          mkdir -p artifacts
           measured=0
           failed=0
 
@@ -95,20 +152,15 @@ jobs:
             return $status
           }
 
-          first=1
           while IFS=$'\t' read -r sha date subject; do
             echo "::group::${date} ${sha:0:9} ${subject}"
             if measure "$sha"; then
               measured=$((measured + 1))
               printf '%s\t%s\t%s\n' "$sha" "$date" "$subject" >> artifacts/measured.tsv
-              # The first commit is the baseline from before the bundle work.
-              # Keep its jar, so it outlives its own 30-day artifact.
-              if [ "$first" = 1 ]; then cp "$(find jar -name metabase.jar | head -1)" baseline-jar/; fi
             else
               failed=$((failed + 1))
               echo "::warning::Could not measure ${sha}"
             fi
-            first=0
             echo "::endgroup::"
           done < .github/backfill-load-times-commits.tsv
 
@@ -121,11 +173,3 @@ jobs:
           name: bundle-load-times-backfill
           path: artifacts/
           retention-days: 30
-      - name: Keep the baseline jar
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: bundle-load-times-backfill-baseline-jar
-          path: baseline-jar/
-          retention-days: 30
-          if-no-files-found: warn
