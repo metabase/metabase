@@ -35,6 +35,7 @@ SELECT
         ELSE t.client_name
     END                                                    AS client_display_name,
     t.embedding_client                                     AS embedding_client,
+    t.embedding_hostname                                   AS embedding_hostname,
     t.ip_address                                           AS ip_address,
     t.user_agent                                           AS user_agent
 FROM api_key_usage_log t

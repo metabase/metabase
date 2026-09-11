@@ -1,0 +1,35 @@
+## Add embedding_hostname to api_key_usage_log.
+##
+## The createTable changeset for api_key_usage_log (20260907_api_key_usage_analytics.yaml) already
+## shipped as far as this branch's own ancestry is concerned — editing it in place, like the earlier
+## client_name/embedding_client columns did, would change its checksum out from under any branch
+## that already recorded it. That's a real (not just style) requirement: Liquibase validates a
+## changeset's checksum against what was previously applied, and CI's cross-branch-migration-test
+## boots this PR's base branch first, then this PR's branch, so any downstream edit to an
+## already-applied changeset fails validation. A new column always needs a new changeset here.
+##
+## Filename intentionally sorts between the table-creation migration (20260907) and the view
+## migration (20260910) — includeAll processes files alphabetically, and the view's SELECT
+## references this column, so the column must exist before the view is (re)created.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/064_update_migrations.yaml
+
+  - changeSet:
+      id: v64.2026-09-08T00:00:00
+      author: sfragnaud
+      comment: Add embedding_hostname to api_key_usage_log
+      changes:
+        - addColumn:
+            tableName: api_key_usage_log
+            columns:
+              - column:
+                  name: embedding_hostname
+                  type: varchar(512)
+                  remarks: Hostname parsed from the embed referrer header, when present. Non-PII, same status as view_log/query_execution/metabot_conversation.embedding_hostname. Only meaningful alongside embedding_client.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: api_key_usage_log
+            columnName: embedding_hostname
