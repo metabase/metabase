@@ -137,6 +137,13 @@
   [memory todos]
   (record memory [:todos] (vec todos)))
 
+(defn add-client-ids
+  "Record the ids of queries and charts seeded from the client's viewing context, keeping the ones
+  earlier turns recorded. A tool can persist a client-supplied query and a later turn read it back
+  long after it left the viewing context, so the provenance has to live as long as the query does."
+  [memory ids]
+  (record memory [:client-ids] (into (get-in memory [:state :client-ids] #{}) ids)))
+
 (defn set-link-registry
   "Set the link registry (url → stable id mappings)."
   [memory link-registry]

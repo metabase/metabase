@@ -95,6 +95,14 @@
     (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})]
       (is (nil? (memory/turn-state mem))))))
 
+(deftest ^:parallel add-client-ids-test
+  (testing "ids accumulate across turns and are written to the persisted delta, so a query a tool
+            stored still audits its refusals once it has left the viewing context"
+    (let [memory (-> (memory/initialize [] {:client-ids #{"from-an-earlier-turn"}})
+                     (memory/add-client-ids #{"seeded-now"}))]
+      (is (= #{"from-an-earlier-turn" "seeded-now"} (get-in memory [:state :client-ids])))
+      (is (= #{"from-an-earlier-turn" "seeded-now"} (get-in memory [:turn-state :client-ids]))))))
+
 (deftest ^:parallel set-link-registry-test
   (testing "an empty or unchanged registry is not written into the turn delta"
     (let [without-registry (memory/initialize [] {})

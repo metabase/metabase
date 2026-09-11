@@ -383,11 +383,11 @@
                                                   "references content the user cannot read"))
                                (distinct @used)))))]
         (binding [tools.shared/*memory-atom*
-                  (atom {:client-ids #{"seeded-chart" "seeded-q"}
-                         :state {:queries {"seeded-q" (query)}
-                                 :charts  {"seeded-chart"  (chart "seeded-chart" "seeded-chart")
-                                           "tool-chart"    (chart "tool-chart" "tool-q")
-                                           "created-chart" (chart "created-chart" "seeded-q")}}})]
+                  (atom {:state {:client-ids #{"seeded-chart" "seeded-q"}
+                                 :queries    {"seeded-q" (query)}
+                                 :charts     {"seeded-chart"  (chart "seeded-chart" "seeded-chart")
+                                              "tool-chart"    (chart "tool-chart" "tool-q")
+                                              "created-chart" (chart "created-chart" "seeded-q")}}})]
           (mt/with-test-user :rasta
             (testing "a client-seeded chart or query audits the refusal"
               (doseq [uri ["metabase://chart/seeded-chart" "metabase://query/seeded-q"]]

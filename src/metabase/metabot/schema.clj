@@ -40,7 +40,8 @@
    [:chart-configs {:optional true} [:map-of ::state-map-key :map]]
    [:todos {:optional true} [:sequential :map]]
    [:transforms {:optional true} [:map-of ::state-map-key :map]]
-   [:link-registry {:optional true} [:map-of ::state-map-key :string]]])
+   [:link-registry {:optional true} [:map-of ::state-map-key :string]]
+   [:client-ids {:optional true} [:set ::state-map-key]]])
 
 (defn normalize-state
   "Normalize dynamic state-map keys to strings according to [[::state]]."
