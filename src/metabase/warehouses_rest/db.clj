@@ -210,8 +210,8 @@
               :order-by   [[[:lower :metabase_field.name] :asc]
                            [[:lower :table.name] :asc]]
               ;; checking for table.active in join makes query faster when there are a lot of inactive tables
-              :inner-join [[:metabase_table :table] [:and :table.active
-                                                     [:= :table.id :metabase_field.table_id]]]
+              :inner-join [(warehouse-schema-overlay/table-query {:alias :table}) [:and :table.active
+                                                                                   [:= :table.id :metabase_field.table_id]]]
               :limit      limit}))
 
 (mu/defn table-ids-for-database

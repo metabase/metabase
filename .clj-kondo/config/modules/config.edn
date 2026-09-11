@@ -2192,7 +2192,8 @@
            task
            tracing
            transforms
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3685,7 +3686,8 @@
            models
            permissions
            query-processor
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/User}}
 
   enterprise/premium-features

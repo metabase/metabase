@@ -216,7 +216,7 @@
                          [:table.name :table-name]
                          [:table.db_id :field-db-id]]
              :from      [[:metabase_field :field]]
-             :left-join [[:metabase_table :table]
+             :left-join [(warehouse-schema-overlay/table-query {:alias :table})
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 

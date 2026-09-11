@@ -11,13 +11,18 @@
   '[dev.modules-config-test
     metabase.core.modules-test])
 
+(def ^:private honey-sql-check-namespaces
+  ;; A filesystem scan for raw `:metabase_table`/`:metabase_field` Honey SQL, the gap the
+  ;; `:metabase/table-or-field-query` clj-kondo linter can't reach.
+  '[metabase.core.table-or-field-raw-usage-test])
+
 (def ^:private ratchet-test-namespaces
   ;; These test the tooling itself. `./bin/mage kondo-ratchets` checks the source tree.
   '[metabase.core.kondo-ratchet-test
     metabase.core.kondo-ratchet-check-test])
 
 (def ^:private backend-check-namespaces
-  (vec (concat module-check-namespaces ratchet-test-namespaces)))
+  (vec (concat module-check-namespaces ratchet-test-namespaces honey-sql-check-namespaces)))
 
 (def ^:private default-suites
   "Suites the bare `project-tests` command runs, in order."
