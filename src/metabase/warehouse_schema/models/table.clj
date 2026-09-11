@@ -38,7 +38,7 @@
   :hidden    - low quality, hidden, not synced"
   #{:final :internal :hidden})
 
-(defn- visibility-type->data-layer
+(defn visibility-type->data-layer
   "Convert legacy visibility_type to data_layer.
   Used when updating via the legacy field."
   [visibility-type]
@@ -46,7 +46,7 @@
     :hidden
     :internal))
 
-(defn- data-layer->visibility-type
+(defn data-layer->visibility-type
   "Convert data_layer back to legacy visibility_type.
   Used for rollback compatibility to v56."
   [data-layer]
@@ -142,6 +142,43 @@
   [table]
   (dissoc table :is_defective_duplicate :unique_table_helper))
 
+(defn validate-user-changes!
+  "Throw a 400 for a Table change a user is not allowed to make, given the Table as it stands. Both the model's own
+  update path and the user-settings write path run this: a user's values no longer pass through `t2/update!` on the
+  Table, so the model hook alone would stop seeing them."
+  [changes original-table]
+  ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
+  ;; Tables can be moved out of any collection, however.
+  (when (:collection_id changes)
+    (collection/check-allowed-content :table (:collection_id changes)))
+  ;; Prevent setting data_authority back to unconfigured once configured
+  (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
+             (= (keyword (:data_authority changes)) :unconfigured))
+    (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
+                    {:status-code 400})))
+  ;; Prevent changing data_source to/from metabase-transform.
+  ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
+  ;; can be migrated to a transform-managed table via serdes.
+  (when (contains? changes :data_source)
+    (let [original-data-source (some-> (:data_source original-table) keyword)
+          new-data-source      (some-> (:data_source changes) keyword)]
+      (when (and (= original-data-source :metabase-transform)
+                 (not= new-data-source :metabase-transform))
+        (throw (ex-info "Cannot change data_source from metabase-transform"
+                        {:status-code 400})))
+      (when (and (not mi/*deserializing?*)
+                 (not= original-data-source :metabase-transform)
+                 (= new-data-source :metabase-transform))
+        (throw (ex-info "Cannot set data_source to metabase-transform"
+                        {:status-code 400})))))
+  ;; visibility_type and data_layer are one choice spelled two ways, so a caller may send only one of them
+  (when (and (contains? changes :visibility_type)
+             (contains? changes :data_layer)
+             (not= (keyword (:visibility_type changes)) (keyword (:visibility_type original-table)))
+             (not= (keyword (:data_layer changes)) (keyword (:data_layer original-table))))
+    (throw (ex-info "Cannot update both visibility_type and data_layer"
+                    {:status-code 400}))))
+
 (defn- sync-visibility-fields
   "Sync visibility_type and data_layer fields, ensuring only one is updated at a time.
   Returns updated changes map with both fields in sync for rollback compatibility."
@@ -194,30 +231,7 @@
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
-    ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
-    ;; Tables can be moved out of any collection, however.
-    (when (:collection_id changes)
-      (collection/check-allowed-content :table (:collection_id changes)))
-    ;; Prevent setting data_authority back to unconfigured once configured
-    (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
-               (= (keyword (:data_authority changes)) :unconfigured))
-      (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
-                      {:status-code 400})))
-    ;; Prevent changing data_source to/from metabase-transform.
-    ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
-    ;; can be migrated to a transform-managed table via serdes.
-    (when (contains? changes :data_source)
-      (let [original-data-source (some-> (:data_source original-table) keyword)
-            new-data-source      (some-> (:data_source changes) keyword)]
-        (when (and (= original-data-source :metabase-transform)
-                   (not= new-data-source :metabase-transform))
-          (throw (ex-info "Cannot change data_source from metabase-transform"
-                          {:status-code 400})))
-        (when (and (not mi/*deserializing?*)
-                   (not= original-data-source :metabase-transform)
-                   (= new-data-source :metabase-transform))
-          (throw (ex-info "Cannot set data_source to metabase-transform"
-                          {:status-code 400})))))
+    (validate-user-changes! changes original-table)
     ;; Sync visibility_type and data_layer fields
     (let [changes (sync-visibility-fields changes original-table)]
       (cond
@@ -450,7 +464,10 @@
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
-    (warehouse-schema.db/update-table! (u/the-id table) {:field_order :custom})
+    ;; a custom order is the user's choice, so it belongs with their other Table values rather than in
+    ;; `metabase_table`, which sync owns. Resolved at call time: the settings namespace requires this one.
+    ((requiring-resolve 'metabase.warehouse-schema.models.table-user-settings/upsert-user-settings)
+     table {:field_order :custom})
     (dorun
      (map-indexed (fn [position field-id]
                     (warehouse-schema.db/update-field! field-id {:position        position
@@ -554,12 +571,15 @@
     transform_id  (conj [{:model "Transform" :id transform_id}])))
 
 (defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived user-edits-only]}]
-  (let [;; When user-edits-only, emit only fields that have user-authored metadata (FieldUserSettings rows).
-        ;; On import the parent Field row is synthesized if missing, so FieldUserSettings is self-sufficient.
-        ;; Otherwise emit all Field ids for a full serdes backup/restore.
+  (let [;; Under user-edits-only the Table's own user settings carry its Fields' settings inline, so one
+        ;; TableUserSettings stands in for the whole Table: a git-synced instance reviews one file per Table rather
+        ;; than one per edited Field. On import the parent rows are synthesized if missing, so it is self-sufficient.
+        ;; Otherwise emit every Field id for a full serdes backup/restore.
         fields   (if user-edits-only
-                   (into {} (for [fus-field-id (warehouse-schema.db/user-edited-field-ids-for-table id)]
-                              [["FieldUserSettings" fus-field-id] {"Table" id}]))
+                   (if (or (warehouse-schema.db/table-user-settings-exist? id)
+                           (seq (warehouse-schema.db/user-edited-field-ids-for-table id)))
+                     {["TableUserSettings" id] {"Table" id}}
+                     {})
                    (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
                               [["Field" field-id] {"Table" id}])))
         segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]

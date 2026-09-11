@@ -212,6 +212,67 @@
   (t2/update! :model/FieldUserSettings {:fk_target_field_id field-id}
               {:semantic_type nil, :semantic_type_set false, :fk_target_field_id nil, :fk_target_field_id_set false}))
 
+;;; -------------------------------------------- TableUserSettings --------------------------------------------
+
+(def ^:private table-user-settings-update-keys
+  "The columns an insert or update of a TableUserSettings accepts."
+  [:table_id :created_at :updated_at :display_name :description :entity_type :visibility_type :caveats
+   :points_of_interest :data_layer :data_source :owner_email :owner_user_id :field_order :show_in_getting_started
+   :data_authority :is_published :collection_id :display_name_set :description_set :entity_type_set
+   :visibility_type_set :caveats_set :points_of_interest_set :data_layer_set :data_source_set :owner_email_set
+   :owner_user_id_set])
+
+(mu/defn table-user-settings
+  "The TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, or nil (also for a nil `table-id`,
+  e.g. a ::warehouse-schema.schema/table not yet inserted)."
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/TableUserSettings :table_id table-id))
+
+(mu/defn table-user-settings-exist?
+  "Whether the ::warehouse-schema.schema/table with `table-id` has a TableUserSettings row."
+  [table-id :- ::lib.schema.id/table]
+  (t2/exists? :model/TableUserSettings table-id))
+
+(mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
+  "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (set (t2/select-fn-set :table_id :model/TableUserSettings :table_id [:in table-ids])))
+
+(mu/defn update-table-user-settings-for-tables!
+  "Apply `changes` to the TableUserSettings of the Tables with `table-ids`, returning the number updated."
+  [table-ids :- [:set ::lib.schema.id/table]
+   changes   :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
+  (t2/update! :model/TableUserSettings :table_id [:in table-ids] changes))
+
+(mu/defn field-user-settings-with-names-for-table
+  "The FieldUserSettings of the Fields of the ::warehouse-schema.schema/table with `table-id`, each with its Field's
+  `:name`, ordered by name. Remote sync writes these inline in the Table's user-settings file."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select :model/FieldUserSettings
+             {:select    [:u.* [:f.name :name]]
+              :from      [[(t2/table-name :model/FieldUserSettings) :u]]
+              :join      [(warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :u.field_id]]
+              :where     [:= :f.table_id table-id]
+              :order-by  [[:f.name :asc]]}))
+
+(mu/defn field-ids-by-name-for-table :- [:map-of :string ::lib.schema.id/field]
+  "A map of Field name to id for the Fields of the ::warehouse-schema.schema/table with `table-id`."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-fn->fn :name :id :model/Field :table_id table-id
+                    {:from [(warehouse-schema-overlay/field-query)]}))
+
+(mu/defn insert-table-user-settings!
+  "Insert one TableUserSettings map or a sequence of them, returning the number inserted."
+  [rows :- [:or (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys) [:sequential (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]]]
+  (t2/insert! :model/TableUserSettings rows))
+
+(mu/defn update-table-user-settings!
+  "Apply `changes` to the TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, returning the
+  number updated."
+  [table-id :- ::lib.schema.id/table
+   changes  :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
+  (t2/update! :model/TableUserSettings table-id changes))
+
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
 (mu/defn field-values-of-type

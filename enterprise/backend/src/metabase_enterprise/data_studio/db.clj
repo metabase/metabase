@@ -8,6 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [toucan2.core :as t2]))
 
 (def ^:private TableSelectors
@@ -108,12 +109,14 @@
   "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."
   [table-ids     :- [:set ::lib.schema.id/table]
    collection-id :- ::lib.schema.id/collection]
-  (t2/update! :model/Table :id [:in table-ids] {:collection_id collection-id, :is_published true}))
+  (schema.table-user-settings/upsert-user-settings-for-tables!
+   table-ids {:collection_id collection-id, :is_published true}))
 
 (mu/defn unpublish-tables!
   "Unpublish the Tables with `table-ids` and detach them from their Collection, returning the number updated."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/update! :model/Table :id [:in table-ids] {:collection_id nil, :is_published false}))
+  (schema.table-user-settings/upsert-user-settings-for-tables!
+   table-ids {:collection_id nil, :is_published false}))
 
 (mu/defn published-table-visible-to-user?
   "Whether the Table with `table-id` is published in a Collection the User with `user-id` can read."
