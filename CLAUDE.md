@@ -109,30 +109,39 @@ Do not lower these budgets in feature PRs; the post-merge shrink workflow descri
 `(dev.deps-graph/module-boundary-stats)` reports mutual-dependency cycles by module and namespace count.
 These are REPL diagnostics, not ratchets, because any source change can move them.
 
-## Kondo Suppression Ratchets
+## Kondo Ignore Ratchets
 
-`.clj-kondo/ratchets.edn` budgets inline ignores per linter (`:ignore-counts`) and config-level waivers
-(`:config-counts`). Numeric values are ceilings; `:unlimited` removes the ceiling for an ignore policy.
-`:comment-exempt` separately lists linters whose ignores need no justification comment.
+`.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
+tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
+`.clj-kondo/config.edn`) exist. Each `:ignore-counts` value is either a non-negative integer ceiling or
+`:unlimited`, which has no ceiling. This count policy is independent of `:comment-exempt`, described below.
 
-Validate the ratchets with:
+Both ratchet commands are quick Babashka tasks, not JVM test runs:
 
 ```bash
-./bin/mage kondo-ratchets
+./bin/mage kondo-ratchets                       # validate the file without changing it
+./bin/mage kondo-ratchets-shrink [--seed :lint] # lower budgets; optionally seed one
 ```
 
-CI runs `kondo-ratchets`. It rejects counts above budget, unjustified ignores, unknown linters, and a
-missing or incorrectly formatted ratchet file. Lower counts are valid.
+`kondo-ratchets` is the command CI runs. It rejects suppression counts above their budgets, ignores without
+required justification comments, unknown linter names, and a missing or incorrectly formatted ratchets
+file. It allows budgets above the current counts.
 
-Linter keys must name a pinned clj-kondo built-in, a linter configured under `.clj-kondo/`, or an external
-diagnostic such as `:clojure-lsp/unused-public-var`. Both ratchet commands reject unknown names.
+`kondo-ratchets-shrink` lowers budgets to the current counts and normalizes the file. It is the only Mage
+command that writes the file. With `--seed`, it can also add or raise an inline-ignore budget.
+
+Every policy key must name a linter: one of the pinned clj-kondo version's built-ins, a linter configured
+under `.clj-kondo/`, or an external diagnostic such as `:clojure-lsp/unused-public-var`. Both commands
+reject unknown names rather than dropping them.
 
 Release branches disable ratchet enforcement by replacing `.clj-kondo/ratchets.edn` with
-`{:disabled true}`. Both ratchet commands recognize this explicit opt-out; a missing file remains an error.
+`{:disabled true}`. Both commands recognize this explicit opt-out; a missing file remains an error.
 
-Do not lower budgets in feature PRs. After merge, the ratchet shrink workflow records reductions in a
-`Tighten ratchets` PR, avoiding conflicts between feature branches. It removes bounded entries at zero,
-but preserves and warns about unused `:unlimited` entries for manual review on `master`.
+When you remove ignores, leave the higher budget unchanged on the feature branch. After the change lands,
+the shrink workflow opens a `Tighten ratchets` PR to record the reduction. Avoiding ratchet-file changes in
+feature PRs also prevents unrelated PRs from conflicting over the file. The shrinker removes a bounded
+budget when its count reaches zero. It preserves an unused `:unlimited` entry and prints a warning so that
+the entry can be reviewed and removed manually on `master`.
 
 When you add a necessary ignore, run `./bin/mage kondo-ratchets-shrink --seed :the-linter` and explain the
 budget increase in the PR. Use `:unlimited` only when future ignores for that linter should not require
