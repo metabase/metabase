@@ -119,6 +119,8 @@ Window: `offset` sits in `aggregation` and reads another breakout row — month-
 
 By numeric id, on a stage whose `source-table` is their base table: metric `"aggregation": [["metric", {}, 42]]`; measure `"aggregation": [["measure", {}, 7]]`; segment `"filters": [["segment", {}, 3]]`. `browse_data` `get_fields` lists each table's with ids. To compose on top of one, `get_content` `include: ["definition"]` returns its clauses in this dialect to inline and extend.
 
+A metric's or measure's output column is named for the aggregation inside its definition (`sum`, `count`, `avg`), not for the metric or measure — set `"name"` in its options slot (`["measure", {"name": "revenue"}, 7]`) to name it for a later stage.
+
 ## Translating the request
 
 - "only / where / for X" is a **filter**; "by / per / for each / over time" is a **breakout**.
