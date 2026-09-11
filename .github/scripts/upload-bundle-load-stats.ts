@@ -25,6 +25,7 @@ interface Condition {
   warmPageReadyMs: number;
   scripts: number;
   scriptKb: number;
+  totalKb: number;
   runs: number;
 }
 
@@ -69,6 +70,7 @@ function buildRows(
     "Warm page ready ms": condition.warmPageReadyMs,
     Scripts: condition.scripts,
     "Script kb": condition.scriptKb,
+    "Total kb": condition.totalKb,
     Runs: condition.runs,
   }));
 }

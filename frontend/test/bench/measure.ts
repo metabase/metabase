@@ -54,6 +54,7 @@ interface Run {
   lastScriptEnd: number;
   scriptCount: number;
   scriptBytes: number;
+  totalBytes: number;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -135,6 +136,11 @@ const READ_METRICS = `JSON.stringify((() => {
     lastScriptEnd: Math.max(0, ...scripts.map((entry) => entry.responseEnd)),
     scriptCount: scripts.length,
     scriptBytes: scripts.reduce((total, entry) => total + entry.encodedBodySize, 0),
+    // Every byte the page fetched so far, compressed as it arrived: the document
+    // itself, then each script, stylesheet, font, image and API response.
+    totalBytes: (nav ? nav.encodedBodySize : 0) + performance
+      .getEntriesByType("resource")
+      .reduce((total, entry) => total + entry.encodedBodySize, 0),
   };
 })())`;
 
@@ -332,6 +338,9 @@ function timings(run: Run) {
         cache: keepCache ? "kept between runs" : "disabled",
         scripts: results[0].scriptCount,
         scriptKb: Number((results[0].scriptBytes / 1024).toFixed(1)),
+        // Read at the same moment as `scriptKb`, so the difference between the
+        // two is everything the page loaded that is not script.
+        totalKb: Number((results[0].totalBytes / 1024).toFixed(1)),
         // Each of the three is one load. A zero in a reading means the browser
         // or the route never reported that one.
         median: timings(representative(results)),
