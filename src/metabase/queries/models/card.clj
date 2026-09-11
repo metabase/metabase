@@ -800,8 +800,34 @@
       upgrade-card-schema-to-latest
       monitor-blank-dataset-query))
 
+(defn timeline-events-supported-display?
+  "Whether `display`, a keyword or string, supports timeline events."
+  [display]
+  ;; Keep this aligned with the frontend's canDisplayTimelineEvents registry check.
+  (contains? #{:line :bar :area :combo :scatter :waterfall} (keyword display)))
+
+(defn- check-timeline-visibility-permissions!
+  [card previous-card]
+  ;; No bound user means an internal write (serdes import, migrations, tasks) rather than a request.
+  (when api/*current-user-id*
+    (let [visibility-keys         [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids
+                                   :timeline_events.enabled]
+          visibility              (select-keys (:visualization_settings card) visibility-keys)
+          previous-visibility     (select-keys (:visualization_settings previous-card) visibility-keys)
+          display-reveals-events? (and (not (false? (:timeline_events.enabled visibility)))
+                                       (timeline-events-supported-display? (:display card))
+                                       (not (timeline-events-supported-display? (:display previous-card))))]
+      ;; Any change to timeline visibility settings, even one hiding more events, needs read access to the timelines.
+      (when (or display-reveals-events? (not= visibility previous-visibility))
+        (when-some [timeline-ids (:timeline.selected_timeline_ids visibility)]
+          (api/check-400 (and (sequential? timeline-ids) (every? pos-int? timeline-ids))
+                         (tru "Selected timeline IDs must be a sequence of positive integers."))
+          (doseq [timeline-id (distinct timeline-ids)]
+            (api/read-check :model/Timeline timeline-id)))))))
+
 (t2/define-before-insert :model/Card
   [card]
+  (check-timeline-visibility-permissions! card nil)
   (u/prog1
     (-> card
         (assoc :metabase_version config/mb-version-string
@@ -859,8 +885,11 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (some-> card t2/changes queries.schema/normalize-card)
-        card    (queries.schema/normalize-card card)]
+  (let [previous-card (t2/original card)
+        changes       (some-> card t2/changes queries.schema/normalize-card)
+        card          (queries.schema/normalize-card card)]
+    (when (or (contains? changes :visualization_settings) (contains? changes :display))
+      (check-timeline-visibility-permissions! card previous-card))
     (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)

@@ -2987,6 +2987,18 @@
                (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                                      {:name "Number of Blueberries Consumed Per Month"})))))))
 
+(deftest update-card-timeline-selection-permissions-test
+  (testing "PUT /api/card/:id requires read perms for the timelines selected in visualization settings"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Timeline timeline {:collection_id (:id collection)}
+                   :model/Card card {}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (str "card/" (:id card))
+                                   {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}})))
+      (is (not (contains? (t2/select-one-fn :visualization_settings :model/Card (:id card))
+                          :timeline.selected_timeline_ids))))))
+
 (deftest change-collection-permissions-test
   (testing "PUT /api/card/:id"
     (testing "\nChange the `collection_id` of a Card"

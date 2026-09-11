@@ -215,6 +215,7 @@ export function DashCardVisualization({
 
   const {
     isEnabled: isTimelineEventsEnabled,
+    timelineEvents,
     timelineEventsVisibility,
     selectedTimelineEventIds,
     onOpenTimelines,
@@ -656,6 +657,7 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          timelineEvents={timelineEvents}
           timelineEventsVisibility={timelineEventsVisibility}
           selectedTimelineEventIds={selectedTimelineEventIds}
           onOpenTimelines={onOpenTimelines}

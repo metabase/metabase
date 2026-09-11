@@ -1825,7 +1825,9 @@
                     :model/Card
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/Document}}
+                    :model/Document
+                    :model/Timeline
+                    :model/TimelineEvent}}
 
   pulse
   {:team "Gadget"
@@ -1926,6 +1928,7 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
+                    :model/Timeline
                     :model/User}}
 
   queries-rest

@@ -13,6 +13,8 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
@@ -1773,3 +1775,82 @@
         (is (not (contains? extracted (eid summary-card)))
             "a card belonging to an exploration Summary is never exported — its name and dataset_query
              carry values discovered under the creator's lens, and its parent document is excluded")))))
+
+(deftest new-card-timeline-selection-permissions-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Timeline timeline {:collection_id (:id collection)}]
+    (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+    (mt/with-test-user :rasta
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"You don't have permissions"
+           (mt/with-temp [:model/Card _ {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+             nil))))
+    (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+        (is (= [(:id timeline)] (get-in card [:visualization_settings :timeline.selected_timeline_ids])))))))
+
+(deftest card-timeline-visibility-update-permissions-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Timeline timeline {:collection_id (:id collection)}
+                 :model/TimelineEvent excluded {:timeline_id (:id timeline)}]
+    (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+    (doseq [[description before after]
+            [["selecting an inaccessible timeline" {}
+              {:timeline.selected_timeline_ids [(:id timeline)]}]
+             ["revealing an excluded event"
+              {:timeline.selected_timeline_ids [(:id timeline)]
+               :timeline.excluded_timeline_event_ids [(:id excluded)]}
+              {:timeline.selected_timeline_ids [(:id timeline)]
+               :timeline.excluded_timeline_event_ids []}]
+             ["re-enabling an inaccessible timeline"
+              {:timeline.selected_timeline_ids [(:id timeline)] :timeline_events.enabled false}
+              {:timeline.selected_timeline_ids [(:id timeline)] :timeline_events.enabled true}]]]
+      (testing description
+        (mt/with-temp [:model/Card card {:visualization_settings before}]
+          (mt/with-test-user :rasta
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                  (t2/update! :model/Card (:id card) {:visualization_settings after}))))
+          (is (= before (t2/select-one-fn :visualization_settings :model/Card (:id card)))))))))
+
+(deftest unchanged-or-cleared-card-timeline-selection-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Timeline timeline {:collection_id (:id collection)}
+                 :model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+    (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+    (mt/with-test-user :rasta
+      (testing "unrelated visualization edits preserve inaccessible saved selections"
+        (let [settings (assoc (:visualization_settings card) :graph.show_values true)]
+          (t2/update! :model/Card (:id card) {:visualization_settings settings})
+          (is (= settings (t2/select-one-fn :visualization_settings :model/Card (:id card)))))
+        (testing "an explicit empty selection can hide all events"
+          (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids []}})
+          (is (= [] (get-in (t2/select-one :model/Card (:id card))
+                            [:visualization_settings :timeline.selected_timeline_ids]))))))))
+
+(deftest card-timeline-selection-validation-test
+  (mt/with-temp [:model/Card card {}]
+    (mt/with-test-user :rasta
+      (doseq [invalid-ids [false 1 "1" [0] [-1] ["1"] [nil]]]
+        (testing (pr-str invalid-ids)
+          (let [settings {:timeline.selected_timeline_ids invalid-ids}]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Selected timeline IDs must be"
+                                  (t2/update! :model/Card (:id card) {:visualization_settings settings})))))))))
+
+(deftest card-timeline-selection-deleted-timeline-test
+  (mt/with-temp [:model/Timeline timeline {}
+                 :model/Card card {}]
+    (t2/delete! :model/Timeline (:id timeline))
+    (mt/with-test-user :rasta
+      (let [settings {:timeline.selected_timeline_ids [(:id timeline)]}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found"
+                              (t2/update! :model/Card (:id card) {:visualization_settings settings})))))))
+
+(deftest card-timeline-selection-without-user-context-test
+  (mt/with-temp [:model/Timeline timeline {}]
+    (t2/delete! :model/Timeline (:id timeline))
+    (mt/with-current-user nil
+      (mt/with-temp [:model/Card card {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+        (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids []}})
+        (is (= [] (get-in (t2/select-one :model/Card (:id card))
+                          [:visualization_settings :timeline.selected_timeline_ids])))))))
