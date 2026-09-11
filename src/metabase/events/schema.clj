@@ -121,6 +121,32 @@
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
+;; session events
+
+(mr/def :event/session-revoked
+  [:map {:closed true}
+   ;; the admin who revoked, and the user whose sessions they were. `:model` is passed explicitly because the object is
+   ;; a plain map rather than a Toucan instance, so the audit log cannot derive it.
+   [:user-id  pos-int?]
+   [:model    [:= :model/User]]
+   [:model-id pos-int?]
+   ;; one per-user row of a revoke by criteria: the criteria and how many of that user's sessions went, which the
+   ;; `:event/sessions-revoked` summary covers
+   [:details
+    [:map {:closed true}
+     [:criteria :map]
+     [:count    pos-int?]]]])
+
+(mr/def :event/sessions-revoked
+  ;; the one summary row a revoke by criteria writes. No `:model`: the call is about a set of sessions picked out by
+  ;; criteria, not about any one object.
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:details [:map {:closed true}
+              [:criteria  :map]
+              [:count     ms/IntGreaterThanOrEqualToZero]
+              [:remaining ms/IntGreaterThanOrEqualToZero]]]])
+
 ;; segment events
 
 (mr/def ::segment
