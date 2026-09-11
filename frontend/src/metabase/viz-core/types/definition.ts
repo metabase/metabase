@@ -12,6 +12,7 @@ import type {
   SingleSeries,
   TransformedSeries,
   VisualizationSettings,
+  WidgetMount,
 } from "metabase-types/api";
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 
@@ -19,11 +20,13 @@ import type { ComputedVisualizationSettings } from "./computed-settings";
 import type {
   ChartSettingColorRangeProps,
   ChartSettingGoalInputProps,
+  ChartSettingGoalValueProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingSegmentedControlProps,
   ChartSettingSegmentsEditorProps,
   ChartSettingSeriesOrderProps,
   ChartSettingTableColumnsProps,
+  CustomVizSettingWidgetProps,
   DimensionsWidgetProps,
   SmartScalarComparisonWidgetProps,
   TreemapGroupsPickerProps,
@@ -68,7 +71,10 @@ export type VisualizationSettingDefinition<
   group?: string;
   index?: number;
   showColumnSetting?: boolean;
-  widget?: string | ComponentType<TProps & { id: string }>;
+  widget?:
+    | string
+    | ComponentType<TProps & { id: string }>
+    | WidgetMount<CustomVizSettingWidgetProps>;
   isValid?: (
     object: T,
     settings: T extends DatasetColumn
@@ -103,7 +109,7 @@ export type VisualizationSettingDefinition<
       ? ColumnSettings
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
-  ) => string;
+  ) => string | undefined;
   getWrapperStyle?: (
     object: T,
     settings: T extends DatasetColumn
@@ -212,7 +218,10 @@ export type VisualizationSettingsDefinitions = {
   "graph.colors"?: SeriesSettingDefinition<Value, Props>;
   "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
   "graph.goal_label"?: SeriesSettingDefinition<Value, Props>;
-  "graph.goal_value"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_value"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingGoalValueProps
+  >;
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
   /**
    * "graph.label_value_frequency" key is used for 2 different settings:
@@ -368,7 +377,10 @@ export type Widget = {
   hidden?: boolean;
   props?: Record<string, unknown>;
   title?: string;
-  widget?: string | ComponentType<any>;
+  widget?:
+    | string
+    | ComponentType<any>
+    | WidgetMount<CustomVizSettingWidgetProps>;
 };
 
 export type VisualizationGridSize = {

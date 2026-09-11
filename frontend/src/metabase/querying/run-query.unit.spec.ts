@@ -1,10 +1,10 @@
 import fetchMock from "fetch-mock";
 
 import { getMainStore } from "__support__/entities-store";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { waitFor } from "__support__/ui";
 import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -223,6 +223,49 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
 
       expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
       expect(result).toEqual([mockResult]);
+    });
+  });
+
+  describe("goal references", () => {
+    const DYNAMIC_SETTINGS = {
+      "gauge.segments": [
+        {
+          min: 0,
+          max: { type: "card" as const, id: 7, column: "total" },
+          color: "red",
+        },
+      ],
+    };
+
+    it("sends referenced_entities for an ad-hoc gauge", async () => {
+      const question = createMockAdHocQuestion({
+        display: "gauge",
+        visualization_settings: DYNAMIC_SETTINGS,
+      });
+
+      await setupRunQuestionQuery(question);
+
+      const call = fetchMock.callHistory.lastCall("path:/api/dataset");
+      expect(await call?.request?.json()).toEqual({
+        ...question.datasetQuery(),
+        parameters: [],
+        referenced_entities: [{ type: "card", id: 7, columns: ["total"] }],
+      });
+    });
+
+    it("does not run goal references for a display without dynamic goals", async () => {
+      const question = createMockAdHocQuestion({
+        display: "table",
+        visualization_settings: DYNAMIC_SETTINGS,
+      });
+
+      await setupRunQuestionQuery(question);
+
+      const call = fetchMock.callHistory.lastCall("path:/api/dataset");
+      expect(await call?.request?.json()).toEqual({
+        ...question.datasetQuery(),
+        parameters: [],
+      });
     });
   });
 

@@ -239,16 +239,13 @@ const elements = [
   createElement({ type: "shared", name: "redux", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "rich_text_editing" }),
   createElement({ type: "shared", name: "route-guards" }),
+  createElement({ type: "shared", name: "segments", enforcePublicApi: true }),
   createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "static-viz" }),
   createElement({ type: "shared", name: "status" }),
-  createElement({
-    type: "shared",
-    name: "styled-components",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "styled-components" }),
   createElement({ type: "shared", name: "timelines" }),
   createElement({ type: "shared", name: "transforms" }),
   createElement({
@@ -257,11 +254,7 @@ const elements = [
     pattern: "frontend/src/types/**",
   }),
   createElement({ type: "shared", name: "urls" }),
-  createElement({
-    type: "shared",
-    name: "visualizations",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "visualizations" }),
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
@@ -386,6 +379,7 @@ const elements = [
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
     "frontend/src/metabase/static-viz/index.tsx",
+    "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>
     createElement({
       type: "app",

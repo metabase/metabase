@@ -11,6 +11,7 @@ import {
   getDefaultSize,
   getMinSize,
   validateChartDataSettings,
+  validateGoalReferences,
 } from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
@@ -19,8 +20,9 @@ export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Box Plot`,
   identifier: "boxplot",
   iconName: "boxplot",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`box plot`,
+  get noun() {
+    return t`box plot`;
+  },
   minSize: getMinSize("boxplot"),
   defaultSize: getDefaultSize("boxplot"),
   maxMetricsSupported: Infinity,
@@ -38,10 +40,11 @@ export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   },
 
   checkRenderable: (
-    _series: RawSeries,
+    series: RawSeries,
     settings: ComputedVisualizationSettings,
   ) => {
     validateChartDataSettings(settings);
+    validateGoalReferences(series, settings);
   },
 
   settings: {

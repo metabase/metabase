@@ -618,7 +618,7 @@
                                                                                             :name         "snippet",
                                                                                             :snippet-id   s1-id,
                                                                                             :snippet-name "snip",
-                                                                                            :type         :number}}})}]
+                                                                                            :type         :snippet}}})}]
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
           (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s1-id))]
@@ -1134,24 +1134,34 @@
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id        :id} {:name "My Database"}
                        :model/Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
-                       :model/Field    {field-id     :id} {:name "Some Field" :table_id no-schema-id}
+                       :model/Field    {field-id     :id} {:name             "Some Field"
+                                                           :table_id         no-schema-id
+                                                           :data_sensitivity :PII}
+                       :model/Field    {plain-id     :id} {:name "Plain Field" :table_id no-schema-id}
                        :model/FieldUserSettings {description :description}
-                       {:field_id              field-id
-                        :description "Some custom Description"}]
+                       {:field_id         field-id
+                        :description      "Some custom Description"
+                        :data_sensitivity :PII}]
       (testing "field values"
         (let [ser (serdes/extract-one "FieldUserSettings" {} (t2/select-one :model/FieldUserSettings :field_id field-id))]
-          (is (=? {:serdes/meta [{:model "Database" :id "My Database"}
-                                 {:model "Table"    :id "Schemaless Table"}
-                                 {:model "Field"    :id "Some Field"}
-                                 {:model "FieldUserSettings" :id "1"}] ; Always 1.
-                   :created_at  string?
-                   :description description}
+          (is (=? {:serdes/meta      [{:model "Database" :id "My Database"}
+                                      {:model "Table"    :id "Schemaless Table"}
+                                      {:model "Field"    :id "Some Field"}
+                                      {:model "FieldUserSettings" :id "1"}] ; Always 1.
+                   :created_at       string?
+                   :description      description
+                   :data_sensitivity :PII}
                   ser))
           (is (not (contains? ser :field_id))
               ":field_id is dropped; its implied by the path")
           (testing "depend only on the Database; the parent Field is synthesized on import if missing"
             (is (= #{[{:model "Database"   :id "My Database"}]}
                    (set (serdes/deserialization-dependencies ser)))))))
+      (testing "data_sensitivity on the Field itself"
+        (is (= :PII (:data_sensitivity (ts/extract-one "Field" field-id)))
+            "a labeled field exports the keyword as-is")
+        (is (not (contains? (ts/extract-one "Field" plain-id) :data_sensitivity))
+            "an unlabeled field exports no key, so nil never reaches the YAML"))
       (testing "extract-metabase behavior"
         (let [models (->> {} (extract/extract) (map (comp :model last :serdes/meta)))]
           (is (= 1
@@ -1178,6 +1188,12 @@
           (is (= #{["FieldUserSettings" f2-id]}
                  (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
         (t2/delete! :model/FieldUserSettings :field_id f2-id))
+      (testing "with user-edits-only and a FieldUserSettings row holding only data_sensitivity: that field appears as FieldUserSettings"
+        (t2/insert! :model/FieldUserSettings {:field_id f1-id :data_sensitivity :PII})
+        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
+          (is (= #{["FieldUserSettings" f1-id]}
+                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
+        (t2/delete! :model/FieldUserSettings :field_id f1-id))
       (testing "with user-edits-only and all fields edited: all appear as FieldUserSettings, not Field"
         (t2/insert! :model/FieldUserSettings {:field_id f1-id})
         (t2/insert! :model/FieldUserSettings {:field_id f2-id})
@@ -1799,14 +1815,14 @@
         (is (= {(:id dc1) [s]}
                (#'serdes/transform->nested (-> spec :transform :series) {} [dc1])))
         (is (=? (assoc dc1 :series [s])
-                (u/rfirst (serdes/extract-query "DashboardCard" {:where [:= :id (:id dc1)]})))))
+                (u/rfirst (serdes/extract-query "DashboardCard" {:filter-column :id :filter-ids [(:id dc1)]})))))
       (let [spec (serdes/make-spec "Dashboard" nil)]
         (is (= {(:id d) [(assoc dc1 :series [s])]}
                (#'serdes/transform->nested (-> spec :transform :dashcards) {} [d])))
         (is (=? (assoc d
                        :dashcards [(assoc dc1 :series [s])]
                        :tabs nil)
-                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]}))))))))
+                (u/rfirst (serdes/extract-query "Dashboard" {:filter-column :id :filter-ids [(:id d)]}))))))))
 
 (deftest extract-nested-efficient-test
   (testing "extract-nested is efficient"
@@ -1830,7 +1846,7 @@
                          :tabs nil)}
                 (into #{} (map (fn [dashboard]
                                  (update dashboard :dashcards #(sort-by :id %))))
-                      (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+                      (serdes/extract-query "Dashboard" {:filter-column :id :filter-ids [(:id d1) (:id d2)]}))))
         ;; 1 per dashboard/dashcard/series/tabs
         (is (= 4 (qc)))))))
 
@@ -1844,8 +1860,9 @@
                                                          :card_id      (:id c1)})))]
         (t2/with-call-count [qc]
           (is (=? [(assoc d :dashcards dcs)]
-                  (into [] (serdes/extract-query "Dashboard" {:batch-limit 5
-                                                              :where [:= :id (:id d)]}))))
+                  (into [] (serdes/extract-query "Dashboard" {:batch-limit   5
+                                                              :filter-column :id
+                                                              :filter-ids    [(:id d)]}))))
           ;; query count breakdown:
           ;; - 1 for dashboard
           ;; - 1 for tabs, there are none
@@ -2058,16 +2075,16 @@
                        :model/Table table {:name "linked_table"}]
       (t2/update! :model/Document :id (u/the-id document) {:document {:type "doc"
                                                                       :content [{:type "cardEmbed"
-                                                                                 :attrs {:id (u/the-id card)}}
+                                                                                 :attrs {"id" (u/the-id card)}}
                                                                                 {:type "smartLink"
-                                                                                 :attrs {:entityId (u/the-id linked-card)
-                                                                                         :model "card"}}
+                                                                                 :attrs {"entityId" (u/the-id linked-card)
+                                                                                         "model" "card"}}
                                                                                 {:type "smartLink"
-                                                                                 :attrs {:entityId (u/the-id table)
-                                                                                         :model "table"}}
+                                                                                 :attrs {"entityId" (u/the-id table)
+                                                                                         "model" "table"}}
                                                                                 {:type "smartLink"
-                                                                                 :attrs {:entityId (u/the-id dashboard)
-                                                                                         :model "dashboard"}}]}})
+                                                                                 :attrs {"entityId" (u/the-id dashboard)
+                                                                                         "model" "dashboard"}}]}})
       (testing "document extraction"
         (let [ser (ts/extract-one "Document" (u/the-id document))]
           (is (=? {:serdes/meta [{:model "Document" :id (:entity_id document)}]
@@ -2075,16 +2092,16 @@
                    :entity_id (:entity_id document)
                    :document {:type "doc"
                               :content [{:type "cardEmbed"
-                                         :attrs {:id [{:model "Card" :id (:entity_id card)}]}}
+                                         :attrs {"id" [{:model "Card" :id (:entity_id card)}]}}
                                         {:type "smartLink"
-                                         :attrs {:entityId [{:model "Card" :id (:entity_id linked-card)}]
-                                                 :model "card"}}
+                                         :attrs {"entityId" [{:model "Card" :id (:entity_id linked-card)}]
+                                                 "model" "card"}}
                                         {:type "smartLink"
-                                         :attrs {:entityId (serdes/generate-path "Table" table)
-                                                 :model "table"}}
+                                         :attrs {"entityId" (serdes/generate-path "Table" table)
+                                                 "model" "table"}}
                                         {:type "smartLink"
-                                         :attrs {:entityId [{:model "Dashboard" :id (:entity_id dashboard)}]
-                                                 :model "dashboard"}}]}
+                                         :attrs {"entityId" [{:model "Dashboard" :id (:entity_id dashboard)}]
+                                                 "model" "dashboard"}}]}
                    :creator_id (:email user)
                    :collection_id (:entity_id collection)
                    :content_type "application/json+vnd.prose-mirror"

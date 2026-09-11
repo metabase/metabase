@@ -2,6 +2,7 @@
   "/api/dataset endpoints."
   (:refer-clojure :exclude [get-in select-keys])
   (:require
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
@@ -13,6 +14,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
@@ -116,6 +118,7 @@
    request]
   (run-streaming-query
    (-> query
+       (dissoc :cache-strategy :referenced-entities)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)
    :referenced-entities-specs (request-referenced-entities request)))
@@ -143,7 +146,7 @@
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and download the result data as a file in the specified format."
-  [{:keys [export-format]} :- [:map
+  [{:keys [export-format]} :- [:map {:closed true}
                                [:export-format ::qp.schema/export-format]]
    _query-params
    {{:keys [was-pivot] :as query} :query
@@ -153,17 +156,16 @@
     visualization-settings        :visualization_settings}
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-   :- [:map
+   :- [:map {:closed true}
        [:query                  [:schema
                                  {:decode/api (fn [x]
                                                 (cond-> x
                                                   (string? x) json/decode))}
                                  ::lib-be.schema/maybe-legacy-or-internal-query]]
-       [:visualization_settings {:default {}} [:map
-                                               {:closed     false
-                                                :decode/api (fn [x]
-                                                              (cond-> x
-                                                                (string? x) (json/decode viz-setting-key-fn)))}]]
+       [:visualization_settings {:default {}} (mu/with ms/VisualizationSettings
+                                                       {:decode/api (fn [x]
+                                                                      (cond-> x
+                                                                        (string? x) (json/decode viz-setting-key-fn)))})]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]
        [:csv_include_bom         {:default false} ms/BooleanValue]]]
@@ -171,7 +173,7 @@
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
         query                         (-> query
-                                          (dissoc :constraints)
+                                          (dissoc :constraints :cache-strategy)
                                           (assoc :viz-settings viz-settings)
                                           (update :middleware #(-> %
                                                                    (select-keys [:ignore-cached-results?])
@@ -216,9 +218,9 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map {:closed false}
-                                           [:database ms/PositiveInt]
-                                           [:pretty   {:default true} [:maybe :boolean]]]]
+   {:keys [database pretty] :as query} :- [:map {:closed true}
+                                           [:pretty {:default true} [:maybe :boolean]]
+                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]]
   (model-persistence/with-persisted-substituion-disabled
     (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
                     (dissoc :constraints :middleware)
@@ -255,7 +257,9 @@
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [rff :api]
-      (qp.pivot/run-pivot-query (assoc (update query :middleware select-keys [:js-int-to-string? :ignore-cached-results?])
+      (qp.pivot/run-pivot-query (assoc (-> query
+                                           (dissoc :cache-strategy)
+                                           (update :middleware select-keys [:js-int-to-string? :ignore-cached-results?]))
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
                                 rff)
@@ -294,7 +298,7 @@
   [_route-params
    _query-params
    {:keys     [parameter]
-    field-ids :field_ids} :- [:map
+    field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids nil))
@@ -305,11 +309,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  [{:keys [query]} :- [:map
+  [{:keys [query]} :- [:map {:closed true}
                        [:query ms/NonBlankString]]
    _query-params
    {:keys     [parameter]
-    field-ids :field_ids} :- [:map
+    field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids query))
@@ -336,8 +340,8 @@
   "Return the remapped parameter values for cards or dashboards that are being edited."
   [_route-params
    _query-params
-   {:keys [parameter value field_ids]} :- [:map
+   {:keys [parameter value field_ids]} :- [:map {:closed true}
                                            [:parameter ::parameters.schema/parameter]
-                                           [:value :any]
+                                           [:value [:ref ::lib.schema.parameter/parameter.value]]
                                            [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (param-remapped-value field_ids parameter value))

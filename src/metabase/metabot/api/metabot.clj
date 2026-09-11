@@ -4,11 +4,9 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.app-db.core :as mdb]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.task.suggested-prompts-refresh :as metabot.suggested-prompts-refresh]
-   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -34,7 +32,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Retrieve one metabot instance"
-  [{:keys [id]} :- [:map [:id pos-int?]]]
+  [{:keys [id]} :- [:map {:closed true} [:id pos-int?]]]
   (api/check-superuser)
   (api/check-404 (metabot.db/metabot id)))
 
@@ -44,7 +42,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a metabot instance"
-  [{:keys [id]} :- [:map [:id pos-int?]]
+  [{:keys [id]} :- [:map {:closed true} [:id pos-int?]]
    _query-params
    metabot-updates :- [:map {:closed true}
                        [:use_verified_content {:optional true} :boolean]
@@ -77,7 +75,7 @@
    `:no-library-content` when the Metabot has no models or metrics to summarize, or
    `:ai-produced-no-prompts` when generation produced nothing.
    Returns a 402 if the instance has reached its managed-AI usage limit."
-  [{:keys [id]} :- [:map [:id pos-int?]]]
+  [{:keys [id]} :- [:map {:closed true} [:id pos-int?]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (api/check-404 (metabot.db/metabot-exists? id))
@@ -95,35 +93,14 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/prompt-suggestions"
   "Return the prompt suggestions for the metabot instance with `id`."
-  [{:keys [id]} :- [:map [:id pos-int?]]
-   {:keys [sample model model_id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true} [:id pos-int?]]
+   {:keys [sample model model_id]} :- [:map {:closed true}
                                        [:sample {:optional true} :boolean]
                                        [:model {:optional true} [:enum "metric" "model"]]
                                        [:model_id {:optional true} pos-int?]]]
-  (let [offset (when-not sample (request/offset))
-        rand-fn (case (mdb/db-type)
-                  :postgres :random
-                  :rand)
-        base-query (cond-> {:join  [[^:allow-subquery {:select [:id :name :type]
-                                                       :from   [[(metabot.tools.u/metabot-metrics-and-models-query id)
-                                                                 :scope]]}
-                                     :card]
-                                    [:and
-                                     [:= :card.id :metabot_prompt.card_id]]]
-                            :where [:and
-                                    [:= :metabot_prompt.metabot_id id]]}
-                     model    (update :where conj [:= :card.type model])
-                     model_id (update :where conj [:= :card.id model_id]))
-        total (metabot.db/prompt-count-where base-query)
-        order-by (if sample
-                   [[[rand-fn]]]
-                   [[:card.name :asc]
-                    [:id :asc]])
-        prompts (metabot.db/prompts-where
-                 (cond-> base-query
-                   true             (assoc :order-by order-by)
-                   (request/limit)  (assoc :limit    (request/limit))
-                   offset           (assoc :offset   offset)))]
+  (let [offset  (when-not sample (request/offset))
+        total   (metabot.db/prompt-count id model model_id)
+        prompts (metabot.db/prompts id model model_id sample (request/limit) offset)]
     {:prompts prompts
      :limit   (request/limit)
      :offset  offset
@@ -135,7 +112,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/prompt-suggestions"
   "Delete all prompt suggestions for the metabot instance with `id`."
-  [{:keys [id]} :- [:map [:id pos-int?]]]
+  [{:keys [id]} :- [:map {:closed true} [:id pos-int?]]]
   (api/check-superuser)
   (metabot.suggested-prompts/delete-all-metabot-prompts id)
   api/generic-204-no-content)
@@ -146,7 +123,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id"
   "Delete the prompt suggestion with ID `prompt-id` for the metabot instance with `id`."
-  [{:keys [id prompt-id]} :- [:map
+  [{:keys [id prompt-id]} :- [:map {:closed true}
                               [:id pos-int?]
                               [:prompt-id pos-int?]]]
   (api/check-superuser)

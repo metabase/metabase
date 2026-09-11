@@ -2113,6 +2113,44 @@
       (is (= "desc"
              (t2/select-one-fn :description :model/Field (:id f3)))))))
 
+(deftest field-data-sensitivity-round-trip-test
+  (testing "data_sensitivity travels through export and import on both Field and FieldUserSettings"
+    (let [serialized (atom nil)
+          in-db?     (fn [entity] (-> entity :serdes/meta first :id (= "labeled-db")))
+          field-ser  (fn [entities field-name]
+                       (u/seek #(and (in-db? %)
+                                     (-> % :serdes/meta last :model (= "Field"))
+                                     (= field-name (:name %)))
+                               entities))]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "labeled-db")
+                table (ts/create! :model/Table    :name "CONTACTS" :db_id (:id db))
+                email (ts/create! :model/Field    :name "CONTACT_EMAIL" :table_id (:id table) :data_sensitivity :PII)
+                _     (ts/create! :model/Field    :name "CONTACT_ROW"   :table_id (:id table))
+                _     (ts/create! :model/FieldUserSettings :field_id (:id email) :data_sensitivity :PII)]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (testing "the labeled Field and its FieldUserSettings both export the label"
+              (is (= :PII (:data_sensitivity (field-ser @serialized "CONTACT_EMAIL"))))
+              (is (= :PII (:data_sensitivity (u/seek #(and (in-db? %)
+                                                           (-> % :serdes/meta last :model (= "FieldUserSettings")))
+                                                     @serialized)))))
+            (testing "the unlabeled Field exports no data_sensitivity key"
+              (is (not (contains? (field-ser @serialized "CONTACT_ROW") :data_sensitivity))))))
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [db-id    (t2/select-one-fn :id :model/Database :name "labeled-db")
+                table-id (t2/select-one-fn :id :model/Table :name "CONTACTS" :db_id db-id)
+                email-id (t2/select-one-fn :id :model/Field :name "CONTACT_EMAIL" :table_id table-id)
+                row-id   (t2/select-one-fn :id :model/Field :name "CONTACT_ROW"   :table_id table-id)]
+            (testing "the label imports back to the keyword on the Field"
+              (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id email-id))))
+            (testing "the label imports back to the keyword on the FieldUserSettings mirror"
+              (is (= :PII (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id email-id))))
+            (testing "the unlabeled field stays nil with no mirror row"
+              (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id row-id)))
+              (is (not (t2/exists? :model/FieldUserSettings :field_id row-id))))))))))
+
 (deftest blank-eid-creates-new-entity-test
   (mt/with-empty-h2-app-db!
     (let [coll       (ts/create! :model/Collection :name "mycoll")

@@ -1,18 +1,20 @@
+import _ from "underscore";
+
 import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
 import { cardApi } from "metabase/api/card";
 import { dashboardApi } from "metabase/api/dashboard";
 import { datasetApi } from "metabase/api/dataset";
 import type { Dispatch } from "metabase/redux/store";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getReferencedEntities } from "metabase/viz-core";
+import type Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
 import type {
-  Card,
   CardQueryRequest,
   DashboardCardQueryRequest,
   Dataset,
   DatasetQuery,
+  ReferencedEntity,
 } from "metabase-types/api";
 
 import {
@@ -85,12 +87,15 @@ async function handleQueryApiError(
 let adhocDatasetQueryCounter = 0;
 export function runAdhocDatasetQuery(
   dispatch: Dispatch,
-  card: Card,
-  metadata: Metadata,
-  body: DatasetQuery & { parameters?: unknown[]; ignore_cache?: boolean },
+  question: Question,
+  body: DatasetQuery & {
+    parameters?: unknown[];
+    ignore_cache?: boolean;
+    referenced_entities?: ReferencedEntity[];
+  },
   signal?: AbortSignal,
 ): Promise<Dataset> {
-  const isPivot = shouldUsePivotEndpoint(card, metadata);
+  const isPivot = shouldUsePivotEndpoint(question);
   // Disambiguate the RTK cache key so two callers running the same MBQL
   // query get independent cache entries and abort signals. Without this,
   // one caller cancelling would abort the shared in-flight request for
@@ -98,7 +103,11 @@ export function runAdhocDatasetQuery(
   // the request hits the server.
   const requestBody = {
     ...(isPivot
-      ? { ...body, ...getPivotOptions(new Question(card, metadata)) }
+      ? {
+          // the pivot endpoint's request schema has no `referenced_entities`
+          ..._.omit(body, "referenced_entities"),
+          ...getPivotOptions(question),
+        }
       : body),
     [RTK_CACHE_KEY_PARAM]: ++adhocDatasetQueryCounter,
   };
@@ -125,8 +134,6 @@ function runSavedCardQuery(
   }: SavedCardQueryOptions,
   signal?: AbortSignal,
 ): Promise<Dataset> {
-  const card = question.card();
-  const metadata = question.metadata();
   const { dashboardId, dashcardId } = question.getDashboardProps();
   const runQuery = makePivotAwareQueryRunner(dispatch, signal);
 
@@ -155,8 +162,7 @@ function runSavedCardQuery(
   if (dashboardId != null && dashcardId != null) {
     return runQuery(
       dashboardApi.endpoints.getDashboardCardQuery,
-      card,
-      metadata,
+      question,
       // Unjustified type cast. FIXME
       {
         dashboardId,
@@ -168,8 +174,7 @@ function runSavedCardQuery(
 
   return runQuery(
     cardApi.endpoints.getCardQuery,
-    card,
-    metadata,
+    question,
     // Unjustified type cast. FIXME
     body as CardQueryRequest,
   );
@@ -188,7 +193,6 @@ export async function runQuestionQuery(
 ): Promise<[Dataset]> {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
   const parameters = normalizeParameters(question.parameters());
-  const card = question.card();
 
   if (canUseCardApiEndpoint) {
     return [
@@ -208,13 +212,20 @@ export async function runQuestionQuery(
     ];
   }
 
+  const referencedEntities = getReferencedEntities(question.card());
+
   return [
     await handleQueryApiError(
       runAdhocDatasetQuery(
         dispatch,
-        card,
-        question.metadata(),
-        { ...question.datasetQuery(), parameters },
+        question,
+        {
+          ...question.datasetQuery(),
+          parameters,
+          ...(referencedEntities.length > 0
+            ? { referenced_entities: referencedEntities }
+            : {}),
+        },
         signal,
       ),
     ),

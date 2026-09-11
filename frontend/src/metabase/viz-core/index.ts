@@ -217,8 +217,38 @@ export {
   getLegendTitles,
   HEAT_MAP_ZERO_COLOR,
 } from "./lib/choropleth";
+export { withColorName } from "./lib/color-name";
 export { getColorScale } from "./lib/color-scales";
+export {
+  getCustomVizSettingKeyPrefix,
+  isCustomVizSettingKey,
+} from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
+export {
+  getGoalSegmentBounds,
+  getNumericGoalValue,
+  getReferencedEntities,
+  getSegmentColor,
+  getUnansweredGoalEntities,
+  getUnresolvedGoalMessage,
+  hasFailedGoalValues,
+  hasUnansweredGoalReferences,
+  hasUnresolvedGoalReferences,
+  hasUnresolvedGoalValues,
+  isDynamicGoalSetting,
+  needsAnswer,
+  needsGraphGoalResolution,
+  resolveGoalSegments,
+  resolveGoalValue,
+  toReferencedEntity,
+} from "./lib/dynamic-goals";
+export type {
+  GoalData,
+  GoalRefError,
+  GoalValueResult,
+  ResolvedGoalSegment,
+} from "./lib/dynamic-goals";
+export type { GoalSettingKind } from "./lib/dynamic-goal-settings";
 export {
   ChartSettingsError,
   getDatasetError,
@@ -351,9 +381,11 @@ export {
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
+  validateGoalReferences,
   validateStacking,
 } from "./lib/settings/validation";
 export {
+  adoptLegacyCustomVizSettings,
   getComputedSettingsForSeries,
   getPersistableDefaultSettingsForSeries,
   getStoredSettingsForSeries,
@@ -426,7 +458,7 @@ export {
   getPieSortRowsDimensionSetting,
   getValueFromDimensionKey,
 } from "./shared/settings/pie";
-export { SERIES_SETTING_KEY } from "./shared/settings/series";
+export { getSeriesColors, SERIES_SETTING_KEY } from "./shared/settings/series";
 export { getTreemapRows } from "./shared/settings/treemap";
 export type {
   GroupedDataset,
@@ -489,6 +521,7 @@ export type {
   ChartSettingColorRangeProps,
   ChartSettingEnumToggleProps,
   ChartSettingGoalInputProps,
+  ChartSettingGoalValueProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingOrderedItem,
   ChartSettingSegmentedControlProps,
@@ -498,6 +531,7 @@ export type {
   ChartSettingTableColumnsProps,
   ChartSettingWidgetProps,
   ComparisonMenuOption,
+  CustomVizSettingWidgetProps,
   DimensionsWidgetProps,
   EditWidgetData,
   SmartScalarComparisonWidgetProps,

@@ -64,7 +64,7 @@
    {:keys                [archived]
     dashboard-id         :dashboard_id
     creator-or-recipient :creator_or_recipient}
-   :- [:map
+   :- [:map {:closed true}
        [:archived             {:default false} [:maybe ms/BooleanValue]]
        [:dashboard_id         {:optional true} [:maybe ms/PositiveInt]]
        [:creator_or_recipient {:default false} [:maybe ms/BooleanValue]]]]
@@ -122,12 +122,12 @@
   [:int {:min 0 :max 23}])
 
 (def ^:private PulseChannelRecipient
-  [:map
+  [:map {:closed true}
    [:id    {:optional true} [:maybe ms/PositiveInt]]
    [:email {:optional true} [:maybe ms/Email]]])
 
 (def ^:private PulseChannelDetails
-  [:map
+  [:map {:closed true}
    [:attachment_only {:optional true} [:maybe :boolean]]
    [:include_pdf     {:optional true} [:maybe :boolean]]
    [:channel         {:optional true} [:maybe :string]]
@@ -137,7 +137,7 @@
 
 (def ^:private PulseChannel
   "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
-  [:map
+  [:map {:closed true}
    [:id             {:optional true}   [:maybe ms/PositiveInt]]
    [:channel_type                      PulseChannelType]
    [:enabled        {:optional true}   [:maybe :boolean]]
@@ -163,7 +163,7 @@
     collection-id       :collection_id
     collection-position :collection_position
     dashboard-id        :dashboard_id}
-   :- [:map
+   :- [:map {:closed true}
        [:name                ms/NonBlankString]
        [:cards               [:+ models.pulse/CoercibleToCardRef]]
        [:channels            [:+ PulseChannel]]
@@ -192,7 +192,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
     (api/check-403 (mi/can-read? pulse))
@@ -223,7 +223,7 @@
                                (filter (fn [{id :id}] (and id (not= id api/*current-user-id*)))
                                        existing-recipients))
                              (models.pulse/hidden-cross-tenant-recipients existing-recipients))]
-    (if (seq recipients-to-add)
+    (if (and (seq recipients-to-add) (seq (:channels pulse-updates)))
       (assoc pulse-updates :channels
              (for [channel (:channels pulse-updates)]
                ;; normalize like [[email-channel]]: :channel_type is a string over REST but a
@@ -300,10 +300,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Pulse with `id`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   pulse-updates :- [:map
+   pulse-updates :- [:map {:closed true}
                      [:name          {:optional true} [:maybe ms/NonBlankString]]
                      [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
                      [:channels      {:optional true} [:maybe [:+ PulseChannel]]]
@@ -330,7 +330,8 @@
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
                        (assoc-in [:http :configured] (pulse.db/active-http-channel-exists?)))]
     {:channels (cond
-                 (perms/sandboxed-or-impersonated-user?)
+                 (or (perms/sandboxed-or-impersonated-user?)
+                     (some? (:tenant_id @api/*current-user*)))
                  (dissoc chan-types :slack)
 
                  ;; no Slack integration, so we are g2g
@@ -360,7 +361,7 @@
   "Test send an unsaved pulse."
   [_route-params
    _query-params
-   {:keys [cards channels] :as body} :- [:map
+   {:keys [cards channels] :as body} :- [:map {:closed true}
                                          ;; the saved subscription this is a test send of, when there is one.
                                          ;; `send-pulse!` builds the non-user unsubscribe link out of it, and the
                                          ;; email template drops the whole "Unsubscribe" footer without a link
@@ -402,7 +403,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse-id (pulse.db/pulse-id id)
                 pc-id    (pulse.db/email-pulse-channel-id pulse-id)

@@ -17,9 +17,9 @@ import type {
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { getIsTenantUser } from "metabase/current-user";
 import { isEmbedding } from "metabase/embedding/config";
-import { getMetadata } from "metabase/metadata-store";
-import { loadMetadataForTable } from "metabase/questions/actions";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
+import { fetchTableMetadata } from "metabase/redux/tables";
 import { Icon, TextInput } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -87,16 +87,13 @@ export function NotebookDataPicker({
   const isTenantUser = useSelector(getIsTenantUser);
 
   const handleChange = async (tableId: TableId) => {
-    await dispatch(loadMetadataForTable(tableId));
+    await dispatch(fetchTableMetadata({ id: tableId }));
     const state = store.getState();
     const { data: tableMetadata } = selectTableQueryMetadata({ id: tableId })(
       state,
     );
     const databaseId = checkNotNull(tableMetadata).db_id;
-    const metadataProvider = Lib.metadataProvider(
-      databaseId,
-      getMetadata(state),
-    );
+    const metadataProvider = selectMetadataProvider(state, databaseId);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     if (table) {
       onChangeRef.current?.(table, metadataProvider);

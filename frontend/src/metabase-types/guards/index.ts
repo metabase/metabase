@@ -6,3 +6,4 @@ export * from "./parameters";
 export * from "./remote-sync";
 export * from "./settings";
 export * from "./visualization";
+export * from "./visualization-settings";

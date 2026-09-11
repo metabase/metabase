@@ -12,7 +12,10 @@
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.notification.db :as notification.db]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -42,6 +45,20 @@
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/Notification                                       ;;
 ;; ------------------------------------------------------------------------------------------------;;
+
+(def ^:private RowTimestamp
+  "A `created_at`/`updated_at` column: a `java.time` value on the way out, and -- because clients echo the
+  notification they were handed back at us on update -- the ISO string it was encoded as on the way back in."
+  [:maybe [:or ms/TemporalInstant ms/TemporalString]])
+
+(mr/def ::EchoedUser
+  "A hydrated User as a client hands it back on update: a `::users.schema/user` whose timestamps may be the ISO strings
+  they were encoded as on the way out."
+  [:merge
+   ::users.schema/user
+   [:map {:closed true}
+    [:date_joined RowTimestamp]
+    [:last_login  RowTimestamp]]])
 
 (def notification-types
   "Set of valid notification types."
@@ -101,12 +118,16 @@
   "Entries every notification map has, whatever its `:payload_type`."
   [{:keys [with-id?]}]
   (cond->> [[:payload_type                  (ms/enum-decode-keyword notification-types)]
-            [:active       {:optional true} [:maybe :boolean]]]
+            [:active       {:optional true} [:maybe :boolean]]
+            [:internal_id  {:optional true} [:maybe :string]]
+            [:creator_id   {:optional true} [:maybe ms/PositiveInt]]
+            [:created_at   {:optional true} RowTimestamp]
+            [:updated_at   {:optional true} RowTimestamp]]
     with-id? (into [[:id {:optional true} ms/PositiveInt]])))
 
 (mr/def ::Notification
   [:merge
-   (into [:map] (notification-entries {:with-id? true}))
+   (into [:map {:closed true}] (notification-entries {:with-id? true}))
    [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
             :dispatch         (comp keyword :payload_type)}
     [:notification/system-event
@@ -188,9 +209,12 @@
 (defn- notification-subscription-schema
   [{:keys [with-id?]}]
   [:merge
-   (into [:map] (cond->> [[:type                             (ms/enum-decode-keyword subscription-types)]
-                          [:notification_id {:optional true} ms/PositiveInt]]
-                  with-id? (into [[:id {:optional true} :int]])))
+   (into [:map {:closed true}]
+         (cond->> [[:type                             (ms/enum-decode-keyword subscription-types)]
+                   [:notification_id {:optional true} ms/PositiveInt]
+                   [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]
+                   [:created_at      {:optional true} RowTimestamp]]
+           with-id? (into [[:id {:optional true} :int]])))
    [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
             :dispatch         (comp keyword :type)}
     [:notification-subscription/system-event
@@ -306,13 +330,15 @@
 
 (defn- notification-handler-schema
   [{:keys [with-id?]}]
-  (into [:map]
+  (into [:map {:closed true}]
         (cond->> [;; optional during insertion
                   [:notification_id {:optional true}       ms/PositiveInt]
                   [:channel_type    {:decode/json keyword} [:fn #(= "channel" (-> % keyword namespace))]]
                   [:channel_id      {:optional true}       [:maybe ms/PositiveInt]]
                   [:template_id     {:optional true}       [:maybe ms/PositiveInt]]
-                  [:active          {:optional true}       [:maybe :boolean]]]
+                  [:active          {:optional true}       [:maybe :boolean]]
+                  [:created_at      {:optional true}       RowTimestamp]
+                  [:updated_at      {:optional true}       RowTimestamp]]
           with-id? (into [[:id {:optional true} ms/PositiveInt]]))))
 
 (mr/def ::NotificationHandler
@@ -356,25 +382,33 @@
 (defn- notification-recipient-schema
   [{:keys [with-id?]}]
   [:merge
-   (into [:map] (cond->> [[:type                                    (ms/enum-decode-keyword notification-recipient-types)]
-                          [:notification_handler_id {:optional true} ms/PositiveInt]]
-                  with-id? (into [[:id {:optional true} ms/PositiveInt]])))
+   (into [:map {:closed true}]
+         (cond->> [[:type                                    (ms/enum-decode-keyword notification-recipient-types)]
+                   [:notification_handler_id {:optional true} ms/PositiveInt]
+                   [:created_at              {:optional true} RowTimestamp]
+                   [:updated_at              {:optional true} RowTimestamp]]
+           with-id? (into [[:id {:optional true} ms/PositiveInt]])))
    [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
             :dispatch         (comp keyword :type)}
     [:notification-recipient/user
      [:map
       [:user_id                               ms/PositiveInt]
       [:permissions_group_id {:optional true} [:fn nil?]]
-      [:details              {:optional true} [:fn empty?]]]]
+      [:details              {:optional true} [:fn empty?]]
+      [:user                 {:optional true} [:maybe ::EchoedUser]]]]
     [:notification-recipient/group
      [:map
       [:permissions_group_id                  ms/PositiveInt]
       [:user_id              {:optional true} [:fn nil?]]
-      [:details              {:optional true} [:fn empty?]]]]
+      [:details              {:optional true} [:fn empty?]]
+      [:permissions_group    {:optional true} [:maybe [:merge
+                                                       ::permissions.schema/permissions-group
+                                                       [:map {:closed true}
+                                                        [:members {:optional true} [:sequential ::permissions.schema/permissions-group.member]]]]]]]]
     [:notification-recipient/raw-value
      [:map
       [:details                               [:map {:closed true}
-                                               [:value :any]
+                                               [:value :string]
                                                [:channel_id {:optional true} [:maybe :string]]]]
       [:user_id              {:optional true} [:fn nil?]]
       [:permissions_group_id {:optional true} [:fn nil?]]]]
@@ -442,13 +476,24 @@
   [[:card_id                          ms/PositiveInt]
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]
    ;; the hydrated Card, echoed back by clients on update; nothing here reads it
-   [:card            {:optional true} [:maybe ms/Map]]
+   [:card            {:optional true} [:maybe [:merge
+                                               ::queries.schema/card.update
+                                               [:map {:closed true}
+                                                [:id                ms/PositiveInt]
+                                                ;; a metric's Card row describes its query on the way out of the database
+                                                [:query_description {:optional true} [:maybe :string]]
+                                                [:created_at        {:optional true} RowTimestamp]
+                                                [:updated_at        {:optional true} RowTimestamp]
+                                                [:last_used_at      {:optional true} RowTimestamp]]]]]
    [:send_condition  {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
-   [:send_once       {:optional true} :boolean]])
+   [:send_once       {:optional true} :boolean]
+   [:disable_links   {:optional true} [:maybe :boolean]]
+   [:created_at      {:optional true} RowTimestamp]
+   [:updated_at      {:optional true} RowTimestamp]])
 
 (defn- notification-card-schema
   [{:keys [with-id?]}]
-  (into [:map]
+  (into [:map {:closed true}]
         (cond->> notification-card-entries
           ;; nil on an unsaved notification, e.g. the one POST /api/pulse/test builds to send a test alert
           with-id? (into [[:id {:optional true} [:maybe ms/PositiveInt]]]))))
@@ -507,8 +552,9 @@
 
 (mr/def ::NotificationCardUpdate
   "::NotificationCard restricted to what the update spec writes - `:id` comes from the URL's notification."
-  (into [:map] (update-input-entries notification-card-entries
-                                     (get-in notification-update-spec [:nested-specs :payload]))))
+  (into [:map {:closed true}]
+        (update-input-entries notification-card-entries
+                              (get-in notification-update-spec [:nested-specs :payload]))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                            Helpers                                              ;;
@@ -610,6 +656,22 @@
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(mr/def ::SystemEventPayload.request
+  "The `:payload` of a system event notification as a client may send it: the event topic, plus the `:disable_links`
+  `POST /api/notification` stamps on. The event map itself is the server's to supply, so a request carries none."
+  [:map {:closed true}
+   [:event_topic   {:optional true} [:fn #(= "event" (-> % keyword namespace))]]
+   [:disable_links {:optional true} [:maybe :boolean]]])
+
+(mr/def ::SystemEventPayload
+  "The `:payload` of a system event notification on its way to being sent: a [[::SystemEventPayload.request]] plus
+  the event map published under the topic, keyed the way [[metabase.events.core/publish-event!]] was handed it. A
+  `:notification/testing` notification's payload is empty."
+  [:merge
+   ::SystemEventPayload.request
+   [:map {:closed true}
+    [:event_info {:optional true} [:maybe [:map-of :keyword :any]]]]])
+
 (defn hydrated-notification-schema
   "Schema for a notification hydrated with its creator, subscriptions and handlers, where each handler matches
   `handler-schema`. Callers supply the handler schema because API input accepts a narrower set of templates than what
@@ -618,25 +680,29 @@
    (hydrated-notification-schema handler-schema {:with-id? true}))
   ([handler-schema {:keys [with-id? update-input?] :as opts}]
    (let [entries (into (notification-entries opts)
-                       [;; the hydrated User, echoed back by clients on update; `:creator_id` is what gets read
-                        [:creator       {:optional true} [:maybe ms/Map]]
-                        [:creator_id    {:optional true} [:maybe int?]]
-                        [:payload_id    {:optional true} [:maybe int?]]
-                        [:subscriptions {:optional true} [:sequential [:ref (if with-id?
-                                                                              ::NotificationSubscription
-                                                                              ::CreateNotificationSubscriptionParams)]]]
-                        [:handlers      {:optional true} [:sequential handler-schema]]])
+                       (cond->> [;; the hydrated User, echoed back by clients on update; `:creator_id`, declared by
+                                 [:creator       {:optional true} [:maybe ::EchoedUser]]
+                                 [:subscriptions {:optional true} [:sequential [:ref (if with-id?
+                                                                                       ::NotificationSubscription
+                                                                                       ::CreateNotificationSubscriptionParams)]]]
+                                 [:handlers      {:optional true} [:sequential handler-schema]]]
+                         with-id? (into [[:payload_id              {:optional true} [:maybe int?]]
+                                         [:triggering_subscription {:optional true} [:maybe ::NotificationSubscription]]])))
          entries (cond-> entries
                    update-input? (update-input-entries notification-update-spec))]
      [:merge
-      (into [:map] entries)
+      (into [:map {:closed true}] entries)
       [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
                :dispatch         (comp keyword :payload_type)}
-       [:notification/card [:map [:payload [:ref (cond
-                                                   update-input? ::NotificationCardUpdate
-                                                   with-id?      ::NotificationCard
-                                                   :else         ::CreateNotificationCardParams)]]]]
-       [::mc/default       [:map]]]])))
+       [:notification/card [:map {:closed true}
+                            [:payload [:ref (cond
+                                              update-input? ::NotificationCardUpdate
+                                              with-id?      ::NotificationCard
+                                              :else         ::CreateNotificationCardParams)]]]]
+       [::mc/default       [:map {:closed true}
+                            [:payload {:optional true} [:maybe (if (or update-input? (not with-id?))
+                                                                 ::SystemEventPayload.request
+                                                                 ::SystemEventPayload)]]]]]])))
 
 (mr/def ::FullyHydratedNotification
   "Fully hydrated notification."

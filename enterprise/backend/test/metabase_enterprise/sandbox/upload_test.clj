@@ -11,11 +11,16 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
+(defonce dataset (mt/dataset-definition "sandbox_upload"
+                                        [["venues"
+                                          [{:field-name "name" :base-type :type/Text}]
+                                          [["something"]]]]))
+
 (deftest uploads-disabled-for-sandboxed-user-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
-      (mt/with-temp [:model/Database db {:engine driver/*driver* :details (:details (mt/db))}]
-        (mt/with-db db
+    (mt/dataset dataset
+      (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
+        (mt/with-temp [:model/Database _ {:engine driver/*driver* :details (:details (mt/db))}]
           (testing "If the user is sandboxed, creating a new upload should fail"
             (upload-test/with-uploads-enabled!
               (is (thrown-with-msg?
@@ -36,11 +41,7 @@
   ;; FIXME: Redshift is flaking on `mt/dataset` and I don't know why, so I'm excluding it temporarily
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift)
     (upload-test/with-uploads-enabled!
-      (mt/dataset (mt/dataset-definition
-                   (mt/random-name)
-                   [["venues"
-                     [{:field-name "name" :base-type :type/Text}]
-                     [["something"]]]])
+      (mt/dataset dataset
         (mt/with-temp [:model/Collection collection     {}
                        :model/Database   {db-id :id}    {:engine driver/*driver* :details (:details (mt/db))}
                        :model/Table      {table-id :id} {:db_id     db-id

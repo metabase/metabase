@@ -25,7 +25,7 @@
         (comp (map :id)
               (remove #(= % (collection/trash-collection-id)))
               (filter #(collection/visible-collection-id? % :write)))
-        (collection/descendants-flat collection [:= :archived false])))
+        (collection/descendants-flat collection false)))
 
 (defmulti present-model-items
   "Given a model and a list of items, return the items in the format the API client expects. Note that order does not
@@ -94,9 +94,9 @@
   - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)
   - `sort_column` - the column to sort by (default: name)
   - `sort_direction` - the direction to sort by (default: asc)"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt [:= :root]]]]
-   {:keys [before_date is_recursive sort_column sort_direction]} :- [:map
+   {:keys [before_date is_recursive sort_column sort_direction]} :- [:map {:closed true}
                                                                      [:before_date    {:optional true}  [:maybe :string]]
                                                                      [:is_recursive   {:default false}  :boolean]
                                                                      [:sort_column    {:default :name}  [:enum :name :last_used_at]]

@@ -2,17 +2,30 @@
   "Dynamic goals: goal values in viz settings that reference another entity's value
   (`{:id 1, :type \"card\", :column \"total\"}`) instead of holding a literal number. Single source of
   truth for which settings carry goal values, so deriving the queries to run and substituting their
-  results can never disagree. Mirrors `frontend/src/metabase/visualizations/lib/dynamic-goals.ts`.")
+  results can never disagree. Mirrors `frontend/src/metabase/viz-core/lib/dynamic-goal-settings.ts`.")
 
 (set! *warn-on-reflection* true)
 
 (def ^:private goal-settings
-  "Viz settings that hold goal values: `:scalar` keys hold a single goal value, `:segments` keys hold
+  "Viz settings that hold goal values: `:value` keys hold a single goal value, `:segments` keys hold
   a sequence of segment maps with goal values at `:min`/`:max`."
-  {:graph.goal_value :scalar
-   :progress.goal    :scalar
+  {:graph.goal_value :value
+   :progress.goal    :value
    :gauge.segments   :segments
    :scalar.segments  :segments})
+
+(def ^:private goal-toggles
+  "Goal settings the chart only shows when another setting is on."
+  {:graph.goal_value :graph.show_goal})
+
+(defn- shown-goal-settings
+  "[[goal-settings]] minus the ones this chart doesn't show."
+  [viz-settings]
+  (into {}
+        (remove (fn [[setting _kind]]
+                  (when-let [toggle (goal-toggles setting)]
+                    (not (get viz-settings toggle)))))
+        goal-settings))
 
 (defn goal-source
   "The `{:id N, :type \"card\", :column \"name\"}` reference inside `goal-value`, or nil if it isn't one."
@@ -20,26 +33,38 @@
   (when (and (map? goal-value) (:id goal-value) (:type goal-value) (:column goal-value))
     (select-keys goal-value [:id :type :column])))
 
-(defn goal-values
-  "All non-nil goal values present in `viz-settings`."
-  [viz-settings]
-  (->> goal-settings
+(defn- values-in
+  [viz-settings settings]
+  (->> settings
        (mapcat (fn [[setting kind]]
                  (case kind
-                   :scalar   [(get viz-settings setting)]
+                   :value    [(get viz-settings setting)]
                    :segments (mapcat (juxt :min :max) (get viz-settings setting)))))
        (remove nil?)))
 
-(defn update-goal-values
-  "Rewrite every goal value in `viz-settings` with `f`. Absent settings and nil segment bounds are
-  left untouched."
-  [viz-settings f]
+(defn goal-values
+  "All non-nil goal values present in `viz-settings`."
+  [viz-settings]
+  (values-in viz-settings goal-settings))
+
+(defn shown-goal-values
+  "Like [[goal-values]], minus the goals this chart doesn't show. Nothing renders those, so nothing
+  needs to run the queries behind them. Toggles come from `effective-settings`, which defaults to
+  `viz-settings`: reading one half of a card+dashcard pair has to consult the merge, since either half
+  can flip `graph.show_goal`."
+  ([viz-settings]
+   (shown-goal-values viz-settings viz-settings))
+  ([viz-settings effective-settings]
+   (values-in viz-settings (shown-goal-settings effective-settings))))
+
+(defn- update-values-in
+  [viz-settings settings f]
   (reduce-kv
    (fn [viz setting kind]
      (if (nil? (get viz setting))
        viz
        (case kind
-         :scalar   (update viz setting f)
+         :value    (update viz setting f)
          :segments (update viz setting (fn [segments]
                                          (mapv (fn [segment]
                                                  (cond-> segment
@@ -47,7 +72,13 @@
                                                    (some? (:max segment)) (update :max f)))
                                                segments))))))
    viz-settings
-   goal-settings))
+   settings))
+
+(defn update-goal-values
+  "Rewrite every goal value in `viz-settings` with `f`. Absent settings and nil segment bounds are
+  left untouched."
+  [viz-settings f]
+  (update-values-in viz-settings goal-settings f))
 
 (defn- unresolved!
   [reason {:keys [id type column]}]
@@ -79,7 +110,13 @@
     goal-value))
 
 (defn resolve-dynamic-goals
-  "Substitute every goal value in `viz-settings` with its [[resolve-goal-value]] resolution. No-op
-  when the settings hold no entity references."
-  [viz-settings referenced-entities]
-  (update-goal-values viz-settings #(resolve-goal-value % referenced-entities)))
+  "Substitute every shown goal value in `viz-settings` with its [[resolve-goal-value]] resolution. A goal
+  the chart doesn't show is left as-is, so a failed reference behind it can't break the render. Toggles
+  are read from `effective-settings`, which defaults to `viz-settings`: resolving one half of a
+  card+dashcard pair has to consult the merge, since either half can flip `graph.show_goal`."
+  ([viz-settings referenced-entities]
+   (resolve-dynamic-goals viz-settings referenced-entities viz-settings))
+  ([viz-settings referenced-entities effective-settings]
+   (update-values-in viz-settings
+                     (shown-goal-settings effective-settings)
+                     #(resolve-goal-value % referenced-entities))))

@@ -12,6 +12,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -60,7 +61,7 @@
 
 (def ^:constant trash-collection-type
   "The value of the `:type` field for the Trash collection that holds archived items."
-  "trash")
+  collections.schema/trash-collection-type)
 
 (def ^:constant library-collection-type
   "The value of the `:type` field for library collections."
@@ -562,7 +563,7 @@
       (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
       :else                      (trs "{0}''s Personal Collection" (or first-name last-name email)))))
 
-(mu/defn user->personal-collection-names :- ms/Map
+(mu/defn user->personal-collection-names :- [:map-of ms/PositiveInt :string]
   "Come up with a nice name for the Personal Collection for the passed `user-or-ids`.
   Returns a map of user-id -> name"
   [user-or-ids user-or-site]
@@ -1117,24 +1118,21 @@
    [:ref ::children]])
 
 (mu/defn descendants-flat :- [:sequential CollectionWithLocationAndIDOrRoot]
-  "Return all descendant collections of a `collection`, including children, grandchildren, and so forth."
-  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
-  (or
-   (collections.db/descendant-summaries-where
-    (apply
-     vector
-     :and
-     [:like :location (str (children-location collection) "%")]
-     ;; Only return the Personal Collection belonging to the Current
-     ;; User, regardless of whether we should actually be allowed to see
-     ;; it (e.g., admins have perms for all Collections). This is done
-     ;; to keep the Root Collection View for admins from getting crazily
-     ;; cluttered with Personal Collections belonging to other users
-     [:or
-      [:= :personal_owner_id nil]
-      [:= :personal_owner_id api/*current-user-id*]]
-     additional-honeysql-where-clauses))
-   []))
+  "Return all descendant collections of a `collection`, including children, grandchildren, and so forth. Excludes
+  other users' Personal Collections, regardless of whether we should actually be allowed to see them (e.g. admins
+  have perms for all Collections) -- this is done to keep the Root Collection View for admins from getting crazily
+  cluttered with Personal Collections belonging to other users. `archived?`, if given (true or false), restricts
+  to Collections with that archived status. `visibility-clause`, if given, is
+  a [[visible-collection-filter-clause]] to restrict the descendants further."
+  ([collection :- CollectionWithLocationAndIDOrRoot]
+   (descendants-flat collection nil))
+  ([collection :- CollectionWithLocationAndIDOrRoot, archived? :- [:maybe :boolean]]
+   (descendants-flat collection archived? nil))
+  ([collection        :- CollectionWithLocationAndIDOrRoot
+    archived?         :- [:maybe :boolean]
+    visibility-clause :- [:maybe vector?]]
+   (collections.db/descendant-summaries
+    (children-location collection) api/*current-user-id* archived? visibility-clause)))
 
 (mu/defn descendants-flat-for :- [:sequential CollectionWithLocationAndIDOrRoot]
   "Like [[descendants-flat]], but returns the descendants of *any* of
@@ -1160,10 +1158,10 @@
 
   where each letter represents a Collection, and the arrows represent values of its respective `:children`
   set."
-  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
+  [collection :- CollectionWithLocationAndIDOrRoot]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
-  (let [location->children (group-by :location (apply descendants-flat collection additional-honeysql-where-clauses))
+  (let [location->children (group-by :location (descendants-flat collection))
         ;; Next, build a function to add children to a given `coll`. This function will recursively call itself to add
         ;; children to each child
         add-children       (fn add-children [coll]
@@ -1222,20 +1220,18 @@
                     :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
-  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (collections.db/effective-children-where (apply effective-children-where-clause
-                                                       collection
-                                                       (t2/table-name :model/Collection)
-                                                       default-visibility-config
-                                                       additional-honeysql-where-clauses))))
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  (set (collections.db/effective-children (effective-children-where-clause collection
+                                                                           (t2/table-name :model/Collection)
+                                                                           default-visibility-config))))
 
 (mi/define-simple-hydration-method effective-children
   :effective_children
   "Get the descendant Collections of `collection` that should be presented to the current User as direct children of
   this Collection. See documentation for [[metabase.collections.models.collection/effective-children-query]] for more
   details."
-  [collection & additional-honeysql-where-clauses]
-  (apply effective-children* collection additional-honeysql-where-clauses))
+  [collection]
+  (effective-children* collection))
 
 ;;; -------------------------------------------------- Remote Sync -------------------------------------------------------
 
@@ -2040,26 +2036,8 @@
       [:not= (maybe-alias :namespace) ^:allow-raw-sql [:inline "analytics"]]]
      [:not (maybe-alias :is_sample)]]))
 
-(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
-  (let [not-trash-clause [:or
-                          [:= :type nil]
-                          [:not= :type trash-collection-type]]]
-    (if (seq collection-set)
-      ;; stable filename de-dup suffixes across exports, see GHY-3754
-      (collections.db/collections-for-serdes-reducible
-       [:and
-        (when skip-archived [:not :archived])
-        [:or
-         [:in :id collection-set]
-         (when (some nil? collection-set) [:= :id nil])]
-        not-trash-clause
-        (or where true)])
-      (collections.db/collections-for-serdes-reducible
-       [:and
-        (when skip-archived [:not :archived])
-        [:= :personal_owner_id nil]
-        not-trash-clause
-        (or where true)]))))
+(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set filter-column filter-ids skip-archived]}]
+  (collections.db/collections-for-serdes-reducible collection-set skip-archived filter-column filter-ids))
 
 (defmethod serdes/deserialization-dependencies "Collection"
   [{:keys [parent_id]}]

@@ -190,7 +190,7 @@ GROUP BY
     plan
 ```
 
-The `SELECT` part of the SQl query matches the Metabase expression:
+The `SELECT` part of the SQL query matches the Metabase expression:
 
 ```
 CountIf([Active Subscription] = false)

@@ -1,4 +1,7 @@
 import type { GaugeContainerProps } from "metabase/static-viz/components/Gauge/GaugeContainer";
+import { createMockColumn } from "metabase-types/api/mocks";
+
+const COLS = [createMockColumn({ name: "count", base_type: "type/Integer" })];
 
 export const DEFAULT: Omit<GaugeContainerProps, "getColor"> = {
   card: {
@@ -26,6 +29,7 @@ export const DEFAULT: Omit<GaugeContainerProps, "getColor"> = {
     },
   },
   data: {
+    cols: COLS,
     rows: [[18760]],
   },
 };
@@ -66,6 +70,7 @@ export const WITH_FORMATTING: Omit<GaugeContainerProps, "getColor"> = {
     },
   },
   data: {
+    cols: COLS,
     rows: [[18760]],
   },
 };
@@ -106,6 +111,7 @@ export const TRUNCATED_LABELS: Omit<GaugeContainerProps, "getColor"> = {
     },
   },
   data: {
+    cols: COLS,
     rows: [[18760]],
   },
 };
