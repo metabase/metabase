@@ -4,7 +4,14 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.test :as mt]))
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.test-util :as transforms.tu]
+   [toucan2.core :as t2]))
 
 (deftest compile-transform-contract-test
   (testing "compile-transform should return [sql params] format"
@@ -150,3 +157,66 @@
             (let [sql (first result)]
               (is (re-find #"my_schema" sql) "Schema name should be present")
               (is (re-find #"my_table" sql) "Table name should be present"))))))))
+
+(defn- venues-source-query
+  "Lib query projecting [name, price] from venues -- the source shape both characterization tests
+  use. Non-identity columns only, so SQL Server's `SELECT INTO` doesn't carry an `IDENTITY`
+  property into the target."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/with-fields [(lib.metadata/field mp (mt/id :venues :name))
+                          (lib.metadata/field mp (mt/id :venues :price))]))))
+
+(defn- venues-row-count
+  "Run a Lib `count(*)` over venues through the QP and return the scalar."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count))
+        qp/process-query mt/rows ffirst)))
+
+(defn- warehouse-row-count
+  "Row count read straight off the warehouse, bypassing Metabase sync."
+  [schema table]
+  (let [sql (format "SELECT count(*) AS c FROM %s" (sql.u/quote-name driver/*driver* :table schema table))]
+    (-> (qp/process-query {:database (mt/id) :type :native :native {:query sql}})
+        mt/rows ffirst long)))
+
+(deftest transform-target-name-special-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms-basic}
+      (testing "a target name containing special characters is created and its rows round-trip"
+        (transforms.tu/with-transform-cleanup! [target {:type     :table
+                                                        :schema   (t2/select-one-fn :schema :model/Table (mt/id :venues))
+                                                        :name     "qcq_a\\`b"
+                                                        :database (mt/id)}]
+          (let [expected (venues-row-count)
+                details  {:db-id          (mt/id)
+                          :database       (mt/db)
+                          :transform-type :table
+                          :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
+                          :query          (transforms-base.u/compile-source
+                                           {:source {:type "query" :query (venues-source-query)} :target target} nil)
+                          :output-schema  (:schema target)
+                          :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}]
+            (driver/run-transform! driver/*driver* details {})
+            (is (= expected (warehouse-row-count (:schema target) (:name target))))))))))
+
+(deftest rename-table-special-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :rename)
+    (mt/with-premium-features #{:transforms-basic}
+      ;; the dash is the case a user actually hits: an unquoted identifier silently becomes
+      ;; `rnq_a_b`, so the rename lands on a different table instead of failing
+      (doseq [dst ["rnq_a`b\\" "rnq-a-b"]]
+        (testing (str "renaming a table to " (pr-str dst) " keeps it as a single queryable table")
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :venues))
+                src    (str "rnq_src_" (subs (str (random-uuid)) 0 8))]
+            (try
+              (driver/create-table! driver/*driver* (mt/id) (keyword schema src)
+                                    {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})
+              (driver/rename-table! driver/*driver* (mt/id) (keyword schema src) (keyword schema dst))
+              (is (= 0 (warehouse-row-count schema dst)))
+              (finally
+                (transforms.tu/drop-target! {:type :table :schema schema :name dst})
+                (transforms.tu/drop-target! {:type :table :schema schema :name src})))))))))
