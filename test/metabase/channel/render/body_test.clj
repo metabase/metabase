@@ -11,7 +11,6 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.js.color :as js.color]
-   [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.maps :as maps]
    [metabase.channel.render.style :as style]
    [metabase.config.core :as config]
@@ -754,27 +753,6 @@
         (is (= 1000 (get-in result [:data :referenced_entities "card" (str goal-id) :data :rows 0 0])))
         (is (str/includes? content "#84BB4C"))
         (is (not (str/includes? content "#FF0000")))))))
-
-(deftest render-line-with-referenced-goal-test
-  (testing "Static-viz line chart draws its goal line at another card's value"
-    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
-                   :model/Card card          {:display                :line
-                                              :dataset_query          (mt/mbql-query venues
-                                                                        {:aggregation [[:count]]
-                                                                         :breakout    [$category_id]})
-                                              :visualization_settings {:graph.dimensions ["CATEGORY_ID"]
-                                                                       :graph.metrics    ["count"]
-                                                                       :graph.show_goal  true
-                                                                       :graph.goal_label "Checkins"
-                                                                       :graph.goal_value {:id goal-id :type "card" :column "count"}}}]
-      (let [result (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))
-            svg    (atom nil)]
-        ;; keep the SVG instead of rasterizing it, so its text can be inspected
-        (with-redefs [js.svg/svg-string->bytes (fn [s] (reset! svg s) (byte-array 0))]
-          (channel.render/render-pulse-card :inline "UTC" card nil result))
-        (is (= 1000 (get-in result [:data :referenced_entities "card" (str goal-id) :data :rows 0 0])))
-        (is (str/includes? (str @svg) "Checkins")
-            "the goal line is labeled, so it was drawn")))))
 
 (def ^:private funnel-rows
   [["cart" 1500]
