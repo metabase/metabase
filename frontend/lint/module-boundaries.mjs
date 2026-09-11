@@ -281,13 +281,16 @@ const elements = [
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
   createElement({ type: "shared", name: "documents" }),
-  // The hub's route table and the page that mounts the app-tier theme editor.
+  // The hub's route table and the pages that mount app-tier editors.
   // Must precede feature/embedding-hub: routes.tsx imports admin's permissions
-  // routes (feature) and EmbeddingHubThemeEditorPage imports
-  // EmbeddingThemeEditorApp (app), neither of which a feature module may import.
+  // routes (feature), EmbeddingHubThemeEditorPage imports EmbeddingThemeEditorApp
+  // and EmbeddingHubNewEmbedPage imports SdkIframeEmbedSetupModal (both app),
+  // none of which a feature module may import.
   ...[
     "frontend/src/metabase/embedding-hub/routes.tsx",
     "frontend/src/metabase/embedding-hub/routes.unit.spec.tsx",
+    "frontend/src/metabase/embedding-hub/pages/EmbeddingHubNewEmbedPage.tsx",
+    "frontend/src/metabase/embedding-hub/pages/EmbeddingHubNewEmbedPage.unit.spec.tsx",
     "frontend/src/metabase/embedding-hub/pages/EmbeddingHubThemeEditorPage.tsx",
     "frontend/src/metabase/embedding-hub/pages/EmbeddingHubThemeEditorPage.unit.spec.tsx",
   ].map((pattern) =>

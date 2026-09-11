@@ -44,6 +44,13 @@ const embeddingHubAppearancePage = () =>
     Component: EmbeddingHubAppearancePage,
   }));
 
+const embeddingHubNewEmbedPage = () =>
+  import("./pages/EmbeddingHubNewEmbedPage").then(
+    ({ EmbeddingHubNewEmbedPage }) => ({
+      Component: EmbeddingHubNewEmbedPage,
+    }),
+  );
+
 const embeddingHubThemeEditorPage = () =>
   import("./pages/EmbeddingHubThemeEditorPage").then(
     ({ EmbeddingHubThemeEditorPage }) => ({
@@ -79,6 +86,12 @@ const setupSsoPage = () =>
 export function getEmbeddingHubRoutes() {
   return (
     <Route element={<CanAccessEmbeddingHub />}>
+      {/* Outside the layout: the wizard takes over the window, with no hub nav. */}
+      <Route
+        path={`${Urls.EMBEDDING_HUB_ROOT_PATH}/new`}
+        lazy={embeddingHubNewEmbedPage}
+      />
+
       <Route path={Urls.EMBEDDING_HUB_ROOT_PATH} lazy={embeddingHubLayout}>
         <Route
           index

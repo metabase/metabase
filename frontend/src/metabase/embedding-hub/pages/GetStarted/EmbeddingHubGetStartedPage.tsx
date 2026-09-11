@@ -19,8 +19,8 @@ import {
   PLUGIN_ADMIN_SETTINGS,
   type SdkIframeEmbedSetupModalInitialState,
 } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { getUpgradeUrl, getUrlWithUtm } from "metabase/selectors/settings";
 import {
   Box,
@@ -68,7 +68,7 @@ const UTM_CAMPAIGN = "embedding-hub";
 const UTM_CONTENT = "embedding-hub-get-started-page";
 
 export function EmbeddingHubGetStartedPage() {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { data: completedSteps } = useCompletedSetupGuideSteps();
   const { setOpenedModal, modals } = useSetupGuideModals({
     returnTo: Urls.embeddingHubGetStarted(),
@@ -76,9 +76,9 @@ export function EmbeddingHubGetStartedPage() {
 
   const openEmbedModal = useCallback(
     (initialState: SdkIframeEmbedSetupModalInitialState) => {
-      dispatch(setOpenModalWithProps({ id: "embed", props: { initialState } }));
+      navigate(Urls.embeddingHubNewEmbed(initialState));
     },
-    [dispatch],
+    [navigate],
   );
 
   // The hub is the only place that renders the setup guide on OSS, so each step
