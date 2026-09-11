@@ -147,17 +147,15 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "nlq-fallback matches embedding_next's general search; curated nlq swaps that for the library tool"
+  (testing "fullscreen NLQ adds inline display and curated NLQ also offers library discovery"
     (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
           embedding  (tool-names (profiles/get-profile :embedding_next))
           fallback   (tool-names (profiles/get-profile :nlq-fallback))
           ;; force the curated nlq (no redirect) — get-profile :nlq otherwise falls back when the index can't answer
           curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
                        (tool-names (profiles/get-profile :nlq)))]
-      ;; the fallback profile is embedding_next's discovery surface (general `search`)
-      (is (= fallback embedding))
-      ;; the curated profile is the same set with retrieve_library_entities in place of `search`
-      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities"))))))
+      (is (= fallback (conj embedding "show_entity")))
+      (is (= curated (conj fallback "retrieve_library_entities")))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "ungated tools are available with empty capabilities"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]
@@ -167,13 +165,14 @@
 (deftest nlq-data-discovery-fallback-test
   (testing "the :nlq profile always keeps a data-discovery tool, swapping by index availability"
     (binding [scope/*current-user-scope* api-scope/unrestricted]
-      (testing "entity retrieval AVAILABLE -> curated library tool, no general-search fallback"
+      (testing "entity retrieval AVAILABLE -> curated library tool plus existing-content search"
         (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
           (let [tools (profiles/get-tools-for-profile :nlq [])]
             (is (contains? tools "retrieve_library_entities")
                 "the curated library tool is offered when the index can serve queries")
-            (is (not (contains? tools "search"))
-                "the general-search fallback is filtered out when the library is available")
+            (is (contains? tools "search")
+                "saved content can be found even when library discovery is available")
+            (is (contains? tools "show_entity"))
             (is (contains? tools "construct_notebook_query")))))
       (testing "entity retrieval UNAVAILABLE -> general-search fallback, no curated library tool"
         (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
@@ -182,6 +181,7 @@
                 "the curated library tool is gated out when the index can't serve queries")
             (is (contains? tools "search")
                 "the general-search fallback keeps the agent from having zero discovery tools")
+            (is (contains? tools "show_entity"))
             (is (contains? tools "construct_notebook_query"))))))))
 
 (deftest transform-feature-capabilities-test

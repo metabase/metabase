@@ -529,9 +529,13 @@ export const sendAgentRequest = createAsyncThunk<
                   setConversationTitle({ conversationId, title: part.data }),
                 );
               })
-              .with({ type: "data-todo_list" }, (part) => {
-                pushDataPart({ type: "data_part", part });
-              })
+              .with(
+                { type: "data-todo_list" },
+                { type: "data-shown_entity" },
+                (part) => {
+                  pushDataPart({ type: "data_part", part });
+                },
+              )
               .with({ type: "data-research_plan_update" }, (part) => {
                 pushDataPart({ type: "data_part", part });
               })

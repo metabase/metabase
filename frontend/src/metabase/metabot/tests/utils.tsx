@@ -367,6 +367,7 @@ export function setup(
     conversationTitle?: string | null;
     withRouter?: boolean;
     initialRoute?: string;
+    routePath?: string;
   } | void,
 ) {
   mockReducedMotion(); // induce reduced motion to avoid waiting for streaming to finish
@@ -388,6 +389,7 @@ export function setup(
     conversationTitle = "Test Conversation Title",
     withRouter = false,
     initialRoute,
+    routePath,
   } = options || {};
 
   const metabotState =
@@ -416,7 +418,7 @@ export function setup(
   const content =
     withRouter && initialRoute ? (
       <Route
-        path={initialRoute}
+        path={routePath ?? initialRoute}
         element={<MetabotProvider>{ui}</MetabotProvider>}
       />
     ) : (

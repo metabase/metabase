@@ -635,7 +635,8 @@
            :scope      scope/agent-search
            :title-fn   search-display}
   nlq-search-tool
-  "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
+  "Find NLQ-queryable data sources by topic, or existing content to show or save into.
+  Specify entity_types to include dashboards or documents; defaults to tables, models, metrics, and questions."
   [{:keys [entity_types] :as args} :- nlq-search-schema]
   (let [allowed-types (sorted-set "dashboard" "document" "metric" "model" "question" "table")
         args          (cond-> args
