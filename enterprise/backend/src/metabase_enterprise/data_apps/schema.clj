@@ -20,7 +20,11 @@
    [:enabled         :boolean]
    [:created_at      ms/TemporalInstant]
    [:updated_at      ms/TemporalInstant]
-   [:description     [:maybe :string]]])
+   [:description     [:maybe :string]]
+   [:resource_collection_id [:maybe ms/PositiveInt]]
+   [:permission_group_id    [:maybe ms/PositiveInt]]
+   [:table_ids              [:sequential ms/PositiveInt]]
+   [:draft                  :boolean]])
 
 (mr/def ::data-app.update
   "What an update (or insert) of a DataApp accepts: every column of `:data_app` except `id`, all optional."
@@ -37,4 +41,8 @@
    [:enabled         {:optional true} [:maybe :boolean]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:description     {:optional true} [:maybe :string]]])
+   [:description     {:optional true} [:maybe :string]]
+   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:permission_group_id    {:optional true} [:maybe ms/PositiveInt]]
+   [:table_ids              {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+   [:draft                  {:optional true} [:maybe :boolean]]])
