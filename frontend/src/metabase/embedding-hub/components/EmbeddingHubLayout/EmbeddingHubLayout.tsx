@@ -63,7 +63,7 @@ export function EmbeddingHubLayout() {
     },
     {
       label: t`Permissions`,
-      icon: "key",
+      icon: "eye",
       to: Urls.embeddingHubPermissions(),
       fullWidth: true,
     },
@@ -88,11 +88,15 @@ export function EmbeddingHubLayout() {
   ];
 
   const currentTab = tabs.find((tab) => isTabSelected(tab, pathname));
-  // The theme editor needs the whole area for its side-by-side editor/preview
-  // panels, unlike the rest of the Appearance tab, which caps at 800px.
+  // The theme editor takes over the window -- no nav, no app switcher -- so its
+  // side-by-side editor and preview panels get the whole screen.
   const isThemeEditor = pathname.startsWith(
     `${Urls.embeddingHubAppearance()}/theme/`,
   );
+
+  if (isThemeEditor) {
+    return <Outlet />;
+  }
 
   const upperNav = (
     <Stack component="nav" gap="0.75rem" aria-label={t`Embedding hub`}>
@@ -134,9 +138,7 @@ export function EmbeddingHubLayout() {
     >
       <EmbeddingHubContent
         fullWidth={
-          (currentTab?.fullWidth ?? false) ||
-          isThemeEditor ||
-          (currentTab?.isGated ?? false)
+          (currentTab?.fullWidth ?? false) || (currentTab?.isGated ?? false)
         }
       >
         <Outlet />
