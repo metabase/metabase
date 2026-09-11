@@ -587,7 +587,6 @@
 
 (deftest ^:parallel render-resolves-dynamic-goal-on-dashcard-test
   (testing "a card ref in the dashcard's own viz settings is substituted too"
-    ;; rendering a dashcard looks up its series in the app DB, so the dashcard has to exist there
     (mt/with-temp [:model/Card          card      {:name                   "bar with dynamic goal"
                                                    :display                :bar
                                                    :visualization_settings {:graph.dimensions ["x"]
