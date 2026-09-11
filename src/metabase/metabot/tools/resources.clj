@@ -72,6 +72,7 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.query-export :as query-export]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
@@ -582,6 +583,7 @@
 
 (defn- fetch-transform [id-str]
   {:structured-output (-> (transforms/get-transform (parse-long id-str))
+                          query-export/transform-with-exportable-source
                           (assoc :result-type :entity :type :transform))})
 
 (defn- fetch-transform-sources [id-str]
@@ -734,10 +736,10 @@
   is routine presentation and stays quiet."
   [query-id query]
   (let [audited? (contains? (shared/current-client-ids) query-id)]
-    (when-let [[gated mp] (shared.content-store/query-for-export query audited?)]
-      (llm-shape/export-query-for-llm gated mp (if audited?
-                                                 shared.content-store/audited-store
-                                                 shared.content-store/default-store)))))
+    (when-let [{checked :query mp :mp} (shared.content-store/query-for-export query audited?)]
+      (llm-shape/export-gated-query-for-llm checked mp (if audited?
+                                                         shared.content-store/audited-store
+                                                         shared.content-store/default-store)))))
 
 (defn- fetch-conversation-query
   "Present a query stored in this conversation's agent state (created by tools or pasted
