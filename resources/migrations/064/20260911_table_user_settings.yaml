@@ -45,7 +45,7 @@ databaseChangeLog:
               - column:
                   remarks: User-set display_name for the Table
                   name: display_name
-                  type: varchar(254)
+                  type: varchar(256)
               - column:
                   remarks: User-set description for the Table
                   name: description
@@ -246,7 +246,8 @@ databaseChangeLog:
                  caveats, caveats_set, points_of_interest, points_of_interest_set,
                  owner_email, owner_user_id,
                  visibility_type, visibility_type_set, data_layer, data_layer_set,
-                 data_authority, field_order, show_in_getting_started, is_published, collection_id)
+                 data_authority, field_order, show_in_getting_started, is_published, collection_id,
+                 created_at, updated_at)
               SELECT
                 t.id,
                 t.display_name,
@@ -267,9 +268,26 @@ databaseChangeLog:
                 CASE WHEN t.field_order <> 'database' THEN t.field_order END,
                 CASE WHEN t.show_in_getting_started = TRUE THEN t.show_in_getting_started END,
                 CASE WHEN t.is_published = TRUE THEN t.is_published END,
-                CASE WHEN t.is_published = TRUE THEN t.collection_id END
+                CASE WHEN t.is_published = TRUE THEN t.collection_id END,
+                t.created_at,
+                t.updated_at
               FROM metabase_table t
               WHERE t.active = TRUE
                 AND NOT EXISTS (SELECT 1 FROM metabase_database d WHERE d.id = t.db_id AND d.is_audit = TRUE)
                 AND NOT EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = t.id)
       rollback: # not necessary; the table is dropped by the rollback of v64.2026-09-11T00:00:00
+
+  ## owner_email and owner_user_id have no `_set` flag, because sync never writes either and so a NULL in the
+  ## settings row can only mean "the user set nothing". That only holds once the values live in one place: leaving
+  ## the originals in metabase_table would let COALESCE resurrect them the moment a user cleared the setting.
+  - changeSet:
+      id: v64.2026-09-11T00:00:06
+      author: ranquild
+      comment: Clear the owner columns the backfill moved into metabase_table_user_settings
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET owner_email = NULL, owner_user_id = NULL
+              WHERE EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = metabase_table.id)
+      rollback: # not necessary; the values are preserved in metabase_table_user_settings

@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.table
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
@@ -96,23 +97,27 @@
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
 
-(def ^:private transform-data-authority
+(def transform-data-authority
+  "Transform for a `data_authority` column. NULL passes through: the column is NOT NULL on `metabase_table`, but
+  nullable in `metabase_table_user_settings`, where NULL means the user set nothing."
   {:out (fn [value]
-          (let [kw (some-> value keyword)]
-            (if (contains? writable-data-authority-types kw)
-              kw
-              (do (log/warnf "Unknown data_authority value from database: %s, converting to :unknown" value)
-                  :unknown))))
+          (when (some? value)
+            (let [kw (keyword value)]
+              (if (contains? writable-data-authority-types kw)
+                kw
+                (do (log/warnf "Unknown data_authority value from database: %s, converting to :unknown" value)
+                    :unknown)))))
    :in  (fn [value]
-          (let [kw (some-> value keyword)]
-            (when-not (contains? writable-data-authority-types kw)
-              (throw (ex-info (str "Illegal value for data_authority: " kw)
-                              {:field       :data_authority
-                               :value       value
-                               :status-code 400}))))
-          (some-> value name))})
+          (when (some? value)
+            (let [kw (keyword value)]
+              (when-not (contains? writable-data-authority-types kw)
+                (throw (ex-info (str "Illegal value for data_authority: " kw)
+                                {:field       :data_authority
+                                 :value       value
+                                 :status-code 400})))
+              (name kw))))})
 
-(def ^:private legacy-data-layer->current
+(def legacy-data-layer->current
   "Map old medallion data_layer values to current values.
    Used to handle values from pre-v59 databases or serialization exports."
   {:copper :hidden
@@ -143,9 +148,19 @@
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
    :data_authority          transform-data-authority})
 
-(methodical/defmethod t2/model-for-automagic-hydration [:default :table]
-  [_original-model _k]
-  :model/Table)
+(mi/define-batched-hydration-method with-table
+  :table
+  "Hydrate the Table of each of `instances` from its `table_id`.
+
+  Batched rather than automagic because automagic hydration selects the model's own row, which shows what sync wrote:
+  `mi/can-read?`/`can-query?` read `is_published` and `collection_id` off the hydrated Table to decide access through
+  a published collection, and those are user values."
+  [instances]
+  (let [table-ids (into #{} (keep :table_id) instances)
+        id->table (when (seq table-ids)
+                    (m/index-by :id (warehouse-schema.db/tables table-ids)))]
+    (for [instance instances]
+      (m/assoc-some instance :table (get id->table (:table_id instance))))))
 
 (t2/define-after-select :model/Table
   [table]
@@ -620,7 +635,7 @@
 (search.spec/define-spec "table"
   {:model        :model/Table
    ;; read the values users see, not the ones sync wrote: both live in `metabase_table_user_settings`
-   :source       (warehouse-schema-overlay/table-query {:alias :this})
+   :source       #(warehouse-schema-overlay/table-query {:alias :this})
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived        false

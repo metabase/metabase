@@ -420,12 +420,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
-(mu/defn update-table!
-  "Apply `changes` to the ::warehouse-schema.schema/table with `table-id`, returning the number updated."
-  [table-id :- ::lib.schema.id/table
-   changes  :- (mut/select-keys ::warehouse-schema.schema/table.update [:field_order])]
-  (t2/update! :model/Table table-id changes))
-
 (mu/defn unarchived-segments-for-tables
   "The unarchived Segments of the Tables with `table-ids`, ordered by name."
   [table-ids :- [:set ::lib.schema.id/table]]
@@ -459,9 +453,17 @@
   (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))
 
 (mu/defn table-names-reducible
-  "A reducible of the id, name, and display name of every ::warehouse-schema.schema/table."
+  "A reducible of the id, name, and display name of every ::warehouse-schema.schema/table, plus whether the user set
+  a display name of their own (`:user_display_name_set`) and what it is (`:user_display_name`)."
   []
-  (t2/reducible-select [:model/Table :id :name :display_name] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/reducible-query
+   ;; sync's display name and the user's side by side, so humanization can tell them apart. Unlike a Field's, a
+   ;; Table's display_name has a `_set` flag, and that -- not a non-NULL value -- is what says the user chose it.
+   {:select    [:t.id :t.name :t.display_name
+                [:u.display_name :user_display_name]
+                [[:= :u.display_name_set true] :user_display_name_set]]
+    :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
+    :left-join [[(t2/table-name :model/TableUserSettings) :u] [:= :u.table_id :t.id]]}))
 
 (mu/defn set-table-display-name!
   "Set the display name of the ::warehouse-schema.schema/table with `id`, returning the number updated."

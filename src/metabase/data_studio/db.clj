@@ -3,12 +3,10 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
 (def ^:private TableSelectors
@@ -98,12 +96,6 @@
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn update-tables!
-  "Apply `changes` to the Tables with `table-ids`, returning the number updated."
-  [table-ids :- [:set ::lib.schema.id/table]
-   changes   :- (mut/select-keys ::warehouse-schema.schema/table.update [:data_authority :data_source :data_layer :entity_type :owner_email :owner_user_id])]
-  (t2/update! :model/Table [:in table-ids] changes))
 
 (mu/defn selection-columns-for-selectors
   "Up to `limit` id, database, name, schema, and published flag of the Tables picked out by `selectors`."

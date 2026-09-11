@@ -17,12 +17,20 @@
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
 (t2/deftransforms :model/TableUserSettings
+  ;; the enum-validating transforms are the Table's own: a user value ends up on a Table when read, so a value the
+  ;; Table would have rejected must be rejected here too -- stored, it would make every later read of that Table throw
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
    :field_order     mi/transform-keyword
-   :data_layer      mi/transform-keyword
-   :data_source     mi/transform-keyword
-   :data_authority  mi/transform-keyword})
+   :data_layer      (mi/transform-validator-with-fixes
+                     mi/transform-keyword
+                     (partial mi/assert-optional-enum table/data-layers)
+                     (some-fn table/legacy-data-layer->current identity))
+   :data_source     (mi/transform-validator-with-fixes
+                     mi/transform-keyword
+                     (partial mi/assert-optional-enum table/data-sources)
+                     (some-fn keyword identity))
+   :data_authority  table/transform-data-authority})
 
 (doto :model/TableUserSettings
   (derive :metabase/model)
@@ -38,15 +46,21 @@
   step through its own update path, which user values no longer take), and publishing means `is_published` and
   `collection_id` together."
   [settings table]
-  (cond-> settings
-    (and (contains? settings :visibility_type) (not (contains? settings :data_layer)))
-    (assoc :data_layer (table/visibility-type->data-layer (some-> (:visibility_type settings) keyword)))
+  (let [changing? (fn [k] (and (contains? settings k)
+                               ;; only a real change derives the other half. A caller resending the value it already
+                               ;; has must not silently rewrite its partner: `visibility_type` reads nil for several
+                               ;; data layers, so echoing that nil back would demote the table to :internal.
+                               (not= (some-> (get settings k) keyword)
+                                     (some-> (get table k) keyword))))]
+    (cond-> settings
+      (and (changing? :visibility_type) (not (contains? settings :data_layer)))
+      (assoc :data_layer (table/visibility-type->data-layer (some-> (:visibility_type settings) keyword)))
 
-    (and (contains? settings :data_layer) (not (contains? settings :visibility_type)))
-    (assoc :visibility_type (table/data-layer->visibility-type (some-> (:data_layer settings) keyword)))
+      (and (changing? :data_layer) (not (contains? settings :visibility_type)))
+      (assoc :visibility_type (table/data-layer->visibility-type (some-> (:data_layer settings) keyword)))
 
-    (and (contains? settings :collection_id) (not (contains? settings :is_published)))
-    (assoc :is_published (boolean (:is_published table)))))
+      (and (contains? settings :collection_id) (not (contains? settings :is_published)))
+      (assoc :is_published (boolean (:is_published table))))))
 
 (defn- settings-flags
   "The `_set` flags to write alongside `settings`, one for each column in it that has one."

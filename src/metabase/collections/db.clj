@@ -493,9 +493,18 @@
 
 (mu/defn unpublish-tables-in-collections!
   "Unpublish the Tables in the Collections with `collection-ids` and detach them from their ::collections.schema/collection, returning
-  the number updated."
+  the number updated.
+
+  Both rows are cleared. The user settings row is what anything reads, and its `collection_id` FK is
+  `ON DELETE SET NULL`, so leaving it would republish the Tables into the root collection once the Collection is
+  deleted. `metabase_table` still has to be cleared too: its own `collection_id` FK blocks the delete."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (t2/update! :model/Table {:collection_id [:in collection-ids]} {:collection_id nil, :is_published false}))
+  (let [table-ids (published-table-ids-in-collections collection-ids)]
+    (when (seq table-ids)
+      (t2/update! :model/TableUserSettings :table_id [:in table-ids]
+                  {:collection_id nil, :is_published false}))
+    (t2/update! :model/Table {:collection_id [:in collection-ids]}
+                {:collection_id nil, :is_published false})))
 
 (mu/defn dashboard-ids-with-cards
   "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` holding an unarchived dashboard question."

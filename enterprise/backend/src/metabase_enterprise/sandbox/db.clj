@@ -61,7 +61,9 @@
   (t2/select :model/Sandbox
              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
               :from   [[:sandboxes :s]]
-              :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]
+              ;; only db_id/schema are read, neither user-settable; see permissions sql.clj's `table-source`
+              :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
+                       [:= :s.table_id :t.id]]
               :where  [:and
                        (when group-id [:= :s.group_id group-id])
                        (when group-ids [:in :s.group_id group-ids])
@@ -80,7 +82,8 @@
                 [:table.db_id :db_id]
                 [:table.schema :schema]]
     :from      [[:sandboxes]]
-    :left-join [(warehouse-schema-overlay/table-query {:alias :table})
+    ;; only db_id/schema are read, neither user-settable; see permissions sql.clj's `table-source`
+    :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
                 [:= :sandboxes.table_id :table.id]]
     :where     [:and
                 [:in :sandboxes.group_id group-ids]

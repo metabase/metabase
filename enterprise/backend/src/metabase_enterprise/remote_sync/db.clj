@@ -135,11 +135,18 @@
   (t2/select-one model :id id))
 
 (mu/defn instance-with-columns
-  "The `columns` of the instance of `model` with `id`, or nil."
+  "The `columns` of the instance of `model` with `id`, or nil.
+
+  A Table is read through the user-settings overlay: remote sync tracks a Table's `collection_id`, which is a user
+  value, and the model here is a runtime argument the `table-or-field-query` linter cannot see."
   [model   :- :keyword
    columns :- [:sequential :keyword]
    id      :- ms/PositiveInt]
-  (t2/select-one (into [model] columns) :id id))
+  (t2/select-one (into [model] columns)
+                 :id id
+                 (if (= model :model/Table)
+                   {:from [(warehouse-schema-overlay/table-query)]}
+                   {})))
 
 (mu/defn instance-names
   "The `:id` and `:name` of the instances of `model` with `ids`."
@@ -246,11 +253,6 @@
                      [:= :t.name table_name]]
               (and has-field? field_name)
               (conj [:= :f.name field_name]))))))
-
-(mu/defn table
-  "The Table with `table-id` as users see it, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables-at-paths
   "The `:id`, `:name`, and `:collection_id` rows of the Tables at `paths` (`{:db_name :schema :table_name}`)."
