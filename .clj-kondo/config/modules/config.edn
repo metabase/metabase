@@ -719,8 +719,7 @@
   custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase.custom-viz-plugin.core}
-   :uses #{premium-features}
-   :friends #{enterprise/custom-viz-plugin}}
+   :uses #{premium-features}}
 
   dashboards
   {:team "UX West"
