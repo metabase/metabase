@@ -9,6 +9,7 @@ import {
   EMBEDDING_SDK_CONFIG,
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
 } from "metabase/embedding-sdk/config";
+import { enterSdkMode } from "metabase/embedding-sdk/lib/enter-sdk-mode";
 import { reinitialize } from "metabase/plugins";
 import { getTooltipBaseOption } from "metabase/viz-core";
 
@@ -104,6 +105,7 @@ describe("SDK visualization reset lifecycle", () => {
     portal.remove();
 
     reinitialize();
+    enterSdkMode();
     const appTooltip = getTooltipBaseOption({ current: null }).appendTo();
     expect(appTooltip.parentElement).toBe(document.body);
     appTooltip.remove();
