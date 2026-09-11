@@ -230,7 +230,7 @@
              (when-not (prime-pool! pool' prime-timeout-ms)
                (log/warnf "%s pool still unresponsive after rebuild; startup continuing (see #81440)"
                           (get pool-props "dataSourceName")))
-             pool'))))))
+             pool')))))))
 
 (def ^:private default-quartz-max-pool-size 5)
 
