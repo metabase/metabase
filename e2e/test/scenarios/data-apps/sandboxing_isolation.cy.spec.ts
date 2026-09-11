@@ -123,22 +123,22 @@ describe("scenarios > data apps > sandbox isolation", () => {
   });
 
   it("keeps a createHTMLDocument iframe adopted into the realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-adopt-html-doc-iframe");
   });
 
   it("keeps a createHTMLDocument iframe imported into the realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-import-html-doc-iframe");
   });
 
   it("keeps a createDocument iframe adopted into the realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-xml-doc-iframe");
   });
 
   it("keeps a template owner-document iframe adopted into the realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-template-doc-iframe");
   });
 
@@ -148,27 +148,27 @@ describe("scenarios > data apps > sandbox isolation", () => {
   });
 
   it("keeps an Error.prepareStackTrace realm reference gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-stack-trace-realm");
   });
 
   it("keeps window.parent within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-window-parent");
   });
 
   it("keeps window.top within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-window-top");
   });
 
   it("keeps window.frameElement's owner realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-frame-element");
   });
 
   it("keeps window.parent.parent within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-chain");
   });
 
@@ -198,12 +198,12 @@ describe("scenarios > data apps > sandbox isolation", () => {
   });
 
   it("keeps indexed window.frames access gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-window-frames");
   });
 
   it("keeps window.opener's realm gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-window-opener");
   });
 
@@ -233,7 +233,7 @@ describe("scenarios > data apps > sandbox isolation", () => {
   });
 
   it("keeps a host iframe's realm gated", () => {
-    setUp();
+    setup();
 
     // A srcless (about:blank) iframe is same-origin, so its `contentWindow` is a
     // live realm with an un-gated `fetch` — the same capability html2canvas's
