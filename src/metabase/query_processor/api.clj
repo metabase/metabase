@@ -118,7 +118,7 @@
    request]
   (run-streaming-query
    (-> query
-       (dissoc :cache-strategy)
+       (dissoc :cache-strategy :referenced-entities)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)
    :referenced-entities-specs (request-referenced-entities request)))
