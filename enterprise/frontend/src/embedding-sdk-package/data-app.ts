@@ -14,6 +14,8 @@ export { DataAppRouter } from "./components/public/DataAppRouter";
 export { DataAppLink } from "./components/public/DataAppLink";
 export { copy } from "./lib/public/copy";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
+export { defineQuery } from "./hooks/public/use-metabase-query/define-query";
+export { defineAction } from "./hooks/public/use-action/define-action";
 export {
   aggregations,
   breakout,
@@ -25,11 +27,12 @@ export {
 export type {
   LocalFieldReference,
   MetabaseBreakout,
+  MetabaseDynamicColumn,
+  MetabaseDynamicQuery,
   MetabaseOrderBy,
   MetabaseQueryOptions,
   MetabaseQueryObject,
   OrderByDirection,
-  QuestionColumnReference,
   UseMetabaseQueryObjectResult,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
