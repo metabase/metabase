@@ -277,6 +277,16 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :card_schema] :id [:in card-ids]))
 
+(mu/defn table-user-settings-recorded?
+  "Whether the Table with `table-id` has TableUserSettings recording something -- the same thing git sync exports; a
+  row whose values are all NULL and whose flags are all false is not a user edit."
+  [table-id :- ::lib.schema.id/table]
+  (t2/exists? :model/TableUserSettings
+              {:from  [[(t2/table-name :model/TableUserSettings) :u]]
+               :where [:and
+                       [:= :u.table_id table-id]
+                       (warehouse-schema-overlay/table-user-settings-recorded-clause :u)]}))
+
 (mu/defn field-user-settings-exist?
   "Whether the Field with `field-id` has FieldUserSettings."
   [field-id :- ::lib.schema.id/field]

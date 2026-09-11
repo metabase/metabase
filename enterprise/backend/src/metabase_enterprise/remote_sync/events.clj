@@ -244,7 +244,7 @@
 
 ;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
 
-(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field)]
+(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field :model/Table)]
   (register-events-for-spec! model-spec))
 
 ;;; ----------------------------------------- Collection Event Handler -------------------------------------------------
@@ -324,3 +324,41 @@
       (create-or-update-remote-sync-object-entry!
        "FieldUserSettings" field-id "removed"
        (fn [id] (spec/hydrate-model-details field-spec id))))))
+
+;;; ----------------------------------------- TableUserSettings Tracking -----------------------------------------------
+;; A Table's user settings are what git sync stores for it, and they have no event of their own; they piggyback on the
+;; Table's, the way FieldUserSettings piggybacks on :event/field-update.
+;;
+;; One combined handler rather than a second primary method on the same events: a second one would silently displace
+;; the generic registration, and that is what cascades a publish or unpublish down to the Table's Segments and
+;; Measures. So :model/Table is left out of the generic registration above, and registered here with the same event
+;; hierarchy it would otherwise have had.
+
+(def ^:private table-spec (get spec/remote-sync-specs :model/Table))
+
+(defn- handle-table-event!
+  [topic {:keys [object] :as event}]
+  (handle-model-event-from-spec table-spec topic event)
+  (let [table-id  (:id object)
+        eligible? (spec/check-eligibility table-spec object)]
+    (cond
+      (and eligible? (remote-sync.db/table-user-settings-recorded? table-id))
+      (create-or-update-remote-sync-object-entry!
+       "TableUserSettings" table-id "update"
+       (fn [id] (spec/hydrate-model-details table-spec id)))
+
+      (and (not eligible?)
+           (remote-sync.db/rso-exists? "TableUserSettings" table-id))
+      (create-or-update-remote-sync-object-entry!
+       "TableUserSettings" table-id "removed"
+       (fn [id] (spec/hydrate-model-details table-spec id))))))
+
+(let [event-kws (spec/event-keywords table-spec)
+      parent-kw (:parent event-kws)]
+  (events/derive! parent-kw :metabase/event)
+  (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
+    (events/derive! event-kw parent-kw))
+  (methodical/add-primary-method!
+   #'events/publish-event!
+   parent-kw
+   (fn [topic event] (handle-table-event! topic event))))

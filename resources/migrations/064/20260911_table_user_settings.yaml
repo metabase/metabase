@@ -212,8 +212,13 @@ databaseChangeLog:
             constraintName: fk_table_user_settings_owner_user_id
             onDelete: SET NULL
 
-  ## Backfill, best effort: an active Table's metadata is treated as the user's wherever it cannot be
+  ## Backfill, best effort: a published Table's metadata is treated as the user's wherever it cannot be
   ## attributed to sync, so an existing instance keeps showing what it shows today.
+  ##
+  ## Only published Tables: those are the ones git sync carries, and a settings row for every active Table
+  ## would have it write a file per Table -- most of them recording nothing a user ever did. An unpublished
+  ## Table needs no row: with none, every column falls through to metabase_table, which is what it shows
+  ## today, and the first user edit creates the row.
   ##
   ## Copied and marked set: display_name (the humanization strategy is env-configurable, so there is
   ## no default to compare against) and the purely user-authored caveats, points_of_interest,
@@ -237,7 +242,7 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-09-11T00:00:05
       author: ranquild
-      comment: Backfill metabase_table_user_settings for active tables
+      comment: Backfill metabase_table_user_settings for active published tables
       changes:
         - sql:
             sql: >-
@@ -273,6 +278,7 @@ databaseChangeLog:
                 t.updated_at
               FROM metabase_table t
               WHERE t.active = TRUE
+                AND t.is_published = TRUE
                 AND NOT EXISTS (SELECT 1 FROM metabase_database d WHERE d.id = t.db_id AND d.is_audit = TRUE)
                 AND NOT EXISTS (SELECT 1 FROM metabase_table_user_settings s WHERE s.table_id = t.id)
       rollback: # not necessary; the table is dropped by the rollback of v64.2026-09-11T00:00:00
