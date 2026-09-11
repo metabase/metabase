@@ -39,7 +39,7 @@ databaseChangeLog:
               - column:
                   name: finding_type
                   type: varchar(32)
-                  remarks: stale/duplicated/empty/crowded/sparse/slow/trash-not-emptied
+                  remarks: stale/duplicate_name/empty/crowded/sparse/slow/trash-not-emptied (duplicate_name ships to clients as the legacy name `duplicated`)
                   constraints:
                     nullable: false
               - column:

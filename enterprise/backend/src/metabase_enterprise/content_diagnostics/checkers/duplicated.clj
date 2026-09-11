@@ -1,7 +1,7 @@
 (ns metabase-enterprise.content-diagnostics.checkers.duplicated
   "The `duplicated` Content Diagnostics checker - match mode `name`: two or more non-archived entities of
   the same type whose normalized names are equal and non-blank form a duplicate cluster. Every member of
-  a cluster of size k gets one `:duplicated` finding whose peers are the other k-1 members, with
+  a cluster of size k gets one `:duplicate_name` finding whose peers are the other k-1 members, with
   `:duplicate-count` = the peer count (→ the native `duplicate_count` column).
 
   `details` carries `normalized_name` (the normalized name the cluster collided on) and
@@ -61,7 +61,7 @@
   (cd.db/name-rows :model/Collection nil common/eligible-collection-where))
 
 (defn- cluster-findings
-  "One `:duplicated` finding per member of a name cluster; peers are the other members (symmetric: in
+  "One `:duplicate_name` finding per member of a name cluster; peers are the other members (symmetric: in
   {A,B,C}, A's finding lists {B,C}, B's {A,C}, C's {A,B})."
   [entity-type normalized-name rows]
   (let [ids (mapv :id rows)]
@@ -69,7 +69,7 @@
           :let [peer-ids (filterv #(not= % id) ids)]]
       {:entity-type     entity-type
        :entity-id       id
-       :finding-type    :duplicated
+       :finding-type    :duplicate_name
        :duplicate-count (count peer-ids)
        :details         {:normalized_name      normalized-name
                          :duplicate_entity_ids peer-ids}})))
@@ -85,7 +85,7 @@
     finding))
 
 (defn checker
-  "Instance-wide `:duplicated` finding maps across all covered entity types. The denormalized display
+  "Instance-wide `:duplicate_name` finding maps across all covered entity types. The denormalized display
   attrs are stamped by `common/attach-entity-attrs`; `:duration-ms`/`:last-active-at` are left unset
   (those columns stay NULL on duplicated findings)."
   []
