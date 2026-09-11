@@ -7,10 +7,12 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.users.models.user :as user]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -57,6 +59,31 @@
    [:ip_address         [:maybe :string]]
    [:device_id          [:maybe :string]]
    [:current            :boolean]])
+
+(mr/def ::RevokeByCriteriaParams
+  [:merge
+   ::FilterParams
+   [:map {:closed true}
+    ;; in a JSON body `ids` arrives as a real array, so it needs none of the single-value coercion a query string does
+    [:ids             {:optional true} [:sequential :string]]
+    [:exclude-current {:default true}  :boolean]]])
+
+(mr/def ::RevokeByCriteriaResult
+  [:map {:closed true}
+   [:revoked   ms/IntGreaterThanOrEqualToZero]
+   [:remaining ms/IntGreaterThanOrEqualToZero]
+   [:user_ids  [:sequential ms/PositiveInt]]])
+
+(mr/def ::RevokeByCriteriaResponse
+  ;; the second alternative is what a caller who revoked their own session gets: the same result inside a Ring
+  ;; response that clears their session cookie, exactly as `DELETE /api/session` does on logout. That is a transport
+  ;; detail, so `:openapi/response-schema` documents the result alone rather than both alternatives.
+  [:or {:openapi/response-schema ::RevokeByCriteriaResult}
+   ::RevokeByCriteriaResult
+   [:map {:closed true}
+    [:status  [:= 200]]
+    [:body    ::RevokeByCriteriaResult]
+    [:cookies [:map-of :string :map]]]])
 
 (mr/def ::SessionsResponse
   [:map {:closed true}
@@ -145,6 +172,60 @@
                                         (or sort-direction :desc)
                                         limit offset
                                         authed-session-key-hash))}))
+
+(defn- record-revocation!
+  "Write the audit trail for a revoke by criteria: one `:event/sessions-revoked` summary row for the whole call, plus
+  one `:event/session-revoked` row per affected user, tied back to the summary by the criteria they share. Never
+  throws."
+  [criteria revoked remaining user-ids]
+  ;; published outside any transaction, and failures are swallowed after logging: the sessions are already gone by
+  ;; the time this runs, and an audit problem must not report otherwise to the caller
+  (try
+    (events/publish-event! :event/sessions-revoked
+                           {:user-id api/*current-user-id*
+                            :details {:criteria criteria, :count revoked, :remaining remaining}})
+    (doseq [[user-id revoked-for-user] (frequencies user-ids)]
+      (events/publish-event! :event/session-revoked
+                             ;; `:model`/`:model-id` explicitly, and as the keyword, for the same reason as in the
+                             ;; by-id endpoint above
+                             {:user-id  api/*current-user-id*
+                              :model    :model/User
+                              :model-id user-id
+                              :details  {:criteria criteria, :count revoked-for-user}}))
+    (catch Throwable e
+      (log/warn e "Error recording a session revocation in the audit log"))))
+
+(api.macros/defendpoint :post "/revoke" :- ::RevokeByCriteriaResponse
+  "Revoke — delete — every live session matching the given criteria, which are the filters the list endpoint takes.
+  All of them have to hold, so a revoke removes exactly the sessions the same filters would have listed. An empty
+  body matches every live session: that is how an admin logs everybody out.
+
+  `exclude-current` (default true) holds back the session this request was made with. Pass false to log the caller
+  out too, in which case the response also clears their session cookie.
+
+  Sessions that are no longer live are left for the nightly cleanup task rather than revoked, and sessions belonging
+  to MCP clients are never matched. Affected users are not notified.
+
+  Returns how many sessions were `revoked`, how many live sessions still match the criteria afterwards (`remaining`,
+  non-zero only when a login raced the revoke), and the `user_ids` whose sessions were revoked. Superuser only."
+  [_route-params
+   _query-params
+   body :- [:maybe ::RevokeByCriteriaParams]
+   {current-hash :metabase/authed-session-key-hash, :as _request}]
+  (api/check-superuser)
+  (let [criteria         (dissoc (or body {}) :exclude-current)
+        exclude-current? (get body :exclude-current true)
+        liveness         (session/liveness-params)
+        filters          (params->filters criteria)
+        {:keys [revoked user-ids current-revoked?]}
+        (sm.db/revoke-live-sessions! liveness filters current-hash exclude-current?)]
+    (log/infof "User %s revoked %d session(s) matching %s" api/*current-user-id* revoked (pr-str criteria))
+    (let [remaining (sm.db/revocable-session-count liveness filters current-hash exclude-current?)
+          response  {:revoked revoked, :remaining remaining, :user_ids (vec (distinct user-ids))}]
+      (record-revocation! criteria revoked remaining user-ids)
+      (if current-revoked?
+        (request/clear-session-cookie response)
+        response))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/session-management` routes."
