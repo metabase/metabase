@@ -49,6 +49,19 @@ describe("resolveGoalValue", () => {
     expect(goalValue).toEqual({ value: 42 });
   });
 
+  it.each([
+    ["there are no rows", []],
+    ["the cell is null", [[10, null]]],
+    ["the cell is not a number", [[10, "x"]]],
+  ])("errors for a self-column reference when %s", (_name, rows) => {
+    const data = createMockDatasetData({ cols, rows });
+
+    expect(resolveGoalValue(data, "goal")).toEqual({
+      value: null,
+      error: { column: "goal", reason: "not-a-number" },
+    });
+  });
+
   it("errors for a self-column reference that does not exist", () => {
     const data = createMockDatasetData({ cols, rows });
     const goalValue = resolveGoalValue(data, "missing");
