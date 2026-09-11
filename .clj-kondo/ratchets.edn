@@ -32,7 +32,7 @@
                   :metabase/validate-defendpoint-has-response-schema                   427
                   :metabase/validate-defendpoint-query-params-use-kebab-case           48
                   :metabase/validate-defendpoint-route-uses-kebab-case                 44
-                  :metabase/validate-deftest                                           10
+                  :metabase/validate-deftest                                           9
                   :missing-docstring                                                   12
                   :missing-protocol-method                                             3
                   :non-arg-vec-return-type-hint                                        1
