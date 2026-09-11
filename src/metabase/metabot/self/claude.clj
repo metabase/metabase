@@ -438,7 +438,6 @@
   [model]
   (some? (model-thinking-config model)))
 
-
 (defn streams-reasoning?
   "Registry capability. Anthropic answers from the model name: thinking is requested in the request body."
   [{:keys [model]}]
@@ -454,7 +453,6 @@
   [model ai-proxy?]
   (and (not ai-proxy?)
        (contains? fast-mode-models (strip-vendor-prefix model))))
-
 
 (defn supports-fast-mode?
   "Registry capability. Fast mode depends on the model and on whether the call is proxied."

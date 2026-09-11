@@ -288,7 +288,6 @@
   [model]
   (not (model-supports-temperature? model)))
 
-
 (defn streams-reasoning?
   "Registry capability. OpenAI answers from the model name."
   [{:keys [model]}]

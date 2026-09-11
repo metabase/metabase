@@ -65,7 +65,12 @@
     :ai-proxy?        - whether the Metabase Cloud AI proxy can serve this provider. Anthropic only, which
                         the managed connection's own fixed catalog independently agrees with.
     :reasoning?       - resolved model ref -> whether it streams its reasoning back to us.
-    :fast-mode?       - resolved model ref -> whether it can be served in Anthropic fast mode."
+    :fast-mode?       - resolved model ref -> whether it can be served in Anthropic fast mode.
+
+  The two capability fns take the whole resolved ref rather than a model string because they do not all
+  answer from the model: vLLM answers from what its connect-time probe recorded on the *connection*, and
+  fast mode depends on whether the call is proxied. The adapters that do answer from the model name keep a
+  small fn of their own so the table holds one shape rather than a per-provider argument list."
   {"anthropic"  {:stream           #'claude/claude
                  :list-models      #'claude/list-models
                  :supported-models #'claude/supported-models
@@ -148,16 +153,21 @@
   [provider :- [:maybe ProviderType]]
   (contains? adapters provider))
 
+(mu/defn- model-capability :- :boolean
+  "Whether the provider behind `model-ref` answers yes to `capability` for that model. A ref that resolves
+  to no provider is a nil answer rather than a mistake, so this asks [[registered?]] first."
+  [model-ref  :- [:maybe :string]
+   capability :- Capability]
+  (let [{:keys [type] :as resolved} (llm.provider/resolve-model-ref model-ref)]
+    (boolean (when-let [capable? (and (registered? type) (optional type capability))]
+               (capable? resolved)))))
+
 (mu/defn streams-reasoning? :- :boolean
   "Whether a model reference names a model that streams its reasoning back to us."
   [model-ref :- [:maybe :string]]
-  (let [{:keys [type] :as resolved} (llm.provider/resolve-model-ref model-ref)]
-    (boolean (when-let [capable? (and (registered? type) (optional type :reasoning?))]
-               (capable? resolved)))))
+  (model-capability model-ref :reasoning?))
 
 (mu/defn supports-fast-mode? :- :boolean
   "Whether a model reference names a model we can serve in Anthropic fast mode."
   [model-ref :- [:maybe :string]]
-  (let [{:keys [type] :as resolved} (llm.provider/resolve-model-ref model-ref)]
-    (boolean (when-let [capable? (and (registered? type) (optional type :fast-mode?))]
-               (capable? resolved)))))
+  (model-capability model-ref :fast-mode?))

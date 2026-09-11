@@ -264,7 +264,8 @@
    {:keys [path body headers request span-attrs wrap on-error error-msg]
     :or   {wrap identity}}                           :- StreamOpts]
   (let [msg-count  (count input)
-        tool-count (count tools)]
+        tool-count (count tools)
+        res->msg   (or error-msg (:error-msg p))]
     (log/debug (str display-name " request") {:model model :msg-count msg-count :tools tool-count})
     (with-span :info (merge {:name       span
                              :model      model
@@ -288,8 +289,8 @@
                                    :url      path
                                    :request  body})
             wrap
-            (core/reducible-with-api-errors slug (or error-msg (:error-msg p))))
+            (core/reducible-with-api-errors slug res->msg))
         (catch Exception e
           (if on-error
             (on-error e)
-            (rethrow! p e)))))))
+            (core/rethrow-api-error! slug res->msg e)))))))

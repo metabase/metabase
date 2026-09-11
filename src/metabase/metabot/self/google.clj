@@ -328,7 +328,6 @@
     :google    (stream-generate-content/reasoning-model? (model-id model))
     false))
 
-
 (defn streams-reasoning?
   "Registry capability. Google answers from the model name, per wire family."
   [{:keys [model]}]
@@ -418,7 +417,7 @@
         location (:location credentials)
         known?   (conj multi-region-locations global-location)]
     (core/rethrow-api-error!
-     "google"
+     (:slug provider)
      (google-res->msg credentials)
      (if (and location
               (= 404 (:status data))
@@ -444,13 +443,12 @@
   credential, the project, the location, and the model all resolve.
 
   https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/projects.locations.publishers.models/countTokens"
-  [credentials ai-proxy? model]
+  [credentials model]
   (adapter/request! provider {:method      :post
                               :path        (str (model-resource-path credentials model) ":countTokens")
                               :headers     {"Content-Type" "application/json"}
                               :body        (json/encode count-tokens-probe-body)
-                              :credentials credentials
-                              :ai-proxy?   ai-proxy?}))
+                              :credentials credentials}))
 
 (defn- anthropic-error-body?
   "Whether an error `body` shape matches an Anthropic error rather than Google's.
@@ -479,14 +477,13 @@
   Unlike [[metabase.metabot.self.azure/validate-anthropic-surface!]], the status code alone cannot settle it. Google
   rejects a model that the location does not serve with a `400 FAILED_PRECONDITION` of its own — the same status
   Anthropic uses for the validation error that means the model *is* servable."
-  [credentials ai-proxy? model]
+  [credentials model]
   (try
     (adapter/request! provider {:method      :post
                                 :path        (str (model-resource-path credentials model) raw-predict-method)
                                 :headers     {"Content-Type" "application/json"}
                                 :body        "{}"
-                                :credentials credentials
-                                :ai-proxy?   ai-proxy?})
+                                :credentials credentials})
     (catch Exception e
       (let [{:keys [status body]} (ex-data e)]
         (when-not (and (= 400 status) (anthropic-error-body? body))
@@ -494,10 +491,10 @@
 
 (defn- validate-model!
   "Validates `model` against the surface that serves it, and discards the response."
-  [credentials ai-proxy? model]
+  [credentials model]
   (case (model->family model)
-    :anthropic (validate-anthropic-surface! credentials ai-proxy? model)
-    :google    (validate-google-surface! credentials ai-proxy? model))
+    :anthropic (validate-anthropic-surface! credentials model)
+    :google    (validate-google-surface! credentials model))
   nil)
 
 (defn list-models
@@ -516,7 +513,7 @@
    (if-let [model (or (not-empty model) (not-empty proposed-model))]
      (do
        (try
-         (validate-model! (resolve-credentials credentials) ai-proxy? model)
+         (validate-model! (resolve-credentials credentials) model)
          (catch Exception e
            (rethrow-google-api-error! credentials e)))
        (cond-> {:models []}
@@ -535,7 +532,8 @@
   (let [family (model->family model)
         ;; resolved before the request is composed: the project and the location are URL segments, so the path
         ;; cannot be built until the credentials are
-        creds  (resolve-credentials credentials)
+        creds    (resolve-credentials credentials)
+        res->msg (google-res->msg creds)
         opts   (assoc opts :model model :credentials creds)]
     (adapter/stream! provider opts
                      {:path       (str (model-resource-path creds model)
@@ -546,7 +544,7 @@
                                     :anthropic (raw-predict/request-body (model-id model) opts)
                                     :google    (stream-generate-content/request-body opts))
                       :span-attrs {:family family}
-                      :error-msg  (google-res->msg creds)
+                      :error-msg  res->msg
                       :on-error   #(rethrow-google-api-error! creds %)})))
 
 (defn google
