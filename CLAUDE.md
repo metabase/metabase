@@ -100,9 +100,9 @@ Module names form a tree: `lib.schema` is a child of `lib`. When OSS module `sea
 
 ### Module boundary ratchets
 
-`:module-counts` in `.clj-kondo/ratchets.edn` budgets three escape hatches: modules with `:api :any`,
-modules with `:uses :any`, and individual `:friends` grants. `./bin/mage kondo-ratchets` fails when a count
-exceeds its budget. Reduce the boundary debt, or raise the budget and explain why in the PR.
+`:module-counts` in `.clj-kondo/ratchets.edn` budgets four escape hatches: modules with `:api :any`,
+`:uses :any`, or `:model-imports :bypass`, and individual `:friends` grants. `./bin/mage kondo-ratchets` fails
+when a count exceeds its budget. Reduce the boundary debt, or raise the budget and explain why in the PR.
 
 Do not lower these budgets in feature PRs; the post-merge shrink workflow described below records reductions.
 

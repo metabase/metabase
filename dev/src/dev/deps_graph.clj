@@ -1012,7 +1012,7 @@
   - `:api-any-namespaces`  namespaces exposed by `:api :any` modules
   - `:module-count`        configured modules
   - `:scc-module-sizes`    modules per cycle, largest first
-  - `:scc-namespace-sizes` namespaces per cycle, largest first
+  - `:scc-namespace-sizes` namespaces per cycle, in the same order
 
   These values are not ratcheted because any source change can move them. Use namespace sizes to track
   cycle reduction: splitting a module can grow a cycle's module count without removing namespaces."

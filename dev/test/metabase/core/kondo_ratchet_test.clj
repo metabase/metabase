@@ -171,10 +171,10 @@
 ;;;; ---------------------------------------------------------------------------
 
 (deftest ^:parallel module-escape-hatches-test
-  (is (= {:api-any 1, :friend-edges 3, :uses-any 1}
+  (is (= {:api-any 1, :friend-edges 3, :model-imports-bypass 1, :uses-any 1}
          (kondo-ratchet/module-escape-hatches
-          {'a {:api :any, :friends #{'b 'c}, :uses #{'b}}
-           'b {:api #{'b.api}, :friends #{'a}, :uses :any}}))))
+          {'a {:api :any, :friends #{'b 'c}, :uses #{'b}, :model-imports :bypass}
+           'b {:api #{'b.api}, :friends #{'a}, :uses :any, :model-imports #{:model/A}}}))))
 
 (deftest ^:parallel render-test
   (testing "renders stable text with sorted entries and module counts last"

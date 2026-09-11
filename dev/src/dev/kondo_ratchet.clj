@@ -108,20 +108,20 @@
 (defn module-escape-hatches
   "Count the module config's escape hatches.
 
-  - `:api-any`      modules that expose every namespace
-  - `:friend-edges` individual `:friends` grants
-  - `:uses-any`     modules that may depend on any module"
+  - `:api-any`              modules that expose every namespace
+  - `:friend-edges`         individual `:friends` grants
+  - `:model-imports-bypass` modules exempt from model-boundary checks
+  - `:uses-any`             modules that may depend on any module"
   ([]
    (-> (edn/read-string (slurp module-config-file))
        :metabase/modules
-       ;; connection-pool comes from a library, not a repository module.
-       (dissoc 'connection-pool)
        module-escape-hatches))
   ([config]
    (let [values (vals config)]
-     {:api-any      (count (filter #(= :any (:api %)) values))
-      :friend-edges (transduce (map (comp count :friends)) + 0 values)
-      :uses-any     (count (filter #(= :any (:uses %)) values))})))
+     {:api-any              (count (filter #(= :any (:api %)) values))
+      :friend-edges         (transduce (map (comp count :friends)) + 0 values)
+      :model-imports-bypass (count (filter #(= :bypass (:model-imports %)) values))
+      :uses-any             (count (filter #(= :any (:uses %)) values))})))
 
 (def ^:private deps-file
   "deps.edn")

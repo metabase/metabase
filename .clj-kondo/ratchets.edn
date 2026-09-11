@@ -80,6 +80,7 @@
                    :metabase/validate-defendpoint-has-response-schema
                    :metabase/validate-defendpoint-query-params-use-kebab-case
                    :metabase/validate-defendpoint-route-uses-kebab-case}
- :module-counts  {:api-any      1
-                  :friend-edges 28
-                  :uses-any     4}}
+ :module-counts  {:api-any              1
+                  :friend-edges         28
+                  :model-imports-bypass 2
+                  :uses-any             4}}
