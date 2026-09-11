@@ -38,7 +38,19 @@
       form)))
 
 (def ^:private empty-policies
-  {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
+  {:ignore-counts {}, :config-counts {}, :module-counts {}, :comment-exempt #{}})
+
+(defn- validate-budgets!
+  "Throw unless `budgets`, the value of `field`, maps names to non-negative integers."
+  [field budgets]
+  (when-not (map? budgets)
+    (throw (ex-info (str field " must be a map of budgets")
+                    {field budgets})))
+  (doseq [[k budget] budgets]
+    (when-not (nat-int? budget)
+      (throw (ex-info (format "%s in %s has invalid budget %s; expected a non-negative integer"
+                              k field (pr-str budget))
+                      {:field field, :name k, :budget budget})))))
 
 (defn validate-policies
   "Validate and return `ratchets`:
@@ -60,23 +72,8 @@
         (throw (ex-info (format "%s has invalid policy %s; expected a non-negative integer or :unlimited"
                                 linter (pr-str policy))
                         {:linter linter, :policy policy}))))
-    (when-not (map? config-counts)
-      (throw (ex-info ":config-counts must be a map of linter budgets"
-                      {:config-counts config-counts})))
-    (doseq [[linter budget] config-counts]
-      (when-not (and (integer? budget) (not (neg? budget)))
-        (throw (ex-info (format "%s has invalid config budget %s; expected a non-negative integer"
-                                linter (pr-str budget))
-                        {:linter linter, :budget budget}))))
-    (when (contains? ratchets :module-counts)
-      (when-not (map? module-counts)
-        (throw (ex-info ":module-counts must be a map of module-boundary budgets"
-                        {:module-counts module-counts})))
-      (doseq [[metric budget] module-counts]
-        (when-not (and (integer? budget) (not (neg? budget)))
-          (throw (ex-info (format "%s has invalid module-boundary budget %s; expected a non-negative integer"
-                                  metric (pr-str budget))
-                          {:metric metric, :budget budget})))))
+    (validate-budgets! :config-counts config-counts)
+    (validate-budgets! :module-counts module-counts)
     (when-not (set? comment-exempt)
       (throw (ex-info ":comment-exempt must be a set of linters"
                       {:comment-exempt comment-exempt})))
@@ -88,8 +85,8 @@
     ratchets))
 
 (defn read-ratchets
-  "Read and validate [[*ratchets-file*]]. Omitted kondo fields default to empty; omitted `:module-counts`
-  disables the module check. Only `{:disabled true}` disables all enforcement."
+  "Read and validate [[*ratchets-file*]], defaulting omitted fields to empty.
+  Only `{:disabled true}` disables enforcement."
   []
   (let [file (io/file *ratchets-file*)]
     (when-not (.exists file)
@@ -104,7 +101,7 @@
   ([ratchets]
    (true? (:disabled ratchets))))
 
-(defn module-counts
+(defn module-escape-hatches
   "Count the module config's escape hatches.
 
   - `:api-any`      modules that expose every namespace
@@ -115,7 +112,7 @@
        :metabase/modules
        ;; connection-pool comes from a library, not a repository module.
        (dissoc 'connection-pool)
-       module-counts))
+       module-escape-hatches))
   ([config]
    (let [values (vals config)]
      {:api-any      (count (filter #(= :any (:api %)) values))
@@ -600,8 +597,8 @@
            "}"))))
 
 (defn render
-  "Canonical ratchet-file text. Renders optional `:module-counts` last to minimize its initial diff."
-  [{:keys [ignore-counts config-counts module-counts comment-exempt] :as ratchets}]
+  "Canonical ratchet-file text, with `:module-counts` last."
+  [{:keys [ignore-counts config-counts module-counts comment-exempt]}]
   (let [counts-indent (apply str (repeat (count "{:ignore-counts  {") \space))
         exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))]
     (str header
@@ -614,8 +611,7 @@
                 (str/join (str "\n" exempt-indent)
                           (sort-by str comment-exempt))
                 "}"))
-         (when (contains? ratchets :module-counts)
-           (str "\n :module-counts  " (render-counts module-counts counts-indent)))
+         "\n :module-counts  " (render-counts module-counts counts-indent)
          "}\n")))
 
 (def ^:private absent
@@ -682,26 +678,24 @@
 (defn merge-ratchets
   "Three-way merge `base`, `ours`, and `theirs`, validating every stage first.
   A disabled target stays disabled; a disabled incoming stage leaves `ours` unchanged. Otherwise merge
-  count maps with [[merge-counts]] and exemptions with [[merge-exemptions]]. Omit `:module-counts` when
-  every stage omits it."
+  count maps with [[merge-counts]] and exemptions with [[merge-exemptions]]."
   [base ours theirs]
   (let [[base ours theirs] (map validate-merge-shape [base ours theirs])]
     (cond
       (disabled? ours)   {:disabled true}
       (disabled? theirs) ours
-      :else              (cond-> {:ignore-counts  (merge-counts (:ignore-counts base {})
-                                                                (:ignore-counts ours {})
-                                                                (:ignore-counts theirs {}))
-                                  :config-counts  (merge-counts (:config-counts base {})
-                                                                (:config-counts ours {})
-                                                                (:config-counts theirs {}))
-                                  :comment-exempt (merge-exemptions (:comment-exempt base #{})
-                                                                    (:comment-exempt ours #{})
-                                                                    (:comment-exempt theirs #{}))}
-                           (some #(contains? % :module-counts) [base ours theirs])
-                           (assoc :module-counts (merge-counts (:module-counts base {})
-                                                               (:module-counts ours {})
-                                                               (:module-counts theirs {})))))))
+      :else              {:ignore-counts  (merge-counts (:ignore-counts base {})
+                                                        (:ignore-counts ours {})
+                                                        (:ignore-counts theirs {}))
+                          :config-counts  (merge-counts (:config-counts base {})
+                                                        (:config-counts ours {})
+                                                        (:config-counts theirs {}))
+                          :module-counts  (merge-counts (:module-counts base {})
+                                                        (:module-counts ours {})
+                                                        (:module-counts theirs {}))
+                          :comment-exempt (merge-exemptions (:comment-exempt base #{})
+                                                            (:comment-exempt ours #{})
+                                                            (:comment-exempt theirs #{}))})))
 
 (defn lowered-counts
   "Lower bounded budgets to their actual counts and drop zeros. Keep `:unlimited` policies unchanged.
@@ -783,8 +777,10 @@
                                       linter recorded actual)))
      (for [[metric {:keys [recorded actual]}] (count-drift module-counts module-actual)]
        (cond
+         (zero? actual)      (format "dropped module %s (no escape hatches left)" metric)
          (< actual recorded) (format "lowered module %s %d -> %d" metric recorded actual)
-         :else               (format "WARNING: module %s is over budget (%d recorded, %d actual) -- reduce the boundary debt or raise the budget by hand"
+         :else               (format (str "WARNING: module %s is over budget (%d recorded, %d actual)"
+                                          " -- remove one from " module-config-file " or raise the budget by hand")
                                      metric recorded actual)))
      (some-> (stale-exemptions-warning comment-exempt occurrences) vector))))
 
@@ -870,10 +866,7 @@
   ([]
    (fix! nil))
   ([{:keys [seed]}]
-   (let [{:keys [ignore-counts config-counts comment-exempt]
-          module-budgets :module-counts
-          :as ratchets} (read-ratchets)
-         module-ratchets? (contains? ratchets :module-counts)]
+   (let [{:keys [ignore-counts config-counts module-counts comment-exempt] :as ratchets} (read-ratchets)]
      (if (disabled? ratchets)
        (println (str *ratchets-file* " is disabled -- nothing to do"))
        (let [known         (known-linters)
@@ -883,13 +876,11 @@
              occurrences   (scan)
              actual        (actual-counts occurrences)
              config-actual (config-suppressions)
-             module-actual (when module-ratchets? (module-counts))
-             updated       (cond-> {:ignore-counts  (lowered-counts ignore-counts actual seeded)
+             module-actual (module-escape-hatches)
+             text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
                                     :config-counts  (lowered-counts config-counts config-actual [])
-                                    :comment-exempt comment-exempt}
-                             module-ratchets?
-                             (assoc :module-counts (lowered-counts module-budgets module-actual [])))
-             text          (render updated)
+                                    :module-counts  (lowered-counts module-counts module-actual [])
+                                    :comment-exempt comment-exempt})
              old           (slurp *ratchets-file*)]
          (run! println (change-report ratchets occurrences config-actual module-actual seeded))
          (if (= old text)
@@ -902,27 +893,27 @@
   Lower counts are valid; post-merge automation records them."
   [{:keys [ignore-counts config-counts module-counts comment-exempt] :or {comment-exempt #{}} :as ratchets}
    occurrences config-actual module-actual text]
-  (let [over         (over-budget ignore-counts occurrences)
-        config-over  (counts-over-budget config-counts config-actual)
-        module-over  (when (contains? ratchets :module-counts)
-                       (counts-over-budget module-counts module-actual))
-        uncommented  (unjustified comment-exempt occurrences)
-        ratchet-line (fn [[name {:keys [recorded actual]}]]
-                       (format "  %s: %d recorded, %d actual" name recorded actual))]
+  (let [over        (over-budget ignore-counts occurrences)
+        config-over (counts-over-budget config-counts config-actual)
+        module-over (counts-over-budget module-counts module-actual)
+        uncommented (unjustified comment-exempt occurrences)
+        budget-line (fn [[k {:keys [recorded actual]}]]
+                      (format "  %s: %d recorded, %d actual" k recorded actual))]
     (concat
      (when (seq over)
        (cons (str "over budget -- remove an ignore, or seed the budget with"
                   " `./bin/mage kondo-ratchets-shrink --seed <linter>` and explain the increase in the PR:")
              (mapcat (fn [[_ {:keys [examples]} :as entry]]
-                       (cons (ratchet-line entry) (map #(str "    " %) examples)))
+                       (cons (budget-line entry) (map #(str "    " %) examples)))
                      over)))
      (when (seq config-over)
        (cons (str "config suppressions over budget -- remove the entry from " kondo-config-file
                   ", or raise the budget manually and explain the increase in the PR:")
-             (map ratchet-line config-over)))
+             (map budget-line config-over)))
      (when (seq module-over)
-       (cons "module boundaries over budget -- reduce the boundary debt, or raise the budget manually and explain the increase in the PR:"
-             (map ratchet-line module-over)))
+       (cons (str "module escape hatches over budget -- remove one from " module-config-file
+                  ", or raise the budget manually and explain the increase in the PR:")
+             (map budget-line module-over)))
      (when (seq uncommented)
        (cons (str "ignores without required comments -- add a `;;` comment above the form or at the end"
                   " of the same line, explaining why the suppression is necessary:")
@@ -959,11 +950,7 @@
           (do
             (validate-linters! ratchets (known-linters))
             (let [occurrences (scan)
-                  lines       (check-report ratchets
-                                            occurrences
-                                            (config-suppressions)
-                                            (when (contains? ratchets :module-counts)
-                                              (module-counts))
+                  lines       (check-report ratchets occurrences (config-suppressions) (module-escape-hatches)
                                             (slurp *ratchets-file*))]
               (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts occurrences)) println)
               (some-> (stale-exemptions-warning (:comment-exempt ratchets) occurrences) println)

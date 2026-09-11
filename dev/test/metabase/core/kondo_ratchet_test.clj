@@ -168,9 +168,9 @@
 ;;;; Budget bookkeeping unit tests
 ;;;; ---------------------------------------------------------------------------
 
-(deftest ^:parallel module-counts-test
+(deftest ^:parallel module-escape-hatches-test
   (is (= {:api-any 1, :friend-edges 3, :uses-any 1}
-         (kondo-ratchet/module-counts
+         (kondo-ratchet/module-escape-hatches
           {'a {:api :any, :friends #{'b 'c}, :uses #{'b}}
            'b {:api #{'b.api}, :friends #{'a}, :uses :any}}))))
 
@@ -197,7 +197,7 @@
       (is (= ratchets (edn/read-string text)))
       (is (= text (kondo-ratchet/render (edn/read-string text))))))
   (testing "empty ratchets"
-    (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :module-counts {}, :comment-exempt #{}})
+    (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
                         "{:ignore-counts  {}\n :config-counts  {}\n :comment-exempt #{}\n :module-counts  {}}\n"))))
 
 (deftest read-ratchets-policy-values-test
@@ -206,6 +206,7 @@
     (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
       (is (= {:ignore-counts  {:bounded 4, :free :unlimited}
               :config-counts  {}
+              :module-counts  {}
               :comment-exempt #{}}
              (kondo-ratchet/read-ratchets))))))
 
@@ -309,15 +310,20 @@
         "unused numeric budgets and unlimited policies do not fail the check")))
 
 (deftest ^:synchronized fix-when-disabled-test
-  (testing "fix! explains that the ratchets are disabled and leaves the file unchanged"
+  (testing "fix! explains that the ratchets are disabled, counts nothing, and leaves the file unchanged"
     (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
                             "kondo-ratchet-test"
                             (make-array java.nio.file.attribute.FileAttribute 0)))
           budgets (doto (io/file dir "ratchets.edn") (spit "{:disabled true}\n"))]
       (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
         (is (kondo-ratchet/disabled?))
-        (is (= (str (.getPath budgets) " is disabled -- nothing to do\n")
-               (with-out-str (kondo-ratchet/fix! {:seed "whatever"}))))
+        (mt/with-dynamic-fn-redefs
+          [kondo-ratchet/known-linters         #(throw (AssertionError. "read the known linters"))
+           kondo-ratchet/scan                  #(throw (AssertionError. "scanned the source tree"))
+           kondo-ratchet/config-suppressions   #(throw (AssertionError. "counted config suppressions"))
+           kondo-ratchet/module-escape-hatches #(throw (AssertionError. "counted module escape hatches"))]
+          (is (= (str (.getPath budgets) " is disabled -- nothing to do\n")
+                 (with-out-str (kondo-ratchet/fix! {:seed "whatever"})))))
         (is (= "{:disabled true}\n" (slurp budgets)))))))
 
 (deftest ^:synchronized seed-unlimited-linter-test
@@ -329,14 +335,16 @@
         occurrences [{:file "f.clj", :line 1, :linters [:free]}
                      {:file "f.clj", :line 2, :linters [:free]}]]
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/known-linters       (constantly #{:free})
-                    kondo-ratchet/scan                (constantly occurrences)
-                    kondo-ratchet/config-suppressions (constantly {})]
+      (with-redefs [kondo-ratchet/known-linters         (constantly #{:free})
+                    kondo-ratchet/scan                  (constantly occurrences)
+                    kondo-ratchet/config-suppressions   (constantly {})
+                    kondo-ratchet/module-escape-hatches (constantly {})]
         (is (= ["seeded :free at 2"
                 (str "wrote " (.getPath budgets))]
                (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed "free"}))))))
       (is (= {:ignore-counts  {:free 2}
               :config-counts  {}
+              :module-counts  {}
               :comment-exempt #{}}
              (kondo-ratchet/read-ratchets))))))
 
@@ -366,9 +374,10 @@
         occurrences [{:file "f.clj", :line 1, :linters [:free]}]
         run!        #(str/split-lines (with-out-str (kondo-ratchet/fix!)))]
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/known-linters       (constantly #{:free :empty :gone :zero})
-                    kondo-ratchet/scan                (constantly occurrences)
-                    kondo-ratchet/config-suppressions (constantly {})]
+      (with-redefs [kondo-ratchet/known-linters         (constantly #{:free :empty :gone :zero})
+                    kondo-ratchet/scan                  (constantly occurrences)
+                    kondo-ratchet/config-suppressions   (constantly {})
+                    kondo-ratchet/module-escape-hatches (constantly {})]
         (is (= ["dropped :gone (no ignores left)"
                 "dropped :zero (no ignores left)"
                 "WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
@@ -378,6 +387,7 @@
             "bounded zeros go; decision policies stay and are reported when no longer needed")
         (is (= {:ignore-counts  {:free :unlimited, :empty :unlimited}
                 :config-counts  {}
+                :module-counts  {}
                 :comment-exempt #{:empty}}
                (kondo-ratchet/read-ratchets)))
         (is (= ["WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
@@ -396,13 +406,13 @@
                   :comment-exempt #{}}
         budgets  (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))]
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/known-linters       (constantly #{})
-                    kondo-ratchet/scan                (constantly [])
-                    kondo-ratchet/config-suppressions (constantly {})
-                    kondo-ratchet/module-counts       (constantly {:api-any 1, :friend-edges 4, :uses-any 0})]
+      (with-redefs [kondo-ratchet/known-linters         (constantly #{})
+                    kondo-ratchet/scan                  (constantly [])
+                    kondo-ratchet/config-suppressions   (constantly {})
+                    kondo-ratchet/module-escape-hatches (constantly {:api-any 1, :friend-edges 4, :uses-any 0})]
         (is (= ["lowered module :api-any 2 -> 1"
                 "lowered module :friend-edges 5 -> 4"
-                "lowered module :uses-any 1 -> 0"
+                "dropped module :uses-any (no escape hatches left)"
                 (str "wrote " (.getPath budgets))]
                (str/split-lines (with-out-str (kondo-ratchet/fix!)))))
         (is (= {:ignore-counts  {}
@@ -626,6 +636,7 @@
   (testing "with no base stage, each policy is a one-sided addition and shared linters take the stricter"
     (is (= {:ignore-counts  {:ours 2, :shared 3, :theirs 3}
             :config-counts  {}
+            :module-counts  {}
             :comment-exempt #{:ours :theirs}}
            (kondo-ratchet/merge-ratchets
             {}
@@ -642,6 +653,7 @@
   (testing "exemptions merge independently of the same linter's count policy"
     (is (= {:ignore-counts  {:a 3}
             :config-counts  {}
+            :module-counts  {}
             :comment-exempt #{:a}}
            (kondo-ratchet/merge-ratchets
             {:ignore-counts {:a 5}, :comment-exempt #{}}
@@ -664,6 +676,7 @@
                              :new           2
                              :new-unlimited :unlimited}
             :config-counts  {}
+            :module-counts  {}
             :comment-exempt #{}}
            merged
            (edn/read-string (kondo-ratchet/render merged)))
@@ -730,7 +743,7 @@
             "lowered config :cfg-lower 4 -> 2"
             "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
             "lowered module :api-any 2 -> 1"
-            "WARNING: module :uses-any is over budget (1 recorded, 2 actual) -- reduce the boundary debt or raise the budget by hand"
+            "WARNING: module :uses-any is over budget (1 recorded, 2 actual) -- remove one from .clj-kondo/config/modules/config.edn or raise the budget by hand"
             "WARNING: :comment-exempt is no longer needed for these linters: :polite -- delete the stale entries by hand"]
            (kondo-ratchet/change-report {:ignore-counts  {:empty  :unlimited
                                                           :free   :unlimited

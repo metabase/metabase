@@ -4,7 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [dev.kondo-ratchet :as kondo-ratchet]))
+   [dev.kondo-ratchet :as kondo-ratchet]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,13 +17,13 @@
     {:file "f.clj", :line (inc i), :linters [linter], :justified? true}))
 
 (defn- report-lines
-  "[[kondo-ratchet/check-report]] output, with omitted kondo fields defaulted to empty."
+  "[[kondo-ratchet/check-report]] output, with omitted fields defaulted to empty."
   ([ratchets occurrences text]
    (report-lines ratchets occurrences {} {} text))
   ([ratchets occurrences config-actual text]
    (report-lines ratchets occurrences config-actual {} text))
   ([ratchets occurrences config-actual module-actual text]
-   (vec (kondo-ratchet/check-report (merge {:config-counts {}, :comment-exempt #{}} ratchets)
+   (vec (kondo-ratchet/check-report (merge {:config-counts {}, :module-counts {}, :comment-exempt #{}} ratchets)
                                     occurrences config-actual module-actual text))))
 
 (deftest ^:parallel clean-test
@@ -72,7 +73,7 @@
 
 (deftest ^:parallel module-over-budget-test
   (let [ratchets {:ignore-counts {}, :module-counts {:api-any 1, :friend-edges 3}}]
-    (is (= ["module boundaries over budget -- reduce the boundary debt, or raise the budget manually and explain the increase in the PR:"
+    (is (= ["module escape hatches over budget -- remove one from .clj-kondo/config/modules/config.edn, or raise the budget manually and explain the increase in the PR:"
             "  :api-any: 1 recorded, 2 actual"
             "  :uses-any: 0 recorded, 1 actual"]
            (report-lines ratchets
@@ -95,7 +96,7 @@
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
       (with-redefs [kondo-ratchet/known-linters (constantly (set (keys (:ignore-counts ratchets))))
                     kondo-ratchet/config-suppressions (constantly {})
-                    kondo-ratchet/module-counts (constantly {})
+                    kondo-ratchet/module-escape-hatches (constantly {})
                     kondo-ratchet/scan          (constantly occurrences)]
         {:lines   (str/split-lines
                    (with-out-str
@@ -166,8 +167,13 @@
                           (make-array java.nio.file.attribute.FileAttribute 0)))
         budgets (doto (io/file dir "ratchets.edn") (spit "{:disabled true}\n"))]
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (is (= (str (.getPath budgets) " is disabled -- nothing to check\n")
-             (with-out-str (kondo-ratchet/check)))))))
+      (mt/with-dynamic-fn-redefs
+        [kondo-ratchet/known-linters         #(throw (AssertionError. "read the known linters"))
+         kondo-ratchet/scan                  #(throw (AssertionError. "scanned the source tree"))
+         kondo-ratchet/config-suppressions   #(throw (AssertionError. "counted config suppressions"))
+         kondo-ratchet/module-escape-hatches #(throw (AssertionError. "counted module escape hatches"))]
+        (is (= (str (.getPath budgets) " is disabled -- nothing to check\n")
+               (with-out-str (kondo-ratchet/check))))))))
 
 (deftest check-unknown-linter-test
   (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
