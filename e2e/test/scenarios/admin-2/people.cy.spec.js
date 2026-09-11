@@ -303,11 +303,25 @@ describe("scenarios > admin > people", () => {
         cy.button("Reset password").click();
       });
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${normalUserName}'s password has been reset`);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/^temporary password$/i);
-      clickButton("Done");
+      H.modal().within(() => {
+        cy.findByText(`${normalUserName}'s password has been reset`).should(
+          "be.visible",
+        );
+        cy.findByLabelText(/^temporary password$/i).should(
+          "have.attr",
+          "type",
+          "password",
+        );
+        cy.findByLabelText("Toggle password visibility").click();
+        cy.findByLabelText(/^temporary password$/i).should(
+          "have.attr",
+          "type",
+          "text",
+        );
+
+        clickButton("Done");
+      });
+
       cy.location().should((loc) =>
         expect(loc.pathname).to.eq("/admin/people"),
       );
