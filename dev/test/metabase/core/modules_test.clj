@@ -240,15 +240,17 @@
                       child
                       (modules/parent-module config child))))))))
 
-(deftest ^:parallel rest-children-are-exported-by-their-parent-test
-  (testing "every `.rest` child is in its parent's :module-exports, since api-routes names it from outside the subtree"
-    (let [config   (dev.deps-graph/kondo-config)
-          children (sort (filter #(str/ends-with? (name %) ".rest") (keys config)))]
-      (is (seq children) "no `.rest` children, so the check below would hold vacuously")
-      (doseq [child children
-              :let  [parent (modules/parent-module config child)]]
-        (testing (str "\n" child)
-          (is (contains? (set (get-in config [parent :module-exports])) child)))))))
+(defn- rest-module? [module]
+  (re-find #"[.-]rest$" (str module)))
+
+(deftest ^:parallel rest-modules-are-nested-test
+  (testing "every REST module uses the `.rest` child convention that makes it implicitly exported"
+    (let [modules (sort (filter rest-module? (keys (dev.deps-graph/kondo-config))))]
+      (is (seq modules) "no REST modules, so the check below would hold vacuously")
+      (doseq [module modules]
+        (testing (str "\n" module)
+          (is (str/ends-with? (name module) ".rest")
+              (format "Rename REST module %s as a `.rest` child of the module it serves." module)))))))
 
 (deftest ^:parallel test-runner-module-folders-test
   (testing "`:module` resolves through each module's :ns-prefix, so dotted and renamed modules find their tests"
@@ -256,9 +258,6 @@
             "test/metabase/actions_rest"
             "enterprise/backend/test/metabase_enterprise/transforms_python"]
            (metabase.test-runner/module-folders '[lib.schema actions.rest enterprise/transforms.python])))))
-
-(defn- rest-module? [module]
-  (re-find #"[.-]rest$" (str module)))
 
 (deftest do-not-use-rest-modules-in-other-modules-test
   (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)

@@ -89,7 +89,6 @@
 {:metabase/modules
  {actions
   {:team "Gadget"
-   :module-exports #{actions.rest}
    :api  #{metabase.actions.args
            metabase.actions.core
            metabase.actions.init
@@ -406,8 +405,6 @@
                     :model/TransformRun
                     :model/User}}
 
-
-
   audit-app.view-log
   {:team "UX West"
    :ns-prefix "metabase.view-log"
@@ -554,8 +551,6 @@
                     :model/PulseChannel
                     :model/User}}
 
-
-
   cloud-migration
   {:team "UX West"
    :api  #{metabase.cloud-migration.api
@@ -580,11 +575,8 @@
                     :model/UserParameterValue
                     :model/ViewLog}}
 
-
-
   collections
   {:team "UX West"
-   :module-exports #{collections.rest}
    :api  #{metabase.collections.core
            metabase.collections.curation
            metabase.collections.init
@@ -848,7 +840,6 @@
 
   dashboards
   {:team "UX West"
-   :module-exports #{dashboards.rest}
    :api  #{metabase.dashboards.autoplace
            metabase.dashboards.constants
            metabase.dashboards.init
@@ -1040,11 +1031,8 @@
            warehouses.schema}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
-
-
   embedding
   {:team "Embedding"
-   :module-exports #{embedding.rest}
    :api  #{metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
@@ -1086,8 +1074,6 @@
   {:team "Metabot"
    :api  #{metabase.embeddings.provider metabase.embeddings.startup}
    :uses #{plugins util}}
-
-
 
   events
   {:team "DevEx"
@@ -1193,8 +1179,6 @@
    :model-exports #{:model/Glossary}
    :model-imports #{:model/User}}
 
-
-
   health-inspector
   {:team "Querying Platform"
    :api #{metabase.health-inspector.api
@@ -1226,18 +1210,10 @@
    :model-exports #{:model/ModelIndex :model/ModelIndexValue}
    :model-imports #{:model/Card :model/Collection}}
 
-
-
-
-
-
-
   interestingness
   {:team "UX West"
    :api  #{metabase.interestingness.core}
    :uses #{util}}
-
-
 
   lib
   {:team "Querying Platform"
@@ -1407,8 +1383,6 @@
            util
            util.classloader
            util.config}}
-
-
 
   mcp
   {:team "Metabot"
@@ -1877,7 +1851,6 @@
 
   permissions
   {:team "UX West"
-   :module-exports #{permissions.rest}
    :api  #{metabase.permissions.core
            metabase.permissions.init
            metabase.permissions.metric
@@ -1934,8 +1907,6 @@
                     :model/Table
                     :model/User}}
 
-
-
   plugins
   {:team "DevEx"
    :api  #{metabase.plugins.core}
@@ -1981,7 +1952,6 @@
 
   public-sharing
   {:team "UX West"
-   :module-exports #{public-sharing.rest}
    :api  #{metabase.public-sharing.core
            metabase.public-sharing.init
            metabase.public-sharing.validation}
@@ -2064,7 +2034,6 @@
 
   queries
   {:team "Graphy"
-   :module-exports #{queries.rest}
    :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
@@ -2434,8 +2403,6 @@
                     :model/Table
                     :model/User}}
 
-
-
   search.entity-retrieval
   {:team "Metabot"
    :ns-prefix "metabase.entity-retrieval"
@@ -2544,7 +2511,6 @@
 
   settings
   {:team "DevEx"
-   :module-exports #{settings.rest}
    :api  #{metabase.settings.core metabase.settings.init}
    :uses #{api
            app-db
@@ -2569,7 +2535,6 @@
 
   setup
   {:team "UX West"
-   :module-exports #{setup.rest}
    :api  #{metabase.setup.core
            metabase.setup.init}
    :uses #{app-db
@@ -2762,8 +2727,6 @@
    :model-exports #{:model/TaskHistory :model/TaskRun}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
-
-
   testing-api
   {:team "DevEx"
    :api  #{metabase.testing-api.api
@@ -2840,8 +2803,7 @@
   {:team "Graphy"
    :module-exports #{transforms.base
                      transforms.indexes
-                     transforms.inspector
-                     transforms.rest}
+                     transforms.inspector}
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
@@ -2925,7 +2887,6 @@
   transforms.indexes
   {:team "Gadget"
    :ns-prefix "metabase.indexes"
-   :module-exports #{transforms.indexes.rest}
    :api #{metabase.indexes.models.table-index metabase.indexes.reconcile}
    :uses #{driver
            lib.schema
@@ -2973,7 +2934,6 @@
 
   typed-schemas
   {:team "Embedding"
-   :module-exports #{typed-schemas.rest}
    :api #{metabase.typed-schemas.core}
    :uses #{actions
            collections
@@ -2994,8 +2954,6 @@
                     :model/Field
                     :model/Measure
                     :model/Table}}
-
-
 
   typed-schemas.rest
   {:team "Embedding"
@@ -3060,8 +3018,7 @@
 
   users
   {:team "UX West"
-   :module-exports #{users.rest
-                     users.tenants}
+   :module-exports #{users.tenants}
    :api  #{metabase.users.core
            metabase.users.init
            metabase.users.models.user
@@ -3152,12 +3109,9 @@
    :api #{metabase.graph.core}
    :uses #{util}}
 
-
-
   warehouses
   {:team "UX West"
-   :module-exports #{warehouses.rest
-                     warehouses.schema
+   :module-exports #{warehouses.schema
                      warehouses.secrets}
    :api  #{metabase.warehouses.core
            metabase.warehouses.init
@@ -3223,7 +3177,6 @@
   warehouses.schema
   {:team "UX West"
    :ns-prefix "metabase.warehouse-schema"
-   :module-exports #{warehouses.schema.rest}
    :api #{metabase.warehouse-schema.field
           metabase.warehouse-schema.field-values.distinct-batch
           metabase.warehouse-schema.metadata-from-qp
@@ -3350,8 +3303,6 @@
                     :model/Segment
                     :model/Table}}
 
-
-
   enterprise/actions
   {:team "Gadget"
    :ns-prefix "metabase-enterprise.action-v2"
@@ -3396,8 +3347,6 @@
            util
            warehouses}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
-
-
 
   enterprise/analytics
   {:team "UX West"
@@ -3474,8 +3423,6 @@
                     :model/User
                     :model/ViewLog}}
 
-
-
   enterprise/auth-provider
   {:team "UX West"
    :api  #{}
@@ -3509,12 +3456,6 @@
                     :model/Query
                     :model/QueryCache
                     :model/QueryExecution}}
-
-
-
-
-
-
 
   enterprise/cloud
   {:team "Cloud"
@@ -3621,8 +3562,6 @@
            util.config}
    :model-exports #{:model/CustomVizPlugin}}
 
-
-
   enterprise/data-apps
   {:team "Embedding"
    :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init metabase-enterprise.data-apps.sync}
@@ -3646,8 +3585,6 @@
                     :model/Table
                     :model/User}}
 
-
-
   enterprise/data-studio
   {:team "UX West"
    :api  #{metabase-enterprise.data-studio.api}
@@ -3665,8 +3602,6 @@
                     :model/Field
                     :model/Table
                     :model/User}}
-
-
 
   enterprise/database-routing
   {:team "UX West"
@@ -3731,8 +3666,6 @@
                     :model/Table
                     :model/Transform}}
 
-
-
   enterprise/dependencies.replacement
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.replacement"
@@ -3783,8 +3716,6 @@
    :api  #{}
    :uses #{embeddings util util.classloader}}
 
-
-
   enterprise/embedding
   {:team "Embedding"
    :ns-prefix "metabase-enterprise.embedding-hub"
@@ -3807,8 +3738,6 @@
                     :model/Sandbox
                     :model/Table
                     :model/Tenant}}
-
-
 
   enterprise/library
   {:team "UX West"
@@ -3951,7 +3880,6 @@
            util
            util.config}
    :model-imports #{:model/AuthIdentity :model/User}}
-
 
   enterprise/native-query-snippets
   {:team "Graphy"
@@ -4108,8 +4036,6 @@
                     :model/TransformTag
                     :model/User}}
 
-
-
   enterprise/search
   {:team "UX West"
    :module-exports #{enterprise/search.embeddings
@@ -4207,8 +4133,6 @@
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
 
-
-
   enterprise/serialization
   {:team "Graphy"
    :api  #{metabase-enterprise.serialization.api
@@ -4234,8 +4158,6 @@
            setup
            util}
    :model-imports :bypass}
-
-
 
   enterprise/sso
   {:team "UX West"
@@ -4402,8 +4324,6 @@
                     :model/Field
                     :model/Table
                     :model/TransformRun}}
-
-
 
   enterprise/upload
   {:team "UX West"
