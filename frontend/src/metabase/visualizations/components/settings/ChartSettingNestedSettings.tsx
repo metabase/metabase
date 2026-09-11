@@ -145,8 +145,6 @@ export const chartSettingNestedSettings = <T,>(
         extra,
       );
 
-      // hidden widgets are excluded rather than rendered with a hidden
-      // attribute, matching the main settings sidebar
       return widgets
         .filter((widget) => !widget.hidden)
         .map((widget) => ({
