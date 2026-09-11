@@ -227,9 +227,7 @@
    [:caveats_set             :boolean]
    [:points_of_interest_set  :boolean]
    [:data_layer_set          :boolean]
-   [:data_source_set         :boolean]
-   [:owner_email_set         :boolean]
-   [:owner_user_id_set       :boolean]])
+   [:data_source_set         :boolean]])
 
 (mr/def ::table-user-settings.update
   "What an update (or insert) of a TableUserSettings accepts: every column of
@@ -260,9 +258,7 @@
    [:caveats_set             {:optional true} :boolean]
    [:points_of_interest_set  {:optional true} :boolean]
    [:data_layer_set          {:optional true} :boolean]
-   [:data_source_set         {:optional true} :boolean]
-   [:owner_email_set         {:optional true} :boolean]
-   [:owner_user_id_set       {:optional true} :boolean]])
+   [:data_source_set         {:optional true} :boolean]])
 
 (mr/def ::table
   "A Table as selected from the app DB: every column of `:metabase_table`."

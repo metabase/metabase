@@ -7,8 +7,616 @@ active: true
 field_order: database
 initial_sync_status: complete
 serdes/meta:
-- {id: Internal Metabase Database, model: Database}
-- {id: public, model: Schema}
-- {id: v_ai_usage_log, model: Table}
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_ai_usage_log
+  model: Table
 data_authority: unconfigured
 data_layer: internal
+fields:
+- name: cache_creation_tokens
+  display_name: Cache Creation Tokens
+  description: Input tokens written to the provider prompt cache (Anthropic cache_creation_input_tokens). Subset of Prompt Tokens.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/Quantity
+  dimensions: []
+  position: 17
+  custom_position: 0
+  database_position: 17
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: cache_creation_tokens
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: cache_read_tokens
+  display_name: Cache Read Tokens
+  description: Input tokens served from the provider prompt cache (Anthropic cache_read_input_tokens). Subset of Prompt Tokens.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/Quantity
+  dimensions: []
+  position: 18
+  custom_position: 0
+  database_position: 18
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: cache_read_tokens
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: completion_tokens
+  display_name: Completion Tokens
+  description: Completion tokens generated for this call.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/Quantity
+  dimensions: []
+  position: 7
+  custom_position: 0
+  database_position: 7
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: completion_tokens
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: conversation_id
+  display_name: Conversation ID
+  description: ID of the owning Metabot conversation, if any (null for non-conversational and most Slack-originated calls).
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/FK
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_metabot_conversations
+  - conversation_id
+  dimensions: []
+  position: 9
+  custom_position: 0
+  database_position: 9
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: conversation_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: created_at
+  display_name: Created At
+  description: Timestamp of this LLM round-trip.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: timestamptz
+  base_type: type/DateTimeWithLocalTZ
+  effective_type: type/DateTimeWithLocalTZ
+  semantic_type: type/CreationTimestamp
+  dimensions: []
+  position: 1
+  custom_position: 0
+  database_position: 1
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: created_at
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: embedding_hostname
+  display_name: Embedding Hostname
+  description: Hostname extracted from the embed referrer at the originating conversation. Always recorded when an embed referrer is present, independent of the analytics-pii-retention-enabled flag.
+  created_at: '2026-05-04T00:00:00Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 17
+  custom_position: 0
+  database_position: 17
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: embedding_hostname
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: embedding_path
+  display_name: Embedding Path
+  description: Path portion of the embed referrer URL at the originating conversation. PII; only recorded when analytics-pii-retention-enabled is on.
+  created_at: '2026-05-04T00:00:00Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  dimensions: []
+  position: 18
+  custom_position: 0
+  database_position: 18
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: embedding_path
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: group_name
+  display_name: Group Name
+  description: Name of one permissions group the user belongs to (excluding All Users); used for cohort breakdowns.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 13
+  custom_position: 0
+  database_position: 13
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: group_name
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: ip_address
+  display_name: IP Address
+  description: IP address of the originating Metabot conversation, when one exists.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  dimensions: []
+  position: 14
+  custom_position: 0
+  database_position: 14
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: ip_address
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: model
+  display_name: Model
+  description: Provider/model identifier returned by the LLM (e.g. anthropic/claude-sonnet-4-20250514).
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 4
+  custom_position: 0
+  database_position: 4
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: model
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: profile_id
+  display_name: Profile ID
+  description: Metabot profile that issued the call (e.g. internal, slackbot).
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 5
+  custom_position: 0
+  database_position: 5
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: profile_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: prompt_tokens
+  display_name: Prompt Tokens
+  description: Prompt tokens consumed for this call.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/Quantity
+  dimensions: []
+  position: 6
+  custom_position: 0
+  database_position: 6
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: prompt_tokens
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: request_id
+  display_name: Request ID
+  description: Stable identifier for a single user turn; multiple usage_log rows share a request_id across agent iterations.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 16
+  custom_position: 0
+  database_position: 16
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: request_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: sanitized_user_agent
+  display_name: Sanitized User Agent
+  description: Sanitized User-Agent string (browser + OS family) at the originating conversation, for analytics display.
+  created_at: '2026-05-04T00:00:00Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 20
+  custom_position: 0
+  database_position: 20
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: sanitized_user_agent
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: source
+  display_name: Source
+  description: Originating surface for the call (e.g. metabot_agent, slackbot, document_generate_content, oss-sql-gen).
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 2
+  custom_position: 0
+  database_position: 2
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: source
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: source_name
+  display_name: Source Name
+  description: Display label for the originating surface (e.g. Metabot, Documents, Slackbot, SQL); humanized version of source.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 3
+  custom_position: 0
+  database_position: 3
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: source_name
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: tenant_id
+  display_name: Tenant ID
+  description: Tenant ID associated with the call, if any.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/FK
+  dimensions: []
+  position: 15
+  custom_position: 0
+  database_position: 15
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: tenant_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: total_tokens
+  display_name: Total Tokens
+  description: Total tokens for this call (prompt + completion).
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/Quantity
+  dimensions: []
+  position: 8
+  custom_position: 0
+  database_position: 8
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: total_tokens
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: usage_log_id
+  display_name: Usage Log ID
+  description: Primary key from ai_usage_log.id.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: int8
+  base_type: type/BigInteger
+  effective_type: type/BigInteger
+  semantic_type: type/PK
+  dimensions: []
+  position: 0
+  custom_position: 0
+  database_position: 0
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: usage_log_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: user_agent
+  display_name: User Agent
+  description: Raw User-Agent header captured at the originating conversation. PII; only recorded when analytics-pii-retention-enabled is on.
+  created_at: '2026-05-04T00:00:00Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  dimensions: []
+  position: 19
+  custom_position: 0
+  database_position: 19
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: user_agent
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: user_display_name
+  display_name: User Display Name
+  description: Display name of the user (full name when set, otherwise email).
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Name
+  dimensions: []
+  position: 12
+  custom_position: 0
+  database_position: 12
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: user_display_name
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: user_id
+  display_name: User ID
+  description: ID of the user who triggered the call (null for system/Quartz calls).
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/FK
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
+  dimensions: []
+  position: 10
+  custom_position: 0
+  database_position: 10
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: user_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: user_qualified_id
+  display_name: User Qualified ID
+  description: Synthetic 'user_<id>' string used as a stable bucket key in by-user breakouts.
+  created_at: '2026-04-24T19:39:29.861736Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 11
+  custom_position: 0
+  database_position: 11
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_ai_usage_log
+    model: Table
+  - id: user_qualified_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false

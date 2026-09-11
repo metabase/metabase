@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [methodical.core :as methodical]
@@ -453,26 +454,6 @@
                  (u/the-id table)
                  (:field_order table)))))
 
-(defn- valid-field-order?
-  "Field ordering is valid if all the fields from a given table are present and only from that table."
-  [table field-ordering]
-  (= (warehouse-schema.db/active-field-ids-for-table (u/the-id table))
-     (set field-ordering)))
-
-(defn custom-order-fields!
-  "Set field order to `field-order`."
-  [table field-order]
-  {:pre [(valid-field-order? table field-order)]}
-  (t2/with-transaction [_]
-    ;; a custom order is the user's choice, so it belongs with their other Table values rather than in
-    ;; `metabase_table`, which sync owns. Resolved at call time: the settings namespace requires this one.
-    ((requiring-resolve 'metabase.warehouse-schema.models.table-user-settings/upsert-user-settings)
-     table {:field_order :custom})
-    (dorun
-     (map-indexed (fn [position field-id]
-                    (warehouse-schema.db/update-field! field-id {:position        position
-                                                                 :custom_position position}))
-                  field-order))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -570,23 +551,13 @@
     collection_id (conj [{:model "Collection" :id collection_id}])
     transform_id  (conj [{:model "Transform" :id transform_id}])))
 
-(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived user-edits-only]}]
-  (let [;; Under user-edits-only the Table's own user settings carry its Fields' settings inline, so one
-        ;; TableUserSettings stands in for the whole Table: a git-synced instance reviews one file per Table rather
-        ;; than one per edited Field. On import the parent rows are synthesized if missing, so it is self-sufficient.
-        ;; Otherwise emit every Field id for a full serdes backup/restore.
-        fields   (if user-edits-only
-                   (if (or (warehouse-schema.db/table-user-settings-exist? id)
-                           (seq (warehouse-schema.db/user-edited-field-ids-for-table id)))
-                     {["TableUserSettings" id] {"Table" id}}
-                     {})
-                   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
-                              [["Field" field-id] {"Table" id}])))
-        segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
+(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
+  ;; Fields are not here: they are nested inside the Table's own export, not entities of their own.
+  (let [segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
                             [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]
                             [["Measure" measure-id] {"Table" id}]))]
-    (merge fields segments measures)))
+    (merge segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (warehouse-schema.db/database-name (:db_id table))]
@@ -607,23 +578,58 @@
         db-id       (warehouse-schema.db/database-id-by-name db-name)]
     (warehouse-schema.db/table-by-name db-id schema-name table-name)))
 
-(defmethod serdes/make-spec "Table" [_model-name _opts]
-  {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
-               :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :owner_email :owner_user_id :is_published]
-   :skip      [:estimated_row_count :view_count :transform_target]
-   :transform {:created_at     (serdes/date)
-               :archived_at    (serdes/date)
-               :deactivated_at (serdes/date)
-               :data_layer     (serdes/optional-kw)
-               :db_id          (serdes/fk :model/Database)
-               :collection_id  (serdes/fk :model/Collection)
-               :transform_id   (serdes/fk :model/Transform)}
-   :defaults {:is_defective_duplicate  false
-              :is_published            false
-              :is_upload               false
-              :show_in_getting_started false}})
+(defn- find-local-field
+  "The Field `ingested` names inside the Table with `table-id`: its own name under the chain of parent Fields its path
+  records. The name alone would not do -- two Fields of one Table may share one when their parents differ."
+  [table-id ingested]
+  (warehouse-schema.db/field-in-path
+   table-id
+   (into '() (comp (filter #(= "Field" (:model %))) (map :id)) (:serdes/meta ingested))))
+
+(defn- fields-nested [opts]
+  ;; A Table's Fields live inside its file rather than one file each. `:key-field :name` because a Field is addressed
+  ;; by name, not by an `entity_id` it has no column for; `:delete-missing? false` because sync owns which Fields
+  ;; exist -- an import listing three of them is not saying the rest are gone.
+  (serdes/nested :model/Field :table_id (merge {:sort-by         :name
+                                                :key-field       :name
+                                                :delete-missing? false
+                                                :find-local      find-local-field}
+                                               opts)))
+
+(defmethod serdes/extract-from "Table" [_model-name {:keys [user-edits-only]}]
+  ;; export what users see, not what sync last wrote: both sources merge in `metabase_table_user_settings`.
+  (if user-edits-only
+    (warehouse-schema-overlay/table-user-edits-query)
+    (warehouse-schema-overlay/table-query)))
+
+(defmethod serdes/make-spec "Table" [_model-name {:keys [user-edits-only] :as opts}]
+  (if user-edits-only
+    ;; Only what a user can change, plus the name and Database that say which Table it is. See the Field spec: no
+    ;; `:defaults`, because [[serdes/extract-from]] leaves an unedited column NULL for the export to drop.
+    {:copy      [:name :description :entity_type :display_name :visibility_type :schema :points_of_interest :caveats
+                 :show_in_getting_started :field_order :data_authority :data_source :owner_email :owner_user_id
+                 :is_published]
+     :transform {:data_layer    (serdes/optional-kw)
+                 :db_id         (serdes/fk :model/Database)
+                 :collection_id (serdes/fk :model/Collection)
+                 :fields        (fields-nested opts)}}
+    {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
+                 :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
+                 :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
+                 :data_source :owner_email :owner_user_id :is_published]
+     :skip      [:estimated_row_count :view_count :transform_target]
+     :transform {:created_at     (serdes/date)
+                 :archived_at    (serdes/date)
+                 :deactivated_at (serdes/date)
+                 :data_layer     (serdes/optional-kw)
+                 :db_id          (serdes/fk :model/Database)
+                 :collection_id  (serdes/fk :model/Collection)
+                 :transform_id   (serdes/fk :model/Transform)
+                 :fields         (fields-nested opts)}
+     :defaults {:is_defective_duplicate  false
+                :is_published            false
+                :is_upload               false
+                :show_in_getting_started false}}))
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (conj (serdes/storage-path-prefixes (serdes/path table))
@@ -633,6 +639,8 @@
 
 (search.spec/define-spec "table"
   {:model        :model/Table
+   ;; read the values users see, not the ones sync wrote: both live in `metabase_table_user_settings`
+   :source       (warehouse-schema-overlay/table-query {:alias :this})
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived        false
@@ -642,7 +650,9 @@
                   :database-id     :db_id
                   :view-count      true
                   :created-at      true
-                  :updated-at      true
+                  ;; a user edit touches only their settings row, so that is where the Table last changed
+                  :updated-at      [:case [:> :settings.updated_at :this.updated_at] :settings.updated_at
+                                    :else :this.updated_at]
                   :is-published        :is_published
                   :collection-type     :collection.type
                   :collection-location :collection.location
@@ -665,10 +675,13 @@
                                                 [:and :this.is_published
                                                  [:= :this.collection_id nil]] "Our analytics"
                                                 :else nil]]}
+   ;; qualified: the settings join carries columns of the same names
    :where        [:and
-                  :active
-                  [:= :visibility_type nil]
+                  :this.active
+                  [:= :this.visibility_type nil]
                   [:= :db.router_database_id nil]
-                  [:not= :db_id [:inline audit/audit-db-id]]]
+                  [:not= :this.db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
+                  ;; joined for its `updated_at` above, which also makes a settings change reindex the Table
+                  :settings   [:model/TableUserSettings [:= :settings.table_id :this.id]]
                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})

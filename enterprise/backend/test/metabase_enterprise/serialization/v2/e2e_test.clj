@@ -244,10 +244,10 @@
               (is (= 1000
                      (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
                                      table (subdirs (io/file dump-dir "databases" db "tables"))
-                                     :let  [fields-dir (io/file table "fields")]
-                                     :when (.exists fields-dir)]
-                                 (count (dir->file-set fields-dir)))))
-                  "Fields are scattered, so the directories are harder to count"))
+                                     :let  [table-yaml (io/file table (str (.getName ^java.io.File table) ".yaml"))]
+                                     :when (.exists table-yaml)]
+                                 (count (:fields (yaml/from-file table-yaml))))))
+                  "Fields ride inside their Table's file, so they are counted there"))
             (testing "for cards, dashboards, and timelines"
               ;; In the new storage format, cards/dashboards/timelines are stored directly
               ;; in collection directories (no per-type subfolders).

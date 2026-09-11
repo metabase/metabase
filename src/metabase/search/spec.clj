@@ -199,6 +199,7 @@
                    [:map-of :keyword [:or fn? true?]]]]
    [:embedding-exclude {:optional true} [:set :keyword]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
+   [:source {:optional true} [:tuple :any [:= :this]]]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
    [:joins {:optional true} JoinMap]])
@@ -399,6 +400,8 @@
    Spec keys:
    - `:model` - Toucan model keyword (required)
    - `:attrs` - Map of search index attributes (required)
+   - `:source` - What `:this` reads from, as a `[source :this]` pair, when the indexable rows are not simply the
+     model's own table -- a Table, whose user-set values live in a side-car. Defaults to the model's table.
    - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
      column keyword to either `true` (use the raw value) or a transform fn applied for
      full-text search (required)

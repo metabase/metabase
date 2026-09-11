@@ -505,17 +505,29 @@
   (when-not (::nested-fetch opts)
     (mapv first (stable-storage-order-by (*make-spec* model-name opts)))))
 
+(defmulti extract-from
+  "The Honey SQL `:from` entry a model's export reads its rows through, or nil to read the model's own table.
+
+  Lets a model whose rows are assembled from more than one table export what users see rather than what one table
+  stores -- a Table or a Field, whose user-set values live in a side-car. Keyed on the model name, and passed the
+  extraction `opts`, so an export can read a different source per mode."
+  {:arglists '([model-name opts])}
+  (fn [model-name _opts] model-name))
+
+(defmethod extract-from :default [_model-name _opts] nil)
+
 (defn extract-query-collections
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
   collection."
   [model {:keys [collection-set filter-column filter-ids] :as opts}]
   (let [spec          (*make-spec* (name model) opts)
-        order-columns (extract-order-columns (name model) opts)]
+        order-columns (extract-order-columns (name model) opts)
+        from          (extract-from (name model) opts)]
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
-      (models.db/entities-reducible model filter-column filter-ids order-columns)
-      (models.db/entities-in-collections-reducible model collection-set filter-column filter-ids order-columns))))
+      (models.db/entities-reducible model filter-column filter-ids order-columns from)
+      (models.db/entities-in-collections-reducible model collection-set filter-column filter-ids order-columns from))))
 
 (defmethod extract-query :default [model-name opts]
   (let [spec    (*make-spec* model-name opts)
@@ -1876,10 +1888,22 @@
                                        :export #(*export-fk* % model)
                                        :import #(*import-fk* % model)))))
 
-(defn nested "Nested entities" [model backward-fk opts]
-  (let [model-name (name model)
-        sorter     (:sort-by opts :created_at)
-        key-field  (:key-field opts :entity_id)]
+(defn nested
+  "Nested entities: `model` rows belonging to the parent through `backward-fk`, exported inside the parent's file
+  rather than their own.
+
+  `opts` takes `:sort-by`, plus two keys for a model that is not addressed by `entity_id`:
+  `:key-field` names the column identifying a child within its parent (`:entity_id` by default),
+  `:delete-missing?` false keeps the children the imported parent did not list, for a model whose rows something
+  other than serialization owns -- the Fields of a Table belong to sync, and an import that mentions three of them is
+  not saying the rest are gone -- and `:find-local` is a `(fn [parent-id ingested])` returning the local row an
+  ingested child belongs to, for a child `:key-field` alone cannot pin down."
+  [model backward-fk opts]
+  (let [model-name      (name model)
+        sorter          (:sort-by opts :created_at)
+        key-field       (:key-field opts :entity_id)
+        delete-missing? (:delete-missing? opts true)
+        find-local      (:find-local opts)]
     {::nested             true
      :model               model
      :backward-fk         backward-fk
@@ -1907,15 +1931,29 @@
                                                   (update :serdes/meta #(or % [{:model model-name :id (get ingested key-field)}]))))]
                               (cond
                                 (nil? first-eid)            ; no entity id, just drop existing stuff
-                                (do (models.db/delete-children! model backward-fk parent-id)
+                                (do (when delete-missing?
+                                      (models.db/delete-children! model backward-fk parent-id))
                                     (doseq [ingested lst]
                                       (load-one! (enrich ingested) nil)))
 
-                                :else                       ; match by entity id
-                                (do (models.db/delete-children-except! model backward-fk parent-id (map :entity_id lst))
-                                    (doseq [ingested lst
+                                :else                       ; match by key field
+                                (do (when delete-missing?
+                                      (models.db/delete-children-except! model backward-fk parent-id key-field
+                                                                         (map key-field lst)))
+                                    ;; shortest path first, so a child that names its parent finds it already loaded.
+                                    ;; A no-op where every child sits at the same depth, which is most models.
+                                    (doseq [ingested (sort-by (comp count :serdes/meta) lst)
                                             :let [ingested (enrich ingested)
-                                                  local    (lookup-by-id model (entity-id model-name ingested))]]
+                                                  local    (cond
+                                                             find-local
+                                                             (find-local parent-id ingested)
+
+                                                             (= key-field :entity_id)
+                                                             (lookup-by-id model (entity-id model-name ingested))
+
+                                                             :else
+                                                             (models.db/child-by-key model backward-fk parent-id
+                                                                                     key-field (get ingested key-field)))]]
                                       (load-one! ingested local))))))}))
 
 (def parent-ref "Transformer for parent id for nested entities."

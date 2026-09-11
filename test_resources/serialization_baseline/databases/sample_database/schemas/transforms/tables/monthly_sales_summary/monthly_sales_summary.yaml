@@ -16,3 +16,4 @@ serdes/meta:
 data_authority: computed
 data_layer: internal
 data_source: metabase-transform
+fields: []

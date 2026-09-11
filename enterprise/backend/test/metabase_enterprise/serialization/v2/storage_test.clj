@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
@@ -129,19 +130,20 @@
         (let [export (into [] (extract/extract {:include-field-values true}))]
           (storage/store! export (storage.files/file-writer dump-dir))
           (testing "the right files in the right places"
-            (is (= #{["company__SLASH__organization_website.yaml"]
-                     ["company__SLASH__organization_website___fieldvalues.yaml"]}
+            (is (= #{["company__SLASH__organization_website___fieldvalues.yaml"]}
                    (file-set (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields")))
                 "Slashes in file names get escaped")
             (is (contains? (file-set (io/file dump-dir "databases" "my_company_data" "tables"))
                            ["orders__SLASH__invoices" "orders__SLASH__invoices.yaml"])
                 "Slashes in directory names get escaped"))
-          (testing "the Field was properly exported"
+          (testing "the Field was properly exported, inside its Table's file"
             (is (= (ts/extract-one "Field" (:id website))
                    (-> (yaml/from-file (io/file dump-dir
-                                                "databases"  "my_company_data"
-                                                "tables"     "customers"
-                                                "fields"     "company__SLASH__organization_website.yaml"))
+                                                "databases" "my_company_data"
+                                                "tables"    "customers"
+                                                "customers.yaml"))
+                       :fields
+                       first
                        (update :visibility_type keyword)
                        (update :base_type       keyword))))))))))
 
@@ -156,13 +158,14 @@
                          :model/Field             _     {:name "Id" :table_id (:id table)}
                          :model/FieldUserSettings _     {:field_id (:id email) :data_sensitivity :PII}]
         (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
-        (let [fields-dir (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields")
-              read-yaml  (fn [file-name] (yaml/from-file (io/file fields-dir file-name)))]
-          (testing "the label is written as the bare enum string on both files"
-            (is (= "PII" (:data_sensitivity (read-yaml "email.yaml"))))
-            (is (= "PII" (:data_sensitivity (read-yaml "email___fieldusersettings.yaml")))))
-          (testing "an unlabeled field's file has no data_sensitivity line"
-            (is (not (contains? (read-yaml "id.yaml") :data_sensitivity)))))))))
+        (let [fields (->> (yaml/from-file (io/file dump-dir "databases" "my_company_data"
+                                                   "tables" "customers" "customers.yaml"))
+                          :fields
+                          (m/index-by :name))]
+          (testing "the label is written as the bare enum string"
+            (is (= "PII" (:data_sensitivity (get fields "Email")))))
+          (testing "an unlabeled field has no data_sensitivity line"
+            (is (not (contains? (get fields "Id") :data_sensitivity)))))))))
 
 (deftest entity-counts-report-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -213,7 +216,8 @@
                               (is model)
                               (descend coll [(keyword model)])))
                            ([coll path]
-                            (let [order (or (get @@#'dump/serialization-order path)
+                            (let [path  (#'dump/entity-path coll path)
+                                  order (or (get @@#'dump/serialization-order path)
                                             (get @@#'dump/serialization-order (last path)))]
                               (testing (str "Path = " path)
                                 (is order)
@@ -261,10 +265,15 @@
         (serdes/with-cache
           (-> (extract/extract {:no-settings true})
               (storage/store! (storage.files/file-writer dump-dir))))
-        (testing "we get correct names for nested fields"
-          (is (= #{["parent.yaml"]
-                   ["parent.child.yaml"]}
-                 (file-set (io/file dump-dir "databases" "mydb" "tables" "table" "fields")))))))))
+        (testing "nested fields ride inside the Table, named through their parent"
+          (let [table-yaml (yaml/from-file (io/file dump-dir "databases" "mydb" "tables" "table" "table.yaml"))]
+            (is (= #{"parent" "child"}
+                   (set (map :name (:fields table-yaml)))))
+            (is (= #{["parent"] ["parent" "child"]}
+                   (into #{} (map (fn [field]
+                                    (into [] (comp (filter #(= "Field" (:model %))) (map :id))
+                                          (:serdes/meta field))))
+                         (:fields table-yaml))))))))))
 
 (deftest python-library-storage-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

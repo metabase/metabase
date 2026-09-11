@@ -14,14 +14,14 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
-    (is (#'table/valid-field-order? (mt/id :venues)
+    (is (#'table-user-settings/valid-field-order? (mt/id :venues)
                                     [(mt/id :venues :name)
                                      (mt/id :venues :category_id)
                                      (mt/id :venues :latitude)
@@ -29,14 +29,14 @@
                                      (mt/id :venues :price)
                                      (mt/id :venues :id)])))
   (testing "Field ordering is invalid if some fields are missing"
-    (is (false? (#'table/valid-field-order? (mt/id :venues)
+    (is (false? (#'table-user-settings/valid-field-order? (mt/id :venues)
                                             [(mt/id :venues :category_id)
                                              (mt/id :venues :latitude)
                                              (mt/id :venues :longitude)
                                              (mt/id :venues :price)
                                              (mt/id :venues :id)]))))
   (testing "Field ordering is invalid if some fields are from a differnt table"
-    (is (false? (#'table/valid-field-order? (mt/id :venues)
+    (is (false? (#'table-user-settings/valid-field-order? (mt/id :venues)
                                             [(mt/id :venues :name)
                                              (mt/id :venues :category_id)
                                              (mt/id :venues :latitude)
@@ -59,12 +59,12 @@
                               "('Chicken', 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
-      (is (#'table/valid-field-order? (mt/id :birds)
+      (is (#'table-user-settings/valid-field-order? (mt/id :birds)
                                       [(mt/id :birds :species)
                                        (mt/id :birds :example_name)]))
       (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"BIRDS\" DROP COLUMN \"EXAMPLE_NAME\";"])
       (sync/sync-database! (mt/db))
-      (is (#'table/valid-field-order? (mt/id :birds)
+      (is (#'table-user-settings/valid-field-order? (mt/id :birds)
                                       [(mt/id :birds :species)])))))
 
 (deftest slashes-in-schema-names-test
@@ -686,16 +686,16 @@
           (is (boolean? (:can_query hydrated))))))))
 
 (deftest serdes-descendants-includes-fields-and-segments-test
-  (testing "Table descendants includes Fields and Segments"
+  (testing "Table descendants includes Segments, but not Fields -- those ride inside the Table's own export"
     (mt/with-temp [:model/Database {db-id :id}      {:name "Test DB"}
                    :model/Table    {table-id :id}   {:name "Test Table" :db_id db-id}
                    :model/Field    {field1-id :id}  {:name "Field 1" :table_id table-id :base_type :type/Integer}
                    :model/Field    {field2-id :id}  {:name "Field 2" :table_id table-id :base_type :type/Text}
                    :model/Segment  {segment-id :id} {:name "Test Segment" :table_id table-id :definition {}}]
       (let [descendants (serdes/descendants "Table" table-id {})]
-        (testing "Fields are included"
-          (is (contains? descendants ["Field" field1-id]))
-          (is (contains? descendants ["Field" field2-id])))
+        (testing "Fields are not descendants"
+          (is (not (contains? descendants ["Field" field1-id])))
+          (is (not (contains? descendants ["Field" field2-id]))))
         (testing "Segments are included"
           (is (contains? descendants ["Segment" segment-id]))))))
   (testing "Table with no fields or segments returns empty map"
@@ -712,8 +712,8 @@
                    :model/Segment  {archived-seg-id :id} {:name "Archived Segment" :table_id table-id :definition {} :archived true}]
       (testing "archived segments are excluded when skip-archived: true"
         (let [descendants (serdes/descendants "Table" table-id {:skip-archived true})]
-          (is (contains? descendants ["Field" field-id])
-              "Fields are still included")
+          (is (not (contains? descendants ["Field" field-id]))
+              "Fields are never descendants")
           (is (contains? descendants ["Segment" active-seg-id])
               "Active segments are included")
           (is (not (contains? descendants ["Segment" archived-seg-id]))
@@ -731,7 +731,7 @@
   (testing "Importing a v58 serialization export with legacy medallion data_layer values maps them to current values"
     (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
                    :model/Table {table-id :id} {:db_id db-id}]
-      (let [table      (t2/select-one :model/Table :id table-id)
+      (let [table      (assoc (t2/select-one :model/Table :id table-id) :fields [])
             extracted  (serdes/extract-one "Table" {} table)]
         (doseq [[legacy-value expected] {"copper" "hidden"
                                          "bronze" "final"

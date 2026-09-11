@@ -158,20 +158,6 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
-              - column:
-                  remarks: Whether the user set owner_email, so a NULL owner_email overrides the sync value
-                  name: owner_email_set
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-              - column:
-                  remarks: Whether the user set owner_user_id, so a NULL owner_user_id overrides the sync value
-                  name: owner_user_id_set
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
 
   ## The indexes come before the FK constraints: MySQL/MariaDB require an index behind every FK and
   ## reuse an existing one, so this keeps rollback working (the FK is dropped before the index it
@@ -258,7 +244,7 @@ databaseChangeLog:
               INSERT INTO metabase_table_user_settings
                 (table_id, display_name, display_name_set, description, description_set,
                  caveats, caveats_set, points_of_interest, points_of_interest_set,
-                 owner_email, owner_email_set, owner_user_id, owner_user_id_set,
+                 owner_email, owner_user_id,
                  visibility_type, visibility_type_set, data_layer, data_layer_set,
                  data_authority, field_order, show_in_getting_started, is_published, collection_id)
               SELECT
@@ -272,9 +258,7 @@ databaseChangeLog:
                 t.points_of_interest,
                 CASE WHEN t.points_of_interest IS NOT NULL THEN TRUE ELSE FALSE END,
                 t.owner_email,
-                CASE WHEN t.owner_email IS NOT NULL THEN TRUE ELSE FALSE END,
                 t.owner_user_id,
-                CASE WHEN t.owner_user_id IS NOT NULL THEN TRUE ELSE FALSE END,
                 CASE WHEN t.visibility_type <> 'cruft' THEN t.visibility_type END,
                 CASE WHEN t.visibility_type IS NOT NULL AND t.visibility_type <> 'cruft' THEN TRUE ELSE FALSE END,
                 CASE WHEN t.data_layer <> 'internal' THEN t.data_layer END,

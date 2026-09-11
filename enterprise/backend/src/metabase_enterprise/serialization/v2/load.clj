@@ -131,6 +131,14 @@
        (some #{model-name})
        boolean))
 
+(defn- containing-path
+  "The path of the file `path` would be found in, when `path` names an entity serialized inside another's -- a Field
+  inside its Table, say. Something may depend on such an entity by path, and loading it means loading its container."
+  [path]
+  (when (and (> (count path) 1)
+             (some #{(:model (last path))} serdes.models/inlined-models))
+    (pop path)))
+
 (defn- exported-with-entity-id?
   "Returns true if entities with the given model-name should have been exported with an entity_id."
   [model-name]
@@ -165,8 +173,13 @@
                                        path))
     (seen path)           ctx           ; Already been done, can skip it.
     :else
-    (let [ingested (serdes.ingest/ingest-one ingestion path)]
-      (if-not ingested
+    (let [ingested  (serdes.ingest/ingest-one ingestion path)
+          container (when-not ingested (containing-path path))]
+      (cond
+        container
+        (-> ctx (load-one! container) (update :seen conj path))
+
+        (not ingested)
         (do
           (when-not (serdes/load-find-local path)
             (let [missing (last path)
@@ -179,6 +192,8 @@
                                :error ::not-found}))))
           (log/debug "Local" {:path (serdes/log-path-str path)})
           ctx)
+
+        :else
         (let [_                  (log/trace "Loading" (cond-> {:path (serdes/log-path-str path)}
                                                         (circular path) (assoc :stripped true)))
               ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.

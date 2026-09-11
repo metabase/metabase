@@ -93,11 +93,8 @@
         (when-let [cf (:cascade-filter spec)]
           (is (map? cf)
               ":cascade-filter should be a map when present")))))
-  (testing "children-specs derives the correct children for Table"
-    (let [children (spec/children-specs :model/Table)]
-      (is (= 1 (count children)))
-      (is (= #{:model/Field}
-             (into #{} (map :model-key) children)))))
+  (testing "children-specs returns empty for Table, whose Fields are part of its own file"
+    (is (empty? (spec/children-specs :model/Table))))
   (testing "children-specs returns empty for models with no children"
     (is (empty? (spec/children-specs :model/Card)))))
 
@@ -125,12 +122,12 @@
       (is (contains? types "Card"))
       (is (contains? types "Dashboard"))
       (is (contains? types "Table"))
-      (is (contains? types "Field"))
+      (is (not (contains? types "Field")) "Fields ride inside their Table")
       (is (contains? types "Segment"))
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 13 (count types))))))
+      (is (= 12 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -142,11 +139,9 @@
           (is (contains? entity-id-specs :model/Card))
           (is (contains? entity-id-specs :model/Dashboard))
           (is (contains? entity-id-specs :model/Collection))
-          (is (not (contains? entity-id-specs :model/Table)))
-          (is (not (contains? entity-id-specs :model/Field))))
+          (is (not (contains? entity-id-specs :model/Table))))
         (testing "path specs"
           (is (contains? path-specs :model/Table))
-          (is (contains? path-specs :model/Field))
           (is (not (contains? path-specs :model/Card))))
         (testing "hybrid specs"
           (is (contains? hybrid-specs :model/Segment))

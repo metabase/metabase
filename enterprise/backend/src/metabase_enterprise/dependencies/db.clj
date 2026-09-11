@@ -278,7 +278,8 @@
                            nil))]
     {:table-name (case entity-type
                    :card :report_card
-                   :table :metabase_table
+                   ;; the list shows the Table's display_name, a user value, so read the merged source
+                   :table (first (warehouse-schema-overlay/table-query))
                    :transform :transform
                    :snippet :native_query_snippet
                    :dashboard :report_dashboard
@@ -428,7 +429,8 @@
     (:collection joins) (conj :collection [:= :entity.collection_id :collection.id])
     (:dashboard joins) (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
     (:document joins) (conj :document [:= :entity.document_id :document.id])
-    (:table joins) (conj [:metabase_table :table] [:= :entity.table_id :table.id])))
+    ;; joined for its display_name, a user value
+    (:table joins) (conj (warehouse-schema-overlay/table-query {:alias :table}) [:= :entity.table_id :table.id])))
 
 (defn- dependency-item-select
   "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together, matching

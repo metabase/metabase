@@ -1117,8 +1117,10 @@
           (is (not (contains? ser :id)))
           (is (not (contains? ser :field_id))
               ":field_id is dropped; its implied by the path")
-          (testing "depend only on the Database; the parent Field is synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
+          (testing "depends on the parent Field, which rides inside its Table's file"
+            (is (= #{[{:model "Database" :id "My Database"}
+                      {:model "Table"    :id "Schemaless Table"}
+                      {:model "Field"    :id "Some Field"}]}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "extract-metabase behavior"
         (testing "without :include-field-values"
@@ -1138,76 +1140,46 @@
                                                            :table_id         no-schema-id
                                                            :data_sensitivity :PII}
                        :model/Field    {plain-id     :id} {:name "Plain Field" :table_id no-schema-id}
-                       :model/FieldUserSettings {description :description}
+                       :model/FieldUserSettings _
                        {:field_id         field-id
                         :description      "Some custom Description"
+                        :description_set  true
                         :data_sensitivity :PII}]
-      (testing "field values"
-        (let [ser (serdes/extract-one "FieldUserSettings" {} (t2/select-one :model/FieldUserSettings :field_id field-id))]
-          (is (=? {:serdes/meta      [{:model "Database" :id "My Database"}
-                                      {:model "Table"    :id "Schemaless Table"}
-                                      {:model "Field"    :id "Some Field"}
-                                      {:model "FieldUserSettings" :id "1"}] ; Always 1.
-                   :created_at       string?
-                   :description      description
-                   :data_sensitivity :PII}
+      (testing "a Field exports the user's values, not what sync wrote"
+        (let [ser (ts/extract-one "Field" field-id)]
+          (is (=? {:serdes/meta [{:model "Database" :id "My Database"}
+                                 {:model "Table"    :id "Schemaless Table"}
+                                 {:model "Field"    :id "Some Field"}]
+                   :description "Some custom Description"}
                   ser))
-          (is (not (contains? ser :field_id))
-              ":field_id is dropped; its implied by the path")
-          (testing "depend only on the Database; the parent Field is synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
-                   (set (serdes/deserialization-dependencies ser)))))))
+          (is (not (contains? ser :table_id))
+              ":table_id is dropped; it is implied by nesting inside the Table")))
       (testing "data_sensitivity on the Field itself"
         (is (= :PII (:data_sensitivity (ts/extract-one "Field" field-id)))
             "a labeled field exports the keyword as-is")
         (is (not (contains? (ts/extract-one "Field" plain-id) :data_sensitivity))
             "an unlabeled field exports no key, so nil never reaches the YAML"))
-      (testing "extract-metabase behavior"
-        (let [models (->> {} (extract/extract) (map (comp :model last :serdes/meta)))]
-          (is (= 1
-                 (t2/count :model/FieldUserSettings)
-                 (count (filter #{"FieldUserSettings"} models)))))))))
+      (testing "user settings are not entities of their own"
+        (let [models (->> {} (extract/extract) (map (comp :model last :serdes/meta)) set)]
+          (is (not (contains? models "FieldUserSettings")))
+          (is (not (contains? models "TableUserSettings")))
+          (is (not (contains? models "Field"))
+              "Fields ride inside their Table"))))))
 
 (deftest table-descendants-user-edits-only-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id    :id} {:name "DB"}
                        :model/Table    {table-id :id} {:name "T" :db_id db-id}
                        :model/Field    {f1-id    :id} {:name "F1" :table_id table-id}
-                       :model/Field    {f2-id    :id} {:name "F2" :table_id table-id}
-                       :model/Field    {f3-id    :id} {:name "F3" :table_id table-id}]
-      (testing "without user-edits-only: all fields returned as Field descendants"
-        (let [desc (serdes/descendants "Table" table-id {})]
-          (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id]}
-                 (set (keys desc))))))
-      (testing "with user-edits-only and no FieldUserSettings rows: no field descendants"
-        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
-          (is (empty? (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
-      (testing "with user-edits-only and one FieldUserSettings row: only that field appears as FieldUserSettings"
-        (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "edited"})
-        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
-          (is (= #{["FieldUserSettings" f2-id]}
-                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
-        (t2/delete! :model/FieldUserSettings :field_id f2-id))
-      (testing "with user-edits-only and a FieldUserSettings row holding only data_sensitivity: that field appears as FieldUserSettings"
-        (t2/insert! :model/FieldUserSettings {:field_id f1-id :data_sensitivity :PII})
-        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
-          (is (= #{["FieldUserSettings" f1-id]}
-                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
-        (t2/delete! :model/FieldUserSettings :field_id f1-id))
-      (testing "with user-edits-only and all fields edited: all appear as FieldUserSettings, not Field"
-        (t2/insert! :model/FieldUserSettings {:field_id f1-id})
-        (t2/insert! :model/FieldUserSettings {:field_id f2-id})
-        (t2/insert! :model/FieldUserSettings {:field_id f3-id})
-        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
-          (is (= #{["FieldUserSettings" f1-id] ["FieldUserSettings" f2-id] ["FieldUserSettings" f3-id]}
-                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc)))))))
-      (testing "Field and FieldUserSettings are leaf nodes in the descendants graph"
-        ;; Table's descendants method is the only source of field-level entries; if Field ever
-        ;; grows its own descendants (e.g. Field -> FieldUserSettings), traversal would visit
-        ;; every field and full exports would change shape. Cement the leaf-ness here.
+                       :model/Field    _              {:name "F2" :table_id table-id}
+                       :model/Field    _              {:name "F3" :table_id table-id}]
+      (testing "Fields are not descendants: they ride inside the Table's own export"
         (doseq [opts [{} {:user-edits-only true}]]
-          (is (empty? (serdes/descendants "Field" f1-id opts)))
-          (is (empty? (serdes/descendants "FieldUserSettings" f1-id opts))))))))
+          (let [desc (serdes/descendants "Table" table-id opts)]
+            (is (empty? (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc)))))))
+      (testing "Field is a leaf node in the descendants graph"
+        (doseq [opts [{} {:user-edits-only true}]]
+          (is (empty? (serdes/descendants "Field" f1-id opts))))))))
 
 (deftest user-edits-only-extract-test
   (mt/with-empty-h2-app-db!
@@ -1218,24 +1190,32 @@
                                                           :collection_id coll-id}
                        :model/Field       _              {:name "F1" :table_id table-id}
                        :model/Field       {f2-id    :id} {:name "F2" :table_id table-id}
-                       :model/FieldUserSettings _ {:field_id f2-id :description "curated"}]
-      (testing "targeting the collection with user-edits-only: produces FieldUserSettings, not Field"
+                       :model/FieldUserSettings _ {:field_id f2-id :description "curated" :description_set true}]
+      (testing "with user-edits-only, only the edited Fields ride inside the Table, and only their edits"
         (let [entities (into [] (extract/extract {:targets         [["Collection" coll-id]]
                                                   :user-edits-only true
                                                   :no-data-model   true}))
-              by-model (group-by (comp :model last :serdes/meta) entities)]
-          (is (contains? by-model "FieldUserSettings") "should include FieldUserSettings")
-          (is (not (contains? by-model "Field")) "should not include Field")
-          (is (= #{"F2"}
-                 (set (map #(-> % :serdes/meta (nth 2) :id) (by-model "FieldUserSettings"))))
-              "only the edited field's FieldUserSettings (identified by field name in path)")
-          (is (some #(= "T" (:name %)) (by-model "Table")) "the table itself is included")))
-      (testing "without user-edits-only: produces Field, not FieldUserSettings"
+              by-model (group-by (comp :model last :serdes/meta) entities)
+              table    (first (by-model "Table"))]
+          (is (not (contains? by-model "Field")) "Fields are never entities of their own")
+          (is (= "T" (:name table)))
+          (is (= [{:name "F2" :description "curated"}]
+                 (mapv #(select-keys % [:name :description]) (:fields table)))
+              "only the edited field, carrying only what the user set")
+          (is (= #{:name :description :serdes/meta} (into #{} (mapcat keys) (:fields table)))
+              "a column the user never touched is dropped rather than exported as sync's value")
+          (is (not (contains? table :active))
+              "and the same for the Table's own synced columns")))
+      (testing "without user-edits-only, every Field rides inside the Table in full"
         (let [entities (into [] (extract/extract {:targets       [["Collection" coll-id]]
                                                   :no-data-model true}))
-              by-model (group-by (comp :model last :serdes/meta) entities)]
-          (is (contains? by-model "Field") "should include Field")
-          (is (not (contains? by-model "FieldUserSettings")) "should not include FieldUserSettings"))))))
+              by-model (group-by (comp :model last :serdes/meta) entities)
+              table    (first (by-model "Table"))]
+          (is (not (contains? by-model "Field")))
+          (is (= #{"F1" "F2"} (set (map :name (:fields table)))))
+          (is (= "curated" (:description (first (filter #(= "F2" (:name %)) (:fields table)))))
+              "the user's value is what gets exported, not what sync wrote")
+          (is (contains? table :active)))))))
 
 (deftest cards-test
   (mt/with-empty-h2-app-db!
@@ -2568,10 +2548,11 @@
                            :no-settings   true}
               extracted   (into [] (extract/extract opts))
               field-ids   (->> extracted
-                               (filter #(= "Field" (-> % :serdes/meta last :model)))
-                               (map #(t2/select-one-pk :model/Field
-                                                       :table_id (t2/select-one-pk :model/Table :name (-> % :serdes/meta butlast last :id))
-                                                       :name (-> % :serdes/meta last :id)))
+                               (filter #(= "Table" (-> % :serdes/meta last :model)))
+                               (mapcat (fn [table]
+                                         (let [table-id (t2/select-one-pk :model/Table :name (:name table))]
+                                           (map #(t2/select-one-pk :model/Field :table_id table-id :name (:name %))
+                                                (:fields table)))))
                                set)
               segment-ids (->> extracted
                                (filter #(= "Segment" (-> % :serdes/meta last :model)))

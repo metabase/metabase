@@ -8,8 +8,1130 @@ active: true
 field_order: database
 initial_sync_status: complete
 serdes/meta:
-- {id: Internal Metabase Database, model: Database}
-- {id: public, model: Schema}
-- {id: v_query_log, model: Table}
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_query_log
+  model: Table
 data_authority: unconfigured
 data_layer: internal
+fields:
+- name: action_id
+  display_name: Action ID
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  dimensions: []
+  position: 16
+  custom_position: 0
+  database_position: 16
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: action_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: action_qualified_id
+  display_name: Action Qualified ID
+  created_at: '2023-10-31T21:56:01.797264Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/FK
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_qualified_id
+  dimensions:
+  - created_at: '2025-04-01T14:05:41.360302Z'
+    entity_id: 87cdtRWMXA_ONszqY4pzS
+    human_readable_field_id:
+    - Internal Metabase Database
+    - public
+    - v_content
+    - name
+    name: Action Qualified ID
+    type: external
+    serdes/meta:
+    - id: 87cdtRWMXA_ONszqY4pzS
+      label: action_qualified_id
+      model: Dimension
+  position: 17
+  custom_position: 0
+  database_position: 17
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: action_qualified_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: auth_method
+  display_name: Auth Method
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  position: 28
+  custom_position: 0
+  database_position: 28
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: auth_method
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: cache_hit
+  display_name: Cache Hit
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: bool
+  base_type: type/Boolean
+  effective_type: type/Boolean
+  semantic_type: type/Category
+  dimensions: []
+  position: 15
+  custom_position: 0
+  database_position: 15
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: cache_hit
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: card_id
+  display_name: Card ID
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  dimensions: []
+  position: 8
+  custom_position: 0
+  database_position: 8
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: card_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: card_qualified_id
+  display_name: Card Qualified ID
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/FK
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_qualified_id
+  dimensions:
+  - created_at: '2025-04-01T14:05:07.16463Z'
+    entity_id: 5kq3mRRgC9Ea4OZspf0Hs
+    human_readable_field_id:
+    - Internal Metabase Database
+    - public
+    - v_content
+    - name
+    name: Card Qualified ID
+    type: external
+    serdes/meta:
+    - id: 5kq3mRRgC9Ea4OZspf0Hs
+      label: card_qualified_id
+      model: Dimension
+  position: 9
+  custom_position: 0
+  database_position: 9
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: card_qualified_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: dashboard_id
+  display_name: Dashboard ID
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  dimensions: []
+  position: 10
+  custom_position: 0
+  database_position: 10
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: dashboard_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: dashboard_qualified_id
+  display_name: Dashboard Qualified ID
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/FK
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_qualified_id
+  dimensions:
+  - created_at: '2025-04-01T14:05:14.672087Z'
+    entity_id: LFF3bGrmUaqEW9Q650Bfa
+    human_readable_field_id:
+    - Internal Metabase Database
+    - public
+    - v_content
+    - name
+    name: Dashboard Qualified ID
+    type: external
+    serdes/meta:
+    - id: LFF3bGrmUaqEW9Q650Bfa
+      label: dashboard_qualified_id
+      model: Dimension
+  position: 11
+  custom_position: 0
+  database_position: 11
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: dashboard_qualified_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: database_id
+  display_name: Database ID
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  dimensions: []
+  position: 13
+  custom_position: 0
+  database_position: 13
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: database_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: database_qualified_id
+  display_name: Database Qualified ID
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/FK
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  - entity_qualified_id
+  dimensions:
+  - created_at: '2025-04-01T14:05:23.868552Z'
+    entity_id: tQ9UVM6UxS0do5krJqfjc
+    human_readable_field_id:
+    - Internal Metabase Database
+    - public
+    - v_databases
+    - name
+    name: Database Qualified ID
+    type: external
+    serdes/meta:
+    - id: tQ9UVM6UxS0do5krJqfjc
+      label: database_qualified_id
+      model: Dimension
+  position: 14
+  custom_position: 0
+  database_position: 14
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: database_qualified_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: embedding_client
+  display_name: Embedding Client
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions:
+  - created_at: '2026-04-21T16:24:27.061441Z'
+    entity_id: nssVx8_sGrHpkHTjIxxK0
+    name: Embedding Client
+    type: internal
+    serdes/meta:
+    - id: nssVx8_sGrHpkHTjIxxK0
+      label: embedding_client
+      model: Dimension
+  position: 23
+  custom_position: 0
+  database_position: 23
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: embedding_client
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: embedding_client_identifier
+  display_name: Embedding Client Identifier
+  created_at: '2026-07-13T00:00:00Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  position: 39
+  custom_position: 0
+  database_position: 39
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: embedding_client_identifier
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: embedding_hostname
+  display_name: Embedding Hostname
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 34
+  custom_position: 0
+  database_position: 34
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: embedding_hostname
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: embedding_path
+  display_name: Embedding Path
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 35
+  custom_position: 0
+  database_position: 35
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: embedding_path
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: embedding_route
+  display_name: Embedding Route
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 24
+  custom_position: 0
+  database_position: 24
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: embedding_route
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: embedding_sdk_version
+  display_name: Embedding SDK Package Version
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 26
+  custom_position: 0
+  database_position: 26
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: embedding_sdk_version
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: entity_id
+  display_name: Entity ID
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/PK
+  dimensions: []
+  position: 0
+  custom_position: 0
+  database_position: 0
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: entity_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: error
+  display_name: Error
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 6
+  custom_position: 0
+  database_position: 6
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: error
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: ip_address
+  display_name: IP Address
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 38
+  custom_position: 0
+  database_position: 38
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: ip_address
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: is_db_routed
+  display_name: Is Db Routed
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: bool
+  base_type: type/Boolean
+  effective_type: type/Boolean
+  dimensions: []
+  position: 31
+  custom_position: 0
+  database_position: 31
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: is_db_routed
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: is_impersonated
+  display_name: Is Impersonated
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: bool
+  base_type: type/Boolean
+  effective_type: type/Boolean
+  dimensions: []
+  position: 30
+  custom_position: 0
+  database_position: 30
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: is_impersonated
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: is_native
+  display_name: Is Native
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: bool
+  base_type: type/Boolean
+  effective_type: type/Boolean
+  semantic_type: type/Category
+  dimensions: []
+  position: 4
+  custom_position: 0
+  database_position: 4
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: is_native
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: is_preview
+  display_name: Is Preview
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: bool
+  base_type: type/Boolean
+  effective_type: type/Boolean
+  dimensions: []
+  position: 25
+  custom_position: 0
+  database_position: 25
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: is_preview
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: is_sandboxed
+  display_name: Is Sandboxed
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: bool
+  base_type: type/Boolean
+  effective_type: type/Boolean
+  dimensions: []
+  position: 29
+  custom_position: 0
+  database_position: 29
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: is_sandboxed
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: lens_id
+  display_name: Lens ID
+  created_at: '2026-02-11T16:02:44.430974Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  dimensions: []
+  position: 20
+  custom_position: 0
+  database_position: 20
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: lens_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: lens_params
+  display_name: Lens Params
+  created_at: '2026-02-11T16:02:44.430974Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  dimensions: []
+  position: 21
+  custom_position: 0
+  database_position: 21
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: lens_params
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: metabase_version
+  display_name: Metabase Version
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 27
+  custom_position: 0
+  database_position: 27
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: metabase_version
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: parameters
+  display_name: Parameters
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 32
+  custom_position: 0
+  database_position: 32
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: parameters
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: pulse_id
+  display_name: Pulse ID
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  dimensions: []
+  position: 12
+  custom_position: 0
+  database_position: 12
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: pulse_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: query
+  display_name: Query
+  created_at: '2024-02-08T19:13:56.765902Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/SerializedJSON
+  dimensions: []
+  preview_display: false
+  position: 22
+  custom_position: 0
+  database_position: 22
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: query
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: query_source
+  display_name: Query Source
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Source
+  dimensions: []
+  position: 5
+  custom_position: 0
+  database_position: 5
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: query_source
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: result_rows
+  display_name: Result Rows
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  dimensions: []
+  position: 3
+  custom_position: 0
+  database_position: 3
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: result_rows
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: running_time_seconds
+  display_name: Running Time Seconds
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: float8
+  base_type: type/Float
+  effective_type: type/Float
+  dimensions: []
+  position: 2
+  custom_position: 0
+  database_position: 2
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: running_time_seconds
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: sanitized_user_agent
+  display_name: Sanitized User Agent
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 37
+  custom_position: 0
+  database_position: 37
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: sanitized_user_agent
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: started_at
+  display_name: Started At
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: timestamptz
+  base_type: type/DateTimeWithLocalTZ
+  effective_type: type/DateTimeWithLocalTZ
+  semantic_type: type/CreationTimestamp
+  dimensions: []
+  position: 1
+  custom_position: 0
+  database_position: 1
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: started_at
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: tenant_id
+  display_name: Tenant ID
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/FK
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_tenants
+  - tenant_id
+  dimensions:
+  - created_at: '2026-04-22T08:30:40.371511Z'
+    entity_id: SrWQEQU3lWK9qZX0VI2lN
+    human_readable_field_id:
+    - Internal Metabase Database
+    - public
+    - v_tenants
+    - name
+    name: Tenant
+    type: external
+    serdes/meta:
+    - id: SrWQEQU3lWK9qZX0VI2lN
+      label: tenant
+      model: Dimension
+  position: 33
+  custom_position: 0
+  database_position: 33
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: tenant_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: transform_id
+  display_name: Transform ID
+  created_at: '2026-02-11T16:02:44.430974Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  dimensions: []
+  position: 18
+  custom_position: 0
+  database_position: 18
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: transform_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: transform_qualified_id
+  display_name: Transform Qualified ID
+  created_at: '2026-02-11T16:02:44.430974Z'
+  visibility_type: normal
+  database_type: text
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 19
+  custom_position: 0
+  database_position: 19
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: transform_qualified_id
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: user_agent
+  display_name: User Agent
+  created_at: '2026-04-21T08:37:34.791214Z'
+  visibility_type: normal
+  database_type: varchar
+  base_type: type/Text
+  effective_type: type/Text
+  semantic_type: type/Category
+  dimensions: []
+  position: 36
+  custom_position: 0
+  database_position: 36
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: user_agent
+    model: Field
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false
+- name: user_id
+  display_name: User ID
+  created_at: '2023-10-31T21:26:33.12521Z'
+  visibility_type: normal
+  database_type: int4
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/FK
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
+  dimensions:
+  - created_at: '2025-04-01T14:04:47.209295Z'
+    entity_id: -y4hizlxaFB-MfFB2MOy1
+    human_readable_field_id:
+    - Internal Metabase Database
+    - public
+    - v_users
+    - full_name
+    name: User ID
+    type: external
+    serdes/meta:
+    - id: -y4hizlxaFB-MfFB2MOy1
+      label: user_id
+      model: Dimension
+  position: 7
+  custom_position: 0
+  database_position: 7
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Internal Metabase Database
+    model: Database
+  - id: public
+    model: Schema
+  - id: v_query_log
+    model: Table
+  - id: user_id
+    model: Field
+  database_indexed: false
+  database_is_generated: false
+  database_is_nullable: true
+  database_is_pk: false

@@ -197,26 +197,6 @@
     :removal        {:statuses #{"removed"}}
     :enabled?       true}
 
-   :model/Field
-   {:model-type     "Field"
-    :model-key      :model/Field
-    :identity       :path
-    :path-keys      [:database :schema :table :field]
-    :parent-model   :model/Table
-    :parent-fk      :table_id
-    :cascade-filter {:active true}
-    :events         {:prefix :event/field
-                     :types  [:create :update :delete]}
-    :eligibility    {:type :parent-table}
-    :archived-key   nil  ; fields don't have archived
-    :tracking       {:hydrate-query? true
-                     :field-mappings {:model_name          :name
-                                      :model_collection_id :collection_id
-                                      :model_table_id      :table_id
-                                      :model_table_name    :table_name}}
-    :removal        {:statuses #{"removed"}}
-    :enabled?       true}
-
    :model/Segment
    {:model-type     "Segment"
     :model-key      :model/Segment
@@ -1157,11 +1137,6 @@
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
     (u/group-by first second targets)))
 
-(defn pk-col
-  "Returns the PK column keyword for `model`. FieldUserSettings uses :field_id; all others use :id."
-  [model]
-  (if (= model "FieldUserSettings") :field_id :id))
-
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
 
@@ -1173,7 +1148,7 @@
    3. Are in one of the provided collections (or descendants)"
   []
   (eduction (map (fn [[model ids]]
-                   (serdes/extract-all model {:filter-column (pk-col model)
+                   (serdes/extract-all model {:filter-column :id
                                               :filter-ids    (vec ids)
                                               :skip-archived true})))
             cat
@@ -1186,7 +1161,7 @@
   [rows]
   (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
     (eduction (map (fn [[model ids]]
-                     (serdes/extract-all model {:filter-column (pk-col model)
+                     (serdes/extract-all model {:filter-column :id
                                                 :filter-ids    (vec ids)
                                                 :skip-archived true})))
               cat

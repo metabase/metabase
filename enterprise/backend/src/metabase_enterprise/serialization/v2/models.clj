@@ -4,22 +4,16 @@
 (def data-model
   "Schema model types"
   ["Database"
-   "Field"
-   "FieldUserSettings"
    "Measure"
    "Segment"
    "Table"
-   "TableUserSettings"
    "Channel"])
 
 (def data-model-in-collection
   "Data model types that can be found in collections (via published tables).
    These are extracted by ID when discovered via descendants, even if no-data-model is set.
-   Includes both Field/Table (full serdes) and their user settings (user-edits-only / git sync)."
+   Fields are not listed: they are exported inside their Table's file, not as entities of their own."
   ["Table"
-   "TableUserSettings"
-   "Field"
-   "FieldUserSettings"
    "Segment"])
 
 (def content
@@ -55,6 +49,7 @@
   ["DashboardCard"
    "DashboardTab"
    "Dimension"
+   "Field"
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
@@ -73,6 +68,8 @@
    "ApplicationPermissionsRevision"
    "AuditLog"
    "AuthIdentity"
+   "FieldUserSettings"
+   "TableUserSettings"
    "BookmarkOrdering"
    "CacheConfig"
    "CardBookmark"

@@ -159,7 +159,9 @@
   (let [ingestable (ingest/ingest-yaml source-dir)
         resources  (ingest/ingest-list ingestable)
         baselined  (into #{} (map :model) (apply concat resources))
-        necessary? (set serdes.models/exported-models)]
+        ;; a path segment may name an inlined model -- a Field, say, which is a segment of its FieldValues' path
+        ;; even though it has no file of its own
+        necessary? (into (set serdes.models/exported-models) serdes.models/inlined-models)]
     (doseq [m serdes.models/exported-models :when (not (covered-by-dedicated-round-trip-test? m))]
       (is (baselined m) (format "We need to add %s entries to %s" m source-dir-path)))
     (doseq [b baselined :when (not (internal-model? b))]

@@ -16,3 +16,211 @@ serdes/meta:
   model: Table
 data_authority: unconfigured
 data_layer: internal
+fields:
+- name: CREATED_AT
+  display_name: Created At
+  created_at: '2024-08-28T14:38:42.774331Z'
+  visibility_type: normal
+  database_type: TIMESTAMP WITH TIME ZONE
+  base_type: type/DateTimeWithLocalTZ
+  effective_type: type/DateTimeWithLocalTZ
+  semantic_type: type/CreationTimestamp
+  dimensions: []
+  position: 7
+  custom_position: 0
+  database_position: 7
+  serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ORDERS
+    model: Table
+  - id: CREATED_AT
+    model: Field
+  database_indexed: false
+- name: DISCOUNT
+  display_name: Discount
+  created_at: '2024-08-28T14:38:42.774331Z'
+  visibility_type: normal
+  database_type: DOUBLE PRECISION
+  base_type: type/Float
+  effective_type: type/Float
+  semantic_type: type/Discount
+  dimensions: []
+  position: 6
+  custom_position: 0
+  database_position: 6
+  serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ORDERS
+    model: Table
+  - id: DISCOUNT
+    model: Field
+  database_indexed: false
+- name: ID
+  display_name: ID
+  created_at: '2024-08-28T14:38:42.774331Z'
+  visibility_type: normal
+  database_type: BIGINT
+  base_type: type/BigInteger
+  effective_type: type/BigInteger
+  semantic_type: type/PK
+  database_is_auto_increment: true
+  dimensions: []
+  position: 0
+  custom_position: 0
+  database_position: 0
+  serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ORDERS
+    model: Table
+  - id: ID
+    model: Field
+  database_indexed: true
+- name: PRODUCT_ID
+  display_name: Product ID
+  created_at: '2024-08-28T14:38:42.774331Z'
+  visibility_type: normal
+  database_type: INTEGER
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/FK
+  fk_target_field_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - ID
+  dimensions: []
+  position: 2
+  custom_position: 0
+  database_position: 2
+  serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ORDERS
+    model: Table
+  - id: PRODUCT_ID
+    model: Field
+  database_indexed: true
+- name: QUANTITY
+  display_name: Quantity
+  created_at: '2024-08-28T14:38:42.774331Z'
+  visibility_type: normal
+  database_type: INTEGER
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/Quantity
+  dimensions: []
+  position: 8
+  custom_position: 0
+  database_position: 8
+  has_field_values: auto-list
+  serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ORDERS
+    model: Table
+  - id: QUANTITY
+    model: Field
+  database_indexed: false
+- name: SUBTOTAL
+  display_name: Subtotal
+  created_at: '2024-08-28T14:38:42.774331Z'
+  visibility_type: normal
+  database_type: DOUBLE PRECISION
+  base_type: type/Float
+  effective_type: type/Float
+  dimensions: []
+  position: 3
+  custom_position: 0
+  database_position: 3
+  serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ORDERS
+    model: Table
+  - id: SUBTOTAL
+    model: Field
+  database_indexed: false
+- name: TAX
+  display_name: Tax
+  created_at: '2024-08-28T14:38:42.774331Z'
+  visibility_type: normal
+  database_type: DOUBLE PRECISION
+  base_type: type/Float
+  effective_type: type/Float
+  dimensions: []
+  position: 4
+  custom_position: 0
+  database_position: 4
+  serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ORDERS
+    model: Table
+  - id: TAX
+    model: Field
+  database_indexed: false
+- name: TOTAL
+  display_name: Total
+  created_at: '2024-08-28T14:38:42.774331Z'
+  visibility_type: normal
+  database_type: DOUBLE PRECISION
+  base_type: type/Float
+  effective_type: type/Float
+  dimensions: []
+  position: 5
+  custom_position: 0
+  database_position: 5
+  serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ORDERS
+    model: Table
+  - id: TOTAL
+    model: Field
+  database_indexed: false
+- name: USER_ID
+  display_name: User ID
+  created_at: '2024-08-28T14:38:42.774331Z'
+  visibility_type: normal
+  database_type: INTEGER
+  base_type: type/Integer
+  effective_type: type/Integer
+  semantic_type: type/FK
+  fk_target_field_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - ID
+  dimensions: []
+  position: 1
+  custom_position: 0
+  database_position: 1
+  serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ORDERS
+    model: Table
+  - id: USER_ID
+    model: Field
+  database_indexed: true

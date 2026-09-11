@@ -1025,28 +1025,29 @@
                 "Table should be tracked in RemoteSyncObject")))))))
 
 (deftest import!-tracks-fields-in-remote-sync-object-test
-  (testing "import! creates RemoteSyncObject entries for imported Fields"
+  (testing "import! tracks the Table a Field was imported inside"
     (mt/with-model-cleanup [:model/RemoteSyncObject]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}
                        :model/Table {table-id :id} {:name "test-table" :db_id db-id}
-                       :model/Field {field-id :id} {:name "test-field" :table_id table-id :base_type :type/Text}
+                       :model/Field _ {:name "test-field" :table_id table-id :base_type :type/Text}
                        :model/Collection _ {:name "Test Collection"
                                             :is_remote_synced true
                                             :entity_id "test-collection-1xxxx"
                                             :location "/"}]
           (let [test-files {"main" {"collections/main/test_collection/test_collection.yaml"
                                     (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                                    "databases/test_db/tables/test_table/fields/test_field.yaml"
-                                    (test-helpers/generate-field-yaml "test-field" "test-table" "test-db")}}
+                                    "databases/test_db/tables/test_table/test_table.yaml"
+                                    (test-helpers/generate-table-yaml "test-table" "test-db"
+                                                                      :fields [["test-field"]])}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
             (is (= :success (:status result)))
             (is (t2/exists? :model/RemoteSyncObject
-                            :model_type "Field"
-                            :model_id field-id
+                            :model_type "Table"
+                            :model_id table-id
                             :status "synced")
-                "Field should be tracked in RemoteSyncObject")))))))
+                "the Table the Field is written in should be tracked in RemoteSyncObject")))))))
 
 (deftest import!-tracks-segments-in-remote-sync-object-test
   (testing "import! creates RemoteSyncObject entries for imported Segments"
@@ -1068,9 +1069,10 @@
           (let [test-files {"main" {"collections/main/test_collection/test_collection.yaml"
                                     (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
                                     "databases/test_db/tables/test_table/test_table.yaml"
-                                    (test-helpers/generate-table-yaml "test-table" "test-db")
-                                    "databases/test_db/tables/test_table/fields/test_field.yaml"
-                                    (test-helpers/generate-field-yaml "test-field" "test-table" "test-db" :base-type "type/Integer" :database-type "INTEGER")
+                                    (test-helpers/generate-table-yaml "test-table" "test-db"
+                                                                      :fields [["test-field"
+                                                                                :base-type "type/Integer"
+                                                                                :database-type "INTEGER"]])
                                     "databases/test_db/tables/test_table/segments/test_segment.yaml"
                                     (test-helpers/generate-segment-yaml "Test Segment" "test-table" "test-db"
                                                                         :entity-id "TNdMrOCMHrQc_UtvCbTC5"

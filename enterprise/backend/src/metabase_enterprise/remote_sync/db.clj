@@ -8,6 +8,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private Conditions
@@ -245,6 +246,11 @@
                      [:= :t.name table_name]]
               (and has-field? field_name)
               (conj [:= :f.name field_name]))))))
+
+(mu/defn table
+  "The Table with `table-id` as users see it, or nil."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables-at-paths
   "The `:id`, `:name`, and `:collection_id` rows of the Tables at `paths` (`{:db_name :schema :table_name}`)."

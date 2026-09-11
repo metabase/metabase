@@ -839,14 +839,13 @@
   Return:
     - [[row entity]] (if no entity, then omit)"
   [{:keys [model_type rows]}]
-  (let [pk-col  (spec/pk-col model_type)
-        id->row (u/index-by :model_id rows)
-        opts    {:filter-column pk-col
+  (let [id->row (u/index-by :model_id rows)
+        opts    {:filter-column :id
                  :filter-ids    (mapv :model_id rows)
                  :skip-archived true}]
     ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
     (into [] (keep (fn [instance]
-                     (when-let [row (id->row (get instance pk-col))]
+                     (when-let [row (id->row (:id instance))]
                        [row (serdes/extract-one model_type opts instance)])))
           (serdes/extract-query model_type opts))))
 

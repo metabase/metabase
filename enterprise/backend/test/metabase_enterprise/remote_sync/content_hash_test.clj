@@ -97,13 +97,14 @@
       (is (= "synced" (noop-update-status! "Table" (:id table) :event/table-update table))))))
 
 (deftest field-noop-update-stays-synced-test
-  (testing "A no-op Field update keeps it synced (GHY-3933)"
+  (testing "A no-op Field update keeps its Table synced (GHY-3933)"
     (mt/with-temp [:model/Database db {:name "DB"}
                    :model/Collection coll {:is_remote_synced true :type collection/library-data-collection-type :name "Data"}
                    :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db)
                                        :is_published true :collection_id (:id coll)}
                    :model/Field field {:name "F" :table_id (:id table) :base_type :type/Integer}]
-      (is (= "synced" (noop-update-status! "Field" (:id field) :event/field-update field))))))
+      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated" :description_set true})
+      (is (= "synced" (noop-update-status! "Table" (:id table) :event/field-update field))))))
 
 (deftest segment-noop-update-stays-synced-test
   (testing "A no-op Segment update keeps it synced (GHY-3933)"
@@ -199,7 +200,7 @@
 (deftest content-metadata-matches-row-hash-test
   (testing "a full export writes a content_hash matching per-row row->content-hash for every identity flavor —
             including the extract-query overrides (Collection, NativeQuerySnippet), hybrids (Measure), and path
-            models (Field) that have no entity_id (GHY-3933)"
+            models (Table) that have no entity_id (GHY-3933)"
     (with-library-synced
       (mt/with-temporary-setting-values [remote-sync-type :read-write]
         (mt/with-temp [:model/Database db {:name "DB"}
@@ -210,13 +211,13 @@
                        :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id snips)}
                        :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db) :is_published true :collection_id (:id data)}
                        :model/Field field {:name "F" :table_id (:id table) :base_type :type/Integer}
-                       :model/FieldUserSettings _ {:field_id (:id field) :description "curated"}
+                       :model/FieldUserSettings _ {:field_id (:id field) :description "curated" :description_set true}
                        :model/Measure measure {:name "M" :table_id (:id table)}]
           (mt/with-model-cleanup [:model/RemoteSyncTask]
             (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
                   rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})
                                 [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
-                                 ["FieldUserSettings" (:id field)] ["Measure" (:id measure)]])]
+                                 ["Table" (:id table)] ["Measure" (:id measure)]])]
               (t2/delete! :model/RemoteSyncObject)
               (doseq [row rows]
                 (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
