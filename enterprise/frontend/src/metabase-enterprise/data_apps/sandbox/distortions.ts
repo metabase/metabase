@@ -8,6 +8,13 @@ import type {
   SandboxRealm,
 } from "./types";
 
+const REALM_CREATING_CTOR_NAMES = [
+  "HTMLIFrameElement",
+  "HTMLFrameElement",
+  "HTMLObjectElement",
+  "HTMLEmbedElement",
+] as const;
+
 /**
  * Data-app Near-Membrane distortion callback. Reuses the shared
  * `utils/scripts-sandbox` callback (same fetch/XHR/DOM blocking as custom-viz), but
@@ -77,26 +84,6 @@ export function makeDistortionCallback(
     }
   };
 
-  const realmCreatingProtos = [
-    HTMLIFrameElement,
-    HTMLFrameElement,
-    HTMLObjectElement,
-    HTMLEmbedElement,
-  ].map((ctor) => ctor.prototype);
-  const contentWindowGetters = new Set<unknown>(
-    realmCreatingProtos
-      .map((p) => getterOf(p, "contentWindow"))
-      .filter(Boolean),
-  );
-  const contentDocumentGetters = new Set<unknown>(
-    realmCreatingProtos
-      .map((p) => getterOf(p, "contentDocument"))
-      .filter(Boolean),
-  );
-  const frameElementGetter = getterOf(realm, "frameElement");
-  const getGatedRealm = () => realm;
-  const getNull = () => null;
-
   const ancestors = new Set<unknown>();
 
   // Walk up until a window is its own parent (the top) or a cross-origin
@@ -134,6 +121,35 @@ export function makeDistortionCallback(
   } catch {
     // opener unreachable — nothing to redirect
   }
+
+  // An adopted element keeps whichever realm's prototype Chrome last built its
+  // wrapper on, so capture every reachable realm's getters, not just this one's.
+  const realmCreatingProtos = [realm, ...ancestors].flatMap((win) => {
+    try {
+      // `ancestors` holds `unknown`, and these aren't indexable on `Window`.
+      const globals = win as Record<string, { prototype?: object }>;
+
+      return REALM_CREATING_CTOR_NAMES.map(
+        (name) => globals[name]?.prototype,
+      ).filter((proto): proto is object => !!proto);
+    } catch {
+      // Cross-origin realm — unreachable for the guest too.
+      return [];
+    }
+  });
+  const contentWindowGetters = new Set<unknown>(
+    realmCreatingProtos
+      .map((p) => getterOf(p, "contentWindow"))
+      .filter(Boolean),
+  );
+  const contentDocumentGetters = new Set<unknown>(
+    realmCreatingProtos
+      .map((p) => getterOf(p, "contentDocument"))
+      .filter(Boolean),
+  );
+  const frameElementGetter = getterOf(realm, "frameElement");
+  const getGatedRealm = () => realm;
+  const getNull = () => null;
 
   return function distortionCallback(value: object): object {
     const createElementDistortion = makeCreateElementDistortion(value, shared);

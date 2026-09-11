@@ -1399,7 +1399,6 @@
               metabase.metabot.settings
               metabase.metabot.tools.entity-details}
    :friends #{agent-api
-              enterprise/metabot
               enterprise/metabot-analytics
               slackbot}
    :uses    #{activity-feed
@@ -2388,7 +2387,6 @@
               metabase.sso.core
               metabase.sso.init
               metabase.sso.settings}
-   :friends #{enterprise/sso}
    :uses    #{api
               auth-identity
               config
@@ -2597,8 +2595,7 @@
            tracing
            transforms-base
            util}
-   :friends #{models
-              enterprise/transforms-python}
+   :friends #{enterprise/transforms-python}
    :model-exports #{:model/Transform
                     :model/TransformDagRun
                     :model/TransformJob
@@ -3273,15 +3270,28 @@
    :uses #{premium-features}}
 
   enterprise/data-apps
-  {:team "Gadget"
+  {:team "Embedding"
    :api  #{metabase-enterprise.data-apps.api
            metabase-enterprise.data-apps.init
            metabase-enterprise.data-apps.sync}
    :uses #{api
+           collections
+           lib
+           lib-be
            models
+           permissions
            premium-features
+           request
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/DataPermissions
+                    :model/Database
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/Table
+                    :model/User}}
 
   enterprise/data-complexity-score
   {:team "Metabot"
@@ -3568,9 +3578,6 @@
    :api     #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
-   :friends #{slackbot
-              mcp
-              metabot}
    :uses    #{api
               lib
               lib-be

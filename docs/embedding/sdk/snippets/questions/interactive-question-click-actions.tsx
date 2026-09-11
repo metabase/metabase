@@ -16,7 +16,7 @@ const Example = () => {
       pluginsConfig={{
         mapQuestionClickActions: (clickActions, clicked) => {
           if (clicked?.column?.display_name === "Last Name") {
-            // This adds a custom action to the menu when clicked on on "Last Name" column
+            // This adds a custom action to the menu
             return [
               ...clickActions,
               {
@@ -29,12 +29,12 @@ const Example = () => {
           }
 
           if (clicked?.column?.display_name === "Plan") {
-            // This performs an immediate action on "Plan" column instead of opening the menu
+            // This performs an immediate action instead of opening the menu
             return {
               onClick: () => alert("You clicked the Plan column!"),
             };
           }
-          // default behavior (open Metabase's default click menu) on other columns
+          // default behavior (open Metabase's default click menu)
           return clickActions;
         },
       }}
