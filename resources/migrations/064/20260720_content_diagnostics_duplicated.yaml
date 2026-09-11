@@ -14,7 +14,7 @@ databaseChangeLog:
               - column:
                   name: duplicate_count
                   type: bigint
-                  remarks: Verdict magnitude for duplicated findings - the number of other same-type entities sharing the normalized name (cluster size minus 1); null on all other finding types (per-type named magnitude column).
+                  remarks: Verdict magnitude for duplicate_name findings - the number of other same-type entities sharing the normalized name (cluster size minus 1); null on all other finding types (per-type named magnitude column).
 
   - changeSet:
       id: v64.j5tk9w

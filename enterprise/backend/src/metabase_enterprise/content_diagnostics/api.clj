@@ -179,6 +179,10 @@
   is always present)."
   [:merge FindingBase
    [:map
+    ;; the stored `finding_type` is the narrower `duplicate_name`; `duplicated` is the client-facing name
+    ;; this endpoint has always served, pinned here so a missing wire alias fails response validation
+    ;; rather than reaching the client (see `api.common/wire-finding-type`)
+    [:finding_type    [:= :duplicated]]
     ;; peer count (top-level, SQL-filterable/sortable); always present on duplicated findings
     [:duplicate_count :int]
     [:details         DuplicatedDetails]]])
