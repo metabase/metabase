@@ -49,7 +49,7 @@ To create a pivot table, you'll need to use the query builder. Currently, you ca
 
 Currently, all the dimensions and metrics in your query must appear as either rows, columns, or measures in the pivot table (although you can [collapse rows to their totals](#totals-and-grand-totals)). If you don't want to display a breakout or metric in the pivot table, you'll need to remove it from the query - you can't hide it from the pivot table.
 
-## Automatically adjust dashboard height
+## Automatically adjust table height on a dashboard
 
 In the pivot table's visualization settings, open **Display** and enable **Automatically adjust dashboard height**. Save the question or dashboard settings.
 
