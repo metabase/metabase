@@ -5,6 +5,7 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [dev.kondo-ratchet :as kondo-ratchet]
+   [mage.kondo :as kondo]
    [mage.shell :as shell]))
 
 (set! *warn-on-reflection* true)
@@ -335,6 +336,8 @@
   pre-removal baseline, so files with pre-existing findings are excluded from the sweep and reported.
   An `--audit` removal that sticks takes its stale marker comment with it."
   [parsed]
+  ;; Without this, hooks reading the analysis cache report nothing and their ignores all look redundant.
+  (kondo/warm-cache!)
   (println "Running kondo with :redundant-ignore enabled (full lint, takes a minute or two)...")
   (let [audit?     (get-in parsed [:options :audit])
         findings   (kondo-findings! :redundant-ignore lint-roots)
@@ -474,6 +477,8 @@
   [[linter-arg & paths]]
   (when (str/blank? (str linter-arg))
     (throw (ex-info "Usage: ./bin/mage kondo-insert-ignores LINTER [PATHS...]" {:exit-code 1})))
+  ;; Without this, a cache-reading hook linter finds no sites at all.
+  (kondo/warm-cache!)
   (let [linter   (keyword (str/replace-first linter-arg #"^:" ""))
         roots    (or (seq paths) lint-roots)
         _        (println (format "Running kondo with %s enabled over %s..." linter (str/join " " roots)))
