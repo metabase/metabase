@@ -58,6 +58,34 @@
       (testing "will change the name"
         (is (= (format "DEACTIVATED_%d New name" id) (t2/select-one-fn :name :model/Channel id)))))))
 
+(deftest deactivate-channel-deactivates-orphaned-notifications-test
+  (testing "deactivating a channel also deactivates Notifications left with no other way to deliver (metabase#76712)"
+    (mt/with-temp [:model/Channel      {chn-id :id}  notification.tu/default-can-connect-channel
+                   :model/Notification {noti-id :id} {:payload_type :notification/system-event
+                                                       :active       true}
+                   :model/NotificationHandler _       {:notification_id noti-id
+                                                        :channel_type    :channel/metabase-test
+                                                        :channel_id      chn-id}]
+      (t2/update! :model/Channel chn-id {:active false})
+      (is (false? (t2/select-one-fn :active :model/Notification noti-id)))))
+
+  (testing "a notification with another still-viable handler is left alone"
+    (mt/with-temp [:model/Channel      {chn-1 :id}   notification.tu/default-can-connect-channel
+                   :model/Channel      {chn-2 :id}   (assoc notification.tu/default-can-connect-channel :name "Other channel")
+                   :model/Notification {noti-id :id} {:payload_type :notification/system-event
+                                                       :active       true}
+                   :model/NotificationHandler _       {:notification_id noti-id
+                                                        :channel_type    :channel/metabase-test
+                                                        :channel_id      chn-1}
+                   :model/NotificationHandler _       {:notification_id noti-id
+                                                        :channel_type    :channel/metabase-test
+                                                        :channel_id      chn-2}]
+      (t2/update! :model/Channel chn-1 {:active false})
+      (is (true? (t2/select-one-fn :active :model/Notification noti-id)))
+      (testing "deactivating the last remaining channel does deactivate it"
+        (t2/update! :model/Channel chn-2 {:active false})
+        (is (false? (t2/select-one-fn :active :model/Notification noti-id)))))))
+
 (deftest channel-template-email-details-test
   (mt/with-model-cleanup [:model/ChannelTemplate]
     (let [insert! (fn [template]
