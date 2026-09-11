@@ -9,7 +9,8 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (defmulti calculate-deps*
   "Implementation multimethod for [[calculate-deps]]. Dispatches on entity-type keyword.
@@ -53,6 +54,15 @@
   [dimension-mappings]
   {:table (into #{} (keep :table-id) dimension-mappings)})
 
+(mu/defn- upstream-deps:dynamic-goals :- ::deps.schema/upstream-deps
+  "Entities whose value a dynamic goal in `viz-settings` reads."
+  [viz-settings]
+  (->> (dynamic-goals/goal-values viz-settings)
+       (keep dynamic-goals/goal-source)
+       (filter (fn [{:keys [id type]}]
+                 (and (pos-int? id) (#{"card" "measure"} type))))
+       (u/group-by (comp keyword :type) :id conj #{})))
+
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
   [{{tables :source-tables} :source :as _py-transform}
    :- [:map [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]
@@ -83,7 +93,8 @@
   {:pre [(some? query)]}
   (let [base-deps      (merge-with into
                                    (upstream-deps:query query)
-                                   (upstream-deps:dimension-mappings dimension-mappings))
+                                   (upstream-deps:dimension-mappings dimension-mappings)
+                                   (upstream-deps:dynamic-goals (:visualization_settings card)))
         param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
     (reduce (fn [deps card-id]
               (update deps :card (fnil conj #{}) card-id))
@@ -141,9 +152,15 @@
                                        param-card-ids
                                        vis-setting-card-ids
                                        column-setting-card-ids])
-        all-dashboard-ids (into vis-setting-dashboard-ids column-setting-dashboard-ids)]
-    {:card all-card-ids
-     :dashboard all-dashboard-ids}))
+        all-dashboard-ids (into vis-setting-dashboard-ids column-setting-dashboard-ids)
+        goal-deps (reduce (fn [deps dashcard]
+                            (merge-with into deps (upstream-deps:dynamic-goals (:visualization_settings dashcard))))
+                          {}
+                          dashcards)]
+    (merge-with into
+                {:card all-card-ids
+                 :dashboard all-dashboard-ids}
+                goal-deps)))
 
 (defmethod calculate-deps* :document
   [_ document]

@@ -14,7 +14,8 @@
    [:dashboard {:optional true} [:set ::lib.schema.id/dashboard]]
    [:document  {:optional true} [:set ::documents.schema/document.id]]
    [:sandbox   {:optional true} [:set ::lib.schema.id/sandbox]]
-   [:segment   {:optional true} [:set ::lib.schema.id/segment]]])
+   [:segment   {:optional true} [:set ::lib.schema.id/segment]]
+   [:measure   {:optional true} [:set ::lib.schema.id/measure]]])
 
 (mr/def ::analysis-finding
   "A AnalysisFinding as selected from the app DB: every column of `:analysis_finding`."
