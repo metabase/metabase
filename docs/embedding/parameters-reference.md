@@ -34,6 +34,8 @@ Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` 
 
 ## Value formats by parameter type
 
+These formats apply wherever you pass a value: web component attributes, SDK props, and the `params` object in a [signed token](#params-in-a-signed-token).
+
 | Parameter type     | Accepts                                                                                                            | Examples                                  |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
 | Text, category, ID | A string, or an array of strings for multi-select filters.                                                         | `"Gizmo"`, `["Gizmo", "Gadget"]`          |

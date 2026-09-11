@@ -8,11 +8,13 @@ redirect_from:
 
 # Embedding parameters
 
-This page covers how to pass parameter values to embedded dashboards and SQL questions.
+This page covers how to pass parameter values to embedded dashboards and SQL questions in [modular embeds](./modular-embedding.md), with either the web components or the React SDK.
+
+If you're embedding with an iframe instead, check out [Parameters in iframe embeds](#parameters-in-iframe-embeds).
 
 ## Parameters differ between guest and SSO embeds
 
-When you embed a dashboard or SQL question, the embedding wizard will offer different parameter options depending on which authentication method you pick.
+Depending on which authentication method you pick for an embed, the embedding wizard will offer different parameter options:
 
 ### SSO embed parameters
 
@@ -104,9 +106,13 @@ SQL questions take `initialSqlParameters`:
 
 > _Don't_ combine controlled values with starting values: if you pass both, the embed uses the controlled values and logs a warning to the console.
 
-When your app needs to be the source of truth for filter values, use the controlled props. They work like a controlled `<input>` in React: you hold the values, the embed applies whatever you hand it, and it calls you back whenever someone changes the value in the filter widget. Use controlled values when you want to [build your own filter widgets](#build-your-own-filter-ui).
+When your app needs to be the source of truth for filter values, use the controlled attribute (web component) or prop (SDK). They work like a controlled `<input>` in React: you hold the values, the embed applies whatever you hand it, and it calls you back whenever someone changes the value in the filter widget. Use controlled values when you want to [build your own filter widgets](#build-your-own-filter-ui).
 
 Controlled values work with either authentication method. On a [guest embed](./guest-embedding.md), they apply to parameters you've set to **Editable** in the embed wizard. To restrict data rather than just set a value, [lock the parameter](#restrict-data-on-guest-embeds) instead.
+
+The [callback's payload](./parameters-reference.md#change-payload) includes the applied values, each parameter's default, and a `source` that says why it fired. For what each parameter type accepts, and how to clear or reset a value, see [Value formats by parameter type](./parameters-reference.md#value-formats-by-parameter-type).
+
+Push values as arrays, even single ones: `{ min_rating: [4] }`. Metabase stores dashboard values as arrays and hands them back that way.
 
 - [Web component](#web-component-controlled-values)
 - [React SDK](#react-sdk-controlled-values)
@@ -159,13 +165,13 @@ For SQL questions, pair `sqlParameters` with `onSqlParametersChange`:
 
 You must update your state from the callback. If you don't, the embed reverts to the values in your prop on the next render (which may wipe out edits people have made).
 
-The [callback's payload](./parameters-reference.md#change-payload) includes the applied values, each parameter's default, and a `source` that says why it fired. For what each parameter type accepts, and how to clear or reset a value, see [Value formats by parameter type](./parameters-reference.md#value-formats-by-parameter-type).
-
-Push values as arrays, even single ones: `{ min_rating: [4] }`. Metabase stores dashboard values as arrays and hands them back that way.
-
 ## Hide parameter widgets
 
 On an [SSO embed](./introduction.md#components-with-sso-authentication), every parameter shows a widget by default. To hide a parameter's widget without disabling the parameter, list its slug in `hidden-parameters` (web component) or `hiddenParameters` (SDK). Both work on dashboards and SQL questions.
+
+On a [guest embed](./guest-embedding.md), only **Editable** parameters get a widget in the first place, so the embed wizard won't generate `hidden-parameters` for you. To remove a widget in a guest embed, set the parameter to **Disabled** or **Locked** in the wizard. You can still add `hidden-parameters` by hand to hide a widget for a parameter you've made editable.
+
+Hiding a widget doesn't restrict anything: the value is still set from the browser, which means that anyone can open the console to change the value. To restrict what people can query, [lock the parameter](#restrict-data-on-guest-embeds) on a guest embed, or use [permissions](../permissions/embedding.md) on an SSO embed.
 
 - [Web component](#web-component-hidden-widgets)
 - [React SDK](#react-sdk-hidden-widgets)
@@ -189,10 +195,6 @@ On an [SSO embed](./introduction.md#components-with-sso-authentication), every p
 ```
 
 The same prop works on `StaticQuestion` and `InteractiveQuestion`.
-
-On a [guest embed](./guest-embedding.md), only **Editable** parameters get a widget in the first place, so the embed wizard won't generate `hidden-parameters` for you. To remove a widget in a guest embed, set the parameter to **Disabled** or **Locked** in the wizard. You can still add `hidden-parameters` by hand to hide a widget for a parameter you've made editable.
-
-Hiding a widget doesn't restrict anything: the value is still set from the browser, which means that anyone can open the console to change the value. To restrict what people can query, [lock the parameter](#restrict-data-on-guest-embeds) on a guest embed, or use [permissions](../permissions/embedding.md) on an SSO embed.
 
 ## Build your own filter UI
 
@@ -275,7 +277,7 @@ The same thing happens when a token expires. If you've set `guestEmbedProviderUr
 
 #### React SDK re-signed token
 
-Hold the token in state and pass it to the `token` prop on `StaticDashboard`. Guest embeds in the SDK need `isGuest: true` in the `MetabaseProvider` auth config, and a page can use only one authentication method. Check out [Using guest embeds with the SDK](./guest-embedding.md#using-guest-embeds-with-the-sdk).
+Hold the token in state and pass it to the `token` prop on `StaticDashboard`. The SDK doesn't fetch or refresh guest tokens with `guestEmbedProviderUri`, so the caveats in the web component section don't apply: your app is the only thing that sets the token, including when it expires. Guest embeds in the SDK need `isGuest: true` in the `MetabaseProvider` auth config, and a page can use only one authentication method. Check out [Using guest embeds with the SDK](./guest-embedding.md#using-guest-embeds-with-the-sdk).
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/parameters/dashboards/guest-locked-token.tsx" snippet="example" %}
