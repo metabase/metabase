@@ -150,7 +150,7 @@
           (is (= (set (map :name fields)) (set (keys (:fields result)))))
           (is (every? #(= :labeled (:status %)) (vals (:fields result)))))
         (testing "usage sums across calls"
-          (is (= {:input_tokens 300 :output_tokens 60 :cache_read_tokens 15 :cache_creation_tokens 0} (:usage result))))
+          (is (= {:input_tokens 300 :output_tokens 60 :cache_read_tokens 15 :cache_creation_tokens 0 :total_tokens 360} (:usage result))))
         (testing "each call carries the system prompt, the tracking opts, the schema, and a per-chunk token budget"
           (is (every? #(= "system" (-> % :messages first :role)) @calls))
           (is (every? #(= llm/response-schema (:schema %)) @calls))

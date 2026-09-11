@@ -35,7 +35,8 @@
    [:input_tokens          :int]
    [:output_tokens         :int]
    [:cache_read_tokens     :int]
-   [:cache_creation_tokens :int]])
+   [:cache_creation_tokens :int]
+   [:total_tokens          :int]])
 
 (mr/def ::counts
   [:map
@@ -112,7 +113,7 @@
     [:parallelism {:optional true} [:maybe pos-int?]]]])
 
 (def ^:private zero-usage
-  {:input_tokens 0 :output_tokens 0 :cache_read_tokens 0 :cache_creation_tokens 0})
+  {:input_tokens 0 :output_tokens 0 :cache_read_tokens 0 :cache_creation_tokens 0 :total_tokens 0})
 
 (def ^:private zero-counts
   {:fields 0 :agree 0 :disagree 0 :new 0 :abstain 0 :dropped 0 :semantic_changed 0})

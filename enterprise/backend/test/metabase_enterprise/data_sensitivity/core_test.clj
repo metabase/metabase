@@ -151,7 +151,8 @@
       (is (= {:input_tokens          (* 100 (:requests result))
               :output_tokens         (* 20 (:requests result))
               :cache_read_tokens     (* 5 (:requests result))
-              :cache_creation_tokens 0}
+              :cache_creation_tokens 0
+              :total_tokens          (* 120 (:requests result))}
              (:usage result))))))
 
 (deftest classify-table-permission-bypass-test
