@@ -19,6 +19,7 @@
    [metabase-enterprise.custom-viz-plugin.api.sandbox-host]
    [metabase-enterprise.data-apps.api]
    [metabase-enterprise.data-complexity-score.api]
+   [metabase-enterprise.data-sensitivity.api]
    [metabase-enterprise.data-studio.api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
@@ -62,6 +63,7 @@
    :content-translation        (deferred-tru "Content translation")
    :custom-viz                 (deferred-tru "Custom Visualizations")
    :data-apps-preview          (deferred-tru "Data Apps")
+   :data-sensitivity           (deferred-tru "Data sensitivity")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
    :schema-viewer              (deferred-tru "Schema Viewer")
@@ -125,6 +127,7 @@
    ;; No premium-handler gate yet — we haven't settled on the feature flag name or final API shape.
    ;; Endpoint is superuser-only so it's not exposed to regular users in the meantime.
    "/data-complexity-score"        metabase-enterprise.data-complexity-score.api/routes
+   "/data-sensitivity"             (premium-handler metabase-enterprise.data-sensitivity.api/routes :data-sensitivity)
    "/data-studio"                  (premium-handler metabase-enterprise.data-studio.api/routes :library)
    "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
                                        (premium-handler :attached-dwh)

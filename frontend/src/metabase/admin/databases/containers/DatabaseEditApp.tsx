@@ -17,6 +17,7 @@ import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import {
   PLUGIN_DATABASE_REPLICATION,
+  PLUGIN_DATA_SENSITIVITY,
   PLUGIN_DB_ROUTING,
   PLUGIN_TABLE_EDITING,
   PLUGIN_WRITABLE_CONNECTION,
@@ -113,6 +114,10 @@ function DatabaseEditAppInner({
                   mb={{ base: "3rem", sm: "5.5rem" }}
                 >
                   <DatabaseConnectionInfoSection database={database} />
+
+                  <PLUGIN_DATA_SENSITIVITY.DatabaseSection
+                    database={database}
+                  />
 
                   <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
                     database={database}

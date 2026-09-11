@@ -3508,6 +3508,23 @@
                     :model/Table
                     :model/User}}
 
+  enterprise/data-sensitivity
+  {:team "Graphy"
+   :api  #{metabase-enterprise.data-sensitivity.api}
+   :uses #{api
+           config
+           database-routing
+           driver
+           lib
+           metabot
+           request
+           util
+           warehouse-schema}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldUserSettings
+                    :model/Table}}
+
   enterprise/data-studio
   {:team "UX West"
    :api  #{metabase-enterprise.data-studio.api}
