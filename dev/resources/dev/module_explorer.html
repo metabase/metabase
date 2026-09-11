@@ -373,7 +373,7 @@ function appendCounts(row, m){
   const c=document.createElement('span'); c.className='mini';
   const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
   const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=m.uses.length;
-  c.append(inN, ' in · ', outN, ' out');
+  c.append(inN, ' used by · ', outN, ' uses');
   c.title=`${m['used-by'].length} modules depend on it · it depends on ${m.uses.length}`; row.appendChild(c);
 }
 // Build a row's shared content (caret slot, team dot, name, badges, counts, dep-marks).
@@ -496,7 +496,7 @@ function renderHotspots(){
     const c=document.createElement('span'); c.className='hcounts';
     const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
     const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=m.uses.length;
-    c.append(inN, ' in · ', outN, ' out'); row.appendChild(c);
+    c.append(inN, ' used by · ', outN, ' uses'); row.appendChild(c);
     appendDepMarks(row,m);
     row.onclick=(e)=>{ e.stopPropagation(); select(m.id); };
     visibleIds.push(m.id);
