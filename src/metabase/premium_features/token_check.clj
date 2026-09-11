@@ -73,7 +73,7 @@
 (let [f    (fn []
              {:post [(integer? %)]}
              (log/debug (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
-             (assert ((requiring-resolve 'metabase.app-db.core/db-is-set-up?)) "Metabase DB is not yet set up")
+             (assert (app-db/db-is-set-up?) "Metabase DB is not yet set up")
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
@@ -90,7 +90,7 @@
 (defn -active-users-count
   "Getter for the [[metabase.premium-features.settings/active-users-count]] Setting."
   []
-  (if-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
+  (if-not (app-db/db-is-set-up?)
     0
     (locking-active-user-count)))
 
@@ -319,7 +319,7 @@
                           {:pass-thru true})))
         ;; important to not count these errors against the circuit breaker. These are not the types of errors we need
         ;; to circuit break. (#65294)
-        (when-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
+        (when-not (app-db/db-is-set-up?)
           (throw (ex-info "Metabase DB is not yet set up"
                           {:cause :token-check/app-db-not-ready})))
         (locking lock

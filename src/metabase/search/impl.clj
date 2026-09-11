@@ -1,6 +1,7 @@
 (ns metabase.search.impl
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -43,8 +44,8 @@
   on dynamic variables."
   {:style/indent 0}
   [current-user-id current-user-perms & body]
-  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-id*)              ~current-user-id
-                   (requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
+  `(binding [api/*current-user-id*              ~current-user-id
+             api/*current-user-permissions-set* (atom ~current-user-perms)]
      ~@body))
 
 (defn- can-write? [{:keys [current-user-id current-user-perms]} instance]

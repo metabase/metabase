@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.permissions :as perms]
@@ -50,11 +51,6 @@
 
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 ;;;
-
-(defn- root-collection
-  "Requiring resolve to break a circular dependency"
-  []
-  (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))
 
 (defn- collection-permission-graph
   "Return the permission graph for the collections with id in `collection-ids` and the root collection."
@@ -155,7 +151,7 @@
    collection-id :- [:or [:= :root] ms/PositiveInt]
    new-collection-perms :- CollectionPermissions]
   (let [collection-id (if (= collection-id :root)
-                        (assoc (root-collection) :namespace collection-namespace)
+                        (assoc collection.root/root-collection :namespace collection-namespace)
                         collection-id)]
     ;; remove whatever entry is already there (if any) and add a new entry if applicable
     (perms/revoke-collection-permissions! group-id collection-id)

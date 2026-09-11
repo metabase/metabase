@@ -6,6 +6,7 @@
    [metabase.server.settings :as server.settings]
    [metabase.sso.db :as sso.db]
    [metabase.sso.settings :as sso-settings]
+   [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]))
 
@@ -82,7 +83,7 @@
   [redirect-url]
   (try
     (let [redirect (some-> redirect-url (java.net.URI.))
-          our-host (some-> ((requiring-resolve 'metabase.system.core/site-url)) (java.net.URI.) (.getHost))]
+          our-host (some-> (system/site-url) (java.net.URI.) (.getHost))]
       (when-not (or (nil? redirect-url)
                     (and (nil? (.getHost redirect))
                          (nil? (.getScheme redirect)))

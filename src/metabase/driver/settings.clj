@@ -261,15 +261,6 @@
   :type       :integer
   :default    50000)
 
-(defsetting engines
-  "Available database engines"
-  :encryption :no
-  :visibility :public
-  :setter     :none
-  :getter     (fn []
-                ((requiring-resolve 'metabase.driver.util/available-drivers-info)))
-  :doc        false)
-
 (defsetting sync-leaf-fields-limit
   (deferred-tru
    (str "Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo."

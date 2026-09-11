@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.indexed-entities.db :as indexed-entities.db]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -14,6 +15,7 @@
    [metabase.query-processor.core :as qp]
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.task.core :as task]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -39,10 +41,22 @@
   {:pk_ref    mi/transform-legacy-field-ref
    :value_ref mi/transform-legacy-field-ref})
 
+(defn trigger-key
+  "Quartz trigger key for the job that refreshes the values of model index `model-index-id`."
+  [model-index-id]
+  (triggers/key (format "metabase.task.IndexValues.trigger.%d" model-index-id)))
+
+(defn remove-indexing-job
+  "Remove the indexing job for `model-index`.
+
+  This and [[trigger-key]] live here rather than with the job itself so that deleting a ModelIndex can cancel its
+  trigger without reaching into [[metabase.indexed-entities.task.index-values]], which reads this namespace."
+  [model-index]
+  (task/delete-trigger! (trigger-key (:id model-index))))
+
 (t2/define-before-delete :model/ModelIndex
   [model-index]
-  (let [remove-refresh-job (requiring-resolve 'metabase.indexed-entities.task.index-values/remove-indexing-job)]
-    (remove-refresh-job model-index)))
+  (remove-indexing-job model-index))
 
 (def max-indexed-values
   "Maximum number of values we will index. Actually take one more than this to test if there are more than the

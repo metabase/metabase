@@ -1,10 +1,10 @@
-(ns metabase.task.bootstrap-test
+(ns metabase.app-db.quartz-test
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
-   [metabase.task.bootstrap :as task.bootstrap]
+   [metabase.app-db.quartz :as mdb.quartz]
    [toucan2.connection :as t2.conn])
   (:import
    (com.mchange.v2.c3p0 DataSources)
@@ -23,7 +23,7 @@
       (binding [mdb.connection/*application-db* app-db]
         (with-open [^Connection outer (.getConnection data-source)]
           (binding [t2.conn/*current-connectable* outer]
-            (let [^ConnectionProvider provider (task.bootstrap/->ConnectionProvider)]
+            (let [^ConnectionProvider provider (mdb.quartz/->ConnectionProvider)]
               (with-open [^Connection conn (.getConnection provider)]
                 (is (instance? Connection conn))
                 (is (not (identical? outer conn))
@@ -56,7 +56,7 @@
                 (with-open [^Connection main-conn (.getConnection ^javax.sql.DataSource app-db)]
                   ;; ...and simulate being inside a `with-transaction` block on it
                   (binding [t2.conn/*current-connectable* main-conn]
-                    (let [^ConnectionProvider provider (task.bootstrap/->ConnectionProvider)
+                    (let [^ConnectionProvider provider (mdb.quartz/->ConnectionProvider)
                           result                       (future
                                                          (with-open [^Connection conn (.getConnection provider)]
                                                            (with-open [stmt (.createStatement conn)]

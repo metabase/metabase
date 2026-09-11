@@ -70,7 +70,9 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization.path]
    [metabase.models.serialization.resolve :as resolve]
+   [metabase.models.serialization.resolve.default :as resolve.default]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -80,11 +82,21 @@
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
+   [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
+
+(p/import-vars
+ [metabase.models.serialization.path
+  entity-id
+  field-hierarchy
+  generate-path
+  infer-self-path
+  lookup-by-id
+  maybe-labeled])
 
 ;; there was no science behind picking 100 as a number
 (def ^:private extract-nested-batch-limit "max amount of entities to fetch nested entities for" 100)
@@ -92,17 +104,6 @@
 (def query-batch-size
   "Maximum number of ids per `:in` clause, to stay under database parameter limits."
   1000)
-
-(mr/def ::model-keyword
-  [:and
-   qualified-keyword?
-   [:fn
-    {:error/message ":model/X keyword"}
-    #(when (qualified-keyword? %)
-       (= (namespace %) "model"))]])
-
-(mr/def ::model-keyword-or-symbol
-  [:or symbol? ::model-keyword])
 
 ;;; # Serialization Overview
 ;;;
@@ -141,19 +142,6 @@
 ;;;    - Populate it `on-insert` with a randomly-generated NanoID like `"V1StGXR8_Z5jdHi6B-myT"`.
 ;;;    - For entities that existed before the column was added, have a portable way to rebuild them (see below on
 ;;;      hashing).
-
-(defmulti entity-id
-  "Given the model name and an entity, returns its entity ID (which might be nil).
-
-  This abstracts over the exact definition of the \"entity ID\" for a given entity.
-  By default this is a column, `:entity_id`.
-
-  Models that have a different portable ID (`Database`, `Field`, etc.) should override this."
-  {:arglists '([model-name instance])}
-  (fn [model-name _instance] model-name))
-
-(defmethod entity-id :default [_ instance]
-  (some-> instance :entity_id str/trim))
 
 (defn has-entity-id?
   "Returns true if the model has an `:entity_id` column."
@@ -199,41 +187,6 @@
 ;;;
 ;;; ## Two kinds of nesting
 ;;; To reiterate, `:serdes/meta` paths are not filesystem paths. When `extract`ed entities are stored to disk.
-
-(defmulti generate-path
-  "Given the model name and raw entity from the database, returns a vector giving its *path*.
-  `(generate-path \"ModelName\" entity)`
-
-  The path is a vector of maps, root first and this entity itself last. Each map looks like:
-  `{:model \"ModelName\" :id \"entity ID, identity hash, or custom ID\" :label \"optional human label\"}`
-
-  Nested models with no entity_id need to return nil for generate-path."
-  {:arglists '([model-name instance])}
-  (fn [model-name _instance] model-name))
-
-(defn infer-self-path
-  "Returns `{:model \"ModelName\" :id \"id-string\"}`"
-  [model-name entity]
-  {:model model-name
-   :id    (entity-id model-name entity)})
-
-(defn maybe-labeled
-  "Common helper for defining [[generate-path]] for an entity that is
-  (1) top-level, ie. a one layer path;
-  (2) labeled by a single field, slugified.
-
-  For example, a Card's or Dashboard's `:name` field."
-  [model-name entity slug-key]
-  (let [self  (infer-self-path model-name entity)
-        label (slug-key entity)]
-    [(-> self
-         (m/assoc-some :label (some-> label (u/slugify {:unicode? true}))))]))
-
-(defmethod generate-path :default [model-name entity]
-  ;; This default works for most models, but needs overriding for those that don't rely on entity_id.
-  (maybe-labeled model-name entity #(if (string? (:name %))
-                                      (:name %)
-                                      (:format-string (:name %)))))
 
 (defn log-path-str
   "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
@@ -634,8 +587,6 @@
   (fn [path]
     (-> path last :model)))
 
-(declare lookup-by-id)
-
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
         model                      (t2.model/resolve-model (symbol model-name))]
@@ -790,12 +741,6 @@
   [id-str]
   (resolve/entity-id? id-str))
 
-(mu/defn lookup-by-id
-  "Given an entity ID string, finds the matching entity. This is useful when writing [[xform-one]] to
-  turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
-  [model :- ::model-keyword-or-symbol id-str]
-  (models.db/entity-by-entity-id model id-str))
-
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].
   Returns a vector of maps with `:label` and `:key` for each path segment.
@@ -852,17 +797,13 @@
 ;;; These wrapper functions delegate to the current resolver (set by [[with-cache]]).
 ;;; When no resolver is bound, they fall back to the database-backed resolver.
 
-;; TODO: `requiring-resolve` is needed here because resolve.default requires this ns
-;; (for `generate-path`, `field-hierarchy`, `lookup-by-id`).
-;; Moving those into resolve.default (or a shared utils ns) would break the cycle and
-;; let us require resolve.default directly.
 (defn- export-resolver []
   (or resolve/*export-resolver*
-      @(requiring-resolve 'metabase.models.serialization.resolve.default/default-export-resolver)))
+      resolve.default/default-export-resolver))
 
 (defn- import-resolver []
   (or resolve/*import-resolver*
-      @(requiring-resolve 'metabase.models.serialization.resolve.default/default-import-resolver)))
+      resolve.default/default-import-resolver))
 
 ;;; ## General foreign keys
 
@@ -874,7 +815,7 @@
   NOTE: This works for both top-level and nested entities. Top-level entities like `Card` are returned as just a
   portable ID string.. Nested entities are returned as a vector of such ID strings."
   [id    :- [:maybe pos-int?]
-   model :- ::model-keyword-or-symbol]
+   model :- :metabase.models.serialization.path/model-keyword-or-symbol]
   (resolve/export-fk (export-resolver) id model))
 
 (defmacro ^:private fk-elide
@@ -900,7 +841,7 @@
 
   Unusual parameter order means this can be used as `(update x :some_id import-fk 'SomeModel)`."
   [eid
-   model :- ::model-keyword-or-symbol]
+   model :- :metabase.models.serialization.path/model-keyword-or-symbol]
   (resolve/import-fk (import-resolver) eid model))
 
 (mu/defn ^:dynamic *export-fk-keyed*
@@ -911,7 +852,7 @@
 
   Note: This assumes the primary key is called `:id`."
   [id
-   model :- ::model-keyword-or-symbol
+   model :- :metabase.models.serialization.path/model-keyword-or-symbol
    field]
   (resolve/export-fk-keyed (export-resolver) id model field))
 
@@ -1009,12 +950,6 @@
         path))
 
 ;;; ## Fields
-
-(defn field-hierarchy
-  "Returns the field hierarchy (field + parents) for a field ID. Used by resolvers."
-  [id]
-  (reverse
-   (models.db/field-hierarchy-rows id)))
 
 ;; NOTE: field lookups are intentionally NOT routed through the cached resolver, unlike the
 ;; database and table exporters above. Fields are unbounded in number (millions on large
@@ -1775,7 +1710,7 @@
   left in its portable entity-id form, instead of throwing. Use for paths where a deleted source Card
   should be treated as a broken section rather than break the whole read."
   [settings]
-  (binding [resolve/*import-resolver* @(requiring-resolve 'metabase.models.serialization.resolve.default/lenient-import-resolver)]
+  (binding [resolve/*import-resolver* resolve.default/lenient-import-resolver]
     (import-visualizer-settings settings)))
 
 (defn import-visualization-settings
@@ -1968,6 +1903,6 @@
 (defmacro with-cache
   "Runs body with resolvers bound to cached (memoized) versions for performance."
   [& body]
-  `(binding [resolve/*export-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.default/cached-export-resolver))
-             resolve/*import-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.default/cached-import-resolver))]
+  `(binding [resolve/*export-resolver* (resolve.default/cached-export-resolver)
+             resolve/*import-resolver* (resolve.default/cached-import-resolver)]
      ~@body))

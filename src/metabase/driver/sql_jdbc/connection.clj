@@ -12,6 +12,7 @@
    [metabase.driver.db :as driver.db]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection.pool-lock :as pool-lock]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
@@ -476,7 +477,7 @@
          ;; We don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed
          ;; the very next instant. This will cause their queries to fail. Thus we should do the usual locking here
          ;; and make sure only one thread will be creating a pool at a given instant.
-         (locking pool-cache-key->connection-pool
+         (locking pool-lock/monitor
            (or
             ;; check if another thread created the pool while we were waiting to acquire the lock
             (get-canonical-pool cache-key details-hash false)
