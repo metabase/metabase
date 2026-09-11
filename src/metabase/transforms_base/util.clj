@@ -798,7 +798,7 @@
 
 (mr/def ::source-table-entry
   "A source table entry in the array format. Combines alias with table reference."
-  [:map
+  [:map {:closed true}
    [:alias :string]
    [:database_id :int]
    [:schema [:maybe :string]]

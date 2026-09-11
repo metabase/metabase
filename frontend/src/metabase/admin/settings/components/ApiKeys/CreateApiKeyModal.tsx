@@ -16,7 +16,7 @@ import { useCreateApiKeyMutation } from "../../api/api-key";
 
 import S from "./CreateApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";
-import { API_KEY_VALIDATION_SCHEMA } from "./utils";
+import { getApiKeyValidationSchema } from "./utils";
 
 export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
   const [createApiKey, response] = useCreateApiKeyMutation();
@@ -47,7 +47,7 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
       >
         <FormProvider
           initialValues={{ name: "", group_id: null }}
-          validationSchema={API_KEY_VALIDATION_SCHEMA}
+          validationSchema={getApiKeyValidationSchema()}
           onSubmit={handleSubmit}
         >
           <Form data-testid="create-api-key-modal">

@@ -1,13 +1,41 @@
 (ns metabase.comments.schema
   "Malli schemas for the comments module."
   (:require
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::prose-mirror-node.attrs
+  "The `attrs` of a ProseMirror node in a comment: the ones this code reads by name, and whatever else the editor put
+  there. Every key, declared or not, is a string, so the map never mixes keyword and string keys."
+  (ms/string-keyed-object
+   ["model"    {:optional true} [:maybe :string]]
+   ["entityId" {:optional true} [:maybe [:or :int :string]]]
+   ["label"    {:optional true} [:maybe :string]]
+   ["level"    {:optional true} [:maybe :int]]))
+
+(mr/def ::prose-mirror-node
+  "One node of the ProseMirror/TipTap document a comment is written in, in the shape ProseMirror's `Node.toJSON`
+  emits: a `:type`, the children it contains, the marks applied to it, and `:text` on text nodes. Those five keys are
+  the whole of the ProseMirror JSON node format; `:attrs` varies by node type. Marks are nodes too as far as this
+  schema is concerned -- a mark carries only `:type` and `:attrs`, which is a subset of a node."
+  [:map {:closed true}
+   [:type                     :string]
+   [:attrs   {:optional true} [:maybe [:ref ::prose-mirror-node.attrs]]]
+   [:content {:optional true} [:sequential [:ref ::prose-mirror-node]]]
+   [:marks   {:optional true} [:sequential [:ref ::prose-mirror-node]]]
+   [:text    {:optional true} :string]])
+
 (mr/def ::comment.content
-  "The `:content` column of a Comment, decoded."
-  :map)
+  "The `:content` column of a Comment, decoded: the ProseMirror document the comment was written in."
+  ::prose-mirror-node)
+
+(mu/defn normalize-content :- [:maybe ::comment.content]
+  "Normalize a comment's content on its way in from the API or out of the application database."
+  [content]
+  (some->> content (lib/normalize ::comment.content)))
 
 (mr/def ::comment.context
   "The `:context` column of a Comment, decoded."
