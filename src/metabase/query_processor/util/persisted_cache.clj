@@ -4,6 +4,7 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   ;; We should not be using specific driver implementations
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]

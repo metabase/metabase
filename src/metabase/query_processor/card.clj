@@ -140,6 +140,8 @@
   here."
   false)
 
+;;; These live here rather than in [[metabase.queries.models.card]] so the QP can use them without
+;;; depending on the Card model.
 (mu/defn parameter-template-tag? :- :boolean
   "Whether a parameter is created for this template tag, as opposed to tags that splice content into the query itself,
   like snippets, card references, and tables."
@@ -155,6 +157,7 @@
 ;;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
 ;;; If this function moves you should update the comment that links to this one (#40013)
 ;;;
+;;; TODO -- does this belong HERE or in the `parameters` module?
 (mu/defn template-tag-parameters :- ::parameters.schema/parameters
   "Transforms native query's `template-tags` into `parameters`.
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they

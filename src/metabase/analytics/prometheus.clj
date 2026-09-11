@@ -15,6 +15,7 @@
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics-interface.core :as analytics.interface]
+   ;; We should not be using specific driver implementations
    [metabase.driver.sql-jdbc.connection.pool-lock :as pool-lock]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -136,7 +137,13 @@
     arr))
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
-  ;; reading these attributes deadlocks against concurrent c3p0 pool creation unless both sides hold this monitor
+  ;; Using this `locking` is non-obvious but absolutely required to avoid the deadlock inside c3p0 implementation. The
+  ;; act of JMX attribute reading first locks a DynamicPooledDataSourceManagerMBean object, and then a
+  ;; PoolBackedDataSource object. Conversely, the act of creating a pool (with
+  ;; com.mchange.v2.c3p0.DataSources/pooledDataSource) first locks PoolBackedDataSource and then
+  ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `pool-lock/monitor` is)
+  ;; to prevent the deadlock. Hopefully.
+  ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
   (locking pool-lock/monitor
     (let [bean-id   (.getCanonicalName jmx-bean)
           props     [:numConnections :numIdleConnections :numBusyConnections

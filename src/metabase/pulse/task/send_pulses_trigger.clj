@@ -90,6 +90,7 @@
         (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
         (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids new-timezone (:priority trigger)))))))
 
+;; called by PulseChannel hooks
 (defn update-send-pulse-trigger-if-needed!
   "Update send pulse trigger of a pulse for a specific schedule map with new pulse channel ids.
 
