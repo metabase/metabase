@@ -21,6 +21,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.query-permissions.core :as query-perms]
@@ -133,56 +134,83 @@
             field-id->table-id)))
 
 (defn- readable?
-  "Whether the current user can read the row; with `audited?` a refusal leaves the
-  [[api/read-check]] audit trail."
-  [audited? model id]
+  "Whether the current user can read `target`, either a row or a model and an id; with `audited?`
+  a refusal leaves the [[api/read-check]] audit trail."
+  [audited? & target]
   (if audited?
     (try
-      (api/read-check model id)
+      (apply api/read-check target)
       true
       (catch clojure.lang.ExceptionInfo e
         (if (= 403 (:status-code (ex-data e)))
           false
           (throw e))))
-    (mi/can-read? model id)))
+    (apply mi/can-read? target)))
 
-(defn- query-runnable?
-  "Whether the current user may run `resolved` and see every table and field it names: the
-  query processor's own run check (a saved question authorizes through its collection, native
+(defn- runnable-normalized-query
+  "`resolved` normalized, when the current user may run it and see every table and field it
+  names: the query processor's own run check (a saved question authorizes through its collection, native
   SQL through database-wide native access), then a per-table check on the ids the export
   resolves to names and a column-sandbox check on its field refs. The saved questions the
   query reads from are checked first with the caller's audit polarity, since the run check
   refuses them without a trail. Measure / segment refs are not checked here; the stores gate
-  those with the caller's audit polarity."
+  those with the caller's audit polarity.
+
+  Nil when they may not. Normalizing is the first thing the check does, so the result comes back
+  rather than leaving the export to repeat it."
   [audited? resolved]
   (try
     (let [normalized                 (lib-be/normalize-query resolved)
           database-id                (:database normalized)
           {:keys [table card field]} (exported-entity-ids normalized)]
-      (boolean
-       (when (and (pos-int? database-id)
-                  (every? #(readable? audited? :model/Card %) card)
-                  ;; throw on a calculation failure so only a denial reads as false
-                  (query-perms/can-run-query? normalized false true))
-         (let [field-table (metabot.perms/field-id->table-id field)
-               table-ids   (into (set table) (vals field-table))]
-           (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
-                (sandbox-visible-fields? field-table))))))
+      (when (and (pos-int? database-id)
+                 (every? #(readable? audited? :model/Card %) card)
+                 ;; throw on a calculation failure so only a denial reads as false
+                 (query-perms/can-run-query? normalized false true))
+        (let [field-table (metabot.perms/field-id->table-id field)
+              table-ids   (into (set table) (vals field-table))]
+          (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
+                     (sandbox-visible-fields? field-table))
+            normalized))))
     (catch Exception e
       (log/debugf "Omitting a query that could not be permission-checked: %s" (ex-message e))
-      false)))
+      nil)))
 
-(defn query-if-database-readable
-  "`query` with its database resolved, when the current user can read that database and run
-  the query, else nil. With `audited?` the database and saved-question refusals are audited;
-  for client-supplied queries, where the ids are the caller's own. A database that no longer
-  exists passes, since there is no metadata behind it to leak; one we can't resolve does not."
+(defn- cached-pass
+  "Memoize an allowed gate result on the agent's memory for the rest of the turn: the check
+  preprocesses the query in full, and the same conversation query is usually read more than once.
+  Refusals are not kept - that is where the audit trail lives, and it has to fire on every read.
+  Outside an agent run there is nowhere to cache, so the check just runs."
+  [cache-key f]
+  (if-let [memory-atom shared/*memory-atom*]
+    (or (get-in @memory-atom [:query-gate-cache cache-key])
+        (let [result (f)]
+          (when result
+            (swap! memory-atom assoc-in [:query-gate-cache cache-key] result))
+          result))
+    (f)))
+
+(defn query-for-export
+  "`[query mp]` for [[metabase.metabot.tools.shared.llm-shape/export-query-for-llm]] when the
+  current user can read the query's database and run it, else nil. The query comes back
+  normalized with a provider over its database; one carrying no `:database` passes through
+  untouched and without a provider, since it only ever pprints. With `audited?` the database and
+  saved-question refusals are audited; for client-supplied queries, where the ids are the
+  caller's own. A database that no longer exists passes, since there is no metadata behind it to
+  leak; one we can't resolve does not."
   [query audited?]
   (if-not (and (map? query) (:database query))
-    query
-    (when-let [resolved (resolve-effective-database query)]
-      (let [database-id (:database resolved)]
-        (when (or (not (metabot.db/database-exists? database-id))
-                  (and (readable? audited? :model/Database database-id)
-                       (query-runnable? audited? resolved)))
-          resolved)))))
+    [query nil]
+    (cached-pass
+     [query audited?]
+     (fn []
+       (when-let [resolved (resolve-effective-database query)]
+         ;; one fetch: read-checking by id would look the Database up again, and a deletion
+         ;; landing between the two turns the missing-database pass into an escaping 404
+         (let [database (metabot.db/database (:database resolved))]
+           (cond
+             (nil? database)                     [resolved nil]
+             (not (readable? audited? database)) nil
+             :else
+             (when-let [normalized (runnable-normalized-query audited? resolved)]
+               [normalized (lib-be/application-database-metadata-provider (:database normalized))]))))))))

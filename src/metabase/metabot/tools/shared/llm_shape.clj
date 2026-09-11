@@ -92,15 +92,21 @@
   `store` gates the Card / Measure / Segment lookups and every caller names one: the unaudited
   [[shared.content-store/default-store]] for queries loaded from the app DB,
   [[shared.content-store/audited-store]] for client-supplied queries so a denied lookup
-  keeps its audit trail. No defaulting arity, so the choice stays visible at the call site."
+  keeps its audit trail. No defaulting arity, so the choice stays visible at the call site.
+
+  Passing `mp` says `query` is already normalized and names the provider to export it through -
+  what [[shared.content-store/query-for-export]] hands back, so the export doesn't
+  repeat the normalization its permission check just did."
   ([query store]
+   (export-query-for-llm query nil store))
+  ([query mp store]
    (cond
      (string? query) query
      (string? (:query-content query)) (:query-content query)
      (and (map? query) (:database query))
      (try
-       (let [normalized (lib-be/normalize-query query)
-             mp         (lib-be/application-database-metadata-provider (:database normalized))
+       (let [normalized (if mp query (lib-be/normalize-query query))
+             mp         (or mp (lib-be/application-database-metadata-provider (:database normalized)))
              exported   (repr.resolve/export-query mp normalized store)]
          (or (repr-data->llm-block exported)
              (query-edn-fallback normalized)))

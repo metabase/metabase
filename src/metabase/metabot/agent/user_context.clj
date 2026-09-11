@@ -248,12 +248,13 @@
 
 ;;; Viewing Context Formatting
 
-(defn- query-if-database-readable
-  "The client-supplied adhoc query, only when the current user can read its database and query
-  the tables it references. The database refusal is audited for the same reason the query's card
-  ids get the audited store: the id is the caller's own."
+(defn- exported-query-text
+  "The client-supplied query rendered for the LLM, only when the current user can read its
+  database and query the tables it references. The database refusal is audited for the same
+  reason the query's card ids get the audited store: the id is the caller's own."
   [query]
-  (shared.content-store/query-if-database-readable query true))
+  (when-let [[gated mp] (shared.content-store/query-for-export query true)]
+    (llm-shape/export-query-for-llm gated mp shared.content-store/audited-store)))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
@@ -263,9 +264,7 @@
     (te/lines "The user is currently in the notebook editor viewing a query."
               (te/field "Query ID" (:id item))
               (te/field "Database ID" (get-in item [:query :database]))
-              (te/field "Query" (some-> (:query item)
-                                        query-if-database-readable
-                                        (llm-shape/export-query-for-llm shared.content-store/audited-store)))
+              (te/field "Query" (exported-query-text (:query item)))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)
@@ -277,9 +276,7 @@
   lives in [[llm-shape/export-query-for-llm]]. The source arrives inline in the viewing context,
   as client-supplied as the adhoc query above, so it gets the same audited gate and store."
   [source]
-  (some-> (:query source)
-          query-if-database-readable
-          (llm-shape/export-query-for-llm shared.content-store/audited-store)))
+  (exported-query-text (:query source)))
 
 (defn- transform-source-type
   [source]

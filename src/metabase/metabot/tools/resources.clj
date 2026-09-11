@@ -734,10 +734,10 @@
   is routine presentation and stays quiet."
   [query-id query]
   (let [audited? (contains? (shared/current-client-ids) query-id)]
-    (some-> (shared.content-store/query-if-database-readable query audited?)
-            (llm-shape/export-query-for-llm (if audited?
-                                              shared.content-store/audited-store
-                                              shared.content-store/default-store)))))
+    (when-let [[gated mp] (shared.content-store/query-for-export query audited?)]
+      (llm-shape/export-query-for-llm gated mp (if audited?
+                                                 shared.content-store/audited-store
+                                                 shared.content-store/default-store)))))
 
 (defn- fetch-conversation-query
   "Present a query stored in this conversation's agent state (created by tools or pasted
