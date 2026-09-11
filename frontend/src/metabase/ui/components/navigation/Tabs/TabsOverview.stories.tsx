@@ -1,0 +1,384 @@
+import { action } from "@storybook/addon-actions";
+import { Fragment, type ReactNode, useState } from "react";
+
+import {
+  Badge,
+  Box,
+  Group,
+  Icon,
+  Kbd,
+  Tabs,
+  type TabsProps,
+  Text,
+} from "metabase/ui";
+import { StorySection, StoryShowcase } from "metabase/ui/stories/showcase";
+import type { IconName } from "metabase-types/api";
+
+const LABEL = "Value";
+const TAB_ICON: IconName = "model";
+
+// The `variant × size` combinations the design system supports; `sm` exists
+// only for pills.
+const COLUMNS = [
+  { tabsProps: { variant: "default", size: "md" }, width: "22rem" },
+  { tabsProps: { variant: "pills", size: "md" }, width: "22rem" },
+  { tabsProps: { variant: "pills", size: "sm" }, width: "18rem" },
+] as const satisfies readonly {
+  tabsProps: Pick<TabsProps, "variant" | "size">;
+  width: string;
+}[];
+
+type TabsColumn = (typeof COLUMNS)[number];
+
+type TabState = {
+  id: string;
+  label: string;
+  selected?: boolean;
+  disabled?: boolean;
+};
+
+const STATES: TabState[] = [
+  { id: "default", label: "Default" },
+  { id: "hover", label: "Hover" },
+  { id: "pressed", label: "Pressed" },
+  { id: "selected", label: "Selected", selected: true },
+  { id: "hover-selected", label: "Selected + hover", selected: true },
+  { id: "disabled", label: "Disabled", disabled: true },
+];
+
+const PSEUDO_STATE_PARAMETERS = {
+  pseudo: {
+    hover: ["[data-state-row='hover']", "[data-state-row='hover-selected']"],
+    active: ["[data-state-row='pressed']"],
+  },
+};
+
+type ContentKind = "text" | "icon-text" | "icon";
+
+const CONTENT_KINDS: { kind: ContentKind; label: string }[] = [
+  { kind: "text", label: "Text" },
+  { kind: "icon-text", label: "Icon + text" },
+  { kind: "icon", label: "Icon only" },
+];
+
+const SELECTED_TAB = "two";
+
+// On a brand-filled selected pill the Badge and Kbd switch to the design's
+// "Inverse" look: a translucent dark disc with inverse text.
+const INVERSE_PROPS = {
+  bg: "background_surface-secondary-hover",
+  c: "text-primary-inverse",
+} as const;
+
+function TabBadge({ inverse }: { inverse: boolean }) {
+  const badgeProps = inverse ? INVERSE_PROPS : {};
+
+  return (
+    <Badge variant="light" color="neutral" {...badgeProps}>
+      1
+    </Badge>
+  );
+}
+
+function TabKbd({ inverse }: { inverse: boolean }) {
+  const kbdProps = inverse ? INVERSE_PROPS : {};
+
+  return (
+    <Group gap="xxxs" wrap="nowrap">
+      <Kbd {...kbdProps}>⌘</Kbd>
+      <Kbd {...kbdProps}>C</Kbd>
+    </Group>
+  );
+}
+
+type RightSectionRenderer = (args: { isSelectedPill: boolean }) => ReactNode;
+
+const RIGHT_SECTIONS: {
+  id: string;
+  label: string;
+  render: RightSectionRenderer;
+}[] = [
+  { id: "icon", label: "Icon", render: () => <Icon name={TAB_ICON} /> },
+  {
+    id: "kbd",
+    label: "Kbd",
+    render: ({ isSelectedPill }) => <TabKbd inverse={isSelectedPill} />,
+  },
+  {
+    id: "badge",
+    label: "Badge",
+    render: ({ isSelectedPill }) => <TabBadge inverse={isSelectedPill} />,
+  },
+];
+
+type ExampleTab = {
+  value: string;
+  content: ContentKind;
+  rightSection?: ReactNode;
+  disabled?: boolean;
+  closable?: boolean;
+  stateRow?: string;
+};
+
+type ExampleTabsProps = Pick<TabsProps, "orientation" | "onChange"> & {
+  column: TabsColumn;
+  tabs: ExampleTab[];
+  selected: string | null;
+  listBorder?: boolean;
+  onClose?: (value: string) => void;
+};
+
+function ExampleTabs({
+  column,
+  orientation,
+  tabs,
+  selected,
+  listBorder = true,
+  onChange = action("onChange"),
+  onClose = action("onClose"),
+}: ExampleTabsProps) {
+  return (
+    <Tabs
+      {...column.tabsProps}
+      orientation={orientation}
+      value={selected}
+      onChange={onChange}
+      listBorder={listBorder}
+    >
+      <Tabs.List>
+        {tabs.map((tab) => {
+          const leftSection =
+            tab.content !== "text" ? <Icon name={TAB_ICON} /> : undefined;
+
+          return (
+            <Tabs.Tab
+              key={tab.value}
+              value={tab.value}
+              disabled={tab.disabled}
+              closable={tab.closable}
+              onClose={onClose}
+              data-state-row={tab.stateRow}
+              leftSection={leftSection}
+              rightSection={tab.rightSection}
+            >
+              {tab.content !== "icon" ? LABEL : undefined}
+            </Tabs.Tab>
+          );
+        })}
+      </Tabs.List>
+    </Tabs>
+  );
+}
+
+function SingleTab({
+  column,
+  state,
+  content = "text",
+}: {
+  column: TabsColumn;
+  state: TabState;
+  content?: ContentKind;
+}) {
+  return (
+    <ExampleTabs
+      column={column}
+      listBorder={false}
+      selected={state.selected ? "tab" : null}
+      tabs={[
+        { value: "tab", content, disabled: state.disabled, stateRow: state.id },
+      ]}
+    />
+  );
+}
+
+function VariantGrid({ children }: { children: ReactNode }) {
+  return (
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: `9rem ${COLUMNS.map(({ width }) => width).join(" ")}`,
+        columnGap: "2rem",
+        rowGap: "0.5rem",
+        alignItems: "center",
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+function VariantRow({
+  label,
+  render,
+}: {
+  label?: ReactNode;
+  render: (column: TabsColumn) => ReactNode;
+}) {
+  return (
+    <>
+      <Text size="sm" c="text-secondary">
+        {label}
+      </Text>
+      {COLUMNS.map((column) => (
+        <Fragment key={`${column.tabsProps.variant}-${column.tabsProps.size}`}>
+          {render(column)}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+function getListOfTabs(tab: Omit<ExampleTab, "value">): ExampleTab[] {
+  return [
+    { ...tab, value: "one" },
+    { ...tab, value: SELECTED_TAB },
+    { ...tab, value: "three", disabled: true },
+  ];
+}
+
+function getTabsWithRightSection(
+  column: TabsColumn,
+  render: RightSectionRenderer,
+): ExampleTab[] {
+  const isPills = column.tabsProps.variant === "pills";
+
+  return getListOfTabs({ content: "text" }).map((tab) => ({
+    ...tab,
+    rightSection: render({
+      isSelectedPill: isPills && tab.value === SELECTED_TAB,
+    }),
+  }));
+}
+
+function ClosableTabs({
+  column,
+  content,
+}: {
+  column: TabsColumn;
+  content: ContentKind;
+}) {
+  // The first tab is forced into its hover state so the close control, which
+  // is only revealed on hover, shows up in the static showcase.
+  const [tabs, setTabs] = useState(() =>
+    getListOfTabs({ content, closable: true }).map((tab, index) =>
+      index === 0 ? { ...tab, stateRow: "hover" } : tab,
+    ),
+  );
+  const [selected, setSelected] = useState<string | null>(SELECTED_TAB);
+
+  const handleClose = (value: string) => {
+    const remaining = tabs.filter((tab) => tab.value !== value);
+    setTabs(remaining);
+    if (selected === value) {
+      setSelected(remaining[0]?.value ?? null);
+    }
+  };
+
+  return (
+    <ExampleTabs
+      column={column}
+      tabs={tabs}
+      selected={selected}
+      onChange={setSelected}
+      onClose={handleClose}
+    />
+  );
+}
+
+function OverviewTemplate() {
+  return (
+    <StoryShowcase title="Tabs">
+      <StorySection title="States">
+        <VariantGrid>
+          {STATES.map((state) => (
+            <VariantRow
+              key={state.id}
+              label={state.label}
+              render={(column) => <SingleTab column={column} state={state} />}
+            />
+          ))}
+        </VariantGrid>
+      </StorySection>
+
+      <StorySection title="Content">
+        <VariantGrid>
+          {CONTENT_KINDS.map(({ kind, label }) => (
+            <VariantRow
+              key={kind}
+              label={label}
+              render={(column) => (
+                <ExampleTabs
+                  column={column}
+                  selected={SELECTED_TAB}
+                  tabs={getListOfTabs({ content: kind })}
+                />
+              )}
+            />
+          ))}
+        </VariantGrid>
+      </StorySection>
+
+      <StorySection title="Right section">
+        <VariantGrid>
+          {RIGHT_SECTIONS.map(({ id, label, render }) => (
+            <VariantRow
+              key={id}
+              label={label}
+              render={(column) => (
+                <ExampleTabs
+                  column={column}
+                  selected={SELECTED_TAB}
+                  tabs={getTabsWithRightSection(column, render)}
+                />
+              )}
+            />
+          ))}
+        </VariantGrid>
+      </StorySection>
+
+      <StorySection title="Closable">
+        <VariantGrid>
+          {CONTENT_KINDS.filter(({ kind }) => kind !== "icon").map(
+            ({ kind, label }) => (
+              <VariantRow
+                key={kind}
+                label={label}
+                render={(column) => (
+                  <ClosableTabs column={column} content={kind} />
+                )}
+              />
+            ),
+          )}
+        </VariantGrid>
+      </StorySection>
+
+      <StorySection title="Vertical orientation">
+        <VariantGrid>
+          <VariantRow
+            render={(column) => (
+              <ExampleTabs
+                column={column}
+                orientation="vertical"
+                selected={SELECTED_TAB}
+                tabs={getListOfTabs({ content: "icon-text" })}
+              />
+            )}
+          />
+        </VariantGrid>
+      </StorySection>
+    </StoryShowcase>
+  );
+}
+
+export default {
+  title: "Components/Navigation/Tabs/Overview",
+  component: Tabs,
+};
+
+export const Overview = {
+  render: OverviewTemplate,
+  parameters: {
+    ...PSEUDO_STATE_PARAMETERS,
+    controls: { include: ["theme"] },
+  },
+};

@@ -35,6 +35,7 @@
   output-table
   python-transform?
   query-transform?
+  target-table-exists?
   transform-source-database
   transform-source-type]
  [metabase.transforms.util

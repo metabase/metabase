@@ -82,14 +82,33 @@
   [query]
   (u/pprint-to-str (cond-> query (map? query) (dissoc :lib/metadata))))
 
-(defn export-gated-query-for-llm
-  "Render the query [[shared.content-store/query-for-export]] cleared, as the pair it hands back.
-  With `mp` the query is already normalized and exports through it, resolving its ids to names.
-  Without one there is either nothing to resolve or no check behind it - a query with no
-  `:database`, a database that is gone, a permission check that could not be made at all - so it
-  renders only by the paths that resolve nothing.
+(defn- exported-or-edn
+  "Export `normalized` through `mp`, falling back to EDN of `fallback-query` when the export fails
+  for a reason other than a refusal.
 
-  `store` gates the Card / Measure / Segment lookups and every caller names one: the unaudited
+  The refusal marker, not the status code, is what tells \"you may not read this\" from \"the export
+  failed\". A by-id denial collapses into the same not-found a missing id produces, on purpose, so
+  the agent cannot ask for hidden content and learn it exists, which means the 403 this used to
+  catch never arrives on that path. Without the marker a refused card falls through and the raw
+  query is printed."
+  [mp normalized store fallback-query]
+  (binding [shared.content-store/*last-lookup-refused?* (atom false)]
+    (try
+      (or (repr-data->llm-block (repr.resolve/export-query mp normalized store))
+          (query-edn-fallback normalized))
+      (catch Exception e
+        (when-not (or (= 403 (:status-code (ex-data e)))
+                      @shared.content-store/*last-lookup-refused?*)
+          (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
+          (query-edn-fallback fallback-query))))))
+
+(defn export-gated-query-for-llm
+  "Render a query [[shared.content-store/query-for-export]] cleared, from the `:query` and `:mp`
+  it hands back. With `mp` the query is already normalized and exports through it, resolving its
+  ids to names. Without one there is nothing to resolve, so it renders only by the paths that
+  resolve nothing.
+
+  `store` decides the Card / Measure / Segment lookups and every caller names one:
   [[shared.content-store/default-store]] for queries loaded from the app DB,
   [[shared.content-store/audited-store]] for client-supplied queries so a denied lookup keeps its
   audit trail. No defaulting arity, so the choice stays visible at the call site."
@@ -98,14 +117,7 @@
     (string? query) query
     (string? (:query-content query)) (:query-content query)
 
-    mp
-    (try
-      (or (repr-data->llm-block (repr.resolve/export-query mp query store))
-          (query-edn-fallback query))
-      (catch Exception e
-        (log/debugf "Failed to export query for LLM: %s" (ex-message e))
-        (when-not (= 403 (:status-code (ex-data e)))
-          (query-edn-fallback query))))
+    mp (exported-or-edn mp query store query)
 
     (string? (get-in query [:native :query])) (get-in query [:native :query])
     (map? query) (query-edn-fallback query)
@@ -113,7 +125,7 @@
 
 (defn export-query-for-llm
   "Render a `query` (legacy or MBQL 5 map, or a pre-resolved string) for the LLM, normalizing it
-  and building its metadata provider here. For callers with no permission gate in front of them;
+  and building its metadata provider here. For callers with no permission check in front of them;
   one that has been through [[shared.content-store/query-for-export]] uses
   [[export-gated-query-for-llm]] with what that returned instead of normalizing a second time."
   [query store]
@@ -121,14 +133,12 @@
     (try
       (let [normalized (lib-be/normalize-query query)
             mp         (lib-be/application-database-metadata-provider (:database normalized))]
-        (or (repr-data->llm-block (repr.resolve/export-query mp normalized store))
-            (query-edn-fallback normalized)))
-      (catch Exception e
-        (log/debugf "Failed to export query for LLM: %s" (ex-message e))
         ;; `query` rather than the normalized form, so a failure here renders what the caller
         ;; handed us
-        (when-not (= 403 (:status-code (ex-data e)))
-          (query-edn-fallback query))))
+        (exported-or-edn mp normalized store query))
+      (catch Exception e
+        (log/debugf "Failed to normalize query for LLM, rendering it unresolved: %s" (ex-message e))
+        (export-gated-query-for-llm query nil store)))
     (export-gated-query-for-llm query nil store)))
 
 (defn transform-query->text

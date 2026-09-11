@@ -908,7 +908,7 @@
   "Swap the first two columns in data, reordering both :cols and :rows."
   [data]
   (-> data
-      (update :cols (fn [cs] (vec (cons (second cs) (cons (first cs) (drop 2 cs))))))
+      (update :cols (fn [cs] (into [(second cs) (first cs)] (drop 2 cs))))
       (update :rows (fn [rs] (mapv (fn [r] (let [v (vec r)] (into [(v 1) (v 0)] (subvec v 2)))) rs)))))
 
 (defn- normalize-funnel-data

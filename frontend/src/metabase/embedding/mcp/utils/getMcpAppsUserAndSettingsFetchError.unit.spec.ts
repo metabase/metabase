@@ -10,6 +10,24 @@ describe("getMcpAppsUserAndSettingsFetchErrorType", () => {
     ).toBe("auth");
   });
 
+  it("returns auth when the bootstrap session is expired or mismatched", () => {
+    expect(
+      getMcpAppsUserAndSettingsFetchErrorType({
+        status: 404,
+        data: "Invalid or expired session",
+      }),
+    ).toBe("auth");
+  });
+
+  it("returns network when MCP is disabled instance-wide", () => {
+    expect(
+      getMcpAppsUserAndSettingsFetchErrorType({
+        status: 403,
+        data: "MCP server is not enabled.",
+      }),
+    ).toBe("network");
+  });
+
   it("returns network for non-auth current user or settings API errors", () => {
     expect(
       getMcpAppsUserAndSettingsFetchErrorType({

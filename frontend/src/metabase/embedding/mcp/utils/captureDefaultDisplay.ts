@@ -50,7 +50,7 @@ export function captureDefaultDisplay({
 
   // Ad-hoc questions in MCP Apps initializes as `table`.
   // Replace that placeholder when default display actually loads.
-  // see `getMcpDeserializedCard` in `embedding/mcp/McpUiAppRoute.utils.ts`
+  // see `getMcpDeserializedQuery` in `embedding/mcp/McpUiAppRoute.utils.ts`
   const shouldReplaceTablePlaceholder =
     previousDefaultDisplay === "table" && currentDisplay !== "table";
 
