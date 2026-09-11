@@ -532,7 +532,7 @@
   "The provisional regression criteria for generated metadata, as data:
   on the holdout column, the `:generated` arm must be non-inferior to `:baseline` within `:margin` on
   each of `:metrics`, and strictly above `:none`. Complete snapshot coverage is enforced structurally
-  by [[run-arm!]]. The current holdout has only three in-domain queries, so this is a review signal,
+  by [[run-arm!]]. The current holdout has only five in-domain queries, so this is a review signal,
   not a statistically strong release decision."
   {:margin  0.05
    :metrics [:ndcg-at-10 :recall-at-10]})
