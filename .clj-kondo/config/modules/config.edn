@@ -1491,6 +1491,13 @@
            util}
    :model-imports #{:model/Card :model/Field :model/Measure}}
 
+  mfa
+  {:team "UX West"
+   :api  #{metabase.mfa.settings}
+   :uses #{premium-features
+           settings
+           util}}
+
   model-persistence
   {:team "Graphy"
    :api  #{metabase.model-persistence.api metabase.model-persistence.core metabase.model-persistence.init}
@@ -2264,6 +2271,7 @@
            config
            events
            lib
+           mfa
            premium-features
            request
            settings
@@ -3622,7 +3630,7 @@
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
   enterprise/mfa
-  {:team "Graphy"
+  {:team "UX West"
    :api  #{metabase-enterprise.mfa.core
            metabase-enterprise.mfa.init
            metabase-enterprise.mfa.routes}
@@ -3633,6 +3641,7 @@
            config
            events
            lib
+           mfa
            premium-features
            request
            settings
