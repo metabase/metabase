@@ -19,6 +19,7 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { enterSdkMode } from "metabase/embedding-sdk/lib/enter-sdk-mode";
 import { reinitialize as reinitializePlugins } from "metabase/plugins";
 import { defer } from "metabase/utils/promise";
 import type {
@@ -248,6 +249,7 @@ describe("CollectionBrowser", () => {
   describe('collectionId="all"', () => {
     beforeEach(() => {
       reinitializePlugins();
+      enterSdkMode();
     });
 
     // GET /api/collection/root has three outcomes and each one leads somewhere

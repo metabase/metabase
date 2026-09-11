@@ -4,25 +4,54 @@ name: Bundle Size Stats
 # emitted JS) plus the bundle-stats and embedding-sdk artifacts, measures
 # initial/total bundle sizes, and appends them to eng-stats-importer.
 
+# Triggered by "Run tests", which is the workflow that builds the uberjar on a
+# master merge.
 on:
   workflow_run:
-    workflows: ["Build Uberjar"]
+    workflows: ["Run tests"]
     types: [completed]
     # Master only: releases form non-linear lines whose deltas are meaningless,
     # so their sizes are backfilled separately rather than logged here.
     branches: [master]
+  workflow_call:
+    inputs:
+      commit:
+        description: "Commit SHA to measure."
+        type: string
+        required: false
+        default: ""
 
 concurrency:
-  group: bundle-size-stats-${{ github.event.workflow_run.head_sha }}
+  group: bundle-size-stats-${{ inputs.commit || github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:
+  # "Run tests" concludes `failure` on master more often than `success`, from
+  # jobs that have nothing to do with the jar, so its conclusion is not a usable
+  # gate. The artifact is one: the uberjar job publishes it, and a docs-only
+  # merge that skipped that job publishes none.
+  uberjar-built:
+    if: ${{ github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      found: ${{ steps.probe.outputs.fetch-hit }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: probe
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ inputs.commit || github.event.workflow_run.head_sha }}
+          edition: ee
+          download: false
+
   bundle-size-stats:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.repository == 'metabase/metabase' }}
+    needs: [uberjar-built]
+    if: ${{ needs.uberjar-built.outputs.found == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
-      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      HEAD_SHA: ${{ inputs.commit || github.event.workflow_run.head_sha }}
       # Only record a data point when a bundle's as-served size (brotli where the
       # build ships .br, else gzip) moved by at least this percent vs the last
       # plotted point, keeping the chart to real changes.
@@ -31,12 +60,12 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ env.HEAD_SHA }}
       - uses: ./.github/actions/prepare-node-bun
       - name: Download EE uberjar
         uses: ./.github/actions/fetch-artifact
         with:
-          commit: ${{ github.event.workflow_run.head_sha }}
+          commit: ${{ env.HEAD_SHA }}
           edition: ee
           extract-path: temp/uberjar
       - name: Extract front-end bundles from uberjar
@@ -108,7 +137,7 @@ jobs:
         run: bun ./.github/scripts/bundle-size-stats-prepare.ts
       - name: Import sizes (with deltas) into Stats
         id: upload
-        if: steps.prepare.outputs.significant == 'true'
+        if: ${{ steps.prepare.outputs.significant == 'true' && inputs.commit == '' }}
         env:
           ROWS: artifacts/upload-rows.json
           ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}

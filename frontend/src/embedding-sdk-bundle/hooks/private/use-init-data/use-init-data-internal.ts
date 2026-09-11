@@ -28,7 +28,6 @@ import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
-import { enterSdkMode } from "metabase/embedding-sdk/lib/enter-sdk-mode";
 import { setBasename } from "metabase/utils/basename";
 import { registerVisualizations } from "metabase/visualizations/register";
 
@@ -105,8 +104,6 @@ export const useInitDataInternal = ({
   authConfig,
   isLocalHost,
 }: InitDataLoaderParameters) => {
-  enterSdkMode();
-
   const dispatch = reduxStore.dispatch;
 
   const isDataUninitialized = () =>

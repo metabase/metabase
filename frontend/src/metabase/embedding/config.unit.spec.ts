@@ -37,7 +37,6 @@ describe("setDataApp", () => {
   it("configures the data-app context on the shared config", () => {
     setDataApp("sales");
 
-    expect(EMBEDDING_SDK_CONFIG.isEmbeddingSdk).toBe(true);
     expect(EMBEDDING_SDK_CONFIG.isDataApp).toBe(true);
     expect(EMBEDDING_SDK_CONFIG.isDataAppDev).toBe(false);
     expect(EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader).toBe("data-app");
@@ -63,15 +62,6 @@ describe("setDataApp", () => {
     expect(
       await PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders(REQUEST),
     ).toEqual({ headers: { "X-Metabase-Client": "data-app" } });
-  });
-
-  it("does not tag the request as embedded when the data app is inside an iframe", async () => {
-    iframeState.withinIframe = true;
-    setDataApp("sales");
-
-    expect(
-      await PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader(REQUEST),
-    ).toBeUndefined();
   });
 
   it("does not send the embed-preview header for a non-dev data app", async () => {

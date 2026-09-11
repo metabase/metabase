@@ -13,12 +13,12 @@
   "A lookback window: each run re-reads source rows up to `value` `unit`s behind the checkpoint,
   so late-arriving rows older than the watermark still get picked up. Only supported for
   temporal checkpoint columns."
-  [:map
+  [:map {:closed true}
    [:value pos-int?]
    [:unit (into [:enum] (map name) (sort u.date/add-units))]])
 
 (mr/def ::checkpoint-strategy
-  [:map
+  [:map {:closed true}
    [:type [:= "checkpoint"]]
    [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]
    [:lookback {:optional true} [:maybe ::lookback]]])
@@ -32,12 +32,12 @@
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :type)}
    [:query
-    [:map
+    [:map {:closed true}
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
      [:query ::lib-be.schema/maybe-legacy-query]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
-    [:map
+    [:map {:closed true}
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
      [:source-tables   [:sequential ::transforms-base.u/source-table-entry]]
@@ -46,17 +46,17 @@
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
 
 (mr/def ::append-config
-  [:map [:type [:= "append"]]])
+  [:map {:closed true} [:type [:= "append"]]])
 
 (mr/def ::merge-key-column
   "One column of a merge unique key. Carries a resolved `:field-id` when the target column is known,
   degrading to a `:name` ref when the target table doesn't exist yet (mirrors `::source-table-entry`)."
-  [:map
+  [:map {:closed true}
    [:name {:optional true} ms/NonBlankString]
    [:field-id {:optional true} [:maybe ::lib.schema.id/field]]])
 
 (mr/def ::merge-config
-  [:map
+  [:map {:closed true}
    [:type [:= "merge"]]
    [:unique-key [:sequential ::merge-key-column]]])
 
@@ -67,14 +67,14 @@
    ["merge"  ::merge-config]])
 
 (mr/def ::table-target
-  [:map
+  [:map {:closed true}
    [:database {:optional true} :int]
    [:type [:= "table"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]
    [:name :string]])
 
 (mr/def ::table-incremental-target
-  [:map
+  [:map {:closed true}
    [:database {:optional true} :int]
    [:type [:= "table-incremental"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]

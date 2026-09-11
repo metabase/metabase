@@ -1,9 +1,9 @@
 import type { ComponentType, ReactNode } from "react";
 
+import { definePluginSlot } from "metabase/plugin-slots";
 import type { Database } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
-import { definePluginSlot } from "../slot";
 
 export type WritableConnectionInfoSectionProps = {
   database: Database;

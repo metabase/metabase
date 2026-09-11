@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import { screen, within } from "__support__/ui";
+import { enterSdkMode } from "metabase/embedding-sdk/lib/enter-sdk-mode";
 import { reinitialize } from "metabase/plugins";
 
 import type { SetupOpts } from "./constants.spec";
@@ -15,6 +16,7 @@ export function addAlertsButtonTests(
   describe("alerts button with different Metabase version configurations", () => {
     beforeEach(() => {
       reinitialize();
+      enterSdkMode();
     });
 
     // Fix this in EMB-1184, when we can test SDK with API keys

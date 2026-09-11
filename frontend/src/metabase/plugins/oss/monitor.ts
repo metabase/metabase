@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 
-import { definePluginSlot } from "../slot";
+import { definePluginSlot } from "metabase/plugin-slots";
 
 type MonitorPlugin = {
   isDependencyDiagnosticsEnabled: boolean;

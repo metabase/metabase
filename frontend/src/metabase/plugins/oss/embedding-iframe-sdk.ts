@@ -1,4 +1,4 @@
-import { definePluginSlot } from "../slot";
+import { definePluginSlot } from "metabase/plugin-slots";
 
 const getDefaultPluginEmbeddingIframeSdk = () => ({
   isEnabled: () => false,

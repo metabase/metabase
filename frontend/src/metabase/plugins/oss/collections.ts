@@ -6,7 +6,7 @@ import type {
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
 } from "metabase/common/collections/types";
-import { useGetIconBase } from "metabase/hooks/use-icon";
+import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
 import type {
@@ -16,8 +16,6 @@ import type {
   CollectionEssentials,
   CollectionId,
 } from "metabase-types/api";
-
-import { definePluginSlot } from "../slot";
 
 // Types
 export type ItemWithCollection = { collection: CollectionEssentials };
@@ -76,14 +74,13 @@ const getDefaultPluginCollections = () => ({
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
   // Unjustified type cast. FIXME
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "" as BaseEntityId | "",
-  INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE:
+  getInstanceAnalyticsAdminReadonlyMessage: () =>
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
     t`Administrators always have the highest level of access to everything in Metabase.`,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): React.ReactNode[] => [],
-  useGetIcon: () => useGetIconBase(),
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items,
