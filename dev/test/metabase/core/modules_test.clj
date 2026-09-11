@@ -329,3 +329,34 @@
          (testing (format "\n'%s' module :model-imports" module)
            (is (= (sort imports)
                   imports))))))))
+
+;;;; Module boundary analysis
+
+(deftest ^:parallel strongly-connected-components-test
+  (let [graph {:a #{:b}
+               :b #{:a :c}
+               :c #{}
+               :d #{:e}
+               :e #{:f}
+               :f #{:d}
+               :g #{:h}}]
+    (is (= #{#{:a :b} #{:c} #{:d :e :f} #{:g} #{:h}}
+           (set (dev.deps-graph/strongly-connected-components graph))))
+    (is (= [#{:d :e :f} #{:a :b}]
+           (dev.deps-graph/cyclic-components graph)))))
+
+(deftest ^:parallel module-boundary-config-values-have-valid-types-test
+  (testing "Module boundary keys have the shapes the ratchet counts expect"
+    (doseq [[module config] (dev.deps-graph/kondo-config)]
+      (testing (format "\n%s" module)
+        (is (or (nil? (:api config))
+                (set? (:api config))
+                (= :any (:api config)))
+            ":api must be omitted, a set, or :any")
+        (is (or (nil? (:uses config))
+                (set? (:uses config))
+                (= :any (:uses config)))
+            ":uses must be omitted, a set, or :any")
+        (is (or (nil? (:friends config))
+                (set? (:friends config)))
+            ":friends must be a set when present")))))
