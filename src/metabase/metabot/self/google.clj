@@ -29,16 +29,15 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.google.raw-predict :as raw-predict]
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.memoize :as u.memoize]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.memoize :as u.memoize])
   (:import
    (com.google.auth.oauth2 GoogleCredentials ServiceAccountCredentials)
    (java.io ByteArrayInputStream IOException)
@@ -166,43 +165,57 @@
       (location-host location)
       configured)))
 
-(defn- resolve-google-auth
-  "Resolves the `{:auth {:url ... :headers ...} :credentials ...}` pair for a Google request.
+(defn- auth-method
+  "Which credential a connection authenticates with, or nil when it carries neither.
+  A service account key has precedence over an OAuth access token."
+  [{:keys [service-account-key oauth-access-token]}]
+  (cond
+    (not-empty service-account-key) :service-account
+    (not-empty oauth-access-token)  :oauth-token))
 
-  The credentials in the result are the resolved ones, so that callers can build resource paths from the project and
-  the location. A service account key has precedence over an OAuth access token. Throws if no project ID resolves, or
-  if `ai-proxy?` is true."
-  [credentials ai-proxy?]
-  (when ai-proxy?
-    (throw (ex-info (tru "AI proxy is not supported for the Google provider")
-                    {:api-error  true
-                     :error-code :proxy-unsupported})))
+(defn- resolve-credentials
+  "Resolve a connection's credentials into the form the rest of this namespace reads: blanks removed, and the
+  project ID derived from the service account key when the admin did not set one.
+
+  Google is the one provider whose *request path* is built from its credentials — the project and the location are
+  URL segments (see [[model-resource-path]]) — so resolution happens before a request is composed rather than inside
+  [[google-auth]]. Idempotent, so re-resolving an already-resolved map is harmless."
+  [credentials]
   ;; blank credentials count as absent — the environment can hand a setting an empty string, and one credential
   ;; left blank must not shadow the other or the project ID a service account key carries
-  (let [{:keys [service-account-key oauth-access-token project-id]
-         :as   creds}      (merge credentials
-                                  {:service-account-key (u/trimmed-string (:service-account-key credentials))
-                                   :oauth-access-token  (u/trimmed-string (:oauth-access-token credentials))
-                                   :project-id          (u/trimmed-string (:project-id credentials))})
-        sa-creds    (when service-account-key
-                      (cached-service-account-credentials service-account-key))
-        project-id  (or project-id (some-> sa-creds service-account-project-id))
-        auth-method (cond
-                      sa-creds           :service-account
-                      oauth-access-token :oauth-token)]
-    (when (and auth-method (not project-id))
+  (let [creds      (merge credentials
+                          {:service-account-key (u/trimmed-string (:service-account-key credentials))
+                           :oauth-access-token  (u/trimmed-string (:oauth-access-token credentials))
+                           :project-id          (u/trimmed-string (:project-id credentials))})
+        project-id (or (:project-id creds)
+                       (some-> (:service-account-key creds)
+                               cached-service-account-credentials
+                               service-account-project-id))]
+    ;; a connection with no credential at all fails here rather than several steps later: the project and the
+    ;; location are URL segments, so without this the missing project ID would be reported before the missing
+    ;; credential that was the actual problem
+    (when-not (auth-method creds)
+      (throw (core/missing-api-key-ex "Google")))
+    (when-not project-id
       (throw (ex-info (tru "A Google Cloud project ID is required for the Google provider")
                       {:api-error   true
                        :status-code 400
                        :error-code  :project-id-required})))
-    {:auth        (core/resolve-auth "google" "Google"
-                                     (when auth-method
-                                       {:url     (api-base-url creds)
-                                        :headers (case auth-method
-                                                   :service-account (fresh-bearer-headers sa-creds)
-                                                   :oauth-token     (oauth-bearer-headers oauth-access-token))})
-                                     ai-proxy?)
-     :credentials (assoc creds :project-id project-id)}))
+    (assoc creds :project-id project-id)))
+
+(defn- google-auth
+  "Google's `:auth`. Takes credentials [[resolve-credentials]] has already resolved, and reads the host from them:
+  the API host has to agree with the location, so it is not a fixed base URL the way it is for every other provider."
+  [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
+  (core/resolve-auth slug display-name
+                     (when-let [method (auth-method credentials)]
+                       {:url     (api-base-url credentials)
+                        :headers (case method
+                                   :service-account (fresh-bearer-headers
+                                                     (cached-service-account-credentials
+                                                      (:service-account-key credentials)))
+                                   :oauth-token     (oauth-bearer-headers (:oauth-access-token credentials)))})
+                     ai-proxy?))
 
 (defn- effective-project-id
   "Returns the project ID for a credential's requests.
@@ -347,20 +360,21 @@
                        :error-code  :invalid-model})))
     (format "%s/publishers/%s/models/%s" (location-path credentials) publisher model-id)))
 
-(defn- google-error-msg
-  "Returns the Google API error message for the status of `res`."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      400 (tru "Google API rejected the request as invalid")
-      401 (tru "Google API credentials expired or invalid")
-      403 (tru "Google API credentials have insufficient permissions or the API is not enabled for this project")
-      404 (tru "Google API endpoint is unavailable or the model was not found")
-      429 (tru "Google API has rate limited us")
-      500 (tru "Google API returned an internal server error")
-      501 (tru "Google API is not available in this location")
-      503 (tru "Google API is temporarily unavailable")
-      (tru "Google API error (HTTP {0})" status))))
+(def ^:private provider
+  "Google is the only adapter whose request path is derived from its credentials rather than fixed, so it resolves
+  them itself (see [[resolve-credentials]]) and hands the resolved map to [[adapter/stream!]]."
+  (adapter/provider
+   {:slug         "google"
+    :display-name "Google"
+    :auth         google-auth
+    :errors       {400 #(tru "Google API rejected the request as invalid")
+                   401 #(tru "Google API credentials expired or invalid")
+                   403 #(tru "Google API credentials have insufficient permissions or the API is not enabled for this project")
+                   404 #(tru "Google API endpoint is unavailable or the model was not found")
+                   429 #(tru "Google API has rate limited us")
+                   500 #(tru "Google API returned an internal server error")
+                   501 #(tru "Google API is not available in this location")
+                   503 #(tru "Google API is temporarily unavailable")}}))
 
 (defn- json-content?
   "Returns true if an HTTP response has a JSON content type."
@@ -376,11 +390,15 @@
   (contains? #{404 501} status))
 
 (defn- google-res->msg
-  "The `res->message` callback for [[core/rethrow-api-error!]] and [[core/reducible-with-api-errors]]."
+  "The `res->message` callback for [[core/rethrow-api-error!]] and [[adapter/stream!]]'s `:error-msg`.
+
+  Wraps the descriptor's own message rather than restating it: a status whose message should name the host it was
+  sent to (see [[include-endpoint-in-msg?]]) gets the endpoint appended, and the endpoint is known only per
+  connection, which is why this cannot live on the descriptor."
   [credentials]
   (let [endpoint (delay (try (api-base-url credentials) (catch Exception _ nil)))]
     (fn [res]
-      (cond-> (google-error-msg res)
+      (cond-> ((:error-msg provider) res)
         (and (include-endpoint-in-msg? (:status res)) @endpoint)
         (str " " (tru "(endpoint: {0})" @endpoint))))))
 
@@ -420,12 +438,13 @@
   credential, the project, the location, and the model all resolve.
 
   https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/projects.locations.publishers.models/countTokens"
-  [auth credentials model]
-  (core/request auth
-                {:method  :post
-                 :url     (str (model-resource-path credentials model) ":countTokens")
-                 :headers {"Content-Type" "application/json"}
-                 :body    (json/encode count-tokens-probe-body)}))
+  [credentials ai-proxy? model]
+  (adapter/request! provider {:method      :post
+                              :path        (str (model-resource-path credentials model) ":countTokens")
+                              :headers     {"Content-Type" "application/json"}
+                              :body        (json/encode count-tokens-probe-body)
+                              :credentials credentials
+                              :ai-proxy?   ai-proxy?}))
 
 (defn- anthropic-error-body?
   "Whether an error `body` shape matches an Anthropic error rather than Google's.
@@ -454,13 +473,14 @@
   Unlike [[metabase.metabot.self.azure/validate-anthropic-surface!]], the status code alone cannot settle it. Google
   rejects a model that the location does not serve with a `400 FAILED_PRECONDITION` of its own — the same status
   Anthropic uses for the validation error that means the model *is* servable."
-  [auth credentials model]
+  [credentials ai-proxy? model]
   (try
-    (core/request auth
-                  {:method  :post
-                   :url     (str (model-resource-path credentials model) raw-predict-method)
-                   :headers {"Content-Type" "application/json"}
-                   :body    "{}"})
+    (adapter/request! provider {:method      :post
+                                :path        (str (model-resource-path credentials model) raw-predict-method)
+                                :headers     {"Content-Type" "application/json"}
+                                :body        "{}"
+                                :credentials credentials
+                                :ai-proxy?   ai-proxy?})
     (catch Exception e
       (let [{:keys [status body]} (ex-data e)]
         (when-not (and (= 400 status) (anthropic-error-body? body))
@@ -468,10 +488,10 @@
 
 (defn- validate-model!
   "Validates `model` against the surface that serves it, and discards the response."
-  [auth credentials model]
+  [credentials ai-proxy? model]
   (case (model->family model)
-    :anthropic (validate-anthropic-surface! auth credentials model)
-    :google    (validate-google-surface! auth credentials model))
+    :anthropic (validate-anthropic-surface! credentials ai-proxy? model)
+    :google    (validate-google-surface! credentials ai-proxy? model))
   nil)
 
 (defn list-models
@@ -486,11 +506,11 @@
   to record on the connection and re-verify against later passing it in as the `proposed-model` on future attempts."
   ([] (list-models {}))
   ([{:keys [credentials model proposed-model ai-proxy? probe?]}]
+   (adapter/reject-ai-proxy! provider ai-proxy?)
    (if-let [model (or (not-empty model) (not-empty proposed-model))]
      (do
        (try
-         (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)]
-           (validate-model! auth credentials model))
+         (validate-model! (resolve-credentials credentials) ai-proxy? model)
          (catch Exception e
            (rethrow-google-api-error! credentials e)))
        (cond-> {:models []}
@@ -501,37 +521,27 @@
   "Makes a streaming request to the Gemini Enterprise Agent Platform.
   Gemini models stream through `streamGenerateContent`; Anthropic partner models through `streamRawPredict`.
   `:ai-proxy?` is not supported and throws when it is true."
-  [{:keys [model input tools credentials ai-proxy?] :as opts
+  [{:keys [model credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [family   (model->family model)
-        req      (case family
-                   :anthropic (raw-predict/request-body (model-id model) opts)
-                   :google    (stream-generate-content/request-body opts))
-        method   (case family
-                   :anthropic raw-predict-method
-                   :google    generate-content-method)
-        res->msg (google-res->msg credentials)]
-    (with-span :info {:name       :metabot.google/request
-                      :model      model
-                      :msg-count  (count input)
-                      :tool-count (count tools)}
-      (try
-        (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)
-              url      (str (model-resource-path credentials model) method)
-              response (core/request auth
-                                     {:method  :post
-                                      :url     url
-                                      :as      :stream
-                                      :headers {"Content-Type" "application/json"}
-                                      :body    (json/encode req)})]
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "google"
-                                     :model    model
-                                     :url      url
-                                     :request  req})
-              (core/reducible-with-api-errors "google" res->msg)))
-        (catch Exception e
-          (rethrow-google-api-error! credentials e))))))
+  ;; ahead of resolving credentials, and so ahead of [[adapter/request!]] doing it: a proxied request should
+  ;; say the proxy is unsupported, not report whatever is missing from a connection it will never use
+  (adapter/reject-ai-proxy! provider ai-proxy?)
+  (let [family (model->family model)
+        ;; resolved before the request is composed: the project and the location are URL segments, so the path
+        ;; cannot be built until the credentials are
+        creds  (resolve-credentials credentials)
+        opts   (assoc opts :model model :credentials creds)]
+    (adapter/stream! provider opts
+                     {:path       (str (model-resource-path creds model)
+                                       (case family
+                                         :anthropic raw-predict-method
+                                         :google    generate-content-method))
+                      :body       (case family
+                                    :anthropic (raw-predict/request-body (model-id model) opts)
+                                    :google    (stream-generate-content/request-body opts))
+                      :span-attrs {:family family}
+                      :error-msg  (google-res->msg creds)
+                      :on-error   #(rethrow-google-api-error! creds %)})))
 
 (defn google
   "Call the Gemini Enterprise Agent Platform, return AISDK stream."
