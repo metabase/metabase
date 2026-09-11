@@ -97,8 +97,9 @@ describe("LineChart dynamic goal", () => {
       createMockDataset({
         data: createMockDatasetData({ referenced_entities: ANSWERED }),
       }),
-      // keep the reference unanswered long enough to see the loader
-      { delay: 100 },
+      {
+        delay: 100, // keep the reference unanswered long enough to see the loader
+      },
     );
 
     await setup(createLineSeries());
