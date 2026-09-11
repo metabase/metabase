@@ -96,6 +96,21 @@ To customize the appearance of your question or dashboard, you can update the li
 
 Nobody signs in to view a public link or public embed, so a question that uses a [custom visualization](../questions/visualizations/custom.md) falls back to the default visualization for its results. To render custom visualizations, you'll need an authenticated [modular embed](./modular-embedding.md) with the visualization on your [allowlist](./custom-visualizations.md).
 
+## Resize a dashboard iframe to fit its content
+
+Dashboards are a fixed aspect ratio, so if you'd like the iframe to size itself vertically to fit the dashboard's contents, you can use the [iFrame Resizer](https://github.com/davidjbradshaw/iframe-resizer) script. Metabase serves a copy for convenience:
+
+```html
+<script src="{your-metabase-url}/app/iframeResizer.js"></script>
+
+<iframe
+  src="https://metabase.example.com/public/dashboard/YOUR_PUBLIC_UUID"
+  onload="iFrameResize({}, this)"
+></iframe>
+```
+
+Due to iframe-resizer's licensing changes, we recommend that you use iframe-resizer version 4.3.2 or lower. The same script works on legacy [static embeds](./introduction.md#static-embedding-is-deprecated).
+
 ## Public embed parameters
 
 To apply appearance or filter settings to your public embed, you can add parameters to the end of the link in your iframe's `src` attribute.
@@ -211,7 +226,7 @@ Note that the name of the filter in the URL should be specified in lower case, a
 /dashboard/42?filter_for_user_zip_code=02116
 ```
 
-Values are case-sensitive and have to match your data. Replace spaces in values with underscores. For the date formats a date filter accepts, check out the [Parameters reference](./parameters-reference.md#date-formats).
+Values are case-sensitive and have to match your data. URL-encode values that contain spaces or other special characters, like `Hash%20browns`. For the date formats a date filter accepts, check out the [Parameters reference](./parameters-reference.md#date-formats).
 
 For filter values that people can't remove from the URL, check out [locked parameters](./parameters.md#restrict-data-on-guest-embeds) on a guest or static embed.
 

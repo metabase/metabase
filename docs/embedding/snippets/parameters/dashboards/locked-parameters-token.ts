@@ -1,6 +1,6 @@
 // [<snippet example>]
 // Install via 'npm install jsonwebtoken'
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
 
 const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
 

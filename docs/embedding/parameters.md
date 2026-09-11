@@ -16,7 +16,7 @@ When you embed a dashboard or SQL question, the embedding wizard will offer diff
 
 ### SSO embed parameters
 
-With **SSO** authentication, you can set a default value and choose whether to hide a parameters widget. Your Metabase knows who's viewing, so [data permissions](../permissions/embedding.md) and [row and column security](../permissions/row-and-column-security.md) filter the rows for you.
+With **SSO** authentication, you can set a default value and choose whether to hide a parameter's widget. Your Metabase knows who's viewing, so [data permissions](../permissions/embedding.md) and [row and column security](../permissions/row-and-column-security.md) filter the rows for you.
 
 ### Guest embed parameters
 
