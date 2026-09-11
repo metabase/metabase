@@ -1,13 +1,8 @@
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_LIBRARY, lazyPluginComponent } from "metabase/plugins";
 import { PLUGIN_DATA_REFERENCE } from "metabase/querying/components/DataReference/plugins";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { DataReferenceLibraryPane } from "./DataReferenceLibraryPane";
-import { CollectionPermissionsModal } from "./components/CollectionPermissionsModal";
-import { CreateLibraryModal } from "./components/CreateLibraryModal";
-import { PublishTablesModal } from "./components/PublishTablesModal";
-import { UnpublishTablesModal } from "./components/UnpublishTablesModal";
 import { getDataStudioLibraryRoutes } from "./routes";
 import {
   getCollectionPickerItems,
@@ -33,11 +28,31 @@ export function initializePlugin() {
     PLUGIN_LIBRARY.getCollectionPickerItems = getCollectionPickerItems;
     PLUGIN_LIBRARY.getEntityPickerSyntheticLibraryItem =
       getEntityPickerSyntheticLibraryItem;
-    PLUGIN_DATA_REFERENCE.LibraryPane = DataReferenceLibraryPane;
-    PLUGIN_LIBRARY.CreateLibraryModal = CreateLibraryModal;
-    PLUGIN_LIBRARY.CollectionPermissionsModal = CollectionPermissionsModal;
-    PLUGIN_LIBRARY.PublishTablesModal = PublishTablesModal;
-    PLUGIN_LIBRARY.UnpublishTablesModal = UnpublishTablesModal;
+    PLUGIN_DATA_REFERENCE.LibraryPane = lazyPluginComponent(() =>
+      import("./DataReferenceLibraryPane").then(
+        ({ DataReferenceLibraryPane }) => DataReferenceLibraryPane,
+      ),
+    );
+    PLUGIN_LIBRARY.CreateLibraryModal = lazyPluginComponent(() =>
+      import("./components/CreateLibraryModal").then(
+        ({ CreateLibraryModal }) => CreateLibraryModal,
+      ),
+    );
+    PLUGIN_LIBRARY.CollectionPermissionsModal = lazyPluginComponent(() =>
+      import("./components/CollectionPermissionsModal").then(
+        ({ CollectionPermissionsModal }) => CollectionPermissionsModal,
+      ),
+    );
+    PLUGIN_LIBRARY.PublishTablesModal = lazyPluginComponent(() =>
+      import("./components/PublishTablesModal").then(
+        ({ PublishTablesModal }) => PublishTablesModal,
+      ),
+    );
+    PLUGIN_LIBRARY.UnpublishTablesModal = lazyPluginComponent(() =>
+      import("./components/UnpublishTablesModal").then(
+        ({ UnpublishTablesModal }) => UnpublishTablesModal,
+      ),
+    );
     PLUGIN_LIBRARY.useGetLibraryCollectionQuery = useGetLibraryCollectionQuery;
     PLUGIN_LIBRARY.getLibraryCollectionEmptyStateMessages =
       getLibraryCollectionEmptyStateMessages;
