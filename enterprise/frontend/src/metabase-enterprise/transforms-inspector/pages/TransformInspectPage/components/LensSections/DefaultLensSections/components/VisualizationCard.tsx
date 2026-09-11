@@ -2,7 +2,7 @@ import { memo } from "react";
 
 import { useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { useSnapshotSelector } from "metabase/common/hooks";
-import { selectMetadataProviderFactory } from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { Box, Card, Loader, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -10,7 +10,6 @@ import * as Lib from "metabase-lib";
 import { defaultDisplay } from "metabase-lib/query/display";
 import type {
   CardDisplayType,
-  DatabaseId,
   Dataset,
   InspectorCard,
   InspectorCardDisplayType,
@@ -40,8 +39,8 @@ export const VisualizationCard = memo(
       card.dataset_query,
     );
 
-    const getMetadataProvider = useSnapshotSelector(
-      selectMetadataProviderFactory,
+    const metadataProvider = useSnapshotSelector(
+      (state) => selectMetadataProvider(state, card.dataset_query.database),
       [isMetadataLoading],
     );
 
@@ -53,7 +52,7 @@ export const VisualizationCard = memo(
     const drillLenses = drillLensesByCardId[card.id] ?? [];
 
     const { displayType, displaySettings } = getDisplayConfig(
-      getMetadataProvider,
+      metadataProvider,
       card,
       isMetadataLoading,
     );
@@ -102,7 +101,7 @@ export const VisualizationCard = memo(
 VisualizationCard.displayName = "VisualizationCard";
 
 const getDisplayConfig = (
-  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
+  metadataProvider: Lib.MetadataProvider,
   card: InspectorCard,
   isMetadataLoading: boolean,
 ) => {
@@ -111,10 +110,7 @@ const getDisplayConfig = (
   }
 
   try {
-    const query = Lib.fromJsQuery(
-      getMetadataProvider(card.dataset_query.database),
-      card.dataset_query,
-    );
+    const query = Lib.fromJsQuery(metadataProvider, card.dataset_query);
     const { display, settings = {} } = defaultDisplay(query);
     const finalDisplay =
       display === "table" || display === "bar" ? card.display : display;

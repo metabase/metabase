@@ -37,9 +37,7 @@
     (testing "success if :payload_type is supported"
       (is (some? (t2/select-one
                   :model/Notification
-                  (t2/insert-returning-pk! :model/Notification {:payload_type :notification/system-event
-                                                                :created_at   :%now
-                                                                :updated_at   :%now})))))
+                  (t2/insert-returning-pk! :model/Notification {:payload_type :notification/system-event})))))
     (testing "failed if payload_type is invalid"
       (is (thrown-with-msg? Exception #"Value does not match schema*"
                             (t2/insert! :model/Notification {:payload_type :notification/not-existed}))))))

@@ -41,7 +41,7 @@ Supported models:
 
 Credentials:
 
-- **API key** (required). [Where do I find this?](https://console.anthropic.com/settings/keys) You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_KEY`.
+- **API key** (required). [Where do I find this?](https://platform.claude.com/settings/keys) You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_KEY`.
 - **API base URL** (advanced). Defaults to `https://api.anthropic.com`. You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_BASE_URL`.
 
 ## OpenAI
@@ -265,7 +265,7 @@ Metabase lists whichever models your vLLM server is serving, so what you can pic
 
 Credentials:
 
-- **API base URL** (required). Your server's OpenAI-compatible API. It should end in /v1. You can also set it with the environment variable `MB_LLM_VLLM_API_BASE_URL`.
+- **API base URL** (required). Your server's OpenAI-compatible API. It should end in /v1. Metabase must be able to reach it: self-hosted, a server on your private network or on this machine needs MB_LLM_ALLOWED_NETWORKS. You can also set it with the environment variable `MB_LLM_VLLM_API_BASE_URL`.
 - **API key**. Only needed if you started your server with --api-key. You can also set it with the environment variable `MB_LLM_VLLM_API_KEY`.
 
 ## Metabase AI service

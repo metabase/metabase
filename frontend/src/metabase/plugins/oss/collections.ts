@@ -6,7 +6,6 @@ import type {
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
 } from "metabase/common/collections/types";
-import { useGetIconBase } from "metabase/hooks/use-icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
 import type {
@@ -83,7 +82,6 @@ const getDefaultPluginCollections = () => ({
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): React.ReactNode[] => [],
-  useGetIcon: () => useGetIconBase(),
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items,
