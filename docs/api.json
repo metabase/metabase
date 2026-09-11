@@ -4962,7 +4962,10 @@
             } ]
           },
           "updated_at" : {
-            "oneOf" : [ { }, {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
               "type" : "null"
             } ]
           },
@@ -4992,7 +4995,10 @@
             } ]
           },
           "created_at" : {
-            "oneOf" : [ { }, {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
               "type" : "null"
             } ]
           },
