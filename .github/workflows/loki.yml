@@ -15,6 +15,7 @@ jobs:
   visual-test:
     if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
     services:
       docker:
         image: docker:19.03.12
