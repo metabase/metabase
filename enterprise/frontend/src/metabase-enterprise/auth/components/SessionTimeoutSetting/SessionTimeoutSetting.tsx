@@ -14,7 +14,7 @@ const getUnits = () => [
   { value: "hours", label: t`hours` },
 ];
 
-const DEFAULT_VALUE = { amount: 30, unit: getUnits()[0].value };
+const DEFAULT_VALUE: TimeoutValue = { amount: 30, unit: "minutes" };
 
 // This should mirror the BE validation of the session-timeout setting.
 const validate = (value: TimeoutValue | null) => {
