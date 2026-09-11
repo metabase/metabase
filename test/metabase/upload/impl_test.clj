@@ -1360,6 +1360,26 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
+(deftest create-csv-upload!-malformed-csv-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [[description options message]
+            [["a row wider than the header"
+              {:file (csv-file-with ["a,b" "1,2,3"])}
+              #"^Column count in data \(3\) exceeds the number of columns in the header \(2\)$"]
+             ["no separator that parses the first lines"
+              {:file (csv-file-with ["\"a" "1"])}
+              #"^Unable to determine separator"]
+             ["a syntax error past the lines used to pick the separator"
+              {:file (csv-file-with (concat ["a,b"] (repeat 10 "1,2") ["\"3,4"]))}
+              #"^CSV error"]
+             ["a syntax error in a TSV, which skips separator inference"
+              {:file (doto (tmp-file "test" ".tsv") (spit "a\tb\n\"1\t2")), :csv-file-prefix "data.tsv"}
+              #"^CSV error"]]]
+      (testing (str "Upload fails with a 422 and the message the user can act on, given " description)
+        (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                      (do-with-uploaded-example-csv! options identity)))]
+          (is (= 422 (:status-code (ex-data e)))))))))
+
 (deftest create-csv-upload!-schema-does-not-sync-test
   ;; We only need to test this for a single driver, and the way this test has been written is coupled to Postgres
   (mt/test-driver :postgres

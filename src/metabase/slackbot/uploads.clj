@@ -31,6 +31,24 @@
   (when (> size max-file-size-bytes)
     (format "File '%s' exceeds %dMB size limit" name (quot max-file-size-bytes (* 1024 1024)))))
 
+(def ^:private generic-upload-error
+  ;; Handed a bare internal-error note, the model told the user no file had been attached.
+  "Metabase hit an internal error while saving the file, so the upload didn't finish. Ask a Metabase admin to check the server logs.")
+
+(defn- upload-error-message
+  "Returns failure text that is safe to hand to the model.
+   The upload layer's own 4xx errors carry a message written for the user and have no cause. Anything else,
+   including the 4xx that relays a raw driver error along with its cause, gets [[generic-upload-error]], since
+   driver and JDBC messages can name hosts or accounts."
+  [e]
+  (let [{:keys [status-code]} (ex-data e)]
+    (if (and (integer? status-code)
+             (<= 400 status-code 499)
+             (nil? (ex-cause e))
+             (not (str/blank? (ex-message e))))
+      (ex-message e)
+      generic-upload-error)))
+
 (defn- upload-settings
   "Get upload settings map. Returns nil if uploads are not enabled."
   []
@@ -64,9 +82,9 @@
              :model-id (:id result)
              :model-name (:name result)}))
         (catch Exception e
-          (log/warnf "[slackbot] File upload failed: error=%s" (ex-message e))
+          (log/warnf e "[slackbot] File upload failed: error=%s" (ex-message e))
           (analytics/inc! :metabase-slackbot/file-uploads {:result "error"})
-          {:error (ex-message e) :filename name})
+          {:error (upload-error-message e) :filename name})
         (finally
           (io/delete-file temp-file true))))))
 
