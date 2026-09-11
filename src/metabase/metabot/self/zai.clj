@@ -44,7 +44,7 @@
   `:ai-proxy?` is not supported for Z.AI and throws when true."
   ([] (list-models {}))
   ([opts]
-   (adapter/listing supported-models (adapter/fetch-catalog provider opts) true)))
+   (adapter/listing supported-models (adapter/fetch-catalog provider opts) :name)))
 
 (mu/defn zai-request-body
   "Build the Chat Completions request body for an LLM request.

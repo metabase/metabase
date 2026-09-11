@@ -141,18 +141,41 @@
    "a-model" {:display-name "Allow-list A"}})
 
 (deftest listing-test
-  (let [entries [{:id "b-model" :name "Catalog B"}
-                 {:id "a-model" :display_name "Catalog A"}
+  (let [entries [{:id "b-model" :name "Catalog B name" :display_name "Catalog B display_name"}
+                 {:id "a-model" :name "Catalog A name" :display_name "Catalog A display_name"}
                  {:id "unlisted" :name "Catalog U"}]]
     (testing "keeps only allow-listed ids, sorted by id"
       (is (= ["a-model" "b-model"]
              (mapv :id (:models (adapter/listing allow-list entries))))))
-    (testing "names come from the allow-list by default, so a catalog that starts carrying names cannot rename a model"
+    (testing "with no catalog-name-key the allow-list names win, so a catalog that starts carrying names cannot rename a model"
       (is (= ["Allow-list A" "Allow-list B"]
              (mapv :display_name (:models (adapter/listing allow-list entries))))))
-    (testing "catalog-name? prefers the catalog's own name, falling back to `:display_name` then the allow-list"
-      (is (= ["Catalog A" "Catalog B"]
-             (mapv :display_name (:models (adapter/listing allow-list entries true))))))
-    (testing "catalog-name? still falls back to the allow-list when the entry carries no name at all"
+    (testing "a provider reads exactly the field it names, and is unaffected by the other being present"
+      (is (= ["Catalog A name" "Catalog B name"]
+             (mapv :display_name (:models (adapter/listing allow-list entries :name)))))
+      (is (= ["Catalog A display_name" "Catalog B display_name"]
+             (mapv :display_name (:models (adapter/listing allow-list entries :display_name))))))
+    (testing "an entry missing that field falls back to the allow-list rather than the other field"
       (is (= ["Allow-list A"]
-             (mapv :display_name (:models (adapter/listing allow-list [{:id "a-model"}] true))))))))
+             (mapv :display_name
+                   (:models (adapter/listing allow-list
+                                             [{:id "a-model" :display_name "Catalog A display_name"}]
+                                             :name))))))))
+
+(deftest catalog-name-key-matches-each-providers-catalog-test
+  (testing "each provider reads the field its own catalog documents"
+    ;; Anthropic sends `display_name`; OpenRouter and Z.AI send `name`. The shared listing used to try
+    ;; `:name` then `:display_name` for all three, which would have flipped Anthropic's preference the
+    ;; day its catalog grew a `name` field.
+    (let [names (fn [list-models-fn body]
+                  (with-redefs [http/request (fn [_] {:status 200 :body body})]
+                    (mapv :display_name (:models (list-models-fn {:credentials {:api-key "k" :base-url "https://x"}})))))]
+      (is (= ["From display_name"]
+             (names claude/list-models
+                    {:data [{:id "claude-sonnet-5" :name "From name" :display_name "From display_name"}]})))
+      (is (= ["From name"]
+             (names openrouter/list-models
+                    {:data [{:id "anthropic/claude-sonnet-4.5" :name "From name" :display_name "From display_name"}]})))
+      (is (= ["From name"]
+             (names zai/list-models
+                    {:data [{:id "glm-5.2" :name "From name" :display_name "From display_name"}]}))))))

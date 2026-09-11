@@ -224,21 +224,24 @@
   "Shape a provider's catalog `entries` into the `{:models [{:id ... :display_name ...}]}` listing response.
 
   Keeps only the entries `supported-models` allows and sorts by id, so the admin picker is stable across
-  catalog reorderings. `catalog-name?` prefers the catalog entry's own name over the allow-list's — only
-  for providers that send one, since naming a model from a catalog that has just started carrying names
-  would silently rename it in the picker."
+  catalog reorderings.
+
+  `catalog-name-key` is the field this provider's catalog carries a model's own name in — `:name` for
+  OpenRouter and Z.AI, `:display_name` for Anthropic. Each provider names its own, rather than the
+  shared code guessing between them: a provider whose catalog grew a second name field would otherwise
+  start rendering a different one. Omit it for a catalog that carries no name and the allow-list's name
+  is used, which is also what happens when an entry is missing the field."
   ([supported-models entries]
-   (listing supported-models entries false))
-  ([supported-models :- SupportedModels
-    entries          :- [:maybe [:sequential :map]]
-    catalog-name?    :- [:maybe :boolean]]
+   (listing supported-models entries nil))
+  ([supported-models  :- SupportedModels
+    entries           :- [:maybe [:sequential :map]]
+    catalog-name-key  :- [:maybe :keyword]]
    {:models (->> entries
                  (filter (comp supported-models :id))
                  (sort-by :id)
                  (mapv (fn [{:keys [id] :as entry}]
                          {:id           id
-                          :display_name (or (when catalog-name?
-                                              (or (:name entry) (:display_name entry)))
+                          :display_name (or (get entry catalog-name-key)
                                             (get-in supported-models [id :display-name]))})))}))
 
 ;;; ------------------------------------------------- Streaming --------------------------------------------------
