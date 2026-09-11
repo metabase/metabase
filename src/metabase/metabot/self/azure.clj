@@ -256,5 +256,6 @@
 (defn azure
   "Call an Azure-hosted model deployment, return AISDK stream."
   [& [{:keys [model]} :as args]]
-  (let [raw (apply azure-raw args)]
-    (eduction (model->aisdk-chunks-xf model) raw)))
+  (let [raw   (apply azure-raw args)
+        xform (model->aisdk-chunks-xf model)]
+    (core/completion-safe-eduction xform raw)))

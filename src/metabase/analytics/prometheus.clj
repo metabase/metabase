@@ -402,6 +402,9 @@
                        {:description (str "Number of tokens consumed by the given embedding model and provider. "
                                           "Not all providers track token use.")
                         :labels [:model :provider]})
+   (prometheus/counter :metabase-search/semantic-embedding-requests
+                       {:description "Number of embedding-service requests issued, by model, provider, and :source (what drove them — \"osi-generation\" for a generation run's reconcile, \"reconcile\" for routine index maintenance). A request count exists at all so a caller's embedding volume is observable; tokens above are provider-dependent."
+                        :labels [:model :provider :source]})
    (prometheus/counter :metabase-search/semantic-permission-filter-ms
                        {:description "Total number of ms spent filtering readable docs"})
    (prometheus/counter :metabase-search/semantic-collection-filter-ms
@@ -512,6 +515,32 @@
                      {:description (str "Age in seconds of the oldest known-pending change not yet reflected "
                                         "in the index (indexer/reconcile backlog), per search index.")
                       :labels      [:index]})
+   ;; OSI metadata generation (osi-generation) — the weekly LLM generation job. A separate prefix from
+   ;; entity-retrieval above because generation is not index reconciliation and dashboards key off the
+   ;; prefix (contracts §9). Embedding volume for the run's trailing reconcile is read off
+   ;; docs-inserted above and semantic-embedding-requests below, not re-counted here.
+   (prometheus/histogram :metabase-osi-generation/run-duration-ms
+                         {:description "Duration (ms) of one OSI metadata-generation run, labelled :outcome completed | capped. Spans selection, generation, write-back and the trailing reconcile."
+                          :labels      [:outcome]
+                          ;; 1s -> 30min: a run is candidate-selection plus one LLM call per changed
+                          ;; entity, so it is minutes on a real backlog and seconds in steady state.
+                          :buckets     [1000 5000 10000 30000 60000 120000 300000 600000 1800000]})
+   (prometheus/counter :metabase-osi-generation/candidates-processed
+                       {:description "Library entities processed by a generation run, by source model and terminal outcome (generated | restamped | skipped | error)."
+                        :labels [:entity-type :outcome]})
+   (prometheus/histogram :metabase-osi-generation/tokens-per-run
+                         {:description "LLM tokens spent in one generation run, labelled :kind input | output. Per-run (not the per-call :metabase-metabot/llm-*-tokens counters) so it can size a per-run token cap."
+                          :labels      [:kind]
+                          ;; 0 -> ~10M: zero under PR 4's stub, up to a large first run.
+                          :buckets     [0 1000 10000 100000 500000 1000000 5000000 10000000]})
+   (prometheus/counter :metabase-osi-generation/budget-exhausted
+                       {:description "Generation runs that stopped early on a cap, labelled :limit entities | tokens | duration for a soft per-run cap, or hour | day for the persistent token window quota."
+                        :labels [:limit]})
+   (prometheus/gauge :metabase-osi-generation/candidates-pending
+                     {:description "Selected-but-unprocessed candidates when the last run stopped early (its :pending); 0 after a run that drained its backlog. Sizes the entity cap."})
+   (prometheus/counter :metabase-osi-generation/run-errors
+                       {:description "Generation runs that threw before completing, labelled :error-type. Distinct from a per-candidate throw, which the loop isolates and counts as a skipped/error candidate."
+                        :labels [:error-type]})
    ;; data-complexity-score timing
    ;; 1ms → 1min buckets; widen later if real-world runs push past a minute.
    (prometheus/histogram :metabase-data-complexity/scoring-duration-ms

@@ -70,6 +70,12 @@
     (is (true? (task/job-exists? (.getKey (job)))))
     (is (false? (task/job-exists? "not-found")))))
 
+(deftest trigger-now-returns-success-test
+  (testing "Quartz's void triggerJob return is converted to an explicit success value"
+    (with-temp-scheduler-and-cleanup!
+      (task/schedule-task! (job) (trigger-1))
+      (is (true? (task/trigger-now! (.getKey (job))))))))
+
 (deftest schedule-job-test
   (testing "can we schedule a job?"
     (with-temp-scheduler-and-cleanup!

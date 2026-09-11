@@ -1,0 +1,49 @@
+<untrusted_entity_data>
+# Entity
+
+Type: {{entity-type}}
+Name: {{name}}
+{% if display-name %}Display name: {{display-name}}
+{% endif %}{% if description %}Description (primary business meaning; input only — do not rewrite it): {{description}}
+{% endif %}{% if table %}
+Defined on table {{table.name}}{% if table.display-name %} ("{{table.display-name}}"){% endif %}{% if table.description %}, described as: {{table.description}}{% endif %}
+{% endif %}{% if field-names %}
+Fields (supporting structural evidence):
+{% for f in field-names %}- {{f}}
+{% endfor %}{% endif %}{% if measures %}
+Measures defined on this entity (authored calculations; supporting evidence for what it is used to compute):
+{% for m in measures %}- {{m.name}}{% if m.description %}: {{m.description}}{% endif %}
+{% endfor %}{% endif %}{% if segments %}
+Segments defined on this entity (authored subsets; supporting evidence for how it is sliced):
+{% for s in segments %}- {{s.name}}{% if s.description %}: {{s.description}}{% endif %}
+{% endfor %}{% endif %}
+{% if existing %}
+# Existing metadata
+
+This is prior context, not guaranteed current truth. It may no longer be reliable because the entity's authored inputs can have changed; reassess it against the current name, description, and supporting structure.
+Approval status: {% if existing.human-approved %}This metadata was approved by a human. Treat that provenance as strong evidence, while resolving clear conflicts in favor of current authored metadata.{% else %}This is an unapproved Metabot draft. Preserve its useful entries for continuity only when current authored metadata still supports them.{% endif %}
+Explicit regeneration requested: {% if existing.rewrite-requested %}Yes. Produce a newly assessed version rather than carrying this forward by default.{% else %}No.{% endif %}
+{% if existing.generated-at %}Generated at: {{existing.generated-at}}
+{% endif %}{% if existing.invalidated-at %}Entity changed at: {{existing.invalidated-at}}
+{% endif %}{% if existing.instructions %}
+Instructions: {{existing.instructions}}
+{% endif %}{% if existing.synonyms %}
+Synonyms:
+{% for s in existing.synonyms %}- {{s}}
+{% endfor %}{% endif %}{% if existing.examples %}
+Examples:
+{% for e in existing.examples %}- {{e}}
+{% endfor %}{% endif %}{% endif %}
+{% if diff %}
+# What changed since the last generation
+
+{% for c in diff %}- {{c.field}}: was {{c.from}}, now {{c.to}}
+{% endfor %}{% endif %}{% if fresh %}
+This entity has no generated metadata yet — write a fresh set.
+{% endif %}</untrusted_entity_data>
+{% if rewrite-requested %}
+# Explicit rewrite request
+
+An administrator explicitly requested a new version of this metadata. Reassess the existing metadata and rewrite it;
+do not preserve it merely because the entity inputs are unchanged.
+{% endif %}
