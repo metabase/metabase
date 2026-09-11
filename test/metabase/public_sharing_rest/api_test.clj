@@ -393,9 +393,9 @@
                                                  :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
                                                  :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
                                                  :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
-   :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
-                      {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
-                      {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
+   :parameters       [{:type "date", :name "a", :id "a" :default "A param"}
+                      {:type "date", :name "b", :id "b" :default "B param"}
+                      {:type "date", :name "c", :id "c" :default "C param"
                        :values_source_type "static-list" :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
    :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}})
 
@@ -409,7 +409,6 @@
       (mt/with-temp [:model/Card card (assoc (card-with-embedded-params) :public_uuid (str (random-uuid)))]
         (is (= [{:type         "date/single",
                  :name         "a",
-                 :display_name "a",
                  :id           "a",
                  :default      "A TAG",
                  :target       ["variable" ["template-tag" "a"]],
@@ -417,7 +416,6 @@
                  :required     false}
                 {:type         "date/single",
                  :name         "b",
-                 :display_name "b",
                  :id           "b",
                  :default      "B TAG",
                  :target       ["variable" ["template-tag" "b"]],
@@ -427,7 +425,6 @@
                 ;; merge of both places
                 {:type                 "date/single",
                  :name                 "c",
-                 :display_name         "c",
                  :slug                 "c",
                  ;; order importance: the default from template-tag is in the final result
                  :default              "C TAG",

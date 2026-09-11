@@ -45,19 +45,19 @@ export function useAnsweredGoalValue({
   const answered = useAnsweredGoalData(
     datasetQuery,
     data,
-    unansweredRef != null
+    unansweredRef !== null
       ? (referencedEntities ?? getUnansweredGoalEntities(data, [value]))
       : [],
   );
 
-  if (unansweredRef == null) {
+  if (unansweredRef === null) {
     return resolved;
   }
 
   return match(answered)
     .with({ status: "resolving" }, () => RESOLVING)
     .with({ status: "failed" }, () => {
-      return resolved.error != null
+      return resolved.error !== undefined
         ? resolved
         : getFailedGoalValueResult(unansweredRef);
     })

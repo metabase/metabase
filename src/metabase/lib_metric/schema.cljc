@@ -5,6 +5,8 @@
    [metabase.lib-metric.operators :as operators]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
@@ -31,12 +33,12 @@
                         (keyword (some #(get x %) [:strategy "strategy"])))
             :error/fn (fn [{:keys [value]} _]
                         (str "Invalid binning strategy" (pr-str value)))}
-    [:default   [:map
+    [:default   [:map {:closed true}
                  [:strategy [:= :default]]]]
-    [:bin-width [:map
+    [:bin-width [:map {:closed true}
                  [:strategy  [:= :bin-width]]
                  [:bin-width [:ref ::lib.schema.common/positive-number]]]]
-    [:num-bins  [:map
+    [:num-bins  [:map {:closed true}
                  [:strategy [:= :num-bins]]
                  [:num-bins pos-int?]]]]])
 
@@ -57,7 +59,7 @@
 
 (mr/def ::dimension-group
   "Group descriptor for a dimension, indicating which table it belongs to."
-  [:map
+  [:map {:closed true}
    [:id :string]
    [:type [:enum "main" "connection"]]
    [:display-name :string]])
@@ -66,19 +68,30 @@
   [:enum :field])
 
 (mr/def ::dimension-source
-  [:map
+  [:map {:closed true}
    [:type     ::dimension-source.type]
    [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
    [:binning  {:optional true} [:maybe :boolean]]])
 
 (mr/def ::dimension
-  "Schema for a dimension definition."
-  [:map
-   [:id             ::dimension-id]
-   [:display-name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-   [:sources        {:optional true} [:maybe [:sequential ::dimension-source]]]])
+  "Schema for a dimension definition, plus what the metrics module annotates a dimension with before handing it to a
+  client: the column it came from, its group, its field values status and how interesting it looks."
+  [:map {:closed true}
+   [:id                        ::dimension-id]
+   [:display-name              {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:effective-type            {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type             {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:sources                   {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:name                      {:optional true} [:maybe :string]]
+   [:group                     {:optional true} [:maybe ::dimension-group]]
+   [:lib/source                {:optional true} [:maybe [:or ::lib.schema.metadata/column.source :string]]]
+   [:has-field-values          {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]
+   [:status                    {:optional true} [:maybe [:or :keyword :string]]]
+   [:status-message            {:optional true} [:maybe :string]]
+   [:default-temporal-unit     {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
+   [:dimension-interestingness {:optional true} [:maybe number?]]
+   [:default                   {:optional true} [:maybe :boolean]]
+   [:description               {:optional true} [:maybe :string]]])
 
 (mr/def ::dimension-mapping.type
   "Type of dimension mapping."
@@ -90,7 +103,7 @@
 
 (mr/def ::dimension-mapping
   "Schema for a dimension mapping."
-  [:map
+  [:map {:closed true}
    [:type         ::dimension-mapping.type]
    [:table-id     {:optional true} [:maybe ::lib.schema.id/table]]
    [:dimension-id ::dimension-id]
@@ -99,7 +112,8 @@
 (mr/def ::dimension-reference.options
   "Options map for dimension references."
   [:map
-   {:decode/normalize lib.schema.common/normalize-options-map}
+   {:decode/normalize lib.schema.common/normalize-options-map :closed true}
+   [:lib/uuid       {:optional true} [:ref ::lib.schema.common/uuid]]
    [:display-name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
@@ -182,10 +196,27 @@
                          arg))
                    args))))))
 
+(mr/def ::filter-clause.options
+  "The options of a metric filter clause: MBQL options plus the offset [[metabase.lib-metric.filter]] puts on a
+  relative date filter (`previous N units, starting M units ago`)."
+  [:merge
+   ::lib.schema.common/options
+   [:map
+    [:offset-unit  {:optional true} [:ref ::lib.schema.temporal-bucketing/unit]]
+    [:offset-value {:optional true} :int]]])
+
 (mr/def ::filter-clause
   "MBQL filter clause with normalization for API input.
-   Handles string operators and dimension references."
-  [:any {:decode/normalize normalize-filter-clause}])
+   Handles string operators and dimension references. After normalization every clause is a tag, an options map and
+   arguments that are dimension references, literals or clauses themselves."
+  [:schema {:decode/normalize normalize-filter-clause}
+   [:cat
+    :keyword
+    [:schema [:ref ::filter-clause.options]]
+    [:* [:or
+         [:schema [:ref ::dimension-reference]]
+         [:schema [:ref ::lib.schema.literal/literal]]
+         [:schema [:ref ::filter-clause]]]]]])
 
 ;;; ------------------------------------------------- Metric Math Expressions -------------------------------------------------
 ;;; Expression schemas for metric math: combining multiple metrics/measures with arithmetic.
@@ -210,7 +241,7 @@
   [:tuple
    {:decode/normalize normalize-metric-ref}
    [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]
-   [:map {:decode/normalize lib.schema.common/normalize-options-map}
+   [:map {:decode/normalize lib.schema.common/normalize-options-map :closed true}
     [:lib/uuid ::lib.schema.common/non-blank-string]]
    pos-int?])
 
@@ -219,7 +250,7 @@
   [:tuple
    {:decode/normalize normalize-measure-ref}
    [:= {:decode/normalize lib.schema.common/normalize-keyword} :measure]
-   [:map {:decode/normalize lib.schema.common/normalize-options-map}
+   [:map {:decode/normalize lib.schema.common/normalize-options-map :closed true}
     [:lib/uuid ::lib.schema.common/non-blank-string]]
    pos-int?])
 
@@ -277,7 +308,7 @@
 (mr/def ::instance-filter
   "A filter associated with a specific expression instance via lib/uuid."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map}
+   {:decode/normalize lib.schema.common/normalize-map :closed true}
    [:lib/uuid ::lib.schema.common/non-blank-string]
    [:filter   ::filter-clause]])
 
@@ -293,7 +324,7 @@
    The :type and :id identify the source metric/measure for metadata resolution.
    The :lib/uuid disambiguates multiple references to the same metric/measure in an expression."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map}
+   {:decode/normalize lib.schema.common/normalize-map :closed true}
    [:type       [:enum {:decode/normalize lib.schema.common/normalize-keyword} :metric :measure]]
    [:id         pos-int?]
    [:lib/uuid   ::lib.schema.common/non-blank-string]

@@ -1118,6 +1118,7 @@ describe("getGoalValues", () => {
   it("skips absent and malformed settings", () => {
     // deliberately malformed input
     const malformed = {
+      "graph.show_goal": true,
       "graph.goal_value": { id: 1 },
       "scalar.segments": 5,
     } as unknown as VisualizationSettings;

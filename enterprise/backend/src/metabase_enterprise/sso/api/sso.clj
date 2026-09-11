@@ -38,7 +38,7 @@
 (api.macros/defendpoint :get "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [_route-params
-   _query-params :- [:map
+   _query-params :- [:map {:closed true}
                      [:jwt              {:optional true} [:maybe :string]]
                      [:preferred_method {:optional true} [:maybe :string]]
                      [:redirect         {:optional true} [:maybe :string]]
@@ -71,10 +71,10 @@
 (api.macros/defendpoint :post "/"
   "Route the SSO backends call with successful login details"
   [_route-params
-   _query-params :- [:map
+   _query-params :- [:map {:closed true}
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]
-   _body :- [:maybe [:map
+   _body :- [:maybe [:map {:closed true}
                      [:jwt          {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]]
@@ -133,7 +133,7 @@
   this provides a path for them to do so."
   [_route-params
    _query-params
-   {:keys [jwt]} :- [:map
+   {:keys [jwt]} :- [:map {:closed true}
                      [:jwt ms/NonBlankString]]
    request]
   (when-not (sso-settings/jwt-enabled-and-configured)
@@ -153,11 +153,11 @@
 (api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
   [_route-params
-   _query-params :- [:map
+   _query-params :- [:map {:closed true}
                      [:SAMLRequest  {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]
-   _body :- [:maybe [:map
+   _body :- [:maybe [:map {:closed true}
                      [:SAMLRequest  {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]]
@@ -180,9 +180,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key"
   "Initiate OIDC SSO for a specific provider."
-  [{provider-key :key} :- [:map
+  [{provider-key :key} :- [:map {:closed true}
                            [:key ProviderKey]]
-   _query-params :- [:map
+   _query-params :- [:map {:closed true}
                      [:redirect {:optional true} [:maybe :string]]]
    _body request]
   (try
@@ -196,9 +196,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key/callback"
   "OIDC callback for a specific provider."
-  [{provider-key :key} :- [:map
+  [{provider-key :key} :- [:map {:closed true}
                            [:key ProviderKey]]
-   _query-params :- [:map
+   _query-params :- [:map {:closed true}
                      [:code  {:optional true} [:maybe :string]]
                      [:state {:optional true} [:maybe :string]]]
    _body request]
