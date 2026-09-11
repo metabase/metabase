@@ -552,19 +552,30 @@
    ids         :- [:set ::deps.dependency-types/entity-id]]
   (t2/select (deps.dependency-types/dependency-type->model entity-type) :id [:in ids]))
 
+(defn- entity-source
+  "What a read of `entity-type` selects from. A Table's `display_name` and `description` are user values kept in a
+  side-car, so its own row shows what sync wrote rather than what anyone reading this would expect. The model here is
+  resolved at runtime, so the `table-or-field-query` linter cannot see the read."
+  [entity-type]
+  (if (= entity-type :table)
+    {:from [(warehouse-schema-overlay/table-query)]}
+    {}))
+
 (mu/defn instances-with-columns
   "The `columns` of the instances of the entity type `entity-type` with `ids`."
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
-  (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns) :id [:in ids]))
+  (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
+             :id [:in ids] (entity-source entity-type)))
 
 (mu/defn instance-with-columns
   "The `columns` of the instance of the entity type `entity-type` with `id`, or nil."
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    id          :- ::deps.dependency-types/entity-id]
-  (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns) :id id))
+  (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
+                 :id id (entity-source entity-type)))
 
 (mu/defn card
   "The Card with `card-id`, or nil."

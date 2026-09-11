@@ -124,12 +124,12 @@
    user-id    :- ::lib.schema.id/user
    superuser? :- :boolean]
   (t2/exists? :model/Table
-              {:where [:and
+              {:from  [(warehouse-schema-overlay/table-query)]
+               :where [:and
                        [:= :id table-id]
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause
-                        :collection_id {} {:from [(warehouse-schema-overlay/table-query)]
-                                           :current-user-id user-id
+                        :collection_id {} {:current-user-id user-id
                                            :is-superuser?   superuser?})]}))
 
 (mu/defn any-published-table-visible?
