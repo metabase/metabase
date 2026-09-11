@@ -37,6 +37,7 @@
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
@@ -960,29 +961,16 @@
    form))
 
 ;;; ============================================================
-;;; Pass 1.86 -- wrap bare ISO-date string bounds in `between` clauses as
-;;; `[absolute-datetime, {}, <iso-str>, "day"]`.
-;;;
-;;; LLMs frequently write `[between, {}, <date-field>, "2024-01-01", "2024-12-31"]`,
-;;; using bare strings as the bounds. lib's `:between` schema demands a temporal
-;;; expression on each side once any side is temporal; bare strings won't satisfy
-;;; `:type/Date`. We detect the case where at least one of the two bounds matches the
-;;; ISO-8601 `yyyy-mm-dd` pattern and wrap each matching string as an
-;;; `["absolute-datetime" {} <iso-str> "day"]` clause. Carried over from the sexp
-;;; pipeline's `wrap-iso-date-as-absolute-datetime` (see
-;;; `repr-deletion-followups.md` § 1.6). High-frequency LLM pattern.
-;;;
-;;; Idempotency: after wrap, bounds are vectors, so the predicate (string + ISO regex)
-;;; no longer matches.
+;;; Temporal-literal helpers, shared by the passes below.
 ;;; ============================================================
 
-(def ^:private iso-date-pattern
+(def ^:private iso-date-or-datetime-pattern
   "Recognises an ISO-8601 calendar-date string (yyyy-mm-dd, optionally with a time portion)."
   #"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+\-]\d{2}:?\d{2})?)?")
 
 (defn- iso-date-string? [v]
   (and (string? v)
-       (re-matches iso-date-pattern (str/trim v))))
+       (re-matches iso-date-or-datetime-pattern (str/trim v))))
 
 (defn- temporal-clause-head?
   "Heads that are unambiguously temporal-shaped clauses."
@@ -997,35 +985,6 @@
        (>= (count v) 1)
        (string? (nth v 0))
        (temporal-clause-head? (nth v 0))))
-
-(defn- wrap-iso-date [v]
-  (if (iso-date-string? v)
-    ["absolute-datetime" {} (str/trim v) "day"]
-    v))
-
-(defn- between-needs-iso-wrap?
-  "Trigger the ISO-wrap when at least one bound is already a temporal-shaped clause OR
-  at least one bound is an ISO-date string. The first case mirrors sexp's behaviour
-  (`temporal-expression?` on either side), the second case is a small extension - if
-  both bounds are bare ISO date strings the structure is unambiguous and bare strings
-  would fail validation anyway."
-  [lo hi]
-  (or (temporal-shaped-clause? lo)
-      (temporal-shaped-clause? hi)
-      (iso-date-string? lo)
-      (iso-date-string? hi)))
-
-(defn- wrap-iso-date-bounds*
-  [form]
-  (walk/postwalk
-   (fn [node]
-     (if (and (between-clause? node)
-              (between-needs-iso-wrap? (nth node 3) (nth node 4)))
-       (-> node
-           (assoc 3 (wrap-iso-date (nth node 3)))
-           (assoc 4 (wrap-iso-date (nth node 4))))
-       node))
-   form))
 
 ;;; ============================================================
 ;;; Pass 1.865 -- wrap bare `"now"` string literals in temporal contexts as the canonical
@@ -1056,7 +1015,11 @@
 
 (defn- temporal-context-operand? [v]
   (or (temporal-shaped-clause? v)
-      (field-with-temporal-unit? v)))
+      (field-with-temporal-unit? v)
+      ;; A bare ISO-date bound counts as a temporal sibling: in `["between" {} <field>
+      ;; "2024-01-01" "now"]` neither operand is a clause, and without this the `"now"`
+      ;; would survive as a bare string and blow up in `wrap-value-literals`.
+      (iso-date-string? v)))
 
 (def ^:private temporal-comparison-heads
   "Comparison-style heads for which we'll wrap a bare `\"now\"` literal in another operand
@@ -1092,6 +1055,257 @@
    (fn [node]
      (if (temporal-comparison-clause? node)
        (maybe-wrap-now-operands node)
+       node))
+   form))
+
+;;; ============================================================
+;;; Pass 2.95 -- hoist a temporal bucket: move it off an `absolute-datetime` literal and onto the
+;;; ref it is compared to. Sideways, within one clause; nothing moves up a level.
+;;;
+;;;   ["=", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "month"]]
+;;;   => ["=", {}, ["field", {"temporal-unit": "month"}, <col>], "2025-01-01"]
+;;;
+;;;   ["during", {}, ["field", {}, <col>], "2025-01-01T10:00:00", "hour"]
+;;;   => ["=", {}, ["field", {"temporal-unit": "hour"}, <col>], "2025-01-01T10:00:00"]
+;;;
+;;;   ["between", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "day"], ["now", {}]]
+;;;   => ["between", {}, ["field", {}, <col>], "2025-01-01", ["now", {}]]
+;;;
+;;; Why: the frontend opens a Metabot question from a `/question#` hash holding *legacy* MBQL
+;;; (`metabase.metabot.agent.links/->legacy-mbql`). JSON turns the unit into a string, and the legacy
+;;; schema cannot decode it back for `absolute-datetime` / `during`, so the page 400s. A
+;;; `temporal-unit` on a ref decodes fine (`legacy-json-round-trip-temporal-filters-test`).
+;;;
+;;; Only inside a stage's `filters`, where both forms compile to the same range predicate
+;;; (`optimize-temporal-filters` reads the unit from either side). In `count-where`, `case` or a
+;;; join condition the bucket would truncate the column instead, so those stay as written. So do a
+;;; unit the literal cannot carry (`hour` on a date, `month-of-year`), a ref that already has a
+;;; `temporal-unit`, `between` bounds with different buckets, and an unparseable literal (resolve's
+;;; `:invalid-temporal-literal` check still needs to see it). The third example drops the wrapper
+;;; anyway: `day` on a date adds nothing, and the bound ends up as the query builder writes it.
+;;;
+;;; Column types are unknown here, so a bucket can land on a text column;
+;;; [[assert-temporal-buckets-on-temporal-columns!]] rejects that after resolve. Runs after Pass 2.9,
+;;; which creates new `filters`. Idempotent: the output matches neither predicate.
+;;; ============================================================
+
+(def ^:private date-truncation-units
+  "Bucketing units that mean the same thing on a ref as on a date literal."
+  #{"day" "week" "month" "quarter" "year"})
+
+(def ^:private datetime-truncation-units
+  "The date units plus the sub-day ones a datetime literal supports."
+  (into date-truncation-units #{"second" "minute" "hour"}))
+
+(def ^:private bucket-hoistable-heads
+  "Comparison heads whose literal operands may carry a hoistable bucket."
+  #{"=" "!=" "<" "<=" ">" ">=" "in" "not-in"})
+
+(def ^:private date-only-pattern #"\d{4}-\d{2}-\d{2}")
+(def ^:private year-month-pattern #"\d{4}-\d{2}")
+(def ^:private year-pattern #"\d{4}")
+
+(defn- widen-partial-date
+  "`yyyy-MM` -> `yyyy-MM-01`, `yyyy` -> `yyyy-01-01`; anything else unchanged."
+  [s]
+  (cond
+    (re-matches year-month-pattern s) (str s "-01")
+    (re-matches year-pattern s)       (str s "-01-01")
+    :else                             s))
+
+(defn- parseable-temporal-literal? [s]
+  (try
+    (some? (u.date/parse s))
+    (catch Exception _
+      false)))
+
+(defn- hoistable-bucket
+  "Return `[literal unit]` for an `absolute-datetime` literal whose bucket the compared ref can take.
+
+    [\"absolute-datetime\" {} \"2025-03\" \"MONTH\"]   => [\"2025-03-01\" \"month\"]
+    [\"absolute-datetime\" {} \"2025-01-01\" \"hour\"] => nil   ; a date cannot carry `hour`
+
+  Both values come back normalised: trimmed, lower-cased, `yyyy-MM` / `yyyy` widened to the first day
+  they name. `nil` for anything that is not such a literal."
+  [v]
+  (when (and (vector? v)
+             (= 4 (count v))
+             (string? (nth v 0))
+             (= "absolute-datetime" (u/lower-case-en (nth v 0)))
+             (map? (nth v 1))
+             ;; a named literal lives in `expressions:`, never here; a type hint is safe to drop
+             (empty? (dissoc (nth v 1) "base-type" "effective-type"))
+             (string? (nth v 2))
+             (string? (nth v 3)))
+    (let [literal (widen-partial-date (str/trim (nth v 2)))
+          unit    (u/lower-case-en (nth v 3))
+          units   (if (re-matches date-only-pattern literal)
+                    date-truncation-units
+                    datetime-truncation-units)]
+      (when (and (iso-date-string? literal)
+                 (or (= "default" unit) (contains? units unit))
+                 (parseable-temporal-literal? literal))
+        [literal unit]))))
+
+(defn- during-clause? [v]
+  (and (vector? v)
+       (= 5 (count v))
+       (= "during" (nth v 0))
+       (map? (nth v 1))))
+
+(defn- unbucketed-ref-clause?
+  "A `field` or `expression` ref with no `temporal-unit`. A `nil` unit counts as none: lib drops it."
+  [v]
+  (and (vector? v)
+       (= 3 (count v))
+       (contains? #{"field" "expression"} (nth v 0))
+       (map? (nth v 1))
+       (nil? (get (nth v 1) "temporal-unit"))))
+
+(defn- hoistable-comparison-node?
+  "A comparison clause shaped so that a bucket could move onto its ref operand. Says nothing about
+  whether the literal operands actually carry one."
+  [v]
+  (and (vector? v)
+       (>= (count v) 4)
+       (string? (nth v 0))
+       (map? (nth v 1))
+       (unbucketed-ref-clause? (nth v 2))
+       (or (between-clause? v)
+           (during-clause? v)
+           (contains? bucket-hoistable-heads (nth v 0)))))
+
+(defn- with-temporal-unit [ref-clause unit]
+  (assoc-in ref-clause [1 "temporal-unit"] unit))
+
+(defn- hoist-bucket-in-comparison
+  "When every literal of a comparison carries the same hoistable bucket, put it on the ref.
+
+    [\"in\" {} [\"field\" {} <col>] [\"absolute-datetime\" {} \"2025-01-01\" \"month\"]
+                                  [\"absolute-datetime\" {} \"2025-03-01\" \"month\"]]
+    => [\"in\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\" \"2025-03-01\"]"
+  [[head opts ref & literals :as node]]
+  (let [buckets (map hoistable-bucket literals)]
+    (if (and (every? some? buckets)
+             (apply = (map second buckets)))
+      (into [head opts (with-temporal-unit ref (second (first buckets)))] (map first buckets))
+      node)))
+
+(defn- redundant-bucket-literal
+  "The bare literal of a bucketed bound whose bucket adds nothing to it: `default`, or `day` on a
+  date-only literal. `nil` otherwise."
+  [v]
+  (when-let [[literal unit] (hoistable-bucket v)]
+    (when (or (= "default" unit)
+              (and (= "day" unit) (re-matches date-only-pattern literal)))
+      literal)))
+
+(defn- hoist-bucket-in-between
+  "Both bounds bucketed alike: hoist the bucket onto the ref. Otherwise drop only a wrapper that adds nothing.
+
+    [\"between\" {} <ref> [\"absolute-datetime\" {} \"2025-01-01\" \"month\"]
+                         [\"absolute-datetime\" {} \"2025-06-01\" \"month\"]]
+    => [\"between\" {} <ref bucketed by month> \"2025-01-01\" \"2025-06-01\"]
+
+    [\"between\" {} <ref> [\"absolute-datetime\" {} \"2025-01-01\" \"day\"] [\"now\" {}]]
+    => [\"between\" {} <ref> \"2025-01-01\" [\"now\" {}]]"
+  [[head opts ref lo hi]]
+  (let [[lo' lo-unit] (hoistable-bucket lo)
+        [hi' hi-unit] (hoistable-bucket hi)]
+    (if (and lo' hi' (= lo-unit hi-unit))
+      [head opts (with-temporal-unit ref lo-unit) lo' hi']
+      [head opts ref (or (redundant-bucket-literal lo) lo) (or (redundant-bucket-literal hi) hi)])))
+
+(defn- hoist-bucket-in-during
+  "`during` is `=` against the ref bucketed by the same unit; say it that way.
+
+    [\"during\" {} [\"field\" {} <col>] \"2025-01-01\" \"month\"]
+    => [\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\"]"
+  [[_ opts ref literal unit :as node]]
+  (let [literal (when (string? literal) (widen-partial-date (str/trim literal)))
+        unit    (when (string? unit) (u/lower-case-en unit))]
+    (if (and literal
+             (iso-date-string? literal)
+             (contains? datetime-truncation-units unit)
+             (parseable-temporal-literal? literal))
+      ["=" opts (with-temporal-unit ref unit) literal]
+      node)))
+
+(defn- hoist-bucket-in-clause [node]
+  (cond
+    (during-clause? node)  (hoist-bucket-in-during node)
+    (between-clause? node) (hoist-bucket-in-between node)
+    :else                  (hoist-bucket-in-comparison node)))
+
+(defn- hoist-temporal-buckets*
+  "Hoist each `absolute-datetime` bucket in a stage's `filters` onto the ref it is compared to.
+
+    {\"filters\" [[\"=\" {} [\"field\" {} <col>] [\"absolute-datetime\" {} \"2025-01-01\" \"month\"]]]}
+    => {\"filters\" [[\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\"]]}
+
+  Only `filters` vectors are walked; the pass header says why."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (and (map? node) (vector? (get node "filters")))
+       ;; scoped to `filters` deliberately -- see the pass header
+       (update node "filters"
+               #(walk/postwalk (fn [n] (if (hoistable-comparison-node? n) (hoist-bucket-in-clause n) n))
+                               %))
+       node))
+   form))
+
+;;; ============================================================
+;;; Pass 1.867 -- rewrite `temporal-extract` to the `get-*` clause that means the same thing.
+;;;
+;;;   ["temporal-extract", {}, <col>, "month-of-year"]        => ["get-month", {}, <col>]
+;;;   ["temporal-extract", {}, <col>, "week-of-year-iso"]     => ["get-week", {}, <col>, "iso"]
+;;;   ["temporal-extract", {}, <col>, "day-of-week", "us"]    => ["get-day-of-week", {}, <col>]
+;;;
+;;; Same hazard as Pass 2.95: the unit lands in the legacy `::TemporalExtractUnit` enum, which has
+;;; no decoder, so the question page 400s. A `get-*` clause carries no unit. The week-mode units keep
+;;; their meaning through the trailing argument `get-week` / `get-day-of-week` already take. The
+;;; clause's own optional mode slot (third example) is dropped: SQL compilation reads only the unit
+;;; (`:temporal-extract` in `metabase.driver.sql.query-processor`), so it never mattered.
+;;;
+;;; An exact synonym wherever the clause appears, so not scoped to `filters`. Idempotent: the new
+;;; head is not `temporal-extract`.
+;;; ============================================================
+
+(def ^:private temporal-extract-unit->getter
+  "Extraction unit -> the `get-*` head meaning exactly the same thing, followed by any trailing
+  week-mode argument that head needs to preserve the unit's meaning."
+  {"year-of-era"           ["get-year"]
+   "quarter-of-year"       ["get-quarter"]
+   "month-of-year"         ["get-month"]
+   "day-of-month"          ["get-day"]
+   "day-of-week"           ["get-day-of-week"]
+   "day-of-week-iso"       ["get-day-of-week" "iso"]
+   "hour-of-day"           ["get-hour"]
+   "minute-of-hour"        ["get-minute"]
+   "second-of-minute"      ["get-second"]
+   "week-of-year-iso"      ["get-week" "iso"]
+   "week-of-year-us"       ["get-week" "us"]
+   "week-of-year-instance" ["get-week" "instance"]})
+
+(defn- rewrite-temporal-extract*
+  "Rewrite each `temporal-extract` clause in `form` to the `get-*` clause that means the same thing.
+
+    [\"temporal-extract\" {} <col> \"week-of-year-iso\"]  => [\"get-week\" {} <col> \"iso\"]
+    [\"temporal-extract\" {} <col> \"day-of-week\" \"us\"] => [\"get-day-of-week\" {} <col>]
+
+  A unit with no `get-*` equivalent is left as written for validation to report."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if-let [[getter & mode] (and (vector? node)
+                                   (<= 4 (count node) 5)
+                                   (string? (nth node 0))
+                                   (= "temporal-extract" (u/lower-case-en (nth node 0)))
+                                   (map? (nth node 1))
+                                   (string? (nth node 3))
+                                   (temporal-extract-unit->getter (u/lower-case-en (nth node 3))))]
+       (into [getter (nth node 1) (nth node 2)] mode)
        node))
    form))
 
@@ -2716,8 +2930,8 @@
       rewrite-lib-type-aliases*
       merge-trailing-options*
       merge-string-filter-trailing-options*
-      wrap-iso-date-bounds*
       wrap-now-literals*
+      rewrite-temporal-extract*
       swap-between-bounds*
       normalise-case-clauses*
       normalise-fields-shape*
@@ -2741,11 +2955,16 @@
     1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
        portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
        to the resolution-aware cross-stage matching in pass 5);
+    1.867. rewrite `temporal-extract` to the equivalent `get-*` clause, so its unit no longer sits
+       where legacy normalization cannot decode it (examples in the pass header);
     1.87. rewrite a known-misspelled `\"lib/type\"` marker to its canonical value (e.g. the
        join slip `\"mbql.join/join\"` → `\"mbql/join\"`);
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
+    2.95. inside a stage's `filters` only, hoist a temporal bucket off an `absolute-datetime`
+       literal and onto the ref it is compared to, for the same reason (examples in the pass
+       header; runs after Pass 2.9, which creates new `filters`);
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);
@@ -2812,6 +3031,7 @@
        rewrite-order-by-inline-aggs*
        resolve-aggregation-ref-indexes*
        split-post-agg-filters*
+       hoist-temporal-buckets*
        (resolve-source-field-join-alias* mp content-store)
        (resolve-implicit-joins* mp content-store)
        (infer-source-card-field-types* mp content-store)
@@ -2858,4 +3078,39 @@
                  :stage        stage-idx
                  :mode         mode
                  :clause       clause})))))
+  pmbql-query)
+
+(defn assert-temporal-buckets-on-temporal-columns!
+  "Throw a retryable `:agent-error?` when a resolved `field` ref carries a `temporal-unit` but its
+  column is not temporal. Returns `pmbql-query`.
+
+  lib accepts that shape - its unit check only knows Date / Time / DateTime columns - and the QP then
+  drops the bucket silently, so the saved question would filter on something other than what the
+  model asked for. Pass 2.95 can produce it, since it moves a bucket onto a ref without knowing the
+  column's type; a model writing the bucket itself lands here too. Runs after resolve, like
+  [[assert-editor-accepts-expressions!]]."
+  [pmbql-query]
+  (walk/postwalk
+   (fn [node]
+     (when (and (vector? node)
+                (= :field (nth node 0 nil))
+                (map? (nth node 1 nil)))
+       (let [{:keys [temporal-unit base-type effective-type]} (nth node 1)
+             column-type (or effective-type base-type)]
+         (when (and temporal-unit
+                    column-type
+                    (not= column-type :type/*)
+                    (not (isa? column-type :type/Temporal)))
+           (throw (ex-info (tru "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+                                (lib/display-name pmbql-query (lib/with-temporal-bucket node nil))
+                                (name column-type)
+                                (name temporal-unit))
+                           {:agent-error?  true
+                            :error         :temporal-unit-on-non-temporal-column
+                            :status-code   400
+                            :column-type   column-type
+                            :temporal-unit temporal-unit
+                            :clause        node})))))
+     node)
+   pmbql-query)
   pmbql-query)
