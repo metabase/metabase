@@ -62,11 +62,36 @@
       (and (contains? settings :collection_id) (not (contains? settings :is_published)))
       (assoc :is_published (boolean (:is_published table))))))
 
-(defn- settings-flags
-  "The `_set` flags to write alongside `settings`, one for each column in it that has one."
+(defn- with-set-flags
+  "Record a `_set` flag for every user-settable column in `effective`, unless the writer set that flag itself in
+  `explicit` -- which is how [[unset-user-settings!]] takes a value back. The flag is what makes a user's NULL beat
+  the synced value."
+  [settings effective explicit]
+  (reduce-kv (fn [m column flag]
+               (cond-> m
+                 (and (contains? effective column) (not (contains? explicit flag)))
+                 (assoc flag true)))
+             settings
+             warehouse-schema-overlay/table-user-settings-flags))
+
+(defn- enforce-invariants
+  "Apply to `settings` what has to hold of a TableUserSettings row however it was written -- the API, a bulk edit, or
+  a serdes import: the change is one a user is allowed to make, both halves of a two-column choice move together, and
+  a written column carries its `_set` flag."
+  [settings explicit]
+  (let [table     (warehouse-schema.db/table (:table_id settings))
+        completed (complete-pairs explicit table)]
+    (table/validate-user-changes! explicit table)
+    (-> (merge settings completed)
+        (with-set-flags completed explicit))))
+
+(t2/define-before-insert :model/TableUserSettings
   [settings]
-  (into {} (keep (fn [[k flag]] (when (contains? settings k) [flag true])))
-        warehouse-schema-overlay/table-user-settings-flags))
+  (enforce-invariants settings settings))
+
+(t2/define-before-update :model/TableUserSettings
+  [settings]
+  (enforce-invariants settings (t2/changes settings)))
 
 (mu/defn upsert-user-settings
   "Record the user-settable Table columns present in `settings` as the user values of `table`, flagging the
@@ -76,14 +101,13 @@
   published into the root collection has a NULL `collection_id` that must still beat the sync value."
   [{:keys [id]} :- [:map [:id ::lib.schema.id/table]]
    settings     :- ::warehouse-schema.schema/table.update]
-  (let [table    (warehouse-schema.db/table id)
-        settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)
-        _        (table/validate-user-changes! settings table)
-        settings (complete-pairs settings table)]
+  (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
     (when (seq settings)
       (when-not (warehouse-schema.db/table-user-settings-exist? id)
         (warehouse-schema.db/insert-table-user-settings! {:table_id id}))
-      (warehouse-schema.db/update-table-user-settings! id (merge settings (settings-flags settings))))))
+      ;; the flags are stated here rather than left to the model hook: setting a column to the NULL it already holds
+      ;; is not a change the hook can see, and recording that the user chose it is the whole point of the flag
+      (warehouse-schema.db/update-table-user-settings! id (with-set-flags settings settings settings)))))
 
 (mu/defn upsert-user-settings-for-tables!
   "Record `settings` as the user values of every Table in `table-ids`, in one statement rather than per Table.
@@ -92,19 +116,11 @@
    settings  :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
     (when (and (seq settings) (seq table-ids))
-      (let [tables   (warehouse-schema.db/tables table-ids)
-            existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
-        ;; each Table is validated against its own current values, the way a single update is
-        (doseq [table tables]
-          (table/validate-user-changes! settings table))
+      (let [existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
         (when-let [missing (not-empty (remove existing table-ids))]
           (warehouse-schema.db/insert-table-user-settings! (mapv (fn [id] {:table_id id}) missing)))
-        ;; completing the pairs can depend on the Table's own current values, so group by what they come out as:
-        ;; one statement where every Table agrees, which is the common case, and one per distinct outcome otherwise
-        (doseq [[completed group] (group-by #(complete-pairs settings %) tables)]
-          (warehouse-schema.db/update-table-user-settings-for-tables!
-           (into #{} (map :id) group)
-           (merge completed (settings-flags completed))))))))
+        (warehouse-schema.db/update-table-user-settings-for-tables!
+         table-ids (with-set-flags settings settings settings))))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."

@@ -64,3 +64,29 @@
       (is (= ["owner@example.com" "owner@example.com"]
              (map (comp :owner_email user-table) [t1 t2])))
       (is (= 2 (count (warehouse-schema.db/table-ids-with-user-settings #{t1 t2})))))))
+
+(deftest invariants-hold-however-the-row-is-written-test
+  (testing "the model's hooks, not just the upsert fns, enforce what has to hold of a settings row -- so a serdes
+            import or any other writer cannot store one that readers would misread"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Field    {field-id :id} {:table_id table-id}]
+      (testing "a written column carries its _set flag, on insert and on update"
+        (t2/insert! :model/FieldUserSettings {:field_id field-id :description "d"})
+        (is (true? (t2/select-one-fn :description_set :model/FieldUserSettings :field_id field-id)))
+        (t2/update! :model/FieldUserSettings field-id {:semantic_type :type/Category})
+        (is (true? (t2/select-one-fn :semantic_type_set :model/FieldUserSettings :field_id field-id))))
+      (testing "a flag the writer set itself is left alone, which is how a value is taken back"
+        (t2/insert! :model/TableUserSettings {:table_id table-id :description "d"})
+        (t2/update! :model/TableUserSettings table-id {:description nil :description_set false})
+        (is (false? (t2/select-one-fn :description_set :model/TableUserSettings :table_id table-id))))
+      (testing "both halves of the visibility choice move together"
+        (t2/update! :model/TableUserSettings table-id {:visibility_type :hidden})
+        (is (=? {:visibility_type :hidden :data_layer :hidden
+                 :visibility_type_set true :data_layer_set true}
+                (t2/select-one :model/TableUserSettings :table_id table-id))))
+      (testing "a change a user may not make is refused whoever writes it"
+        (t2/update! :model/TableUserSettings table-id {:data_authority :authoritative})
+        (is (thrown-with-msg? Exception #"Cannot set data_authority back to unconfigured"
+                              (t2/update! :model/TableUserSettings table-id
+                                          {:data_authority :unconfigured})))))))
