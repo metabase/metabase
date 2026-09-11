@@ -2,7 +2,7 @@
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  ;; dev/src is here for tasks whose logic is shared with JVM tests (e.g. dev.kondo-ratchet)
- ;; Shared module-resolution rules used by Mage and the Kondo hooks.
+ ;; Let Mage use the same module-resolution rules as the Kondo hooks.
  :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src" "dev/src" ".clj-kondo/src"]
  ;; use Git version of dep temporarily until a new release > 0.16.4 is cut
  :deps {dev.weavejester/cljfmt {:git/sha "075eae26e3c8dad433b88f05927bcd50e3571328"

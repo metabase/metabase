@@ -181,7 +181,7 @@
                               'enterprise/transforms.python))))))
 
 ;;;; -------------------------------------------------------------------------
-;;;; usage-error behavior under nesting
+;;;; Access rules
 ;;;; -------------------------------------------------------------------------
 
 (deftest ^:parallel usage-error-parent-needs-explicit-uses-and-api-test
@@ -191,7 +191,7 @@
                               'lib.schema {:api  #{'metabase.lib.schema.foo}
                                            :uses #{}}}}]
       (is (some? (modules/usage-error config-without-uses 'lib 'metabase.lib.schema.foo))
-          "lib does not declare :uses #{lib.schema} so the access is denied"))
+          "lib does not declare :uses #{lib.schema}"))
     (let [config-with-uses
           {:metabase/modules {'lib        {:uses #{'lib.schema}}
                               'lib.schema {:api  #{'metabase.lib.schema.foo}
@@ -210,7 +210,7 @@
                               'lib.be     {:api  :any
                                            :uses #{}}}}]
       (is (some? (modules/usage-error config-without-uses 'lib.be 'metabase.lib.schema.foo))
-          "lib.be does not declare :uses #{lib.schema}, so even sibling access is denied"))
+          "lib.be does not declare :uses #{lib.schema}"))
     (let [config-with-uses
           {:metabase/modules {'lib        {}
                               'lib.schema {:api  #{'metabase.lib.schema.foo}
@@ -218,9 +218,9 @@
                               'lib.be     {:api  :any
                                            :uses #{'lib.schema}}}}]
       (is (nil? (modules/usage-error config-with-uses 'lib.be 'metabase.lib.schema.foo))
-          "with :uses declared and the namespace in lib.schema's :api, the access is allowed")
+          "the namespace is in lib.schema's API")
       (is (some? (modules/usage-error config-with-uses 'lib.be 'metabase.lib.schema.private-ns))
-          "even with :uses declared, namespaces not in lib.schema's :api are denied"))))
+          "the namespace is not in lib.schema's API"))))
 
 (deftest ^:parallel usage-error-child-must-declare-uses-on-parent-test
   (testing "a child must declare its parent in :uses but may use internal namespaces"
@@ -230,7 +230,7 @@
                               'lib.schema {:api  :any
                                            :uses #{}}}}]
       (is (some? (modules/usage-error config-without-uses 'lib.schema 'metabase.lib.core))
-          "lib.schema does not declare :uses #{lib} so it cannot access lib's namespaces"))
+          "lib.schema does not declare :uses #{lib}"))
     (let [config-with-uses
           {:metabase/modules {'lib        {:api  #{'metabase.lib.core}
                                            :uses #{}}
@@ -242,7 +242,7 @@
         (is (nil? (modules/usage-error config-with-uses 'lib.schema 'metabase.lib.internal)))))))
 
 (deftest ^:parallel usage-error-encapsulated-grandchild-denied-test
-  (testing "Outside module cannot reach into an unopened nested module"
+  (testing "an outside module cannot reach an unexported nested module"
     (let [config {:metabase/modules {'lib             {:module-exports #{}
                                                        :api            #{'metabase.lib.core}
                                                        :uses           #{}}
@@ -258,7 +258,7 @@
         (is (some? (modules/usage-error config 'query-processor 'metabase.lib.schema.public-ns)))))))
 
 (deftest ^:parallel usage-error-opened-child-allowed-test
-  (testing "Outside module can reach into a nested module its parent lists in :module-exports"
+  (testing "an outside module can reach a child exported by its parent"
     (let [config {:metabase/modules {'lib             {:module-exports #{'lib.schema}
                                                        :api            :any}
                                      'lib.schema      {:api  :any
@@ -304,11 +304,11 @@
       (is (some? (modules/usage-error config 'query-processor 'metabase.lib.schema.foo))
           ":uses #{lib} does not cover lib.schema even though lib is its parent")
       (is (nil? (modules/usage-error config 'query-processor 'metabase.lib.core))
-          ":uses #{lib} covers references to namespaces that resolve to lib itself")
+          "the namespace resolves directly to lib")
       (is (nil? (modules/usage-error (assoc-in config [:metabase/modules 'query-processor :uses] #{'lib 'lib.schema})
                                      'query-processor
                                      'metabase.lib.schema.foo))
-          "with both lib and lib.schema in :uses, the access works"))))
+          "query-processor declares lib.schema explicitly"))))
 
 (deftest ^:parallel usage-error-explicit-empty-api-denies-external-access-test
   (let [config {:metabase/modules {'private-module {:api #{}}
@@ -330,11 +330,11 @@
                                      'lib.schema {:api :any}
                                      'caller     {:uses :any
                                                   :api  :any}}}]
-      (testing "top-level modules are always namable"
+      (testing "top-level modules are always visible"
         (is (nil? (modules/usage-error config 'caller 'metabase.lib.core))))
       (testing "a nested child not in its parent's :module-exports is private to its subtree"
         (is (some? (modules/usage-error config 'caller 'metabase.lib.schema.foo))))
-      (testing "exporting the child makes it namable from anywhere"
+      (testing "exporting the child makes it visible everywhere"
         (is (nil? (modules/usage-error (assoc-in config [:metabase/modules 'lib :module-exports] #{'lib.schema})
                                        'caller
                                        'metabase.lib.schema.foo))))
@@ -388,7 +388,7 @@
                                                     :api       :any}
                                      'caller       {:uses :any
                                                     :api  :any}}}]
-      (is (= (str "Do not use REST modules (actions.rest) in non-REST modules (caller) "
+      (is (= (str "Do not use -rest modules (actions.rest) in non-rest modules (caller) "
                   "-- move things from actions.rest to actions if needed")
              (modules/usage-error config 'caller 'metabase.actions-rest.api))))))
 

@@ -95,8 +95,8 @@ Module names form a tree: `lib.schema` is a child of `lib`. When OSS module `sea
 - Every cross-module dependency still requires `:uses`.
 - A child may use an ancestor's internal namespaces. Parents, siblings, and unrelated modules must use the
   target's `:api`.
-- To make a nested module available outside its parent's subtree, export each link to the root with
-  `:module-exports`. OSS module `X` exports its `enterprise/X` companion automatically.
+- Each `:module-exports` entry widens a nested module's visibility by one ancestor. Export every link to
+  make it available everywhere. OSS module `X` exports its `enterprise/X` companion automatically.
 
 ## Kondo Ignore Ratchets
 

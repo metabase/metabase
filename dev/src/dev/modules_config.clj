@@ -1,10 +1,12 @@
 (ns dev.modules-config
-  "Regenerate `.clj-kondo/config/modules/config.edn`.
+  "Generate/repair `.clj-kondo/config/modules/config.edn` so it passes `metabase.core.modules-test`.
 
-  [[dev.deps-graph]] computes `:api` and `:uses`;
-  [[dev.model-boundary-config]] computes `:model-exports` and `:model-imports`.
-  This namespace writes those generated keys in sorted order while preserving
-  handwritten settings, comments, and the `:any` and `:bypass` sentinels.
+  The heavy lifting already lives in [[dev.deps-graph]] (which computes the correct `:api` and `:uses`
+  for every module) and [[dev.model-boundary-config]] (which computes `:model-exports`/`:model-imports`).
+  This namespace ties them together into a single writer that rewrites the four *generated* keys in place,
+  sorted, while preserving everything a human owns: `:team`, `:friends`, header/footer comments, inline
+  `;;` annotations on set elements, the `:ignored-namespace-patterns` key, and the sentinel values
+  `:any`/`:bypass`.
 
   Usage:
 
@@ -14,9 +16,10 @@
 
     clojure -X:dev dev.modules-config/-main
 
-  It updates generated values only for modules already in the config. It reports
-  modules that must be added or reordered, because those changes may require a
-  namespace prefix or owner."
+  Scope: this auto-fixes the *content and ordering* of `:api`, `:uses`, `:model-exports`, and
+  `:model-imports` for modules that already exist in the config. Structural changes — adding a brand new
+  module (which needs a human-assigned `:team`), removing a stale one, or reordering modules — are only
+  *reported* as warnings, never performed, since they require judgement this tool doesn't have."
   (:require
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
@@ -195,12 +198,15 @@
 ;;;; ---------------------------------------------------------------------------
 
 (defn compute-desired
-  "Compute every module's generated config values.
+  "Compute the desired value of every generated key for every module.
 
   Returns `{module-sym {:api set, :uses set, :model-exports set, :model-imports set}}`.
 
-  The four-argument form is pure. The no-argument form gathers its inputs from
-  [[dev.deps-graph]], running the independent scans concurrently."
+  The 4-arity is pure: it derives the answer purely from the four inputs (the parsed Kondo `config`, the
+  `dependencies` file-scan, `model-ownership`, and `model-references`), so it can be exercised in tests
+  with mock data and no file or REPL state. The 0-arity gathers those four inputs from [[dev.deps-graph]]
+  for real, running the independent file-scanning passes concurrently so a warm REPL finishes in a few
+  seconds."
   ([]
    (let [config (deps-graph/kondo-config)
          f-deps (future (deps-graph/dependencies))
@@ -231,12 +237,12 @@
   (let [file-set    (set file-modules)
         desired-set (set (keys desired))
         to-add      (sort (remove file-set desired-set))
-        ;; Some configured modules have no generated data, so only report missing desired modules.
+        ;; a desired module absent from the file needs adding; but connection-pool etc. legitimately live
+        ;; only in the file, so only flag file modules that produced *no* generated data as candidates.
         sorted?     (= file-modules (sort-module-names file-modules))]
     (cond-> []
       (seq to-add)
-      (conj (str "New module(s) not in config — add them by hand (choose their namespace prefix and "
-                 "ownership; nested modules may inherit :team): "
+      (conj (str "New module(s) not in config — add them by hand (they need a :team): "
                  (str/join ", " to-add)))
 
       (not sorted?)

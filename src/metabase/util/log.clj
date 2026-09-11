@@ -110,11 +110,7 @@
      (fn [] ~@body)))
 
 (defn- module-for-ns
-  "Resolve `ns-sym` to a declared module.
-
-  The packaged application cannot load `hooks.common.modules`, so this mirrors
-  its dotted-prefix lookup. Undeclared modules are omitted because they have no
-  team metadata."
+  "Copy of `hooks.common.modules/declared-module`, which the packaged application cannot load."
   [prefix->module ns-sym]
   (loop [candidate (str/replace (str ns-sym) #"-test$" "")]
     (or (get prefix->module candidate)

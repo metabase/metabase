@@ -281,7 +281,7 @@
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
 
-(defn- modules-affecting-drivers []
+(defn modules-affecting-drivers []
   (let [deps (mage.modules/dependencies)
         all (keys deps)]
     (filter #(mage.modules/driver-deps-affected? [%]) all)))
@@ -318,8 +318,9 @@
                   (pr-str (sort modules-triggering-drivers)))))))
 
 (deftest test-files-mark-modules-changes
-  (testing "a changed test marks its module as affected"
-    ;; DEV-1487 will stop propagating test-only changes to dependents.
+  (testing "if you change a test in a module, that module is affected"
+    ;; note in the future, this won't be all dependent modules see
+    ;; https://linear.app/metabase/issue/DEV-1487/treat-changed-test-namespaces-as-module-only-changes
     (let [changed-file "enterprise/backend/test/metabase_enterprise/transforms_python/api_test.clj"]
       (is (= '#{enterprise/transforms-python}
              (mage.modules/updated-files->updated-modules [changed-file])))
@@ -371,3 +372,10 @@
              (#'mage.modules/file->module prefix->module "test/metabase/lib/schema_test.cljc")))
       (is (= 'lib.schema
              (#'mage.modules/file->module prefix->module "src/metabase/lib/schema/config.edn"))))))
+
+(deftest top-level-files-belong-only-to-declared-modules-test
+  (testing "a file directly under metabase/ belongs to a module only when a declared prefix owns its namespace"
+    (let [prefix->module (modules/build-prefix->module '{driver {}})]
+      (is (= 'driver (#'mage.modules/file->module prefix->module "src/metabase/driver.clj")))
+      (is (nil? (#'mage.modules/file->module prefix->module "test/metabase/test_runner.clj")))
+      (is (nil? (#'mage.modules/file->module prefix->module "src/metabase/DO_NOT_ADD_NEW_FILES_HERE.txt"))))))

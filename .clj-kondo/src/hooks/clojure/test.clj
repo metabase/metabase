@@ -171,14 +171,12 @@
           (str/starts-with? (name ns-symb) prefix))
         ["build-drivers."
          "build."
-         "dev." ; dev tooling
          "hooks." ; clj-kondo hook tests, outside the module system
          "i18n." ; bin/i18n
          "lint-migrations-file-test"
          "load-namespaces." ; bin/load-namespaces
-         "mage." ; mage build tool
+         "mage."
          "main-test" ; bin/release-list
-         "metabase.dev." ; dev tooling tests
          "metabase.deps-edn-test"
          "metabase.driver."
          "metabase.test."
@@ -195,9 +193,10 @@
                ;; only warn once per namespace
                (not (contains? @warned-namespaces ns-symb)))
       (swap! warned-namespaces conj ns-symb)
-      (let [config         (modules/config input)
-            current-module (modules/module config ns-symb)]
-        (when-not (contains? (:metabase/modules config) current-module)
+      (let [known-modules  (set (keys (:metabase/modules (modules/config input))))
+            current-module (modules/module (modules/config input) ns-symb)]
+        (when (or (not current-module)
+                  (not (contains? known-modules current-module)))
           (hooks/reg-finding! (assoc (meta node)
                                      :message (format "All tests must live in a known module; %s is not a known module" (pr-str current-module))
                                      :type    :metabase/tests-must-live-in-known-modules)))))))

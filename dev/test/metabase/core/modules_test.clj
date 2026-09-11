@@ -37,7 +37,7 @@
 (def ^:private teams-to-reassign #{"Admin Webapp" "DashViz"})
 
 (deftest all-modules-have-teams-test
-  (testing "All modules should have a valid effective :team owner"
+  (testing "All modules should have a valid :team owner"
     (let [teams  (teams)
           config (modules-config)]
       (doseq [module (keys config)
@@ -160,8 +160,8 @@
   (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
     (let [deps     (dev.deps-graph/dependencies)
+          expected (dev.deps-graph/generate-config deps (dev.deps-graph/kondo-config))
           actual   (dev.deps-graph/kondo-config)
-          expected (dev.deps-graph/generate-config deps actual)
           modules  (set/union (set (keys expected))
                               (set (keys actual)))]
       (doseq [module modules
@@ -214,7 +214,7 @@
             (format "Modules %s share :ns-prefix %s." (pr-str (sort claimants)) (pr-str prefix)))))))
 
 (deftest ^:parallel nested-modules-have-declared-parents-test
-  (testing "Every syntactically nested module has a declared direct parent"
+  (testing "every nested module has a declared direct parent"
     (let [config (dev.deps-graph/kondo-config)]
       (doseq [module (keys config)
               :let   [parent (modules/parent-module config module)]
@@ -226,7 +226,7 @@
                       module)))))))
 
 (deftest ^:parallel module-exports-are-declared-direct-children-test
-  (testing "Every :module-exports entry names a declared direct child"
+  (testing "every :module-exports entry names a declared direct child"
     (let [config (dev.deps-graph/kondo-config)]
       (doseq [[parent module-config] config
               child                  (:module-exports module-config)]
@@ -239,26 +239,20 @@
                       child
                       (modules/parent-module config child))))))))
 
-(deftest ^:parallel rest-module-recognition-test
-  ;; Keep recognizing legacy names until they are removed from the config.
-  (are [module] (#'modules/rest-module? module)
-    'queries-rest
-    'queries.rest
-    'enterprise/queries-rest
-    'enterprise/queries.rest)
-  (is (not (#'modules/rest-module? 'queries))))
+(defn- rest-module? [module]
+  (re-find #"[.-]rest$" (str module)))
 
 (deftest do-not-use-rest-modules-in-other-modules-test
   (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)
-          :when                                (not (#'modules/allowed-rest-consumer? module))
+          :when                                (not (rest-module? module))
           used-module                          (when (set? uses)
                                                  uses)]
-    (is (not (#'modules/rest-module? used-module))
-        (format "Do not use REST modules (%s) in non-REST modules (%s) -- move things from %s to %s if needed"
+    (is (not (rest-module? used-module))
+        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
                 used-module
                 module
                 used-module
-                (symbol (str/replace (str used-module) #"[.-]rest$" ""))))))
+                (symbol (str/replace used-module #"[.-]rest$" ""))))))
 
 ;;;; Model boundary tests
 

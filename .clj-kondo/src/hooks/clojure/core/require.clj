@@ -13,10 +13,12 @@
     ;; ignore namespaces outside of the module system
     (when-let [current-module (modules/module config current-ns)]
       (doseq [required-namespace required-namespaces]
-        (when-let [error (modules/usage-error config current-module required-namespace)]
-          (hooks/reg-finding! (assoc (meta node)
-                                     :message error
-                                     :type    :metabase/modules)))))))
+        ;; ignore namespaces outside of the module system.
+        (when (modules/module config required-namespace)
+          (when-let [error (modules/usage-error config current-module required-namespace)]
+            (hooks/reg-finding! (assoc (meta node)
+                                       :message error
+                                       :type    :metabase/modules))))))))
 
 (defn- lint-dynamic-require* [node current-ns config]
   (when (and (not (modules/ignored-namespace? config current-ns))

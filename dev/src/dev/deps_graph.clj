@@ -213,58 +213,55 @@
                                               [:namespace simple-symbol?]
                                               [:module    symbol?]
                                               [:dynamic {:optional true} :keyword]]]]]
-  ;; `prefix->module` is a plain map rather than a `:map-of` schema: this runs once per source file, and validating
-  ;; every entry of the module map on each call is pure overhead.
-  ([prefix->module :- map?
-    file :- [:or
-             string?
-             [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
-   (try
-     (let [decl         (ns.file/read-file-ns-decl file)
-           ns-symb      (ns.parse/name-from-ns-decl decl)
-           static-deps  (ns.parse/deps-from-ns-decl decl)
-           dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
-                          (vary-meta symb assoc ::dynamic :require-and-friends))
-           ;;
-           ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
-           ;; rationale.
-           ;;
-           ;; defenterprise-deps (for [symb (find-defenterprises file)]
-           ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
-           ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
-           ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
-           deps         (into (sorted-set) cat
-                              [static-deps
-                               dynamic-deps
-                               #_defenterprise-deps
-                               #_defenterprise-schema-deps])]
-       {:namespace ns-symb
-        :filename  (file->path-relative-to-project-root file)
-        :module    (modules/resolve-module prefix->module ns-symb)
-        :deps      (sort-by pr-str
-                            (keep (fn [required-ns]
-                                    (when-let [module (modules/resolve-module prefix->module required-ns)]
-                                      (when-not (some-> ignored-dependencies ns-symb required-ns)
-                                        (merge
-                                         {:namespace required-ns
-                                          :module    module}
-                                         (when-let [dynamic-type (::dynamic (meta required-ns))]
-                                           {:dynamic dynamic-type})))))
-                                  deps))})
-     (catch Throwable e
-       (throw (ex-info (format "Error calculating dependencies for %s" file)
-                       {:file file}
-                       e))))))
+  [prefix->module :- map?
+   file :- [:or
+            string?
+            [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
+  (try
+    (let [decl         (ns.file/read-file-ns-decl file)
+          ns-symb      (ns.parse/name-from-ns-decl decl)
+          static-deps  (ns.parse/deps-from-ns-decl decl)
+          dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
+                         (vary-meta symb assoc ::dynamic :require-and-friends))
+          ;;
+          ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
+          ;; rationale.
+          ;;
+          ;; defenterprise-deps (for [symb (find-defenterprises file)]
+          ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
+          ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
+          ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
+          deps         (into (sorted-set) cat
+                             [static-deps
+                              dynamic-deps
+                              #_defenterprise-deps
+                              #_defenterprise-schema-deps])]
+      {:namespace ns-symb
+       :filename  (file->path-relative-to-project-root file)
+       :module    (modules/resolve-module prefix->module ns-symb)
+       :deps      (sort-by pr-str
+                           (keep (fn [required-ns]
+                                   (when-let [module (modules/resolve-module prefix->module required-ns)]
+                                     (when-not (some-> ignored-dependencies ns-symb required-ns)
+                                       (merge
+                                        {:namespace required-ns
+                                         :module    module}
+                                        (when-let [dynamic-type (::dynamic (meta required-ns))]
+                                          {:dynamic dynamic-type})))))
+                                 deps))})
+    (catch Throwable e
+      (throw (ex-info (format "Error calculating dependencies for %s" file)
+                      {:file file}
+                      e)))))
 
-;; `dependencies` reads the module config declared later in this file.
 (declare kondo-config)
 
 (comment
-  (let [prefix->module (modules/build-prefix->module (kondo-config))]
-    (file-dependencies prefix->module "src/metabase/app_db/setup.clj")
-    ;; should ignore the entries from [[ignored-dependencies]]
-    (file-dependencies prefix->module "src/metabase/config.clj")
-    (file-dependencies prefix->module "src/metabase/query_processor/middleware/permissions.clj")))
+  (file-dependencies (modules/build-prefix->module (kondo-config)) "src/metabase/app_db/setup.clj")
+  ;; should ignore the entries from [[ignored-dependencies]]
+  (file-dependencies (modules/build-prefix->module (kondo-config)) "src/metabase/config.clj")
+
+  (file-dependencies (modules/build-prefix->module (kondo-config)) "src/metabase/query_processor/middleware/permissions.clj"))
 
 (defn dependencies
   "Parse source files into module dependency data.
@@ -398,7 +395,7 @@
       module-x-ns->module-y-ns))))
 
 (defn full-dependencies
-  "Like [[module-dependencies]], but including transitive dependencies."
+  "Like [[dependencies]] but also includes transient dependencies."
   [deps]
   (let [deps-graph  (module-dependencies deps)
         ;; Keep the seed set so cycles converge instead of oscillating.
@@ -412,9 +409,7 @@
                  [k (expand-deps v)]))
           deps-graph)))
 
-(defn module-deps-count
-  "Map each module to the number of modules in its transitive dependency closure."
-  [deps]
+(defn module-deps-count [deps]
   (into (sorted-map)
         (map (fn [[k v]]
                [k (count v)]))
@@ -460,21 +455,13 @@
    diff))
 
 (defn kondo-config-diff
-  "Return the difference between declared module boundaries and dependencies found in source."
   ([]
    (kondo-config-diff (dependencies)))
 
   ([deps]
-   (let [kondo-config  (kondo-config)
-         ;; Exclude handwritten keys that `generate-config` does not manage.
-         human-owned   [:team
-                        :friends
-                        :model-imports
-                        :model-exports
-                        :module-exports
-                        :ns-prefix]]
+   (let [kondo-config (kondo-config)]
      (-> (ddiff/diff
-          (update-vals kondo-config #(apply dissoc % human-owned))
+          (update-vals kondo-config #(dissoc % :team :friends :model-imports :model-exports :module-exports :ns-prefix))
           (generate-config deps kondo-config))
          ddiff/minimize
          kondo-config-diff-ignore-any
@@ -658,7 +645,8 @@
   (keys (all-module-deps-paths deps module)))
 
 (defn test-filenames->relevant-source-filenames
-  "Source files whose changes should run `test-filenames`, relative to the project root."
+  "Given a collection of `test-filenames`, return the set of source filenames (relative to the project root directory)
+  that when changed should trigger these tests."
   ([test-filenames]
    (let [prefix->module (modules/build-prefix->module (kondo-config))]
      (test-filenames->relevant-source-filenames (dependencies prefix->module) prefix->module test-filenames)))
@@ -723,9 +711,7 @@
 (def ^:private test-source-file-extensions
   [".clj" ".cljc" ".cljs" ".bb"])
 
-(defn- module->test-path-prefix
-  "Where `module`'s tests live, minus the `/` or `_test` that follows: `test/metabase/lib/schema` for `lib.schema`."
-  [modules-config module]
+(defn- module->test-path-prefix [modules-config module]
   (let [ns-prefix (modules/module-ns-prefix modules-config module)]
     (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
          "test/"
@@ -740,10 +726,7 @@
         test-source-file-extensions))
 
 (mu/defn- module->test-files :- [:set :string]
-  "Test files owned by `module`.
-
-  The two-argument form builds a prefix map. Pass a shared map to the
-  three-argument form when resolving several modules."
+  "Return the set of test filenames associated with a `module`."
   ([modules-config :- map?
     module-sym :- :symbol]
    (module->test-files modules-config (modules/build-prefix->module modules-config) module-sym))
@@ -763,7 +746,8 @@
            nested-tests))))
 
 (defn source-filenames->relevant-test-filenames
-  "Tests to run when `source-filenames` change, relative to the project root."
+  "Given a collection of `source-filenames`, return the set of test filenames (relative to the project root directory)
+  that we should re-run when any of `source-filenames` change."
   ([source-filenames]
    (let [modules-config (kondo-config)
          prefix->module (modules/build-prefix->module modules-config)]
@@ -871,10 +855,9 @@
       (conj :not-imported))))
 
 (defn model-references-by-module
-  "Map each module to the model keywords referenced by its source files.
-
-  Excludes exempt namespaces, but includes modules with boundary bypasses;
-  callers filter those when needed."
+  "Scan all source files and build a map of `{module => #{:model/X ...}}` — the set of model keywords
+  referenced in each module's source files. Exempt namespaces (e.g. `metabase.models.resolution`) are excluded.
+  Includes all modules (including bypass modules) — callers filter as needed."
   []
   (let [prefix->mod (modules/build-prefix->module (kondo-config))]
     (reduce

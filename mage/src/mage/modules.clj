@@ -22,15 +22,9 @@
   '#{query-processor transforms
      enterprise/transforms enterprise/transforms-python})
 
-;;; TODO (Cam 2025-11-07): A test-file change should run only that module's tests,
-;;; not the tests of every source dependent. See DEV-1487.
-
-(defn- file->ns-symbol
-  "Infer the namespace of a file under a backend source or test root.
-
-  Also works for non-Clojure resources. For example,
-  `src/metabase/lib_be/core.clj` becomes `metabase.lib-be.core`."
-  [filename]
+;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
+;;; everything that depends on that module directly or indirectly in `src`
+(defn- file->ns-symbol [filename]
   (when (re-find #"^(?:(?:src|test)/metabase|enterprise/backend/(?:src|test)/metabase_enterprise)/" filename)
     (-> filename
         (str/replace #"^(?:enterprise/backend/)?(?:src|test)/" "")
@@ -39,76 +33,70 @@
         (str/replace "_" "-")
         symbol)))
 
-(defn- file->module
-  "Resolve `filename` to its owning module through its inferred namespace."
-  [prefix->module filename]
-  (some->> (file->ns-symbol filename) (modules/resolve-module prefix->module)))
+(defn- file->module [prefix->module filename]
+  (or
+   (some->> (file->ns-symbol filename) (modules/declared-module prefix->module))
+   ;; otherwise a file inside a directory belongs to the (undeclared) module that directory names
+   (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
+     (symbol (str/replace module #"_" "-")))
+   (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
+     (symbol "enterprise" (str/replace module #"_" "-")))))
 
-(defn- read-modules-config
-  []
+(defn- read-modules-config []
   (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
         (edn/read r))
       :metabase/modules))
 
-(defn- updated-files->updated-modules
-  ([updated-files]
-   (updated-files->updated-modules (modules/build-prefix->module (read-modules-config)) updated-files))
-  ([prefix->module updated-files]
-   (into (sorted-set)
-         (keep (partial file->module prefix->module))
-         updated-files)))
+(defn- updated-files->updated-modules [updated-files]
+  (let [prefix->module (modules/build-prefix->module (read-modules-config))]
+    (into (sorted-set)
+          (keep #(file->module prefix->module %))
+          updated-files)))
 
-(defn- updated-modules [prefix->module git-ref]
+(defn- updated-modules [git-ref]
   (let [git-ref (or git-ref "master")
         updated-files (u/updated-files git-ref)]
-    (updated-files->updated-modules prefix->module updated-files)))
+    (updated-files->updated-modules updated-files)))
 
 (def ^:private backend-test-source-file-extensions
   [".clj" ".cljc"])
 
-(defn- module->test-path-prefix
-  "The path prefix for `module`'s test file and directory.
-
-  For example, `lib.schema` maps to `test/metabase/lib/schema`."
-  [modules-config module]
+(defn- module->test-path-prefix [modules-config module]
   (let [ns-prefix (modules/module-ns-prefix modules-config module)]
     (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
          "test/"
          (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
 
-(defn- module->test-paths
-  ([modules-config module]
-   (module->test-paths modules-config (modules/build-prefix->module modules-config) module))
-  ([modules-config prefix->module module]
-   (let [path-prefix (module->test-path-prefix modules-config module)
-         test-dir    (io/file path-prefix)
-         test-files  (concat
-                      (for [extension backend-test-source-file-extensions
-                            :let      [file (io/file (str path-prefix "_test" extension))]
-                            :when     (.isFile file)]
-                        file)
-                      (when (.isDirectory test-dir)
-                        (for [file (file-seq test-dir)
-                              :when (and (.isFile ^java.io.File file)
-                                         (some #(str/ends-with? (str file) %)
-                                               backend-test-source-file-extensions))]
-                          file)))]
-     (into (sorted-set)
-           (comp (filter #(= module (file->module prefix->module (str %))))
-                 (map str))
-           test-files))))
+(defn- module->test-paths [modules-config module]
+  (let [prefix->module (modules/build-prefix->module modules-config)
+        path-prefix    (module->test-path-prefix modules-config module)
+        test-dir       (io/file path-prefix)
+        test-files     (concat
+                        (for [extension backend-test-source-file-extensions
+                              :let      [file (io/file (str path-prefix "_test" extension))]
+                              :when     (.isFile file)]
+                          file)
+                        (when (.isDirectory test-dir)
+                          (for [file (file-seq test-dir)
+                                :when (and (.isFile ^java.io.File file)
+                                           (some #(str/ends-with? (str file) %)
+                                                 backend-test-source-file-extensions))]
+                            file)))]
+    (into (sorted-set)
+          (comp (filter #(= module (file->module prefix->module (str %))))
+                (map str))
+          test-files)))
 
 (defn- dependencies
-  "Map each module to the modules in its `:uses` config."
-  ([] (dependencies (read-modules-config)))
-  ([modules-config]
-   (let [config (-> modules-config
-                    ;; This module comes from a library, not this repository.
-                    (dissoc 'connection-pool))]
-     (into (sorted-map)
-           (map (fn [[k config]]
-                  [k (:uses config)]))
-           config))))
+  "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
+  []
+  (let [config (-> (read-modules-config)
+                   ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
+                   (dissoc 'connection-pool))]
+    (into (sorted-map)
+          (map (fn [[k config]]
+                 [k (:uses config)]))
+          config)))
 
 (defn- direct-dependents
   "Set of modules that directly depend on `module`."
@@ -254,11 +242,10 @@
 (defn cli-print-affected-modules
   "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
-  (let [modules-config         (read-modules-config)
-        prefix->module        (modules/build-prefix->module modules-config)
-        deps                   (dependencies modules-config)
-        updated                (updated-modules prefix->module git-ref)
-        affected               (affected-modules deps updated)
+  (let [modules-config (read-modules-config)
+        deps (dependencies)
+        updated (updated-modules git-ref)
+        affected (affected-modules deps updated)
         driver-deps-affected? (not (contains? (unaffected-modules deps updated) 'driver))]
     (print-updated-and-unaffected-modules deps updated driver-deps-affected?)
     (println)
@@ -267,7 +254,7 @@
     (println)
     (println)
     (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n"
-            (pr-str (into [] (mapcat #(module->test-paths modules-config prefix->module %)) affected)))
+            (pr-str (into [] (mapcat #(module->test-paths modules-config %)) affected)))
     (flush)
     (u/exit 0)))
 
@@ -357,9 +344,9 @@
                           (count (filter #(= (namespace %) "enterprise") (keys modules-config)))
                           " enterprise"
                           (when (pos? starred)
-                            (str ", " starred " with custom prefixes ("
-                                 (if (:prefixes options) "prefix in parens " "* ")
-                                 "= namespace differs from module name)")))))
+                            (str ", " starred " custom prefixes ("
+                                 (if (:prefixes options) "shown in parentheses" "marked with *")
+                                 ")")))))
     (u/exit 0)))
 
 (defn- changes-important-file-for-drivers?
@@ -400,12 +387,10 @@
 
     ./bin/mage can-skip-driver-tests [git-ref]"
   [[git-ref, :as _arguments]]
-  (let [modules-config    (read-modules-config)
-        prefix->module   (modules/build-prefix->module modules-config)
-        deps             (dependencies modules-config)
-        git-ref          (or git-ref "master")
-        updated-files    (u/updated-files git-ref)
-        updated          (updated-files->updated-modules prefix->module updated-files)
+  (let [deps (dependencies)
+        git-ref (or git-ref "master")
+        updated-files (u/updated-files git-ref)
+        updated (updated-files->updated-modules updated-files)
         drivers-affected? (driver-deps-affected? deps updated)]
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
     (print-updated-and-unaffected-modules deps updated drivers-affected?)
@@ -635,12 +620,9 @@
         ;; force-run and --only-driver each decide every driver on their own, so the change
         ;; analysis is not consulted there.
         analysis (when-not (or force-run only-driver)
-                   (let [modules-config (read-modules-config)
-                         prefix->module (modules/build-prefix->module modules-config)
-                         deps (dependencies modules-config)
-                         updated-files (u/updated-files git-ref)
-                         updated (updated-files->updated-modules prefix->module updated-files)
-                         driver-affected? (driver-deps-affected? deps updated)
+                   (let [updated-files (u/updated-files git-ref)
+                         updated (updated-files->updated-modules updated-files)
+                         driver-affected? (driver-deps-affected? updated)
                          important-file-changed? (changes-important-file-for-drivers? updated-files)]
                      {:particular-driver-changed? (drivers-with-file-changes updated-files)
                       :updated updated

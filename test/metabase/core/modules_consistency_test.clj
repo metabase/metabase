@@ -1,5 +1,5 @@
 (ns metabase.core.modules-consistency-test
-  "Cross-checks module resolution at classpath boundaries.
+  "Cross-checks module resolution across runtime boundaries.
 
   Mage infers a namespace from each changed path and runs under Babashka, so
   these tests invoke it through `bb`. Logging ships in the application jar and
@@ -76,7 +76,7 @@
 ;; not break ownership checks.
 
 (defn- all-under?
-  "Whether `paths` is non-empty and each path belongs to `dir`'s test file or directory."
+  "Whether `paths` is non-empty and every path is `dir`'s test file or lies below `dir`."
   [dir paths]
   (and (seq paths)
        (every? (fn [^String p]
@@ -85,7 +85,7 @@
                paths)))
 
 (deftest ^:parallel dotted-module-test-paths-test
-  (testing "Dotted modules find tests under default and custom prefixes"
+  (testing "dotted modules find tests under default and custom prefixes"
     (let [modules-config '{actions.rest {:ns-prefix "metabase.actions-rest"}
                            lib.schema   {}}]
       (testing "dev.deps-graph finds both forms"
@@ -118,7 +118,7 @@
 
 (deftest ^:parallel mage-affected-tests-are-jvm-loadable-test
   (let [paths (mage-test-paths '{lib {}} 'lib)]
-    (is (seq paths) "no paths resolved, so the exclusion below would hold vacuously")
+    (is (seq paths) "expected at least one test path")
     (is (not-any? #(str/ends-with? ^String % ".cljs") paths)
         "mage affected-test paths feed a JVM runner, so ClojureScript-only tests must not appear")))
 
@@ -157,7 +157,7 @@
 (deftest ^:parallel log-team-attribution-agrees-with-deps-graph-test
   (testing "logging and dev tooling assign the same team to every module"
     (let [config (dev.deps-graph/kondo-config)]
-      (is (< 100 (count config)) "sampling every declared module, so a small config means it failed to load")
+      (is (< 100 (count config)) "expected the full module config")
       (doseq [module (sort (keys config))
               :let   [ns-symb (symbol (modules/module-ns-prefix config module))]]
         (testing (str "\n" ns-symb)

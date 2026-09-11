@@ -6,15 +6,17 @@
   (:require
    [clojure.string :as str]))
 
-(defn ignored-namespace?
-  "Whether `ns-symb` matches one of the configured module-linter exclusions."
-  [config ns-symb]
+(defn ignored-namespace? [config ns-symb]
   (some
    (fn [pattern-str]
      (re-find (re-pattern pattern-str) (str ns-symb)))
    (:ignored-namespace-patterns config)))
 
-;;;; Module tree. These functions take the `:metabase/modules` map.
+(defn config [{:keys [config], :as _hook-input}]
+  (merge (get-in config [:linters :metabase/modules])
+         (select-keys config [:metabase/modules])))
+
+;;;; Module tree. These functions take the `:metabase/modules` map, or the prefix map built from it.
 ;;;;
 ;;;; Dots express nesting: `lib.schema` is a child of `lib`. A declared
 ;;;; `enterprise/X` module is also a child of OSS module `X`. A namespace
@@ -33,30 +35,46 @@
       (default-ns-prefix module)))
 
 (defn build-prefix->module
-  "Map of each declared module's namespace prefix to the module, for [[resolve-module]]."
+  "Map each declared namespace prefix to its module, for [[declared-module]]."
   [modules]
   (into {}
         (map (fn [module] [(module-ns-prefix modules module) module]))
         (keys modules)))
 
-(defn resolve-module
-  "Resolve `ns-symb` to its owning module.
+(defn declared-module
+  "Resolve `ns-symb` to its declared module, or `nil`.
 
-  Chooses the most specific dotted prefix and ignores a trailing `-test`.
-  An unmatched Metabase namespace resolves to its first segment so the linter
-  can report an undeclared module; other namespaces resolve to `nil`."
+  Chooses the most specific dotted prefix and ignores a trailing `-test`."
   [prefix->module ns-symb]
-  (let [ns-str (str/replace (str ns-symb) #"-test$" "")]
-    (or (loop [candidate ns-str]
-          (or (get prefix->module candidate)
-              (when-let [dot (str/last-index-of candidate ".")]
-                (recur (subs candidate 0 dot)))))
-        ;; Resolve undeclared Metabase modules so the linter can report them.
-        (some->> (re-find #"^metabase-enterprise\.([^.]+)" ns-str) second (symbol "enterprise"))
-        (some-> (re-find #"^metabase\.([^.]+)" ns-str) second symbol))))
+  (loop [candidate (str/replace (str ns-symb) #"-test$" "")]
+    (or (get prefix->module candidate)
+        (when-let [dot (str/last-index-of candidate ".")]
+          (recur (subs candidate 0 dot))))))
+
+(defn resolve-module
+  "E.g.
+
+    (resolve-module prefix->module 'metabase.qp.middleware.wow) => 'qp
+    (resolve-module prefix->module 'metabase-enterprise.whatever.core) => enterprise/whatever
+
+  An unmatched Metabase namespace resolves to its first segment so the linter can report an undeclared module."
+  [prefix->module ns-symb]
+  {:pre [(simple-symbol? ns-symb)]}
+  ;; treat something like `metabase.driver-test` (for a module that hasn't fully been updated to use `.core`
+  ;; namespaces) as being in the `driver` module
+  (let [ns-symb (if (str/ends-with? (name ns-symb) "-test")
+                  (symbol (str/replace (name ns-symb) #"-test$" ""))
+                  ns-symb)]
+    (or (declared-module prefix->module ns-symb)
+        (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
+                 second
+                 (symbol "enterprise"))
+        (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
+                second
+                symbol))))
 
 (defn parent-module
-  "The module `module` sits directly under, or `nil` for a top-level module."
+  "The direct parent of `module`, or `nil` when it is top-level."
   [modules module]
   (let [module-name (name module)]
     (if-let [dot (str/last-index-of module-name ".")]
@@ -67,7 +85,7 @@
             oss))))))
 
 (defn descendant-of?
-  "Whether `module` is `ancestor` or sits anywhere beneath it."
+  "Whether `module` is `ancestor` or one of its descendants."
   [modules module ancestor]
   (boolean (some #{ancestor} (take-while some? (iterate #(parent-module modules %) module)))))
 
@@ -91,7 +109,7 @@
         {:ancestor ancestor, :child child}))))
 
 (defn namability-error
-  "Explain why `caller` may not name `target`, or return `nil` if it may.
+  "Explain why `caller` may not refer to `target` in `:uses`, or return `nil` if it may.
 
   A nested module is private to the nearest ancestor with a missing export.
   Exporting every link makes it public."
@@ -103,12 +121,6 @@
               target caller child ancestor ancestor ancestor))))
 
 ;;;; Lint rules. These functions take the full linter config.
-
-(defn config
-  "The module linter's config, from a hook's input."
-  [{:keys [config], :as _hook-input}]
-  (merge (get-in config [:linters :metabase/modules])
-         (select-keys config [:metabase/modules])))
 
 (defonce ^:private prefix->module-cache
   (atom nil))
@@ -124,16 +136,13 @@
                                                      :prefix->module (build-prefix->module modules)})))))
 
 (defn module
-  "The module owning `ns-symb` under `config`; see [[resolve-module]]."
+  "Resolve `ns-symb` to its module under `config`; see [[resolve-module]]."
   [config ns-symb]
-  {:pre [(simple-symbol? ns-symb)]}
   (resolve-module (prefix->module config) ns-symb))
 
 (defn- module-api-namespaces
-  "The module's public namespaces, or `nil` for `:api :any`.
-
-  An omitted `:api` defaults to the module's `.api`, `.core`, and `.init`
-  namespaces."
+  "Set of API namespace symbols for a given module. `:any` means you can use anything, there are no API namespaces for
+  this module (yet). If unspecified, the default is just the `<module>.core` namespace."
   [config module]
   (let [module-config (get-in config [:metabase/modules module :api])]
     (cond
@@ -150,79 +159,71 @@
           (symbol (str ns-prefix ".init"))}))))
 
 (defn- module-friends
-  "Modules allowed to use any namespace from `module`, not only its API."
   [config module]
+  "Set of modules that are `:friends` of `module`, i.e. allowed to use *any* namespace from the module, not just the
+  designated [[module-api-namespaces]]."
   (set (get-in config [:metabase/modules module :friends])))
 
 (defn allowed-modules
-  "Modules named in `module`'s `:uses`, or `:any`."
+  "Set of namespace symbols that `module` is allowed to use. `:any` means it's allowed to use anything."
   [config module]
   (get-in config [:metabase/modules module :uses]))
 
-(defn allowed-module?
-  "Whether `current-module`'s `:uses` is `:any` or names `required-module` exactly: `:uses #{lib}` does not cover
-  `lib.schema`."
-  [config current-module required-module]
-  (let [allowed-modules (allowed-modules config current-module)]
+(defn allowed-module? [config module required-module]
+  (let [allowed-modules (allowed-modules config module)]
     (or (= allowed-modules :any)
-        ;; Avoid vector index semantics if a hand-edited config uses a vector.
         (contains? (set allowed-modules) required-module))))
 
-(defn- rest-module?
-  "Whether `module` is a REST module: `x.rest`, or the deprecated `x-rest`."
-  [module]
-  (boolean (re-find #"[.-]rest$" (str module))))
+(defn- allowed-module-namespace? [config current-module ns-symb]
+  (let [module                (module config ns-symb)
+        module-api-namespaces (module-api-namespaces config module)
+        module-friends        (module-friends config module)]
+    (or (nil? module-api-namespaces)
+        (contains? module-api-namespaces ns-symb)
+        (contains? module-friends current-module)
+        ;; a child may use its ancestors' internals; a parent still goes through its child's `:api`
+        (descendant-of? (:metabase/modules config) current-module module))))
 
-(defn- allowed-rest-consumer?
-  "Whether `module` may depend on REST modules: other REST modules, route aggregators, and core initializers."
-  [module]
-  (or (rest-module? module)
-      (boolean (re-find #"[.-]routes$" (str module)))
-      (= "core" (name module))))
+(defn- rest-module? [module]
+  (re-find #"[.-]rest$" (str module)))
 
-(defn- allowed-module-namespace?
-  "Whether `current-module` may require `ns-symb` from `required-module`.
+(defn- routes-module? [module]
+  (str/ends-with? module "-routes"))
 
-  The namespace must be public, the caller must be a friend, or the caller
-  must be a descendant of the required module."
-  [config current-module required-module ns-symb]
-  ;; Subtree trust runs one way: a child may use its ancestors' internals, but a parent goes through its child's `:api`.
-  (or (descendant-of? (:metabase/modules config) current-module required-module)
-      (let [api-namespaces (module-api-namespaces config required-module)]
-        (or (nil? api-namespaces)
-            (contains? api-namespaces ns-symb)
-            (contains? (module-friends config required-module) current-module)))))
+(defn- core-module? [module]
+  (str/ends-with? module "core"))
 
 (defn usage-error
-  "Explain why a require crosses a forbidden module boundary.
-
-  Returns `nil` when the require is allowed or outside the module system."
+  "Find usage errors when a `required-namespace` is required in the `current-module`. Returns a string describing the
+  error type if there is one, otherwise `nil` if there are no errors."
   [config current-module required-namespace]
+  ;; ignore stuff not in a module i.e. non-Metabase stuff.
   (when-let [required-module (module config required-namespace)]
     (when-not (= current-module required-module)
-      ;; Config tests check explicit `:uses`; wildcard callers are checked here.
-      (let [unnamable (when (= :any (allowed-modules config current-module))
-                        (namability-error (:metabase/modules config) current-module required-module))]
-        (cond
-          (not (allowed-module? config current-module required-module))
-          (format "Module %s should not be used in the %s module. [:metabase/modules %s :uses]"
-                  required-module
-                  current-module
-                  current-module)
+      (cond
+        (not (allowed-module? config current-module required-module))
+        (format "Module %s should not be used in the %s module. [:metabase/modules %s :uses]"
+                required-module
+                current-module
+                current-module)
 
-          (and (not (allowed-rest-consumer? current-module))
-               (rest-module? required-module))
-          (format "Do not use REST modules (%s) in non-REST modules (%s) -- move things from %s to %s if needed"
-                  required-module
-                  current-module
-                  required-module
-                  (symbol (str/replace (str required-module) #"[.-]rest$" "")))
+        (not (allowed-module-namespace? config current-module required-namespace))
+        (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
+                required-namespace
+                required-module
+                required-module)
 
-          unnamable
-          unnamable
+        ;; (for now) rest modules are allowed to use one another; `routes` is ok because it collects routes together
+        ;; and `core` is ok because [[metabase.core.init]] might need to init some of the `-routes` modules'
+        ;; namespaces
+        (and (not ((some-fn rest-module? routes-module? core-module?) current-module))
+             (rest-module? required-module))
+        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
+                required-module
+                current-module
+                required-module
+                (symbol (str/replace required-module #"[.-]rest$" "")))
 
-          (not (allowed-module-namespace? config current-module required-module required-namespace))
-          (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
-                  required-namespace
-                  required-module
-                  required-module))))))
+        ;; Config tests check explicit `:uses`; wildcard callers are checked here.
+        (= :any (allowed-modules config current-module))
+        (namability-error (:metabase/modules config) current-module required-module)))))
