@@ -371,7 +371,7 @@
   ([opts]
    (adapter/listing supported-models
                     (adapter/fetch-catalog provider opts {:path "/v1/models"})
-                    true)))
+                    :display_name)))
 
 (defn- strip-vendor-prefix
   "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `anthropic.`).
