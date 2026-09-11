@@ -1,5 +1,4 @@
 (ns metabase.query-processor.binning-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.binning-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
@@ -41,22 +40,25 @@
 
 (deftest ^:parallel binning-on-nested-question-with-aggregation-test
   (testing "binning should work on nested question based on question that has aggregation (#16379)"
-    (let [card-query      (mt/mbql-query orders
-                            {:aggregation [[:avg $subtotal]]
-                             :breakout    [$user_id]})
+    (let [mp              (mt/metadata-provider)
+          orders-subtotal (lib.metadata/field mp (mt/id :orders :subtotal))
+          orders-user-id  (lib.metadata/field mp (mt/id :orders :user_id))
+          card-query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                              (lib/aggregate (lib/avg orders-subtotal))
+                              (lib/breakout orders-user-id))
           card-cols       (-> (qp/process-query card-query)
                               :data
                               :results_metadata
                               :columns)
           _               (is (= 2
                                  (count card-cols)))
-          mp              (lib.tu/mock-metadata-provider
-                           (mt/metadata-provider)
+          mock-mp         (lib.tu/mock-metadata-provider
+                           mp
                            {:cards [{:id              1
                                      :dataset-query   card-query
                                      :result-metadata card-cols}]})
-          card            (lib.metadata/card mp 1)
-          query           (lib/query mp card)
+          card            (lib.metadata/card mock-mp 1)
+          query           (lib/query mock-mp card)
           avg             (m/find-first #(= (:name %) "avg")
                                         (lib/visible-columns query))
           _               (assert avg)

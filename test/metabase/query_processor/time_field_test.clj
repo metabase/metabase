@@ -1,6 +1,4 @@
 (ns ^:mb/driver-tests metabase.query-processor.time-field-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.time-field-test]}
-                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.time-field-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -16,10 +14,22 @@
   (mt/formatted-rows
    [int identity identity]
    (mt/dataset time-test-data
-     (mt/run-mbql-query users
-       {:fields   [$id $name $last_login_time]
-        :order-by [[:asc $id]]
-        :filter   (into [filter-type $last_login_time] filter-args)}))))
+     (let [mp                    (mt/metadata-provider)
+           users                 (lib.metadata/table mp (mt/id :users))
+           users-id              (lib.metadata/field mp (mt/id :users :id))
+           users-name            (lib.metadata/field mp (mt/id :users :name))
+           users-last-login-time (lib.metadata/field mp (mt/id :users :last_login_time))
+           ;; `filter-type` is a runtime keyword (`:between`/`:>`/`:=`), so build the filter clause with the
+           ;; `lib/expression-clause` escape hatch rather than a static builder.
+           query                 (-> (lib/query mp users)
+                                     (lib/with-fields [users-id users-name users-last-login-time])
+                                     (lib/order-by users-id)
+                                     (lib/filter (lib/expression-clause
+                                                  filter-type
+                                                  (into [users-last-login-time] filter-args)
+                                                  nil)))]
+       (mt/with-native-query-testing-context query
+         (qp/process-query query))))))
 
 (defmulti basic-test-expected-rows
   {:arglists '([driver])}
