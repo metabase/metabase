@@ -23,6 +23,7 @@
    [metabase.metabot.tools.save-entity :as tools.save-entity]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.show-entity :as tools.show-entity]
    [metabase.metabot.tools.skills :as tools.skills]
    [metabase.metabot.tools.slackbot-query :as tools.slackbot-query]
    [metabase.metabot.tools.snippets :as tools.snippets]
@@ -78,6 +79,8 @@
   edit-chart-tool]
  [tools.save-entity
   save-entity-tool]
+ [tools.show-entity
+  show-entity-tool]
  [tools.resources
   read-resource-tool]
  [tools.todo

@@ -128,6 +128,43 @@ const finishedDetail = () =>
   });
 
 describe("MetabotConversationPage", () => {
+  it("restores shown entities inline when opening a fullscreen conversation", async () => {
+    mockConversationDetail(
+      createMockMetabotConversationDetail({
+        conversation_id: CONVERSATION_ID,
+        messages: [
+          createMockMetabotMessage({
+            role: "agent",
+            parts: [
+              {
+                id: "shown-dashboard",
+                role: "agent",
+                type: "data_part",
+                part: {
+                  type: "data-shown_entity",
+                  data: {
+                    type: "dashboard",
+                    id: 42,
+                    title: "Bird dashboard",
+                    url: "/dashboard/42",
+                  },
+                },
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+    const { router } = setup();
+
+    expect(
+      await screen.findByRole("link", { name: "Bird dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/42");
+    expect(router?.location.pathname).toBe(
+      Urls.metabotConversation(CONVERSATION_ID),
+    );
+  });
+
   afterEach(() => {
     jest.useRealTimers();
   });
