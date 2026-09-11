@@ -683,10 +683,23 @@
   [card-ids]
   (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))
 
-(defn card-table-ids
-  "A map of Card ID to Table ID for `card-ids`."
+(defn card-source-info
+  "A map of Card ID to `{:table_id ... :source_card_id ...}` for `card-ids` -- the source each one reads from."
   [card-ids]
-  (t2/select-pk->fn :table_id :model/Card :id [:in card-ids]))
+  (t2/select-pk->fn #(select-keys % [:table_id :source_card_id])
+                    [:model/Card :id :card_schema :table_id :source_card_id]
+                    :id [:in card-ids]))
+
+(defn card-source-rows
+  "The Cards with `card-ids`, for use as another entity's source, read-checkable without further queries.
+
+  `:collection_id` and `:document_id` are not surfaced to callers but must be selected: both feed
+  [[metabase.models.interface/can-read?]] on a `:model/Card` instance, and a missing `:collection_id` makes a card in
+  a restricted collection look readable. `:card_schema` is what every narrowed Card select in this namespace carries:
+  `t2/define-after-select` refuses to run its schema upgrades without it as soon as the column list looks like a real
+  Card read (`:id` plus any of `:type` / `:database_id` / `:dataset_query` / `:result_metadata`)."
+  [card-ids]
+  (t2/select [:model/Card :id :card_schema :name :entity_id :collection_id :document_id] :id [:in card-ids]))
 
 (defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."

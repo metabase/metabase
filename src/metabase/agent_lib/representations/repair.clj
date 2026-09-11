@@ -32,6 +32,7 @@
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.models.serialization.resolve :as resolve]
@@ -1854,10 +1855,16 @@
 ;;; ============================================================
 ;;; Pass 3 -- auto-wire `source-field` for implicit joins
 ;;;
-;;; When a field clause references a field on a table *other* than the stage's
-;;; `source-table`, and there is exactly one foreign key from the source table to that target
-;;; table, fill in the `source-field` option with the portable FK of the FK column. The QP
-;;; interprets this as an implicit join (the same machinery users get from the notebook UI).
+;;; When a field clause references a field on a table *other* than the stage's source table,
+;;; and there is exactly one foreign key from the source table to that target table, fill in
+;;; the `source-field` option with the portable FK of the FK column. The QP interprets this as
+;;; an implicit join (the same machinery users get from the notebook UI).
+;;;
+;;; The stage's source table is its `source-table`, or on a `source-card:` stage the base table
+;;; the card reads from. Both need the option for a column the source does not expose, else the
+;;; clause compiles to a nonexistent column and the query dies at execution. On a `source-card:`
+;;; stage that means only columns the card does NOT return; the ones it does are left alone, since
+;;; an implicit join would answer them differently. See [[try-resolve-card-returned-field-ids]].
 ;;;
 ;;; The pass walks stage[0] only, skips descent into the `\"joins\"` subtree (field clauses
 ;;; inside a join live in a join context), and is a no-op on clauses that already carry any
@@ -1891,15 +1898,59 @@
       (resolve/import-table-fk import-resolver source-table-fk))
     (catch Exception _ nil)))
 
-(defn- try-resolve-field-target-table-id
-  "Resolve the target-table-id of a portable field FK, by looking up the field and following its
-  `:table-id`. Walks JSON-unfolded parent chains via the resolver's `import-field-fk`. Returns
-  nil on failure."
-  [mp import-resolver field-fk]
+(defn- try-resolve-source-card-id
+  "Resolve the stage's `source-card` entity id to a numeric Card id, or nil. Repair is best-effort and must never
+  mask a downstream error."
+  [import-resolver source-card-eid]
   (try
-    (when-let [fid (resolve/import-field-fk import-resolver field-fk)]
-      (:table-id (lib.metadata.protocols/field mp fid)))
+    (when (and import-resolver (string? source-card-eid))
+      (resolve/import-fk import-resolver source-card-eid 'Card))
     (catch Exception _ nil)))
+
+(defn- try-resolve-card-base-table-id
+  "The numeric `table-id` of the table the card with `card-id` reads from, or nil - including for a
+  card with no base table of its own (a native question)."
+  [mp card-id]
+  (try
+    (when (and mp card-id)
+      (:table-id (lib.metadata.protocols/card mp card-id)))
+    (catch Exception _ nil)))
+
+(defn- try-resolve-card-returned-field-ids
+  "The ids of the database fields the card with `card-id` returns, including the ones it reached
+  through its own explicit joins.
+
+  A `source-card:` stage references these directly, so [[maybe-fill-source-field]] must leave them alone: an
+  implicit join would re-derive the column through a different join path and change the rows without erroring.
+  Empty set on failure, which only costs the clause its repair."
+  [mp card-id]
+  (try
+    (if-let [card (and mp card-id (lib.metadata/card mp card-id))]
+      (into #{} (keep :id) (lib/returned-columns (lib/query mp card)))
+      #{})
+    (catch Exception _ #{})))
+
+(defn- try-resolve-field-id
+  "Resolve a portable field FK to its numeric field id. Walks JSON-unfolded parent chains via the
+  resolver's `import-field-fk`. Returns nil on failure."
+  [import-resolver field-fk]
+  (try
+    (resolve/import-field-fk import-resolver field-fk)
+    (catch Exception _ nil)))
+
+(defn- try-resolve-field-table-id
+  "The `:table-id` of the field with `field-id`, or nil on failure."
+  [mp field-id]
+  (try
+    (when field-id
+      (:table-id (lib.metadata.protocols/field mp field-id)))
+    (catch Exception _ nil)))
+
+(defn- try-resolve-field-target-table-id
+  "Resolve the target-table-id of a portable field FK. Returns nil on failure. For callers that also
+  need the field id itself, use [[try-resolve-field-id]] and [[try-resolve-field-table-id]] directly."
+  [mp import-resolver field-fk]
+  (try-resolve-field-table-id mp (try-resolve-field-id import-resolver field-fk)))
 
 (defn- export-source-field-portable
   "Convert a numeric FK column id into its portable `[db schema table field …]` path, via the
@@ -1921,8 +1972,13 @@
 (defn- maybe-fill-source-field
   "Given a field-clause vector (already known to be a field clause), the stage's source-table-id,
   and the precomputed outbound-FK map, return either the original clause or a clause with
-  `\"source-field\"` populated. Throws `:no-fk-path` or `:ambiguous-fk` on hard errors."
-  [clause mp import-resolver export-resolver source-table-id outbound-fks-by-target]
+  `\"source-field\"` populated. Throws `:no-fk-path` or `:ambiguous-fk` on hard errors.
+
+  `card-source` is nil on a `source-table:` stage and `{:returned-field-ids <delay of #{…}>}` on a `source-card:`
+  one, where `source-table-id` is the card's base table rather than the stage's literal source. A card can return
+  columns its base table has no single FK to -- anything reached through an explicit join -- so there the hard
+  errors soften to \"leave the clause alone\" rather than reject a query that resolves today."
+  [clause mp import-resolver export-resolver source-table-id outbound-fks-by-target card-source]
   (let [opts (nth clause 1)
         fk   (nth clause 2)]
     (cond
@@ -1942,7 +1998,8 @@
       clause
 
       :else
-      (let [target-table-id (try-resolve-field-target-table-id mp import-resolver fk)]
+      (let [field-id        (try-resolve-field-id import-resolver fk)
+            target-table-id (try-resolve-field-table-id mp field-id)]
         (cond
           ;; Couldn't resolve target table: skip (validate/resolve will surface the real error).
           (nil? target-table-id)
@@ -1952,21 +2009,28 @@
           (= target-table-id source-table-id)
           clause
 
+          ;; The card already returns this column, so the bare ref resolves to it. An implicit join would
+          ;; answer from a different join path and silently change the rows.
+          (and card-source (contains? @(:returned-field-ids card-source) field-id))
+          clause
+
           :else
           (let [candidates (get outbound-fks-by-target target-table-id)]
             (case (count candidates)
-              0 (let [src-name (display-source-table mp source-table-id)
-                      tbl-name (nth fk 2)]
-                  (throw (ex-info (tru "Field {0} is on table {1}, which has no foreign key from the source table {2}, so it cannot be reached implicitly. To group or filter by a column from that table, add an explicit `joins:` entry and reference the field using the join alias. If you are aggregating a metric that relates to that table (metrics can join tables that have no foreign key), read that metric dimensions resource `metabase://metric/<metric_id>/dimensions` which lists the exact join clause to paste into `joins:` and the columns it unlocks. Otherwise use a field from the source table."
-                                       (display-portable fk)
-                                       (pr-str tbl-name)
-                                       (pr-str src-name))
-                                  {:status-code  400
-                                   :error        :no-fk-path
-                                   :agent-error? true
-                                   :field        fk
-                                   :source-table source-table-id
-                                   :target-table target-table-id})))
+              0 (if card-source
+                  clause
+                  (let [src-name (display-source-table mp source-table-id)
+                        tbl-name (nth fk 2)]
+                    (throw (ex-info (tru "Field {0} is on table {1}, which has no foreign key from the source table {2}, so it cannot be reached implicitly. To group or filter by a column from that table, add an explicit `joins:` entry and reference the field using the join alias. If you are aggregating a metric that relates to that table (metrics can join tables that have no foreign key), read that metric dimensions resource `metabase://metric/<metric_id>/dimensions` which lists the exact join clause to paste into `joins:` and the columns it unlocks. Otherwise use a field from the source table."
+                                         (display-portable fk)
+                                         (pr-str tbl-name)
+                                         (pr-str src-name))
+                                    {:status-code  400
+                                     :error        :no-fk-path
+                                     :agent-error? true
+                                     :field        fk
+                                     :source-table source-table-id
+                                     :target-table target-table-id}))))
               1 (let [{:keys [source-field-id]} (first candidates)
                       src-fk (export-source-field-portable export-resolver source-field-id)]
                   (if src-fk
@@ -1977,17 +2041,19 @@
               ;; bridge-table column names the caller is not permitted to see (`:agent-error?`
               ;; relays the message verbatim to the user). The LLM can recover by reading the
               ;; source table's fields with `read_resource` to inspect available foreign-key columns.
-              (let [src-name (display-source-table mp source-table-id)]
-                (throw (ex-info (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause to disambiguate; call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns."
-                                     (display-portable fk)
-                                     (pr-str src-name)
-                                     (count candidates))
-                                {:status-code  400
-                                 :error        :ambiguous-fk
-                                 :agent-error? true
-                                 :field        fk
-                                 :source-table source-table-id
-                                 :target-table target-table-id}))))))))))
+              (if card-source
+                clause
+                (let [src-name (display-source-table mp source-table-id)]
+                  (throw (ex-info (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-field` option on the field clause to disambiguate; call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns."
+                                       (display-portable fk)
+                                       (pr-str src-name)
+                                       (count candidates))
+                                  {:status-code  400
+                                   :error        :ambiguous-fk
+                                   :agent-error? true
+                                   :field        fk
+                                   :source-table source-table-id
+                                   :target-table target-table-id})))))))))))
 
 (defn- resolve-implicit-joins-in-stage
   "Apply implicit-join repair to a single stage map (string-keyed). Returns an updated stage.
@@ -1997,9 +2063,22 @@
   `join-alias` already."
   [stage mp import-resolver export-resolver]
   (let [source-table-fk (get stage "source-table")
-        source-table-id (try-resolve-source-table-id import-resolver source-table-fk)]
+        ;; A `source-card:` stage needs this pass too: a portable FK naming a column the card does NOT return
+        ;; renders as a bare `[:field {} <id>]` that the QP compiles to `__mb_source.<COLUMN>`, which does not
+        ;; exist, and every downstream gate passes it. The card's base table is the right FK origin.
+        ;;
+        ;; Columns the card DOES return must not be touched; that set is resolved lazily, so a stage with
+        ;; nothing to repair never pays for it.
+        source-card-id  (when (nil? source-table-fk)
+                          (try-resolve-source-card-id import-resolver (get stage "source-card")))
+        card-source     (when source-card-id
+                          {:returned-field-ids
+                           (delay (try-resolve-card-returned-field-ids mp source-card-id))})
+        source-table-id (if source-card-id
+                          (try-resolve-card-base-table-id mp source-card-id)
+                          (try-resolve-source-table-id import-resolver source-table-fk))]
     (if-not source-table-id
-      ;; Can't resolve source-table: skip the pass and let validate/resolve surface the error.
+      ;; Can't resolve the source: skip the pass and let validate/resolve surface the error.
       stage
       (let [outbound  (resolve.mp/outbound-fks-from-table mp source-table-id)
             by-target (group-by :target-table-id outbound)
@@ -2009,7 +2088,7 @@
                        (fn [node]
                          (if (field-clause? node)
                            (maybe-fill-source-field node mp import-resolver export-resolver
-                                                    source-table-id by-target)
+                                                    source-table-id by-target card-source)
                            node))
                        stage')]
         (cond-> walked
@@ -2017,8 +2096,8 @@
 
 (defn- resolve-implicit-joins*
   "Top-level implicit-join pass. Only `stages[0]` participates: implicit-join `source-field`
-  inference is a relationship from a stage's `source-table` to a sibling table via a single FK,
-  and only the first stage of a query has a `source-table` of its own. Stages 1+ feed off the
+  inference is a relationship from a stage's source table to a sibling table via a single FK,
+  and only the first stage of a query has a source of its own. Stages 1+ feed off the
   previous stage's output, where field references are by string name (handled by
   [[infer-cross-stage-field-types*]] further down)."
   [query mp content-store]

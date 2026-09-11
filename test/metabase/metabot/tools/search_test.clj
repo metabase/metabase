@@ -706,6 +706,84 @@
                              :base_table_schema
                              :base_table_portable_fk])))))))))
 
+(deftest enrich-with-metric-source-cards-test
+  (testing (str "A metric defined on a saved question is consumed from that card only, so its search result\n"
+                "carries `source_card_*` instead of `base_table_*`. `report_card.table_id` points at the card's\n"
+                "underlying table; offering it built `source-table:` queries the QP rejects.")
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                       {:name          "SourceCard Sample Question"
+                        :type          :question
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :orders)
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :orders)}}}
+                       :model/Card {metric-id :id}
+                       {:name          "SourceCard Sample Metric"
+                        :type          :metric
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :orders)
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (str "card__" question-id)
+                                                   :aggregation  [[:count]]}}}]
+          (let [results    (search/search {:term-queries ["SourceCard Sample Metric"]})
+                metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
+            (is (some? metric-res) "metric should appear in search results")
+            (testing "the source card is surfaced, entity id included so it can go into `source-card:`"
+              (is (=? {:source_card_id                 question-id
+                       :source_card_name               "SourceCard Sample Question"
+                       :source_card_portable_entity_id question-eid}
+                      metric-res)))
+            (testing "and the base table is not offered as a source"
+              (is (not-any? #(contains? metric-res %)
+                            [:base_table_id
+                             :base_table_name
+                             :base_table_schema
+                             :base_table_portable_fk])))))))))
+
+(deftest enrich-with-metric-source-cards-respects-card-permissions-test
+  (testing (str "A readable metric does not reveal an unreadable source card, and does not fall back to\n"
+                "offering the base table the card sits on.")
+    (mt/with-test-user :rasta
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Private SourceCard Collection"}
+                       :model/Card {question-id :id}
+                       {:name          "Restricted SourceCard Question"
+                        :type          :question
+                        :collection_id coll-id
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :orders)
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :orders)}}}
+                       :model/Card {metric-id :id}
+                       {:name          "Restricted SourceCard Metric"
+                        :type          :metric
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :orders)
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (str "card__" question-id)
+                                                   :aggregation  [[:count]]}}}]
+          (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+          (let [results    (search/search {:term-queries ["Restricted SourceCard Metric"]})
+                metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
+            (is (some? metric-res) "collection access still makes the metric searchable")
+            (is (not-any? #(contains? metric-res %)
+                          [:source_card_id
+                           :source_card_name
+                           :source_card_portable_entity_id
+                           :base_table_id
+                           :base_table_name
+                           :base_table_schema
+                           :base_table_portable_fk]))
+            (testing "it is marked unusable instead, matching what `metric-details` reports for the same metric --
+                      absence alone reads to the LLM as an invitation to guess a source"
+              (is (true? (:source_unavailable metric-res))))))))))
+
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
     (mt/with-premium-features #{:transforms-basic}
@@ -757,3 +835,47 @@
         (let [[result] (search/entity-refs->search-results [{:model "metric" :id card-id}])]
           (is (= "model" (:type result)))
           (is (string? (:type result))))))))
+
+(deftest enrich-with-metric-sources-mixed-results-test
+  (testing (str "A table-based and a card-based metric in one result set: each carries only its own source\n"
+                "fields. Exercises the branch chain together.")
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                       {:name "MixedSources Question" :type :question :database_id (mt/id)
+                        :table_id (mt/id :orders)
+                        :dataset_query {:database (mt/id) :type :query
+                                        :query {:source-table (mt/id :orders)}}}
+                       :model/Card {card-metric-id :id}
+                       {:name "MixedSources CardMetric" :type :metric :database_id (mt/id)
+                        :table_id (mt/id :orders)
+                        :dataset_query {:database (mt/id) :type :query
+                                        :query {:source-table (str "card__" question-id)
+                                                :aggregation  [[:count]]}}}
+                       :model/Card {table-metric-id :id}
+                       {:name "MixedSources TableMetric" :type :metric :database_id (mt/id)
+                        :table_id (mt/id :orders)
+                        :dataset_query {:database (mt/id) :type :query
+                                        :query {:source-table (mt/id :orders)
+                                                :aggregation  [[:count]]}}}]
+          (let [results (search/search {:term-queries ["MixedSources"]})
+                by-id   (into {} (map (juxt :id identity)) results)
+                card-m  (get by-id card-metric-id)
+                table-m (get by-id table-metric-id)]
+            (is (some? card-m) "card-based metric should appear")
+            (is (some? table-m) "table-based metric should appear")
+            (testing "the card-based one carries only source-card fields"
+              (is (=? {:source_card_id                 question-id
+                       :source_card_portable_entity_id question-eid}
+                      card-m))
+              (is (not-any? #(contains? card-m %)
+                            [:base_table_id :base_table_name :base_table_schema :base_table_portable_fk])))
+            (testing "the table-based one carries only base-table fields"
+              (is (=? {:base_table_id          (mt/id :orders)
+                       :base_table_name        "ORDERS"
+                       :base_table_schema      "PUBLIC"
+                       :base_table_portable_fk [(:database_name table-m) "PUBLIC" "ORDERS"]}
+                      table-m))
+              (is (not-any? #(contains? table-m %)
+                            [:source_card_id :source_card_name :source_card_portable_entity_id
+                             :source_unavailable])))))))))
