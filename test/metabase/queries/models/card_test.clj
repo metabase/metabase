@@ -1711,7 +1711,7 @@
                    :model/Card     question3    (dependent-card db1-id question2)]
       ;; H2 and MySQL happen to hand back these rows source-card-first; Postgres promises nothing, so force the
       ;; worst case.
-      (with-redefs [queries.db/card-queries (comp reverse queries.db/card-queries)]
+      (mt/with-dynamic-fn-redefs [queries.db/card-queries (comp reverse (mt/original-fn #'queries.db/card-queries))]
         (mt/with-test-user :crowberto
           (card/update-card! {:card-before-update model
                               :card-updates       {:dataset_query {:lib/type :mbql/query
