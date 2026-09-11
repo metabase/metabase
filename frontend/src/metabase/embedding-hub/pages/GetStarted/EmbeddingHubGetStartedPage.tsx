@@ -4,7 +4,6 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
   useCompletedSetupGuideSteps,
@@ -14,14 +13,12 @@ import type {
   SetupGuideModalToTrigger,
   SetupGuideStepId,
 } from "metabase/embedding/setup-guide/types/setup-guide";
+import { EmbeddingHubUpsellBanner } from "metabase/embedding-hub/components/EmbeddingHubUpsellBanner";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
-import {
-  PLUGIN_ADMIN_SETTINGS,
-  type SdkIframeEmbedSetupModalInitialState,
-} from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
-import { getUpgradeUrl, getUrlWithUtm } from "metabase/selectors/settings";
+import { getUrlWithUtm } from "metabase/selectors/settings";
 import {
   Box,
   Card,
@@ -86,17 +83,6 @@ export function EmbeddingHubGetStartedPage() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
   const hasSsoJwt = useHasTokenFeature("sso_jwt");
   const hasTenants = useHasTokenFeature("tenants");
-
-  const upgradeUrl = useSelector((state) =>
-    getUpgradeUrl(state, {
-      utm_campaign: UTM_CAMPAIGN,
-      utm_content: UTM_CONTENT,
-    }),
-  );
-  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
-    campaign: UTM_CAMPAIGN,
-    location: UTM_CONTENT,
-  });
 
   // A locked step carries a reason only when the prerequisite is actionable.
   // Feature-locked steps leave it out: naming a prerequisite would imply the
@@ -216,14 +202,10 @@ export function EmbeddingHubGetStartedPage() {
             </Text>
           ) : (
             <Box mt="lg">
-              <UpsellBanner
+              <EmbeddingHubUpsellBanner
                 title={t`Upgrade to Metabase Pro to configure advanced options.`}
                 campaign={UTM_CAMPAIGN}
                 location={UTM_CONTENT}
-                buttonText={t`Try Metabase Pro`}
-                buttonLink={upgradeUrl}
-                onClick={triggerUpsellFlow}
-                large
               />
             </Box>
           )}
