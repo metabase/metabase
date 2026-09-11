@@ -39,6 +39,19 @@
             (is (empty? unknown)
                 (str label " has keys that don't match any tool name: " (vec unknown)))))))))
 
+(deftest ^:parallel search-output-schema-timestamps-are-disjoint-test
+  (testing "search timestamp fields publish disjoint date-time/null oneOf branches"
+    ;; `[:maybe :any]` becomes `oneOf [{}, {type:null}]`. Null then matches both
+    ;; branches, and MCP clients that enforce oneOf reject the whole search response
+    ;; (e.g. collections with a null updated_at). TemporalInstant keeps the branches
+    ;; disjoint so null matches only the null arm.
+    (let [search-tool (some #(when (= "search" (:name %)) %)
+                            (mcp.tools/list-tools #{::api.scope/unrestricted}))
+          item-props  (get-in search-tool [:outputSchema :properties :data :items :properties])
+          expected    {:oneOf [{:type "string" :format "date-time"} {:type "null"}]}]
+      (is (= expected (:updated_at item-props)))
+      (is (= expected (:created_at item-props))))))
+
 (defn- data-node?
   "True if `x` is a value type our published JSON-Schema-shaped tool schemas
    are allowed to contain. Visited via `walk/postwalk`, which traverses every
