@@ -14,7 +14,7 @@ export const HomeCaption = ({
   return (
     <Flex align="center" mb={{ base: "xl", xl: "xxl" }}>
       <Text
-        component="span"
+        component="div"
         fw={700}
         c={primary ? "text-primary" : "text-secondary"}
       >
