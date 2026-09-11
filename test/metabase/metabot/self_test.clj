@@ -28,6 +28,7 @@
    [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
+   [malli.core :as mc]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [ring.adapter.jetty :as jetty]))
@@ -111,6 +112,11 @@
   (testing "every row conforms to the schema, so a mistyped capability key cannot read as an absent one"
     (doseq [[provider row] @#'registry/adapters]
       (is (nil? (mr/explain registry/AdapterRow row)) provider)))
+  (testing "the capability enum and the row schema name the same capabilities, so the two hand-written
+            lists cannot drift apart — a capability in one but not the other would either be unlookupable
+            or unstorable"
+    (is (= (set (mc/children (mc/schema registry/Capability)))
+           (set (map first (mc/children (mc/schema registry/AdapterRow)))))))
   (testing "throws for an unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (registry/required "unknown" :stream)))))

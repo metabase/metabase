@@ -11,10 +11,12 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
    [metabase.util.log.capture :as log.capture]))
@@ -40,6 +42,7 @@
    ;; error translation had always tagged the same requests `anthropic`.
    #'claude/provider     :metabot.anthropic/request
    #'deepseek/provider   :metabot.deepseek/request
+   #'google/provider     :metabot.google/request
    #'mistral/provider    :metabot.mistral/request
    #'moonshot/provider   :metabot.moonshot/request
    #'openai/provider     :metabot.openai/request
@@ -64,6 +67,7 @@
    #'bedrock/provider    "AWS Bedrock API error (HTTP 418)"
    #'claude/provider     "Anthropic API error (HTTP 418)"
    #'deepseek/provider   "DeepSeek API error (HTTP 418)"
+   #'google/provider     "Google API error (HTTP 418)"
    #'mistral/provider    "Mistral API error (HTTP 418)"
    #'moonshot/provider   "Moonshot API error (HTTP 418)"
    #'openai/provider     "OpenAI API error (HTTP 418)"
@@ -83,6 +87,23 @@
   (testing "a response with no status at all still renders"
     (is (= "Anthropic API error (HTTP 0)"
            ((:error-msg @#'claude/provider) {})))))
+
+(defn- pinned-slugs
+  "The provider slugs a spelled-out table above covers."
+  [table]
+  (set (map (comp :slug deref) (keys table))))
+
+(defn- adapter-slugs
+  "Every provider the registry serves with an adapter of its own. The managed connection is served by the
+  wire family its model names, so it has no descriptor to pin."
+  []
+  (disj (set (keys @#'registry/adapters)) "metabase"))
+
+(deftest ^:parallel descriptor-tables-cover-every-adapter-test
+  (testing "a new adapter cannot skip the span guard by being left out of the table"
+    (is (= (adapter-slugs) (pinned-slugs expected-spans))))
+  (testing "a new adapter cannot skip the error-message guard either"
+    (is (= (adapter-slugs) (pinned-slugs expected-fallback-messages)))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Request counts
