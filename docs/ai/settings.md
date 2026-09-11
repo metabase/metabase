@@ -58,7 +58,7 @@ To connect a provider with your own API key:
 1. Go to **Admin > AI**.
 2. Click **Add a provider**.
 3. Pick your provider.
-4. Enter your **API key**. The **Where do I find this?** link opens your provider's key management page in a new tab.
+4. Enter your credentials. Most providers only need an **API key**. The **Where do I find this?** link opens your provider's key management page in a new tab. For what each provider needs, see [AI providers](./providers.md).
 5. Click **Connect**.
 
 If you've already copied a key, one neat thing: just paste the key anywhere on the provider grid, and Metabase selects the matching provider and fills in the key for you. Check to make sure the provider matches.

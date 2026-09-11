@@ -1419,7 +1419,7 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 
 The AWS region for Amazon Bedrock (e.g. us-east-1).
 
-Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured.
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured. Bedrock serves different models in different regions, so the region also determines which models appear in the model picker; see the Amazon Bedrock section of [Supported AI providers](../ai/providers.md#the-bedrock-models-you-can-pick-depend-on-the-region).
 
 ### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
 
