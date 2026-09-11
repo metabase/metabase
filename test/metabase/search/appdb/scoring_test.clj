@@ -413,7 +413,7 @@
                   (map second)))))))
 
 (deftest metabot-weights-test
-  (testing "under :metabot, metrics outrank questions, which outrank models, even a freshly viewed one"
+  (testing "with Metabot weights, metrics outrank questions and models, including recently viewed models"
     (let [now      (Instant/now)
           long-ago (.minus now 365 ChronoUnit/DAYS)]
       (with-index-contents
@@ -421,7 +421,7 @@
          {:model "card"    :id 2 :name "foo question" :last_viewed_at long-ago}
          {:model "metric"  :id 3 :name "foo metric"   :last_viewed_at long-ago}]
         (is (= [3 2 1] (map second (search-results* "foo" :context :metabot)))))))
-  (testing "under :metabot, library membership outranks the entity-type preference"
+  (testing "with Metabot weights, library membership outranks type weights"
     (mt/with-temp [:model/Collection lib {:name "lib" :type "library" :location "/"}]
       (with-index-contents
         [{:model "metric"  :id 1 :name "foo metric"}
