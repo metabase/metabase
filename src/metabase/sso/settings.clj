@@ -7,7 +7,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
-   [metabase.util.string :as u.str])
+   [metabase.util.secret :as u.secret])
   (:import
    (com.unboundid.ldap.sdk DN)))
 
@@ -50,6 +50,12 @@
   (deferred-tru "The password to bind with for the lookup user.")
   :encryption :when-encryption-key-set
   :sensitive? true
+  ;; the bind password must not follow the directory server to a new address, or to the same one over a weaker
+  ;; channel: `ldap-security` :none and port 636 -> 389 both put it on the wire in the clear
+  :audience   {:ldap-host       :metabase.util.secret/hostname
+               :ldap-port       :int
+               :ldap-security   :keyword
+               :ldap-trust-store :string}
   :audit     :getter)
 
 (defsetting ldap-user-base
@@ -164,14 +170,15 @@
   :encryption :when-encryption-key-set
   :export?    false
   :audit      :no-value
-  :getter     (fn []
-                (-> (setting/get-value-of-type :string :slack-connect-client-secret)
-                    (u.str/mask 4))))
+  :sensitive? true
+  ;; Slack's endpoint is not configurable, as for metabase.channel.settings/slack-app-token
+  :audience   {})
 
-(defn unobfuscated-slack-connect-client-secret
-  "Get the unobfuscated value of [[slack-connect-client-secret]]."
+(defn slack-connect-client-secret-for-slack-api
+  "The plaintext of [[slack-connect-client-secret]], or nil; opened with `:disclosure/fixed-endpoint` because Slack's
+  OIDC endpoint is not configurable."
   []
-  (setting/get-value-of-type :string :slack-connect-client-secret))
+  (some-> (slack-connect-client-secret) (u.secret/expose :disclosure/fixed-endpoint)))
 
 (def slack-connect-auth-mode-sso
   "Authentication mode for full SSO login."

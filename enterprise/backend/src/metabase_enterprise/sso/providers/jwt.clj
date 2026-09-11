@@ -11,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
@@ -70,8 +71,9 @@
   "Decode and verify a JWT token. Returns the JWT data if valid, throws on error."
   [token]
   (try
-    (jwt/unsign token (sso-settings/jwt-shared-secret)
-                {:max-age three-minutes-in-seconds})
+    ;; verifies a token the IdP signed; the secret never leaves the process
+    (u.secret/maybe-derive-with (sso-settings/jwt-shared-secret)
+                                #(jwt/unsign token % {:max-age three-minutes-in-seconds}))
     (catch Throwable e
       (throw (ex-info (ex-message e)
                       {:status-code 401

@@ -10,7 +10,8 @@
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 
@@ -118,6 +119,10 @@
       (sso-settings/oidc-providers! (conj (vec providers) new-provider))
       (sanitize-response new-provider))))
 
+(def ^:private provider-audience-schema
+  "The fields of an OIDC provider that decide where its client secret is presented."
+  [:map [:issuer-uri {:optional true} :metabase.util.secret/url]])
+
 ;; PUT /api/ee/sso/oidc/:key
 (api.macros/defendpoint :put "/:key" :- oidc-provider-response-schema
   "Update an existing OIDC provider."
@@ -132,10 +137,18 @@
     (let [existing  (nth providers idx)
           ;; If client-secret is the mask or not provided, keep the existing one
           body      (if (or (not (:client-secret body))
-                            (= (:client-secret body) (setting/obfuscate-value (:client-secret body))))
+                            (setting/obfuscated-value? (:client-secret body)))
                       (dissoc body :client-secret)
                       body)
           updated   (merge existing body)]
+      ;; the client secret must not follow the provider to a new issuer. This has to land before
+      ;; check-oidc-connection!, which is what would otherwise present the stored secret to the new one.
+      (when (and (some? (:client-secret existing))
+                 (not (contains? body :client-secret))
+                 (not (u.secret/same-audience? provider-audience-schema existing updated)))
+        (throw (ex-info (tru "The client secret must be entered again when changing the issuer URI.")
+                        {:status-code 400
+                         :error-code  :oidc-issuer-change-requires-client-secret})))
       (check-oidc-connection! (:issuer-uri updated) (:client-id updated) (:client-secret updated) (:scopes updated))
       (let [providers (assoc (vec providers) idx updated)]
         (sso-settings/oidc-providers! providers)

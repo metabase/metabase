@@ -17,7 +17,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.o11y :refer [with-span]]
+   [metabase.util.secret :as u.secret])
   (:import
    (java.io BufferedReader Closeable InputStream)
    (java.util.concurrent Callable Executors ExecutorService)))
@@ -1067,13 +1068,14 @@
   - Otherwise uses the provider's BYOK `auth`."
   [provider-slug llm-type auth ai-proxy?]
   (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
-                     (cond-> {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
-                              :headers {"x-metabase-instance-token"
-                                        (premium-features/premium-embedding-token)}}
-                       ;; only an environment-supplied URL is deployment-controlled: a superuser can write the
-                       ;; stored setting through the generic settings API, which must not widen the policy
-                       (setting/env-var-value :llm-proxy-base-url)
-                       (assoc :network-policy-floor :allow-private)))]
+                     (let [token (u.secret/maybe-expose (premium-features/premium-embedding-token)
+                                                        :disclosure/fixed-endpoint)]
+                       (cond-> {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
+                                :headers {"x-metabase-instance-token" token}}
+                         ;; only an environment-supplied URL is deployment-controlled: a superuser can write the
+                         ;; stored setting through the generic settings API, which must not widen the policy
+                         (setting/env-var-value :llm-proxy-base-url)
+                         (assoc :network-policy-floor :allow-private))))]
     (if ai-proxy?
       (or proxy-auth
           (throw (ex-info (tru "AI proxy is not configured")

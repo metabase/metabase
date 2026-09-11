@@ -18,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.secret :as u.secret])
   (:import
    [com.knuddels.jtokkit Encodings]
    [com.knuddels.jtokkit.api Encoding EncodingType]
@@ -493,13 +494,14 @@
     (try
       (log/debug (str "Calling " provider " embeddings API")
                  {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
-      (let [headers              (merge {"Content-Type" "application/json"}
-                                        (if (and (empty? api-key) instance-token?)
-                                          {"x-metabase-instance-token"
-                                           (u/prog1 (premium-features/premium-embedding-token)
-                                             (when (nil? <>)
-                                               (throw (ex-info "Premium embedding token not set"
-                                                               {:provider provider}))))}
+      (let [instance-token       (when (and (empty? api-key) instance-token?)
+                                   (u/prog1 (u.secret/maybe-expose (premium-features/premium-embedding-token)
+                                                                   :disclosure/fixed-endpoint)
+                                     (when (nil? <>)
+                                       (throw (ex-info "Premium embedding token not set" {:provider provider})))))
+            headers              (merge {"Content-Type" "application/json"}
+                                        (if instance-token
+                                          {"x-metabase-instance-token" instance-token}
                                           {"Authorization" (str "Bearer " api-key)}))
             request              (merge embedding-http-timeouts
                                         {:headers headers
@@ -577,8 +579,10 @@
   ;; ee-embedding-service-base-url through the generic settings API, while a value the environment supplies bypasses
   ;; the vetting setter and is trusted instead
   (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
-        (let [env-url? (some? (setting/env-var-value :ee-embedding-service-base-url))
-              api-key  (semantic-settings/ee-embedding-service-api-key)]
+        (let [base-url (semantic-settings/ee-embedding-service-base-url)
+              env-url? (some? (setting/env-var-value :ee-embedding-service-base-url))
+              api-key  (u.secret/maybe-expose (semantic-settings/ee-embedding-service-api-key)
+                                              {:ee-embedding-service-base-url base-url})]
           (when-not (or env-url? (not-empty api-key))
             (throw (ex-info (str "The embedding service base URL is set in the application database and has no API "
                                  "key. Set " (setting/env-var-name :ee-embedding-service-base-url)
@@ -586,8 +590,7 @@
                                  (setting/env-var-name :ee-embedding-service-api-key) ".")
                             {:settings ["ee-embedding-service-base-url"
                                         "ee-embedding-service-api-key"]})))
-          (cond-> {:endpoint        (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url))
-                                         "/v1/embeddings")
+          (cond-> {:endpoint        (str (trim-trailing-slashes base-url) "/v1/embeddings")
                    :api-key         api-key
                    :instance-token? env-url?}
             env-url? (assoc :network-policy-floor :allow-private)))

@@ -8,17 +8,18 @@
    [metabase.sso.ldap :as ldap]
    [metabase.sso.schema :as sso.schema]
    [metabase.sso.settings :as sso.settings]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- update-password-if-needed
-  "Do not update password if `new-password` is an obfuscated value of the current password."
+(defn- bind-password-to-test
+  "The bind password to test with: the stored Secret when the client echoed back the mask, otherwise the supplied
+  value (nil clears it)."
   [new-password]
-  (let [current-password (sso.settings/ldap-password)]
-    (if (= (setting/obfuscate-value current-password) new-password)
-      current-password
-      new-password)))
+  (if (setting/obfuscated-value? new-password)
+    (sso.settings/ldap-password)
+    new-password))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -51,15 +52,16 @@
                 [:ldap-group-mappings          {:optional true} [:maybe ::sso.schema/group-mappings]]]]
   (api/check-superuser)
   (let [ldap-settings (-> settings
-                          (update :ldap-password update-password-if-needed)
+                          (update :ldap-password bind-password-to-test)
                           (dissoc :ldap-enabled))
         ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
       (t2/with-transaction [_conn]
         ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap
-        ;; settings
-        (setting/set-many! ldap-settings)
+        ;; settings. A reused password is already stored, and there is no plaintext up here to write it with anyway.
+        (setting/set-many! (cond-> ldap-settings
+                             (u.secret/secret? (:ldap-password ldap-settings)) (dissoc :ldap-password)))
         (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message
       {:status 500

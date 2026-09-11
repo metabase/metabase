@@ -9,6 +9,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -264,3 +265,44 @@
       (let [hydrated (t2/hydrate card :can_query)]
         (is (contains? hydrated :can_query))
         (is (boolean? (:can_query hydrated)))))))
+
+;;; ------------------------------------------- transform-secret-text ------------------------------------------------
+
+(deftest ^:parallel transform-secret-text-out-wraps-test
+  (testing ":out hands back a Secret, not a usable String"
+    (let [{in-fn :in out :out} (mi/transform-secret-text "test.col")
+          v                    (out (in-fn "hunter2"))]
+      (is (u.secret/secret? v))
+      (is (not (re-find #"hunter2" (str v))))
+      (testing "and the plaintext is still reachable once an audience is named"
+        (is (= "hunter2" (u.secret/derive-with v identity)))))))
+
+(deftest ^:parallel transform-secret-text-out-passes-through-nil-test
+  (let [{out :out} (mi/transform-secret-text "test.col")]
+    (is (nil? (out nil)))))
+
+(deftest ^:parallel transform-secret-text-in-refuses-a-secret-test
+  (testing "writing a Secret is refused rather than silently stringified to the redaction text"
+    (let [{in-fn :in} (mi/transform-secret-text "test.col")]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Refusing to write a Secret to test.col"
+                            (in-fn (u.secret/secret "hunter2")))))))
+
+(deftest transform-secret-text-in-encrypts-a-plain-value-test
+  (testing "a plain value is written encrypted when a key is set, never as the redaction text"
+    (encryption-test/with-secret-key "0123456789abcdef"
+      (let [{in-fn :in} (mi/transform-secret-text "test.col")
+            stored      (in-fn "hunter2")]
+        (is (not (u.secret/secret? stored)))
+        (is (encryption/possibly-encrypted-string? stored))
+        (is (not (re-find #"hunter2" stored)))))))
+
+(deftest ^:parallel transform-secret-text-round-trip-test
+  (let [{in-fn :in out :out} (mi/transform-secret-text "test.col")]
+    (is (= "hunter2" (u.secret/derive-with (out (in-fn "hunter2")) identity)))))
+
+(deftest ^:parallel transform-secret-text-mask-opts-test
+  (testing "mask strategy is carried through to the wrapped Secret"
+    (let [{in-fn :in out :out} (mi/transform-secret-text "test.col" {:prefix-length 3})]
+      (is (= "mb_" (subs (u.secret/mask (out (in-fn "mb_abcdef"))) 0 3))))
+    (let [{in-fn :in out :out} (mi/transform-secret-text "test.col")]
+      (is (= u.secret/mask-string (u.secret/mask (out (in-fn "mb_abcdef"))))))))

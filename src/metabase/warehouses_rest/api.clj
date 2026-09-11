@@ -41,6 +41,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.util.quick-task :as quick-task]
+   [metabase.util.secret :as u.secret]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
@@ -883,6 +884,32 @@
          details
          (merge existing-details details))))))
 
+(defn- reused-secret?
+  "Whether saving `new-details` would reuse a credential that is already stored rather than one the caller supplied --
+  either because the client echoed the mask back, or because it omitted the field and the stored details are merged
+  underneath."
+  [database new-details details-key engine-changed?]
+  (boolean
+   (some (fn [k]
+           (and (some? (get-in database [details-key k]))
+                (or (= secret/protected-password (get new-details k))
+                    ;; an omitted field is only reused because the stored details are merged underneath -- and that
+                    ;; merge is skipped when the engine changes (#77480), so then it is genuinely dropped
+                    (and (not engine-changed?) (not (contains? new-details k))))))
+         (database/sensitive-fields-for-db database))))
+
+(defn- assert-audience-change-authorized!
+  "Refuse an update that points a database at somewhere new -- or weakens the channel to it -- while reusing a stored
+  credential. Throws a 400."
+  [database new-details details-key engine engine-changed?]
+  (when (and new-details (reused-secret? database new-details details-key engine-changed?))
+    (let [schema (driver.u/audience-schema (or engine (:engine database)))
+          stored (get database details-key)]
+      (when-not (u.secret/same-audience? schema stored new-details)
+        (throw (ex-info (tru "The connection''s credentials must be entered again when changing where it connects.")
+                        {:status-code 400
+                         :error-code  :database-audience-change-requires-credentials}))))))
+
 (def ^:private connection-marker-key->details-column
   {:write-data-connection "write_data_details"})
 
@@ -973,6 +1000,15 @@
         incoming-details                details
         incoming-write-data-details     write_data_details
         engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
+        ;; the exfiltration happens before anything is persisted: `warehouses/test-database-connection` below runs on
+        ;; the merged, de-masked details, so a caller could change `host` while echoing back `**MetabasePass**` and
+        ;; have Metabase deliver the real password to a server they control. These have to run ahead of that test,
+        ;; not merely ahead of the write.
+        _                               (assert-audience-change-authorized!
+                                         existing-database incoming-details :details engine engine-changed?)
+        _                               (assert-audience-change-authorized!
+                                         existing-database incoming-write-data-details :write_data_details
+                                         engine engine-changed?)
         details-with-secrets            (when incoming-details
                                           (upsert-sensitive-fields existing-database incoming-details :details engine-changed?))
         write-data-details-with-secrets (when  write_data_details

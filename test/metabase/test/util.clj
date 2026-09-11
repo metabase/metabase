@@ -50,6 +50,7 @@
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.random :as u.random]
+   [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -596,6 +597,13 @@
     (t2/delete! :setting :key setting-k))
   (setting.cache/restore-cache!))
 
+(defn plaintext
+  "The plaintext of `v` when it is a [[metabase.util.secret/secret]], otherwise `v` itself. For asserting on stored
+  credentials in tests; production code must name an audience with [[metabase.util.secret/expose]] instead."
+  [v]
+  (cond-> v
+    (u.secret/secret? v) (u.secret/derive-with identity)))
+
 (defn do-with-temporary-setting-value!
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as [[binding]].
@@ -623,9 +631,10 @@
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (raw-setting setting-k)
-                             (if skip-init?
-                               (setting/read-setting setting-k)
-                               (setting/get setting-k)))]
+                             ;; a bound secret comes back as a Secret, which set! refuses; restore needs the plaintext
+                             (plaintext (if skip-init?
+                                          (setting/read-setting setting-k)
+                                          (setting/get setting-k))))]
         (try
           (try
             (if raw-setting?
@@ -1717,6 +1726,13 @@
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
                            (when model-id [:= :model_id model-id])]})))
+
+(defn setting-update-audit-event-count
+  "The number of audit-log entries recording a write to the setting named `setting-name` (a string, e.g.
+  `\"ldap-password\"`)."
+  [setting-name]
+  (count (filter #(= setting-name (get-in % [:details :key]))
+                 (t2/select :model/AuditLog :topic :setting-update))))
 
 (defn all-entries-for
   "Return all audit log entries for a particular object. If you omit the topic, will get all audit logs. You must

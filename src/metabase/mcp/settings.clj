@@ -4,34 +4,27 @@
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.string :as u.str]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 ;; NOTE: uuid-nonce-base sets :setter :none, so this secret is not rotatable via the normal settings API.
 ;; If rotation is needed (e.g. after a DB breach), an admin action should regenerate the secret and
 ;; invalidate existing MCP-backed core_session rows. See also: premium-embedding-token-signing-key.
 ;;
-;; The getter is obfuscated so that the raw secret can never leak via settings APIs, the admin UI,
-;; logs, or audit events — only a masked form is exposed. Internal callers that actually need to
-;; HMAC with the secret must use `unobfuscated-mcp-embedding-signing-secret`.
+;; Returned as a Secret so it cannot leak via settings APIs, the admin UI, logs or audit events. The Secret wraps the
+;; stored value itself -- no masking getter, or the mask is what would get HMACed. It signs and verifies our own
+;; tokens, so callers that need the bytes derive from it in-process with `u.secret/derive-with` rather than exposing
+;; it to anyone.
 (defsetting mcp-embedding-signing-secret
   (deferred-tru "Instance-wide secret used to derive embedding session keys for MCP sessions.")
   :encryption :when-encryption-key-set
   :visibility :internal
   :sensitive? true
+  ;; signs and verifies our own tokens locally; never presented to a peer
+  :audience   {}
   :base       setting/uuid-nonce-base
   :export?    false
   :audit      :no-value
-  :doc        false
-  :getter     (fn []
-                (-> (setting/get-value-of-type :string :mcp-embedding-signing-secret)
-                    (u.str/mask 4))))
-
-(defn unobfuscated-mcp-embedding-signing-secret
-  "Get the unobfuscated value of [[mcp-embedding-signing-secret]]. Callers must only
-   use this for in-process key derivation, never to expose the secret externally."
-  []
-  (setting/get-value-of-type :string :mcp-embedding-signing-secret))
+  :doc        false)
 
 ;;; ------------------------------------------------ Client → Domain Mapping --------------------------------
 

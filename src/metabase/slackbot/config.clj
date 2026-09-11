@@ -66,7 +66,7 @@
         (sso-settings/slack-connect-client-id)
         (sso-settings/slack-connect-client-secret)
         (slackbot.settings/metabot-slack-signing-secret)
-        (channel.settings/unobfuscated-slack-app-token)
+        (channel.settings/slack-app-token)
         (encryption/default-encryption-enabled?))))
 
 ;; referenced from with-slackbot-setup's syntax-quoted with-redefs, which clojure-lsp cannot see

@@ -117,6 +117,9 @@
   string->boolean
   unreadable-user-settings-key
   user-facing-value
+  value-after-write
+  values-after-write
+  write-visible?
   user-readable-values-map
   uuid-nonce-base
   validate-settings-formatting!

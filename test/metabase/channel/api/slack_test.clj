@@ -23,7 +23,7 @@
                                   slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
         (mt/with-temporary-setting-values [slack-app-token nil]
           (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-app-token "fake-token"})
-          (is (= "fake-token" (channel.settings/unobfuscated-slack-app-token))))))))
+          (is (= "fake-token" (channel.settings/slack-app-token-for-slack-api))))))))
 
 (deftest update-slack-settings-test-2
   (testing "PUT /api/slack/settings"
@@ -50,7 +50,7 @@
         (let [original-last-updated (channel.settings/slack-channels-and-usernames-last-updated)]
           (mt/user-http-request :crowberto :put 200 "slack/settings" {})
           ;; Settings remain unchanged
-          (is (= "fake-token" (channel.settings/unobfuscated-slack-app-token)))
+          (is (= "fake-token" (channel.settings/slack-app-token-for-slack-api)))
           (is (= {:channels [{:name "fake_channel"}]}
                  (channel.settings/slack-cached-channels-and-usernames)))
           (is (= original-last-updated

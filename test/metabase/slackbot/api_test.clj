@@ -89,7 +89,7 @@
   (testing "POST /api/metabot/slack/events"
     (testing "ack events even when metabot-v3 feature is disabled to prevent Slack retries"
       (tu/with-slackbot-setup
-        (mt/with-dynamic-fn-redefs [slackbot.settings/unobfuscated-metabot-slack-signing-secret (constantly tu/test-signing-secret)]
+        (mt/with-dynamic-fn-redefs [slackbot.settings/metabot-slack-signing-secret (constantly tu/test-signing-secret)]
           (let [body     (assoc-in tu/base-dm-event [:event :channel] "D123")
                 response (mt/client :post 200 "metabot/slack/events"
                                     (tu/slack-request-options body)
@@ -760,6 +760,31 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "metabot/slack/settings" creds))))))
 
+(deftest put-slack-settings-echoed-mask-does-not-overwrite-test
+  (testing "echoing back the mask the UI displayed keeps the stored credential rather than persisting the mask.
+           These settings mask via :sensitive? (i.e. at the API boundary), so this exercises the generic
+           set-value-of-type! guard rather than anything slackbot-specific."
+    (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled                true
+                                       server.settings/slack-connect-signing-secret-version 7]
+      (mt/with-temporary-raw-setting-values [slack-connect-client-id      "real-client-id"
+                                             slack-connect-client-secret  "real-client-secret"
+                                             metabot-slack-signing-secret "real-signing-secret"]
+        (let [masked-secret  (mt/user-http-request :crowberto :get 200 "setting/slack-connect-client-secret")
+              masked-signing (mt/user-http-request :crowberto :get 200 "setting/metabot-slack-signing-secret")]
+          (testing "sanity check: the API hands the client a mask, not the credential"
+            (is (not= "real-client-secret" masked-secret))
+            (is (not= "real-signing-secret" masked-signing)))
+          (is (= {:ok true}
+                 (mt/user-http-request :crowberto :put 200 "metabot/slack/settings"
+                                       {:slack-connect-client-id      "real-client-id"
+                                        :slack-connect-client-secret  masked-secret
+                                        :metabot-slack-signing-secret masked-signing})))
+          (testing "the real credentials survive"
+            (is (= "real-client-secret" (sso-settings/slack-connect-client-secret-for-slack-api)))
+            (is (= "real-signing-secret" (mt/plaintext (server.settings/metabot-slack-signing-secret)))))
+          (testing "and an unchanged signing secret does not rotate the version"
+            (is (= 7 (server.settings/slack-connect-signing-secret-version)))))))))
+
 (deftest put-slack-settings-signing-secret-version-test
   (testing "resaving the same signing secret does not increment the version"
     (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled true
@@ -1099,7 +1124,7 @@
   (testing "conversation-permalink short-circuits to nil when channel or ts is missing — no client call"
     (let [client-calls (atom 0)]
       (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?     (constantly true)
-                                  channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                                  channel.settings/slack-app-token-for-slack-api (constantly "xoxb-test")
                                   slackbot.client/get-permalink          (fn [& _]
                                                                            (swap! client-calls inc)
                                                                            {:ok true})]
@@ -1110,7 +1135,7 @@
 (deftest conversation-permalink-happy-path-test
   (testing "conversation-permalink returns the Slack permalink string when ok is true"
     (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?     (constantly true)
-                                channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                                channel.settings/slack-app-token-for-slack-api (constantly "xoxb-test")
                                 slackbot.client/get-permalink (fn [_client {:keys [channel ts]}]
                                                                 {:ok        true
                                                                  :permalink (format "https://slack.example/%s/%s" channel ts)})]
@@ -1120,7 +1145,7 @@
 (deftest conversation-permalink-returns-nil-when-slack-says-not-ok-test
   (testing "conversation-permalink returns nil when Slack responds with {:ok false}"
     (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?     (constantly true)
-                                channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                                channel.settings/slack-app-token-for-slack-api (constantly "xoxb-test")
                                 slackbot.client/get-permalink          (fn [& _]
                                                                          {:ok false :error "channel_not_found"})]
       (is (nil? (slackbot/conversation-permalink "C123" "1.0"))))))
@@ -1128,7 +1153,7 @@
 (deftest conversation-permalink-swallows-client-exception-test
   (testing "exceptions from the Slack client are caught — function returns nil rather than propagating"
     (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?     (constantly true)
-                                channel.settings/unobfuscated-slack-app-token (constantly "xoxb-test")
+                                channel.settings/slack-app-token-for-slack-api (constantly "xoxb-test")
                                 slackbot.client/get-permalink          (fn [& _]
                                                                          (throw (ex-info "slack down" {})))]
       (is (nil? (slackbot/conversation-permalink "C123" "1.0"))))))

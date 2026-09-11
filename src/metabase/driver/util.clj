@@ -25,7 +25,8 @@
    [metabase.util.malli :as mu]
    ;; ms/InstanceOf validates Toucan Database instances; lib.schema has no app-db instance schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :refer [mapv empty? some]])
+   [metabase.util.performance :refer [mapv empty? some]]
+   [metabase.util.secret :as u.secret])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -879,13 +880,56 @@
   #{:password :pass :tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase :access-token :refresh-token
     :service-account-json})
 
+(def default-audience-schema
+  "The connection-detail fields that decide *where* a warehouse credential is sent and *how* the channel is protected,
+  and so must not change while a stored credential is reused. Driver-agnostic defaults; a driver whose connection
+  identity is defined differently overrides [[audience-schema]]."
+  [:map
+   ;; where the connection goes
+   [:host          {:optional true} ::u.secret/hostname]
+   [:port          {:optional true} :int]
+   [:dbname        {:optional true} :string]
+   [:db            {:optional true} :string]
+   [:catalog       {:optional true} :string]
+   [:account       {:optional true} :string]
+   [:project-id    {:optional true} :string]
+   [:dataset-id    {:optional true} :string]
+   [:service-host  {:optional true} ::u.secret/hostname]
+   ;; how the channel is protected
+   [:ssl                {:optional true} :boolean]
+   [:sslmode            {:optional true} :string]
+   [:ssl-mode           {:optional true} :string]
+   ;; free text, compared as an opaque string rather than parsed: it can carry `sslmode=disable` or `useSSL=false`,
+   ;; and there is no JDBC property allow-list, so comparing the whole thing exactly closes that downgrade route
+   ;; without anyone having to model per-driver option syntax
+   [:additional-options {:optional true} :string]
+   ;; the SSH tunnel: a second destination for a second credential, so its identity is here too
+   [:tunnel-enabled {:optional true} :boolean]
+   [:tunnel-host    {:optional true} ::u.secret/hostname]
+   [:tunnel-port    {:optional true} :int]
+   [:tunnel-user    {:optional true} :string]
+   ;; URLs the driver fetches credentials from itself
+   [:use-auth-provider {:optional true} :boolean]
+   [:auth-provider     {:optional true} :string]
+   [:http-auth-url     {:optional true} :string]
+   [:oauth-token-url   {:optional true} :string]])
+
+(defmulti audience-schema
+  "Malli schema for the connection-detail fields a stored credential is bound to, for `driver`. See
+  [[default-audience-schema]]."
+  {:arglists '([driver])}
+  keyword
+  :hierarchy #'driver/hierarchy)
+
+(defmethod audience-schema :default [_driver] default-audience-schema)
+
 (defn sensitive-fields
   "Returns all sensitive fields that should be redacted in API responses for a given database. Calls get-sensitive-fields
   using the given database's driver, if that driver is valid and registered. Refer to get-sensitive-fields docstring
   for full details."
   [driver]
   (if-some [conn-prop-fn (get-method driver/connection-properties driver)]
-    (let [all-fields      (conn-prop-fn driver)
+    (let [all-fields      (vals (collect-all-props-by-name (conn-prop-fn driver)))
           password-fields (filter #(contains? #{:password :secret} (keyword (get % :type))) all-fields)]
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))

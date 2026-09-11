@@ -17,6 +17,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -136,8 +137,8 @@
                       source.git/branches          (fn [_] [])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                 {:remote-sync-token (setting/obfuscate-value full-token)})
-          (is (= full-token @captured)
-              "Obfuscated tokens must be replaced with the stored token before testing"))))))
+          (is (= full-token (mt/plaintext @captured))
+              "Obfuscated tokens must be replaced with the stored token, still sealed, before testing"))))))
 
 (deftest test-connection-requires-superuser-test
   (testing "POST /api/ee/remote-sync/test-connection requires superuser permissions"
@@ -964,6 +965,7 @@
                                            remote-sync-token "test-token"]
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:remote-sync-url "file://repo.git"
+                                                :remote-sync-token "test-token"
                                                 :remote-sync-type :read-only})
                 task (wait-for-task-completion (:task_id response))]
             (is (=? {:success true} response))
@@ -1608,7 +1610,7 @@
             (wait-for-task-completion task_id)
             (is (= {:success true :task_id task_id} resp))
             (is (= :read-only (settings/remote-sync-type)))
-            (is (= "secret-token-value" (settings/remote-sync-token))
+            (is (= "secret-token-value" (mt/plaintext (settings/remote-sync-token)))
                 "Token should be preserved when not included in request")))))))
 
 (deftest settings-preserves-token-when-changing-branch-test
@@ -1627,7 +1629,7 @@
             (wait-for-task-completion task_id)
             (is (=? {:success true} resp))
             (is (= "develop" (settings/remote-sync-branch)))
-            (is (= "secret-token-value" (settings/remote-sync-token))
+            (is (= "secret-token-value" (mt/plaintext (settings/remote-sync-token)))
                 "Token should be preserved when not included in request")))))))
 
 (deftest settings-clears-token-when-explicitly-nil-test
@@ -1845,3 +1847,90 @@
                 "no new branch should be pushed to the source when the guard fires")
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
+
+(deftest settings-url-change-requires-the-token-again-test
+  (testing "moving the repository while the stored PAT would be reused is refused (SEC: credential redirection). The
+           stored token is a bound Secret that git-source opens against the URL it is about to contact, so the refusal
+           happens inside the sink, before JGit is even initialized."
+    (let [attempted (atom [])]
+      (mt/with-dynamic-fn-redefs [source.git/get-jgit (fn [_path {:keys [remote-url token]}]
+                                                        (swap! attempted conj {:remote-sync-url   remote-url
+                                                                               :remote-sync-token token})
+                                                        nil)]
+        (mt/with-temporary-setting-values [remote-sync-url   "https://github.com/test/repo.git"
+                                           remote-sync-token "pat-secret"
+                                           remote-sync-type  :read-write]
+          (testing "a new URL with the mask echoed back"
+            (let [resp (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                             {:remote-sync-url   "https://evil.example.com/repo.git"
+                                              :remote-sync-token (setting/obfuscate-value "pat-secret")})]
+              (is (= "secret-audience-mismatch" (:error-code resp)))
+              (is (= "This secret is not bound to the requested audience." (:message resp)))
+              (is (= [] @attempted) "the repository was never reached, so the token never left")))
+          (testing "with the token simply omitted the stored one is kept, so the move is refused at the write; the
+                   repository check that ran before it carried no credential"
+            (reset! attempted [])
+            (let [resp (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                             {:remote-sync-url "https://evil.example.com/repo.git"})]
+              (is (= "remote-sync-token must be provided again when changing where it is sent." (:message resp)))
+              (is (= [nil] (map :remote-sync-token @attempted)))))
+          (testing "the stored token and URL are untouched"
+            (is (= "pat-secret" (mt/plaintext (settings/remote-sync-token))))
+            (is (= "https://github.com/test/repo.git" (settings/remote-sync-url)))))))))
+
+(deftest test-connection-refuses-the-stored-token-for-a-request-url-test
+  (testing "POST /api/ee/remote-sync/test-connection will not present the stored token to a repository the request
+           named (SEC: credential redirection). git-source opens the bound Secret against the URL it is about to
+           contact, so the refusal happens inside the sink before JGit is initialized."
+    (let [attempted (atom [])]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "pat-secret"
+                                         remote-sync-branch "main"
+                                         remote-sync-type   :read-only]
+        (mt/with-dynamic-fn-redefs [source.git/get-jgit  (fn [_path {:keys [remote-url token]}]
+                                                           (swap! attempted conj {:remote-sync-url   remote-url
+                                                                                  :remote-sync-token token})
+                                                           nil)
+                                    source.git/branches (fn [_] [])]
+          (testing "with the token omitted"
+            (let [resp (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection"
+                                             {:remote-sync-url "https://evil.example.com/repo.git"})]
+              (is (= "secret-audience-mismatch" (:error-code resp)))
+              (is (= [] @attempted))))
+          (testing "with the mask echoed back"
+            (let [resp (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection"
+                                             {:remote-sync-url   "https://evil.example.com/repo.git"
+                                              :remote-sync-token (setting/obfuscate-value "pat-secret")})]
+              (is (= "secret-audience-mismatch" (:error-code resp)))
+              (is (= [] @attempted))))
+          (testing "a freshly supplied token may be tried against any repository"
+            (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
+                                  {:remote-sync-url   "https://github.com/other/repo.git"
+                                   :remote-sync-token "brand-new"})
+            (is (= "brand-new" (:remote-sync-token (last @attempted))))))))))
+
+(deftest source-from-settings-opens-the-stored-token-test
+  (testing "a scheduled sync hands git the plain token: git-source opens the stored Secret against the configured URL"
+    (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                       remote-sync-branch "main"
+                                       remote-sync-token  "pat-secret"]
+      (mt/with-dynamic-fn-redefs [source.git/get-jgit (constantly nil)]
+        (is (= {:remote-url "https://github.com/test/repo.git" :branch "main" :token "pat-secret"}
+               (select-keys (source/source-from-settings) [:remote-url :branch :token])))))))
+
+(deftest git-source-refuses-a-token-bound-to-another-repository-test
+  (testing "git-source is the sink: it opens the token against the URL it is about to contact, before JGit is
+           initialized, so a token bound elsewhere never reaches the wire"
+    (let [attempted (atom [])
+          token     (u.secret/secret "pat-secret"
+                                     {:audience-schema [:map [:remote-sync-url {:optional true} :string]]
+                                      :audience        {:remote-sync-url "https://github.com/test/repo.git"}})]
+      (mt/with-dynamic-fn-redefs [source.git/get-jgit (fn [_path args] (swap! attempted conj args) nil)]
+        (testing "the URL it was saved for"
+          (is (some? (source.git/git-source "https://github.com/test/repo.git" "main" token nil)))
+          (is (= ["pat-secret"] (map :token @attempted))))
+        (testing "any other URL"
+          (reset! attempted [])
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
+                                (source.git/git-source "https://evil.example.com/repo.git" "main" token nil)))
+          (is (= [] @attempted)))))))

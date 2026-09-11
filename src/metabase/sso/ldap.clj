@@ -8,7 +8,8 @@
    [metabase.sso.settings :as sso.settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret])
   (:import
    (com.unboundid.ldap.sdk LDAPConnection LDAPConnectionOptions LDAPConnectionPool LDAPException
                            SimpleBindRequest StartTLSPostConnectProcessor)
@@ -41,12 +42,21 @@
       (str/join java.io.File/separator
                 [(System/getProperty "java.home") "lib" "security" "cacerts"])))
 
-(defn- details->ldap-options [{:keys [host port bind-dn password security]}]
-  (let [security (keyword security)
-        port     (if (string? port)
-                   (Integer/parseInt port)
-                   port)
-        tls?     (contains? #{:ssl :starttls} security)]
+(defn- details->ldap-options
+  "The options map the LDAP client takes, built from connection `details`."
+  [{:keys [host port bind-dn password security]}]
+  (let [security    (keyword security)
+        port        (if (string? port)
+                      (Integer/parseInt port)
+                      port)
+        tls?        (contains? #{:ssl :starttls} security)
+        trust-store (sso.settings/ldap-trust-store)
+        ;; a stored bind password is a Secret bound to the directory it was saved for; it is opened here against the
+        ;; very host, port and channel this connection is about to bind to
+        password    (u.secret/maybe-expose password {:ldap-host        host
+                                                     :ldap-port        port
+                                                     :ldap-security    security
+                                                     :ldap-trust-store trust-store})]
     ;; Connecting via IPv6 requires us to use this form for :host, otherwise
     ;; clj-ldap will find the first : and treat it as an IPv4 and port number
     (cond-> {:host      {:address host
@@ -57,7 +67,7 @@
              :startTLS? (= security :starttls)}
       ;; Validate the server certificate against the operator-configured CA
       ;; store when set, otherwise the JVM default trust store.
-      tls? (assoc :trust-store (or (sso.settings/ldap-trust-store)
+      tls? (assoc :trust-store (or trust-store
                                    (default-trust-store-path))))))
 
 (defn- settings->ldap-options []
@@ -151,28 +161,31 @@
      :user-base  \"ou=Birds,dc=metabase,dc=com\"
      :group-base \"ou=Groups,dc=metabase,dc=com\"}"
   [{:keys [user-base group-base], :as details}]
-  (try
-    (with-open [^LDAPConnectionPool conn (connect (details->ldap-options details))]
-      (or
-       (try
-         (when-not (ldap/get conn user-base)
-           user-base-error)
-         (catch Exception _e
-           user-base-error))
-       (when group-base
+  ;; building the options is where a stored password is opened against this destination. That happens outside the
+  ;; try below on purpose: a refused audience is a client error with its own status, not a directory error to report
+  (let [options (details->ldap-options details)]
+    (try
+      (with-open [^LDAPConnectionPool conn (connect options)]
+        (or
          (try
-           (when-not (ldap/get conn group-base)
-             group-base-error)
+           (when-not (ldap/get conn user-base)
+             user-base-error)
            (catch Exception _e
-             group-base-error)))
-       (log/debug "LDAP connection test successful")
-       {:status :SUCCESS}))
-    (catch LDAPException e
-      (log/debug "LDAP connection test failed: " (.getMessage e))
-      {:status :ERROR, :message (.getMessage e), :code (.getResultCode e)})
-    (catch Exception e
-      (log/debug "LDAP connection test failed: " (.getMessage e))
-      {:status :ERROR, :message (.getMessage e)})))
+             user-base-error))
+         (when group-base
+           (try
+             (when-not (ldap/get conn group-base)
+               group-base-error)
+             (catch Exception _e
+               group-base-error)))
+         (log/debug "LDAP connection test successful")
+         {:status :SUCCESS}))
+      (catch LDAPException e
+        (log/debug "LDAP connection test failed: " (.getMessage e))
+        {:status :ERROR, :message (.getMessage e), :code (.getResultCode e)})
+      (catch Exception e
+        (log/debug "LDAP connection test failed: " (.getMessage e))
+        {:status :ERROR, :message (.getMessage e)}))))
 
 (defn test-current-ldap-details
   "Tests the connection to an LDAP server using the currently set settings."

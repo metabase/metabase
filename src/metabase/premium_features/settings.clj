@@ -55,6 +55,9 @@
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
   :audit :never
   :sensitive? true
+  ;; This token is presented to several peers -- the store, the Cloud AI proxy, the embedding service and the
+  ;; security-center advisories host -- so no single setting names its destination.
+  :audience {}
   :setter (fn [new-value]
             ((requiring-resolve 'metabase.premium-features.token-check/-set-premium-embedding-token!) new-value)))
 

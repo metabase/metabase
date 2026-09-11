@@ -24,6 +24,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.http :as u.http]
    [metabase.util.json :as json]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2])
   (:import
    [java.nio ByteBuffer ByteOrder]
@@ -528,7 +529,7 @@
   (testing "a key the environment holds cannot be re-supplied through this API, so its URL is not moved here either"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"]
       (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "embed-env-key"]
-        (is (=? {:message "The embedding service API key comes from an environment variable. Set its base URL there too."}
+        (is (=? {:message "ee-embedding-service-api-key must be provided again when changing where it is sent."}
                 (mt/user-http-request :crowberto :put 400 "setting/ee-embedding-service-base-url"
                                       {:value "https://elsewhere.example.com"})))
         (is (= "https://embed.example.com" (semantic.settings/ee-embedding-service-base-url))))))
@@ -557,15 +558,15 @@
       (mt/with-user-in-groups [group {:name "Embedding settings managers"}
                                user [group]]
         (perms/grant-application-permissions! group :setting)
-        (testing "a Settings Manager cannot redirect an existing key, or clear its destination"
-          (doseq [url ["https://1.1.1.1" nil]]
-            (is (=? {:message "Clear the embedding service API key before changing its base URL, then set a replacement key."}
+        (testing "a Settings Manager cannot redirect an existing key: the key's audience check refuses the move"
+          (let [url "https://1.1.1.1"]
+            (is (=? {:message "ee-embedding-service-api-key must be provided again when changing where it is sent."}
                     (mt/user-http-request :crowberto :put 400 "setting/ee-embedding-service-base-url" {:value url})))
             ;; The generic settings API masks validation errors for non-admins.
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request user :put 403 "setting/ee-embedding-service-base-url" {:value url}))))
           (is (= "https://8.8.8.8" (semantic.settings/ee-embedding-service-base-url)))
-          (is (= "stored-key" (semantic.settings/ee-embedding-service-api-key))))
+          (is (= "stored-key" (mt/plaintext (semantic.settings/ee-embedding-service-api-key)))))
         (testing "an unchanged URL in a bulk write still permits unrelated changes"
           (is (nil? (mt/user-http-request user :put 204 "setting"
                                           {:ee-embedding-service-base-url "  https://8.8.8.8  "
@@ -578,7 +579,11 @@
           (is (nil? (mt/user-http-request user :put 204 "setting/ee-embedding-service-api-key"
                                           {:value "replacement-key"})))
           (is (= "https://1.1.1.1" (semantic.settings/ee-embedding-service-base-url)))
-          (is (= "replacement-key" (semantic.settings/ee-embedding-service-api-key))))))))
+          (is (= "replacement-key" (mt/plaintext (semantic.settings/ee-embedding-service-api-key)))))
+        (testing "clearing the destination is allowed: with no URL there is nowhere to send the key"
+          (is (nil? (mt/user-http-request user :put 204 "setting/ee-embedding-service-base-url" {:value nil})))
+          (is (nil? (semantic.settings/ee-embedding-service-base-url)))
+          (is (= "replacement-key" (mt/plaintext (semantic.settings/ee-embedding-service-api-key)))))))))
 
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
@@ -720,3 +725,19 @@
     (is (re-matches #"emb:v1:sha256:[0-9a-f]{64}" (:embedding-space-id resolved)))
     (testing "transport credentials are not part of vector-space identity"
       (is (= resolved (embedding/resolve-model (assoc requested :api-key "do-not-persist")))))))
+
+(deftest embedding-service-resolve-config-opens-the-stored-key-test
+  (testing "the embedding client gets a plain key: the stored Secret is opened against the configured service URL"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com/"
+                                       ee-embedding-service-api-key  "embed-secret"]
+      (is (=? {:endpoint "https://embed.example.com/v1/embeddings" :api-key "embed-secret"}
+              (#'embedding/embedding-service-resolve-config!))))))
+
+(deftest embedding-service-resolve-config-refuses-a-key-bound-elsewhere-test
+  (let [secret (u.secret/secret "embed-secret"
+                                {:audience-schema [:map [:ee-embedding-service-base-url {:optional true} :string]]
+                                 :audience        {:ee-embedding-service-base-url "https://other.example.com"}})]
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"]
+      (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-api-key (constantly secret)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not bound to the requested audience"
+                              (#'embedding/embedding-service-resolve-config!)))))))

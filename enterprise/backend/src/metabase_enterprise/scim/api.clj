@@ -29,7 +29,7 @@
                                  ::api-key/unhashed-key unhashed-key
                                  :creator_id            user-id
                                  :updated_by_id         user-id})
-       (assoc :unmasked_key (u.secret/expose unhashed-key))))))
+       (assoc :unmasked_key (u.secret/expose unhashed-key :disclosure/to-creator))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

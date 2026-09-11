@@ -770,4 +770,4 @@
                                                                        :features ["test"]})]
         (mt/with-temporary-setting-values [premium-embedding-token nil]
           (token-check/-set-premium-embedding-token! token)
-          (is (= token (premium-features/premium-embedding-token))))))))
+          (is (= token (mt/plaintext (premium-features/premium-embedding-token)))))))))

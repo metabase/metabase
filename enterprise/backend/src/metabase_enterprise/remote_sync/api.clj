@@ -214,11 +214,9 @@
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (let [current-token   (settings/remote-sync-token)
-        obfuscated?     (and remote-sync-token
-                             (= remote-sync-token (setting/obfuscate-value current-token)))
+  (let [obfuscated?     (setting/obfuscated-value? remote-sync-token)
         effective-token (if (or obfuscated? (not (contains? body :remote-sync-token)))
-                          current-token
+                          (settings/remote-sync-token)
                           remote-sync-token)
         effective-url   (or remote-sync-url (settings/remote-sync-url))]
     (api/check-400 (not (str/blank? effective-url)) "Remote sync is not configured.")
@@ -232,6 +230,10 @@
           source.git/branches)
       {:status :success}
       (catch Exception e
+        ;; an exception that already carries a status code is a deliberate, user-facing error from below (a refused
+        ;; credential, say); only raw failures get translated
+        (when (:status-code (ex-data e))
+          (throw e))
         (throw (ex-info (impl/source-error-message e)
                         {:status-code 400} e))))))
 
@@ -284,9 +286,13 @@
     (try
       (settings/check-and-update-remote-settings! (dissoc settings :collections))
       (catch Exception e
+        ;; the wrapper keeps this endpoint's response shape; the machine-readable code, when the throw site authored
+        ;; one, is what a client keys on and must survive the wrapping
         (throw (ex-info (or (ex-message e) "Invalid settings")
-                        {:error       (ex-message e)
-                         :status-code 400} e))))
+                        (merge {:error       (ex-message e)
+                                :status-code 400}
+                               (select-keys (ex-data e) [:error-code]))
+                        e))))
     (when (seq collections)
       (try
         (remote-sync.core/bulk-set-remote-sync collections)

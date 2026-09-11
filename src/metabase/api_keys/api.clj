@@ -14,7 +14,7 @@
 
 (defn- maybe-expose-key [api-key]
   (if (contains? api-key :unmasked_key)
-    (update api-key :unmasked_key u.secret/expose)
+    (update api-key :unmasked_key u.secret/expose :disclosure/to-creator)
     api-key))
 
 (defn- present-api-key
@@ -89,7 +89,7 @@
   (api/check-404 (api-keys.db/api-key-exists? id))
   (let [regenerated (api-key/regenerate! id)]
     {:id           id
-     :unmasked_key (u.secret/expose (:unmasked-key regenerated))
+     :unmasked_key (u.secret/expose (:unmasked-key regenerated) :disclosure/to-creator)
      :masked_key   (:masked-key regenerated)
      :prefix       (:prefix regenerated)}))
 

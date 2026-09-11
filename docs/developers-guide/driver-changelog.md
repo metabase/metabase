@@ -227,6 +227,15 @@ title: Driver interface changelog
   `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` as a parent of your driver.
   See `metabase.driver.mysql` for an example of using the abstract driver.
 
+## Metabase 0.58.34
+
+- `metabase.driver.util/audience-schema` `[driver]` -- new multimethod. A Malli schema for the connection-detail
+  fields a stored credential is bound to: the ones that decide where the credential is sent (`host`, `port`,
+  `dbname`, the SSH tunnel, ...) and how the channel is protected (`ssl`, `sslmode`, `additional-options`, ...). An
+  update that changes any of them while reusing a stored credential is refused until the credential is entered
+  again. Defaults to `metabase.driver.util/default-audience-schema`; a driver whose connection identity is defined by
+  other fields overrides it.
+
 ## Metabase 0.58.23
 
 - `metabase.driver/connection-hosts` `[driver details]` -- new multimethod returning the host names pointed to for a set

@@ -10,4 +10,5 @@
   generate-key
   is-api-key-user?
   prefix
+  secret-key
   create-api-key-with-new-user!])

@@ -581,3 +581,18 @@
       (is (= {:errors {:email-smtp-username-override "Wrong username or password"
                        :email-smtp-password-override "Wrong username or password"}}
              (#'email/humanize-error-messages mb-to-smtp-override-settings {::email/error exception}))))))
+
+(deftest smtp-settings-open-the-stored-password-to-its-own-destination-test
+  (testing "the send path hands postal a plain String: the stored Secret is opened against the very host, port, channel
+           and user the message is about to be sent with"
+    (with-redefs [premium-features/is-hosted? (constantly false)]
+      (tu/with-temporary-setting-values [email-smtp-host     "smtp.example.com"
+                                         email-smtp-port     587
+                                         email-smtp-security :starttls
+                                         email-smtp-username "mb"
+                                         email-smtp-password "d1nner3scapee!"]
+        (is (= {:host "smtp.example.com"
+                :port 587
+                :user "mb"
+                :pass "d1nner3scapee!"}
+               (select-keys (#'email/smtp-settings) [:host :port :user :pass])))))))

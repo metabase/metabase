@@ -7,7 +7,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.string :as u.str]))
+   [metabase.util.secret :as u.secret]))
 
 (defsetting slack-app-token
   (deferred-tru
@@ -15,14 +15,15 @@
         "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
   :encryption :when-encryption-key-set
   :visibility :settings-manager
-  :getter (fn []
-            (-> (setting/get-value-of-type :string :slack-app-token)
-                (u.str/mask 9))))
+  :sensitive? true
+  ;; Slack's API endpoint is fixed, so there is no destination setting that could redirect this
+  :audience   {})
 
-(defn unobfuscated-slack-app-token
-  "Get the unobfuscated value of [[slack-app-token]]."
+(defn slack-app-token-for-slack-api
+  "The plaintext of [[slack-app-token]], or nil; opened with `:disclosure/fixed-endpoint` because Slack's endpoint is
+  not configurable. Use [[slack-app-token]] wherever only its presence matters."
   []
-  (setting/get-value-of-type :string :slack-app-token))
+  (some-> (slack-app-token) (u.secret/expose :disclosure/fixed-endpoint)))
 
 (defsetting slack-token-valid?
   (deferred-tru
@@ -208,6 +209,10 @@
   :encryption :when-encryption-key-set
   :visibility :settings-manager
   :sensitive? true
+  :audience   {:email-smtp-host     :metabase.util.secret/hostname
+               :email-smtp-port     :int
+               :email-smtp-security :keyword
+               :email-smtp-username :string}
   :audit      :getter)
 
 (defsetting email-smtp-password-override
@@ -217,6 +222,10 @@
   :visibility :settings-manager
   :sensitive? true
   :export?    false
+  :audience   {:email-smtp-host-override     :metabase.util.secret/hostname
+               :email-smtp-port-override     :int
+               :email-smtp-security-override :keyword
+               :email-smtp-username-override :string}
   :audit      :getter)
 
 (defsetting email-smtp-port

@@ -12,7 +12,7 @@
    :email-smtp-port     (setting/get :email-smtp-port)
    :email-smtp-security (setting/get :email-smtp-security)
    :email-smtp-username (setting/get :email-smtp-username)
-   :email-smtp-password (setting/get :email-smtp-password)})
+   :email-smtp-password (mt/plaintext (setting/get :email-smtp-password))})
 
 (def ^:private default-email-settings
   {:email-smtp-host     "foobar"
@@ -168,3 +168,115 @@
     (testing "POST /api/email/test"
       (is (= "Unauthenticated"
              (mt/client :post 401 "email/test"))))))
+
+(deftest smtp-host-change-requires-the-password-again-test
+  (testing "moving the SMTP server, or weakening the channel to it, while the stored password would be reused is
+           refused (SEC: credential redirection). The refusal lands before test-smtp-connection, which is what would
+           otherwise have delivered the password to the new server."
+    (mt/with-temp-env-var-value! [MB_EMAIL_SMTP_HOST nil
+                                  MB_EMAIL_SMTP_PORT nil
+                                  MB_EMAIL_SMTP_SECURITY nil
+                                  MB_EMAIL_SMTP_USERNAME nil
+                                  MB_EMAIL_SMTP_PASSWORD nil]
+      (tu/with-temporary-setting-values [email-smtp-host     "smtp.example.com"
+                                         email-smtp-port     587
+                                         email-smtp-security :starttls
+                                         email-smtp-username "mb"
+                                         email-smtp-password "smtp-secret"]
+        (let [attempted (atom [])]
+          (mt/with-dynamic-fn-redefs [email/test-smtp-settings (fn [settings]
+                                                                 (swap! attempted conj settings)
+                                                                 {::email/error nil})]
+            (testing "a new host with the mask echoed back"
+              (let [resp (mt/user-http-request :crowberto :put 400 "email"
+                                               {:email-smtp-host     "evil.example.com"
+                                                :email-smtp-port     587
+                                                :email-smtp-security :starttls
+                                                :email-smtp-username "mb"
+                                                :email-smtp-password (setting/obfuscate-value "smtp-secret")})]
+                (is (= "secret-audience-mismatch" (:error-code resp)))
+                (is (= [] @attempted) "no SMTP connection was attempted, so the password never left")))
+            (testing "the downgrade case: same host, plaintext channel"
+              (reset! attempted [])
+              (let [resp (mt/user-http-request :crowberto :put 400 "email"
+                                               {:email-smtp-host     "smtp.example.com"
+                                                :email-smtp-port     25
+                                                :email-smtp-security :none
+                                                :email-smtp-username "mb"
+                                                :email-smtp-password (setting/obfuscate-value "smtp-secret")})]
+                (is (= "secret-audience-mismatch" (:error-code resp)))
+                (is (= [] @attempted))))
+            (testing "the stored password is untouched"
+              (is (= "smtp-secret" (mt/plaintext (setting/get :email-smtp-password))))
+              (is (= "smtp.example.com" (setting/get :email-smtp-host))))
+            (testing "a freshly supplied password authorizes the move"
+              (reset! attempted [])
+              (mt/user-http-request :crowberto :put 200 "email"
+                                    {:email-smtp-host     "new.example.com"
+                                     :email-smtp-port     587
+                                     :email-smtp-security :starttls
+                                     :email-smtp-username "mb"
+                                     :email-smtp-password "brand-new"})
+              (is (= 1 (count @attempted)))
+              (is (= "brand-new" (:pass (first @attempted))))
+              (is (= "new.example.com" (setting/get :email-smtp-host)))
+              (is (= "brand-new" (mt/plaintext (setting/get :email-smtp-password)))))))))))
+
+(deftest stored-password-is-only-tried-on-its-own-channel-test
+  (testing "when the stored password is reused, a failed connection is not retried over other security options: the
+           credential was saved for one channel and may not be sent over another. A freshly typed password may be."
+    (mt/with-temp-env-var-value! [MB_EMAIL_SMTP_HOST nil
+                                  MB_EMAIL_SMTP_PORT nil
+                                  MB_EMAIL_SMTP_SECURITY nil
+                                  MB_EMAIL_SMTP_USERNAME nil
+                                  MB_EMAIL_SMTP_PASSWORD nil]
+      (tu/with-temporary-setting-values [email-smtp-host     "smtp.example.com"
+                                         email-smtp-port     587
+                                         email-smtp-security :starttls
+                                         email-smtp-username "mb"
+                                         email-smtp-password "smtp-secret"]
+        (let [attempted (atom [])
+              settings  {:email-smtp-host     "smtp.example.com"
+                         :email-smtp-port     587
+                         :email-smtp-security :starttls
+                         :email-smtp-username "mb"}]
+          ;; `retry-delay-ms` is a def, not a fn, so it stays on `with-redefs`
+          (with-redefs [email/retry-delay-ms 0]
+            (mt/with-dynamic-fn-redefs [email/test-smtp-settings (fn [details]
+                                                                   (swap! attempted conj details)
+                                                                   {::email/error (ex-info "refused" {})})]
+              (testing "the stored password: one attempt, on the bound channel"
+                (mt/user-http-request :crowberto :put 400 "email"
+                                      (assoc settings :email-smtp-password (setting/obfuscate-value "smtp-secret")))
+                (is (= [:starttls] (map :security @attempted))))
+              (testing "a fresh password: the usual guessing across channels"
+                (reset! attempted [])
+                (mt/user-http-request :crowberto :put 400 "email"
+                                      (assoc settings :email-smtp-password "brand-new"))
+                (is (< 1 (count @attempted)))))))))))
+
+(deftest echoed-mask-does-not-rewrite-the-stored-password-test
+  (testing "reusing the stored password writes nothing: the endpoint never holds the plaintext, so there is nothing to
+           write back, and the audit log does not record a change that did not happen"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp-env-var-value! [MB_EMAIL_SMTP_HOST nil
+                                    MB_EMAIL_SMTP_PORT nil
+                                    MB_EMAIL_SMTP_SECURITY nil
+                                    MB_EMAIL_SMTP_USERNAME nil
+                                    MB_EMAIL_SMTP_PASSWORD nil]
+        (tu/with-temporary-setting-values [email-smtp-host     "smtp.example.com"
+                                           email-smtp-port     587
+                                           email-smtp-security :starttls
+                                           email-smtp-username "mb"
+                                           email-smtp-password "smtp-secret"]
+          (mt/with-dynamic-fn-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+            (let [before (mt/setting-update-audit-event-count "email-smtp-password")
+                  resp   (mt/user-http-request :crowberto :put 200 "email"
+                                               {:email-smtp-host     "smtp.example.com"
+                                                :email-smtp-port     587
+                                                :email-smtp-security :starttls
+                                                :email-smtp-username "mb"
+                                                :email-smtp-password (setting/obfuscate-value "smtp-secret")})]
+              (is (= (setting/obfuscate-value "smtp-secret") (:email-smtp-password resp)))
+              (is (= before (mt/setting-update-audit-event-count "email-smtp-password")))
+              (is (= "smtp-secret" (mt/plaintext (setting/get :email-smtp-password)))))))))))

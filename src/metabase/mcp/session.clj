@@ -19,7 +19,8 @@
    [metabase.session.core :as session]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.secret :as u.secret])
   (:import
    (java.nio ByteBuffer)
    (java.nio.charset StandardCharsets)
@@ -63,7 +64,8 @@
      intentional (so any webserver can recompute it) — don't treat two of these as
      independently random just because they look like UUIDs."
   [mcp-session-id]
-  (let [bytes (hmac-sha256 (mcp.settings/unobfuscated-mcp-embedding-signing-secret) mcp-session-id)
+  (let [bytes (u.secret/maybe-derive-with (mcp.settings/mcp-embedding-signing-secret)
+                                          #(hmac-sha256 % mcp-session-id))
         buf   (ByteBuffer/wrap bytes)
         ;; .getLong is stateful: each call consumes 8 bytes and advances the position,
         ;; so `raw-high` reads bytes 0-7 and `raw-low` reads bytes 8-15.
@@ -92,8 +94,8 @@
 
 (defn- ui-credential-signature [^String payload]
   (base64url-encode-bytes
-   (hmac-sha256 (mcp.settings/unobfuscated-mcp-embedding-signing-secret)
-                (str "mcp-ui-v1." payload))))
+   (u.secret/maybe-derive-with (mcp.settings/mcp-embedding-signing-secret)
+                               #(hmac-sha256 % (str "mcp-ui-v1." payload)))))
 
 (declare valid-id?)
 

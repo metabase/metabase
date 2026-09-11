@@ -21,7 +21,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.secret :as u.secret])
   (:import
    (clojure.lang PersistentQueue)
    (java.io BufferedWriter File InputStream OutputStream OutputStreamWriter)
@@ -33,7 +34,8 @@
   "Returns HTTP headers with Authorization bearer token if configured.
   Throws configuration error in production if token is not set."
   []
-  (let [api-token (transforms-python.settings/python-runner-api-token)]
+  (let [api-token (u.secret/maybe-expose (transforms-python.settings/python-runner-api-token)
+                                         {:python-runner-url (transforms-python.settings/python-runner-url)})]
     (if api-token
       {"Authorization" (str "Bearer " api-token)}
       (if config/is-prod?

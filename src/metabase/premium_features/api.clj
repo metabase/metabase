@@ -9,6 +9,7 @@
    [metabase.premium-features.token-check :as token-check]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
+   [metabase.util.secret :as u.secret]
    [ring.util.response :as response])
   (:import
    (java.net URLEncoder)))
@@ -37,7 +38,8 @@
   time it runs, and the AI service's cache expires on its own."
   []
   (when-let [service-base-url (llm.settings/ai-service-base-url)]
-    (when-let [^String token (premium-features/premium-embedding-token)]
+    (when-let [^String token (u.secret/maybe-expose (premium-features/premium-embedding-token)
+                                                    :disclosure/fixed-endpoint)]
       (try
         (let [encoded-token (URLEncoder/encode ^String token "UTF-8")
               url (str (str/replace service-base-url #"/+$" "") "/v1/invalidate-token-cache/" encoded-token)

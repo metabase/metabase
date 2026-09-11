@@ -30,6 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [ring.util.codec :as codec])
   (:import
    (java.util.concurrent ExecutorService Executors ThreadFactory)))
@@ -67,7 +68,7 @@
              ts
              (channel.settings/slack-configured?))
     (try
-      (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
+      (let [client {:token (channel.settings/slack-app-token-for-slack-api)}
             {:keys [ok permalink]} (slackbot.client/get-permalink client
                                                                   {:channel channel
                                                                    :ts      ts})]
@@ -82,7 +83,7 @@
 (defn- assert-valid-slack-req
   "Asserts that incoming Slack request has a valid signature."
   [request]
-  (when-not (slackbot.settings/unobfuscated-metabot-slack-signing-secret)
+  (when-not (slackbot.settings/metabot-slack-signing-secret)
     (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503})))
   (when-not (:slack/validated? request)
     (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status-code 401}))))
@@ -379,7 +380,7 @@
                 (boolean (sso-settings/slack-connect-client-id))
                 (boolean (sso-settings/slack-connect-client-secret))
                 (boolean (slackbot.settings/metabot-slack-signing-secret))
-                (boolean (channel.settings/unobfuscated-slack-app-token))
+                (boolean (channel.settings/slack-app-token))
                 (boolean (encryption/default-encryption-enabled?)))
     (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
 
@@ -388,7 +389,7 @@
   [payload :- slackbot.events/SlackEventCallbackEvent]
   (assert-setup-complete)
   (when (sso-settings/slack-connect-enabled)
-    (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
+    (let [client {:token (channel.settings/slack-app-token-for-slack-api)}
           event (:event payload)]
       (log/debugf "[slackbot] Event callback: event_type=%s user=%s channel=%s"
                   (:type event) (:user event) (:channel event))
@@ -475,9 +476,13 @@
         all-unset? (and (nil? slack-connect-client-id)
                         (nil? slack-connect-client-secret)
                         (nil? metabot-slack-signing-secret))
+        ;; a client echoing back the mask the API handed it is not supplying a new secret. set-many! below already
+        ;; ignores such a write (the setting is :sensitive?), but the version bump is a side effect of this endpoint
+        ;; and would otherwise invalidate every existing Slack auth identity on a form save that changed nothing.
         signing-secret-changed? (and all-set?
-                                     (not= metabot-slack-signing-secret
-                                           (server.settings/unobfuscated-metabot-slack-signing-secret)))]
+                                     (not (setting/obfuscated-value? metabot-slack-signing-secret))
+                                     (not (u.secret/maybe-derive-with (server.settings/metabot-slack-signing-secret)
+                                                                      #(= % metabot-slack-signing-secret))))]
     ;; all values must be set together or unset together
     (when-not (or all-set? all-unset?)
       (throw (ex-info (tru "Must provide client id, client secret and signing secret together.")
@@ -544,7 +549,7 @@
    shipped."
   [{:keys [action trigger-id slack-user-id channel-id message-ts]}]
   (let [{:keys [conversation_id positive message_external_id]} (json/decode (:value action) true)
-        client  {:token (channel.settings/unobfuscated-slack-app-token)}
+        client  {:token (channel.settings/slack-app-token-for-slack-api)}
         user-id (slack-id->user-id slack-user-id)]
     (when user-id
       (try
@@ -567,7 +572,7 @@
   (let [authorization (authorize-delete-request slack-user-id channel-id message-ts)]
     (case (:status authorization)
       :authorized
-      (let [client {:token (channel.settings/unobfuscated-slack-app-token)}]
+      (let [client {:token (channel.settings/slack-app-token-for-slack-api)}]
         (submit-async
          (fn []
            (try
@@ -689,7 +694,7 @@
   (def channel "XXXXXXXXXXX") ; slack channel id (e.g. bot's dms)
   (def thread-ts "XXXXXXXX.XXXXXXX") ; thread id
 
-  (def client {:token (channel.settings/unobfuscated-slack-app-token)})
+  (def client {:token (channel.settings/slack-app-token-for-slack-api)})
   (def message (slackbot.client/post-message client {:channel channel :text "_Thinking..._" :thread_ts thread-ts}))
   (slackbot.client/delete-message client message)
   (select-keys message [:channel :ts])

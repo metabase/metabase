@@ -2596,7 +2596,9 @@
                  (t2/select-one-fn :details :model/Database :id db-id))))
         (testing "without an engine change, existing details are still merged into partial updates"
           (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres :details existing-details}]
-            (api-update-database! 200 db-id {:details {:port 5433}})
+            ;; the password comes along because the port is part of where the credential is sent; a partial update
+            ;; that moves the connection may not reuse the stored one
+            (api-update-database! 200 db-id {:details {:port 5433 :password "password"}})
             (is (= (assoc existing-details :port 5433)
                    (t2/select-one-fn :details :model/Database :id db-id)))))))))
 
@@ -3040,7 +3042,7 @@
                                   {:write_data_details nil})
             (let [db (t2/select-one :model/Database :id db-id)]
               (is (nil? (:write_data_details db))))))))
-    (testing "Sensitive fields are preserved when protected-password is sent"
+    (testing "Sensitive fields are preserved when protected-password is sent and the connection is not being moved"
       (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}
@@ -3048,12 +3050,37 @@
                                                                          :password "original-pass"}}]
           (with-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
-                                  {:write_data_details {:host "new-write-host"
+                                  {:write_data_details {:host "write-host"
                                                         :password secret/protected-password
                                                         :write-data-connection true}})
             (let [db (t2/select-one :model/Database :id db-id)]
-              (is (= "new-write-host" (get-in db [:write_data_details :host])))
               (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
+    (testing "but the stored password is NOT carried to a new host -- that is credential redirection, and the
+             connection test would have delivered it there before anything was saved"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}
+                                                    :write_data_details {:host "write-host"
+                                                                         :password "original-pass"}}]
+          (let [attempted (atom [])]
+            (with-redefs [driver/can-connect? (fn [& args] (swap! attempted conj args) true)]
+              (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                    {:write_data_details {:host "new-write-host"
+                                                          :password secret/protected-password
+                                                          :write-data-connection true}})
+              (is (= [] @attempted) "no connection was attempted, so the password never left")
+              (let [db (t2/select-one :model/Database :id db-id)]
+                (is (= "write-host" (get-in db [:write_data_details :host])))
+                (is (= "original-pass" (get-in db [:write_data_details :password]))))))
+          (testing "and a freshly supplied password authorizes the move"
+            (with-redefs [driver/can-connect? (constantly true)]
+              (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                    {:write_data_details {:host "new-write-host"
+                                                          :password "brand-new"
+                                                          :write-data-connection true}})
+              (let [db (t2/select-one :model/Database :id db-id)]
+                (is (= "new-write-host" (get-in db [:write_data_details :host])))
+                (is (= "brand-new" (get-in db [:write_data_details :password])))))))))
     (testing "Returns 402 without :writable-connection feature"
       (with-redefs [premium-features/has-feature? (constantly false)]
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
