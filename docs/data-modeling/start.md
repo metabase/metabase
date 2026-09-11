@@ -51,6 +51,6 @@ With [editable tables](editable-tables.md), Admins can edit data in tables direc
 
 ## [Models](models/models.md)
 
-> Consider using [Transforms](../transforms/transforms-overview.md) instead of models.
+> Consider using [Transforms](transforms/transforms-overview.md) instead of models.
 
 Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as a special kind of saved question meant to be used as the starting point for new questions.
