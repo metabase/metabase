@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { delay } from "__support__/utils";
@@ -21,11 +22,9 @@ import {
 
 registerVisualizations();
 
-const DISPLAYS = ["line", "bar"] as const;
-
 // Chart components are loaded on demand. Register them up front so each test
 // renders in one pass and can be run on its own.
-beforeAll(() => loadVisualizationComponents([...DISPLAYS]));
+beforeAll(() => loadVisualizationComponents([...DYNAMIC_GOAL_GRAPH_DISPLAYS]));
 
 const COLS = [
   createMockColumn({ name: "month", base_type: "type/Text" }),
@@ -89,57 +88,60 @@ function getGoalLineLabel() {
   return screen.getByText(GOAL_LABEL);
 }
 
-describe.each(DISPLAYS)("%s chart dynamic goal", (display) => {
-  it("draws the goal line at the value answered by the dataset", async () => {
-    await setup(createSeries(display, ANSWERED));
+describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)(
+  "%s chart dynamic goal",
+  (display) => {
+    it("draws the goal line at the value answered by the dataset", async () => {
+      await setup(createSeries(display, ANSWERED));
 
-    expect(getGoalLineLabel()).toBeInTheDocument();
-    // the goal is far above every data point, so it stretches the y-axis up to it
-    expect(screen.getByText("250")).toBeInTheDocument();
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
-  });
-
-  it("shows a loader until an unanswered reference is fetched, then draws the goal", async () => {
-    fetchMock.post(
-      "path:/api/dataset",
-      createMockDataset({
-        data: createMockDatasetData({ referenced_entities: ANSWERED }),
-      }),
-      {
-        delay: 100, // keep the reference unanswered long enough to see the loader
-      },
-    );
-
-    await setup(createSeries(display));
-
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
-
-    await waitFor(() => expect(getGoalLineLabel()).toBeInTheDocument());
-    expect(screen.getByText("250")).toBeInTheDocument();
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-
-    const [call] = fetchMock.callHistory.calls("path:/api/dataset");
-    expect(await call.request?.json()).toMatchObject({
-      referenced_entities: [{ type: "card", id: 9 }],
+      expect(getGoalLineLabel()).toBeInTheDocument();
+      // the goal is far above every data point, so it stretches the y-axis up to it
+      expect(screen.getByText("250")).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
     });
-  });
 
-  it("shows the failed message when fetching the reference fails", async () => {
-    setupCardDataset({ status: 500 });
+    it("shows a loader until an unanswered reference is fetched, then draws the goal", async () => {
+      fetchMock.post(
+        "path:/api/dataset",
+        createMockDataset({
+          data: createMockDatasetData({ referenced_entities: ANSWERED }),
+        }),
+        {
+          delay: 100, // keep the reference unanswered long enough to see the loader
+        },
+      );
 
-    await setup(createSeries(display));
+      await setup(createSeries(display));
 
-    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
-    expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
-  });
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
 
-  it("refuses to render when the dataset reports the reference as failed", async () => {
-    await setup(createSeries(display, FAILED));
+      await waitFor(() => expect(getGoalLineLabel()).toBeInTheDocument());
+      expect(screen.getByText("250")).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
-    expect(screen.getByText(GOAL_ERROR)).toBeInTheDocument();
-    expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
-  });
-});
+      const [call] = fetchMock.callHistory.calls("path:/api/dataset");
+      expect(await call.request?.json()).toMatchObject({
+        referenced_entities: [{ type: "card", id: 9 }],
+      });
+    });
+
+    it("shows the failed message when fetching the reference fails", async () => {
+      setupCardDataset({ status: 500 });
+
+      await setup(createSeries(display));
+
+      expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
+      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
+    });
+
+    it("refuses to render when the dataset reports the reference as failed", async () => {
+      await setup(createSeries(display, FAILED));
+
+      expect(screen.getByText(GOAL_ERROR)).toBeInTheDocument();
+      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    });
+  },
+);

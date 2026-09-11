@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
@@ -57,7 +58,7 @@ describe("useResolvedGoalSettings", () => {
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
-  describe.each(["line", "bar"] as const)("for a %s chart", (display) => {
+  describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)("for a %s chart", (display) => {
     const card = createMockCard({ display });
 
     it("leaves a hidden goal line alone", () => {

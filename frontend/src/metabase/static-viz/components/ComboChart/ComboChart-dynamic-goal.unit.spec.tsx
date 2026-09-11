@@ -3,6 +3,7 @@
    render, so the "view"/"utils" naming convention doesn't apply. */
 import ReactDOMServer from "react-dom/server";
 
+import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type {
   DatasetData,
@@ -81,7 +82,7 @@ function toSvg(rawSeries: RawSeries) {
   );
 }
 
-describe.each(["line", "bar"] as const)(
+describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)(
   "static %s chart with a dynamic goal",
   (display) => {
     it("draws the goal line at the value answered by the dataset", () => {
