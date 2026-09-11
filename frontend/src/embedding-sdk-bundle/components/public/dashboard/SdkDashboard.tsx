@@ -219,6 +219,8 @@ type RenderMode = "dashboard" | "question" | "queryBuilder";
 export type EditableDashboardOwnProps = {
   /**
    * Additional props to pass to the query builder rendered by `InteractiveQuestion` when creating a new dashboard question.
+   *
+   * Set `dataPicker: "staged"` to always get the staged data picker. By default, Metabase shows a simple dropdown menu with tables and models, and only switches to the staged picker when there are 100 or more data sources. `entityTypes: ["question"]` only takes effect in the staged picker.
    */
   dataPickerProps?: Pick<SdkQuestionProps, "entityTypes" | "dataPicker">;
 };

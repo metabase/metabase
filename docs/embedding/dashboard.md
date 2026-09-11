@@ -277,13 +277,15 @@ For the full list of attributes, see [web component attributes](./browser-refere
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/editable-dashboard.tsx" %}
 ```
 
-When someone adds a new question to a dashboard, `EditableDashboard` opens the query builder. To narrow what they can query, pass `dataPickerProps` with the entity types you want in the data picker: `"table"`, `"question"`, or `"model"`. For example, limiting people to tables keeps them building on the data you point them at, rather than on other people's saved questions:
+When someone adds a new question to a dashboard, `EditableDashboard` opens the query builder. Pass `dataPickerProps` to shape the query builder's data picker: `entityTypes` narrows what people can query to `"table"`, `"question"`, or `"model"`, and `dataPicker` switches between the simple and staged pickers. Metabase defaults to the simple picker, switching to staged at 100 or more data sources.
+
+For example, limiting people to tables keeps them building on the data you point them at, rather than on other people's saved questions:
 
 ```typescript
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/editable-dashboard-data-picker.tsx" %}
 ```
 
-`"question"` only takes effect in the full data picker. By default, Metabase shows a simple dropdown menu with tables and models, and only switches to the full data picker when there are 100 or more items. You can opt for the full data picker by adding `dataPicker: "staged"` to `dataPickerProps`.
+> `"question"` only works in the staged picker. In the simple picker it does nothing.
 
 For the full list of props, see [`EditableDashboard` props](./dashboard-reference.md#react-sdk-editabledashboard-props).
 
