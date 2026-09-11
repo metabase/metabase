@@ -62,6 +62,8 @@ Each BigQuery dataset will have a **Project ID**. You can find this ID via the [
 
 The JSON file contains the credentials your Metabase application will need to access BigQuery datasets, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
 
+If your Metabase runs inside Google Cloud (for example, on a Compute Engine instance, GKE cluster, or Cloud Run service), you can leave this field empty. Metabase will instead use [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials), like the service account attached to the instance running Metabase, so you don't need to download and upload a service account key file. That service account will need the same roles listed in [creating a service account](#google-cloud-platform-creating-a-service-account-and-json-file), and you may want to set the **Project ID** field, since the datasets you want to query may live in a different project than the one Metabase runs in.
+
 ### Datasets
 
 You can specify which BigQuery datasets you want to sync and scan. Options are:
@@ -94,6 +96,14 @@ We suggest you leave this off unless you're doing manual [timezone](../../config
 ### Include User ID and query hash in queries
 
 This can be useful for [auditing](../../usage-and-performance-tools/usage-analytics.md) and debugging, but prevents BigQuery from caching results and may increase your costs.
+
+### Processing location
+
+The BigQuery [location](https://cloud.google.com/bigquery/docs/locations) where Metabase should run your query jobs, like `us`, `EU`, or `asia-southeast1`. If your datasets live in a region other than the US and EU multi-regions, and BigQuery can't determine the right location on its own, set this field to the location of your datasets. If you leave the field empty, BigQuery will determine the location automatically.
+
+### Maximum bytes billed per query
+
+To keep costs under control, you can cap the number of bytes each query is allowed to bill, following BigQuery's [custom cost controls](https://cloud.google.com/bigquery/docs/best-practices-costs). Queries that would bill more than this many bytes fail without incurring any charge. The cap applies to every query Metabase runs on this connection, including the queries Metabase runs to sync the database, so avoid setting it below BigQuery's 10 MB per-query minimum. If you leave the field empty, queries can bill any number of bytes.
 
 ### Alternate hostname
 

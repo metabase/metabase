@@ -20,8 +20,8 @@ driver:
       placeholder: my-warehouse-project
     - name: service-account-json
       display-name: Service account JSON file
-      helper-text: This JSON file contains the credentials Metabase needs to read and query your dataset.
-      required: true
+      helper-text: This JSON file contains the credentials Metabase needs to read and query your dataset. Leave it empty to use Application Default Credentials from the environment Metabase runs in, such as the service account attached to a Google Compute Engine instance.
+      required: false
       type: textFile
     - name: dataset-filters
       type: schema-filters
@@ -38,6 +38,22 @@ driver:
       display-name: Include User ID and query hash in queries
       default: true
       type: boolean
+      visible-if:
+        advanced-options: true
+    - name: processing-location
+      display-name: Processing location
+      helper-text: The BigQuery location (region or multi-region) where your query jobs should run, e.g. us, EU, or asia-southeast1. Set this if your datasets live outside the US and EU multi-regions. Leave it empty to let BigQuery determine the location automatically.
+      placeholder: us
+      required: false
+      type: string
+      visible-if:
+        advanced-options: true
+    - name: max-bytes-billed
+      display-name: Maximum bytes billed per query
+      helper-text: Queries that would bill more than this many bytes fail without incurring a charge. Leave it empty for no limit.
+      placeholder: "1000000000"
+      required: false
+      type: integer
       visible-if:
         advanced-options: true
     - name: host
