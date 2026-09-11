@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { formatValue } from "metabase/value-formatting";
 import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
@@ -30,5 +30,5 @@ export const formatValueForTooltip = ({
     options.scale = 1;
   }
 
-  return formatValue(value, options) ?? NULL_DISPLAY_VALUE;
+  return formatValue(value, options) ?? getNullDisplayValue();
 };

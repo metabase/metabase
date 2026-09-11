@@ -75,7 +75,7 @@ const getDefaultPluginCollections = () => ({
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
   // Unjustified type cast. FIXME
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "" as BaseEntityId | "",
-  INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE:
+  getInstanceAnalyticsAdminReadonlyMessage: () =>
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
     t`Administrators always have the highest level of access to everything in Metabase.`,
   getAuthorityLevelMenuItems: (
