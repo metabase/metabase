@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { color } from "metabase/ui/colors";
 import { deriveChartShadeColor } from "metabase/ui/colors/accents";
+import { mergeLazily } from "metabase/utils/merge-lazily";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
@@ -87,7 +88,7 @@ function canHaveDataLabels(
   return vizSettings["stackable.stack_type"] !== "normalized" || !areAllAreas;
 }
 
-export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
+const graphDataSettings: VisualizationSettingsDefinitions = {
   ...columnSettings({
     getColumns: ([
       {
@@ -252,8 +253,10 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
     dashboard: false,
     useRawSeries: true,
   },
-  ...seriesSetting(),
 };
+
+export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions =
+  mergeLazily(graphDataSettings, seriesSetting());
 
 export const GRAPH_BUBBLE_SETTINGS: VisualizationSettingsDefinitions = {
   "scatter.bubble": {
@@ -1250,10 +1253,10 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
-export const BOXPLOT_DATA_SETTINGS: VisualizationSettingsDefinitions = {
-  ...GRAPH_DATA_SETTINGS,
-  "graph.dimensions": {
-    ...GRAPH_DATA_SETTINGS["graph.dimensions"],
-    getDefault: getDefaultBoxplotDimensions,
-  },
-};
+export const BOXPLOT_DATA_SETTINGS: VisualizationSettingsDefinitions =
+  mergeLazily(GRAPH_DATA_SETTINGS, {
+    "graph.dimensions": mergeLazily(
+      GRAPH_DATA_SETTINGS["graph.dimensions"] ?? {},
+      { getDefault: getDefaultBoxplotDimensions },
+    ),
+  });

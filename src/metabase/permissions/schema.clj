@@ -142,11 +142,12 @@
 (mr/def ::permissions-group
   "A PermissionsGroup as selected from the app DB: every column of `:permissions_group`."
   [:map {:closed true}
-   [:id               ms/PositiveInt]
-   [:name             :string]
-   [:entity_id        :string]
-   [:magic_group_type [:maybe [:or :keyword :string]]]
-   [:is_tenant_group  :boolean]])
+   [:id                ms/PositiveInt]
+   [:name              :string]
+   [:entity_id         :string]
+   [:magic_group_type  [:maybe [:or :keyword :string]]]
+   [:is_tenant_group   :boolean]
+   [:is_data_app_group :boolean]])
 
 (mr/def ::permissions-group.member
   "A member of a PermissionsGroup as `metabase.permissions.db/group-members` selects it: the User columns the group
@@ -167,10 +168,11 @@
 (mr/def ::permissions-group.update
   "What an update (or insert) of a PermissionsGroup accepts: every column of `:permissions_group` except `id`, all optional."
   [:map {:closed true}
-   [:name             {:optional true} [:maybe :string]]
-   [:entity_id        {:optional true} [:maybe :string]]
-   [:magic_group_type {:optional true} [:maybe [:or :keyword :string]]]
-   [:is_tenant_group  {:optional true} [:maybe :boolean]]])
+   [:name              {:optional true} [:maybe :string]]
+   [:entity_id         {:optional true} [:maybe :string]]
+   [:magic_group_type  {:optional true} [:maybe [:or :keyword :string]]]
+   [:is_tenant_group   {:optional true} [:maybe :boolean]]
+   [:is_data_app_group {:optional true} [:maybe :boolean]]])
 
 (mr/def ::permissions-group-membership
   "A PermissionsGroupMembership as selected from the app DB: every column of `:permissions_group_membership`."
