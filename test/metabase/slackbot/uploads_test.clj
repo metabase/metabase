@@ -306,4 +306,21 @@
     (is (false? (#'slackbot.uploads/csv-file? {:filetype "pdf"})))
     (is (false? (#'slackbot.uploads/csv-file? {:filetype "xlsx"})))
     (is (false? (#'slackbot.uploads/csv-file? {:filetype nil})))
-    (is (false? (#'slackbot.uploads/csv-file? {})))))
+    (is (false? (#'slackbot.uploads/csv-file? {}))))
+  (testing "a remote file is refused whatever filetype it claims, but ordinary upload modes are kept"
+    (is (false? (#'slackbot.uploads/csv-file? {:filetype "csv" :mode "external"})))
+    (is (true? (#'slackbot.uploads/csv-file? {:filetype "csv" :mode "snippet"})))
+    (is (true? (#'slackbot.uploads/csv-file? {:filetype "csv" :mode "hosted"})))))
+
+(deftest copy-to-file!-enforces-the-size-limit-test
+  (testing "a stream longer than the limit is refused, since the event only carries the size the sender declared"
+    (let [file (java.io.File/createTempFile "slackbot-cap-" ".csv")]
+      (try
+        (with-redefs-fn {#'slackbot.uploads/max-file-size-bytes 8}
+          (fn []
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"exceeds"
+                                  (#'slackbot.uploads/copy-to-file!
+                                   (io/input-stream (.getBytes "0123456789abcdefghij"))
+                                   file
+                                   "big.csv")))))
+        (finally (io/delete-file file true))))))

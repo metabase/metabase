@@ -21,15 +21,37 @@
   #{"csv" "tsv"})
 
 (defn- csv-file?
-  "Check if a Slack file is a CSV/TSV based on filetype."
-  [{:keys [filetype]}]
-  (contains? allowed-csv-filetypes filetype))
+  "Whether a Slack file is a CSV/TSV Metabase should ingest. A remote file is refused whatever it claims to be:
+  its URL and size are supplied by the app that registered it rather than by Slack."
+  [{:keys [filetype mode]}]
+  (and (contains? allowed-csv-filetypes filetype)
+       (not= "external" mode)))
+
+(defn- size-limit-message
+  "The user-facing message for a file over [[max-file-size-bytes]]."
+  [filename]
+  (format "File '%s' exceeds %dMB size limit" filename (quot max-file-size-bytes (* 1024 1024))))
 
 (defn- validate-file-size
   "Returns nil if valid, error string if too large."
   [{:keys [name size]}]
   (when (> size max-file-size-bytes)
-    (format "File '%s' exceeds %dMB size limit" name (quot max-file-size-bytes (* 1024 1024)))))
+    (size-limit-message name)))
+
+(defn- copy-to-file!
+  "Copy `in` into `file`, refusing more than [[max-file-size-bytes]]. The size on the event is only what the sender
+  declared, so the limit has to hold as the bytes arrive."
+  [^java.io.InputStream in ^java.io.File file filename]
+  (let [buf (byte-array 8192)]
+    (with-open [^java.io.OutputStream out (io/output-stream file)]
+      (loop [written 0]
+        (let [n (.read in buf)]
+          (when-not (neg? n)
+            (let [total (+ written n)]
+              (when (> total max-file-size-bytes)
+                (throw (ex-info (size-limit-message filename) {:status-code 400})))
+              (.write out buf 0 n)
+              (recur total))))))))
 
 (defn- upload-settings
   "Get upload settings map. Returns nil if uploads are not enabled."
@@ -50,7 +72,7 @@
     (let [temp-file (java.io.File/createTempFile "slack-upload-" (str "-" name))]
       (try
         (with-open [^java.io.InputStream stream (slackbot.client/download-file-stream {:token (channel.settings/unobfuscated-slack-app-token)} url_private)]
-          (io/copy stream temp-file)
+          (copy-to-file! stream temp-file name)
           (let [result (upload/create-csv-upload!
                         {:filename      name
                          :file          temp-file

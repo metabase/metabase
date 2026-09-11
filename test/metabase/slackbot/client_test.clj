@@ -15,11 +15,14 @@
 
 (deftest download-file-stream-test
   (let [client {:token "xoxb-secret"}]
-    (testing "an unsafe or non-Slack URL is refused before any request is made"
+    (testing "an unsafe, non-Slack or non-file-host URL is refused before any request is made"
       (doseq [url ["http://169.254.169.254/latest/meta-data/"
                    "https://files.slack.com.evil.test/x.csv"
                    "https://evilslack.com/x.csv"
-                   "http://files.slack.com/files-pri/T1-F1/data.csv"]]
+                   "http://files.slack.com/files-pri/T1-F1/data.csv"
+                   ;; the rest of slack.com must not receive the token: the response is saved as a model
+                   "https://slack.com/api/conversations.list"
+                   "https://metaboat.slack.com/files/U1/F1/x.csv"]]
         (let [called (atom false)]
           (with-redefs [http/get (fn [& _] (reset! called true) (ok-stream))]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-Slack host"
@@ -35,6 +38,10 @@
           (is (= "Bearer xoxb-secret" (get-in @opts [:headers "Authorization"])))
           (is (= :none (:redirect-strategy @opts)))
           (is (some? (:dns-resolver @opts))))))
+    (testing "the CDN file host is accepted too"
+      (with-redefs [http/get (fn [_url _options] (ok-stream))]
+        (with-open [stream (slackbot.client/download-file-stream client "https://files-origin.slack.com/files-pri/T1-F1/data.csv")]
+          (is (= "a,b" (slurp stream))))))
     (testing "a non-2xx response throws instead of streaming the body"
       (with-redefs [http/get (fn [_url _options] {:status 302 :body (io/input-stream (.getBytes "<html>"))})]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)unexpected response"

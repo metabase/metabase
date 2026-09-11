@@ -4,7 +4,6 @@
    (java.io InputStream))
   (:require
    [clj-http.client :as http]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
@@ -201,17 +200,20 @@
   (:body (slack-post-json client "/views.open" {:trigger_id trigger_id
                                                 :view       view})))
 
+(def ^:private slack-file-hosts
+  "The hosts Slack serves file content from. The rest of `slack.com` is deliberately excluded: a remote file could
+  otherwise name a Slack API endpoint, and the response to that token-bearing request is saved as a model."
+  #{"files.slack.com" "files-origin.slack.com"})
+
 (defn- slack-file-url?
   "Whether `url` is safe to fetch with the bot token attached: it clears the generic SSRF pre-check
-  ([[metabase.util.http/safe-url?]]: https, no userinfo, a real external hostname) and its host is Slack's. Any
-  `slack.com` host is allowed rather than `files.slack.com` alone, so that a new Slack file host does not break
-  uploads."
+  ([[metabase.util.http/safe-url?]]: https, no userinfo, a real external hostname) and its host is one of
+  [[slack-file-hosts]]."
   [url]
   (and (u.http/safe-url? url)
        (boolean
         (when-let [host (some-> (u.http/->hostname url) u/lower-case-en)]
-          (or (= host "slack.com")
-              (str/ends-with? host ".slack.com"))))))
+          (contains? slack-file-hosts host)))))
 
 (defn download-file-stream
   "Download a file from Slack, returning an InputStream instead of buffering in memory.
