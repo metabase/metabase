@@ -140,4 +140,34 @@ describe("getChartLayout", () => {
     expect(measuredLabels).toContain("50%");
     expect(measuredLabels).not.toContain("5000%");
   });
+
+  it("measures the goal for the left axis only, where the goal line is drawn", () => {
+    const chartContext = getChartContext();
+    const twoAxesInput: ChartLayoutInput = {
+      ...input,
+      rightAxisModel: {
+        ...yAxisModel,
+        formatter: (value) => `R${value}`,
+      },
+    };
+
+    getChartLayout(
+      twoAxesInput,
+      createMockVisualizationSettings({
+        ...settings,
+        "graph.show_goal": true,
+        "graph.goal_value": 999,
+      }),
+      false,
+      480,
+      274,
+      chartContext,
+    );
+
+    const measuredLabels = jest
+      .mocked(chartContext.measureText)
+      .mock.calls.map(([text]) => text);
+    expect(measuredLabels).toContain("$999.00");
+    expect(measuredLabels).not.toContain("R999");
+  });
 });

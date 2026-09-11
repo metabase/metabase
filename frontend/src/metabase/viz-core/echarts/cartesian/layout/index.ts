@@ -144,6 +144,7 @@ const getYAxisTicksWidth = (
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
   { measureText, fontFamily, theme }: RenderingContext,
+  goalValue: number | null,
 ): number => {
   if (!settings["graph.y_axis.axis_enabled"]) {
     return 0;
@@ -181,8 +182,6 @@ const getYAxisTicksWidth = (
       );
     }
   }
-
-  const goalValue = getGoalLineValue(settings, axisModel.isNormalized);
 
   if (goalValue !== null) {
     valuesToMeasure.push(goalValue);
@@ -453,9 +452,11 @@ const getTicksDimensions = (
         yAxisScaleTransforms,
         settings,
         renderingContext,
+        getGoalLineValue(settings, leftAxisModel.isNormalized),
       ) + CHART_STYLE.axisTicksMarginY;
   }
 
+  // the goal line is drawn against the left axis only
   if (rightAxisModel) {
     ticksDimensions.yTicksWidthRight =
       getYAxisTicksWidth(
@@ -463,6 +464,7 @@ const getTicksDimensions = (
         yAxisScaleTransforms,
         settings,
         renderingContext,
+        null,
       ) + CHART_STYLE.axisTicksMarginY;
   }
 
@@ -958,12 +960,18 @@ const computeSplitPanelLayout = (
 ): ChartLayout => {
   const panelAxisModels = input.splitPanelYAxisModels ?? [];
   const panelCount = panelAxisModels.length;
+  // every panel repeats the goal line, see buildSplitPanelGoalSeries
+  const goalValue = getGoalLineValue(
+    settings,
+    input.leftAxisModel?.isNormalized,
+  );
   const yAxisTickWidths: number[] = panelAxisModels.map((axisModel) =>
     getYAxisTicksWidth(
       axisModel,
       input.yAxisScaleTransforms,
       settings,
       renderingContext,
+      goalValue,
     ),
   );
 
