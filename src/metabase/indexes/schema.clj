@@ -22,13 +22,13 @@
   [:string {:min 1 :max 255}])
 
 (mr/def ::column
-  [:map
+  [:map {:closed true}
    [:name ::column-name]
    [:direction {:optional true} [:enum :asc :desc]]])
 
 (mr/def ::classical-index
   "Postgres / MySQL / SQL Server secondary index."
-  [:map
+  [:map {:closed true}
    [:kind [:enum :btree :hash :gin :gist :brin :spgist :fulltext :spatial
            :clustered :nonclustered :columnstore]]
    [:name ::index-name]
@@ -38,7 +38,7 @@
 
 (mr/def ::sortkey
   "Redshift sort key, inline."
-  [:map
+  [:map {:closed true}
    [:kind [:= :sortkey]]
    [:style [:enum :compound :interleaved]]
    [:columns [:vector {:min 1} ::column]]])
@@ -46,7 +46,7 @@
 (mr/def ::distkey
   "Redshift distribution, inline. Only `:key` uses a column (the one DISTKEY column); `:all`/`:even` take none."
   [:and
-   [:map
+   [:map {:closed true}
     [:kind    [:= :distkey]]
     [:style   [:enum :key :all :even]]
     [:columns {:optional true} [:vector {:min 1 :max 1} ::column]]]
@@ -55,21 +55,21 @@
 
 (mr/def ::clustering
   "Snowflake (standalone) / BigQuery (inline) clustering. `:name` is required for the standalone form."
-  [:map
+  [:map {:closed true}
    [:kind [:= :clustering]]
    [:name {:optional true} ::index-name]
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::order-by
   "ClickHouse ORDER BY, inline."
-  [:map
+  [:map {:closed true}
    [:kind [:= :order-by]]
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::skip-index
   "ClickHouse data-skipping index, standalone. Only arg-free types; the parameterized ones need type-args the form
   can't supply yet."
-  [:map
+  [:map {:closed true}
    [:kind [:= :skip-index]]
    [:name ::index-name]
    [:columns [:vector {:min 1} ::column]]

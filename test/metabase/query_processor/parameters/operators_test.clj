@@ -48,14 +48,14 @@
 (deftest ^:parallel to-clause-test-4b
   (testing "string operations"
     (testing "with options"
-      (is (=? [:starts-with {:case-insensitive false} [:field {:source-field 5} 26] "foo"]
+      (is (=? [:starts-with {:case-sensitive false} [:field {:source-field 5} 26] "foo"]
               (params.ops/to-clause {:type   :string/starts-with
                                      :target [:dimension
                                               [:field
                                                26
                                                {:source-field 5}]]
                                      :value  ["foo"]
-                                     :options {:case-insensitive false}}))))))
+                                     :options {:case-sensitive false}}))))))
 
 (deftest ^:parallel to-clause-test-4c
   (testing "string operations"
@@ -72,14 +72,14 @@
   (testing "string operations"
     (testing "with multiple arguments"
       (testing "with options"
-        (is (=? [:starts-with {:case-insensitive false} [:field {:source-field 5} 26] "foo" "bar"]
+        (is (=? [:starts-with {:case-sensitive false} [:field {:source-field 5} 26] "foo" "bar"]
                 (params.ops/to-clause {:type   :string/starts-with
                                        :target [:dimension
                                                 [:field
                                                  26
                                                  {:source-field 5}]]
                                        :value  ["foo" "bar"]
-                                       :options {:case-insensitive false}})))))))
+                                       :options {:case-sensitive false}})))))))
 
 (deftest ^:parallel to-clause-test-5
   (testing "string operations"

@@ -261,6 +261,15 @@
   ([arg msg]
    (check arg [400 msg])))
 
+(defn check-no-dropped-entries
+  "Throw a 400 when request decoding dropped entries from a map whose keys are not declared. `raw` is the map as the
+  client sent it, taken from the request body; `decoded` is the map the endpoint received. The request decoder removes
+  an entry of such a map whose key or value does not fit the schema instead of rejecting the request, so an endpoint
+  that must not silently ignore a bad entry compares the two."
+  [raw decoded]
+  (check-400 (or (not (map? raw)) (= (count raw) (count decoded)))
+             (tru "The request contains keys or values this endpoint does not accept.")))
+
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
   [404 (deferred-tru "Not found.")])

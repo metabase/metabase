@@ -22,9 +22,11 @@
                             :name               "NAME"
                             :display_name       "Name"
                             :base_type          :type/Text
+                            :effective_type     :type/Text
                             :semantic_type      :type/Name
                             :has_field_values   :list
-                            :fk_target_field_id nil}}
+                            :fk_target_field_id nil
+                            :settings           nil}}
            (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :id))
                (t2/hydrate :name_field)
                mt/derecordize))))
@@ -98,18 +100,22 @@
                            :display_name       "ID"
                            :name               "ID"
                            :base_type          :type/BigInteger
+                           :effective_type     :type/BigInteger
                            :semantic_type      :type/PK
                            :has_field_values   :none
                            :fk_target_field_id nil
+                           :settings           nil
                            :target nil
                            :name_field         {:id                (mt/id :venues :name)
                                                 :table_id          (mt/id :venues)
                                                 :display_name      "Name"
                                                 :name              "NAME"
                                                 :base_type         :type/Text
+                                                :effective_type    :type/Text
                                                 :semantic_type     :type/Name
                                                 :has_field_values  :list
-                                                :fk_target_field_id nil}
+                                                :fk_target_field_id nil
+                                                :settings          nil}
                            :dimensions         []}]}
              (-> (t2/hydrate card :param_fields)
                  :param_fields
@@ -132,9 +138,11 @@
                                                                :display_name      "Name"
                                                                :name              "NAME"
                                                                :base_type         :type/Text
+                                                               :effective_type    :type/Text
                                                                :semantic_type     :type/Name
                                                                :has_field_values  :list
-                                                               :fk_target_field_id nil}
+                                                               :fk_target_field_id nil
+                                                               :settings          nil}
                                           :dimensions         []}]}
               (-> (t2/hydrate dashboard :param_fields)
                   :param_fields

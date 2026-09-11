@@ -34,10 +34,15 @@
 (mr/def ::download-jar-urls
   [:sequential ::download-jar-url])
 
+(mr/def ::driver
+  "The app DB an advisory's `:matching_query` is written for. `:default` is the fallback used when there is no query
+  for the app DB in use."
+  [:enum :default :h2 :mysql :postgres])
+
 (mr/def ::matching-query
   "HoneySQL query keyed by dialect. nil means affects all instances.
    Stored as EDN to preserve keywords that HoneySQL requires for identifiers/operators."
-  [:maybe [:map-of :keyword :map]])
+  [:maybe [:map-of ::driver ms/OpaqueJSONObject]])
 
 (mr/def ::security-advisory.matching-query
   "The `:matching_query` column of a SecurityAdvisory, decoded."

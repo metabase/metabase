@@ -40,7 +40,10 @@
   (driver.conn/with-write-connection
     (try
       (let [parameters (for [parameter (:parameters action)]
-                         (assoc parameter :value (get request-parameters (:id parameter))))
+                         ;; the query gets the parameter values, not the frontend's widget settings
+                         (-> parameter
+                             (select-keys [:id :type :target :slug :name :default :required :options])
+                             (assoc :value (get request-parameters (:id parameter)))))
             query      (-> query
                            (assoc :parameters parameters))]
         (binding [qp.perms/*card-id* model-id]
