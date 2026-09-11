@@ -119,13 +119,16 @@
   [query store]
   (if (and (map? query) (:database query))
     (try
-      (let [normalized (lib-be/normalize-query query)]
-        (export-gated-query-for-llm normalized
-                                    (lib-be/application-database-metadata-provider (:database normalized))
-                                    store))
+      (let [normalized (lib-be/normalize-query query)
+            mp         (lib-be/application-database-metadata-provider (:database normalized))]
+        (or (repr-data->llm-block (repr.resolve/export-query mp normalized store))
+            (query-edn-fallback normalized)))
       (catch Exception e
-        (log/debugf "Failed to normalize query for LLM, rendering it unresolved: %s" (ex-message e))
-        (export-gated-query-for-llm query nil store)))
+        (log/debugf "Failed to export query for LLM: %s" (ex-message e))
+        ;; `query` rather than the normalized form, so a failure here renders what the caller
+        ;; handed us
+        (when-not (= 403 (:status-code (ex-data e)))
+          (query-edn-fallback query))))
     (export-gated-query-for-llm query nil store)))
 
 (defn transform-query->text

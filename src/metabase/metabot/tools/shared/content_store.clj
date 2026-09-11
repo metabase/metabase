@@ -162,7 +162,9 @@
   the check does, so the result comes back rather than leaving the export to repeat it."
   [audited? resolved]
   (try
-    (let [normalized                 (lib-be/normalize-query resolved)
+    ;; strict, or a query that will not parse degrades to {} and reads as a denial instead of
+    ;; reaching the catch below (it also logs at ERROR on the way past)
+    (let [normalized                 (lib-be/normalize-query nil resolved {:strict? true})
           database-id                (:database normalized)
           {:keys [table card field]} (exported-entity-ids normalized)]
       (when (and (pos-int? database-id)

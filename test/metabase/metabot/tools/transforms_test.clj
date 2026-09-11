@@ -83,6 +83,20 @@
       (is (str/includes? output ":source-card 13371337")
           "the card id is still a number, so nothing was resolved to a name"))))
 
+(deftest get-transform-details-unpermissionable-native-source-test
+  (testing "native SQL stays out when the check could not run, since its table and column names are
+           already plain text and having no provider hides nothing"
+    (let [output (query-transform-details!
+                  {:database (mt/id)
+                   :type     :native
+                   :native   {:query         "SELECT * FROM {{snip}}"
+                              :template-tags {"snip" {:type         :snippet
+                                                      :name         "snip"
+                                                      :display-name "snip"
+                                                      :snippet-id   Integer/MAX_VALUE}}}})]
+      (is (not (str/includes? output "<query>")))
+      (is (not (str/includes? output "SELECT"))))))
+
 (deftest get-transform-details-source-permission-test
   (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
            with query access to another table in its database, so the tool never reaches the source"

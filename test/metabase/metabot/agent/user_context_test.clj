@@ -6,7 +6,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
-   [metabase.metabot.query-export :as query-export]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
@@ -593,12 +592,12 @@
                                        :perms/manage-table-metadata :yes)
           (mt/with-test-user :rasta
             (is (not (mi/can-query? :model/Database (mt/id))))
-            (is (query-export/exportable-query? query)))))
+            (is (some? (shared.content-store/query-for-export query false))))))
       (testing "and not exportable when the card is not readable"
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-no-data-perms-for-all-users!
             (mt/with-test-user :rasta
-              (is (not (query-export/exportable-query? query))))))))))
+              (is (nil? (shared.content-store/query-for-export query false))))))))))
 
 (deftest ^:parallel adhoc-viewing-context-includes-query-test
   (testing "adhoc viewing context renders the query so the model can see the chart"
