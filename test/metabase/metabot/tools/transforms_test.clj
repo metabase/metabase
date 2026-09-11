@@ -77,8 +77,8 @@
   (testing "a source query whose permissions cannot be calculated at all still renders, since that is
            not a refusal - it just renders unresolved, naming nothing the user may not see"
     (let [output (query-transform-details! {:database (mt/id)
-                                           :type     :query
-                                           :query    {:source-table "card__13371337"}})]
+                                            :type     :query
+                                            :query    {:source-table "card__13371337"}})]
       (is (str/includes? output "<query>"))
       (is (str/includes? output ":source-card 13371337")
           "the card id is still a number, so nothing was resolved to a name"))))
