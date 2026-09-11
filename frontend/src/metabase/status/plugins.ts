@@ -1,4 +1,4 @@
-import { definePluginSlot } from "metabase/plugins";
+import { definePluginSlot } from "metabase/plugin-slots";
 
 import { _FileUploadErrorModal } from "./components/FileUploadStatusLarge/FileUploadErrorModal";
 

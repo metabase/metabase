@@ -1,5 +1,6 @@
 import type React from "react";
 
+import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
@@ -11,8 +12,6 @@ import type {
   IconName,
   MetabotInfo,
 } from "metabase-types/api";
-
-import { definePluginSlot } from "../slot";
 
 export type RevisionOrModerationEvent = {
   title: string;

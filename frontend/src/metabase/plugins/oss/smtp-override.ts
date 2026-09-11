@@ -1,8 +1,7 @@
 import type { ComponentType } from "react";
 
+import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-
-import { definePluginSlot } from "../slot";
 
 const getDefaultPluginSmtpOverride = () => ({
   CloudSMTPConnectionCard: PluginPlaceholder,
