@@ -72,6 +72,34 @@
 
 (def ^:private ^{:arglists '([resource-name])} load-inline-js (memoize/memo load-inline-js*))
 
+(defn- load-ee-plugin-manifest* []
+  (some-> (io/resource "frontend_client/app/dist/ee-plugin-manifest.json") slurp json/decode))
+
+(def ^:private ^{:arglists '([])} load-ee-plugin-manifest
+  "The token features and chunk files of each enterprise plugin the frontend loads on demand, as the build wrote
+  them. Only enterprise builds have one."
+  (memoize/memo load-ee-plugin-manifest*))
+
+(defn- ee-plugin-files
+  "Files of the enterprise plugins the frontend will load for `token-features`, the same `token-features` map it is
+  handed in the bootstrap JSON. A plugin loads when any of its features is enabled; see
+  `metabase-enterprise/plugins.ts`."
+  [token-features]
+  (->> (vals (load-ee-plugin-manifest))
+       (filter (fn [{:strs [features]}]
+                 (some #(get token-features (keyword %)) features)))
+       (mapcat #(get % "files"))
+       distinct))
+
+(defn- ee-plugin-preloads
+  "`<link rel=\"preload\">` tags for those files, so they download alongside the app bundle rather than after it."
+  [token-features]
+  (str/join "\n    "
+            (for [file (ee-plugin-files token-features)]
+              (format "<link rel=\"preload\" href=\"app/dist/%s\" as=\"%s\">"
+                      (hiccup.util/escape-html file)
+                      (if (str/ends-with? file ".css") "style" "script")))))
+
 (defn- load-template [path variables]
   (try
     (stencil/render-file path variables)
@@ -87,6 +115,7 @@
         should-load-locale-params? (not embeddable?)]
     {:bootstrapJS            (load-inline-js "index_bootstrap")
      :bootstrapJSON          (escape-script (json/encode public-settings))
+     :eePluginPreloads       (ee-plugin-preloads (:token-features public-settings))
      :assetOnErrorJS         (load-inline-js "asset_loading_error")
      :userLocalizationJSON   (escape-script (load-localization (when should-load-locale-params? (:locale params))))
      :siteLocalizationJSON   (escape-script (load-localization (system/site-locale)))
