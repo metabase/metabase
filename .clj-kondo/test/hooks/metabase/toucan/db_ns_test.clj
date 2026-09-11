@@ -11,7 +11,11 @@
   [findings]
   (filter #(= :metabase/t2-query-namespace (:type %)) findings))
 
-(defn- lint-query-call [form ns-sym & [filename modules]]
+(defn- lint-query-call
+  "Run the hook for `form` in `ns-sym` and return its findings.
+
+  Accepts optional `filename` and `:metabase/modules` values."
+  [form ns-sym & [filename modules]]
   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}
                                                                :metabase/unsafe-app-db-query  {:level :warning}}}
                                         :ignores    (atom nil)

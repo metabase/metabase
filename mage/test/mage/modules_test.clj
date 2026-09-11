@@ -323,9 +323,8 @@
                   (pr-str (sort modules-triggering-drivers)))))))
 
 (deftest test-files-mark-modules-changes
-  (testing "if you change a test in a module, that module is affected"
-    ;; note in the future, this won't be all dependent modules see
-    ;; https://linear.app/metabase/issue/DEV-1487/treat-changed-test-namespaces-as-module-only-changes
+  (testing "a changed test marks its module as affected"
+    ;; DEV-1487 will stop propagating test-only changes to dependents.
     (let [changed-file "enterprise/backend/test/metabase_enterprise/transforms_python/api_test.clj"]
       (is (= '#{enterprise/transforms.python}
              (mage.modules/updated-files->updated-modules [changed-file])))

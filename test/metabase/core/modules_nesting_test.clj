@@ -408,7 +408,7 @@
                                                     :api       :any}
                                      'caller       {:uses :any
                                                     :api  :any}}}]
-      (is (= (str "Do not use -rest modules (actions.rest) in non-rest modules (caller) "
+      (is (= (str "Do not use REST modules (actions.rest) in non-REST modules (caller) "
                   "-- move things from actions.rest to actions if needed")
              (modules/usage-error config 'caller 'metabase.actions-rest.api))))))
 

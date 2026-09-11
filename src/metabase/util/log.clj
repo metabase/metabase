@@ -150,8 +150,7 @@
                     (memoize ns->team*)
                     (constantly nil))]
   (defn ns->team
-    "Returns a string of the team for a namespace symbol, or nil. We skip a few chatty namespaces like
-  `metabase.server.middleware.log` which logs requests."
+    "Return the team responsible for `logger-ns`, or `nil` when attribution is disabled or skipped."
     [logger-ns]
     (let [team (attribution logger-ns)]
       (when (and team (not (identical? team ::skip)))

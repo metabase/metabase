@@ -18,9 +18,9 @@
 
 (set! *warn-on-reflection* true)
 
-;; Many functions in this namespace re-parse the same files over and over again during testing, so introduce a
-;; mechanism for bounded caching of those parsed files.
-(def ^:dynamic *parsed-file-cache* nil)
+(def ^:dynamic *parsed-file-cache*
+  "Bind to a cache during tests that repeatedly parse the same files."
+  nil)
 
 (def ^:private File
   "A path string or `java.io.File`, as accepted by `rewrite-clj.parser/parse-file-all` and friends."
@@ -29,7 +29,7 @@
    [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]])
 
 (defn- parse-file-all
-  "Calls `rewrite-.clj.parser/parse-file-all`, but first checks in `*parsed-file-cache*` if it is bound."
+  "Parse `file`, using `*parsed-file-cache*` when it is bound."
   [file]
   (if *parsed-file-cache*
     (or (@*parsed-file-cache* file)
@@ -45,8 +45,7 @@
                     (= (:value fst) 'comment)))))))
 
 (defn- walk-parsed-ignore-comments!
-  "Simple fast recursive walker over `tree` which should be a file parsed with rewrite-clj. The passed consumer function
-  `f` should use side-effects to accumulate the results."
+  "Walk a rewrite-clj tree, skipping comments. The consumer `f` may accumulate results through side effects."
   [f tree]
   (letfn [(walk [node]
             (when-not (skip-node? node)
@@ -66,9 +65,9 @@
       getParentFile)) ; /home/cam/metabase/
 
 (mu/defn- source-root :- (ms/InstanceOfClass java.io.File)
-  "This is basically a non-hardcoded version of
+  "Locate the repository's `src` directory without hard-coding its absolute path.
 
-    (io/file \"/home/cam/metabase/src/metabase\")"
+  Equivalent to `(io/file \"/path/to/metabase/src\")`."
   ^java.io.File []
   (io/file (str (.getAbsolutePath (project-root-directory)) "/src")))
 
@@ -101,7 +100,7 @@
      clojure.core/requiring-resolve})
 
 (defn- find-required-namespaces
-  "Find all `(require ...)` forms in a file and return symbols it they load."
+  "Find all `(require ...)` forms in a file and return the namespaces they load."
   [file]
   (let [acc (atom #{})]
     (walk-parsed-ignore-comments!
@@ -419,7 +418,7 @@
       module-x-ns->module-y-ns))))
 
 (defn full-dependencies
-  "Like [[dependencies]] but also includes transient dependencies."
+  "Like [[module-dependencies]], but including transitive dependencies."
   [deps]
   (let [deps-graph  (module-dependencies deps)
         ;; Keep the seed set so cycles converge instead of oscillating.
@@ -433,7 +432,9 @@
                  [k (expand-deps v)]))
           deps-graph)))
 
-(defn module-deps-count [deps]
+(defn module-deps-count
+  "Map each module to the number of modules in its transitive dependency closure."
+  [deps]
   (into (sorted-map)
         (map (fn [[k v]]
                [k (count v)]))
@@ -473,6 +474,7 @@
    diff))
 
 (defn kondo-config-diff
+  "Return the difference between declared module boundaries and dependencies found in source."
   ([]
    (kondo-config-diff (dependencies)))
 
@@ -664,8 +666,7 @@
   (keys (all-module-deps-paths deps module)))
 
 (defn test-filenames->relevant-source-filenames
-  "Given a collection of `test-filenames`, return the set of source filenames (relative to the project root directory)
-  that when changed should trigger these tests."
+  "Source files whose changes should run `test-filenames`, relative to the project root."
   ([test-filenames]
    (let [prefix->module (modules/build-prefix->module (kondo-config))]
      (test-filenames->relevant-source-filenames (dependencies prefix->module) prefix->module test-filenames)))
@@ -730,7 +731,11 @@
 (def ^:private test-source-file-extensions
   [".clj" ".cljc" ".cljs" ".bb"])
 
-(defn- module->test-path-prefix [modules-config module]
+(defn- module->test-path-prefix
+  "The path prefix for `module`'s test file and directory.
+
+  For example, `lib.schema` maps to `test/metabase/lib/schema`."
+  [modules-config module]
   (let [ns-prefix (modules/module-ns-prefix modules-config module)]
     (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
          "test/"
@@ -745,7 +750,10 @@
         test-source-file-extensions))
 
 (mu/defn- module->test-files :- [:set :string]
-  "Return the set of test filenames associated with a `module`."
+  "Test files owned by `module`.
+
+  The two-argument form builds a prefix map. Pass a shared map to the
+  three-argument form when resolving several modules."
   ([modules-config :- ModulesConfig
     module-sym :- :symbol]
    (module->test-files modules-config (modules/build-prefix->module modules-config) module-sym))
@@ -765,8 +773,7 @@
            nested-tests))))
 
 (defn source-filenames->relevant-test-filenames
-  "Given a collection of `source-filenames`, return the set of test filenames (relative to the project root directory)
-  that we should re-run when any of `source-filenames` change."
+  "Tests to run when `source-filenames` change, relative to the project root."
   ([source-filenames]
    (let [modules-config (kondo-config)
          prefix->module (modules/build-prefix->module modules-config)]
@@ -874,9 +881,10 @@
       (conj :not-imported))))
 
 (defn model-references-by-module
-  "Scan all source files and build a map of `{module => #{:model/X ...}}` — the set of model keywords
-  referenced in each module's source files. Exempt namespaces (e.g. `metabase.models.resolution`) are excluded.
-  Includes all modules (including bypass modules) — callers filter as needed."
+  "Map each module to the model keywords referenced by its source files.
+
+  Excludes exempt namespaces, but includes modules with boundary bypasses;
+  callers filter those when needed."
   []
   (let [prefix->mod (modules/build-prefix->module (kondo-config))]
     (reduce

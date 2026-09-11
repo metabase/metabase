@@ -38,7 +38,7 @@
 (def ^:private teams-to-reassign #{"Admin Webapp" "DashViz"})
 
 (deftest all-modules-have-teams-test
-  (testing "All modules should have a valid :team owner"
+  (testing "every module has a valid effective :team owner"
     (let [teams  (teams)
           config (modules-config)]
       (doseq [module (keys config)
@@ -265,7 +265,7 @@
           used-module                          (when (set? uses)
                                                  uses)]
     (is (not (rest-module? used-module))
-        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
+        (format "Do not use REST modules (%s) in non-REST modules (%s) -- move things from %s to %s if needed"
                 used-module
                 module
                 used-module

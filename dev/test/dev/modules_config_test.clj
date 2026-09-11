@@ -148,7 +148,7 @@
 ;;;; ---------------------------------------------------------------------------
 
 (deftest ^:parallel structural-warnings-test
-  (testing "a desired module absent from the file is reported (needs a human-assigned :team)"
+  (testing "a desired module absent from the file is reported for human structural decisions"
     (let [{:keys [warnings]} (mc/rewrite-config "{:metabase/modules {a {:uses #{}}}}"
                                                 '{a {:uses #{}} b {:uses #{}}})]
       (is (some #(str/includes? % "b") warnings))))

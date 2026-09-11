@@ -1,12 +1,14 @@
 (ns hooks.metabase.toucan.db-ns
-  "Lint that application database query calls -- Toucan 2's `t2/select`, `t2/query`, `t2/insert!`, `t2/update!`,
-  `t2/delete!` and friends, plus the `metabase.app-db.core` wrappers around them such as `mdb/query` and
-  `mdb/update-or-insert!` -- live in a module's `db` namespace, i.e. `metabase[-enterprise].<module>.db` (or `metabase.driver.<driver>.db` for
-  driver modules). Every other namespace in a module goes through those functions instead of talking to the
-  application database directly.
+  "Lints application database calls: Toucan 2 functions and the wrappers in `metabase.app-db.core`.
 
-  Registered as an `:analyze-call` hook on each of those functions in `.clj-kondo/config.edn`. The hook
-  returns its input unchanged so Kondo's normal analysis of the call (arity, var usage) still runs."
+  Outside a module's `db` namespace, any such call is a `:metabase/t2-query-namespace` finding. A module's
+  `db` namespace is its effective `:ns-prefix` plus `.db`, such as `metabase.metabot.llm.db`. Driver
+  namespaces and test files are exempt.
+
+  Inside one, read calls are checked for `:metabase/unsafe-app-db-query`: values must be `[:auto/param ...]`
+  markers, and the query a map rather than `:column value` pairs.
+
+  The hook is registered in `.clj-kondo/config.edn` for each database function."
   (:require
    [clj-kondo.hooks-api :as hooks]
    [hooks.common.modules :as modules]))
@@ -15,7 +17,9 @@
   "Matches `metabase.driver.<driver>.db`; individual drivers are not modules."
   #"^metabase\.driver\.[^.]+\.db$")
 
-(defn- db-namespace? [config ns-sym]
+(defn- db-namespace?
+  "Whether `ns-sym` is an allowed database namespace."
+  [config ns-sym]
   (let [ns-str (name ns-sym)]
     (boolean
      ;; Resolve ownership first: a nested `.db` name alone does not make a module.
@@ -24,8 +28,10 @@
          (re-matches driver-db-namespace ns-str)))))
 
 (defn- test-file?
-  "Whether `filename` is in a test source tree. Test namespaces are exempt through the `test-namespaces` group in
-  `config.edn`, but helper namespaces like `metabase.sso.test-helpers` don't match that group's pattern."
+  "Whether `filename` is in a test tree.
+
+  The filename check also covers helpers whose namespace does not match the
+  configured test-namespace pattern."
   [filename]
   (boolean (and filename (re-find #"(?:^|/)test/" filename))))
 
@@ -124,8 +130,10 @@
             :type :metabase/unsafe-app-db-query))))
 
 (defn lint-query-call
-  "Register a `:metabase/t2-query-namespace` finding when a Toucan 2 query call appears outside a `<module>.db`
-  namespace."
+  "Report database calls outside their module's `db` namespace, and unsafe read queries inside one.
+
+  Also runs the warehouse-schema-overlay read lint. Returns `input` unchanged so Kondo can continue its
+  normal analysis."
   [{:keys [node ns filename] :as input}]
   (when (and ns
              (not (db-namespace? (modules/config input) ns))
@@ -133,7 +141,7 @@
     (let [fn-node (first (:children node))]
       (hooks/reg-finding!
        (assoc (meta fn-node)
-              :message (format "Application database query calls like `%s` must live in metabase[-enterprise].<module>.db (or metabase.driver.<driver>.db) namespaces"
+              :message (format "Application database calls like `%s` belong in their module's `db` namespace"
                                (hooks/sexpr fn-node))
               :type :metabase/t2-query-namespace))))
   ((requiring-resolve 'hooks.metabase.warehouse-schema-overlay.table-or-field-query/lint-read) input)

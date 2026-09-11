@@ -23,9 +23,15 @@
   '#{query-processor transforms
      enterprise/transforms enterprise/transforms.python})
 
-;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
-;;; everything that depends on that module directly or indirectly in `src`
-(defn- file->ns-symbol [filename]
+;;; TODO (Cam 2025-11-07): A test-file change should run only that module's tests,
+;;; not the tests of every source dependent. See DEV-1487.
+
+(defn- file->ns-symbol
+  "Infer the namespace of a file under a backend source or test root.
+
+  Also works for non-Clojure resources. For example,
+  `src/metabase/lib_be/core.clj` becomes `metabase.lib-be.core`."
+  [filename]
   (when (re-find #"^(?:(?:src|test)/metabase|enterprise/backend/(?:src|test)/metabase_enterprise)/" filename)
     (-> filename
         (str/replace #"^(?:enterprise/backend/)?(?:src|test)/" "")
@@ -62,7 +68,11 @@
 (def ^:private backend-test-source-file-extensions
   [".clj" ".cljc"])
 
-(defn- module->test-path-prefix [modules-config module]
+(defn- module->test-path-prefix
+  "The path prefix for `module`'s test file and directory.
+
+  For example, `lib.schema` maps to `test/metabase/lib/schema`."
+  [modules-config module]
   (let [ns-prefix (modules/module-ns-prefix modules-config module)]
     (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
          "test/"
@@ -89,10 +99,10 @@
           test-files)))
 
 (defn- dependencies
-  "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
+  "Map each module to the modules in its `:uses` config."
   []
   (let [config (-> (read-modules-config)
-                   ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
+                   ;; This module comes from a library, not this repository.
                    (dissoc 'connection-pool))]
     (into (sorted-map)
           (map (fn [[k config]]
@@ -127,7 +137,7 @@
       new-deps))))
 
 (def driver-affecting-overrides
-  "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
+  "Modules whose changes should not trigger driver tests, even when the dependency graph reaches driver code."
   '#{metabot.agent-api
      analytics
      analytics.interface
@@ -218,7 +228,7 @@
           modules)))
 
 (defn- unaffected-modules
-  "Return the set of modules that are unaffected "
+  "Modules with no direct or transitive dependency on the changed modules."
   [deps modules]
   (set/difference
    (into (sorted-set) (keys deps))
@@ -232,10 +242,10 @@
     (println "These modules have changed:" (pr-str updated))
     (println)
     (println)
-    (println "These are all the modules are unaffected by these changes:" (pr-str unaffected))
+    (println "These modules are unaffected by the changes:" (pr-str unaffected))
     (println)
     (println)
-    (println "(By unaffected, this means these modules do not have a direct or indirect dependency on the modules that have been changed.)")
+    (println "An unaffected module has no direct or transitive dependency on a changed module.")
     (println)
     (println)
     (println (if driver-deps-affected?
@@ -349,8 +359,7 @@
     (u/exit 0)))
 
 (defn- changes-important-file-for-drivers?
-  "Whether we should always run driver tests because `updated-files` touches something important like
-  `deps.edn`."
+  "Whether `updated-files` contains a change that always requires driver tests, such as `deps.edn`."
   [updated-files]
   (some (fn [filename]
           (when (or (str/includes? filename "deps.edn")

@@ -6,13 +6,17 @@
   (:require
    [clojure.string :as str]))
 
-(defn ignored-namespace? [config ns-symb]
+(defn ignored-namespace?
+  "Whether `ns-symb` matches one of the configured module-linter exclusions."
+  [config ns-symb]
   (some
    (fn [pattern-str]
      (re-find (re-pattern pattern-str) (str ns-symb)))
    (:ignored-namespace-patterns config)))
 
-(defn config [{:keys [config], :as _hook-input}]
+(defn config
+  "Extract the module-linter config from a hook input."
+  [{:keys [config], :as _hook-input}]
   (merge (get-in config [:linters :metabase/modules])
          (select-keys config [:metabase/modules])))
 
@@ -95,7 +99,9 @@
   (some #(get-in modules [% :team])
         (take-while some? (iterate #(parent-module modules %) module))))
 
-(defn- rest-module? [module]
+(defn- rest-module?
+  "Whether `module` is a REST module: `x.rest`, or the deprecated `x-rest`."
+  [module]
   (re-find #"[.-]rest$" (str module)))
 
 (defn- exports-child?
@@ -152,8 +158,10 @@
   (resolve-module (prefix->module config) ns-symb))
 
 (defn module-api-namespaces
-  "Set of API namespace symbols for a given module. `:any` means you can use anything, there are no API namespaces for
-  this module (yet). If unspecified, the defaults are `<prefix>.api`, `<prefix>.core`, and `<prefix>.init`."
+  "The module's public namespaces, or `nil` for `:api :any`.
+
+  An omitted `:api` defaults to the module's `.api`, `.core`, and `.init`
+  namespaces."
   [modules module]
   (let [module-config (get-in modules [module :api])]
     (cond
@@ -170,19 +178,23 @@
           (symbol (str ns-prefix ".init"))}))))
 
 (defn- module-friends
+  "Modules allowed to use any namespace from `module`, not only its API."
   [config module]
-  "Set of modules that are `:friends` of `module`, i.e. allowed to use *any* namespace from the module, not just the
-  designated [[module-api-namespaces]]."
   (set (get-in config [:metabase/modules module :friends])))
 
 (defn allowed-modules
-  "Set of namespace symbols that `module` is allowed to use. `:any` means it's allowed to use anything."
+  "The value of `module`'s `:uses`: a collection of modules or `:any`."
   [config module]
   (get-in config [:metabase/modules module :uses]))
 
-(defn allowed-module? [config module required-module]
-  (let [allowed-modules (allowed-modules config module)]
+(defn allowed-module?
+  "Whether `current-module`'s `:uses` is `:any` or names `required-module` exactly.
+
+  For example, `:uses #{lib}` does not include `lib.schema`."
+  [config current-module required-module]
+  (let [allowed-modules (allowed-modules config current-module)]
     (or (= allowed-modules :any)
+        ;; Avoid vector index semantics if a hand-edited config uses a vector.
         (contains? (set allowed-modules) required-module))))
 
 (defn- allowed-module-namespace? [config current-module ns-symb]
@@ -202,8 +214,9 @@
   (str/ends-with? module "core"))
 
 (defn usage-error
-  "Find usage errors when a `required-namespace` is required in the `current-module`. Returns a string describing the
-  error type if there is one, otherwise `nil` if there are no errors."
+  "Explain why a require crosses a forbidden module boundary.
+
+  Returns `nil` when the require is allowed or outside the module system."
   [config current-module required-namespace]
   ;; ignore stuff not in a module i.e. non-Metabase stuff.
   (when-let [required-module (module config required-namespace)]
@@ -226,7 +239,7 @@
         ;; namespaces
         (and (not ((some-fn rest-module? routes-module? core-module?) current-module))
              (rest-module? required-module))
-        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
+        (format "Do not use REST modules (%s) in non-REST modules (%s) -- move things from %s to %s if needed"
                 required-module
                 current-module
                 required-module
