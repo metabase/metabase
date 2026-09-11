@@ -5,6 +5,7 @@ import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_AUDIT,
+  lazyPluginComponent,
 } from "metabase/plugins";
 import { Menu } from "metabase/ui";
 import { isInternalUser } from "metabase/urls";
@@ -16,8 +17,6 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { User } from "metabase-types/api";
 
-import { InsightsLink } from "./components/InsightsLink";
-import { InsightsMenuItem } from "./components/InsightsMenuItem";
 import { getUserMenuRoutes } from "./routes";
 import { isAuditDb } from "./utils";
 
@@ -44,8 +43,16 @@ export function initializePlugin() {
     PLUGIN_ADMIN_USER_MENU_ROUTES.push(getUserMenuRoutes);
     PLUGIN_AUDIT.isEnabled = true;
     PLUGIN_AUDIT.isAuditDb = isAuditDb;
-    PLUGIN_AUDIT.InsightsLink = InsightsLink;
-    PLUGIN_AUDIT.InsightsMenuItem = InsightsMenuItem;
+    PLUGIN_AUDIT.InsightsLink = lazyPluginComponent(() =>
+      import("./components/InsightsLink").then(
+        ({ InsightsLink }) => InsightsLink,
+      ),
+    );
+    PLUGIN_AUDIT.InsightsMenuItem = lazyPluginComponent(() =>
+      import("./components/InsightsMenuItem").then(
+        ({ InsightsMenuItem }) => InsightsMenuItem,
+      ),
+    );
     PLUGIN_AUDIT.isAiAuditingEnabled = true;
     PLUGIN_AUDIT.getAiAuditingRoutes = hasPremiumFeature("ai_controls")
       ? getAiAuditingRoutes

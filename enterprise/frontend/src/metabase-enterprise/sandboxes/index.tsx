@@ -18,6 +18,7 @@ import {
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
   type PermissionOption,
+  lazyPluginComponent,
 } from "metabase/plugins";
 import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -29,7 +30,6 @@ import type {
 import { DataPermissionValue } from "metabase-types/api";
 
 import sandboxingReducer from "./actions";
-import { LoginAttributesWidget } from "./components/LoginAttributesWidget/LoginAttributesWidget";
 import { getSandboxedTableWarningModal } from "./confirmations";
 import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
@@ -86,7 +86,12 @@ const getEditSegmentedAccessPostAction = (
  */
 export function initializePlugin() {
   if (hasPremiumFeature("sandboxes")) {
-    PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes = LoginAttributesWidget;
+    PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes = lazyPluginComponent(
+      () =>
+        import("./components/LoginAttributesWidget/LoginAttributesWidget").then(
+          ({ LoginAttributesWidget }) => LoginAttributesWidget,
+        ),
+    );
 
     PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
       modalRoute(":tableId/segmented", EditSandboxingModal),

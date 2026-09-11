@@ -7,14 +7,12 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
+  lazyPluginComponent,
 } from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CollectionRow } from "./components/CollectionRow";
-import { MoveSnippetModal } from "./components/MoveSnippetModal";
-import { SnippetCollectionPermissionsModal } from "./components/SnippetCollectionPermissionsModal";
-import { SnippetCollectionPickerModal } from "./components/SnippetCollectionPickerModal";
 
 /**
  * Initialize snippets plugin features that depend on hasPremiumFeature.
@@ -23,10 +21,23 @@ export function initializePlugin() {
   if (hasPremiumFeature("snippet_collections")) {
     // Add new menu option
     PLUGIN_SNIPPET_FOLDERS.isEnabled = true;
-    PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal = SnippetCollectionPickerModal;
-    PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal =
-      SnippetCollectionPermissionsModal;
-    PLUGIN_SNIPPET_FOLDERS.MoveSnippetModal = MoveSnippetModal;
+    PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal = lazyPluginComponent(() =>
+      import("./components/SnippetCollectionPickerModal").then(
+        ({ SnippetCollectionPickerModal }) => SnippetCollectionPickerModal,
+      ),
+    );
+    PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal = lazyPluginComponent(
+      () =>
+        import("./components/SnippetCollectionPermissionsModal").then(
+          ({ SnippetCollectionPermissionsModal }) =>
+            SnippetCollectionPermissionsModal,
+        ),
+    );
+    PLUGIN_SNIPPET_FOLDERS.MoveSnippetModal = lazyPluginComponent(() =>
+      import("./components/MoveSnippetModal").then(
+        ({ MoveSnippetModal }) => MoveSnippetModal,
+      ),
+    );
     PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push((snippetSidebar) => ({
       icon: "folder",
       name: t`New folder`,

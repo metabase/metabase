@@ -21,7 +21,9 @@ export type AuthSettingsPageProps = {
 const getDefaultPluginAuthProviders = () => ({
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder<AuthSettingsPageProps>,
-  UserProvisioningSettings: PluginPlaceholder,
+  // `PluginPlaceholder` is generic over the props it is rendered with, which a
+  // slot filled by `lazyPluginComponent` does not satisfy. This one takes none.
+  UserProvisioningSettings: PluginPlaceholder as ComponentType,
   settingsSAMLForm: pluginPlaceholderRoute,
   settingsJWTForm: pluginPlaceholderRoute,
   settingsOIDCForm: pluginPlaceholderRoute,

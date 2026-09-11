@@ -1,7 +1,8 @@
-import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
+import {
+  PLUGIN_MODEL_PERSISTENCE,
+  lazyPluginComponent,
+} from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-
-import { ModelCacheToggle } from "./components/ModelCacheControl";
 
 /**
  * Initialize model persistence plugin features that depend on hasPremiumFeature.
@@ -9,6 +10,10 @@ import { ModelCacheToggle } from "./components/ModelCacheControl";
 export function initializePlugin() {
   if (hasPremiumFeature("cache_granular_controls")) {
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled = () => true;
-    PLUGIN_MODEL_PERSISTENCE.ModelCacheToggle = ModelCacheToggle;
+    PLUGIN_MODEL_PERSISTENCE.ModelCacheToggle = lazyPluginComponent(() =>
+      import("./components/ModelCacheControl").then(
+        ({ ModelCacheToggle }) => ModelCacheToggle,
+      ),
+    );
   }
 }
