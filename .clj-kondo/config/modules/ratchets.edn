@@ -1,7 +1,7 @@
 ;; Budgets for escape hatches in config.edn. Counts may fall but not exceed these values.
 ;; Leave reductions to the post-merge shrink workflow; explain increases in the PR.
 {:api-any              1
- :friend-edges         22
+ :friend-edges         1
  :model-imports-bypass 2
  :ns-prefixes          81
  :uses-any             4}
