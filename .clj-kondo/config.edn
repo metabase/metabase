@@ -181,7 +181,7 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
-     ;; only writes .clj-kondo/ratchets.edn, from a :once fixture that finishes before the parallel tests
+     ;; writes the ratchet files from a :once fixture that finishes before the parallel tests
      dev.kondo-ratchet/fix!
      metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
@@ -844,7 +844,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)|(?:^dev\\..*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}

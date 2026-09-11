@@ -202,6 +202,12 @@
         (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
           (is (= "false" (:enablePutGet spec)))
           (is (not (re-find #"(?i)enablePutGet" (str (:subname spec))))))))
+    (testing "additional options wins over top-level schema"
+      ;; https://github.com/metabase/metabase/issues/65493
+      (let [details (assoc details :schema "BAD" :additional-options "schema=GOOD")
+            spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        (is (nil? (:schema spec)))
+        (is (re-find #"schema=GOOD" (:subname spec)))))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
