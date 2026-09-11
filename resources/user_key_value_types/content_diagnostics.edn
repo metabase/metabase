@@ -1,0 +1,9 @@
+[:map
+ [:value [:map
+          [:entity_types {:optional true} [:sequential [:enum "question" "model" "metric" "dashboard" "document" "transform" "collection"]]]
+          [:include_personal_collections {:optional true} :boolean]
+          [:threshold_days {:optional true} [:int {:min 1}]]
+          [:min_duration_ms {:optional true} [:int {:min 1}]]
+          [:min_duplicate_count {:optional true} [:int {:min 1}]]
+          [:sort_column {:optional true} [:enum "name" "entity-type" "created-by" "created-at" "last-active-at" "duration-ms" "duplicate-count" "content-count"]]
+          [:sort_direction {:optional true} [:enum "asc" "desc"]]]]]

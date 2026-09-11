@@ -17,3 +17,13 @@
   `id`, `model`, `name`, `last_used_at`."
   {:arglists '([model args])}
   (fn [model _args] model))
+
+(defn collection-filter
+  "HoneySQL condition scoping `collection-id-column` to `(:collection-ids args)`, or nil (no filtering)
+  when `:collection-ids` is `:all`. A nil member of the set selects root-level content."
+  [collection-id-column {:keys [collection-ids]}]
+  (when (set? collection-ids)
+    [:or
+     (when (contains? collection-ids nil)
+       [:is collection-id-column nil])
+     [:in collection-id-column collection-ids]]))

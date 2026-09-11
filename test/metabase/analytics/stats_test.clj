@@ -543,6 +543,7 @@
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
+    :content-diagnostics
     :data-apps-preview
     :data-complexity-score
     :development-mode

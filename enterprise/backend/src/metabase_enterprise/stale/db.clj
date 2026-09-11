@@ -74,15 +74,16 @@
   [[^:allow-subquery {:union-all union-queries} :dummy_alias]])
 
 (mu/defn stale-content-rows
-  "A page of `:id`/`:model` rows from the union of `union-queries`, sorted by `sort-column` (`:name` or
+  "A page of `select-columns` rows from the union of `union-queries`, sorted by `sort-column` (`:name` or
   `:last_used_at`) in `sort-direction`, skipping `offset` and returning up to `limit` (either may be nil for no
   restriction)."
-  [union-queries :- [:sequential :map]
-   sort-column :- [:enum :name :last_used_at]
+  [union-queries  :- [:sequential :map]
+   select-columns :- [:sequential :keyword]
+   sort-column    :- [:enum :name :last_used_at]
    sort-direction :- [:enum :asc :desc]
-   limit :- [:maybe :int]
-   offset :- [:maybe :int]]
-  (t2/query (cond-> {:select   [:id :model]
+   limit          :- [:maybe :int]
+   offset         :- [:maybe :int]]
+  (t2/query (cond-> {:select   select-columns
                      :from     (stale-content-union union-queries)
                      :order-by [[(case sort-column
                                    :name         :%lower.name

@@ -1,0 +1,32 @@
+## Content Diagnostics - card_type on card findings.
+## Append-only, on the `content_diagnostics_finding` table created in 064/20260708_content_diagnostics.yaml.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.hw2tka
+      author: yb
+      comment: Content Diagnostics - card_type denormalized on card findings
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: card_type
+                  type: varchar(32)
+                  remarks: report_card.type (question/model/metric) at scan time, card findings only; null on all other entity types. Denormalized filter key for the card sub-kind values of the entity-types param (mutable upstream - drift until the next scan, like entity_name).
+
+  - changeSet:
+      id: v64.t4pn9x
+      author: yb
+      comment: Content Diagnostics - index for the entity-types filter's card sub-kind arm
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_etype_card_type
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_type
+              - column:
+                  name: card_type

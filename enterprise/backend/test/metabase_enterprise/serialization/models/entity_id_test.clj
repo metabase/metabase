@@ -53,6 +53,9 @@
     :model/CardBookmark
     :model/ChannelTemplate
     :model/CollectionBookmark
+    ;; Content Diagnostics findings are scan-snapshot runtime data (its `entity_id` column is a
+    ;; polymorphic reference to the flagged entity, not a serdes NanoID) -- not portable content.
+    :model/ContentDiagnosticsFinding
     :model/ContentTranslation
     :model/DashboardBookmark
     :model/DataApp

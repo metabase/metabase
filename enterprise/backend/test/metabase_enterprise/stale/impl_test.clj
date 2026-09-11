@@ -9,6 +9,7 @@
    [metabase.stale-test :refer [with-stale-items
                                 stale-dashboard
                                 stale-card
+                                stale-document
                                 date-months-ago
                                 datetime-months-ago]]
    [metabase.test :as mt]
@@ -44,6 +45,91 @@
               :offset         0
               :sort-column    :name
               :sort-direction :asc}))))))
+
+(deftest can-find-stale-documents
+  (mt/with-temp [:model/Document {id :id} (stale-document
+                                           {:name "My Stale Document"
+                                            :collection_id nil})]
+    (let [base {:collection-ids #{nil}
+                :cutoff-date    (date-months-ago 6)
+                :limit          10
+                :offset         0
+                :sort-column    :name
+                :sort-direction :asc}]
+      (testing "a stale document is found when documents are searched"
+        (is (= [{:id id :model :model/Document}]
+               (:rows (stale/find-candidates (assoc base :models #{:model/Document}))))))
+      (testing "documents are not part of the default model set"
+        (is (not-any? #(= (:id %) id)
+                      (:rows (stale/find-candidates base))))))))
+
+(deftest publicly-shared-documents-are-excluded
+  (mt/with-temp [:model/Collection {col-id :id} {}
+                 :model/Document {doc-id1 :id} (stale-document {:name          "A"
+                                                                :collection_id col-id
+                                                                :public_uuid   (str (random-uuid))})
+                 :model/Document {doc-id2 :id} (stale-document {:name          "B"
+                                                                :collection_id col-id})]
+    (let [rows #(:rows (stale/find-candidates {:collection-ids #{col-id}
+                                               :cutoff-date    (date-months-ago 6)
+                                               :limit          10
+                                               :offset         0
+                                               :sort-column    :name
+                                               :sort-direction :asc
+                                               :models         #{:model/Document}}))]
+      (testing "when public sharing is disabled, publicly shared documents are still returned"
+        (mt/with-temporary-setting-values [enable-public-sharing false]
+          (is (= [{:id doc-id1 :model :model/Document}
+                  {:id doc-id2 :model :model/Document}]
+                 (rows)))))
+      (testing "when public sharing is enabled, publicly shared documents are excluded"
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (is (= [{:id doc-id2 :model :model/Document}]
+                 (rows))))))))
+
+(deftest never-viewed-documents-created-before-cutoff-are-stale
+  ;; A serdes import restores the old `created_at` but :skip's `last_viewed_at`/`view_count`
+  ;; (make-spec "Document", document.clj), so an imported never-viewed doc has an OLD created_at
+  ;; yet a fresh `last_viewed_at` — only the `view_count = 0 AND created_at <= cutoff` arm catches
+  ;; it; the `last_viewed_at <= cutoff` arm can't.
+  (mt/with-temp [:model/Document {never-viewed-id :id} {:name           "Never viewed, created before cutoff"
+                                                        :collection_id  nil
+                                                        :view_count     0
+                                                        :last_viewed_at (datetime-months-ago 1)
+                                                        :created_at     (datetime-months-ago 7)}
+                 :model/Document {viewed-id :id} {:name           "Viewed recently, created before cutoff"
+                                                  :collection_id  nil
+                                                  :view_count     1
+                                                  :last_viewed_at (datetime-months-ago 1)
+                                                  :created_at     (datetime-months-ago 7)}]
+    (let [ids (into #{}
+                    (map :id)
+                    (:rows (stale/find-candidates
+                            {:collection-ids #{nil}
+                             :cutoff-date    (date-months-ago 6)
+                             :limit          100
+                             :offset         0
+                             :sort-column    :name
+                             :sort-direction :asc
+                             :models         #{:model/Document}})))]
+      (testing "a never-viewed document created before the cutoff is stale despite a recent last_viewed_at"
+        (is (contains? ids never-viewed-id)))
+      (testing "a document viewed after the cutoff is not stale"
+        (is (not (contains? ids viewed-id)))))))
+
+(deftest documents-in-non-standard-collection-types-are-excluded
+  (mt/with-temp [:model/Collection {col-id :id} {:type "instance-analytics"}
+                 :model/Document _ (stale-document {:name "Doc" :collection_id col-id})]
+    (is (= {:rows [] :total 0}
+           (stale/find-candidates
+            {:collection-ids #{col-id}
+             :cutoff-date    (date-months-ago 6)
+             :limit          10
+             :offset         0
+             :sort-column    :name
+             :sort-direction :asc
+             :models         #{:model/Document}}))
+        "should not include documents in non-standard collections")))
 
 (deftest results-can-be-sorted
   (mt/with-temp [:model/Dashboard {id1 :id} {:name "Z"
@@ -181,6 +267,71 @@
              :offset         0
              :sort-column    :name
              :sort-direction :asc})))))
+
+(deftest include-columns-adds-union-columns-to-rows
+  (mt/with-temp [:model/Collection {col-id :id} {}
+                 :model/Dashboard {id :id} (stale-dashboard {:name          "My Stale Dashboard"
+                                                             :collection_id col-id})]
+    (let [base {:collection-ids #{col-id}
+                :cutoff-date    (date-months-ago 6)
+                :limit          10
+                :offset         0
+                :sort-column    :name
+                :sort-direction :asc}]
+      (testing "rows carry only :id and :model by default"
+        (is (= [{:id id :model :model/Dashboard}]
+               (:rows (stale/find-candidates base)))))
+      (testing ":include-columns adds the requested union columns"
+        (is (=? [{:id           id
+                  :model        :model/Dashboard
+                  :name         "My Stale Dashboard"
+                  :last_used_at some?}]
+                (:rows (stale/find-candidates (assoc base :include-columns #{:name :last_used_at})))))))))
+
+(deftest collection-ids-all-searches-instance-wide
+  (mt/with-temp [:model/Collection {col-id :id} {}
+                 :model/Dashboard {in-coll-id :id} (stale-dashboard {:name "A" :collection_id col-id})
+                 :model/Dashboard {at-root-id :id} (stale-dashboard {:name "B" :collection_id nil})
+                 :model/Dashboard {fresh-id :id} {:name           "C"
+                                                  :collection_id  col-id
+                                                  :last_viewed_at (datetime-months-ago 1)}]
+    (let [ids (into #{}
+                    (map :id)
+                    (:rows (stale/find-candidates
+                            {:collection-ids :all
+                             :cutoff-date    (date-months-ago 6)
+                             :limit          nil
+                             :offset         nil
+                             :sort-column    :name
+                             :sort-direction :asc
+                             :models         #{:model/Dashboard}})))]
+      (testing ":all finds stale content both in collections and at the root"
+        (is (contains? ids in-coll-id))
+        (is (contains? ids at-root-id)))
+      (testing "content used since the cutoff is still excluded"
+        (is (not (contains? ids fresh-id)))))))
+
+(deftest collection-set-with-nil-member-includes-root-content
+  (mt/with-temp [:model/Collection {col-id :id} {}
+                 :model/Collection {other-col-id :id} {}
+                 :model/Dashboard {in-coll-id :id} (stale-dashboard {:name "A" :collection_id col-id})
+                 :model/Dashboard {at-root-id :id} (stale-dashboard {:name "B" :collection_id nil})
+                 :model/Dashboard {elsewhere-id :id} (stale-dashboard {:name "C" :collection_id other-col-id})]
+    (let [ids (into #{}
+                    (map :id)
+                    (:rows (stale/find-candidates
+                            {:collection-ids #{col-id nil}
+                             :cutoff-date    (date-months-ago 6)
+                             :limit          nil
+                             :offset         nil
+                             :sort-column    :name
+                             :sort-direction :asc
+                             :models         #{:model/Dashboard}})))]
+      (testing "a nil member selects root-level content alongside the named collection"
+        (is (contains? ids in-coll-id))
+        (is (contains? ids at-root-id)))
+      (testing "collections outside the set are excluded"
+        (is (not (contains? ids elsewhere-id)))))))
 
 (deftest cutoff-date-is-taken-into-account
   (mt/with-temp [:model/Collection {col-id :id} {}

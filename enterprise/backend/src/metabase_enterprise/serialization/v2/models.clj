@@ -81,6 +81,7 @@
    "Comment"
    "CommentReaction"
    "ConnectionImpersonation"
+   "ContentDiagnosticsFinding"
    "ContentTranslation"
    "DashboardBookmark"
    "DataApp"

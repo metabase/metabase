@@ -130,6 +130,12 @@ describe("scenarios > admin > permissions > application", () => {
         H.popover().findByText("Monitor").click();
 
         cy.log("Monitor tools smoke test");
+        cy.location("pathname").should(
+          "contain",
+          "/monitor/content-diagnostics",
+        );
+
+        cy.findByTestId("monitor-nav").findByText("Background tasks").click();
         cy.location("pathname").should("contain", "/monitor/tasks");
         cy.findByRole("heading", {
           name: "Background tasks",

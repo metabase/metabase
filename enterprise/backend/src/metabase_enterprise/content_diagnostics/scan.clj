@@ -1,0 +1,253 @@
+(ns metabase-enterprise.content-diagnostics.scan
+  "Content Diagnostics scan pipeline. A scan runs every registered *checker* instance-wide and writes
+  one `scan_id` batch of findings. Orchestration only - the per-finding-type detection logic lives in
+  `checkers/*`, the shared entity-type mapping + denormalization helper in `common`."
+  (:require
+   [medley.core :as m]
+   [metabase-enterprise.content-diagnostics.checkers.duplicated :as duplicated]
+   [metabase-enterprise.content-diagnostics.checkers.imbalanced.crowded :as imbalanced.crowded]
+   [metabase-enterprise.content-diagnostics.checkers.imbalanced.empty :as imbalanced.empty]
+   [metabase-enterprise.content-diagnostics.checkers.imbalanced.sparse :as imbalanced.sparse]
+   [metabase-enterprise.content-diagnostics.checkers.slow :as slow]
+   [metabase-enterprise.content-diagnostics.checkers.stale :as stale]
+   [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase-enterprise.content-diagnostics.models.finding :as finding]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.collections.models.collection :as collection]
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+;;; ---------------------------------------------- checkers ----------------------------------------------
+;;; A checker is a 0-arg fn returning a seq of finding maps:
+;;;   {:entity-type <kw> :entity-id <int> :finding-type <kw> :details <map>}
+
+(def checkers
+  "Ordered checker registry. Each entry **declares** the finding-types it owns, a `:name` (its
+  `checker.<name>` stage label in the scan's metrics and spans), and a 0-arg `:run` fn
+  returning finding maps. Declaring the types (rather than inferring them from a scan's output) is what
+  lets post-scan invalidation know its supersession scope even when a scan emits **zero** rows - i.e. an
+  all-clean scan still resolves the previous scan's findings."
+  [{:name "stale"      :finding-types #{:stale}      :run stale/checker}
+   {:name "slow"       :finding-types #{:slow}       :run slow/checker}
+   {:name "duplicated" :finding-types #{:duplicated} :run duplicated/checker}
+   ;; the imbalanced family: three independent checkers (one namespace each under checkers/imbalanced/)
+   ;; with no cross-type precedence, so one entity can carry several of these finding types at once;
+   ;; each declared type scopes its own supersession
+   {:name "empty"      :finding-types #{:empty}      :run imbalanced.empty/checker}
+   {:name "sparse"     :finding-types #{:sparse}     :run imbalanced.sparse/checker}
+   {:name "crowded"    :finding-types #{:crowded}    :run imbalanced.crowded/checker}])
+
+(defn covered-finding-types
+  "The set of finding-types the registered checkers own - the supersession scope for post-scan invalidation."
+  []
+  (into #{} (mapcat :finding-types) checkers))
+
+(defn- run-stage!
+  "Run one scan stage `f` inside a `:tasks` span, adding its duration to `scan-stage-ms` on success. A throw
+  is re-thrown wrapped with the stage name so `scan!` can label `scan-runs`; the stage counter is
+  skipped. The try sits outside the span so the exception reaches clj-otel first and the span ends in error."
+  [span-suffix stage f]
+  (let [timer (u/start-timer)]
+    (try
+      (let [result (tracing/with-span :tasks (str "task.content-diagnostics-scan." span-suffix)
+                     {:content-diagnostics/stage stage}
+                     (f))]
+        (analytics/inc! :metabase-content-diagnostics/scan-stage-ms {:stage stage} (u/since-ms timer))
+        result)
+      (catch Throwable t
+        ;; keep the class in the message: `ex-message` is often nil, and the wrapper hides the original type
+        (throw (ex-info (format "Content Diagnostics scan stage %s failed: %s: %s"
+                                stage (.getName (class t)) (ex-message t))
+                        {:content-diagnostics/stage stage}
+                        t))))))
+
+(defn detect
+  "Run every checker instance-wide - each as its own `checker.<name>` stage - and return a de-duplicated
+  vector of finding maps. De-dupes on (entity-type, entity-id, finding-type): a checker or the stale query's
+  one-to-many joins can emit the same finding twice, and no intra-scan duplicate may reach the DB. Also
+  drops findings on document-owned cards, so every checker gets that rule for free."
+  []
+  (let [findings-per-checker
+        (mapv (fn [{checker-name :name :keys [run]}]
+                (run-stage! "checker" (str "checker." checker-name)
+                            ;; realize inside the stage, so a lazy checker's work and throws stay its own
+                            #(let [findings (vec (run))]
+                               ;; per-checker, and before both the dedupe and the document-owned drop - a
+                               ;; different grain from `inserted-finding-count`
+                               (tracing/add-span-attrs!
+                                :tasks
+                                {:content-diagnostics/checker-finding-count (count findings)})
+                               findings)))
+              checkers)]
+    (into []
+          (comp cat
+                (m/distinct-by (juxt :entity-type :entity-id :finding-type))
+                (common/remove-document-internal-card-findings-xf))
+          findings-per-checker)))
+
+;;; ----------------------------------------------- scan ------------------------------------------------
+
+(defn- scope-collection-id-lookup
+  "Batched `{[entity-type entity-id] → collection_id}` for the findings' entities - **one** query per
+  entity-type (over just the flagged entities, F ≪ N). Entity types whose model has no `collection_id`
+  contribute nothing; an entity at the root maps to nil. A `:collection` subject has no `collection_id`
+  column - \"where it lived when flagged\" is its **parent**, parsed from `location` (nil at root)."
+  [findings]
+  (into {}
+        (for [[entity-type findings-for-type] (group-by :entity-type findings)
+              :let       [model (common/entity-type->model entity-type)]
+              :when      model
+              :let       [ids      (set (map :entity-id findings-for-type))
+                          id->coll (if (= entity-type :collection)
+                                     (cd.db/collection-parent-ids-by-id ids)
+                                     (cd.db/collection-ids-by-entity-id model ids))]
+              {:keys [entity-id]} findings-for-type]
+          [[entity-type entity-id] (get id->coll entity-id)])))
+
+(defn- attach-scope-collection-ids
+  "Stamp each finding with `:scope-collection-id` - the collection the entity lived in at scan time."
+  [findings]
+  (let [lookup (scope-collection-id-lookup findings)]
+    (mapv #(assoc % :scope-collection-id (get lookup [(:entity-type %) (:entity-id %)])) findings)))
+
+(defn- attach-collection-names
+  "Stamp each finding with `:entity-collection-name` - the scan-time name of its `:scope-collection-id`
+  collection. Root-resident entities store their root's label (\"Our analytics\"; \"Transforms\" for a
+  transform) so the sort places them under the label the UI shows. The label is realized in the site
+  locale - no user locale is bound in the scan job."
+  [findings]
+  (let [ids        (into #{} (keep :scope-collection-id) findings)
+        id->name   (when (seq ids)
+                     (cd.db/collection-names-by-id ids))
+        ;; root-resident collection subjects sit under their own tree's root (GDGT-2921 admits
+        ;; transforms/tenant-namespace collections as subjects), so look their namespace up
+        root-colls (into #{}
+                         (comp (filter #(and (= (:entity-type %) :collection)
+                                             (nil? (:scope-collection-id %))))
+                               (map :entity-id))
+                         findings)
+        id->ns     (when (seq root-colls)
+                     (cd.db/collection-namespaces-by-id root-colls))
+        ;; str realizes the label NOW, in the job's (site) locale
+        root-label (memoize (fn [collection-namespace]
+                              (str (:name (collection/root-collection-with-ui-details
+                                           collection-namespace)))))]
+    (mapv (fn [{:keys [scope-collection-id entity-type entity-id] :as finding}]
+            (assoc finding :entity-collection-name
+                   (if scope-collection-id
+                     (get id->name scope-collection-id)
+                     (root-label (common/entity-root-namespace entity-type (get id->ns entity-id))))))
+          findings)))
+
+(def ^:private insert-batch-size
+  "Rows per INSERT. Postgres caps a prepared statement at 65,535 bind parameters; at ~17 columns/row a
+  single all-rows insert overflows past ~3.8k findings. 1000 keeps us well under (mirrors
+  `mark-stale-batch-size` in the deps module)."
+  1000)
+
+(defn- insert-findings!
+  "Persist findings as independent **chunk-committed** transactions - each chunk is its own transaction,
+  so completed chunks are durable even if a later chunk fails (no single all-rows transaction held open
+  for the whole scan). Chunking also keeps each statement under the bind-parameter cap."
+  [scan-id findings]
+  (doseq [chunk (partition-all insert-batch-size findings)]
+    (t2/with-transaction [_conn]
+      (cd.db/insert-findings!
+       (for [{:keys [entity-type entity-id finding-type details scope-collection-id
+                     last-active-at duration-ms content-count duplicate-count
+                     entity-name entity-created-at entity-creator-id entity-creator-name
+                     card-type entity-collection-name entity-kind]}
+             chunk]
+         {:scan_id             scan-id
+          :entity_type         entity-type
+          :entity_id           entity-id
+          :finding_type        finding-type
+          :scope_collection_id scope-collection-id
+          :last_active_at      last-active-at
+          :duration_ms         duration-ms
+          :content_count       content-count
+          :duplicate_count     duplicate-count
+          :entity_name         entity-name
+          :entity_created_at   entity-created-at
+          :entity_creator_id   entity-creator-id
+          :entity_creator_name entity-creator-name
+          :card_type           card-type
+          :entity_collection_name entity-collection-name
+          :entity_kind         entity-kind
+          :details             details})))))
+
+(defn- count-persisted!
+  "Bump `findings-persisted` per finding type - clamped to the registry's declared types, `unknown` otherwise."
+  [findings]
+  (let [known (covered-finding-types)]
+    (doseq [[finding-type n] (frequencies (map :finding-type findings))]
+      (analytics/inc! :metabase-content-diagnostics/findings-persisted
+                      {:finding-type (if (contains? known finding-type) (name finding-type) "unknown")}
+                      n))))
+
+(defn- run-pipeline!
+  "The scan's write path - detect → enrich → insert → count → supersede - returning the persisted findings.
+  `detect` runs its own per-checker stages, so nesting it under `enrich` would fold every checker's time
+  into that stage. `count-persisted!` sits outside any stage, so a throw from it is attributed to `unknown`."
+  [scan-id]
+  (let [detected (detect)
+        findings (run-stage! "enrich" "enrich"
+                             #(attach-collection-names (attach-scope-collection-ids detected)))]
+    (run-stage! "insert" "insert"
+                ;; attribute first - `add-span-attrs!` is fail-loud in dev/test, and throwing after the
+                ;; chunks commit would count as an insert failure and skip supersession
+                #(do (tracing/add-span-attrs!
+                      :tasks
+                      {:content-diagnostics/inserted-finding-count (count findings)})
+                     (insert-findings! scan-id findings)))
+    ;; persisted - count them before supersession, which can still fail
+    (count-persisted! findings)
+    ;; write-side resolution: supersede prior-scan findings the new batch didn't re-emit. Only runs on
+    ;; success - a failed scan never invalidates prior findings, though already-committed chunks of the
+    ;; failed batch stay active alongside them.
+    (run-stage! "invalidate" "invalidate"
+                #(let [n (finding/invalidate-superseded! scan-id (covered-finding-types))]
+                   (tracing/add-span-attrs! :tasks {:content-diagnostics/superseded-count (or n 0)})))
+    findings))
+
+(defn scan!
+  "Run a full scan synchronously: every checker → one `scan_id` batch → persisted. The persisted findings
+  are the real result; returns the scan's topline `{:scan_id :finding_count :duration_ms}` for callers
+  that report it (the demo `POST /scan`). Emits `scan-duration-ms` and `scan-runs` on both outcomes, the
+  failing stage landing on `scan-runs`."
+  []
+  (let [timer   (u/start-timer)
+        scan-id (str (random-uuid))]
+    (try
+      ;; once, on the enclosing span - defjob's root, or the API request span for POST /scan - not per stage
+      (tracing/add-span-attrs! :tasks {:content-diagnostics/scan-id scan-id})
+      (let [findings    (run-pipeline! scan-id)
+            duration-ms (u/since-ms timer)
+            topline     {:scan_id       scan-id
+                         :finding_count (count findings)
+                         ;; coerce to a primitive double so Math/round resolves without
+                         ;; reflection (u/since-ms is un-hinted)
+                         :duration_ms   (Math/round (double duration-ms))}]
+        (log/infof "Content Diagnostics scan %s: %d findings in %.0f ms" scan-id (count findings) duration-ms)
+        ;; last, so a throw from anything above it reaches the catch and is counted once, as an error
+        (analytics/inc! :metabase-content-diagnostics/scan-duration-ms {:status "ok"} duration-ms)
+        (analytics/inc! :metabase-content-diagnostics/scan-runs {:status "ok" :stage "none"})
+        topline)
+      (catch Throwable t
+        (analytics/inc! :metabase-content-diagnostics/scan-duration-ms {:status "error"} (u/since-ms timer))
+        (analytics/inc! :metabase-content-diagnostics/scan-runs
+                        {:status "error" :stage (get (ex-data t) :content-diagnostics/stage "unknown")})
+        (throw t)))))
+
+(defenterprise run-content-diagnostics-scan!
+  "EE implementation: runs a full scan synchronously and returns its topline. Only for the testing API —
+  see [[metabase.testing-api.api]]."
+  :feature :none
+  []
+  (scan!))

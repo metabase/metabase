@@ -1,0 +1,31 @@
+## Content Diagnostics - `slow` finding type.
+## Adds the per-type verdict magnitude column + composite index the `slow` checker/serve path needs.
+## Append-only, on the `content_diagnostics_finding` table created in 064/20260708_content_diagnostics.yaml.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.icjzhj
+      author: yb
+      comment: Content Diagnostics - duration_ms verdict magnitude for slow findings
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: duration_ms
+                  type: bigint
+                  remarks: Verdict magnitude for slow findings - avg query ms (card) / last-run ms (transform) / slowest-child ms (dashboard/document roll-up); null on all other finding types (per-type named magnitude column). bigint, not int - a pathological run duration can exceed 2^31-1 ms.
+
+  - changeSet:
+      id: v64.0o7kl7
+      author: yb
+      comment: Content Diagnostics - index findings by finding_type + duration_ms
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_duration
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: duration_ms
