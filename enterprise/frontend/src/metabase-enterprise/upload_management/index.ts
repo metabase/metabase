@@ -1,4 +1,4 @@
-import { PLUGIN_STORAGE_SETUP } from "metabase/common/components/upsells/StoragePurchaseModal";
+import { PLUGIN_STORAGE_SETUP } from "metabase/common/components/upsells/StoragePurchaseModal/plugins";
 import {
   PLUGIN_UPLOAD_MANAGEMENT,
   lazyPluginComponent,
