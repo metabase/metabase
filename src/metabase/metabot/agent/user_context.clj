@@ -7,10 +7,10 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.metabot.query-export :as query-export]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
@@ -248,6 +248,14 @@
 
 ;;; Viewing Context Formatting
 
+(defn- exported-query-text
+  "The client-supplied query rendered for the LLM, only when the current user can read its
+  database and query the tables it references. The database refusal is audited for the same
+  reason the query's card ids get the audited store: the id is the caller's own."
+  [query]
+  (when-let [[gated mp] (shared.content-store/query-for-export query true)]
+    (llm-shape/export-query-for-llm gated mp shared.content-store/audited-store)))
+
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
@@ -256,12 +264,19 @@
     (te/lines "The user is currently in the notebook editor viewing a query."
               (te/field "Query ID" (:id item))
               (te/field "Database ID" (get-in item [:query :database]))
-              (te/field "Query" (query-export/exported-query-text (:query item)))
+              (te/field "Query" (exported-query-text (:query item)))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)
                                                (map format-entity)
                                                te/lines)))))
+
+(defn- transform-query-source-text
+  "Format a transform's `:query` source for the LLM; the rendering and fallback contract
+  lives in [[llm-shape/export-query-for-llm]]. The source arrives inline in the viewing context,
+  as client-supplied as the adhoc query above, so it gets the same audited gate and store."
+  [source]
+  (exported-query-text (:query source)))
 
 (defn- transform-source-type
   [source]
@@ -281,7 +296,7 @@
 
 (defmethod format-transform-source "query"
   [source]
-  (let [source-text (query-export/exported-query-text (:query source))]
+  (let [source-text (transform-query-source-text source)]
     (te/lines "Transform source"
               (te/field "Type" (:type source))
               (te/field "Query type" (:transform-source-type source))

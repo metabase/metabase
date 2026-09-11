@@ -11,8 +11,10 @@
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared :as tools.shared]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -315,7 +317,10 @@
                                :charts  {"chart-1" {:chart_id "chart-1"
                                                     :query_id "q-1"
                                                     :queries  [query]
-                                                    :visualization_settings {:chart_type "line"}}}}})]
+                                                    :visualization_settings {:chart_type "line"}}
+                                         "chart-2" {:chart_id "chart-2"
+                                                    :queries  [nil]
+                                                    :visualization_settings {:chart_type "bar"}}}}})]
         (testing "resolves a conversation chart to its chart type and exported query"
           (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-1"]})]
             (is (=? {:resources [{:content {:structured-output map?}}]}
@@ -323,6 +328,11 @@
             (is (str/includes? (:output result) "conversation-chart"))
             (is (str/includes? (:output result) "Chart type: line"))
             (is (str/includes? (:output result) "ORDERS"))))
+        (testing "a chart with no query says so instead of claiming a permission denial"
+          (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-2"]})]
+            (is (str/includes? (:output result) "Chart type: bar"))
+            (is (str/includes? (:output result) "No query is attached to this chart."))
+            (is (not (str/includes? (:output result) "cannot read")))))
         (testing "falls back to the queries state when the id is a query id"
           (let [result (read-resource/read-resource {:uris ["metabase://chart/q-1"]})]
             (is (str/includes? (:output result) "conversation-query"))))
@@ -334,6 +344,70 @@
           (is (=? {:resources [{:error #"No chart or query with id 'nope'.*"}]}
                   (read-resource/read-resource {:uris ["metabase://chart/nope"]}))))))))
 
+(defn- refusing-store
+  "A ContentStore that records `tag` and refuses, the way the real stores do for a row the
+  current user cannot read. Swapped in for both so a test can tell which one a caller picked."
+  [tag recorded]
+  (let [refuse (fn [] (swap! recorded conj tag) (throw (ex-info "Forbidden" {:status-code 403})))]
+    (reify resolve.mp/ContentStore
+      (card-by-entity-id    [_ _] (refuse))
+      (measure-by-entity-id [_ _] (refuse))
+      (segment-by-entity-id [_ _] (refuse))
+      (card-by-id           [_ _] (refuse))
+      (measure-by-id        [_ _] (refuse))
+      (segment-by-id        [_ _] (refuse)))))
+
+(deftest read-conversation-chart-provenance-picks-audit-test
+  (let [mp         (mt/metadata-provider)
+        definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
+    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                    :definition definition}]
+      (let [query (fn [] {:database (mt/id)
+                          :type     "query"
+                          :query    {:source-table (mt/id :venues)
+                                     :filter       [:segment segment-id]}})
+            chart (fn [chart-id query-id] {:chart_id chart-id
+                                           :query_id query-id
+                                           :queries  [(query)]
+                                           :visualization_settings {:chart_type "line"}})
+            ;; The gate never looks at segments, so the query clears it and the segment ref is
+            ;; resolved by whichever store the caller handed the export - the choice under test.
+            ;; A source-card query would be refused by the gate first, whichever store was passed.
+            store-used (fn [uri]
+                         (let [used (atom [])]
+                           (with-redefs [shared.content-store/audited-store (refusing-store :audited used)
+                                         shared.content-store/default-store (refusing-store :default used)]
+                             (let [result (read-resource/read-resource {:uris [uri]})]
+                               (is (str/includes? (:output result)
+                                                  "references content the user cannot read"))
+                               (distinct @used)))))]
+        (binding [tools.shared/*memory-atom*
+                  (atom {:client-ids #{"seeded-chart" "seeded-q"}
+                         :state {:queries {"seeded-q" (query)}
+                                 :charts  {"seeded-chart"  (chart "seeded-chart" "seeded-chart")
+                                           "tool-chart"    (chart "tool-chart" "tool-q")
+                                           "created-chart" (chart "created-chart" "seeded-q")}}})]
+          (mt/with-test-user :rasta
+            (testing "a client-seeded chart or query audits the refusal"
+              (doseq [uri ["metabase://chart/seeded-chart" "metabase://query/seeded-q"]]
+                (is (= [:audited] (store-used uri)) uri)))
+            (testing "so does a chart create_chart minted for a client-supplied query, whose own id was never seeded"
+              (is (= [:audited] (store-used "metabase://chart/created-chart"))))
+            (testing "a tool-written chart refuses without an audit trail"
+              (is (= [:default] (store-used "metabase://chart/tool-chart"))))))))))
+
+(deftest read-conversation-query-deleted-database-still-renders-test
+  (testing "a state query whose database no longer exists renders its fallback instead of claiming a permission problem"
+    (binding [tools.shared/*memory-atom*
+              (atom {:state {:queries {"q-gone" {:database 999999999
+                                                 :type     "query"
+                                                 :query    {:source-table 1}}}}})]
+      (mt/with-test-user :rasta
+        (let [result (read-resource/read-resource {:uris ["metabase://query/q-gone"]})]
+          (is (not (str/includes? (:output result) "cannot read")))
+          (is (str/includes? (:output result) "source-table")))))))
+
 (defn- conversation-query-state
   [query]
   (atom {:state {:queries {"q-1" query}
@@ -342,7 +416,7 @@
                                       :visualization_settings {:chart_type "line"}}}}}))
 
 (deftest read-conversation-query-resource-permission-test
-  (testing "a stored query the user may not run is refused"
+  (testing "a stored query the user may not run has its body withheld"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-current-user (mt/user->id :rasta)
         (binding [tools.shared/*memory-atom*
@@ -351,8 +425,8 @@
                                              :query    {:source-table (mt/id :orders)}})]
           (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
             (let [result (read-resource/read-resource {:uris [uri]})]
-              (is (=? {:resources [{:error "You don't have permissions to do that."}]} result))
-              (is (not (str/includes? (:output result) "ORDERS"))))))))))
+              (is (str/includes? (:output result) "references content the user cannot read") uri)
+              (is (not (str/includes? (:output result) "ORDERS")) uri))))))))
 
 (deftest read-conversation-source-card-query-resource-test
   (testing "a query sourced from a readable card exports through the card's collection access alone,
@@ -373,7 +447,7 @@
                   (is (str/includes? (:output result) "source-card")))))))))))
 
 (deftest read-conversation-source-card-query-unreadable-card-test
-  (testing "a query sourced from a card in a collection the user cannot read is refused"
+  (testing "a query sourced from a card in a collection the user cannot read has its body withheld"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      :model/Card {card-id :id} {:collection_id coll-id
@@ -387,8 +461,8 @@
                                                :query    {:source-table (str "card__" card-id)}})]
             (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
               (let [result (read-resource/read-resource {:uris [uri]})]
-                (is (=? {:resources [{:error "You don't have permissions to do that."}]} result))
-                (is (not (str/includes? (:output result) "ORDERS")))))))))))
+                (is (str/includes? (:output result) "references content the user cannot read") uri)
+                (is (not (str/includes? (:output result) "ORDERS")) uri)))))))))
 
 (deftest read-transform-resource-test
   (mt/with-premium-features #{:transforms-basic :hosting}

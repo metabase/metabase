@@ -403,6 +403,11 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id))
 
+(mu/defn database :- [:maybe :map]
+  "The Database with `database-id`, or nil when there is none."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
+
 (mu/defn database-ids-by-name
   "The IDs of the Databases named `database-name`."
   [database-name :- :string]
