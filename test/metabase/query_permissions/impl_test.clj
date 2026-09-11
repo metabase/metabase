@@ -369,7 +369,7 @@
                 :perms/view-data      {(mt/id :products) :unrestricted}}
                (query-perms/required-perms-for-query query :already-preprocessed? true)))))))
 
-(deftest can-run-query?-calculation-errors-test
+(deftest can-run-query?-non-permission-errors-test
   (let [broken {:database (mt/id) :type :query :query {:source-table "card__13371337"}}]
     (testing "a query whose permissions cannot be calculated throws when the caller asks for it"
       (mt/with-current-user (mt/user->id :rasta)
