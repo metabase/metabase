@@ -103,7 +103,8 @@
    :official-collection 1
    :verified            1
    ;; :library is a data-layer curation signal relevant only when picking a data source, so it is off by
-   ;; default; the :data-picker context opts in, at a curation-tier level that an exact match can overpower.
+   ;; default; the :data-picker and :metabot contexts opt in, at a curation-tier level that an exact match
+   ;; can overpower.
    :library             0
    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
    :rrf                 500
@@ -152,11 +153,25 @@
    ;; - `custom-viz.cy.spec.ts`
    ;; - `search-snowplow.cy.spec.js`
    :metabot
-   {:data-layer          33
+   ;; Metabot picks data sources too, so it gets the data picker's library boost.
+   ;; Otherwise nlq-fallback, which stands in for library-only retrieval, has no preference for library items.
+   {:library             80
+    :data-layer          33
     :data-layer/final    1     ; ≈ 33
     :data-layer/internal 0.3   ; ≈ 10
     :data-layer/hidden   0.03  ; ≈ 1
-    }})
+    ;; Favor the semantic layer over saved questions, and both over models, which tables and metrics replace.
+    ;; Tables get no type boost because :data-layer already ranks them; a metric scores level with an internal
+    ;; table. Every model Metabot searches is listed, since unlisted ones fall back to [[models-search-order]].
+    :model               10
+    :model/metric        1     ; ≈ 10
+    :model/dashboard     0.3   ; ≈ 3
+    :model/card          0.3   ; ≈ 3
+    :model/table         0
+    :model/dataset       0
+    :model/document      0
+    :model/transform     0
+    :model/database      0}})
 
 (def known-rankers
   "Scorer keys the weights API accepts as overrides: the union across [[static-default-weights]] and every
