@@ -41,9 +41,8 @@ jest.mock("metabase/utils/settings", () => ({
   default: { setAll: jest.fn() },
 }));
 
-// The real payload, not a stand-in: the hook seeds the `getCurrentUser` cache with
-// whatever the endpoint returns, so the assertions below pin the seed to the actual
-// projection rather than to whatever shape this file happens to invent.
+// The real payload rather than a stand-in, so the assertions pin the seeded cache to the
+// endpoint's actual projection.
 const BOOTSTRAP = createMockMcpAppsBootstrapResponse();
 
 const OPTIONS = {

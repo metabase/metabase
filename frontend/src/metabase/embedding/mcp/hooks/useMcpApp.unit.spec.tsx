@@ -19,20 +19,22 @@ interface TestMcpApp {
   ontoolresult: (params: McpUiToolResultNotification["params"]) => void;
 }
 
+// `visualize_query` and `render_drill_through` put a handle in `structuredContent` and nothing
+// else, so every fixture here is handle-shaped. The queries below are what the callback API
+// resolves those handles to — see `resolveHandles`.
+const QUERY_HANDLE = "11111111-1111-4111-8111-111111111111";
+const NEXT_QUERY_HANDLE = "22222222-2222-4222-8222-222222222222";
+
 const QUERY_RESULT: McpUiToolResultNotification["params"] = {
   content: [],
-  structuredContent: { query: "encoded-query" },
+  structuredContent: { query_handle: QUERY_HANDLE },
 };
 
 const NEXT_QUERY_RESULT: McpUiToolResultNotification["params"] = {
   content: [],
-  structuredContent: { query: "next-encoded-query" },
+  structuredContent: { query_handle: NEXT_QUERY_HANDLE },
 };
 
-/**
- * What the v2 tools actually emit. `visualize_query` and `render_drill_through`
- * return only a handle, so a bundle that reads `query` alone renders nothing.
- */
 const HANDLE_RESULT: McpUiToolResultNotification["params"] = {
   content: [],
   structuredContent: { query_handle: "0f2a1c33-4b5e-4a6f-8c7d-9e0a1b2c3d4e" },
@@ -75,6 +77,18 @@ const setup = (overrides: Partial<TestMcpApp> = {}) => {
 
 const mockFetchQueryByHandle = jest.fn();
 
+/** Default callback-API behaviour: each fixture handle resolves to its own query. */
+const resolveHandles = () =>
+  mockFetchQueryByHandle.mockImplementation(
+    ({ queryHandle }: { queryHandle: string }) =>
+      Promise.resolve({
+        query:
+          queryHandle === NEXT_QUERY_HANDLE
+            ? "next-encoded-query"
+            : "encoded-query",
+      }),
+  );
+
 jest.mock("../api", () => ({
   fetchQueryByHandle: (...args: unknown[]) => mockFetchQueryByHandle(...args),
 }));
@@ -93,6 +107,10 @@ describe("useMcpApp", () => {
 
     mockUseApp.mockReset();
     mockFetchQueryByHandle.mockReset();
+  });
+
+  beforeEach(() => {
+    resolveHandles();
   });
 
   it("gets auth from the server tool instead of the visualization result", async () => {
@@ -400,9 +418,7 @@ describe("useMcpApp", () => {
     expect(result.current.mcpSessionId).toBe("");
   });
 
-  // The v2 tools emit `{query_handle}` and nothing else. Before these tests the
-  // suite covered only v1's inline `{query}` shape, so it stayed green while
-  // every v2 tool result left the iframe on a permanent loading spinner.
+  // The v2 tools emit `{query_handle}` and nothing else.
   describe("v2 query_handle payloads", () => {
     it("resolves a handle into a query once the credential exists", async () => {
       mockFetchQueryByHandle.mockResolvedValue({
@@ -457,23 +473,6 @@ describe("useMcpApp", () => {
       });
 
       expect(result.current.query).toBeNull();
-    });
-
-    it("still renders v1's inline query without calling the resolve endpoint", async () => {
-      const { app, result } = setup({
-        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
-        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
-      });
-
-      act(() => {
-        app.ontoolresult(QUERY_RESULT);
-      });
-
-      await waitFor(() => {
-        expect(result.current.query).toBe("encoded-query");
-      });
-
-      expect(mockFetchQueryByHandle).not.toHaveBeenCalled();
     });
   });
 });

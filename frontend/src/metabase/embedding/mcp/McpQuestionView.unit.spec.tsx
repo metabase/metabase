@@ -95,9 +95,8 @@ const BOOTSTRAP = createMockMcpAppsBootstrapResponse({
 function setup() {
   const { user, settings } = BOOTSTRAP;
 
-  // `useMcpUserAndSettingsFetch` widens the projection to `User` when it seeds the
-  // `getCurrentUser` cache, so at runtime the store holds an object with only these
-  // fields. Reproducing that widening is the whole point of this spec.
+  // Reproduces the widening `useMcpUserAndSettingsFetch` does when it seeds the cache: at
+  // runtime the store holds a `User` carrying only these fields.
   const currentUser = user as User;
 
   setupCurrentUserEndpoint(currentUser);
@@ -112,10 +111,8 @@ function setup() {
   setupAlertsEndpoints(TEST_CARD, []);
   setupCardQueryEndpoints(TEST_CARD, QUERY_RESULT);
 
-  // The hook publishes the same narrow map to the consumers that live outside the
-  // store. `mockSettings` is deliberately not used: it re-expands whatever it is
-  // given through `createMockSettings`, which would put the admin-only settings the
-  // projection drops back in and hide exactly the regression this spec guards.
+  // Not `mockSettings`: it re-expands through `createMockSettings`, restoring the admin-only
+  // settings the projection drops and hiding the regression this spec guards.
   MetabaseSettings.setAll(settings);
 
   const state = createMockState({

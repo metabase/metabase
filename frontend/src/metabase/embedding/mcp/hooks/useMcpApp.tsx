@@ -35,18 +35,33 @@ export interface McpAppState {
 }
 
 /**
- * The two tool payload shapes the iframe has to accept.
- *
- * v1 inlines the base64 `query` in the tool result. v2 passes a `query_handle`
- * instead and keeps the query out of the model's context entirely, so the
- * iframe resolves it over the callback API. One bundle serves both surfaces, so
- * both shapes stay supported.
+ * What `visualize_query` and `render_drill_through` put in `structuredContent`. The query itself
+ * never rides here — the tools pass a handle and the iframe exchanges it over the callback API, so
+ * the query stays out of the model's context.
  */
 type VisualizeQueryToolPayload = {
-  query?: string;
   query_handle?: string;
   prompt?: string;
 };
+
+/** `structuredContent` is untyped on the wire, so narrow it by checking rather than by asserting. */
+function toToolPayload(structuredContent: unknown): VisualizeQueryToolPayload {
+  if (typeof structuredContent !== "object" || structuredContent === null) {
+    return {};
+  }
+
+  // Safe after the guard above: widening a known object to an index signature, so every field
+  // read below still has to prove its own type rather than being asserted into one.
+  const { query_handle: queryHandle, prompt } = structuredContent as Record<
+    string,
+    unknown
+  >;
+
+  return {
+    query_handle: typeof queryHandle === "string" ? queryHandle : undefined,
+    prompt: typeof prompt === "string" ? prompt : undefined,
+  };
+}
 
 function applyHostContext(ctx: McpUiHostContext) {
   if (ctx.theme) {
@@ -86,15 +101,9 @@ export function useMcpApp(): McpAppState {
       };
 
       app.ontoolresult = (params) => {
-        const result =
-          // Unjustified type cast. FIXME
-          (params.structuredContent as VisualizeQueryToolPayload | undefined) ??
-          {};
+        const result = toToolPayload(params.structuredContent);
 
-        // Either shape counts as a payload worth authenticating for. Gating on
-        // `query` alone is what left every v2 tool result on the spinner: v2
-        // sends only `query_handle`.
-        if (result.query || result.query_handle) {
+        if (result.query_handle) {
           pendingToolResultRef.current = result;
 
           setToolResultVersion((version) => version + 1);
@@ -116,20 +125,10 @@ export function useMcpApp(): McpAppState {
         return;
       }
 
-      const { query, query_handle: queryHandle, prompt } = toolResult;
+      const { query_handle: queryHandle, prompt } = toolResult;
 
-      // Cleared for either shape: a stale failure left standing would render
-      // over a query that has since loaded.
+      // A stale failure left standing would render over a query that has since loaded.
       setQueryError(null);
-
-      if (query) {
-        // v1's inline shape. A newer payload supersedes any handle still in
-        // flight, so its resolution must not overwrite this query when it lands.
-        pendingQueryHandleRef.current = null;
-        setQuery(query);
-        setPrompt(prompt ?? null);
-        return;
-      }
 
       if (!queryHandle) {
         return;
